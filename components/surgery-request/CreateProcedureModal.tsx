@@ -73,7 +73,7 @@ export function CreateProcedureModal({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 placeholder:text-gray-400"
+              className="w-full px-4 py-3 border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 placeholder:text-gray-400"
               placeholder="Nome do procedimento"
             />
           </div>

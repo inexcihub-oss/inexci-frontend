@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export type ToastType = "success" | "error" | "info";
 
@@ -12,13 +12,18 @@ interface ToastProps {
 }
 
 export function Toast({ message, type, onClose, duration = 5000 }: ToastProps) {
+  // Usar ref para manter referência estável do onClose
+  // Isso evita que o timer seja resetado se onClose mudar de referência
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      onClose();
+      onCloseRef.current();
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [duration, onClose]);
+  }, [duration]); // Removido onClose das dependências, usando ref
 
   const bgColor = {
     success: "bg-green-500",

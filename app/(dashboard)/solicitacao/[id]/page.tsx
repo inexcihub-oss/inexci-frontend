@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import {
-  Checkbox,
-  ViewKanbanIcon,
-  FlagIcon,
-  PersonIcon,
-  CalendarIcon,
-  WarningIcon,
-  SendIcon,
-} from "@/components/ui";
+  pendencyService,
+  ValidationResult,
+  CalculatedPendency,
+} from "@/services/pendency.service";
+import { Checkbox } from "@/components/ui";
+import { DynamicPendencyList } from "@/components/pendencies";
+import { useToast } from "@/hooks/useToast";
+import PageContainer from "@/components/PageContainer";
 
 type TabType = "informacoes-gerais" | "codigo-tuss" | "opme" | "laudo";
 type SidebarTab = "chat" | "pendencias";
@@ -27,6 +27,51 @@ export default function SolicitacaoDetalhePage() {
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
     new Set(),
   );
+  const [allSolicitacoes, setAllSolicitacoes] = useState<any[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Estado para validação dinâmica de pendências
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [loadingPendencies, setLoadingPendencies] = useState(false);
+  const { showToast } = useToast();
+
+  // Carregar validação de pendências (dinâmica - baseada nos dados atuais)
+  const fetchPendencies = useCallback(async () => {
+    if (!params.id) return;
+
+    setLoadingPendencies(true);
+    try {
+      const validationData = await pendencyService.validate(
+        params.id as string,
+      );
+      setValidation(validationData);
+    } catch (error) {
+      console.error("Erro ao validar pendências:", error);
+    } finally {
+      setLoadingPendencies(false);
+    }
+  }, [params.id]);
+
+  // Carregar todas as solicitações para navegação
+  useEffect(() => {
+    const fetchAllSolicitacoes = async () => {
+      try {
+        const response = await surgeryRequestService.getAll();
+        if (response && response.records && Array.isArray(response.records)) {
+          setAllSolicitacoes(response.records);
+          // Encontrar o índice atual
+          const index = response.records.findIndex(
+            (s: any) => s.id === parseInt(params.id as string),
+          );
+          setCurrentIndex(index !== -1 ? index : 0);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar solicitações:", error);
+      }
+    };
+
+    fetchAllSolicitacoes();
+  }, [params.id]);
 
   useEffect(() => {
     const fetchSolicitacao = async () => {
@@ -45,6 +90,13 @@ export default function SolicitacaoDetalhePage() {
       fetchSolicitacao();
     }
   }, [params.id]);
+
+  // Carregar pendências quando a solicitação mudar
+  useEffect(() => {
+    if (params.id) {
+      fetchPendencies();
+    }
+  }, [params.id, fetchPendencies]);
 
   const handleSelectDocument = (docId: string) => {
     const newSelected = new Set(selectedDocuments);
@@ -68,6 +120,23 @@ export default function SolicitacaoDetalhePage() {
     }
   };
 
+  const handlePrevious = () => {
+    if (currentIndex > 0 && allSolicitacoes.length > 0) {
+      const prevSolicitacao = allSolicitacoes[currentIndex - 1];
+      router.push(`/solicitacao/${prevSolicitacao.id}`);
+    }
+  };
+
+  const handleNext = () => {
+    if (
+      currentIndex < allSolicitacoes.length - 1 &&
+      allSolicitacoes.length > 0
+    ) {
+      const nextSolicitacao = allSolicitacoes[currentIndex + 1];
+      router.push(`/solicitacao/${nextSolicitacao.id}`);
+    }
+  };
+
   if (loading || !solicitacao) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -88,17 +157,17 @@ export default function SolicitacaoDetalhePage() {
   ];
 
   return (
-    <div className="flex bg-white p-2.5 h-screen">
+    <PageContainer>
       {/* Container com borda englobando tudo */}
-      <div className="flex-1 flex ml-2.5 border border-neutral-100 rounded-lg shadow-sm overflow-hidden">
+      <div className="flex-1 flex overflow-hidden">
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           <header className="flex items-center justify-between px-6 py-0 border-b border-neutral-100 h-13">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => router.back()}
-                className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50 transition-colors p-1"
+                onClick={() => router.push("/procedimentos-cirurgicos")}
+                className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
                   <path
@@ -142,13 +211,59 @@ export default function SolicitacaoDetalhePage() {
               </div>
             </div>
 
-            <button className="w-6 h-6 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50 transition-colors p-1">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-              </svg>
-            </button>
+            {/* Navegação e menu de três pontos */}
+            <div className="flex items-center gap-2">
+              {/* Navegação entre solicitações */}
+              <div className="flex items-center gap-1">
+                <div className="flex items-center justify-center h-10 px-3 text-xs text-gray-500">
+                  <span className="font-medium">{currentIndex + 1}</span>
+                  <span className="mx-1 opacity-50">/</span>
+                  <span className="opacity-50">{allSolicitacoes.length}</span>
+                </div>
+                <button
+                  onClick={handlePrevious}
+                  disabled={currentIndex === 0}
+                  className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M18 15L12 9L6 15"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleNext}
+                  disabled={currentIndex >= allSolicitacoes.length - 1}
+                  className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M6 9L12 15L18 9"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Linha separadora */}
+              <div className="w-px h-6 bg-gray-200"></div>
+
+              {/* Menu de três pontos */}
+              <button className="w-6 h-6 flex items-center justify-center hover:bg-gray-50 transition-colors p-1">
+                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+                  <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
+                  <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
+                  <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
+                </svg>
+              </button>
+            </div>
           </header>
 
           {/* Content */}
@@ -193,7 +308,13 @@ export default function SolicitacaoDetalhePage() {
                 {/* Status */}
                 <div className="p-2">
                   <div className="flex items-center gap-1">
-                    <ViewKanbanIcon size={16} className="text-gray-600" />
+                    <Image
+                      src="/icons/view-kanban.svg"
+                      alt="Status"
+                      width={16}
+                      height={16}
+                      className="text-gray-600"
+                    />
                     <span className="font-semibold text-gray-900 text-xs leading-none">
                       Status
                     </span>
@@ -252,7 +373,13 @@ export default function SolicitacaoDetalhePage() {
                 {/* Prioridade */}
                 <div className="p-2">
                   <div className="flex items-center gap-1">
-                    <FlagIcon size={16} className="text-gray-600" />
+                    <Image
+                      src="/icons/flag.svg"
+                      alt="Prioridade"
+                      width={16}
+                      height={16}
+                      className="text-gray-600"
+                    />
                     <span className="font-semibold text-gray-900 text-xs leading-none">
                       Prioridade
                     </span>
@@ -267,7 +394,13 @@ export default function SolicitacaoDetalhePage() {
                 {/* Gestor */}
                 <div className="p-2">
                   <div className="flex items-center gap-1">
-                    <PersonIcon size={16} className="text-gray-600" />
+                    <Image
+                      src="/icons/person.svg"
+                      alt="Gestor"
+                      width={16}
+                      height={16}
+                      className="text-gray-600"
+                    />
                     <span className="font-semibold text-gray-900 text-xs leading-none">
                       Gestor
                     </span>
@@ -291,7 +424,13 @@ export default function SolicitacaoDetalhePage() {
                 {/* Prazo Final */}
                 <div className="p-2">
                   <div className="flex items-center gap-1">
-                    <CalendarIcon size={16} className="text-gray-600" />
+                    <Image
+                      src="/icons/calendar.svg"
+                      alt="Prazo final"
+                      width={16}
+                      height={16}
+                      className="text-gray-600"
+                    />
                     <span className="font-semibold text-gray-900 text-xs leading-none">
                       Prazo final
                     </span>
@@ -323,7 +462,13 @@ export default function SolicitacaoDetalhePage() {
                   >
                     {tab.label}
                     {tab.hasWarning && (
-                      <WarningIcon size={20} className="text-red-500" />
+                      <Image
+                        src="/icons/warning.svg"
+                        alt="Aviso"
+                        width={20}
+                        height={20}
+                        className="text-red-500"
+                      />
                     )}
                   </button>
                 ))}
@@ -426,7 +571,13 @@ export default function SolicitacaoDetalhePage() {
                       <span className="text-sm text-gray-900">Anexar</span>
                     </button>
                     <button className="w-10 h-10 rounded-full bg-teal-700 opacity-50 flex items-center justify-center hover:opacity-70 transition-opacity">
-                      <SendIcon size={20} className="text-white" />
+                      <Image
+                        src="/icons/send.svg"
+                        alt="Enviar"
+                        width={20}
+                        height={20}
+                        className="text-white"
+                      />
                     </button>
                   </div>
                 </div>
@@ -436,49 +587,25 @@ export default function SolicitacaoDetalhePage() {
             <>
               {/* Pendências Content */}
               <div className="flex-1 flex flex-col bg-white overflow-hidden">
-                {/* Seção Pendências */}
-                <div className="flex items-center border-b border-neutral-100 px-2 pr-2 pl-1 h-auto">
-                  <div className="py-4 px-3">
-                    <h3 className="font-semibold text-sm text-black leading-normal">
-                      Pendências ({solicitacao.pendencies?.length || 0})
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Lista de Pendências */}
-                <div className="min-h-50">
-                  {solicitacao.pendencies &&
-                  solicitacao.pendencies.length > 0 ? (
-                    solicitacao.pendencies.map((pendencia: any) => (
-                      <div
-                        key={pendencia.id}
-                        className="flex items-center border-b border-neutral-100 gap-2 py-4 pr-2 pl-4"
-                      >
-                        <WarningIcon size={24} className="text-amber-500" />
-                        <span className="font-semibold flex-1 text-xs text-gray-900 leading-none">
-                          {pendencia.name || pendencia.description}
-                        </span>
-                        <button className="w-6 h-6 flex items-center justify-center bg-white rounded">
-                          <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                          >
-                            <path
-                              d="M10 8L14 12L10 16"
-                              stroke="#111111"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    ))
+                {/* Lista de Pendências - Validação Dinâmica */}
+                <div className="flex-1 overflow-auto p-3">
+                  {loadingPendencies ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-700"></div>
+                    </div>
+                  ) : validation ? (
+                    <DynamicPendencyList
+                      pendencies={validation.pendencies}
+                      statusLabel={validation.statusLabel}
+                      canAdvance={validation.canAdvance}
+                      completedCount={validation.completedCount}
+                      pendingCount={validation.pendingCount}
+                      totalCount={validation.totalCount}
+                      compact
+                    />
                   ) : (
-                    <div className="px-4 py-8 text-center text-gray-500">
-                      Nenhuma pendência
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhuma pendência encontrada
                     </div>
                   )}
                 </div>
@@ -572,7 +699,7 @@ export default function SolicitacaoDetalhePage() {
           )}
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }
 

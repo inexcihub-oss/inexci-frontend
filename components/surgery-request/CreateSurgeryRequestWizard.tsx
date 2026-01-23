@@ -6,7 +6,7 @@ import { CreatePatientModal } from "./CreatePatientModal";
 import { CreateHospitalModal } from "./CreateHospitalModal";
 import { CreateHealthPlanModal } from "./CreateHealthPlanModal";
 import { Toast, ToastType } from "@/components/ui/Toast";
-import { SearchIcon } from "@/components/ui";
+import Image from "next/image";
 import {
   surgeryRequestService,
   SimpleSurgeryRequestPayload,
@@ -155,6 +155,17 @@ export function CreateSurgeryRequestWizard({
     setLoading(true);
 
     try {
+      // Gera senha temporária segura (12 caracteres aleatórios)
+      const generateTempPassword = () => {
+        const chars =
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
+        let password = "";
+        for (let i = 0; i < 12; i++) {
+          password += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return password;
+      };
+
       // Criar uma solicitação simplificada usando os dados selecionados
       const payload: SimpleSurgeryRequestPayload = {
         is_indication: false,
@@ -171,7 +182,7 @@ export function CreateSurgeryRequestWizard({
           name: selectedManager.name,
           email: selectedManager.email,
           phone: selectedManager.phone || "",
-          password: "temp123",
+          password: generateTempPassword(),
         },
         health_plan: {
           name: selectedHealthPlan.name,
@@ -180,9 +191,7 @@ export function CreateSurgeryRequestWizard({
         },
       };
 
-      console.log("📤 Enviando solicitação cirúrgica:", payload);
       const result = await surgeryRequestService.createSimple(payload);
-      console.log("✅ Solicitação criada com sucesso:", result);
 
       setToast({
         message: "Solicitação cirúrgica criada com sucesso!",
@@ -195,13 +204,6 @@ export function CreateSurgeryRequestWizard({
         onSuccess();
       }, 1500);
     } catch (error: any) {
-      console.error("❌ Erro ao criar solicitação cirúrgica:", error);
-      console.error("Detalhes do erro:", {
-        message: error?.message,
-        response: error?.response?.data,
-        status: error?.response?.status,
-      });
-
       const errorMessage =
         error?.response?.data?.message ||
         error?.message ||
@@ -791,9 +793,12 @@ function PatientSelectionContent({
     <div className="p-6">
       <div className="flex gap-3 mb-4">
         <div className="flex-1 relative">
-          <SearchIcon
-            size={20}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          <Image
+            src="/icons/search.svg"
+            alt="Buscar"
+            width={20}
+            height={20}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
           />
           <input
             type="text"
@@ -894,9 +899,12 @@ function HospitalSelectionContent({
     <div className="p-6">
       <div className="flex gap-3 mb-4">
         <div className="flex-1 relative">
-          <SearchIcon
-            size={20}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          <Image
+            src="/icons/search.svg"
+            alt="Buscar"
+            width={20}
+            height={20}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
           />
           <input
             type="text"
@@ -998,9 +1006,12 @@ function HealthPlanSelectionContent({
     <div className="p-6">
       <div className="flex gap-3 mb-4">
         <div className="flex-1 relative">
-          <SearchIcon
-            size={20}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          <Image
+            src="/icons/search.svg"
+            alt="Buscar"
+            width={20}
+            height={20}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
           />
           <input
             type="text"
@@ -1094,9 +1105,12 @@ function ManagerSelectionContent({
     <div className="p-6">
       <div className="flex gap-3 mb-4">
         <div className="flex-1 relative">
-          <SearchIcon
-            size={20}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          <Image
+            src="/icons/search.svg"
+            alt="Buscar"
+            width={20}
+            height={20}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
           />
           <input
             type="text"

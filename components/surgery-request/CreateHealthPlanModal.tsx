@@ -72,7 +72,7 @@ export function CreateHealthPlanModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Digite o nome do convênio"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full px-4 py-2.5 border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
 
@@ -81,7 +81,7 @@ export function CreateHealthPlanModal({
                 type="button"
                 onClick={onClose}
                 disabled={loading}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 border border-[#DCDFE3] text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancelar
               </button>

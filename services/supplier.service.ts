@@ -26,7 +26,18 @@ export const supplierService = {
   async getAll(): Promise<Supplier[]> {
     try {
       const response = await api.get("/suppliers");
-      return response.data.records || response.data;
+      const data = response.data.records || response.data;
+      // Mapeia os campos do backend para o frontend
+      return data.map((user: any) => ({
+        id: user.id,
+        name: user.name,
+        cnpj: user.document, // O campo 'document' armazena CNPJ
+        phone: user.phone,
+        email: user.email,
+        address: user.company, // O campo 'company' é usado para endereço
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+      }));
     } catch (error) {
       throw error;
     }
@@ -34,11 +45,14 @@ export const supplierService = {
 
   /**
    * Busca um fornecedor específico por ID
+   * Como o backend não tem endpoint getById, buscamos todos e filtramos
    */
-  async getById(supplierId: string): Promise<Supplier> {
+  async getById(supplierId: string): Promise<Supplier | null> {
     try {
-      const response = await api.get(`/suppliers/${supplierId}`);
-      return response.data;
+      const allSuppliers = await this.getAll();
+      return (
+        allSuppliers.find((s) => String(s.id) === String(supplierId)) || null
+      );
     } catch (error) {
       throw error;
     }
@@ -61,7 +75,7 @@ export const supplierService = {
    */
   async update(
     supplierId: string,
-    payload: Partial<CreateSupplierPayload>
+    payload: Partial<CreateSupplierPayload>,
   ): Promise<Supplier> {
     try {
       const response = await api.patch(`/suppliers/${supplierId}`, payload);

@@ -13,26 +13,17 @@ export { Toast } from "./Toast";
 export { Badge } from "./Badge";
 export { Checkbox } from "./Checkbox";
 export { EmptyState } from "./EmptyState";
+export { ProgressBar, StatusProgressBar } from "./ProgressBar";
 export { SearchInput } from "./SearchInput";
 export { Spinner } from "./Spinner";
-
-// Icons
+export { Tooltip } from "./Tooltip";
 export {
-  SearchIcon,
-  FilterIcon,
-  DotsMenuIcon,
-  GridIcon,
-  ListIcon,
-  WarningIcon,
-  SendIcon,
-  CalendarIcon,
-  PersonIcon,
-  FlagIcon,
-  ViewKanbanIcon,
-  DashboardIcon,
-  UserIcon,
-  UsersIcon,
-  ClockIcon,
-  SmartToyIcon,
-  SettingsIcon,
-} from "./Icons";
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./table";

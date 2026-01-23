@@ -24,7 +24,17 @@ export const healthPlanService = {
   async getAll(): Promise<HealthPlan[]> {
     try {
       const response = await api.get("/health_plans");
-      return response.data.records || response.data;
+      const data = response.data.records || response.data;
+      // Mapeia os campos do backend para o frontend
+      return data.map((user: any) => ({
+        id: user.id,
+        name: user.name,
+        cnpj: user.document, // O campo 'document' armazena CNPJ
+        phone: user.phone,
+        email: user.email,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+      }));
     } catch (error) {
       throw error;
     }
@@ -32,11 +42,15 @@ export const healthPlanService = {
 
   /**
    * Busca um convênio específico por ID
+   * Como o backend não tem endpoint getById, buscamos todos e filtramos
    */
-  async getById(healthPlanId: string): Promise<HealthPlan> {
+  async getById(healthPlanId: string): Promise<HealthPlan | null> {
     try {
-      const response = await api.get(`/health_plans/${healthPlanId}`);
-      return response.data;
+      const allHealthPlans = await this.getAll();
+      return (
+        allHealthPlans.find((hp) => String(hp.id) === String(healthPlanId)) ||
+        null
+      );
     } catch (error) {
       throw error;
     }
@@ -59,12 +73,12 @@ export const healthPlanService = {
    */
   async update(
     healthPlanId: string,
-    payload: Partial<CreateHealthPlanPayload>
+    payload: Partial<CreateHealthPlanPayload>,
   ): Promise<HealthPlan> {
     try {
       const response = await api.patch(
         `/health_plans/${healthPlanId}`,
-        payload
+        payload,
       );
       return response.data;
     } catch (error) {

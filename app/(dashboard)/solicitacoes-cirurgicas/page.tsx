@@ -13,9 +13,12 @@ import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
 } from "@/services/surgery-request.service";
+import { pendencyService } from "@/services/pendency.service";
 import { useDebounce } from "@/hooks";
-import { SearchInput, GridIcon, ListIcon, FilterIcon } from "@/components/ui";
+import { SearchInput } from "@/components/ui";
+import Image from "next/image";
 import Button from "@/components/ui/Button";
+import PageContainer from "@/components/PageContainer";
 import {
   formatDateWithMonth,
   getInitials,
@@ -25,9 +28,19 @@ import {
 const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "pendente", title: "Pendente", status: "Pendente", cards: [] },
   { id: "enviada", title: "Enviada", status: "Enviada", cards: [] },
-  { id: "aprovada", title: "Aprovada", status: "Aprovada", cards: [] },
-  { id: "recusada", title: "Recusada", status: "Recusada", cards: [] },
-  { id: "concluida", title: "Concluída", status: "Concluída", cards: [] },
+  { id: "em-analise", title: "Em Análise", status: "Em Análise", cards: [] },
+  {
+    id: "em-reanalise",
+    title: "Em Reanálise",
+    status: "Em Reanálise",
+    cards: [],
+  },
+  { id: "autorizada", title: "Autorizada", status: "Autorizada", cards: [] },
+  { id: "agendada", title: "Agendada", status: "Agendada", cards: [] },
+  { id: "a-faturar", title: "A Faturar", status: "A Faturar", cards: [] },
+  { id: "faturada", title: "Faturada", status: "Faturada", cards: [] },
+  { id: "finalizada", title: "Finalizada", status: "Finalizada", cards: [] },
+  { id: "cancelada", title: "Cancelada", status: "Cancelada", cards: [] },
 ];
 
 export default function ProcedimentosCirurgicos() {
@@ -51,6 +64,25 @@ export default function ProcedimentosCirurgicos() {
 
       // Mapear os dados do backend para o formato do Kanban
       if (response && response.records && Array.isArray(response.records)) {
+        // Coletar IDs para buscar pendências em lote
+        const surgeryRequestIds = response.records.map((record: any) =>
+          String(record.id),
+        );
+
+        // Buscar resumo de pendências em lote
+        let pendencySummaries: Record<
+          string,
+          { pending: number; completed: number; total: number }
+        > = {};
+        if (surgeryRequestIds.length > 0) {
+          try {
+            pendencySummaries =
+              await pendencyService.getBatchSummary(surgeryRequestIds);
+          } catch (error) {
+            console.error("Erro ao carregar pendências:", error);
+          }
+        }
+
         const mappedRequests: SurgeryRequest[] = response.records.map(
           (record: any) => {
             const status = STATUS_NUMBER_TO_STRING[record.status] || "Pendente";
@@ -74,6 +106,13 @@ export default function ProcedimentosCirurgicos() {
               return "Procedimento não especificado";
             };
 
+            // Obter dados de pendências do resumo em lote
+            const pendencySummary = pendencySummaries[String(record.id)] || {
+              pending: 0,
+              completed: 0,
+              total: 0,
+            };
+
             return {
               id: String(record.id),
               patient: {
@@ -87,7 +126,9 @@ export default function ProcedimentosCirurgicos() {
                 name: record.responsible.name,
               },
               priority: "Média" as any,
-              pendenciesCount: record._count?.pendencies || 0,
+              pendenciesCount: pendencySummary.total,
+              pendenciesCompleted: pendencySummary.completed,
+              pendenciesWaiting: pendencySummary.pending,
               messagesCount: 0,
               attachmentsCount: 0,
               createdAt: formatDateWithMonth(record.created_at),
@@ -157,11 +198,11 @@ export default function ProcedimentosCirurgicos() {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-white border border-neutral-100 rounded-lg overflow-hidden">
+    <PageContainer>
       {/* Header */}
       <div className="flex-none flex items-center gap-2 px-8 py-3 border-b border-neutral-100">
         <h1 className="text-3xl font-semibold text-black font-urbanist">
-          Procedimentos Cirúrgicos
+          Solicitações Cirúrgicas
         </h1>
       </div>
 
@@ -175,7 +216,7 @@ export default function ProcedimentosCirurgicos() {
               view === "kanban" ? "border-b-[3px] border-teal-500" : ""
             }`}
           >
-            <GridIcon size={24} className="text-black" />
+            <Image src="/icons/grid.svg" alt="Kanban" width={24} height={24} />
             <span
               className={`text-sm ${
                 view === "kanban" ? "font-semibold" : ""
@@ -190,7 +231,7 @@ export default function ProcedimentosCirurgicos() {
               view === "lista" ? "border-b-[3px] border-teal-500" : ""
             }`}
           >
-            <ListIcon size={24} className="text-black" />
+            <Image src="/icons/list.svg" alt="Lista" width={24} height={24} />
             <span
               className={`text-sm ${
                 view === "lista" ? "font-semibold" : ""
@@ -216,7 +257,13 @@ export default function ProcedimentosCirurgicos() {
 
           {/* Filter Button */}
           <Button variant="outline" size="md">
-            <FilterIcon size={20} className="mr-2" />
+            <Image
+              src="/icons/filter.svg"
+              alt="Filtro"
+              width={20}
+              height={20}
+              className="mr-2"
+            />
             Filtro
           </Button>
 
@@ -248,6 +295,6 @@ export default function ProcedimentosCirurgicos() {
           loadSurgeryRequests();
         }}
       />
-    </div>
+    </PageContainer>
   );
 }

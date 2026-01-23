@@ -111,7 +111,6 @@ const ProcedureRow: React.FC<{
   }, [showActions]);
 
   const handleActionClick = (action: string) => {
-    console.log(`Ação: ${action} - Procedimento: ${procedure.id}`);
     // TODO: Implementar lógica de cada ação
     setShowActions(false);
   };

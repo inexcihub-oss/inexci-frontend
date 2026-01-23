@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   collaboratorService,
   Collaborator,
@@ -8,13 +9,35 @@ import {
 import { hospitalService, Hospital } from "@/services/hospital.service";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { supplierService, Supplier } from "@/services/supplier.service";
-import { Checkbox, SearchIcon, DotsMenuIcon } from "@/components/ui";
+import { formatCNPJ, formatPhone } from "@/lib/formatters";
+import { Checkbox, SearchInput, Button } from "@/components/ui";
+import Image from "next/image";
+import PageContainer from "@/components/PageContainer";
+import { useDebounce } from "@/hooks/useDebounce";
+import {
+  useReactTable,
+  getCoreRowModel,
+  ColumnDef,
+  flexRender,
+  ColumnResizeMode,
+  getSortedRowModel,
+  SortingState,
+} from "@tanstack/react-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type TabType = "assistentes" | "hospitais" | "convenios" | "fornecedores";
 
 type CollaboratorRole = "admin" | "editor" | "viewer";
 
 export default function ColaboradoresPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("assistentes");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,13 +48,20 @@ export default function ColaboradoresPage() {
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
-  // Selected items for checkbox
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  // Table states
+  const [rowSelection, setRowSelection] = useState({});
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
+
+  // Debounce do termo de pesquisa para evitar re-renderizações excessivas
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Load data based on active tab
   useEffect(() => {
     loadData();
-    setSelectedItems(new Set()); // Clear selection when changing tabs
+    setRowSelection({}); // Clear selection when changing tabs
+    setSorting([]); // Clear sorting when changing tabs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const loadData = async () => {
@@ -56,90 +86,67 @@ export default function ColaboradoresPage() {
           break;
       }
     } catch (error) {
-      // Error handled silently
+      console.error("Error loading data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSelectAll = () => {
-    const currentData = getCurrentData();
-    if (selectedItems.size === currentData.length) {
-      setSelectedItems(new Set());
-    } else {
-      setSelectedItems(new Set(currentData.map((item) => item.id)));
-    }
-  };
+  // Memoiza os dados filtrados baseado na tab ativa e termo de pesquisa
+  const filteredCollaborators = useMemo(() => {
+    if (!debouncedSearchTerm) return collaborators;
+    const search = debouncedSearchTerm.toLowerCase();
+    return collaborators.filter((item) => {
+      const name = item.name.toLowerCase();
+      const email = item.email?.toLowerCase() || "";
+      return name.includes(search) || email.includes(search);
+    });
+  }, [collaborators, debouncedSearchTerm]);
 
-  const handleSelectItem = (id: string) => {
-    const newSelected = new Set(selectedItems);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedItems(newSelected);
-  };
+  const filteredHospitals = useMemo(() => {
+    if (!debouncedSearchTerm) return hospitals;
+    const search = debouncedSearchTerm.toLowerCase();
+    return hospitals.filter((item) => {
+      const name = item.name.toLowerCase();
+      const email = item.email?.toLowerCase() || "";
+      return name.includes(search) || email.includes(search);
+    });
+  }, [hospitals, debouncedSearchTerm]);
 
-  const getCurrentData = () => {
+  const filteredHealthPlans = useMemo(() => {
+    if (!debouncedSearchTerm) return healthPlans;
+    const search = debouncedSearchTerm.toLowerCase();
+    return healthPlans.filter((item) => {
+      const name = item.name.toLowerCase();
+      const email = item.email?.toLowerCase() || "";
+      return name.includes(search) || email.includes(search);
+    });
+  }, [healthPlans, debouncedSearchTerm]);
+
+  const filteredSuppliers = useMemo(() => {
+    if (!debouncedSearchTerm) return suppliers;
+    const search = debouncedSearchTerm.toLowerCase();
+    return suppliers.filter((item) => {
+      const name = item.name.toLowerCase();
+      const email = item.email?.toLowerCase() || "";
+      return name.includes(search) || email.includes(search);
+    });
+  }, [suppliers, debouncedSearchTerm]);
+
+  // Retorna os dados filtrados da tab atual para verificações de estado
+  const getCurrentFilteredData = () => {
     switch (activeTab) {
       case "assistentes":
-        return collaborators;
+        return filteredCollaborators;
       case "hospitais":
-        return hospitals;
+        return filteredHospitals;
       case "convenios":
-        return healthPlans;
+        return filteredHealthPlans;
       case "fornecedores":
-        return suppliers;
+        return filteredSuppliers;
       default:
         return [];
     }
-  };
-
-  const getFilteredData = () => {
-    const data = getCurrentData();
-    if (!searchTerm) return data;
-
-    return data.filter((item) => {
-      const name = item.name.toLowerCase();
-      const email = "email" in item ? item.email?.toLowerCase() || "" : "";
-      const search = searchTerm.toLowerCase();
-      return name.includes(search) || email.includes(search);
-    });
-  };
-
-  const getRoleBadge = (role?: CollaboratorRole) => {
-    if (!role) return null;
-
-    const roleConfig = {
-      admin: {
-        bg: "bg-blue-50",
-        text: "text-blue-700",
-        label: "Administrador",
-      },
-      editor: {
-        bg: "bg-yellow-50",
-        text: "text-yellow-800",
-        label: "Editor",
-      },
-      viewer: {
-        bg: "bg-teal-50",
-        text: "text-teal-700",
-        label: "Visualizador",
-      },
-    };
-
-    const config = roleConfig[role];
-
-    return (
-      <div className="flex items-center gap-2">
-        <div
-          className={`flex items-center justify-center px-2 py-2 rounded-lg border border-gray-200 ${config.bg}`}
-        >
-          <span className={`text-xs ${config.text}`}>{config.label}</span>
-        </div>
-      </div>
-    );
   };
 
   const getInitials = (name: string) => {
@@ -164,8 +171,559 @@ export default function ColaboradoresPage() {
     return colors[index];
   };
 
+  const getRoleBadge = (role: CollaboratorRole | undefined) => {
+    if (!role) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+          N/A
+        </span>
+      );
+    }
+    const roleMap = {
+      admin: {
+        label: "Admin",
+        color: "bg-purple-100 text-purple-700 border border-purple-200",
+      },
+      editor: {
+        label: "Editor",
+        color: "bg-teal-100 text-teal-700 border border-teal-200",
+      },
+      viewer: {
+        label: "Visualizador",
+        color: "bg-gray-100 text-gray-700 border border-gray-200",
+      },
+    };
+    const roleInfo = roleMap[role];
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${roleInfo.color}`}
+      >
+        {roleInfo.label}
+      </span>
+    );
+  };
+
+  const handleRowClick = (id: string, type: TabType) => {
+    switch (type) {
+      case "assistentes":
+        router.push(`/colaboradores/assistente/${id}`);
+        break;
+      case "hospitais":
+        router.push(`/colaboradores/hospital/${id}`);
+        break;
+      case "convenios":
+        router.push(`/colaboradores/convenio/${id}`);
+        break;
+      case "fornecedores":
+        router.push(`/colaboradores/fornecedor/${id}`);
+        break;
+    }
+  };
+
+  // Column definitions for Assistentes
+  const collaboratorColumns: ColumnDef<Collaborator>[] = [
+    {
+      id: "select",
+      size: 40,
+      enableSorting: false,
+      enableResizing: false,
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          indeterminate={table.getIsSomePageRowsSelected()}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+        />
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "Nome",
+      size: 250,
+      cell: ({ row }) => (
+        <div
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+          onClick={() => handleRowClick(row.original.id, "assistentes")}
+        >
+          <div
+            className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
+              row.original.id,
+            )}`}
+          >
+            {getInitials(row.original.name)}
+          </div>
+          <span
+            className="text-xs font-semibold text-black hover:text-primary-600"
+            title={row.original.name}
+          >
+            {row.original.name}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "E-mail",
+      size: 200,
+      cell: ({ row }) => (
+        <span className="text-xs text-black" title={row.original.email || "-"}>
+          {row.original.email || "-"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "specialty",
+      header: "Especialidade",
+      size: 180,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={row.original.specialty || "-"}
+        >
+          {row.original.specialty || "-"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "phone",
+      header: "Telefone",
+      size: 150,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatPhone(row.original.phone)}
+        >
+          {formatPhone(row.original.phone)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "role",
+      header: "Permissão",
+      size: 150,
+      cell: ({ row }) => getRoleBadge(row.original.role),
+    },
+    {
+      id: "actions",
+      size: 50,
+      enableSorting: false,
+      enableResizing: false,
+      header: () => <div />,
+      cell: () => (
+        <button className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50">
+          <Image src="/icons/dots-menu.svg" alt="Menu" width={16} height={16} />
+        </button>
+      ),
+    },
+  ];
+
+  // Column definitions for Hospitais
+  const hospitalColumns: ColumnDef<Hospital>[] = [
+    {
+      id: "select",
+      size: 40,
+      enableSorting: false,
+      enableResizing: false,
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          indeterminate={table.getIsSomePageRowsSelected()}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+        />
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "Nome",
+      size: 250,
+      cell: ({ row }) => (
+        <div
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+          onClick={() => handleRowClick(row.original.id, "hospitais")}
+        >
+          <div
+            className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
+              row.original.id,
+            )}`}
+          >
+            {getInitials(row.original.name)}
+          </div>
+          <span
+            className="text-xs font-semibold text-black hover:text-primary-600"
+            title={row.original.name}
+          >
+            {row.original.name}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "cnpj",
+      header: "CNPJ",
+      size: 150,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatCNPJ(row.original.cnpj)}
+        >
+          {formatCNPJ(row.original.cnpj)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "E-mail",
+      size: 200,
+      cell: ({ row }) => (
+        <span className="text-xs text-black" title={row.original.email || "-"}>
+          {row.original.email || "-"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "phone",
+      header: "Telefone",
+      size: 150,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatPhone(row.original.phone)}
+        >
+          {formatPhone(row.original.phone)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "address",
+      header: "Endereço",
+      size: 200,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={row.original.address || "-"}
+        >
+          {row.original.address || "-"}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      size: 50,
+      enableSorting: false,
+      enableResizing: false,
+      header: () => <div />,
+      cell: () => (
+        <button className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50">
+          <Image src="/icons/dots-menu.svg" alt="Menu" width={16} height={16} />
+        </button>
+      ),
+    },
+  ];
+
+  // Column definitions for Convênios
+  const healthPlanColumns: ColumnDef<HealthPlan>[] = [
+    {
+      id: "select",
+      size: 40,
+      enableSorting: false,
+      enableResizing: false,
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          indeterminate={table.getIsSomePageRowsSelected()}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+        />
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "Nome",
+      size: 300,
+      cell: ({ row }) => (
+        <div
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+          onClick={() => handleRowClick(row.original.id, "convenios")}
+        >
+          <div
+            className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
+              row.original.id,
+            )}`}
+          >
+            {getInitials(row.original.name)}
+          </div>
+          <span
+            className="text-xs font-semibold text-black hover:text-primary-600"
+            title={row.original.name}
+          >
+            {row.original.name}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "cnpj",
+      header: "CNPJ",
+      size: 150,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatCNPJ(row.original.cnpj)}
+        >
+          {formatCNPJ(row.original.cnpj)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "E-mail",
+      size: 200,
+      cell: ({ row }) => (
+        <span className="text-xs text-black" title={row.original.email || "-"}>
+          {row.original.email || "-"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "phone",
+      header: "Telefone",
+      size: 150,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatPhone(row.original.phone)}
+        >
+          {formatPhone(row.original.phone)}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      size: 50,
+      enableSorting: false,
+      enableResizing: false,
+      header: () => <div />,
+      cell: () => (
+        <button className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50">
+          <Image src="/icons/dots-menu.svg" alt="Menu" width={16} height={16} />
+        </button>
+      ),
+    },
+  ];
+
+  // Column definitions for Fornecedores
+  const supplierColumns: ColumnDef<Supplier>[] = [
+    {
+      id: "select",
+      size: 40,
+      enableSorting: false,
+      enableResizing: false,
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          indeterminate={table.getIsSomePageRowsSelected()}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+        />
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "Nome",
+      size: 250,
+      cell: ({ row }) => (
+        <div
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+          onClick={() => handleRowClick(row.original.id, "fornecedores")}
+        >
+          <div
+            className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
+              row.original.id,
+            )}`}
+          >
+            {getInitials(row.original.name)}
+          </div>
+          <span
+            className="text-xs font-semibold text-black hover:text-primary-600"
+            title={row.original.name}
+          >
+            {row.original.name}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "cnpj",
+      header: "CNPJ",
+      size: 150,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatCNPJ(row.original.cnpj)}
+        >
+          {formatCNPJ(row.original.cnpj)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "E-mail",
+      size: 200,
+      cell: ({ row }) => (
+        <span className="text-xs text-black" title={row.original.email || "-"}>
+          {row.original.email || "-"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "phone",
+      header: "Telefone",
+      size: 150,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatPhone(row.original.phone)}
+        >
+          {formatPhone(row.original.phone)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "address",
+      header: "Endereço",
+      size: 200,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={row.original.address || "-"}
+        >
+          {row.original.address || "-"}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      size: 50,
+      enableSorting: false,
+      enableResizing: false,
+      header: () => <div />,
+      cell: () => (
+        <button className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50">
+          <Image src="/icons/dots-menu.svg" alt="Menu" width={16} height={16} />
+        </button>
+      ),
+    },
+  ];
+
+  // Create tables - Usando dados memoizados para cada tipo
+  const collaboratorTable = useReactTable({
+    data: filteredCollaborators,
+    columns: collaboratorColumns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    state: {
+      rowSelection,
+      sorting,
+    },
+    enableRowSelection: true,
+    enableSorting: true,
+    columnResizeMode,
+    enableColumnResizing: true,
+  });
+
+  const hospitalTable = useReactTable({
+    data: filteredHospitals,
+    columns: hospitalColumns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    state: {
+      rowSelection,
+      sorting,
+    },
+    enableRowSelection: true,
+    enableSorting: true,
+    columnResizeMode,
+    enableColumnResizing: true,
+  });
+
+  const healthPlanTable = useReactTable({
+    data: filteredHealthPlans,
+    columns: healthPlanColumns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    state: {
+      rowSelection,
+      sorting,
+    },
+    enableRowSelection: true,
+    enableSorting: true,
+    columnResizeMode,
+    enableColumnResizing: true,
+  });
+
+  const supplierTable = useReactTable({
+    data: filteredSuppliers,
+    columns: supplierColumns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    state: {
+      rowSelection,
+      sorting,
+    },
+    enableRowSelection: true,
+    enableSorting: true,
+    columnResizeMode,
+    enableColumnResizing: true,
+  });
+
+  const getCurrentTable = () => {
+    switch (activeTab) {
+      case "assistentes":
+        return collaboratorTable;
+      case "hospitais":
+        return hospitalTable;
+      case "convenios":
+        return healthPlanTable;
+      case "fornecedores":
+        return supplierTable;
+      default:
+        return collaboratorTable;
+    }
+  };
+
+  const table = getCurrentTable();
+
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <PageContainer className="border-gray-200">
       {/* Header */}
       <div className="flex-none flex items-center gap-2 px-8 py-3 border-b border-gray-200">
         <h1 className="text-3xl font-semibold text-black font-urbanist">
@@ -220,371 +778,135 @@ export default function ColaboradoresPage() {
       </div>
 
       {/* Search and Actions */}
-      <div className="flex-none flex items-center justify-between gap-2 px-8 py-2.5 border-b border-gray-200">
+      <div className="flex-none flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          {/* Search Field */}
-          <div className="relative flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded w-85">
-            <SearchIcon size={24} className="w-6 h-6 text-gray-600" />
-            <input
-              type="text"
-              placeholder="Buscar por nome ou e-mail"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 text-xs text-gray-600 placeholder:text-gray-600 outline-none bg-transparent"
-            />
-          </div>
+          {/* Search */}
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Buscar por nome ou e-mail"
+            className="w-85"
+          />
+
+          {/* Divider */}
+          <div className="w-px h-8 bg-neutral-100" />
 
           {/* Filter Button */}
-          <button className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50 transition-colors">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M3 4h18M3 10h12M3 16h6"
-              />
-            </svg>
-            <span className="text-sm text-black">Filtro</span>
-          </button>
+          <Button variant="outline" size="md">
+            <Image
+              src="/icons/filter.svg"
+              alt="Filtro"
+              width={20}
+              height={20}
+              className="mr-2"
+            />
+            Filtro
+          </Button>
         </div>
 
         {/* New Button */}
-        <button className="flex items-center justify-center gap-3 px-6 py-2 bg-teal-500 rounded hover:bg-teal-600 transition-colors">
-          <span className="text-sm font-semibold text-white">
-            {activeTab === "assistentes" && "Novo assistente"}
-            {activeTab === "hospitais" && "Novo hospital"}
-            {activeTab === "convenios" && "Novo convênio"}
-            {activeTab === "fornecedores" && "Novo fornecedor"}
-          </span>
-        </button>
+        <Button variant="primary" size="md">
+          {activeTab === "assistentes" && "Novo assistente"}
+          {activeTab === "hospitais" && "Novo hospital"}
+          {activeTab === "convenios" && "Novo convênio"}
+          {activeTab === "fornecedores" && "Novo fornecedor"}
+        </Button>
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-hidden flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-500">Carregando...</p>
           </div>
+        ) : getCurrentFilteredData().length === 0 ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-gray-500">Nenhum registro encontrado</p>
+          </div>
         ) : (
-          <div className="flex flex-col">
-            {/* Table Header - Assistentes */}
-            {activeTab === "assistentes" && (
-              <>
-                <div className="flex items-center gap-4 px-8 py-3 pr-14 border-b border-gray-200">
-                  <Checkbox
-                    checked={
-                      selectedItems.size === collaborators.length &&
-                      collaborators.length > 0
-                    }
-                    onCheckedChange={handleSelectAll}
-                    indeterminate={
-                      selectedItems.size > 0 &&
-                      selectedItems.size < collaborators.length
-                    }
-                  />
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Nome
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    E-mail
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Especialidade
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Telefone
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Permissão
-                  </span>
-                </div>
-
-                {/* Table Rows - Assistentes */}
-                {getFilteredData().map((item) => {
-                  const collab = item as Collaborator;
-                  const isSelected = selectedItems.has(collab.id);
-                  return (
-                    <div
-                      key={collab.id}
-                      className="flex items-center gap-4 px-8 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => handleSelectItem(collab.id)}
-                      />
-                      <div className="flex-1 flex items-center gap-2">
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
-                            collab.id,
-                          )}`}
-                        >
-                          {getInitials(collab.name)}
-                        </div>
-                        <span className="text-xs font-semibold text-black">
-                          {collab.name}
-                        </span>
-                      </div>
-                      <span className="flex-1 text-xs text-black">
-                        {collab.email}
-                      </span>
-                      <span className="flex-1 text-xs text-black">
-                        {collab.specialty || "-"}
-                      </span>
-                      <span className="flex-1 text-xs text-black">
-                        {collab.phone || "-"}
-                      </span>
-                      <div className="flex-1">{getRoleBadge(collab.role)}</div>
-                      <button className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50">
-                        <DotsMenuIcon size={16} className="text-gray-600" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-
-            {/* Table Header - Hospitais */}
-            {activeTab === "hospitais" && (
-              <>
-                <div className="flex items-center gap-4 px-8 py-3 pr-14 border-b border-gray-200">
-                  <Checkbox
-                    checked={
-                      selectedItems.size === hospitals.length &&
-                      hospitals.length > 0
-                    }
-                    onCheckedChange={handleSelectAll}
-                    indeterminate={
-                      selectedItems.size > 0 &&
-                      selectedItems.size < hospitals.length
-                    }
-                  />
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Nome
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    CNPJ
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    E-mail
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Telefone
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Endereço
-                  </span>
-                </div>
-
-                {/* Table Rows - Hospitais */}
-                {getFilteredData().map((item) => {
-                  const hospital = item as Hospital;
-                  const isSelected = selectedItems.has(hospital.id);
-                  return (
-                    <div
-                      key={hospital.id}
-                      className="flex items-center gap-4 px-8 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => handleSelectItem(hospital.id)}
-                      />
-                      <div className="flex-1 flex items-center gap-2">
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
-                            hospital.id,
-                          )}`}
-                        >
-                          {getInitials(hospital.name)}
-                        </div>
-                        <span className="text-xs font-semibold text-black">
-                          {hospital.name}
-                        </span>
-                      </div>
-                      <span className="flex-1 text-xs text-black">
-                        {hospital.cnpj || "-"}
-                      </span>
-                      <span className="flex-1 text-xs text-black">
-                        {hospital.email || "-"}
-                      </span>
-                      <span className="flex-1 text-xs text-black">
-                        {hospital.phone || "-"}
-                      </span>
-                      <span className="flex-1 text-xs text-black">
-                        {hospital.address || "-"}
-                      </span>
-                      <button className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50">
-                        <DotsMenuIcon size={16} className="text-gray-600" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-
-            {/* Table Header - Convênios */}
-            {activeTab === "convenios" && (
-              <>
-                <div className="flex items-center gap-4 px-8 py-3 pr-14 border-b border-gray-200">
-                  <Checkbox
-                    checked={
-                      selectedItems.size === healthPlans.length &&
-                      healthPlans.length > 0
-                    }
-                    onCheckedChange={handleSelectAll}
-                    indeterminate={
-                      selectedItems.size > 0 &&
-                      selectedItems.size < healthPlans.length
-                    }
-                  />
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Nome
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    CNPJ
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    E-mail
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Telefone
-                  </span>
-                </div>
-
-                {/* Table Rows - Convênios */}
-                {getFilteredData().map((item) => {
-                  const healthPlan = item as HealthPlan;
-                  const isSelected = selectedItems.has(healthPlan.id);
-                  return (
-                    <div
-                      key={healthPlan.id}
-                      className="flex items-center gap-4 px-8 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => handleSelectItem(healthPlan.id)}
-                      />
-                      <div className="flex-1 flex items-center gap-2">
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
-                            healthPlan.id,
-                          )}`}
-                        >
-                          {getInitials(healthPlan.name)}
-                        </div>
-                        <span className="text-xs font-semibold text-black">
-                          {healthPlan.name}
-                        </span>
-                      </div>
-                      <span className="flex-1 text-xs text-black">
-                        {healthPlan.cnpj || "-"}
-                      </span>
-                      <span className="flex-1 text-xs text-black">
-                        {healthPlan.email || "-"}
-                      </span>
-                      <span className="flex-1 text-xs text-black">
-                        {healthPlan.phone || "-"}
-                      </span>
-                      <button className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50">
-                        <DotsMenuIcon size={16} className="text-gray-600" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-
-            {/* Table Header - Fornecedores */}
-            {activeTab === "fornecedores" && (
-              <>
-                <div className="flex items-center gap-4 px-8 py-3 pr-14 border-b border-gray-200">
-                  <Checkbox
-                    checked={
-                      selectedItems.size === suppliers.length &&
-                      suppliers.length > 0
-                    }
-                    onCheckedChange={handleSelectAll}
-                    indeterminate={
-                      selectedItems.size > 0 &&
-                      selectedItems.size < suppliers.length
-                    }
-                  />
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Nome
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    CNPJ
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    E-mail
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Telefone
-                  </span>
-                  <span className="flex-1 text-xs text-black opacity-70">
-                    Endereço
-                  </span>
-                </div>
-
-                {/* Table Rows - Fornecedores */}
-                {getFilteredData().map((item) => {
-                  const supplier = item as Supplier;
-                  const isSelected = selectedItems.has(supplier.id);
-                  return (
-                    <div
-                      key={supplier.id}
-                      className="flex items-center gap-4 px-8 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => handleSelectItem(supplier.id)}
-                      />
-                      <div className="flex-1 flex items-center gap-2">
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
-                            supplier.id,
-                          )}`}
-                        >
-                          {getInitials(supplier.name)}
-                        </div>
-                        <span className="text-xs font-semibold text-black">
-                          {supplier.name}
-                        </span>
-                      </div>
-                      <span className="flex-1 text-xs text-black">
-                        {supplier.cnpj || "-"}
-                      </span>
-                      <span className="flex-1 text-xs text-black">
-                        {supplier.email || "-"}
-                      </span>
-                      <span className="flex-1 text-xs text-black">
-                        {supplier.phone || "-"}
-                      </span>
-                      <span className="flex-1 text-xs text-black">
-                        {supplier.address || "-"}
-                      </span>
-                      <button className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50">
-                        <DotsMenuIcon size={16} className="text-gray-600" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-
-            {/* Empty State */}
-            {getFilteredData().length === 0 && !loading && (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">Nenhum registro encontrado</p>
-              </div>
-            )}
+          <div className="flex-1 overflow-auto">
+            <Table style={{ width: "100%" }}>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow
+                    key={headerGroup.id}
+                    className="border-b border-gray-200 hover:bg-transparent"
+                  >
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className="text-xs text-black opacity-70 font-normal h-12 relative"
+                        style={{
+                          width: header.getSize(),
+                        }}
+                      >
+                        {header.isPlaceholder ? null : (
+                          <div
+                            className={`flex items-center gap-2 ${
+                              header.column.getCanSort()
+                                ? "cursor-pointer select-none"
+                                : ""
+                            }`}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                            {header.column.getCanSort() && (
+                              <span className="text-gray-400">
+                                {{
+                                  asc: "↑",
+                                  desc: "↓",
+                                }[header.column.getIsSorted() as string] ?? "⇅"}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {header.column.getCanResize() && (
+                          <div
+                            onMouseDown={header.getResizeHandler()}
+                            onTouchStart={header.getResizeHandler()}
+                            className={`resize-handle ${
+                              header.column.getIsResizing()
+                                ? "bg-teal-500 w-[5px]"
+                                : "hover:bg-gray-300 w-[5px]"
+                            }`}
+                          />
+                        )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className="border-b border-gray-200 hover:bg-gray-50"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className="py-3 px-4"
+                        style={{
+                          width: cell.column.getSize(),
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }

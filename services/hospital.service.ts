@@ -26,7 +26,18 @@ export const hospitalService = {
   async getAll(): Promise<Hospital[]> {
     try {
       const response = await api.get("/hospitals");
-      return response.data.records || response.data;
+      const data = response.data.records || response.data;
+      // Mapeia os campos do backend para o frontend
+      return data.map((user: any) => ({
+        id: user.id,
+        name: user.name,
+        cnpj: user.document, // O campo 'document' armazena CNPJ
+        phone: user.phone,
+        email: user.email,
+        address: user.company, // O campo 'company' é usado para endereço
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+      }));
     } catch (error) {
       throw error;
     }
@@ -34,11 +45,14 @@ export const hospitalService = {
 
   /**
    * Busca um hospital específico por ID
+   * Como o backend não tem endpoint getById, buscamos todos e filtramos
    */
-  async getById(hospitalId: string): Promise<Hospital> {
+  async getById(hospitalId: string): Promise<Hospital | null> {
     try {
-      const response = await api.get(`/hospitals/${hospitalId}`);
-      return response.data;
+      const allHospitals = await this.getAll();
+      return (
+        allHospitals.find((h) => String(h.id) === String(hospitalId)) || null
+      );
     } catch (error) {
       throw error;
     }
@@ -61,7 +75,7 @@ export const hospitalService = {
    */
   async update(
     hospitalId: string,
-    payload: Partial<CreateHospitalPayload>
+    payload: Partial<CreateHospitalPayload>,
   ): Promise<Hospital> {
     try {
       const response = await api.patch(`/hospitals/${hospitalId}`, payload);

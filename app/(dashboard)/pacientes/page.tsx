@@ -1,63 +1,73 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { patientService, Patient } from "@/services/patient.service";
-import { Checkbox, SearchIcon, DotsMenuIcon } from "@/components/ui";
+import { Checkbox, SearchInput, Button } from "@/components/ui";
+import Image from "next/image";
+import PageContainer from "@/components/PageContainer";
+import { useDebounce } from "@/hooks/useDebounce";
+import {
+  useReactTable,
+  getCoreRowModel,
+  ColumnDef,
+  flexRender,
+  ColumnResizeMode,
+  getSortedRowModel,
+  SortingState,
+} from "@tanstack/react-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function PacientesPage() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [rowSelection, setRowSelection] = useState({});
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
 
-  // Load data
+  // Debounce do termo de pesquisa para evitar re-renderizações excessivas
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  // Carrega os pacientes ao montar o componente
   useEffect(() => {
-    loadData();
+    loadPatients();
   }, []);
 
-  const loadData = async () => {
+  const loadPatients = async () => {
     setLoading(true);
     try {
       const data = await patientService.getAll();
       setPatients(data);
     } catch (error) {
-      // Error handled silently
+      console.error("Erro ao carregar pacientes:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSelectAll = () => {
-    if (selectedItems.size === patients.length) {
-      setSelectedItems(new Set());
-    } else {
-      setSelectedItems(new Set(patients.map((item) => item.id)));
-    }
-  };
+  // Memoiza os pacientes filtrados para evitar recálculos desnecessários
+  const filteredPatients = useMemo(() => {
+    if (!debouncedSearchTerm) return patients;
 
-  const handleSelectItem = (id: string) => {
-    const newSelected = new Set(selectedItems);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedItems(newSelected);
-  };
-
-  const getFilteredData = () => {
-    if (!searchTerm) return patients;
-
-    return patients.filter((item) => {
-      const name = item.name.toLowerCase();
-      const email = item.email?.toLowerCase() || "";
-      const cpf = item.cpf || "";
-      const search = searchTerm.toLowerCase();
+    const search = debouncedSearchTerm.toLowerCase();
+    return patients.filter((patient) => {
+      const name = patient.name.toLowerCase();
+      const email = patient.email?.toLowerCase() || "";
+      const cpf = patient.cpf?.toLowerCase() || "";
       return (
         name.includes(search) || email.includes(search) || cpf.includes(search)
       );
     });
-  };
+  }, [patients, debouncedSearchTerm]);
 
   const getInitials = (name: string) => {
     const parts = name.split(" ");
@@ -91,8 +101,152 @@ export default function PacientesPage() {
     }
   };
 
+  const formatCPF = (cpf?: string) => {
+    if (!cpf) return "-";
+    return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  };
+
+  const formatPhone = (phone?: string) => {
+    if (!phone) return "-";
+    const numbers = phone.replace(/\D/g, "");
+    if (numbers.length === 11) {
+      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    } else if (numbers.length === 10) {
+      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    }
+    return phone;
+  };
+
+  const handlePatientClick = (id: string) => {
+    router.push(`/pacientes/${id}`);
+  };
+
+  // Definição das colunas
+  const columns: ColumnDef<Patient>[] = [
+    {
+      id: "select",
+      size: 40,
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllRowsSelected(!!value)}
+          indeterminate={table.getIsSomeRowsSelected()}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+        />
+      ),
+      enableResizing: false,
+    },
+    {
+      accessorKey: "name",
+      header: "Nome",
+      size: 250,
+      cell: ({ row }) => (
+        <div
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+          onClick={() => handlePatientClick(row.original.id)}
+        >
+          <div
+            className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
+              row.original.id,
+            )}`}
+          >
+            {getInitials(row.original.name)}
+          </div>
+          <span
+            className="text-xs font-semibold text-black hover:text-primary-600"
+            title={row.original.name}
+          >
+            {row.original.name}
+          </span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "cpf",
+      header: "CPF",
+      size: 150,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatCPF(row.original.cpf)}
+        >
+          {formatCPF(row.original.cpf)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "email",
+      header: "E-mail",
+      size: 200,
+      cell: ({ row }) => (
+        <span className="text-xs text-black" title={row.original.email || "-"}>
+          {row.original.email || "-"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "phone",
+      header: "Telefone",
+      size: 150,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatPhone(row.original.phone)}
+        >
+          {formatPhone(row.original.phone)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "dateOfBirth",
+      header: "Data de Nascimento",
+      size: 150,
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatDate(row.original.dateOfBirth)}
+        >
+          {formatDate(row.original.dateOfBirth)}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      size: 50,
+      header: "",
+      cell: () => (
+        <button className="w-6 h-6 flex items-center justify-center bg-white border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50">
+          <Image src="/icons/dots-menu.svg" alt="Menu" width={16} height={16} />
+        </button>
+      ),
+      enableResizing: false,
+    },
+  ];
+
+  const table = useReactTable({
+    data: filteredPatients,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    state: {
+      rowSelection,
+      sorting,
+    },
+    enableRowSelection: true,
+    enableSorting: true,
+    columnResizeMode,
+    enableColumnResizing: true,
+  });
+
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+    <PageContainer className="border-gray-200">
       {/* Header */}
       <div className="flex-none flex items-center gap-2 px-8 py-3 border-b border-gray-200">
         <h1 className="text-3xl font-semibold text-black font-urbanist">
@@ -101,131 +255,132 @@ export default function PacientesPage() {
       </div>
 
       {/* Search and Actions */}
-      <div className="flex-none flex items-center justify-between gap-2 px-8 py-2.5 border-b border-gray-200">
+      <div className="flex-none flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          {/* Search Field */}
-          <div className="relative flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded w-85">
-            <SearchIcon size={24} className="w-6 h-6 text-gray-600" />
-            <input
-              type="text"
-              placeholder="Buscar por nome, e-mail ou CPF"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 text-xs text-gray-600 placeholder:text-gray-600 outline-none bg-transparent"
-            />
-          </div>
+          {/* Search */}
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Buscar por nome, e-mail ou CPF"
+            className="w-85"
+          />
+
+          {/* Divider */}
+          <div className="w-px h-8 bg-neutral-100" />
 
           {/* Filter Button */}
-          <button className="flex items-center gap-1 px-3 py-2 bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50 transition-colors">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M3 4h18M3 10h12M3 16h6"
-              />
-            </svg>
-            <span className="text-sm text-black">Filtro</span>
-          </button>
+          <Button variant="outline" size="md">
+            <Image
+              src="/icons/filter.svg"
+              alt="Filtro"
+              width={20}
+              height={20}
+              className="mr-2"
+            />
+            Filtro
+          </Button>
         </div>
 
         {/* New Button */}
-        <button className="flex items-center justify-center gap-3 px-6 py-2 bg-teal-500 rounded hover:bg-teal-600 transition-colors">
-          <span className="text-sm font-semibold text-white">
-            Novo paciente
-          </span>
-        </button>
+        <Button variant="primary" size="md">
+          Novo paciente
+        </Button>
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-hidden flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-500">Carregando...</p>
           </div>
+        ) : filteredPatients.length === 0 ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-gray-500">Nenhum paciente encontrado</p>
+          </div>
         ) : (
-          <div className="flex flex-col">
-            {/* Table Header */}
-            <div className="flex items-center gap-4 px-8 py-3 pr-14 border-b border-gray-200">
-              <Checkbox
-                checked={
-                  selectedItems.size === patients.length && patients.length > 0
-                }
-                onCheckedChange={handleSelectAll}
-                indeterminate={
-                  selectedItems.size > 0 && selectedItems.size < patients.length
-                }
-              />
-              <span className="flex-1 text-xs text-black opacity-70">Nome</span>
-              <span className="flex-1 text-xs text-black opacity-70">
-                E-mail
-              </span>
-              <span className="flex-1 text-xs text-black opacity-70">CPF</span>
-              <span className="flex-1 text-xs text-black opacity-70">
-                Telefone
-              </span>
-              <span className="flex-1 text-xs text-black opacity-70">
-                Data de Nascimento
-              </span>
-            </div>
-
-            {/* Table Rows */}
-            {getFilteredData().map((patient) => {
-              const isSelected = selectedItems.has(patient.id);
-              return (
-                <div
-                  key={patient.id}
-                  className="flex items-center gap-4 px-8 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors"
-                >
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => handleSelectItem(patient.id)}
-                  />
-                  <div className="flex-1 flex items-center gap-2">
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
-                        patient.id,
-                      )}`}
-                    >
-                      {getInitials(patient.name)}
-                    </div>
-                    <span className="text-xs font-semibold text-black">
-                      {patient.name}
-                    </span>
-                  </div>
-                  <span className="flex-1 text-xs text-black">
-                    {patient.email || "-"}
-                  </span>
-                  <span className="flex-1 text-xs text-black">
-                    {patient.cpf || "-"}
-                  </span>
-                  <span className="flex-1 text-xs text-black">
-                    {patient.phone || "-"}
-                  </span>
-                  <span className="flex-1 text-xs text-black">
-                    {formatDate(patient.dateOfBirth)}
-                  </span>
-                  <button className="w-6 h-6 flex items-center justify-center bg-white border border-gray-200 rounded shadow-sm hover:bg-gray-50">
-                    <DotsMenuIcon size={16} className="text-gray-600" />
-                  </button>
-                </div>
-              );
-            })}
-
-            {/* Empty State */}
-            {getFilteredData().length === 0 && !loading && (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">Nenhum paciente encontrado</p>
-              </div>
-            )}
+          <div className="flex-1 overflow-auto">
+            <Table style={{ width: "100%" }}>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow
+                    key={headerGroup.id}
+                    className="border-b border-gray-200 hover:bg-transparent"
+                  >
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className="text-xs text-black opacity-70 font-normal h-12 relative"
+                        style={{
+                          width: header.getSize(),
+                        }}
+                      >
+                        {header.isPlaceholder ? null : (
+                          <div
+                            className={`flex items-center gap-2 ${
+                              header.column.getCanSort()
+                                ? "cursor-pointer select-none"
+                                : ""
+                            }`}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                            {header.column.getCanSort() && (
+                              <span className="text-gray-400">
+                                {{
+                                  asc: "↑",
+                                  desc: "↓",
+                                }[header.column.getIsSorted() as string] ?? "⇅"}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {header.column.getCanResize() && (
+                          <div
+                            onMouseDown={header.getResizeHandler()}
+                            onTouchStart={header.getResizeHandler()}
+                            className={`resize-handle ${
+                              header.column.getIsResizing()
+                                ? "bg-teal-500 w-[5px]"
+                                : "hover:bg-gray-300 w-[5px]"
+                            }`}
+                          />
+                        )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className="border-b border-gray-200 hover:bg-gray-50"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className="py-3 px-4"
+                        style={{
+                          width: cell.column.getSize(),
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>
-    </div>
+    </PageContainer>
   );
 }

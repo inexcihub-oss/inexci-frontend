@@ -11,10 +11,21 @@ export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const { data } = await api.post<AuthResponse>("/auth/login", credentials);
 
-    // Armazena token e usuário
+    // Armazena token e usuário (sanitizado)
     if (typeof window !== "undefined" && data.access_token && data.user) {
       localStorage.setItem("token", data.access_token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("token_timestamp", Date.now().toString());
+
+      // Remove dados sensíveis antes de armazenar
+      const { cpf, ...userWithoutSensitiveData } = data.user;
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...userWithoutSensitiveData,
+          // Armazena apenas os últimos 4 dígitos do CPF para identificação
+          cpfMask: cpf ? `***.***.***-${cpf.slice(-2)}` : undefined,
+        }),
+      );
     }
 
     return data;
@@ -34,9 +45,16 @@ export const authService = {
   async me(): Promise<User> {
     const { data } = await api.get<User>("/auth/me");
 
-    // Atualiza dados do usuário no localStorage
+    // Atualiza dados do usuário no localStorage (sanitizado)
     if (typeof window !== "undefined") {
-      localStorage.setItem("user", JSON.stringify(data));
+      const { cpf, ...userWithoutSensitiveData } = data;
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...userWithoutSensitiveData,
+          cpfMask: cpf ? `***.***.***-${cpf.slice(-2)}` : undefined,
+        }),
+      );
     }
 
     return data;
@@ -48,6 +66,7 @@ export const authService = {
   logout(): void {
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
+      localStorage.removeItem("token_timestamp");
       localStorage.removeItem("user");
     }
   },
@@ -71,10 +90,19 @@ export const authService = {
       if (!userStr || userStr === "undefined" || userStr === "null") {
         return null;
       }
-      return JSON.parse(userStr);
+
+      const user = JSON.parse(userStr);
+
+      // Validação básica da estrutura do objeto
+      if (!user.id || !user.email) {
+        throw new Error("Invalid user data structure");
+      }
+
+      return user;
     } catch (error) {
-      // Limpa dados corrompidos
+      // Limpa dados corrompidos ou inválidos
       localStorage.removeItem("user");
+      localStorage.removeItem("token");
       return null;
     }
   },
@@ -100,7 +128,7 @@ export const authService = {
   async changePassword(
     email: string,
     code: string,
-    newPassword: string
+    newPassword: string,
   ): Promise<void> {
     await api.post("/auth/change-password", {
       email,

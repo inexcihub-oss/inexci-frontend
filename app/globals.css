@@ -45,21 +45,33 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #CBD5E0;
+    background: #cbd5e0;
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #A0AEC0;
+    background: #a0aec0;
   }
 
   /* Hide scrollbar utility class */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
   }
 
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari and Opera */
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  /* Table resize handle styling */
+  .resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 5px;
+    cursor: col-resize;
+    user-select: none;
+    touch-action: none;
   }
 }

@@ -32,7 +32,21 @@ export const patientService = {
   async getAll(): Promise<Patient[]> {
     try {
       const response = await api.get("/patients");
-      return response.data.records || response.data;
+      const data = response.data.records || response.data;
+      // Mapeia os campos do backend para o frontend
+      return data.map((user: any) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        cpf: user.document, // O campo 'document' armazena CPF
+        dateOfBirth: user.birth_date, // Campo data de nascimento
+        gender: user.gender,
+        address: user.company, // O campo 'company' pode ser usado para endereço
+        healthPlanId: user.health_plan_id,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+      }));
     } catch (error) {
       throw error;
     }
@@ -40,11 +54,14 @@ export const patientService = {
 
   /**
    * Busca um paciente específico por ID
+   * Como o backend não tem endpoint getById, buscamos todos e filtramos
    */
-  async getById(patientId: string): Promise<Patient> {
+  async getById(patientId: string): Promise<Patient | null> {
     try {
-      const response = await api.get(`/patients/${patientId}`);
-      return response.data;
+      const allPatients = await this.getAll();
+      return (
+        allPatients.find((p) => String(p.id) === String(patientId)) || null
+      );
     } catch (error) {
       throw error;
     }
@@ -67,7 +84,7 @@ export const patientService = {
    */
   async update(
     patientId: string,
-    payload: Partial<CreatePatientPayload>
+    payload: Partial<CreatePatientPayload>,
   ): Promise<Patient> {
     try {
       const response = await api.patch(`/patients/${patientId}`, payload);

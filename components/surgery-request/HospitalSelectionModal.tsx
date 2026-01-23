@@ -41,7 +41,7 @@ export function HospitalSelectionModal({
   };
 
   const filteredHospitals = hospitals.filter((hospital) =>
-    hospital.name.toLowerCase().includes(searchTerm.toLowerCase())
+    hospital.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -60,7 +60,7 @@ export function HospitalSelectionModal({
               placeholder="Buscar hospital..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <button

@@ -7,6 +7,9 @@ export interface Collaborator {
   phone?: string;
   specialty?: string;
   role?: "admin" | "editor" | "viewer";
+  gender?: string;
+  birthDate?: string;
+  document?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,8 +28,30 @@ export const collaboratorService = {
    */
   async getAll(): Promise<Collaborator[]> {
     try {
-      const response = await api.get("/users?pv=2");
-      return response.data.records || response.data;
+      const response = await api.get("/users?profile=2");
+      const data = response.data.records || response.data;
+
+      // Mapeia os campos do backend para o frontend
+      return data.map((user: any) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        specialty: user.company, // O campo 'company' é usado para especialidade
+        gender: user.gender,
+        birthDate: user.birth_date,
+        document: user.document,
+        // Como estamos buscando profile=2, todos são editors. Se o profile vier no response, usa ele, senão assume 2
+        role: user.profile
+          ? Number(user.profile) === 1
+            ? "admin"
+            : Number(user.profile) === 2
+              ? "editor"
+              : "viewer"
+          : "editor",
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+      }));
     } catch (error) {
       throw error;
     }
@@ -35,10 +60,31 @@ export const collaboratorService = {
   /**
    * Busca um colaborador específico por ID
    */
-  async getById(collaboratorId: string): Promise<Collaborator> {
+  async getById(collaboratorId: string): Promise<Collaborator | null> {
     try {
-      const response = await api.get(`/users/${collaboratorId}`);
-      return response.data;
+      const response = await api.get(`/users/one`, {
+        params: { id: collaboratorId },
+      });
+      const user = response.data;
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        specialty: user.company, // O campo 'company' é usado para especialidade
+        gender: user.gender,
+        birthDate: user.birth_date,
+        document: user.document,
+        role:
+          Number(user.profile) === 1
+            ? "admin"
+            : Number(user.profile) === 2
+              ? "editor"
+              : "viewer",
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+      };
     } catch (error) {
       throw error;
     }
@@ -61,7 +107,7 @@ export const collaboratorService = {
    */
   async update(
     collaboratorId: string,
-    payload: Partial<CreateCollaboratorPayload>
+    payload: Partial<CreateCollaboratorPayload>,
   ): Promise<Collaborator> {
     try {
       const response = await api.patch(`/users/${collaboratorId}`, payload);
