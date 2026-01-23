@@ -3,7 +3,7 @@ import api from "@/lib/api";
 export interface Collaborator {
   id: string;
   name: string;
-  email: string;
+  email?: string;
   phone?: string;
   specialty?: string;
   role?: "admin" | "editor" | "viewer";

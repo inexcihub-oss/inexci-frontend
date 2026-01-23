@@ -113,7 +113,7 @@ export default function ProcedimentosPage() {
       <div className="px-8 py-4 border-b border-neutral-100">
         <SearchInput
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={setSearchTerm}
           placeholder="Nome do procedimento"
           className="max-w-md"
         />

@@ -40,9 +40,14 @@ const priorityStyles: Record<
 const statusStyles: Record<string, { bg: string; text: string }> = {
   Pendente: { bg: "bg-yellow-100", text: "text-yellow-700" },
   Enviada: { bg: "bg-blue-100", text: "text-blue-700" },
-  Aprovada: { bg: "bg-green-100", text: "text-green-700" },
-  Recusada: { bg: "bg-red-100", text: "text-red-700" },
-  Concluída: { bg: "bg-green-100", text: "text-green-700" },
+  "Em Análise": { bg: "bg-purple-100", text: "text-purple-700" },
+  "Em Reanálise": { bg: "bg-indigo-100", text: "text-indigo-700" },
+  Autorizada: { bg: "bg-green-100", text: "text-green-700" },
+  Agendada: { bg: "bg-teal-100", text: "text-teal-700" },
+  "A Faturar": { bg: "bg-cyan-100", text: "text-cyan-700" },
+  Faturada: { bg: "bg-emerald-100", text: "text-emerald-700" },
+  Finalizada: { bg: "bg-green-100", text: "text-green-700" },
+  Cancelada: { bg: "bg-red-100", text: "text-red-700" },
 };
 
 // Ações contextuais baseadas no status
@@ -59,17 +64,17 @@ const getContextualActions = (status: SurgeryRequestStatus) => {
         { icon: FileText, label: "Ver Cotações", color: "text-blue-600" },
         { icon: Edit, label: "Anexar Número", color: "text-gray-600" },
       ];
-    case "Aprovada":
+    case "Autorizada":
       return [
         { icon: Calendar, label: "Agendar", color: "text-green-600" },
         { icon: AlertCircle, label: "Contestar", color: "text-orange-600" },
       ];
-    case "Recusada":
+    case "Cancelada":
       return [
         { icon: AlertCircle, label: "Ver Motivo", color: "text-red-600" },
         { icon: Edit, label: "Contestar", color: "text-orange-600" },
       ];
-    case "Concluída":
+    case "Finalizada":
       return [
         { icon: CheckCircle, label: "Ver Detalhes", color: "text-gray-600" },
       ];
@@ -234,13 +239,23 @@ const ProcedureRow: React.FC<{
                 ? "bg-yellow-500 w-1/5"
                 : procedure.status === "Enviada"
                   ? "bg-blue-500 w-2/5"
-                  : procedure.status === "Aprovada"
-                    ? "bg-green-500 w-3/5"
-                    : procedure.status === "Recusada"
-                      ? "bg-red-500 w-3/10"
-                      : procedure.status === "Concluída"
-                        ? "bg-green-600 w-full"
-                        : "bg-gray-400 w-1/2"
+                  : procedure.status === "Em Análise"
+                    ? "bg-purple-500 w-1/2"
+                    : procedure.status === "Em Reanálise"
+                      ? "bg-indigo-500 w-1/2"
+                      : procedure.status === "Autorizada"
+                        ? "bg-green-500 w-3/5"
+                        : procedure.status === "Agendada"
+                          ? "bg-teal-500 w-3/4"
+                          : procedure.status === "A Faturar"
+                            ? "bg-cyan-500 w-4/5"
+                            : procedure.status === "Faturada"
+                              ? "bg-emerald-500 w-11/12"
+                              : procedure.status === "Finalizada"
+                                ? "bg-green-600 w-full"
+                                : procedure.status === "Cancelada"
+                                  ? "bg-red-500 w-1/3"
+                                  : "bg-gray-400 w-1/2"
             }`}
           />
         </div>
@@ -263,7 +278,7 @@ const ProcedureRow: React.FC<{
             <span className="font-semibold">{procedure.pendenciesCount}</span>
           </span>
         ) : (
-          procedure.status !== "Concluída" && (
+          procedure.status !== "Finalizada" && (
             <span
               className="px-2 py-1 rounded-full text-xs font-medium bg-green-50 border border-green-200 text-green-700 flex items-center justify-center flex-shrink-0"
               title="Sem pendências"

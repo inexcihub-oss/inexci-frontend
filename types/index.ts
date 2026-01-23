@@ -57,10 +57,10 @@ export interface Patient {
 export interface Hospital {
   id: string;
   name: string;
-  cnpj: string;
-  address: string;
-  phone: string;
-  email: string;
+  cnpj?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,9 +69,9 @@ export interface Hospital {
 export interface Supplier {
   id: string;
   name: string;
-  cnpj: string;
-  email: string;
-  phone: string;
+  cnpj?: string;
+  email?: string;
+  phone?: string;
   address?: string;
   createdAt: string;
   updatedAt: string;
@@ -91,9 +91,9 @@ export interface Procedure {
 export interface HealthPlan {
   id: string;
   name: string;
-  cnpj: string;
-  phone: string;
-  email: string;
+  cnpj?: string;
+  phone?: string;
+  email?: string;
   createdAt: string;
   updatedAt: string;
 }

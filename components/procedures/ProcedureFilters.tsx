@@ -33,9 +33,14 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
   const statusOptions: SurgeryRequestStatus[] = [
     "Pendente",
     "Enviada",
-    "Aprovada",
-    "Recusada",
-    "Concluída",
+    "Em Análise",
+    "Em Reanálise",
+    "Autorizada",
+    "Agendada",
+    "A Faturar",
+    "Faturada",
+    "Finalizada",
+    "Cancelada",
   ];
 
   const priorityOptions: PriorityLevel[] = ["Baixa", "Média", "Alta"];
