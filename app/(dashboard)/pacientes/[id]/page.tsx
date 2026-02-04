@@ -19,9 +19,7 @@ export default function PacienteDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(1);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -47,13 +45,10 @@ export default function PacienteDetalhePage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [patientData, allPatientsData, healthPlansData] = await Promise.all(
-        [
-          patientService.getById(params.id),
-          patientService.getAll(),
-          healthPlanService.getAll(),
-        ],
-      );
+      const [patientData, healthPlansData] = await Promise.all([
+        patientService.getById(params.id),
+        healthPlanService.getAll(),
+      ]);
 
       if (!patientData) {
         console.error("Paciente não encontrado");
@@ -62,14 +57,7 @@ export default function PacienteDetalhePage() {
       }
 
       setPatient(patientData);
-      setAllPatients(allPatientsData);
       setHealthPlans(healthPlansData);
-
-      // Encontra o índice atual
-      const idx = allPatientsData.findIndex(
-        (p) => String(p.id) === String(params.id),
-      );
-      setCurrentIndex(idx + 1);
 
       // Preenche o formulário
       setFormData({
@@ -118,13 +106,6 @@ export default function PacienteDetalhePage() {
       alert("Erro ao salvar as alterações.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleNavigate = (direction: "prev" | "next") => {
-    const newIndex = direction === "prev" ? currentIndex - 2 : currentIndex;
-    if (newIndex >= 0 && newIndex < allPatients.length) {
-      router.push(`/pacientes/${allPatients[newIndex].id}`);
     }
   };
 
@@ -216,13 +197,10 @@ export default function PacienteDetalhePage() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center px-4 py-3 border-b border-gray-200">
         <h3 className="text-sm font-semibold text-gray-900">
           Histórico de cirurgias
         </h3>
-        <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 border border-[#DCDFE3] rounded shadow-sm">
-          Ver todos
-        </button>
       </div>
 
       {/* Lista de cirurgias */}
@@ -257,12 +235,6 @@ export default function PacienteDetalhePage() {
         backHref="/pacientes"
         itemName={patient.name}
         itemSubtitle="Paciente"
-        navigation={{
-          currentIndex,
-          totalItems: allPatients.length,
-          onPrevious: () => handleNavigate("prev"),
-          onNext: () => handleNavigate("next"),
-        }}
         sidebarContent={sidebarContent}
       >
         {/* Seção: Informações pessoais */}

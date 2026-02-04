@@ -10,13 +10,12 @@ export const STATUS_MAP: Record<SurgeryRequestStatus, number> = {
   Pendente: 1,
   Enviada: 2,
   "Em Análise": 3,
-  "Em Reanálise": 4,
-  Autorizada: 5,
-  Agendada: 6,
-  "A Faturar": 7,
-  Faturada: 8,
-  Finalizada: 9,
-  Cancelada: 10,
+  "Em Agendamento": 4,
+  Agendada: 5,
+  Realizada: 6,
+  Faturada: 7,
+  Finalizada: 8,
+  Cancelada: 9,
 };
 
 // Mapeamento reverso: número para string
@@ -24,13 +23,12 @@ export const STATUS_NUMBER_TO_STRING: Record<number, SurgeryRequestStatus> = {
   1: "Pendente",
   2: "Enviada",
   3: "Em Análise",
-  4: "Em Reanálise",
-  5: "Autorizada",
-  6: "Agendada",
-  7: "A Faturar",
-  8: "Faturada",
-  9: "Finalizada",
-  10: "Cancelada",
+  4: "Em Agendamento",
+  5: "Agendada",
+  6: "Realizada",
+  7: "Faturada",
+  8: "Finalizada",
+  9: "Cancelada",
 };
 
 // Cores de status para UI
@@ -53,25 +51,20 @@ export const STATUS_COLORS: Record<
     text: "text-yellow-700",
     border: "border-yellow-200",
   },
-  "Em Reanálise": {
+  "Em Agendamento": {
     bg: "bg-amber-50",
     text: "text-amber-700",
     border: "border-amber-200",
-  },
-  Autorizada: {
-    bg: "bg-green-50",
-    text: "text-green-700",
-    border: "border-green-200",
   },
   Agendada: {
     bg: "bg-teal-50",
     text: "text-teal-700",
     border: "border-teal-200",
   },
-  "A Faturar": {
-    bg: "bg-purple-50",
-    text: "text-purple-700",
-    border: "border-purple-200",
+  Realizada: {
+    bg: "bg-green-50",
+    text: "text-green-700",
+    border: "border-green-200",
   },
   Faturada: {
     bg: "bg-indigo-50",
@@ -122,6 +115,12 @@ export interface SimpleSurgeryRequestPayload {
     email: string;
     phone: string;
   };
+}
+
+export interface UpdateBasicDataPayload {
+  priority?: string;
+  deadline?: string | null;
+  responsible_id?: number;
 }
 
 export const surgeryRequestService = {
@@ -230,6 +229,39 @@ export const surgeryRequestService = {
           new_status: newStatus,
         },
       );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Atualiza dados básicos da solicitação (prioridade, prazo, gestor)
+   */
+  async updateBasicData(
+    requestId: string,
+    data: UpdateBasicDataPayload,
+  ): Promise<any> {
+    try {
+      const response = await api.patch(
+        `/surgery-requests/${requestId}/basic`,
+        data,
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Atualiza dados do procedimento
+   */
+  async update(requestId: string, data: any): Promise<any> {
+    try {
+      const response = await api.put("/surgery-requests", {
+        id: parseInt(requestId),
+        ...data,
+      });
       return response.data;
     } catch (error) {
       throw error;

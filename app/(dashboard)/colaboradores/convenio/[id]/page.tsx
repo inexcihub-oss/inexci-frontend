@@ -18,8 +18,6 @@ export default function ConvenioDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [healthPlan, setHealthPlan] = useState<HealthPlan | null>(null);
-  const [allHealthPlans, setAllHealthPlans] = useState<HealthPlan[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(1);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -47,10 +45,7 @@ export default function ConvenioDetalhePage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [healthPlanData, allHealthPlansData] = await Promise.all([
-        healthPlanService.getById(params.id),
-        healthPlanService.getAll(),
-      ]);
+      const healthPlanData = await healthPlanService.getById(params.id);
 
       if (!healthPlanData) {
         console.error("Convênio não encontrado");
@@ -59,13 +54,6 @@ export default function ConvenioDetalhePage() {
       }
 
       setHealthPlan(healthPlanData);
-      setAllHealthPlans(allHealthPlansData);
-
-      // Encontra o índice atual
-      const idx = allHealthPlansData.findIndex(
-        (h) => String(h.id) === String(params.id),
-      );
-      setCurrentIndex(idx + 1);
 
       // Preenche o formulário
       setFormData({
@@ -112,13 +100,6 @@ export default function ConvenioDetalhePage() {
       alert("Erro ao salvar as alterações.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleNavigate = (direction: "prev" | "next") => {
-    const newIndex = direction === "prev" ? currentIndex - 2 : currentIndex;
-    if (newIndex >= 0 && newIndex < allHealthPlans.length) {
-      router.push(`/colaboradores/convenio/${allHealthPlans[newIndex].id}`);
     }
   };
 
@@ -233,13 +214,10 @@ export default function ConvenioDetalhePage() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center px-4 py-3 border-b border-gray-200">
         <h3 className="text-sm font-semibold text-gray-900">
           Pacientes recentes
         </h3>
-        <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 border border-[#DCDFE3] rounded shadow-sm">
-          Ver todos
-        </button>
       </div>
 
       {/* Lista de pacientes */}
@@ -281,12 +259,6 @@ export default function ConvenioDetalhePage() {
         backHref="/colaboradores"
         itemName={healthPlan.name}
         itemSubtitle="Convênio"
-        navigation={{
-          currentIndex,
-          totalItems: allHealthPlans.length,
-          onPrevious: () => handleNavigate("prev"),
-          onNext: () => handleNavigate("next"),
-        }}
         sidebarContent={sidebarContent}
       >
         {/* Seção: Informações gerais */}

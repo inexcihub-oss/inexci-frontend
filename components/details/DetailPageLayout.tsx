@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -26,6 +26,8 @@ interface DetailPageLayoutProps {
   children: ReactNode;
   /** Conteúdo da sidebar direita */
   sidebarContent?: ReactNode;
+  /** Ícone da sidebar quando fechada */
+  sidebarIcon?: "users" | "history" | "info";
 }
 
 export function DetailPageLayout({
@@ -37,13 +39,74 @@ export function DetailPageLayout({
   navigation,
   children,
   sidebarContent,
+  sidebarIcon = "users",
 }: DetailPageLayoutProps) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
   const getInitials = (name: string) => {
     const parts = name.split(" ");
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
+  };
+
+  const SidebarIconComponent = () => {
+    switch (sidebarIcon) {
+      case "history":
+        return (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="#111111" strokeWidth="1.5" />
+            <path
+              d="M12 7V12L15 15"
+              stroke="#111111"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        );
+      case "info":
+        return (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="#111111" strokeWidth="1.5" />
+            <path
+              d="M12 16V12M12 8H12.01"
+              stroke="#111111"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        );
+      default:
+        return (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M17 21V19C17 17.9391 16.5786 16.9217 15.8284 16.1716C15.0783 15.4214 14.0609 15 13 15H5C3.93913 15 2.92172 15.4214 2.17157 16.1716C1.42143 16.9217 1 17.9391 1 19V21"
+              stroke="#111111"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <circle cx="9" cy="7" r="4" stroke="#111111" strokeWidth="1.5" />
+            <path
+              d="M23 21V19C22.9993 18.1137 22.7044 17.2528 22.1614 16.5523C21.6184 15.8519 20.8581 15.3516 20 15.13"
+              stroke="#111111"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M16 3.13C16.8604 3.35031 17.623 3.85071 18.1676 4.55232C18.7122 5.25392 19.0078 6.11683 19.0078 7.005C19.0078 7.89318 18.7122 8.75608 18.1676 9.45769C17.623 10.1593 16.8604 10.6597 16 10.88"
+              stroke="#111111"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        );
+    }
   };
 
   return (
@@ -56,7 +119,7 @@ export function DetailPageLayout({
             {/* Botão voltar */}
             <Link
               href={backHref}
-              className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1"
+              className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-teal-50 transition-colors p-1"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
                 <path
@@ -110,7 +173,7 @@ export function DetailPageLayout({
                   <button
                     onClick={navigation.onPrevious}
                     disabled={navigation.currentIndex <= 1}
-                    className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-teal-50 transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
                       <path
@@ -125,7 +188,7 @@ export function DetailPageLayout({
                   <button
                     onClick={navigation.onNext}
                     disabled={navigation.currentIndex >= navigation.totalItems}
-                    className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-teal-50 transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
                       <path
@@ -141,17 +204,33 @@ export function DetailPageLayout({
               </>
             )}
 
-            {/* Linha separadora */}
-            <div className="w-px h-6 bg-gray-200"></div>
+            {/* Toggle Sidebar - apenas se houver sidebarContent */}
+            {sidebarContent && (
+              <>
+                {/* Linha separadora */}
+                <div className="w-px h-6 bg-gray-200"></div>
 
-            {/* Menu de três pontos horizontal */}
-            <button className="w-6 h-6 flex items-center justify-center hover:bg-gray-50 transition-colors p-1">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-              </svg>
-            </button>
+                <button
+                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                  className={`w-6 h-6 flex items-center justify-center hover:bg-teal-50 transition-colors ${isSidebarOpen ? "border border-[#DCDFE3] rounded shadow-sm" : ""}`}
+                  title={isSidebarOpen ? "Fechar painel" : "Abrir painel"}
+                >
+                  {isSidebarOpen ? (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M9 18L15 12L9 6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : (
+                    <SidebarIconComponent />
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -195,9 +274,10 @@ export function DetailPageLayout({
       </div>
 
       {/* Sidebar Direita (opcional) */}
-      {sidebarContent && (
-        <div className="w-80 border-l border-neutral-100 overflow-y-auto">
-          {sidebarContent}
+      {sidebarContent && isSidebarOpen && (
+        <div className="w-80 border-l border-neutral-100 flex flex-col">
+          {/* Conteúdo da sidebar quando aberta */}
+          <div className="flex-1 overflow-hidden">{sidebarContent}</div>
         </div>
       )}
     </div>

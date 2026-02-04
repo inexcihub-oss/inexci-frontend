@@ -82,6 +82,30 @@ const config: Config = {
             text: "#805F10",
           },
         },
+        // Cores de Prioridade (conforme Figma)
+        priority: {
+          baixa: {
+            bg: "#D4EFE0",
+            text: "#1E6F47",
+          },
+          media: {
+            bg: "#EBF3FF",
+            text: "#1D7AFC",
+          },
+          alta: {
+            bg: "#FFF7D7",
+            text: "#805F10",
+          },
+          urgente: {
+            bg: "#F0E6E4",
+            text: "#601E17",
+          },
+        },
+        // Cores de Erro/Warning
+        error: {
+          DEFAULT: "#E34935",
+          light: "#F0E6E4",
+        },
         // Cores para elementos especiais
         purple: {
           50: "#F2F0FE", // Background roxo claro

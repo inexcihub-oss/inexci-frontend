@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRef, useCallback, useState } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
 import { getInitials, getDisplayName, getAvatarColor } from "@/lib/utils";
+import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
 
 interface MenuItem {
   iconSrc: string;
@@ -102,29 +103,6 @@ export default function Sidebar() {
 
       {/* Main Navigation */}
       <div className="flex-1 flex flex-col gap-4 pt-8 px-1">
-        {/* Inexci IA */}
-        <div className="flex flex-col gap-1 opacity-70">
-          <div
-            className={`flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-neutral-50 transition-colors ${isCollapsed ? "justify-center" : ""}`}
-          >
-            <Image
-              src="/icons/smart-toy.svg"
-              alt="Inexci IA"
-              width={24}
-              height={24}
-              className="text-neutral-900"
-            />
-            {!isCollapsed && (
-              <span className="text-sm font-semibold text-neutral-900">
-                Inexci IA
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="h-px bg-neutral-100" />
-
         {/* Menu Items */}
         <div className="flex flex-col gap-1">
           {menuItems.map((item) => {
@@ -161,6 +139,9 @@ export default function Sidebar() {
 
       {/* Bottom Section */}
       <div className="flex flex-col gap-1 px-1 pb-1">
+        {/* Notifications */}
+        <NotificationsDropdown isCollapsed={isCollapsed} />
+
         {/* Settings */}
         <Link
           href="/configuracoes"

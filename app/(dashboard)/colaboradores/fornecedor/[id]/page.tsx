@@ -18,8 +18,6 @@ export default function FornecedorDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [supplier, setSupplier] = useState<Supplier | null>(null);
-  const [allSuppliers, setAllSuppliers] = useState<Supplier[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(1);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -49,10 +47,7 @@ export default function FornecedorDetalhePage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [supplierData, allSuppliersData] = await Promise.all([
-        supplierService.getById(params.id),
-        supplierService.getAll(),
-      ]);
+      const supplierData = await supplierService.getById(params.id);
 
       if (!supplierData) {
         console.error("Fornecedor não encontrado");
@@ -61,13 +56,6 @@ export default function FornecedorDetalhePage() {
       }
 
       setSupplier(supplierData);
-      setAllSuppliers(allSuppliersData);
-
-      // Encontra o índice atual
-      const idx = allSuppliersData.findIndex(
-        (s) => String(s.id) === String(params.id),
-      );
-      setCurrentIndex(idx + 1);
 
       // Preenche o formulário
       setFormData({
@@ -117,13 +105,6 @@ export default function FornecedorDetalhePage() {
       alert("Erro ao salvar as alterações.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleNavigate = (direction: "prev" | "next") => {
-    const newIndex = direction === "prev" ? currentIndex - 2 : currentIndex;
-    if (newIndex >= 0 && newIndex < allSuppliers.length) {
-      router.push(`/colaboradores/fornecedor/${allSuppliers[newIndex].id}`);
     }
   };
 
@@ -246,13 +227,10 @@ export default function FornecedorDetalhePage() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center px-4 py-3 border-b border-gray-200">
         <h3 className="text-sm font-semibold text-gray-900">
           Cotações recentes
         </h3>
-        <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 border border-[#DCDFE3] rounded shadow-sm">
-          Ver todas
-        </button>
       </div>
 
       {/* Lista de cotações */}
@@ -294,12 +272,6 @@ export default function FornecedorDetalhePage() {
         backHref="/colaboradores"
         itemName={supplier.name}
         itemSubtitle="Fornecedor"
-        navigation={{
-          currentIndex,
-          totalItems: allSuppliers.length,
-          onPrevious: () => handleNavigate("prev"),
-          onNext: () => handleNavigate("next"),
-        }}
         sidebarContent={sidebarContent}
       >
         {/* Seção: Informações gerais */}

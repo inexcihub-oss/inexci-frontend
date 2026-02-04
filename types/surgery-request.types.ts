@@ -1,17 +1,16 @@
-export type PriorityLevel = "Baixa" | "Média" | "Alta";
+export type PriorityLevel = "Baixa" | "Média" | "Alta" | "Urgente";
 
 // Status completos da solicitação cirúrgica
 export type SurgeryRequestStatus =
   | "Pendente" // 1
   | "Enviada" // 2
   | "Em Análise" // 3
-  | "Em Reanálise" // 4
-  | "Autorizada" // 5
-  | "Agendada" // 6
-  | "A Faturar" // 7
-  | "Faturada" // 8
-  | "Finalizada" // 9
-  | "Cancelada"; // 10
+  | "Em Agendamento" // 4
+  | "Agendada" // 5
+  | "Realizada" // 6
+  | "Faturada" // 7
+  | "Finalizada" // 8
+  | "Cancelada"; // 9
 
 // Interface para pendência
 export interface Pendency {
@@ -86,6 +85,8 @@ export interface SurgeryRequest {
   deadline: string;
   status: SurgeryRequestStatus;
   topPendencies?: Pendency[]; // Preview das principais pendências
+  healthPlan?: string; // Convênio
+  hasIncompletePayment?: boolean; // Recebimento incompleto
 }
 
 export interface KanbanColumn {

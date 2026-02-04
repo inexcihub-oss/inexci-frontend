@@ -21,8 +21,6 @@ export default function AssistenteDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [collaborator, setCollaborator] = useState<Collaborator | null>(null);
-  const [allCollaborators, setAllCollaborators] = useState<Collaborator[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(1);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -45,10 +43,7 @@ export default function AssistenteDetalhePage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [collab, allCollabs] = await Promise.all([
-        collaboratorService.getById(params.id),
-        collaboratorService.getAll(),
-      ]);
+      const collab = await collaboratorService.getById(params.id);
 
       if (!collab) {
         console.error("Colaborador não encontrado");
@@ -57,13 +52,6 @@ export default function AssistenteDetalhePage() {
       }
 
       setCollaborator(collab);
-      setAllCollaborators(allCollabs);
-
-      // Encontra o índice atual
-      const idx = allCollabs.findIndex(
-        (c) => String(c.id) === String(params.id),
-      );
-      setCurrentIndex(idx + 1);
 
       // Preenche o formulário
       setFormData({
@@ -106,13 +94,6 @@ export default function AssistenteDetalhePage() {
       alert("Erro ao salvar as alterações.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleNavigate = (direction: "prev" | "next") => {
-    const newIndex = direction === "prev" ? currentIndex - 2 : currentIndex;
-    if (newIndex >= 0 && newIndex < allCollaborators.length) {
-      router.push(`/colaboradores/assistente/${allCollaborators[newIndex].id}`);
     }
   };
 
@@ -216,13 +197,10 @@ export default function AssistenteDetalhePage() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-0 border-b border-neutral-100 h-13">
+      <div className="flex items-center px-6 py-0 border-b border-neutral-100 h-13">
         <h3 className="text-sm font-semibold text-gray-900">
           Últimos pacientes
         </h3>
-        <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 border border-[#DCDFE3] rounded shadow-sm">
-          Ver todos
-        </button>
       </div>
 
       {/* Lista de pacientes */}
@@ -264,12 +242,6 @@ export default function AssistenteDetalhePage() {
         backHref="/colaboradores"
         itemName={collaborator.name}
         itemSubtitle={formData.specialty || "Assistente"}
-        navigation={{
-          currentIndex,
-          totalItems: allCollaborators.length,
-          onPrevious: () => handleNavigate("prev"),
-          onNext: () => handleNavigate("next"),
-        }}
         sidebarContent={sidebarContent}
       >
         {/* Seção: Informações pessoais */}

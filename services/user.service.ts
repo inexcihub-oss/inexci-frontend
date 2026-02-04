@@ -9,6 +9,39 @@ export interface User {
   updatedAt: string;
 }
 
+export interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  document?: string;
+  birth_date?: string;
+  gender?: string;
+  specialty?: string;
+  crm?: string;
+  crm_state?: string;
+  avatar_url?: string;
+  signature_url?: string;
+  profile: number;
+  status: number;
+  clinic_id?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateProfileData {
+  name?: string;
+  phone?: string;
+  document?: string;
+  birth_date?: string;
+  gender?: string;
+  specialty?: string;
+  crm?: string;
+  crm_state?: string;
+  avatar_url?: string;
+  signature_url?: string;
+}
+
 export const userService = {
   /**
    * Busca todos os usuários/gestores
@@ -35,5 +68,21 @@ export const userService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  /**
+   * Busca o perfil do usuário logado
+   */
+  async getProfile(): Promise<UserProfile> {
+    const response = await api.get<UserProfile>("/users/profile");
+    return response.data;
+  },
+
+  /**
+   * Atualiza o perfil do usuário logado
+   */
+  async updateProfile(data: UpdateProfileData): Promise<UserProfile> {
+    const response = await api.put<UserProfile>("/users/profile", data);
+    return response.data;
   },
 };

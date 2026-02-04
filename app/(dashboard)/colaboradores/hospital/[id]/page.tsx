@@ -18,8 +18,6 @@ export default function HospitalDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hospital, setHospital] = useState<Hospital | null>(null);
-  const [allHospitals, setAllHospitals] = useState<Hospital[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(1);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -45,10 +43,7 @@ export default function HospitalDetalhePage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [hospitalData, allHospitalsData] = await Promise.all([
-        hospitalService.getById(params.id),
-        hospitalService.getAll(),
-      ]);
+      const hospitalData = await hospitalService.getById(params.id);
 
       if (!hospitalData) {
         console.error("Hospital não encontrado");
@@ -57,13 +52,6 @@ export default function HospitalDetalhePage() {
       }
 
       setHospital(hospitalData);
-      setAllHospitals(allHospitalsData);
-
-      // Encontra o índice atual
-      const idx = allHospitalsData.findIndex(
-        (h) => String(h.id) === String(params.id),
-      );
-      setCurrentIndex(idx + 1);
 
       // Preenche o formulário
       setFormData({
@@ -109,13 +97,6 @@ export default function HospitalDetalhePage() {
       alert("Erro ao salvar as alterações.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleNavigate = (direction: "prev" | "next") => {
-    const newIndex = direction === "prev" ? currentIndex - 2 : currentIndex;
-    if (newIndex >= 0 && newIndex < allHospitals.length) {
-      router.push(`/colaboradores/hospital/${allHospitals[newIndex].id}`);
     }
   };
 
@@ -209,13 +190,10 @@ export default function HospitalDetalhePage() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center px-4 py-3 border-b border-gray-200">
         <h3 className="text-sm font-semibold text-gray-900">
           Cirurgias recentes
         </h3>
-        <button className="text-xs text-gray-600 hover:text-gray-900 px-3 py-1.5 border border-[#DCDFE3] rounded shadow-sm">
-          Ver todas
-        </button>
       </div>
 
       {/* Lista de cirurgias */}
@@ -248,12 +226,6 @@ export default function HospitalDetalhePage() {
         backHref="/colaboradores"
         itemName={hospital.name}
         itemSubtitle="Hospital"
-        navigation={{
-          currentIndex,
-          totalItems: allHospitals.length,
-          onPrevious: () => handleNavigate("prev"),
-          onNext: () => handleNavigate("next"),
-        }}
         sidebarContent={sidebarContent}
       >
         {/* Seção: Informações gerais */}

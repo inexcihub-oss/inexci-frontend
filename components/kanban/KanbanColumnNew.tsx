@@ -17,7 +17,7 @@ interface KanbanColumnProps {
   cards: SurgeryRequest[];
 }
 
-// Mapeamento de status para ícone SVG
+// Mapeamento de status para ícones SVG
 const statusIconMap: Record<SurgeryRequestStatus, string> = {
   Pendente: "/icons/kanban/clock-watch.svg",
   Enviada: "/icons/kanban/email-send-fast-circle.svg",
@@ -32,20 +32,20 @@ const statusIconMap: Record<SurgeryRequestStatus, string> = {
 
 export const KanbanColumn = memo<KanbanColumnProps>(
   ({ columnId, title, status, count, cards }) => {
-    const statusIcon = statusIconMap[status];
+    const iconPath = statusIconMap[status] || "/icons/kanban/clock-watch.svg";
 
     return (
       <div className="flex flex-col flex-shrink-0 w-80 h-full">
-        {/* Header da coluna */}
-        <div className="flex items-center gap-2 px-4 py-3 bg-gray-100 border-b border-gray-200 rounded-t-lg">
+        {/* Header da coluna - Design Figma */}
+        <div className="flex items-center gap-2 px-4 py-4 bg-gray-100 border-b border-gray-200 rounded-t-lg">
           <Image
-            src={statusIcon}
+            src={iconPath}
             alt={status}
-            width={20}
-            height={20}
+            width={24}
+            height={24}
             className="flex-shrink-0"
           />
-          <h2 className="font-medium text-sm text-gray-900 leading-normal">
+          <h2 className="font-semibold text-base text-gray-900 leading-normal">
             {title}
           </h2>
           <div className="flex items-center justify-center min-w-6 h-6 px-1 bg-white border border-gray-200 rounded-full">

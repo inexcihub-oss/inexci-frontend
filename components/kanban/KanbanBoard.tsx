@@ -11,7 +11,7 @@ interface KanbanBoardProps {
 export const KanbanBoard = memo<KanbanBoardProps>(({ initialColumns }) => {
   return (
     <div
-      className="flex items-start gap-6 h-full overflow-x-auto overflow-y-hidden pb-2 scrollbar-hide"
+      className="flex items-start gap-4 h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
       style={{
         scrollbarWidth: "none",
         msOverflowStyle: "none",
@@ -22,6 +22,7 @@ export const KanbanBoard = memo<KanbanBoardProps>(({ initialColumns }) => {
           key={column.id}
           columnId={column.id}
           title={column.title}
+          status={column.status}
           count={column.cards.length}
           cards={column.cards}
         />

@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import React from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  STATUS_NUMBER_TO_STRING,
+} from "@/services/surgery-request.service";
 import {
   pendencyService,
   ValidationResult,
@@ -11,6 +15,14 @@ import {
 } from "@/services/pendency.service";
 import { Checkbox } from "@/components/ui";
 import { DynamicPendencyList } from "@/components/pendencies";
+import { EditableProcedureData } from "@/components/surgery-request/EditableProcedureData";
+import {
+  EditablePriority,
+  EditableManager,
+  EditableDeadline,
+  StatusBadge,
+} from "@/components/surgery-request/EditableFields";
+import { DocumentUploadModal } from "@/components/documents/DocumentUploadModal";
 import { useToast } from "@/hooks/useToast";
 import PageContainer from "@/components/PageContainer";
 
@@ -22,13 +34,13 @@ export default function SolicitacaoDetalhePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("informacoes-gerais");
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>("chat");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isActivitiesExpanded, setIsActivitiesExpanded] = useState(true);
   const [solicitacao, setSolicitacao] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
     new Set(),
   );
-  const [allSolicitacoes, setAllSolicitacoes] = useState<any[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
 
   // Estado para validação dinâmica de pendências
   const [validation, setValidation] = useState<ValidationResult | null>(null);
@@ -50,27 +62,6 @@ export default function SolicitacaoDetalhePage() {
     } finally {
       setLoadingPendencies(false);
     }
-  }, [params.id]);
-
-  // Carregar todas as solicitações para navegação
-  useEffect(() => {
-    const fetchAllSolicitacoes = async () => {
-      try {
-        const response = await surgeryRequestService.getAll();
-        if (response && response.records && Array.isArray(response.records)) {
-          setAllSolicitacoes(response.records);
-          // Encontrar o índice atual
-          const index = response.records.findIndex(
-            (s: any) => s.id === parseInt(params.id as string),
-          );
-          setCurrentIndex(index !== -1 ? index : 0);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar solicitações:", error);
-      }
-    };
-
-    fetchAllSolicitacoes();
   }, [params.id]);
 
   useEffect(() => {
@@ -98,6 +89,18 @@ export default function SolicitacaoDetalhePage() {
     }
   }, [params.id, fetchPendencies]);
 
+  const handleUpdateProcedure = useCallback(async () => {
+    // Recarregar os dados da solicitação após a atualização
+    try {
+      const data = await surgeryRequestService.getById(params.id as string);
+      setSolicitacao(data);
+      // Também recarregar pendências, pois podem ter mudado
+      fetchPendencies();
+    } catch (error) {
+      console.error("Erro ao recarregar solicitação:", error);
+    }
+  }, [params.id, fetchPendencies]);
+
   const handleSelectDocument = (docId: string) => {
     const newSelected = new Set(selectedDocuments);
     if (newSelected.has(docId)) {
@@ -120,23 +123,6 @@ export default function SolicitacaoDetalhePage() {
     }
   };
 
-  const handlePrevious = () => {
-    if (currentIndex > 0 && allSolicitacoes.length > 0) {
-      const prevSolicitacao = allSolicitacoes[currentIndex - 1];
-      router.push(`/solicitacao/${prevSolicitacao.id}`);
-    }
-  };
-
-  const handleNext = () => {
-    if (
-      currentIndex < allSolicitacoes.length - 1 &&
-      allSolicitacoes.length > 0
-    ) {
-      const nextSolicitacao = allSolicitacoes[currentIndex + 1];
-      router.push(`/solicitacao/${nextSolicitacao.id}`);
-    }
-  };
-
   if (loading || !solicitacao) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -145,15 +131,57 @@ export default function SolicitacaoDetalhePage() {
     );
   }
 
+  // Função para verificar se uma aba tem pendências não concluídas
+  const getTabWarning = (tabId: TabType): boolean => {
+    if (!validation || !validation.pendencies) return false;
+
+    // Mapear abas para as keys de pendências correspondentes
+    const tabPendencyMap: Record<TabType, string[]> = {
+      "informacoes-gerais": [
+        "patient_data",
+        "health_plan_data",
+        "hospital_data",
+        "diagnosis_data",
+        "document_personal_document",
+        "document_doctor_request",
+      ],
+      "codigo-tuss": ["insert_tuss"],
+      opme: ["insert_opme"],
+      laudo: ["medical_report"],
+    };
+
+    const pendencyKeys = tabPendencyMap[tabId] || [];
+
+    // Verificar se há pendências não concluídas para esta aba
+    return validation.pendencies.some(
+      (pendency) =>
+        pendencyKeys.includes(pendency.key) &&
+        !pendency.isComplete &&
+        !pendency.isOptional,
+    );
+  };
+
   const tabs = [
     {
       id: "informacoes-gerais" as TabType,
       label: "Informações Gerais",
-      hasWarning: true,
+      hasWarning: getTabWarning("informacoes-gerais"),
     },
-    { id: "codigo-tuss" as TabType, label: "Código TUSS", hasWarning: true },
-    { id: "opme" as TabType, label: "OPME", hasWarning: false },
-    { id: "laudo" as TabType, label: "Laudo", hasWarning: false },
+    {
+      id: "codigo-tuss" as TabType,
+      label: "Código TUSS",
+      hasWarning: getTabWarning("codigo-tuss"),
+    },
+    {
+      id: "opme" as TabType,
+      label: "OPME",
+      hasWarning: getTabWarning("opme"),
+    },
+    {
+      id: "laudo" as TabType,
+      label: "Laudo",
+      hasWarning: getTabWarning("laudo"),
+    },
   ];
 
   return (
@@ -166,7 +194,7 @@ export default function SolicitacaoDetalhePage() {
           <header className="flex items-center justify-between px-6 py-0 border-b border-neutral-100 h-13">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => router.push("/procedimentos-cirurgicos")}
+                onClick={() => router.push("/solicitacoes-cirurgicas")}
                 className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
@@ -211,57 +239,52 @@ export default function SolicitacaoDetalhePage() {
               </div>
             </div>
 
-            {/* Navegação e menu de três pontos */}
+            {/* Menu de ações */}
             <div className="flex items-center gap-2">
-              {/* Navegação entre solicitações */}
-              <div className="flex items-center gap-1">
-                <div className="flex items-center justify-center h-10 px-3 text-xs text-gray-500">
-                  <span className="font-medium">{currentIndex + 1}</span>
-                  <span className="mx-1 opacity-50">/</span>
-                  <span className="opacity-50">{allSolicitacoes.length}</span>
-                </div>
-                <button
-                  onClick={handlePrevious}
-                  disabled={currentIndex === 0}
-                  className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M18 15L12 9L6 15"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={handleNext}
-                  disabled={currentIndex >= allSolicitacoes.length - 1}
-                  className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M6 9L12 15L18 9"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-
               {/* Linha separadora */}
               <div className="w-px h-6 bg-gray-200"></div>
 
-              {/* Menu de três pontos */}
-              <button className="w-6 h-6 flex items-center justify-center hover:bg-gray-50 transition-colors p-1">
-                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                  <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                  <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                  <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-                </svg>
+              {/* Toggle Sidebar */}
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className={`w-6 h-6 flex items-center justify-center hover:bg-teal-50 transition-colors ${isSidebarOpen ? "border border-[#DCDFE3] rounded shadow-sm" : ""}`}
+                title={isSidebarOpen ? "Fechar painel" : "Abrir painel"}
+              >
+                {isSidebarOpen ? (
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M9 18L15 12L9 6"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M9 5H7C6.46957 5 5.96086 5.21071 5.58579 5.58579C5.21071 5.96086 5 6.46957 5 7V19C5 19.5304 5.21071 20.0391 5.58579 20.4142C5.96086 20.7893 6.46957 21 7 21H17C17.5304 21 18.0391 20.7893 18.4142 20.4142C18.7893 20.0391 19 19.5304 19 19V7C19 6.46957 18.7893 5.96086 18.4142 5.58579C18.0391 5.21071 17.5304 5 17 5H15"
+                      stroke="#111111"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M9 5C9 4.46957 9.21071 3.96086 9.58579 3.58579C9.96086 3.21071 10.4696 3 11 3H13C13.5304 3 14.0391 3.21071 14.4142 3.58579C14.7893 3.96086 15 4.46957 15 5C15 5.53043 14.7893 6.03914 14.4142 6.41421C14.0391 6.78929 13.5304 7 13 7H11C10.4696 7 9.96086 6.78929 9.58579 6.41421C9.21071 6.03914 9 5.53043 9 5Z"
+                      stroke="#111111"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M9 12L11 14L15 10"
+                      stroke="#111111"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
               </button>
             </div>
           </header>
@@ -304,10 +327,10 @@ export default function SolicitacaoDetalhePage() {
               </div>
 
               {/* Status Grid */}
-              <div className="grid grid-cols-4 gap-1.5 items-center">
+              <div className="grid grid-cols-4 gap-6">
                 {/* Status */}
-                <div className="p-2">
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 h-5">
                     <Image
                       src="/icons/view-kanban.svg"
                       alt="Status"
@@ -315,64 +338,18 @@ export default function SolicitacaoDetalhePage() {
                       height={16}
                       className="text-gray-600"
                     />
-                    <span className="font-semibold text-gray-900 text-xs leading-none">
+                    <span className="font-semibold text-gray-900 text-xs">
                       Status
                     </span>
                   </div>
-                  <div className="mt-2">
-                    <span
-                      className={`inline-flex items-center justify-center font-semibold px-3 py-1 text-xs leading-none rounded-full gap-1 ${
-                        solicitacao.status === 1
-                          ? "bg-orange-100 text-orange-800"
-                          : solicitacao.status === 2
-                            ? "bg-blue-100 text-blue-800"
-                            : solicitacao.status === 3
-                              ? "bg-yellow-100 text-yellow-800"
-                              : solicitacao.status === 4
-                                ? "bg-purple-100 text-purple-800"
-                                : solicitacao.status === 5
-                                  ? "bg-indigo-100 text-indigo-800"
-                                  : solicitacao.status === 6
-                                    ? "bg-teal-100 text-teal-800"
-                                    : solicitacao.status === 7
-                                      ? "bg-cyan-100 text-cyan-800"
-                                      : solicitacao.status === 8
-                                        ? "bg-pink-100 text-pink-800"
-                                        : solicitacao.status === 9
-                                          ? "bg-green-100 text-green-800"
-                                          : solicitacao.status === 10
-                                            ? "bg-red-100 text-red-800"
-                                            : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {solicitacao.status === 1
-                        ? "Pendente"
-                        : solicitacao.status === 2
-                          ? "Enviada"
-                          : solicitacao.status === 3
-                            ? "Em Análise"
-                            : solicitacao.status === 4
-                              ? "Em Reanálise"
-                              : solicitacao.status === 5
-                                ? "Aguardando Agendamento"
-                                : solicitacao.status === 6
-                                  ? "Agendada"
-                                  : solicitacao.status === 7
-                                    ? "A Faturar"
-                                    : solicitacao.status === 8
-                                      ? "Faturada"
-                                      : solicitacao.status === 9
-                                        ? "Concluída"
-                                        : solicitacao.status === 10
-                                          ? "Cancelada"
-                                          : "Status desconhecido"}
-                    </span>
+                  <div>
+                    <StatusBadge status={solicitacao.status} />
                   </div>
                 </div>
 
                 {/* Prioridade */}
-                <div className="p-2">
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 h-5">
                     <Image
                       src="/icons/flag.svg"
                       alt="Prioridade"
@@ -380,20 +357,22 @@ export default function SolicitacaoDetalhePage() {
                       height={16}
                       className="text-gray-600"
                     />
-                    <span className="font-semibold text-gray-900 text-xs leading-none">
+                    <span className="font-semibold text-gray-900 text-xs">
                       Prioridade
                     </span>
                   </div>
-                  <div className="mt-2">
-                    <span className="inline-flex items-center justify-center bg-yellow-50 font-semibold text-yellow-800 border border-neutral-100 px-3 py-1 text-xs leading-none rounded-full gap-2.5">
-                      {solicitacao.priority || "Média"}
-                    </span>
+                  <div>
+                    <EditablePriority
+                      initialValue={solicitacao.priority}
+                      surgeryRequestId={solicitacao.id}
+                      onUpdate={handleUpdateProcedure}
+                    />
                   </div>
                 </div>
 
                 {/* Gestor */}
-                <div className="p-2">
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 h-5">
                     <Image
                       src="/icons/person.svg"
                       alt="Gestor"
@@ -401,29 +380,31 @@ export default function SolicitacaoDetalhePage() {
                       height={16}
                       className="text-gray-600"
                     />
-                    <span className="font-semibold text-gray-900 text-xs leading-none">
+                    <span className="font-semibold text-gray-900 text-xs">
                       Gestor
                     </span>
                   </div>
-                  <div className="flex items-center mt-2 gap-2 rounded">
-                    <div className="w-6 h-6 overflow-hidden flex-shrink-0 border border-neutral-100 bg-gray-200 flex items-center justify-center rounded-full">
-                      <span className="text-xs font-semibold text-gray-600">
-                        {solicitacao.responsible?.name
-                          ?.split(" ")
-                          .map((n: string) => n[0])
-                          .slice(0, 2)
-                          .join("") || "??"}
-                      </span>
-                    </div>
-                    <span className="text-gray-900 text-xs leading-snug">
-                      {solicitacao.responsible?.name || "Sem gestor"}
-                    </span>
+                  <div>
+                    <EditableManager
+                      initialValue={
+                        solicitacao.responsible
+                          ? {
+                              id: solicitacao.responsible.id,
+                              name: solicitacao.responsible.name,
+                            }
+                          : null
+                      }
+                      surgeryRequestId={solicitacao.id}
+                      onUpdate={() => {
+                        handleUpdateProcedure();
+                      }}
+                    />
                   </div>
                 </div>
 
                 {/* Prazo Final */}
-                <div className="p-2">
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 h-5">
                     <Image
                       src="/icons/calendar.svg"
                       alt="Prazo final"
@@ -431,19 +412,16 @@ export default function SolicitacaoDetalhePage() {
                       height={16}
                       className="text-gray-600"
                     />
-                    <span className="font-semibold text-gray-900 text-xs leading-none">
+                    <span className="font-semibold text-gray-900 text-xs">
                       Prazo final
                     </span>
                   </div>
-                  <div className="mt-2">
-                    <span className="text-gray-900 text-xs leading-snug">
-                      {solicitacao.deadline
-                        ? new Date(solicitacao.deadline).toLocaleDateString(
-                            "pt-BR",
-                            { day: "2-digit", month: "short", year: "numeric" },
-                          )
-                        : "Sem prazo"}
-                    </span>
+                  <div>
+                    <EditableDeadline
+                      initialValue={solicitacao.deadline}
+                      surgeryRequestId={solicitacao.id}
+                      onUpdate={handleUpdateProcedure}
+                    />
                   </div>
                 </div>
               </div>
@@ -482,6 +460,9 @@ export default function SolicitacaoDetalhePage() {
                     selectedDocuments={selectedDocuments}
                     handleSelectDocument={handleSelectDocument}
                     handleSelectAllDocuments={handleSelectAllDocuments}
+                    onUpdateProcedure={handleUpdateProcedure}
+                    surgeryRequestId={solicitacao.id}
+                    onDocumentsUploaded={handleUpdateProcedure}
                   />
                 )}
                 {activeTab === "codigo-tuss" && (
@@ -497,96 +478,19 @@ export default function SolicitacaoDetalhePage() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-88 border-l border-neutral-100 flex flex-col">
-          {/* Sidebar Tabs */}
-          <div className="flex border-b border-neutral-100 h-13 relative">
-            <button
-              onClick={() => setActiveSidebarTab("chat")}
-              className={`flex-1 flex items-center justify-center px-3 py-4 text-sm font-semibold transition-colors relative ${
-                activeSidebarTab === "chat"
-                  ? "text-gray-900 border-b-[3px] border-teal-700"
-                  : "text-gray-900 hover:bg-gray-50"
-              }`}
-            >
-              Chat
-            </button>
-            {/* Decorativo removido */}
-            <button
-              onClick={() => setActiveSidebarTab("pendencias")}
-              className={`flex-1 flex items-center justify-center px-3 py-4 text-sm font-semibold transition-colors ${
-                activeSidebarTab === "pendencias"
-                  ? "text-gray-900 border-b-[3px] border-teal-700"
-                  : "text-gray-900 hover:bg-gray-50"
-              }`}
-            >
-              Pendências
-            </button>
-          </div>
+        {isSidebarOpen && (
+          <div className="w-88 border-l border-neutral-100 flex flex-col">
+            {/* Sidebar Header */}
+            <div className="flex items-center justify-center border-b border-neutral-100 h-13">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Pendências
+              </h3>
+            </div>
 
-          {/* Sidebar Content */}
-          {activeSidebarTab === "chat" ? (
-            <>
-              <div className="flex-1 flex flex-col bg-white overflow-hidden">
-                <div className="flex-1 flex flex-col justify-center items-center p-4 relative z-10">
-                  <div className="w-full max-w-xs space-y-8 text-center">
-                    <Image
-                      src="/brand/logo.png"
-                      alt="Inexci"
-                      width={134}
-                      height={40}
-                      className="mx-auto"
-                    />
-                    <p className="text-xs font-semibold text-gray-900">
-                      Preencha as informações do paciente com IA
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Chat Input */}
-              <div className="p-2 pb-2.5 bg-white">
-                <div className="bg-white border border-neutral-100 rounded-xl shadow-sm p-4 space-y-2">
-                  <div className="min-h-15">
-                    <input
-                      type="text"
-                      placeholder="Como podemos ajudar?"
-                      className="w-full text-base text-gray-900 placeholder-gray-500 opacity-50 bg-transparent border-none outline-none"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <button className="flex items-center gap-1 px-2 py-2 hover:bg-gray-50 rounded-lg transition-colors border border-neutral-100 h-10">
-                      <svg
-                        className="w-6 h-6"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                      >
-                        <path
-                          d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <span className="text-sm text-gray-900">Anexar</span>
-                    </button>
-                    <button className="w-10 h-10 rounded-full bg-teal-700 opacity-50 flex items-center justify-center hover:opacity-70 transition-opacity">
-                      <Image
-                        src="/icons/send.svg"
-                        alt="Enviar"
-                        width={20}
-                        height={20}
-                        className="text-white"
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
+            {/* Sidebar Content - Pendências */}
             <>
               {/* Pendências Content */}
-              <div className="flex-1 flex flex-col bg-white overflow-hidden">
+              <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
                 {/* Lista de Pendências - Validação Dinâmica */}
                 <div className="flex-1 overflow-auto p-3">
                   {loadingPendencies ? (
@@ -610,94 +514,120 @@ export default function SolicitacaoDetalhePage() {
                   )}
                 </div>
 
-                {/* Seção Atividades */}
-                <div className="flex items-center px-2 pr-2 pl-1 border-t border-b border-neutral-100">
-                  <div className="py-4 px-3">
+                {/* Seção Atividades - Collapsible com fundo que cobre o input */}
+                <div
+                  className={`bg-white transition-all duration-200 ${isActivitiesExpanded ? "flex-1" : ""}`}
+                >
+                  <button
+                    onClick={() =>
+                      setIsActivitiesExpanded(!isActivitiesExpanded)
+                    }
+                    className="w-full flex items-center justify-between px-4 py-4 border-t border-b border-neutral-100 hover:bg-gray-50 transition-colors bg-white"
+                  >
                     <h3 className="font-semibold text-sm text-black leading-normal">
                       Atividades
                     </h3>
-                  </div>
-                </div>
-
-                {/* Timeline de Atividades */}
-                <div className="flex-1 overflow-auto">
-                  {/* Mostra o último status update se existir */}
-                  {solicitacao.status_updates &&
-                    solicitacao.status_updates.length > 0 && (
-                      <div className="flex items-center justify-between border-b border-neutral-100 gap-1 py-3 pr-2 pl-4">
-                        <div className="flex items-center flex-1 gap-2">
-                          <div className="w-6 h-6 flex-shrink-0">
-                            <svg
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                            >
-                              <path
-                                d="M5 3V21H19V7.828L14.172 3H5Z"
-                                stroke="#111111"
-                                strokeWidth="1.5"
-                              />
-                              <path
-                                d="M8 9H11M8 13H16M8 17H13"
-                                stroke="#111111"
-                                strokeWidth="1.5"
-                              />
-                            </svg>
-                          </div>
-                          <span className="text-xs text-gray-900 leading-snug">
-                            Status alterado para{" "}
-                            {solicitacao.status_updates[0].new_status}
-                          </span>
-                        </div>
-                        <span className="text-xs text-gray-900 opacity-70 leading-snug">
-                          {new Date(
-                            solicitacao.status_updates[0].created_at,
-                          ).toLocaleDateString("pt-BR", {
-                            day: "numeric",
-                            month: "short",
-                          })}{" "}
-                          às{" "}
-                          {new Date(
-                            solicitacao.status_updates[0].created_at,
-                          ).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    )}
-                  {/* Exibe mensagem se não houver atividades */}
-                  {(!solicitacao.status_updates ||
-                    solicitacao.status_updates.length === 0) && (
-                    <div className="px-4 py-8 text-center text-gray-500">
-                      Nenhuma atividade registrada
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Campo de Comentário */}
-              <div className="bg-white py-2 px-4">
-                <div className="flex items-center bg-white border border-neutral-100 gap-2 py-2 px-3 rounded-lg">
-                  <input
-                    type="text"
-                    placeholder="Escreva um comentário"
-                    className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug"
-                  />
-                  <button className="w-6 h-6 flex-shrink-0">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <svg
+                      className={`w-4 h-4 transition-transform ${isActivitiesExpanded ? "" : "rotate-180"}`}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
                       <path
-                        d="M3.44 3.84L20.17 11.97L11.03 20.86L8.84 12.03L3.44 3.84Z"
-                        fill="#111111"
+                        d="M6 15L12 9L18 15"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                       />
                     </svg>
                   </button>
+
+                  {/* Timeline de Atividades - Expande para mostrar conteúdo */}
+                  {isActivitiesExpanded && (
+                    <div className="flex flex-col overflow-auto bg-white">
+                      {/* Mostra o último status update se existir */}
+                      {solicitacao.status_updates &&
+                        solicitacao.status_updates.length > 0 && (
+                          <div className="flex items-center justify-between border-b border-neutral-100 gap-1 py-3 pr-2 pl-4">
+                            <div className="flex items-center flex-1 gap-2">
+                              <div className="w-6 h-6 flex-shrink-0">
+                                <svg
+                                  width="24"
+                                  height="24"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                >
+                                  <path
+                                    d="M5 3V21H19V7.828L14.172 3H5Z"
+                                    stroke="#111111"
+                                    strokeWidth="1.5"
+                                  />
+                                  <path
+                                    d="M8 9H11M8 13H16M8 17H13"
+                                    stroke="#111111"
+                                    strokeWidth="1.5"
+                                  />
+                                </svg>
+                              </div>
+                              <span className="text-xs text-gray-900 leading-snug">
+                                Status alterado para{" "}
+                                {STATUS_NUMBER_TO_STRING[
+                                  solicitacao.status_updates[0].new_status
+                                ] || solicitacao.status_updates[0].new_status}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-900 opacity-70 leading-snug">
+                              {new Date(
+                                solicitacao.status_updates[0].created_at,
+                              ).toLocaleDateString("pt-BR", {
+                                day: "numeric",
+                                month: "short",
+                              })}{" "}
+                              às{" "}
+                              {new Date(
+                                solicitacao.status_updates[0].created_at,
+                              ).toLocaleTimeString("pt-BR", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        )}
+                      {/* Exibe mensagem se não houver atividades */}
+                      {(!solicitacao.status_updates ||
+                        solicitacao.status_updates.length === 0) && (
+                        <div className="px-4 py-8 text-center text-gray-500">
+                          Nenhuma atividade registrada
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {/* Campo de Comentário - Sempre visível quando Atividades está expandido */}
+                {isActivitiesExpanded && (
+                  <div className="bg-white py-2 px-4 border-t border-neutral-100">
+                    <div className="flex items-center bg-white border border-neutral-100 gap-2 py-2 px-3 rounded-lg">
+                      <input
+                        type="text"
+                        placeholder="Escreva um comentário"
+                        className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug"
+                      />
+                      <button className="w-6 h-6 flex-shrink-0 hover:opacity-70 transition-opacity">
+                        <Image
+                          src="/icons/send.svg"
+                          alt="Enviar"
+                          width={24}
+                          height={24}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </PageContainer>
   );
@@ -709,6 +639,9 @@ interface InformacoesGeraisTabProps {
   selectedDocuments: Set<string>;
   handleSelectDocument: (docId: string) => void;
   handleSelectAllDocuments: () => void;
+  onUpdateProcedure: () => void;
+  surgeryRequestId: number;
+  onDocumentsUploaded: () => void;
 }
 
 function InformacoesGeraisTab({
@@ -716,82 +649,50 @@ function InformacoesGeraisTab({
   selectedDocuments,
   handleSelectDocument,
   handleSelectAllDocuments,
+  onUpdateProcedure,
+  surgeryRequestId,
+  onDocumentsUploaded,
 }: InformacoesGeraisTabProps) {
+  const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false);
+
+  const handleAddDocuments = () => {
+    setIsUploadModalOpen(true);
+  };
+
+  const handleUploadSuccess = () => {
+    onDocumentsUploaded();
+  };
+
+  // Função para formatar o tipo de documento
+  const formatDocumentType = (key: string): string => {
+    const typeMap: Record<string, string> = {
+      personal_document: "RG/CNH",
+      doctor_request: "Pedido Médico",
+      additional_document: "Outro Documento",
+      rnm_report: "Laudo RNM",
+      authorization_guide: "Guia de Autorização",
+      invoice_protocol: "Protocolo de Fatura",
+      contest_file: "Arquivo de Contestação",
+    };
+    return typeMap[key] || key || "Documento";
+  };
+
   return (
     <div className="space-y-2.5">
       {/* Dados do procedimento */}
-      <div className="border border-neutral-100 rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-4 h-10 border-b border-neutral-100">
-          <h3 className="text-sm font-semibold text-black">
-            Dados do procedimento
-          </h3>
-          <button className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 gap-3 rounded text-sm leading-normal">
-            Editar
-          </button>
-        </div>
-        <div className="p-3 grid grid-cols-2 gap-x-6 gap-y-3">
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-black">Hospital</label>
-            <input
-              type="text"
-              value={solicitacao.hospital?.name || ""}
-              className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
-              disabled
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-black">
-              CID (Código Internacional de Doenças)
-            </label>
-            <input
-              type="text"
-              value={solicitacao.cid?.description || ""}
-              placeholder="..."
-              className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
-              disabled
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-black">Convênio</label>
-            <input
-              type="text"
-              value={solicitacao.health_plan?.name || ""}
-              className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
-              disabled
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-black">
-              Matrícula do convênio
-            </label>
-            <input
-              type="text"
-              value={solicitacao.health_plan_registry || ""}
-              placeholder="..."
-              className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
-              disabled
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-black">
-              Plano do convênio
-            </label>
-            <input
-              type="text"
-              value={solicitacao.health_plan_type || ""}
-              placeholder="..."
-              className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
-              disabled
-            />
-          </div>
-        </div>
-      </div>
+      <EditableProcedureData
+        solicitacao={solicitacao}
+        onUpdate={onUpdateProcedure}
+      />
 
       {/* Documentos */}
       <div className="border border-neutral-100 rounded-lg overflow-hidden">
         <div className="flex items-center justify-between px-4 h-10 border-b border-neutral-100">
           <h3 className="text-sm font-semibold text-black">Documentos</h3>
-          <button className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 gap-3 rounded-lg text-sm leading-normal">
+          <button
+            onClick={handleAddDocuments}
+            className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 gap-3 rounded-lg text-sm leading-normal"
+          >
             Adicionar
           </button>
         </div>
@@ -864,7 +765,7 @@ function InformacoesGeraisTab({
                 </div>
                 <div className="flex-1 flex items-center justify-between">
                   <span className="text-xs text-gray-900">
-                    {doc.key || "Documento"}
+                    {formatDocumentType(doc.key)}
                   </span>
                   <button className="w-6 h-6 flex items-center justify-center border border-neutral-100 rounded hover:bg-gray-100 transition-colors shadow-sm p-1">
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
@@ -883,6 +784,14 @@ function InformacoesGeraisTab({
           )}
         </div>
       </div>
+
+      {/* Modal de Upload de Documentos */}
+      <DocumentUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        surgeryRequestId={surgeryRequestId}
+        onSuccess={handleUploadSuccess}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 export { default as Avatar } from "./Avatar";
 export { default as Button } from "./Button";
 export { Card } from "./Card";
+export { Combobox } from "./Combobox";
 export { default as Input } from "./Input";
 export { default as Loading } from "./Loading";
 export { Modal } from "./Modal";

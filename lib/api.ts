@@ -22,6 +22,7 @@ api.interceptors.request.use(
 
           if (tokenAge > twentyFourHours) {
             // Token expirado no lado do cliente
+            console.error("❌ Token expirado!");
             localStorage.removeItem("token");
             localStorage.removeItem("token_timestamp");
             localStorage.removeItem("user");

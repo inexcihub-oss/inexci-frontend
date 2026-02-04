@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
-import { ProcedureList } from "@/components/procedures/ProcedureList";
+import { SurgeryRequestList } from "@/components/procedures/SurgeryRequestList";
 import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
 import {
   KanbanColumn,
@@ -13,7 +14,6 @@ import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
 } from "@/services/surgery-request.service";
-import { pendencyService } from "@/services/pendency.service";
 import { useDebounce } from "@/hooks";
 import { SearchInput } from "@/components/ui";
 import Image from "next/image";
@@ -30,20 +30,20 @@ const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "enviada", title: "Enviada", status: "Enviada", cards: [] },
   { id: "em-analise", title: "Em Análise", status: "Em Análise", cards: [] },
   {
-    id: "em-reanalise",
-    title: "Em Reanálise",
-    status: "Em Reanálise",
+    id: "em-agendamento",
+    title: "Em Agendamento",
+    status: "Em Agendamento",
     cards: [],
   },
-  { id: "autorizada", title: "Autorizada", status: "Autorizada", cards: [] },
   { id: "agendada", title: "Agendada", status: "Agendada", cards: [] },
-  { id: "a-faturar", title: "A Faturar", status: "A Faturar", cards: [] },
+  { id: "realizada", title: "Realizada", status: "Realizada", cards: [] },
   { id: "faturada", title: "Faturada", status: "Faturada", cards: [] },
   { id: "finalizada", title: "Finalizada", status: "Finalizada", cards: [] },
   { id: "cancelada", title: "Cancelada", status: "Cancelada", cards: [] },
 ];
 
 export default function ProcedimentosCirurgicos() {
+  const router = useRouter();
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -64,25 +64,6 @@ export default function ProcedimentosCirurgicos() {
 
       // Mapear os dados do backend para o formato do Kanban
       if (response && response.records && Array.isArray(response.records)) {
-        // Coletar IDs para buscar pendências em lote
-        const surgeryRequestIds = response.records.map((record: any) =>
-          String(record.id),
-        );
-
-        // Buscar resumo de pendências em lote
-        let pendencySummaries: Record<
-          string,
-          { pending: number; completed: number; total: number }
-        > = {};
-        if (surgeryRequestIds.length > 0) {
-          try {
-            pendencySummaries =
-              await pendencyService.getBatchSummary(surgeryRequestIds);
-          } catch (error) {
-            console.error("Erro ao carregar pendências:", error);
-          }
-        }
-
         const mappedRequests: SurgeryRequest[] = response.records.map(
           (record: any) => {
             const status = STATUS_NUMBER_TO_STRING[record.status] || "Pendente";
@@ -106,13 +87,6 @@ export default function ProcedimentosCirurgicos() {
               return "Procedimento não especificado";
             };
 
-            // Obter dados de pendências do resumo em lote
-            const pendencySummary = pendencySummaries[String(record.id)] || {
-              pending: 0,
-              completed: 0,
-              total: 0,
-            };
-
             return {
               id: String(record.id),
               patient: {
@@ -122,20 +96,23 @@ export default function ProcedimentosCirurgicos() {
               },
               procedureName: getProcedureName(),
               doctor: {
-                id: String(record.responsible.id),
-                name: record.responsible.name,
+                id: String(record.created_by?.id || 0),
+                name: record.created_by?.name || "Não informado",
               },
-              priority: "Média" as any,
-              pendenciesCount: pendencySummary.total,
-              pendenciesCompleted: pendencySummary.completed,
-              pendenciesWaiting: pendencySummary.pending,
-              messagesCount: 0,
-              attachmentsCount: 0,
-              createdAt: formatDateWithMonth(record.created_at),
-              deadline: record.date_call
-                ? formatDateWithMonth(record.date_call)
-                : "-",
+              priority: (record.priority || "Média") as any,
+              pendenciesCount: record.pendenciesCount || 0,
+              pendenciesCompleted: 0,
+              pendenciesWaiting: 0,
+              messagesCount: record.messagesCount || 0,
+              attachmentsCount: record.attachmentsCount || 0,
+              createdAt: new Date(record.created_at).toLocaleDateString(
+                "pt-BR",
+              ),
+              deadline: record.deadline
+                ? new Date(record.deadline).toLocaleDateString("pt-BR")
+                : "",
               status,
+              healthPlan: record.health_plan?.name || "",
             };
           },
         );
@@ -170,7 +147,12 @@ export default function ProcedimentosCirurgicos() {
         (card) =>
           includesIgnoreCase(card.patient.name, debouncedSearch) ||
           includesIgnoreCase(card.doctor.name, debouncedSearch) ||
-          includesIgnoreCase(card.procedureName, debouncedSearch),
+          includesIgnoreCase(card.procedureName, debouncedSearch) ||
+          includesIgnoreCase(card.id, debouncedSearch) ||
+          includesIgnoreCase(
+            `SOL-${card.id.padStart(6, "0")}`,
+            debouncedSearch,
+          ),
       ),
     }));
   }, [columns, debouncedSearch]);
@@ -189,31 +171,39 @@ export default function ProcedimentosCirurgicos() {
       (procedure) =>
         includesIgnoreCase(procedure.patient.name, debouncedSearch) ||
         includesIgnoreCase(procedure.doctor.name, debouncedSearch) ||
-        includesIgnoreCase(procedure.procedureName, debouncedSearch),
+        includesIgnoreCase(procedure.procedureName, debouncedSearch) ||
+        includesIgnoreCase(procedure.id, debouncedSearch) ||
+        includesIgnoreCase(
+          `SOL-${procedure.id.padStart(6, "0")}`,
+          debouncedSearch,
+        ),
     );
   }, [allProcedures, debouncedSearch]);
 
-  const handleProcedureClick = useCallback((procedure: SurgeryRequest) => {
-    // Navegação ou modal de detalhes
-  }, []);
+  const handleProcedureClick = useCallback(
+    (procedure: SurgeryRequest) => {
+      router.push(`/solicitacao/${procedure.id}`);
+    },
+    [router],
+  );
 
   return (
     <PageContainer>
       {/* Header */}
-      <div className="flex-none flex items-center gap-2 px-8 py-3 border-b border-neutral-100">
-        <h1 className="text-3xl font-semibold text-black font-urbanist">
-          Solicitações Cirúrgicas
+      <div className="flex-none flex items-center gap-2 px-4 py-6 border-b border-neutral-100">
+        <h1 className="text-3xl font-semibold text-neutral-900 font-urbanist">
+          Solicitações Cirúrgicos
         </h1>
       </div>
 
       {/* Toolbar */}
-      <div className="flex-none border-b border-neutral-100 px-8 py-0 flex items-center justify-between">
+      <div className="flex-none border-b border-neutral-100 px-4 py-0 flex items-center justify-between">
         {/* View Toggle */}
         <div className="flex items-center">
           <button
             onClick={() => setView("kanban")}
-            className={`flex items-center gap-2 px-3 py-4 ${
-              view === "kanban" ? "border-b-[3px] border-teal-500" : ""
+            className={`flex items-center gap-2.5 px-3 py-4 ${
+              view === "kanban" ? "border-b-[3px] border-teal-700" : ""
             }`}
           >
             <Image src="/icons/grid.svg" alt="Kanban" width={24} height={24} />
@@ -227,8 +217,8 @@ export default function ProcedimentosCirurgicos() {
           </button>
           <button
             onClick={() => setView("lista")}
-            className={`flex items-center gap-2 px-3 py-4 ${
-              view === "lista" ? "border-b-[3px] border-teal-500" : ""
+            className={`flex items-center gap-2.5 px-3 py-4 ${
+              view === "lista" ? "border-b-[3px] border-teal-700" : ""
             }`}
           >
             <Image src="/icons/list.svg" alt="Lista" width={24} height={24} />
@@ -248,24 +238,38 @@ export default function ProcedimentosCirurgicos() {
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Paciente, médico ou procedimento"
+            placeholder="Buscar por paciente, gestor, procedimento, ID..."
             className="w-85"
           />
+
+          {/* Filter Button - Estilo Figma */}
+          <button className="flex items-center gap-1 h-10 px-3 py-2 border border-teal-700 rounded-lg bg-white hover:bg-teal-50 transition-colors">
+            <Image
+              src="/icons/filter.svg"
+              alt="Filtro"
+              width={24}
+              height={24}
+            />
+            <span className="text-sm text-teal-700">Filtro</span>
+            {/* Contador */}
+            <div className="flex items-center justify-center w-6 h-6 bg-white border border-teal-700 rounded-full ml-1">
+              <span className="text-xs font-semibold text-teal-700">5</span>
+            </div>
+          </button>
 
           {/* Divider */}
           <div className="w-px h-8 bg-neutral-100" />
 
-          {/* Filter Button */}
-          <Button variant="outline" size="md">
+          {/* Export Button */}
+          <button className="flex items-center gap-1 h-10 px-3 py-2 border border-neutral-100 rounded-lg bg-white hover:bg-neutral-50 transition-colors">
             <Image
-              src="/icons/filter.svg"
-              alt="Filtro"
-              width={20}
-              height={20}
-              className="mr-2"
+              src="/icons/download.svg"
+              alt="Exportar"
+              width={24}
+              height={24}
             />
-            Filtro
-          </Button>
+            <span className="text-sm text-black">Exportar</span>
+          </button>
 
           {/* New Request Button */}
           <Button onClick={() => setIsNewRequestOpen(true)} variant="primary">
@@ -275,13 +279,13 @@ export default function ProcedimentosCirurgicos() {
       </div>
 
       {/* Kanban Board ou Lista */}
-      <div className="flex-1 overflow-hidden px-8 py-4 flex flex-col">
+      <div className="flex-1 overflow-hidden px-4 py-4 flex flex-col">
         {view === "kanban" ? (
           <KanbanBoard initialColumns={filteredColumns} />
         ) : (
-          <ProcedureList
-            procedures={filteredProcedures}
-            onProcedureClick={handleProcedureClick}
+          <SurgeryRequestList
+            requests={filteredProcedures}
+            onRequestClick={handleProcedureClick}
           />
         )}
       </div>

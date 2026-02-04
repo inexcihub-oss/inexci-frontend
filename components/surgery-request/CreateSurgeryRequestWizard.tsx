@@ -16,6 +16,7 @@ import { Patient } from "@/services/patient.service";
 import { Hospital } from "@/services/hospital.service";
 import { HealthPlan } from "@/services/health-plan.service";
 import { User } from "@/services/user.service";
+import { priorityColors } from "@/lib/design-system";
 
 interface CreateSurgeryRequestWizardProps {
   isOpen: boolean;
@@ -61,7 +62,9 @@ export function CreateSurgeryRequestWizard({
     useState<HealthPlan | null>(null);
   const [selectedManager, setSelectedManager] = useState<User | null>(null);
 
-  const [priority, setPriority] = useState<"Baixa" | "Média" | "Alta">("Baixa");
+  const [priority, setPriority] = useState<
+    "Baixa" | "Média" | "Alta" | "Urgente"
+  >("Baixa");
 
   // Callbacks para adicionar novos itens às listas
   const [addProcedureToList, setAddProcedureToList] = useState<
@@ -138,15 +141,10 @@ export function CreateSurgeryRequestWizard({
 
   const handleSubmit = async () => {
     // Validar todos os campos obrigatórios para criar a solicitação
-    if (
-      !selectedPatient ||
-      !selectedManager ||
-      !selectedHealthPlan ||
-      !selectedProcedure
-    ) {
+    if (!selectedPatient || !selectedManager || !selectedProcedure) {
       setToast({
         message:
-          "Por favor, preencha todos os campos obrigatórios: Paciente, Gestor, Convênio e Procedimento.",
+          "Por favor, preencha todos os campos obrigatórios: Paciente, Gestor e Procedimento.",
         type: "error",
       });
       return;
@@ -257,207 +255,194 @@ export function CreateSurgeryRequestWizard({
         )}
 
         <div
-          className="relative bg-white rounded-lg shadow-xl w-full max-w-6xl mx-auto overflow-hidden flex flex-col"
-          style={{ height: "min(90vh, calc(min(90vw, 1152px) * 1.5))" }}
+          className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto overflow-hidden flex flex-col"
+          style={{ height: "min(85vh, 800px)" }}
         >
           <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
             {/* Left Panel - Form */}
             <div className="w-full md:w-3/5 flex flex-col bg-white h-full md:border-r border-gray-200">
               {/* Header */}
               <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-2xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900">
                   Nova solicitação
                 </h2>
               </div>
 
               {/* Form Fields */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="px-1 py-1">
-                  {/* Procedimento - OBRIGATÓRIO (PRIMEIRO) */}
-                  <button
-                    onClick={() => setModalState("procedure-select")}
-                    className={`w-full rounded-lg px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors ${
-                      modalState === "procedure-select"
-                        ? "border border-gray-200 shadow-sm"
-                        : ""
-                    }`}
-                  >
-                    <span className="text-lg font-semibold text-gray-900">
-                      Procedimento <span className="text-red-500">*</span>
+              <div className="flex-1 flex flex-col">
+                {/* Procedimento - OBRIGATÓRIO (PRIMEIRO) */}
+                <button
+                  onClick={() => setModalState("procedure-select")}
+                  className={`w-full h-20 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
+                    modalState === "procedure-select" ? "bg-gray-50" : ""
+                  }`}
+                >
+                  <span className="text-lg font-semibold text-gray-900">
+                    Procedimento
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={`text-sm ${selectedProcedure ? "text-gray-900" : "text-gray-400"}`}
+                    >
+                      {selectedProcedure
+                        ? selectedProcedure.name
+                        : "Selecionar"}
                     </span>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`text-sm ${selectedProcedure ? "text-gray-900" : "text-gray-400"}`}
-                      >
-                        {selectedProcedure
-                          ? selectedProcedure.name
-                          : "Selecionar"}
-                      </span>
-                      <svg
-                        className="w-5 h-5 text-gray-900"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </span>
-                  </button>
+                    <svg
+                      className="w-5 h-5 text-gray-900"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </span>
+                </button>
 
-                  {/* Paciente - OBRIGATÓRIO */}
-                  <button
-                    onClick={() => setModalState("patient-select")}
-                    className={`w-full rounded-lg px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors ${
-                      modalState === "patient-select"
-                        ? "border border-gray-200 shadow-sm"
-                        : ""
-                    }`}
-                  >
-                    <span className="text-lg font-semibold text-gray-900">
-                      Paciente <span className="text-red-500">*</span>
+                {/* Paciente - OBRIGATÓRIO */}
+                <button
+                  onClick={() => setModalState("patient-select")}
+                  className={`w-full h-20 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
+                    modalState === "patient-select" ? "bg-gray-50" : ""
+                  }`}
+                >
+                  <span className="text-lg font-semibold text-gray-900">
+                    Paciente
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={`text-sm ${selectedPatient ? "text-gray-900" : "text-gray-400"}`}
+                    >
+                      {selectedPatient ? selectedPatient.name : "Selecionar"}
                     </span>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`text-sm ${selectedPatient ? "text-gray-900" : "text-gray-400"}`}
-                      >
-                        {selectedPatient ? selectedPatient.name : "Selecionar"}
-                      </span>
-                      <svg
-                        className="w-5 h-5 text-gray-900"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </span>
-                  </button>
+                    <svg
+                      className="w-5 h-5 text-gray-900"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </span>
+                </button>
 
-                  {/* Gestor - OBRIGATÓRIO */}
-                  <button
-                    onClick={() => setModalState("manager-select")}
-                    className={`w-full rounded-lg px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors ${
-                      modalState === "manager-select"
-                        ? "border border-gray-200 shadow-sm"
-                        : ""
-                    }`}
-                  >
-                    <span className="text-lg font-semibold text-gray-900">
-                      Gestor <span className="text-red-500">*</span>
+                {/* Gestor - OBRIGATÓRIO */}
+                <button
+                  onClick={() => setModalState("manager-select")}
+                  className={`w-full h-20 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
+                    modalState === "manager-select" ? "bg-gray-50" : ""
+                  }`}
+                >
+                  <span className="text-lg font-semibold text-gray-900">
+                    Gestor
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={`text-sm ${selectedManager ? "text-gray-900" : "text-gray-400"}`}
+                    >
+                      {selectedManager ? selectedManager.name : "Selecionar"}
                     </span>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`text-sm ${selectedManager ? "text-gray-900" : "text-gray-400"}`}
-                      >
-                        {selectedManager ? selectedManager.name : "Selecionar"}
-                      </span>
-                      <svg
-                        className="w-5 h-5 text-gray-900"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </span>
-                  </button>
+                    <svg
+                      className="w-5 h-5 text-gray-900"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </span>
+                </button>
 
-                  {/* Convênio - OBRIGATÓRIO */}
-                  <button
-                    onClick={() => setModalState("healthplan-select")}
-                    className={`w-full rounded-lg px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors ${
-                      modalState === "healthplan-select"
-                        ? "border border-gray-200 shadow-sm"
-                        : ""
-                    }`}
-                  >
-                    <span className="text-lg font-semibold text-gray-900">
-                      Convênio <span className="text-red-500">*</span>
+                {/* Convênio - OPCIONAL */}
+                <button
+                  onClick={() => setModalState("healthplan-select")}
+                  className={`w-full h-20 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
+                    modalState === "healthplan-select" ? "bg-gray-50" : ""
+                  }`}
+                >
+                  <span className="text-lg font-semibold text-gray-900">
+                    Convênio{" "}
+                    <span className="text-gray-400 text-sm">(opcional)</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={`text-sm ${selectedHealthPlan ? "text-gray-900" : "text-gray-400"}`}
+                    >
+                      {selectedHealthPlan
+                        ? selectedHealthPlan.name
+                        : "Selecionar"}
                     </span>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`text-sm ${selectedHealthPlan ? "text-gray-900" : "text-gray-400"}`}
-                      >
-                        {selectedHealthPlan
-                          ? selectedHealthPlan.name
-                          : "Selecionar"}
-                      </span>
-                      <svg
-                        className="w-5 h-5 text-gray-900"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </span>
-                  </button>
+                    <svg
+                      className="w-5 h-5 text-gray-900"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </span>
+                </button>
 
-                  {/* Hospital - OPCIONAL */}
-                  <button
-                    onClick={() => setModalState("hospital-select")}
-                    className={`w-full rounded-lg px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors ${
-                      modalState === "hospital-select"
-                        ? "border border-gray-200 shadow-sm"
-                        : ""
-                    }`}
-                  >
-                    <span className="text-lg font-semibold text-gray-900">
-                      Hospital{" "}
-                      <span className="text-gray-400 text-sm">(opcional)</span>
+                {/* Hospital - OPCIONAL */}
+                <button
+                  onClick={() => setModalState("hospital-select")}
+                  className={`w-full h-20 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
+                    modalState === "hospital-select" ? "bg-gray-50" : ""
+                  }`}
+                >
+                  <span className="text-lg font-semibold text-gray-900">
+                    Hospital{" "}
+                    <span className="text-gray-400 text-sm">(opcional)</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={`text-sm truncate max-w-xs ${selectedHospital ? "text-gray-900" : "text-gray-400"}`}
+                    >
+                      {selectedHospital ? selectedHospital.name : "Selecionar"}
                     </span>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`text-sm truncate max-w-xs ${selectedHospital ? "text-gray-900" : "text-gray-400"}`}
-                      >
-                        {selectedHospital
-                          ? selectedHospital.name
-                          : "Selecionar"}
-                      </span>
-                      <svg
-                        className="w-5 h-5 text-gray-900"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </span>
-                  </button>
-                </div>
+                    <svg
+                      className="w-5 h-5 text-gray-900"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </span>
+                </button>
               </div>
             </div>
 
             {/* Right Panel - Will show selection modal content */}
-            <div className="w-full md:w-2/5 bg-white h-full overflow-hidden flex flex-col">
+            <div className="w-full md:w-2/5 bg-white h-full overflow-hidden flex flex-col border-l border-gray-200">
               {/* Header com botão de fechar - SEMPRE VISÍVEL */}
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-                <h3 className="text-2xl font-semibold text-gray-900">
+                <h3 className="text-xl font-semibold text-gray-900">
                   {modalState === "procedure-select" && "Procedimento"}
                   {modalState === "patient-select" && "Paciente"}
                   {modalState === "manager-select" && "Gestor"}
@@ -552,38 +537,80 @@ export function CreateSurgeryRequestWizard({
           </div>
 
           {/* Footer - Full Width - SEMPRE VISÍVEL */}
-          <div className="px-2 md:px-3 py-3 md:py-4 border-t-2 border-gray-200 bg-white flex-shrink-0">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3">
-              <div className="flex items-center gap-2 justify-center sm:justify-start">
+          <div className="px-3 py-4 border-t-2 border-gray-200 bg-white flex-shrink-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
                 <button
                   onClick={() => setPriority("Baixa")}
-                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
                     priority === "Baixa"
-                      ? "bg-blue-50 text-blue-600 border-blue-200"
-                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      ? ""
+                      : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                   }`}
+                  style={
+                    priority === "Baixa"
+                      ? {
+                          backgroundColor: priorityColors.Baixa.bg,
+                          color: priorityColors.Baixa.text,
+                        }
+                      : {}
+                  }
                 >
                   Baixa
                 </button>
                 <button
                   onClick={() => setPriority("Média")}
-                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
                     priority === "Média"
-                      ? "bg-orange-50 text-orange-600 border-orange-200"
-                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      ? ""
+                      : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                   }`}
+                  style={
+                    priority === "Média"
+                      ? {
+                          backgroundColor: priorityColors.Média.bg,
+                          color: priorityColors.Média.text,
+                        }
+                      : {}
+                  }
                 >
                   Média
                 </button>
                 <button
                   onClick={() => setPriority("Alta")}
-                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
                     priority === "Alta"
-                      ? "bg-red-50 text-red-600 border-red-200"
-                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      ? ""
+                      : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                   }`}
+                  style={
+                    priority === "Alta"
+                      ? {
+                          backgroundColor: priorityColors.Alta.bg,
+                          color: priorityColors.Alta.text,
+                        }
+                      : {}
+                  }
                 >
                   Alta
+                </button>
+                <button
+                  onClick={() => setPriority("Urgente")}
+                  className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                    priority === "Urgente"
+                      ? ""
+                      : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                  }`}
+                  style={
+                    priority === "Urgente"
+                      ? {
+                          backgroundColor: priorityColors.Urgente.bg,
+                          color: priorityColors.Urgente.text,
+                        }
+                      : {}
+                  }
+                >
+                  Urgente
                 </button>
               </div>
               <button
@@ -592,10 +619,9 @@ export function CreateSurgeryRequestWizard({
                   loading ||
                   !selectedPatient ||
                   !selectedManager ||
-                  !selectedHealthPlan ||
                   !selectedProcedure
                 }
-                className="w-full sm:w-auto px-6 py-2.5 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+                className="w-full sm:w-auto px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
               >
                 {loading ? "Criando..." : "Nova solicitação"}
               </button>

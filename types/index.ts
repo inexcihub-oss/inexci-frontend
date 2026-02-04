@@ -5,10 +5,23 @@ export interface User {
   email: string;
   cpf: string;
   accessLevel: number;
+  profile?: number;
   status: number;
+  phone?: string;
+  clinic_id?: number;
   createdAt: string;
   updatedAt: string;
 }
+
+// Perfis de usuário
+export const UserProfiles = {
+  DOCTOR: 1,
+  COLLABORATOR: 2,
+  HOSPITAL: 3,
+  PATIENT: 4,
+  SUPPLIER: 5,
+  HEALTH_PLAN: 6,
+} as const;
 
 // Auth types
 export interface LoginCredentials {
