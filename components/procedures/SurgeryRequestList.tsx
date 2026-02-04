@@ -15,7 +15,9 @@ import {
   SurgeryRequest,
   SurgeryRequestStatus,
   PriorityLevel,
+  PRIORITY_LABELS,
 } from "@/types/surgery-request.types";
+import { priorityColors, getPriorityLabel } from "@/lib/design-system";
 import { cn } from "@/lib/utils";
 
 // Mapeamento de status para ícones
@@ -46,10 +48,10 @@ const STATUS_ORDER: SurgeryRequestStatus[] = [
 
 // Estilos de prioridade conforme Figma
 const PRIORITY_STYLES: Record<PriorityLevel, { bg: string; text: string }> = {
-  Baixa: { bg: "bg-[#D4EFE0]", text: "text-[#1E6F47]" },
-  Média: { bg: "bg-[#EBF3FF]", text: "text-[#1D7AFC]" },
-  Alta: { bg: "bg-[#FFF7D7]", text: "text-[#805F10]" },
-  Urgente: { bg: "bg-[#F0E6E4]", text: "text-[#601E17]" },
+  1: { bg: "bg-[#D4EFE0]", text: "text-[#1E6F47]" },
+  2: { bg: "bg-[#EBF3FF]", text: "text-[#1D7AFC]" },
+  3: { bg: "bg-[#FFF7D7]", text: "text-[#805F10]" },
+  4: { bg: "bg-[#F0E6E4]", text: "text-[#601E17]" },
 };
 
 interface SurgeryRequestRowProps {
@@ -79,8 +81,10 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
       // TODO: Abrir menu de ações
     };
 
-    // Formatar ID com padding de 6 dígitos
-    const formattedId = `SOL-${request.id.padStart(6, "0")}`;
+    // Formatar protocolo para SC-XXXXXX
+    const formattedId = request.protocol
+      ? `SC-${request.protocol}`
+      : "SC-000000";
 
     return (
       <div
@@ -96,7 +100,7 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
               priorityStyle.text,
             )}
           >
-            {request.priority}
+            {PRIORITY_LABELS[request.priority]}
           </span>
         </div>
 

@@ -14,6 +14,7 @@ export { Toast } from "./Toast";
 export { Badge } from "./Badge";
 export { Checkbox } from "./Checkbox";
 export { EmptyState } from "./EmptyState";
+export { FileUpload } from "./FileUpload";
 export { ProgressBar, StatusProgressBar } from "./ProgressBar";
 export { SearchInput } from "./SearchInput";
 export { Spinner } from "./Spinner";

@@ -95,32 +95,18 @@ export interface CreateSurgeryRequestPayload {
 }
 
 export interface SimpleSurgeryRequestPayload {
-  is_indication: boolean;
-  indication_name?: string;
-  procedure_id?: number;
-  patient: {
-    name: string;
-    email: string;
-    phone: string;
-  };
-  collaborator: {
-    status: number;
-    name: string;
-    email: string;
-    phone: string;
-    password: string;
-  };
-  health_plan: {
-    name: string;
-    email: string;
-    phone: string;
-  };
+  procedure_id: string;
+  patient_id: string;
+  manager_id: string;
+  health_plan_id?: string;
+  hospital_id?: string;
+  priority: number;
 }
 
 export interface UpdateBasicDataPayload {
-  priority?: string;
+  priority?: number;
   deadline?: string | null;
-  responsible_id?: number;
+  manager_id?: string;
 }
 
 export const surgeryRequestService = {
@@ -185,7 +171,7 @@ export const surgeryRequestService = {
    */
   async createSimple(data: SimpleSurgeryRequestPayload): Promise<any> {
     try {
-      const response = await api.post("/surgery-requests/simple", data);
+      const response = await api.post("/surgery-requests", data);
       return response.data;
     } catch (error: any) {
       throw error;

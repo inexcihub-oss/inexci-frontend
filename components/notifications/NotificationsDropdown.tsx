@@ -38,11 +38,29 @@ export default function NotificationsDropdown({
       }
     };
 
+    // Carregar apenas uma vez ao montar
     loadUnreadCount();
 
-    // Atualiza a cada 30 segundos
-    const interval = setInterval(loadUnreadCount, 30000);
-    return () => clearInterval(interval);
+    // Atualizar a contagem apenas quando a aba estiver visível e a cada 2 minutos
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadUnreadCount();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Polling a cada 2 minutos (ao invés de 30 segundos)
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadUnreadCount();
+      }
+    }, 120000);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   // Carregar notificações quando abrir o dropdown

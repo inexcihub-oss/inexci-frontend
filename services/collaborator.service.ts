@@ -28,7 +28,7 @@ export const collaboratorService = {
    */
   async getAll(): Promise<Collaborator[]> {
     try {
-      const response = await api.get("/users?profile=2");
+      const response = await api.get("/users?role=collaborator");
       const data = response.data.records || response.data;
 
       // Mapeia os campos do backend para o frontend
@@ -37,18 +37,12 @@ export const collaboratorService = {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        specialty: user.company, // O campo 'company' é usado para especialidade
+        specialty: user.specialty || null,
         gender: user.gender,
         birthDate: user.birth_date,
-        document: user.document,
-        // Como estamos buscando profile=2, todos são editors. Se o profile vier no response, usa ele, senão assume 2
-        role: user.profile
-          ? Number(user.profile) === 1
-            ? "admin"
-            : Number(user.profile) === 2
-              ? "editor"
-              : "viewer"
-          : "editor",
+        document: user.cpf,
+        // Como estamos buscando role=collaborator, todos são editors por padrão
+        role: "editor",
         createdAt: user.created_at,
         updatedAt: user.updated_at,
       }));
@@ -72,16 +66,11 @@ export const collaboratorService = {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        specialty: user.company, // O campo 'company' é usado para especialidade
+        specialty: user.specialty || null,
         gender: user.gender,
         birthDate: user.birth_date,
-        document: user.document,
-        role:
-          Number(user.profile) === 1
-            ? "admin"
-            : Number(user.profile) === 2
-              ? "editor"
-              : "viewer",
+        document: user.cpf,
+        role: "editor",
         createdAt: user.created_at,
         updatedAt: user.updated_at,
       };

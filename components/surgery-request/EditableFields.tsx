@@ -3,6 +3,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { userService } from "@/services/user.service";
+import {
+  PriorityLevel,
+  PRIORITY_LABELS,
+  PRIORITY,
+} from "@/types/surgery-request.types";
 
 // Ícone de chevron para dropdown
 const ChevronDownIcon = ({ className }: { className?: string }) => (
@@ -106,33 +111,48 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   );
 }
 
-// Cores por prioridade
+// Cores por prioridade - mesmas do Kanban (design-system.ts)
 const priorityStyles: Record<
-  string,
-  { bg: string; text: string; border: string; hoverBg: string }
+  PriorityLevel,
+  {
+    bg: string;
+    text: string;
+    border: string;
+    hoverBg: string;
+  }
 > = {
-  Alta: {
-    bg: "bg-red-50",
-    text: "text-red-700",
-    border: "border-red-200",
-    hoverBg: "hover:bg-red-100",
+  1: {
+    // Baixa - Verde
+    bg: "bg-[#D4EFE0]",
+    text: "text-[#1E6F47]",
+    border: "border-[#D4EFE0]",
+    hoverBg: "hover:bg-[#C0E5D1]",
   },
-  Média: {
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    border: "border-amber-200",
-    hoverBg: "hover:bg-amber-100",
+  2: {
+    // Média - Azul
+    bg: "bg-[#D8E8F7]",
+    text: "text-[#1859A3]",
+    border: "border-[#D8E8F7]",
+    hoverBg: "hover:bg-[#C4DCF0]",
   },
-  Baixa: {
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    border: "border-emerald-200",
-    hoverBg: "hover:bg-emerald-100",
+  3: {
+    // Alta - Amarelo
+    bg: "bg-[#FFF3D6]",
+    text: "text-[#996600]",
+    border: "border-[#FFF3D6]",
+    hoverBg: "hover:bg-[#FFEEC2]",
+  },
+  4: {
+    // Urgente - Vermelho
+    bg: "bg-[#F4E1E3]",
+    text: "text-[#7A3B3F]",
+    border: "border-[#F4E1E3]",
+    hoverBg: "hover:bg-[#EDD4D7]",
   },
 };
 
 interface EditablePriorityProps {
-  initialValue: string;
+  initialValue: PriorityLevel;
   surgeryRequestId: string;
   onUpdate?: () => void;
 }
@@ -143,12 +163,19 @@ export function EditablePriority({
   onUpdate,
 }: EditablePriorityProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState(initialValue || "Média");
+  const [value, setValue] = useState<PriorityLevel>(
+    initialValue || PRIORITY.MEDIUM,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const priorities = ["Alta", "Média", "Baixa"];
-  const currentStyle = priorityStyles[value] || priorityStyles.Média;
+  const priorities: PriorityLevel[] = [
+    PRIORITY.LOW,
+    PRIORITY.MEDIUM,
+    PRIORITY.HIGH,
+    PRIORITY.URGENT,
+  ];
+  const currentStyle = priorityStyles[value] || priorityStyles[PRIORITY.MEDIUM];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -166,7 +193,7 @@ export function EditablePriority({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isEditing]);
 
-  const handleSave = async (newValue: string) => {
+  const handleSave = async (newValue: PriorityLevel) => {
     if (newValue === value) {
       setIsEditing(false);
       return;
@@ -175,7 +202,7 @@ export function EditablePriority({
     setIsLoading(true);
     try {
       await surgeryRequestService.updateBasicData(surgeryRequestId, {
-        priority: newValue,
+        priority: Number(newValue),
       });
       setValue(newValue);
       onUpdate?.();
@@ -192,24 +219,21 @@ export function EditablePriority({
       <button
         onClick={() => setIsEditing(!isEditing)}
         className={`
-          inline-flex items-center gap-1.5 h-7 px-3 text-xs font-medium rounded-md
-          border transition-all duration-150
-          ${currentStyle.bg} ${currentStyle.text} ${currentStyle.border} ${currentStyle.hoverBg}
+          inline-flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded
+          transition-all duration-150
+          ${currentStyle.bg} ${currentStyle.text} ${currentStyle.hoverBg}
           ${isEditing ? "ring-2 ring-offset-1 ring-teal-500" : ""}
         `}
         disabled={isLoading}
       >
-        <span
-          className={`w-1.5 h-1.5 rounded-full ${value === "Alta" ? "bg-red-500" : value === "Baixa" ? "bg-emerald-500" : "bg-amber-500"}`}
-        />
-        {isLoading ? "..." : value}
+        {isLoading ? "..." : PRIORITY_LABELS[value]}
         <ChevronDownIcon
           className={`w-3.5 h-3.5 transition-transform ${isEditing ? "rotate-180" : ""}`}
         />
       </button>
 
       {isEditing && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[100px] animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="absolute top-full left-0 mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[120px] animate-in fade-in slide-in-from-top-1 duration-150">
           {priorities.map((priority) => {
             const style = priorityStyles[priority];
             const isSelected = priority === value;
@@ -218,17 +242,16 @@ export function EditablePriority({
                 key={priority}
                 onClick={() => handleSave(priority)}
                 className={`
-                  w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors
-                  ${isSelected ? "bg-gray-50 font-medium" : "hover:bg-gray-50"}
+                  w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors
+                  ${isSelected ? "bg-gray-50 font-semibold" : "hover:bg-gray-50 font-medium"}
                 `}
               >
-                <span
-                  className={`w-2 h-2 rounded-full ${priority === "Alta" ? "bg-red-500" : priority === "Baixa" ? "bg-emerald-500" : "bg-amber-500"}`}
-                />
-                <span className={style.text}>{priority}</span>
+                <span className={`flex-1 ${style.text}`}>
+                  {PRIORITY_LABELS[priority]}
+                </span>
                 {isSelected && (
                   <svg
-                    className="w-3.5 h-3.5 ml-auto text-teal-600"
+                    className="w-3.5 h-3.5 text-teal-600"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
@@ -309,7 +332,7 @@ export function EditableManager({
     setIsLoading(true);
     try {
       await surgeryRequestService.updateBasicData(surgeryRequestId, {
-        responsible_id: newManagerId,
+        manager_id: String(newManagerId),
       });
 
       const newManager = managers.find((m) => m.id === newManagerId);

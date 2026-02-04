@@ -3,35 +3,36 @@
  * Cores e estilos padronizados para toda a plataforma
  */
 
-import { PriorityLevel } from "@/types/surgery-request.types";
+import { PriorityLevel, PRIORITY_LABELS } from "@/types/surgery-request.types";
 
 /**
  * Cores de prioridade
  * Usadas em badges, botões e indicadores de prioridade
+ * Chaves são números (1=Baixa, 2=Média, 3=Alta, 4=Urgente)
  */
 export const priorityColors: Record<
   PriorityLevel,
   { bg: string; text: string; bgClass: string; textClass: string }
 > = {
-  Baixa: {
+  1: {
     bg: "#D4EFE0",
     text: "#1E6F47",
     bgClass: "bg-[#D4EFE0]",
     textClass: "text-[#1E6F47]",
   },
-  Média: {
+  2: {
     bg: "#D8E8F7",
     text: "#1859A3",
     bgClass: "bg-[#D8E8F7]",
     textClass: "text-[#1859A3]",
   },
-  Alta: {
+  3: {
     bg: "#FFF3D6",
     text: "#996600",
     bgClass: "bg-[#FFF3D6]",
     textClass: "text-[#996600]",
   },
-  Urgente: {
+  4: {
     bg: "#F4E1E3",
     text: "#7A3B3F",
     bgClass: "bg-[#F4E1E3]",
@@ -44,6 +45,13 @@ export const priorityColors: Record<
  */
 export const getPriorityClasses = (priority: PriorityLevel) => {
   return priorityColors[priority];
+};
+
+/**
+ * Helper function para obter label de prioridade
+ */
+export const getPriorityLabel = (priority: PriorityLevel): string => {
+  return PRIORITY_LABELS[priority];
 };
 
 /**

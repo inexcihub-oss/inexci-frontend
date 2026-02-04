@@ -220,7 +220,7 @@ export default function ColaboradoresPage() {
     }
   };
 
-  // Column definitions for Assistentes
+  // Column definitions for Colaboradores
   const collaboratorColumns: ColumnDef<Collaborator>[] = [
     {
       id: "select",
@@ -742,7 +742,7 @@ export default function ColaboradoresPage() {
                 : "font-normal text-black hover:bg-gray-50"
             }`}
           >
-            Assistentes
+            Colaboradores
           </button>
           <button
             onClick={() => setActiveTab("hospitais")}
@@ -806,7 +806,7 @@ export default function ColaboradoresPage() {
 
         {/* New Button */}
         <Button variant="primary" size="md">
-          {activeTab === "assistentes" && "Novo assistente"}
+          {activeTab === "assistentes" && "Novo colaborador"}
           {activeTab === "hospitais" && "Novo hospital"}
           {activeTab === "convenios" && "Novo convênio"}
           {activeTab === "fornecedores" && "Novo fornecedor"}

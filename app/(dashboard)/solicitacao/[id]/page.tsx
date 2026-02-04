@@ -387,10 +387,10 @@ export default function SolicitacaoDetalhePage() {
                   <div>
                     <EditableManager
                       initialValue={
-                        solicitacao.responsible
+                        solicitacao.manager
                           ? {
-                              id: solicitacao.responsible.id,
-                              name: solicitacao.responsible.name,
+                              id: solicitacao.manager.id,
+                              name: solicitacao.manager.name,
                             }
                           : null
                       }

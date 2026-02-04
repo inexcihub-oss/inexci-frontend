@@ -19,32 +19,12 @@ import {
   SurgeryRequestStatus,
 } from "@/types/surgery-request.types";
 import { useToggle, useClickOutside } from "@/hooks";
-import { priorityColors } from "@/lib/design-system";
+import { priorityColors, getPriorityLabel } from "@/lib/design-system";
 
 interface ProcedureCardProps {
   procedure: SurgeryRequest;
   isDragging?: boolean;
 }
-
-// Estilos de prioridade do Design System
-const priorityStyles: Record<PriorityLevel, { bg: string; text: string }> = {
-  Baixa: {
-    bg: priorityColors.Baixa.bgClass,
-    text: priorityColors.Baixa.textClass,
-  },
-  Média: {
-    bg: priorityColors.Média.bgClass,
-    text: priorityColors.Média.textClass,
-  },
-  Alta: {
-    bg: priorityColors.Alta.bgClass,
-    text: priorityColors.Alta.textClass,
-  },
-  Urgente: {
-    bg: priorityColors.Urgente.bgClass,
-    text: priorityColors.Urgente.textClass,
-  },
-};
 
 // Mapeamento de status para ícone SVG
 const statusIconMap: Record<SurgeryRequestStatus, string> = {
@@ -119,7 +99,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
       setFalse: closeActions,
     } = useToggle();
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const priorityStyle = priorityStyles[procedure.priority];
+    const priorityStyle = priorityColors[procedure.priority];
     const contextualActions = getContextualActions(procedure.status);
     const statusIcon = statusIconMap[procedure.status];
 
@@ -150,8 +130,10 @@ export const ProcedureCard = memo<ProcedureCardProps>(
       [toggleActions],
     );
 
-    // Formatar ID para SOL-XXXXXX (6 dígitos)
-    const formattedId = `SOL-${String(procedure.id).padStart(6, "0")}`;
+    // Formatar protocolo para SC-XXXXXX
+    const formattedId = procedure.protocol
+      ? `SC-${procedure.protocol}`
+      : "SC-000000";
 
     return (
       <div
@@ -243,7 +225,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
               color: priorityColors[procedure.priority].text,
             }}
           >
-            {procedure.priority}
+            {getPriorityLabel(procedure.priority)}
           </span>
 
           {/* Badge Pendências ao lado da prioridade */}

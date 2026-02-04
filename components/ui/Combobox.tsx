@@ -137,13 +137,19 @@ export function Combobox({
           </span>
           <div className="flex items-center gap-1">
             {selectedOption && !disabled && (
-              <button
-                type="button"
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={handleClear}
-                className="hover:bg-neutral-100 rounded p-0.5 transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    handleClear(e as any);
+                  }
+                }}
+                className="hover:bg-neutral-100 rounded p-0.5 transition-colors cursor-pointer"
               >
                 <X className="h-4 w-4 text-gray-500" />
-              </button>
+              </span>
             )}
             <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
           </div>

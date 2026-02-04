@@ -87,18 +87,31 @@ export default function ProcedimentosCirurgicos() {
               return "Procedimento não especificado";
             };
 
+            // Obter o gestor da solicitação
+            const getManager = () => {
+              if (record.manager) {
+                return {
+                  id: String(record.manager.id),
+                  name: record.manager.name,
+                };
+              }
+              // Fallback para created_by se não houver gestor
+              return {
+                id: String(record.created_by?.id || 0),
+                name: record.created_by?.name || "Não informado",
+              };
+            };
+
             return {
               id: String(record.id),
+              protocol: record.protocol || "",
               patient: {
                 id: String(record.patient.id),
                 name: record.patient.name,
                 initials: getInitials(record.patient.name),
               },
               procedureName: getProcedureName(),
-              doctor: {
-                id: String(record.created_by?.id || 0),
-                name: record.created_by?.name || "Não informado",
-              },
+              doctor: getManager(),
               priority: (record.priority || "Média") as any,
               pendenciesCount: record.pendenciesCount || 0,
               pendenciesCompleted: 0,
@@ -149,10 +162,7 @@ export default function ProcedimentosCirurgicos() {
           includesIgnoreCase(card.doctor.name, debouncedSearch) ||
           includesIgnoreCase(card.procedureName, debouncedSearch) ||
           includesIgnoreCase(card.id, debouncedSearch) ||
-          includesIgnoreCase(
-            `SOL-${card.id.padStart(6, "0")}`,
-            debouncedSearch,
-          ),
+          includesIgnoreCase(`SC-${card.id.padStart(6, "0")}`, debouncedSearch),
       ),
     }));
   }, [columns, debouncedSearch]);
@@ -172,11 +182,10 @@ export default function ProcedimentosCirurgicos() {
         includesIgnoreCase(procedure.patient.name, debouncedSearch) ||
         includesIgnoreCase(procedure.doctor.name, debouncedSearch) ||
         includesIgnoreCase(procedure.procedureName, debouncedSearch) ||
-        includesIgnoreCase(procedure.id, debouncedSearch) ||
-        includesIgnoreCase(
-          `SOL-${procedure.id.padStart(6, "0")}`,
-          debouncedSearch,
-        ),
+        (procedure.protocol &&
+          includesIgnoreCase(procedure.protocol, debouncedSearch)) ||
+        (procedure.protocol &&
+          includesIgnoreCase(`SC-${procedure.protocol}`, debouncedSearch)),
     );
   }, [allProcedures, debouncedSearch]);
 

@@ -17,6 +17,7 @@ import {
   SurgeryRequest,
   PriorityLevel,
   SurgeryRequestStatus,
+  PRIORITY_LABELS,
 } from "@/types/surgery-request.types";
 
 interface ProcedureListProps {
@@ -28,13 +29,14 @@ const priorityStyles: Record<
   PriorityLevel,
   { bg: string; text: string; border: string }
 > = {
-  Baixa: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
-  Média: {
+  1: { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
+  2: {
     bg: "bg-orange-50",
     text: "text-orange-600",
     border: "border-orange-200",
   },
-  Alta: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200" },
+  3: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200" },
+  4: { bg: "bg-red-50", text: "text-red-600", border: "border-red-200" },
 };
 
 const statusStyles: Record<string, { bg: string; text: string }> = {
@@ -265,9 +267,9 @@ const ProcedureRow: React.FC<{
       <div className="col-span-2 flex items-center gap-1.5 justify-start flex-wrap">
         <span
           className={`px-2.5 py-1 rounded-full text-xs font-medium border ${priorityStyle.bg} ${priorityStyle.text} ${priorityStyle.border} whitespace-nowrap flex-shrink-0`}
-          title={`Prioridade: ${procedure.priority}`}
+          title={`Prioridade: ${PRIORITY_LABELS[procedure.priority]}`}
         >
-          {procedure.priority}
+          {PRIORITY_LABELS[procedure.priority]}
         </span>
         {procedure.pendenciesCount > 0 ? (
           <span

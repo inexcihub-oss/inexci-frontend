@@ -17,6 +17,11 @@ import { Hospital } from "@/services/hospital.service";
 import { HealthPlan } from "@/services/health-plan.service";
 import { User } from "@/services/user.service";
 import { priorityColors } from "@/lib/design-system";
+import {
+  PriorityLevel,
+  PRIORITY,
+  PRIORITY_LABELS,
+} from "@/types/surgery-request.types";
 
 interface CreateSurgeryRequestWizardProps {
   isOpen: boolean;
@@ -43,6 +48,7 @@ export function CreateSurgeryRequestWizard({
 }: CreateSurgeryRequestWizardProps) {
   const [modalState, setModalState] = useState<ModalState>("procedure-select");
   const [loading, setLoading] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState<{
@@ -62,9 +68,7 @@ export function CreateSurgeryRequestWizard({
     useState<HealthPlan | null>(null);
   const [selectedManager, setSelectedManager] = useState<User | null>(null);
 
-  const [priority, setPriority] = useState<
-    "Baixa" | "Média" | "Alta" | "Urgente"
-  >("Baixa");
+  const [priority, setPriority] = useState<PriorityLevel>(PRIORITY.LOW);
 
   // Callbacks para adicionar novos itens às listas
   const [addProcedureToList, setAddProcedureToList] = useState<
@@ -153,40 +157,14 @@ export function CreateSurgeryRequestWizard({
     setLoading(true);
 
     try {
-      // Gera senha temporária segura (12 caracteres aleatórios)
-      const generateTempPassword = () => {
-        const chars =
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
-        let password = "";
-        for (let i = 0; i < 12; i++) {
-          password += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return password;
-      };
-
-      // Criar uma solicitação simplificada usando os dados selecionados
+      // Criar payload simplificado com apenas IDs
       const payload: SimpleSurgeryRequestPayload = {
-        is_indication: false,
-        procedure_id: selectedProcedure
-          ? Number(selectedProcedure.id)
-          : undefined,
-        patient: {
-          name: selectedPatient.name,
-          email: selectedPatient.email || "",
-          phone: selectedPatient.phone || "",
-        },
-        collaborator: {
-          status: 1,
-          name: selectedManager.name,
-          email: selectedManager.email,
-          phone: selectedManager.phone || "",
-          password: generateTempPassword(),
-        },
-        health_plan: {
-          name: selectedHealthPlan.name,
-          email: selectedHealthPlan.email || "",
-          phone: selectedHealthPlan.phone || "",
-        },
+        procedure_id: selectedProcedure.id,
+        patient_id: selectedPatient.id,
+        manager_id: selectedManager.id,
+        health_plan_id: selectedHealthPlan?.id,
+        hospital_id: selectedHospital?.id,
+        priority: priority,
       };
 
       const result = await surgeryRequestService.createSimple(payload);
@@ -196,8 +174,12 @@ export function CreateSurgeryRequestWizard({
         type: "success",
       });
 
+      setLoading(false);
+      setIsClosing(true);
+
       // Aguardar um pouco para mostrar o toast antes de fechar
       setTimeout(() => {
+        setIsClosing(false);
         handleClose();
         onSuccess();
       }, 1500);
@@ -210,7 +192,6 @@ export function CreateSurgeryRequestWizard({
         message: `Erro ao criar solicitação: ${errorMessage}`,
         type: "error",
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -480,6 +461,7 @@ export function CreateSurgeryRequestWizard({
                       setAddProcedureToList(() => callback);
                     }}
                     selectedItemId={selectedProcedure?.id}
+                    isActive={modalState === "procedure-select"}
                   />
                 </div>
               )}
@@ -493,6 +475,7 @@ export function CreateSurgeryRequestWizard({
                       setAddPatientToList(() => callback);
                     }}
                     selectedItemId={selectedPatient?.id}
+                    isActive={modalState === "patient-select"}
                   />
                 </div>
               )}
@@ -506,6 +489,7 @@ export function CreateSurgeryRequestWizard({
                       setAddHospitalToList(() => callback);
                     }}
                     selectedItemId={selectedHospital?.id}
+                    isActive={modalState === "hospital-select"}
                   />
                 </div>
               )}
@@ -521,6 +505,7 @@ export function CreateSurgeryRequestWizard({
                       setAddHealthPlanToList(() => callback);
                     }}
                     selectedItemId={selectedHealthPlan?.id}
+                    isActive={modalState === "healthplan-select"}
                   />
                 </div>
               )}
@@ -530,6 +515,7 @@ export function CreateSurgeryRequestWizard({
                   <ManagerSelectionContent
                     onSelect={handleManagerSelected}
                     selectedItemId={selectedManager?.id}
+                    isActive={modalState === "manager-select"}
                   />
                 </div>
               )}
@@ -541,89 +527,94 @@ export function CreateSurgeryRequestWizard({
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
                 <button
-                  onClick={() => setPriority("Baixa")}
+                  onClick={() => setPriority(PRIORITY.LOW)}
                   className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                    priority === "Baixa"
+                    priority === PRIORITY.LOW
                       ? ""
                       : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                   }`}
                   style={
-                    priority === "Baixa"
+                    priority === PRIORITY.LOW
                       ? {
-                          backgroundColor: priorityColors.Baixa.bg,
-                          color: priorityColors.Baixa.text,
+                          backgroundColor: priorityColors[PRIORITY.LOW].bg,
+                          color: priorityColors[PRIORITY.LOW].text,
                         }
                       : {}
                   }
                 >
-                  Baixa
+                  {PRIORITY_LABELS[PRIORITY.LOW]}
                 </button>
                 <button
-                  onClick={() => setPriority("Média")}
+                  onClick={() => setPriority(PRIORITY.MEDIUM)}
                   className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                    priority === "Média"
+                    priority === PRIORITY.MEDIUM
                       ? ""
                       : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                   }`}
                   style={
-                    priority === "Média"
+                    priority === PRIORITY.MEDIUM
                       ? {
-                          backgroundColor: priorityColors.Média.bg,
-                          color: priorityColors.Média.text,
+                          backgroundColor: priorityColors[PRIORITY.MEDIUM].bg,
+                          color: priorityColors[PRIORITY.MEDIUM].text,
                         }
                       : {}
                   }
                 >
-                  Média
+                  {PRIORITY_LABELS[PRIORITY.MEDIUM]}
                 </button>
                 <button
-                  onClick={() => setPriority("Alta")}
+                  onClick={() => setPriority(PRIORITY.HIGH)}
                   className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                    priority === "Alta"
+                    priority === PRIORITY.HIGH
                       ? ""
                       : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                   }`}
                   style={
-                    priority === "Alta"
+                    priority === PRIORITY.HIGH
                       ? {
-                          backgroundColor: priorityColors.Alta.bg,
-                          color: priorityColors.Alta.text,
+                          backgroundColor: priorityColors[PRIORITY.HIGH].bg,
+                          color: priorityColors[PRIORITY.HIGH].text,
                         }
                       : {}
                   }
                 >
-                  Alta
+                  {PRIORITY_LABELS[PRIORITY.HIGH]}
                 </button>
                 <button
-                  onClick={() => setPriority("Urgente")}
+                  onClick={() => setPriority(PRIORITY.URGENT)}
                   className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                    priority === "Urgente"
+                    priority === PRIORITY.URGENT
                       ? ""
                       : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                   }`}
                   style={
-                    priority === "Urgente"
+                    priority === PRIORITY.URGENT
                       ? {
-                          backgroundColor: priorityColors.Urgente.bg,
-                          color: priorityColors.Urgente.text,
+                          backgroundColor: priorityColors[PRIORITY.URGENT].bg,
+                          color: priorityColors[PRIORITY.URGENT].text,
                         }
                       : {}
                   }
                 >
-                  Urgente
+                  {PRIORITY_LABELS[PRIORITY.URGENT]}
                 </button>
               </div>
               <button
                 onClick={handleSubmit}
                 disabled={
                   loading ||
+                  isClosing ||
                   !selectedPatient ||
                   !selectedManager ||
                   !selectedProcedure
                 }
                 className="w-full sm:w-auto px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
               >
-                {loading ? "Criando..." : "Nova solicitação"}
+                {loading
+                  ? "Criando..."
+                  : isClosing
+                    ? "Salvando..."
+                    : "Nova solicitação"}
               </button>
             </div>
           </div>
@@ -664,10 +655,12 @@ function ProcedureSelectionContent({
   onCreateNew,
   onNewItemCreated,
   selectedItemId,
+  isActive,
 }: any) {
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Load procedures
   const loadProcedures = async () => {
@@ -676,6 +669,7 @@ function ProcedureSelectionContent({
       const { procedureService } = await import("@/services/procedure.service");
       const data = await procedureService.getAll();
       setProcedures(Array.isArray(data) ? data : []);
+      setHasLoaded(true);
     } catch (error: any) {
       setProcedures([]);
     } finally {
@@ -684,8 +678,10 @@ function ProcedureSelectionContent({
   };
 
   useEffect(() => {
-    loadProcedures();
-  }, []);
+    if (isActive && !hasLoaded) {
+      loadProcedures();
+    }
+  }, [isActive, hasLoaded]);
 
   // Adicionar novo item criado à lista
   useEffect(() => {
@@ -695,7 +691,8 @@ function ProcedureSelectionContent({
       };
       onNewItemCreated(handleNewItem);
     }
-  }, [onNewItemCreated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredProcedures = procedures.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -779,10 +776,12 @@ function PatientSelectionContent({
   onCreateNew,
   onNewItemCreated,
   selectedItemId,
+  isActive,
 }: any) {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const loadPatients = async () => {
     setLoading(true);
@@ -790,6 +789,7 @@ function PatientSelectionContent({
       const { patientService } = await import("@/services/patient.service");
       const data = await patientService.getAll();
       setPatients(Array.isArray(data) ? data : []);
+      setHasLoaded(true);
     } catch (error: any) {
       setPatients([]);
     } finally {
@@ -798,8 +798,10 @@ function PatientSelectionContent({
   };
 
   useEffect(() => {
-    loadPatients();
-  }, []);
+    if (isActive && !hasLoaded) {
+      loadPatients();
+    }
+  }, [isActive, hasLoaded]);
 
   // Adicionar novo item criado à lista
   useEffect(() => {
@@ -809,7 +811,8 @@ function PatientSelectionContent({
       };
       onNewItemCreated(handleNewItem);
     }
-  }, [onNewItemCreated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredPatients = patients.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -885,10 +888,12 @@ function HospitalSelectionContent({
   onCreateNew,
   onNewItemCreated,
   selectedItemId,
+  isActive,
 }: any) {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const loadHospitals = async () => {
     setLoading(true);
@@ -896,6 +901,7 @@ function HospitalSelectionContent({
       const { hospitalService } = await import("@/services/hospital.service");
       const data = await hospitalService.getAll();
       setHospitals(Array.isArray(data) ? data : []);
+      setHasLoaded(true);
     } catch (error: any) {
       setHospitals([]);
     } finally {
@@ -904,8 +910,10 @@ function HospitalSelectionContent({
   };
 
   useEffect(() => {
-    loadHospitals();
-  }, []);
+    if (isActive && !hasLoaded) {
+      loadHospitals();
+    }
+  }, [isActive, hasLoaded]);
 
   // Adicionar novo item criado à lista
   useEffect(() => {
@@ -915,7 +923,8 @@ function HospitalSelectionContent({
       };
       onNewItemCreated(handleNewItem);
     }
-  }, [onNewItemCreated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredHospitals = hospitals.filter((h) =>
     h.name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -991,10 +1000,12 @@ function HealthPlanSelectionContent({
   onCreateNew,
   onNewItemCreated,
   selectedItemId,
+  isActive,
 }: any) {
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const loadHealthPlans = async () => {
     setLoading(true);
@@ -1003,6 +1014,7 @@ function HealthPlanSelectionContent({
         await import("@/services/health-plan.service");
       const data = await healthPlanService.getAll();
       setHealthPlans(Array.isArray(data) ? data : []);
+      setHasLoaded(true);
     } catch (error: any) {
       setHealthPlans([]);
     } finally {
@@ -1011,8 +1023,10 @@ function HealthPlanSelectionContent({
   };
 
   useEffect(() => {
-    loadHealthPlans();
-  }, []);
+    if (isActive && !hasLoaded) {
+      loadHealthPlans();
+    }
+  }, [isActive, hasLoaded]);
 
   // Adicionar novo item criado à lista
   useEffect(() => {
@@ -1022,7 +1036,8 @@ function HealthPlanSelectionContent({
       };
       onNewItemCreated(handleNewItem);
     }
-  }, [onNewItemCreated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredHealthPlans = healthPlans.filter((h) =>
     h.name.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -1096,13 +1111,16 @@ function HealthPlanSelectionContent({
 function ManagerSelectionContent({
   onSelect,
   selectedItemId,
+  isActive,
 }: {
   onSelect: (manager: User) => void;
   selectedItemId?: string | number | null;
+  isActive?: boolean;
 }) {
   const [managers, setManagers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const loadManagers = async () => {
     setLoading(true);
@@ -1110,6 +1128,7 @@ function ManagerSelectionContent({
       const { userService } = await import("@/services/user.service");
       const data = await userService.getAll();
       setManagers(Array.isArray(data) ? data : []);
+      setHasLoaded(true);
     } catch (error: any) {
       setManagers([]);
     } finally {
@@ -1118,8 +1137,10 @@ function ManagerSelectionContent({
   };
 
   useEffect(() => {
-    loadManagers();
-  }, []);
+    if (isActive && !hasLoaded) {
+      loadManagers();
+    }
+  }, [isActive, hasLoaded]);
 
   const filteredManagers = managers.filter(
     (m) =>

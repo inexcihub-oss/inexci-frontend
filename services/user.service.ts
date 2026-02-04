@@ -48,7 +48,7 @@ export const userService = {
    */
   async getAll(): Promise<User[]> {
     try {
-      const response = await api.get("/users?profile=2");
+      const response = await api.get("/users?role=collaborator");
       return response.data.records || response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {

@@ -1,4 +1,29 @@
-export type PriorityLevel = "Baixa" | "Média" | "Alta" | "Urgente";
+// Prioridade como número (conforme backend)
+export type PriorityLevel = 1 | 2 | 3 | 4;
+
+// Constantes de prioridade
+export const PRIORITY = {
+  LOW: 1 as const,
+  MEDIUM: 2 as const,
+  HIGH: 3 as const,
+  URGENT: 4 as const,
+};
+
+// Mapeamento de número para label
+export const PRIORITY_LABELS: Record<PriorityLevel, string> = {
+  1: "Baixa",
+  2: "Média",
+  3: "Alta",
+  4: "Urgente",
+};
+
+// Mapeamento inverso (opcional, para compatibilidade)
+export const PRIORITY_VALUES: Record<string, PriorityLevel> = {
+  Baixa: 1,
+  Média: 2,
+  Alta: 3,
+  Urgente: 4,
+};
 
 // Status completos da solicitação cirúrgica
 export type SurgeryRequestStatus =
@@ -72,6 +97,7 @@ export interface Patient {
 
 export interface SurgeryRequest {
   id: string;
+  protocol?: string; // Protocolo numérico de 6 dígitos
   patient: Patient;
   procedureName: string;
   doctor: Doctor;

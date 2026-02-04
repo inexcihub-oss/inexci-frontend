@@ -33,7 +33,7 @@ export function EditableProcedureData({
     hospitalId: solicitacao.hospital?.id?.toString() || "",
     cidId: solicitacao.cid?.id || "",
     healthPlanId: solicitacao.health_plan?.id?.toString() || "",
-    healthPlanRegistry: solicitacao.health_plan_registry || "",
+    healthPlanRegistry: solicitacao.health_plan_registration || "",
     healthPlanType: solicitacao.health_plan_type || "",
   });
 
@@ -59,7 +59,6 @@ export function EditableProcedureData({
           })),
         );
       } catch (error) {
-        console.error("Erro ao carregar dados dos selects:", error);
         showToast("Erro ao carregar opções de seleção", "error");
       }
     };
@@ -80,77 +79,92 @@ export function EditableProcedureData({
       hospitalId: solicitacao.hospital?.id?.toString() || "",
       cidId: solicitacao.cid?.id || "",
       healthPlanId: solicitacao.health_plan?.id?.toString() || "",
-      healthPlanRegistry: solicitacao.health_plan_registry || "",
+      healthPlanRegistry: solicitacao.health_plan_registration || "",
       healthPlanType: solicitacao.health_plan_type || "",
     });
   };
 
   const handleSave = async () => {
+    // Validação: Se preencheu convênio, deve preencher matrícula e plano
+    if (formData.healthPlanId && (!formData.healthPlanRegistry.trim() || !formData.healthPlanType.trim())) {
+      showToast("Ao selecionar um convênio, preencha também a Matrícula e o Plano", "error");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      setLoading(true);
+      // Buscar dados completos dos itens selecionados (se preenchidos)
+      const hospital = formData.hospitalId 
+        ? hospitals.find((h) => h.value === formData.hospitalId)
+        : null;
+      
+      const healthPlan = formData.healthPlanId
+        ? healthPlans.find((hp) => hp.value === formData.healthPlanId)
+        : null;
 
-      console.log("=== DEBUG SAVE ===");
-      console.log("Form Data:", formData);
-      console.log("Solicita\u00e7\u00e3o ID:", solicitacao.id);
+      // Se selecionou hospital mas não encontrou na lista
+      if (formData.hospitalId && !hospital) {
+        showToast("Erro ao buscar hospital selecionado", "error");
+        return;
+      }
 
-      // Buscar dados completos dos itens selecionados
-      const hospital = hospitals.find((h) => h.value === formData.hospitalId);
-      const healthPlan = healthPlans.find(
-        (hp) => hp.value === formData.healthPlanId,
-      );
-
-      console.log("Hospital encontrado:", hospital);
-      console.log("Health Plan encontrado:", healthPlan);
-
-      if (!hospital || !healthPlan) {
-        showToast("Por favor, preencha todos os campos obrigatórios", "error");
+      // Se selecionou convênio mas não encontrou na lista
+      if (formData.healthPlanId && !healthPlan) {
+        showToast("Erro ao buscar convênio selecionado", "error");
         return;
       }
 
       // Preparar dados para envio conforme DTO do backend
-      const updateData = {
-        health_plan: {
-          id: parseInt(formData.healthPlanId),
-          name: healthPlan.label,
-          email: solicitacao.health_plan?.email || "",
-          phone: solicitacao.health_plan?.phone || "",
-        },
-        health_plan_registration: formData.healthPlanRegistry,
-        health_plan_type: formData.healthPlanType,
-        cid: formData.cidId
-          ? {
-              id: formData.cidId,
-              description: solicitacao.cid?.description || "",
-            }
-          : undefined,
+      const updateData: any = {
+        id: solicitacao.id,
         diagnosis: solicitacao.diagnosis || "",
         medical_report: solicitacao.medical_report || "",
         patient_history: solicitacao.patient_history || "",
-        hospital: {
-          name: hospital.label,
-          email: solicitacao.hospital?.email || "",
-        },
       };
 
-      console.log("Dados a serem enviados:", updateData);
+      // Adicionar hospital se preenchido
+      if (hospital) {
+        updateData.hospital = {
+          name: hospital.label,
+          email: solicitacao.hospital?.email || "contato@hospital.com",
+        };
+      }
 
-      const result = await surgeryRequestService.update(
+      // Adicionar convênio se preenchido
+      if (healthPlan) {
+        updateData.health_plan = {
+          id: formData.healthPlanId,
+          name: healthPlan.label,
+          email: solicitacao.health_plan?.email || "contato@convenio.com",
+          phone: solicitacao.health_plan?.phone || "0000000000",
+        };
+        updateData.health_plan_registration = formData.healthPlanRegistry;
+        updateData.health_plan_type = formData.healthPlanType;
+      }
+
+      // Adicionar CID se preenchido
+      if (formData.cidId) {
+        updateData.cid = {
+          id: formData.cidId,
+          description: solicitacao.cid?.description || "",
+        };
+      }
+
+      await surgeryRequestService.update(
         solicitacao.id.toString(),
         updateData,
       );
 
-      console.log("Resultado do update:", result);
-
       showToast("Dados atualizados com sucesso!", "success");
-
       setIsEditing(false);
       onUpdate?.();
     } catch (error: any) {
-      console.error("Erro ao salvar dados:", error);
-      showToast(
-        error.response?.data?.message || "Erro ao salvar dados",
-        "error",
-      );
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Erro ao salvar dados";
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -181,6 +195,7 @@ export function EditableProcedureData({
             <button
               onClick={handleSave}
               disabled={loading}
+              type="button"
               className="flex items-center justify-center font-semibold text-gray-900 bg-white border border-neutral-100 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 transition-colors py-1.5 px-3 rounded text-sm leading-normal disabled:opacity-50"
             >
               {loading ? "Salvando..." : "Salvar"}
@@ -313,9 +328,9 @@ export function EditableProcedureData({
               </label>
               <input
                 type="text"
-                value={solicitacao.health_plan_registry || ""}
+                value={solicitacao.health_plan_registration || ""}
                 placeholder={
-                  !solicitacao.health_plan_registry ? "Não informado" : ""
+                  !solicitacao.health_plan_registration ? "Não informado" : ""
                 }
                 className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
                 disabled

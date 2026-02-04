@@ -43,7 +43,12 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
     "Cancelada",
   ];
 
-  const priorityOptions: PriorityLevel[] = ["Baixa", "Média", "Alta"];
+  const priorityOptions: PriorityLevel[] = [
+    PRIORITY.LOW,
+    PRIORITY.MEDIUM,
+    PRIORITY.HIGH,
+    PRIORITY.URGENT,
+  ];
 
   const sortOptions = [
     { value: "createdAt", label: "Data de Criação" },
@@ -173,7 +178,7 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
-                    {priority}
+                    {PRIORITY_LABELS[priority]}
                   </button>
                 ))}
               </div>
