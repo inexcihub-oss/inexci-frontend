@@ -23,6 +23,14 @@ import {
   StatusBadge,
 } from "@/components/surgery-request/EditableFields";
 import { DocumentUploadModal } from "@/components/documents/DocumentUploadModal";
+import { DeleteDocumentModal } from "@/components/documents/DeleteDocumentModal";
+import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
+import { OpmeModal } from "@/components/opme/OpmeModal";
+import { MedicalReportEditor } from "@/components/laudo/MedicalReportEditor";
+import { SendRequestModal } from "@/components/surgery-request/SendRequestModal";
+import { tussService } from "@/services/tuss.service";
+import { opmeService } from "@/services/opme.service";
+import { documentService } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import PageContainer from "@/components/PageContainer";
 
@@ -34,8 +42,24 @@ export default function SolicitacaoDetalhePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("informacoes-gerais");
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>("chat");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isActivitiesExpanded, setIsActivitiesExpanded] = useState(true);
+  
+  // Carregar estado do localStorage ou usar valores padrão
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("solicitacao-sidebar-open");
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
+  
+  const [isActivitiesExpanded, setIsActivitiesExpanded] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("solicitacao-activities-expanded");
+      return saved !== null ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
+  
   const [solicitacao, setSolicitacao] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
@@ -45,7 +69,22 @@ export default function SolicitacaoDetalhePage() {
   // Estado para validação dinâmica de pendências
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [loadingPendencies, setLoadingPendencies] = useState(false);
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const { showToast } = useToast();
+
+  // Salvar estado da sidebar no localStorage quando mudar
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("solicitacao-sidebar-open", JSON.stringify(isSidebarOpen));
+    }
+  }, [isSidebarOpen]);
+
+  // Salvar estado das atividades no localStorage quando mudar
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("solicitacao-activities-expanded", JSON.stringify(isActivitiesExpanded));
+    }
+  }, [isActivitiesExpanded]);
 
   // Carregar validação de pendências (dinâmica - baseada nos dados atuais)
   const fetchPendencies = useCallback(async () => {
@@ -321,7 +360,10 @@ export default function SolicitacaoDetalhePage() {
                     </p>
                   </div>
                 </div>
-                <button className="bg-teal-700 text-white text-sm font-semibold hover:bg-teal-800 transition-colors flex-shrink-0 flex items-center justify-center px-6 py-2.5 gap-3 rounded-lg leading-normal">
+                <button
+                  onClick={() => setIsSendModalOpen(true)}
+                  className="bg-teal-700 text-white text-sm font-semibold hover:bg-teal-800 transition-colors flex-shrink-0 flex items-center justify-center px-6 py-2.5 gap-3 rounded-lg leading-normal"
+                >
                   Enviar Solicitação
                 </button>
               </div>
@@ -466,11 +508,22 @@ export default function SolicitacaoDetalhePage() {
                   />
                 )}
                 {activeTab === "codigo-tuss" && (
-                  <CodigoTussTab solicitacao={solicitacao} />
+                  <CodigoTussTab
+                    solicitacao={solicitacao}
+                    onUpdate={handleUpdateProcedure}
+                  />
                 )}
-                {activeTab === "opme" && <OpmeTab solicitacao={solicitacao} />}
+                {activeTab === "opme" && (
+                  <OpmeTab
+                    solicitacao={solicitacao}
+                    onUpdate={handleUpdateProcedure}
+                  />
+                )}
                 {activeTab === "laudo" && (
-                  <LaudoTab solicitacao={solicitacao} />
+                  <MedicalReportEditor
+                    solicitacao={solicitacao}
+                    onUpdate={handleUpdateProcedure}
+                  />
                 )}
               </div>
             </div>
@@ -629,6 +682,17 @@ export default function SolicitacaoDetalhePage() {
           </div>
         )}
       </div>
+
+      {/* Modal de Envio de Solicitação */}
+      <SendRequestModal
+        isOpen={isSendModalOpen}
+        onClose={() => setIsSendModalOpen(false)}
+        solicitacao={solicitacao}
+        onSuccess={() => {
+          handleUpdateProcedure();
+          setIsSendModalOpen(false);
+        }}
+      />
     </PageContainer>
   );
 }
@@ -640,7 +704,7 @@ interface InformacoesGeraisTabProps {
   handleSelectDocument: (docId: string) => void;
   handleSelectAllDocuments: () => void;
   onUpdateProcedure: () => void;
-  surgeryRequestId: number;
+  surgeryRequestId: string;
   onDocumentsUploaded: () => void;
 }
 
@@ -654,6 +718,10 @@ function InformacoesGeraisTab({
   onDocumentsUploaded,
 }: InformacoesGeraisTabProps) {
   const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [documentToDelete, setDocumentToDelete] = React.useState<any>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const { showToast } = useToast();
 
   const handleAddDocuments = () => {
     setIsUploadModalOpen(true);
@@ -661,6 +729,40 @@ function InformacoesGeraisTab({
 
   const handleUploadSuccess = () => {
     onDocumentsUploaded();
+  };
+
+  const handleOpenDeleteModal = (doc: any) => {
+    setDocumentToDelete(doc);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (!isDeleting) {
+      setIsDeleteModalOpen(false);
+      setDocumentToDelete(null);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!documentToDelete || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      await documentService.delete({
+        id: documentToDelete.id,
+        key: documentToDelete.key,
+        surgery_request_id: solicitacao.id,
+      });
+      showToast("Documento deletado com sucesso", "success");
+      onDocumentsUploaded();
+      setIsDeleteModalOpen(false);
+      setDocumentToDelete(null);
+    } catch (error) {
+      console.error("Erro ao deletar documento:", error);
+      showToast("Erro ao deletar documento", "error");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Função para formatar o tipo de documento
@@ -767,11 +869,23 @@ function InformacoesGeraisTab({
                   <span className="text-xs text-gray-900">
                     {formatDocumentType(doc.key)}
                   </span>
-                  <button className="w-6 h-6 flex items-center justify-center border border-neutral-100 rounded hover:bg-gray-100 transition-colors shadow-sm p-1">
-                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                      <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                      <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                      <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
+                  <button
+                    onClick={() => handleOpenDeleteModal(doc)}
+                    className="w-6 h-6 flex items-center justify-center border border-neutral-100 rounded hover:bg-red-50 hover:border-red-200 transition-colors shadow-sm p-1"
+                    title="Deletar documento"
+                  >
+                    <svg
+                      className="w-4 h-4 text-red-500"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <path
+                        d="M7 6H17M10 3H14M7 6V18C7 19.1046 7.89543 20 9 20H15C16.1046 20 17 19.1046 17 18V6M10 11V16M14 11V16"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -792,11 +906,58 @@ function InformacoesGeraisTab({
         surgeryRequestId={surgeryRequestId}
         onSuccess={handleUploadSuccess}
       />
+
+      {/* Modal de Deletar Documento */}
+      <DeleteDocumentModal
+        isOpen={isDeleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        documentName={documentToDelete?.name || ""}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
 
-function CodigoTussTab({ solicitacao }: { solicitacao: any }) {
+interface CodigoTussTabProps {
+  solicitacao: any;
+  onUpdate: () => void;
+}
+
+function CodigoTussTab({ solicitacao, onUpdate }: CodigoTussTabProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const { showToast } = useToast();
+
+  const filteredProcedures = React.useMemo(() => {
+    if (!solicitacao.procedures) return [];
+    if (!searchTerm.trim()) return solicitacao.procedures;
+
+    const term = searchTerm.toLowerCase();
+    return solicitacao.procedures.filter(
+      (proc: any) =>
+        proc.procedure?.name?.toLowerCase().includes(term) ||
+        proc.procedure?.tuss_code?.toLowerCase().includes(term)
+    );
+  }, [solicitacao.procedures, searchTerm]);
+
+  const handleDelete = async (procedureId: string) => {
+    if (isDeleting) return;
+
+    setIsDeleting(procedureId);
+    try {
+      await tussService.removeProcedure(solicitacao.id, procedureId);
+      showToast("Procedimento removido com sucesso", "success");
+      onUpdate();
+    } catch (error) {
+      console.error("Erro ao remover procedimento:", error);
+      showToast("Erro ao remover procedimento", "error");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
   return (
     <div className="flex-1 border border-neutral-100 rounded-lg overflow-hidden flex flex-col">
       {/* Header com Busca e Botão */}
@@ -822,13 +983,18 @@ function CodigoTussTab({ solicitacao }: { solicitacao: any }) {
             <input
               type="text"
               placeholder="Buscar procedimento"
-              className="flex-1 bg-transparent border-none outline-none text-xs text-neutral-200 leading-snug"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug placeholder-gray-400"
             />
           </div>
         </div>
 
         {/* Botão Novo Procedimento */}
-        <button className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors rounded-lg py-1.5 px-3 gap-3 text-sm leading-normal">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors rounded-lg py-1.5 px-3 gap-3 text-sm leading-normal"
+        >
           Novo Procedimento
         </button>
       </div>
@@ -859,8 +1025,8 @@ function CodigoTussTab({ solicitacao }: { solicitacao: any }) {
 
       {/* Linhas de Procedimentos */}
       <div className="flex-1 overflow-auto">
-        {solicitacao.procedures && solicitacao.procedures.length > 0 ? (
-          solicitacao.procedures.map((proc: any, index: number) => (
+        {filteredProcedures.length > 0 ? (
+          filteredProcedures.map((proc: any) => (
             <div
               key={proc.id}
               className="flex items-center gap-6 px-4 py-3 border-b border-neutral-100 hover:bg-gray-50 transition-colors"
@@ -912,46 +1078,129 @@ function CodigoTussTab({ solicitacao }: { solicitacao: any }) {
                 </button>
 
                 {/* Botão Delete */}
-                <button className="w-6 h-6 flex items-center justify-center bg-white rounded hover:bg-gray-100 transition-colors">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M7 6H17M10 3H14M7 6V18C7 19.1046 7.89543 20 9 20H15C16.1046 20 17 19.1046 17 18V6M10 11V16M14 11V16"
-                      stroke="#E34935"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                <button
+                  onClick={() => handleDelete(proc.id)}
+                  disabled={isDeleting === proc.id}
+                  className="w-6 h-6 flex items-center justify-center bg-white rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
+                >
+                  {isDeleting === proc.id ? (
+                    <svg
+                      className="animate-spin h-4 w-4 text-red-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M7 6H17M10 3H14M7 6V18C7 19.1046 7.89543 20 9 20H15C16.1046 20 17 19.1046 17 18V6M10 11V16M14 11V16"
+                        stroke="#E34935"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
           ))
         ) : (
           <div className="px-4 py-8 text-center text-gray-500">
-            Nenhum procedimento cadastrado
+            {searchTerm
+              ? "Nenhum procedimento encontrado"
+              : "Nenhum procedimento cadastrado"}
           </div>
         )}
       </div>
+
+      {/* Modal de Novo Procedimento */}
+      <TussProcedureModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        surgeryRequestId={solicitacao.id}
+        onSuccess={onUpdate}
+      />
     </div>
   );
 }
 
-function OpmeTab({ solicitacao }: { solicitacao: any }) {
+interface OpmeTabProps {
+  solicitacao: any;
+  onUpdate: () => void;
+}
+
+function OpmeTab({ solicitacao, onUpdate }: OpmeTabProps) {
   const [expandedItems, setExpandedItems] = useState<{
     [key: number]: boolean;
   }>({});
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingOpme, setEditingOpme] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const toggleItem = (index: number) => {
     setExpandedItems((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
+  const filteredOpmeItems = React.useMemo(() => {
+    if (!solicitacao.opme_items) return [];
+    if (!searchTerm.trim()) return solicitacao.opme_items;
+
+    const term = searchTerm.toLowerCase();
+    return solicitacao.opme_items.filter(
+      (item: any) =>
+        item.name?.toLowerCase().includes(term) ||
+        item.brand?.toLowerCase().includes(term) ||
+        item.distributor?.toLowerCase().includes(term)
+    );
+  }, [solicitacao.opme_items, searchTerm]);
+
+  const handleEdit = (opme: any) => {
+    setEditingOpme(opme);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (opmeId: string) => {
+    if (isDeleting) return;
+
+    setIsDeleting(opmeId);
+    try {
+      await opmeService.delete(opmeId, solicitacao.id);
+      showToast("Material removido com sucesso", "success");
+      onUpdate();
+    } catch (error) {
+      console.error("Erro ao remover OPME:", error);
+      showToast("Erro ao remover material", "error");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingOpme(null);
+  };
+
   return (
     <div className="flex-1 border border-neutral-100 rounded-lg overflow-hidden flex flex-col">
       <div className="flex items-center justify-between gap-2.5 px-4 py-2.5 border-b border-neutral-100">
-        <div
-          className="flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded-lg bg-white"
-          style={{ width: "340px" }}
-        >
+        <div className="flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded-lg bg-white w-80">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="#111111" strokeWidth="1.5" />
             <path
@@ -964,13 +1213,18 @@ function OpmeTab({ solicitacao }: { solicitacao: any }) {
           <input
             type="text"
             placeholder="Busque materiais e dispositivos"
-            className="flex-1 bg-transparent border-none outline-none text-neutral-200 text-xs leading-snug"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 bg-transparent border-none outline-none text-gray-900 text-xs leading-snug placeholder-gray-400"
           />
         </div>
 
-        {/* Botão Editar OPME */}
-        <button className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors rounded-lg py-1.5 px-3 gap-3 text-sm leading-normal">
-          Editar OPME
+        {/* Botão Novo OPME */}
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors rounded-lg py-1.5 px-3 gap-3 text-sm leading-normal"
+        >
+          Novo OPME
         </button>
       </div>
 
@@ -1003,8 +1257,8 @@ function OpmeTab({ solicitacao }: { solicitacao: any }) {
 
       {/* Lista de Materiais */}
       <div className="flex-1 overflow-auto">
-        {solicitacao.opme_items && solicitacao.opme_items.length > 0 ? (
-          solicitacao.opme_items.map((material: any, index: number) => (
+        {filteredOpmeItems.length > 0 ? (
+          filteredOpmeItems.map((material: any, index: number) => (
             <div key={material.id}>
               {/* Header do Material */}
               <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-100 hover:bg-gray-50 transition-colors cursor-pointer">
@@ -1031,22 +1285,56 @@ function OpmeTab({ solicitacao }: { solicitacao: any }) {
                   {material.name}
                 </span>
 
-                {/* Menu de Ações */}
-                <button className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded transition-colors">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                    <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                    <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-                  </svg>
+                {/* Botão Delete */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(material.id);
+                  }}
+                  disabled={isDeleting === material.id}
+                  className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                >
+                  {isDeleting === material.id ? (
+                    <svg
+                      className="animate-spin h-4 w-4 text-red-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M7 6H17M10 3H14M7 6V18C7 19.1046 7.89543 20 9 20H15C16.1046 20 17 19.1046 17 18V6M10 11V16M14 11V16"
+                        stroke="#E34935"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
                 </button>
               </div>
 
               {/* Detalhes do Material (collapsible) */}
               {expandedItems[index] && (
-                <div className="flex items-center gap-3 border-b border-neutral-100 bg-neutral-50 py-3 pr-4 pl-[52px]">
+                <div className="flex items-center gap-3 border-b border-neutral-100 bg-gray-50 py-3 pr-4 pl-14">
                   {/* Coluna Marca */}
                   <div className="flex-1 flex flex-col justify-center gap-1">
-                    <span className="text-xs text-neutral-200 leading-snug">
+                    <span className="text-xs text-gray-400 leading-snug">
                       Marca
                     </span>
                     <span className="text-xs text-gray-900 leading-snug">
@@ -1056,7 +1344,7 @@ function OpmeTab({ solicitacao }: { solicitacao: any }) {
 
                   {/* Coluna Distribuidor */}
                   <div className="flex-1 flex flex-col justify-center gap-1">
-                    <span className="text-xs text-neutral-200 leading-snug">
+                    <span className="text-xs text-gray-400 leading-snug">
                       Distribuidor
                     </span>
                     <span className="text-xs text-gray-900 leading-snug">
@@ -1066,7 +1354,7 @@ function OpmeTab({ solicitacao }: { solicitacao: any }) {
 
                   {/* Coluna Quantidade */}
                   <div className="flex-1 flex flex-col justify-center gap-1">
-                    <span className="text-xs text-neutral-200 leading-snug">
+                    <span className="text-xs text-gray-400 leading-snug">
                       Quantidade
                     </span>
                     <span className="text-xs text-gray-900 leading-snug">
@@ -1075,7 +1363,10 @@ function OpmeTab({ solicitacao }: { solicitacao: any }) {
                   </div>
 
                   {/* Botão Edit */}
-                  <button className="w-6 h-6 flex items-center justify-center bg-white rounded hover:bg-gray-100 transition-colors">
+                  <button
+                    onClick={() => handleEdit(material)}
+                    className="w-6 h-6 flex items-center justify-center bg-white rounded hover:bg-gray-100 transition-colors"
+                  >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                       <path
                         d="M5 19H19"
@@ -1098,90 +1389,22 @@ function OpmeTab({ solicitacao }: { solicitacao: any }) {
           ))
         ) : (
           <div className="px-4 py-8 text-center text-gray-500">
-            Nenhum material OPME cadastrado
+            {searchTerm
+              ? "Nenhum material encontrado"
+              : "Nenhum material OPME cadastrado"}
           </div>
         )}
       </div>
+
+      {/* Modal de Novo/Editar OPME */}
+      <OpmeModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        surgeryRequestId={solicitacao.id}
+        onSuccess={onUpdate}
+        editingOpme={editingOpme}
+      />
     </div>
   );
 }
 
-function LaudoTab({ solicitacao }: { solicitacao: any }) {
-  return (
-    <div className="flex-1 flex flex-col gap-2.5 overflow-auto">
-      {/* Banner de Aviso IA */}
-      <div className="flex flex-col justify-center gap-2 px-4 py-3 rounded-3xl bg-purple-50">
-        <p className="m-0">
-          <span className="block font-sans font-semibold text-sm leading-6 text-purple-500">
-            Laudo gerado por IA
-          </span>
-          <span className="block mt-1 font-sans font-normal text-sm leading-none text-purple-500">
-            Este laudo foi criado automaticamente com base no procedimento e
-            histórico. Revise e edite conforme necessário antes de aprovar.
-          </span>
-        </p>
-      </div>
-
-      {/* Container do Laudo */}
-      <div className="flex-1 flex flex-col relative px-4 py-4 border border-neutral-100 rounded-3xl bg-white overflow-auto gap-2">
-        {/* Texto do Laudo */}
-        <div className="flex-1 overflow-auto font-sans font-normal text-sm leading-relaxed text-gray-900">
-          <p className="mb-4">
-            <strong className="font-semibold">IDENTIFICAÇÃO DO PACIENTE</strong>
-            <br />
-            Nome: Maria Silva Santos
-            <br />
-            CPF: 123.456.789-00
-            <br />
-            Data de Nascimento: 15/03/1968
-            <br />
-            Nº da Carteira: 000000
-          </p>
-          <p className="mb-4">
-            <strong className="font-semibold">INDICAÇÃO CIRÚRGICA</strong>
-            <br />
-            Artroplastia Total de Quadril Direito
-          </p>
-          <p className="mb-0">
-            <strong className="font-semibold">JUSTIFICATIVA TÉCNICA</strong>
-            <br />
-            Paciente apresenta quadro de coxartrose avançada em quadril direito,
-            com dor intensa e limitação funcional progressiva. O tratamento
-            conservador foi esgotado sem sucesso. A radiografia demonstra
-            acentuada redução do espaço articular, esclerose subcondral e
-            formação de osteófitos marginais. A ressonância magnética confirma
-            degeneração condral difusa e áreas de edema ósseo. Considerando a
-            idade da paciente, o grau de comprometimento articular e a
-            refratariedade ao tratamento clínico, está indicada a artroplastia
-            total de quadril para alívio da dor, restauração da função e melhora
-            da qualidade de vida.
-          </p>
-        </div>
-
-        {/* Badge Rascunho - Posicionamento Absoluto */}
-        <div className="absolute top-3 right-4 flex items-center justify-center gap-1 px-3 py-1.5 rounded-full bg-purple-50">
-          <span className="font-medium text-sm leading-tight text-purple-100">
-            Rascunho
-          </span>
-        </div>
-      </div>
-
-      {/* Botões de Ação */}
-      <div className="flex items-center justify-end gap-2">
-        {/* Botão Editar Laudo */}
-        <button className="flex items-center justify-center px-4 h-10 gap-1 rounded bg-transparent hover:bg-gray-50 transition-colors">
-          <span className="font-normal text-sm leading-tight text-teal-700">
-            Editar Laudo
-          </span>
-        </button>
-
-        {/* Botão Aprovar Laudo */}
-        <button className="flex items-center justify-center px-4 h-10 gap-1 bg-white border border-neutral-100 hover:bg-gray-50 transition-colors rounded-lg shadow-sm">
-          <span className="font-semibold text-sm leading-tight text-teal-700">
-            Aprovar Laudo
-          </span>
-        </button>
-      </div>
-    </div>
-  );
-}

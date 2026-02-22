@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useEffect } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
 import { getInitials, getDisplayName, getAvatarColor } from "@/lib/utils";
 import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
@@ -47,7 +47,16 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  // Carregar estado do localStorage ou usar valor padrão
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sidebar-collapsed");
+      return saved !== null ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+  
   const {
     value: isMenuOpen,
     setFalse: closeMenu,
@@ -56,6 +65,13 @@ export default function Sidebar() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useClickOutside(menuRef, closeMenu, isMenuOpen);
+
+  // Salvar estado no localStorage quando mudar
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("sidebar-collapsed", JSON.stringify(isCollapsed));
+    }
+  }, [isCollapsed]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -139,8 +155,8 @@ export default function Sidebar() {
 
       {/* Bottom Section */}
       <div className="flex flex-col gap-1 px-1 pb-1">
-        {/* Notifications */}
-        <NotificationsDropdown isCollapsed={isCollapsed} />
+        {/* Notifications - Oculto temporariamente */}
+        {/* <NotificationsDropdown isCollapsed={isCollapsed} /> */}
 
         {/* Settings */}
         <Link

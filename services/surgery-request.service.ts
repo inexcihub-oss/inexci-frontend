@@ -245,8 +245,22 @@ export const surgeryRequestService = {
   async update(requestId: string, data: any): Promise<any> {
     try {
       const response = await api.put("/surgery-requests", {
-        id: parseInt(requestId),
+        id: requestId,
         ...data,
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Envia a solicitação (muda status de Pendente para Enviada)
+   */
+  async send(requestId: string): Promise<any> {
+    try {
+      const response = await api.post("/surgery-requests/send", {
+        id: requestId,
       });
       return response.data;
     } catch (error) {

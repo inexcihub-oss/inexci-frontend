@@ -1,20 +1,32 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { X, Upload, FileText, Trash2 } from "lucide-react";
+import React, { useState, useRef, useCallback } from "react";
+import { X, Upload, FileText, Trash2, Check } from "lucide-react";
 import { documentService } from "@/services/document.service";
 
 interface DocumentUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  surgeryRequestId: number;
+  surgeryRequestId: string;
   onSuccess: () => void;
 }
 
-interface SelectedFiles {
-  personalDocument: File | null;
-  doctorRequest: File | null;
-  otherDocuments: File[];
+// Tipos de documento disponíveis
+const DOCUMENT_TYPES = [
+  { key: "personal_document", label: "RG/CNH" },
+  { key: "health_plan_card", label: "Carteirinha do Convênio" },
+  { key: "doctor_request", label: "Pedido Médico" },
+  { key: "exam", label: "Exames" },
+  { key: "additional_document", label: "Outros" },
+] as const;
+
+type DocumentTypeKey = (typeof DOCUMENT_TYPES)[number]["key"];
+
+interface SelectedFile {
+  file: File;
+  type: DocumentTypeKey;
+  name: string;
+  isRequired: boolean;
 }
 
 export function DocumentUploadModal({
@@ -23,84 +35,85 @@ export function DocumentUploadModal({
   surgeryRequestId,
   onSuccess,
 }: DocumentUploadModalProps) {
-  const [selectedFiles, setSelectedFiles] = useState<SelectedFiles>({
-    personalDocument: null,
-    doctorRequest: null,
-    otherDocuments: [],
-  });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [documentType, setDocumentType] = useState<DocumentTypeKey>("exam");
+  const [documentName, setDocumentName] = useState("");
+  const [isRequired, setIsRequired] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
 
-  const personalDocumentRef = useRef<HTMLInputElement>(null);
-  const doctorRequestRef = useRef<HTMLInputElement>(null);
-  const otherDocumentsRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropzoneRef = useRef<HTMLDivElement>(null);
+
+  const resetForm = useCallback(() => {
+    setSelectedFile(null);
+    setDocumentType("exam");
+    setDocumentName("");
+    setIsRequired(false);
+    setError(null);
+    setIsDragging(false);
+  }, []);
 
   if (!isOpen) return null;
 
-  const handlePersonalDocumentSelect = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setSelectedFiles((prev) => ({ ...prev, personalDocument: file }));
+      setSelectedFile(file);
+      // Auto-preencher nome com o nome do arquivo (sem extensão)
+      const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
+      setDocumentName(nameWithoutExtension);
+      setError(null);
     }
     event.target.value = "";
   };
 
-  const handleDoctorRequestSelect = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
     if (file) {
-      setSelectedFiles((prev) => ({ ...prev, doctorRequest: file }));
+      setSelectedFile(file);
+      const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
+      setDocumentName(nameWithoutExtension);
+      setError(null);
     }
-    event.target.value = "";
   };
 
-  const handleOtherDocumentsSelect = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      setSelectedFiles((prev) => ({
-        ...prev,
-        otherDocuments: [...prev.otherDocuments, ...Array.from(files)],
-      }));
-    }
-    event.target.value = "";
-  };
-
-  const removePersonalDocument = () => {
-    setSelectedFiles((prev) => ({ ...prev, personalDocument: null }));
-  };
-
-  const removeDoctorRequest = () => {
-    setSelectedFiles((prev) => ({ ...prev, doctorRequest: null }));
-  };
-
-  const removeOtherDocument = (index: number) => {
-    setSelectedFiles((prev) => ({
-      ...prev,
-      otherDocuments: prev.otherDocuments.filter((_, i) => i !== index),
-    }));
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setDocumentName("");
   };
 
   const handleCancel = () => {
-    setSelectedFiles({
-      personalDocument: null,
-      doctorRequest: null,
-      otherDocuments: [],
-    });
-    setError(null);
+    resetForm();
     onClose();
   };
 
   const handleSave = async () => {
-    const { personalDocument, doctorRequest, otherDocuments } = selectedFiles;
+    if (!selectedFile) {
+      setError("Selecione um arquivo para enviar.");
+      return;
+    }
 
-    // Verifica se há pelo menos um arquivo selecionado
-    if (!personalDocument && !doctorRequest && otherDocuments.length === 0) {
-      setError("Selecione pelo menos um documento para enviar.");
+    if (!documentName.trim()) {
+      setError("Informe um nome para o documento.");
       return;
     }
 
@@ -108,66 +121,27 @@ export function DocumentUploadModal({
     setError(null);
 
     try {
-      const uploadPromises: Promise<any>[] = [];
-
-      // Upload RG/CNH
-      if (personalDocument) {
-        uploadPromises.push(
-          documentService.upload({
-            surgery_request_id: surgeryRequestId,
-            key: "personal_document",
-            name: personalDocument.name,
-            file: personalDocument,
-          }),
-        );
-      }
-
-      // Upload Pedido Médico
-      if (doctorRequest) {
-        uploadPromises.push(
-          documentService.upload({
-            surgery_request_id: surgeryRequestId,
-            key: "doctor_request",
-            name: doctorRequest.name,
-            file: doctorRequest,
-          }),
-        );
-      }
-
-      // Upload outros documentos
-      for (const file of otherDocuments) {
-        uploadPromises.push(
-          documentService.upload({
-            surgery_request_id: surgeryRequestId,
-            key: "additional_document",
-            name: file.name,
-            file: file,
-          }),
-        );
-      }
-
-      await Promise.all(uploadPromises);
-
-      // Limpar estado e fechar modal
-      setSelectedFiles({
-        personalDocument: null,
-        doctorRequest: null,
-        otherDocuments: [],
+      await documentService.upload({
+        surgery_request_id: surgeryRequestId,
+        key: documentType,
+        name: documentName.trim(),
+        file: selectedFile,
       });
+
+      resetForm();
       onSuccess();
       onClose();
     } catch (err) {
-      console.error("Erro ao fazer upload dos documentos:", err);
-      setError("Erro ao enviar documentos. Tente novamente.");
+      console.error("Erro ao fazer upload do documento:", err);
+      setError("Erro ao enviar documento. Tente novamente.");
     } finally {
       setIsUploading(false);
     }
   };
 
-  const hasFiles =
-    selectedFiles.personalDocument ||
-    selectedFiles.doctorRequest ||
-    selectedFiles.otherDocuments.length > 0;
+  const getDocumentTypeLabel = (key: DocumentTypeKey): string => {
+    return DOCUMENT_TYPES.find((t) => t.key === key)?.label || key;
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -178,11 +152,11 @@ export function DocumentUploadModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg max-h-screen flex flex-col mx-4">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-neutral-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
-            Adicionar Documentos
+            Adicionar Documento
           </h2>
           <button
             onClick={!isUploading ? handleCancel : undefined}
@@ -194,174 +168,167 @@ export function DocumentUploadModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 p-6 space-y-4">
           {error && (
             <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
               {error}
             </div>
           )}
 
-          {/* RG/CNH do Paciente */}
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-900">
-              RG/CNH do Paciente
-            </label>
-            <div className="border border-neutral-100 rounded-lg p-3">
-              {selectedFiles.personalDocument ? (
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <FileText className="w-5 h-5 text-teal-700 flex-shrink-0" />
-                    <span className="text-sm text-gray-900 truncate">
-                      {selectedFiles.personalDocument.name}
-                    </span>
+          {/* Dropzone */}
+          <div
+            ref={dropzoneRef}
+            onClick={() => !selectedFile && fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`
+              border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
+              ${isDragging ? "border-teal-500 bg-teal-50" : "border-gray-300 hover:border-gray-400"}
+              ${selectedFile ? "bg-gray-50" : ""}
+            `}
+          >
+            {selectedFile ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-5 h-5 text-green-600" />
                   </div>
-                  <button
-                    onClick={removePersonalDocument}
-                    className="text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
-                    disabled={isUploading}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-medium text-gray-900">Enviado</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {selectedFile.name}
+                    </p>
+                  </div>
                 </div>
-              ) : (
                 <button
-                  onClick={() => personalDocumentRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
-                  disabled={isUploading}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  className="px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <Upload className="w-4 h-4" />
-                  <span>Selecionar arquivo</span>
+                  Selecionar
                 </button>
-              )}
-              <input
-                ref={personalDocumentRef}
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                onChange={handlePersonalDocumentSelect}
-                className="hidden"
-              />
-            </div>
-            <p className="text-xs text-gray-500">
-              Aceita: PDF, JPG, PNG, DOC (máx. 1 arquivo)
-            </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                  <Upload className="w-6 h-6 text-gray-400" />
+                </div>
+                <p className="text-sm text-gray-500">
+                  Clique para anexar documento ou exames.
+                </p>
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
           </div>
 
-          {/* Pedido Médico */}
+          {/* Tipo do documento */}
           <div className="space-y-2">
             <label className="block text-sm font-semibold text-gray-900">
-              Pedido Médico
+              Tipo do documento
             </label>
-            <div className="border border-neutral-100 rounded-lg p-3">
-              {selectedFiles.doctorRequest ? (
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <FileText className="w-5 h-5 text-teal-700 flex-shrink-0" />
-                    <span className="text-sm text-gray-900 truncate">
-                      {selectedFiles.doctorRequest.name}
-                    </span>
-                  </div>
-                  <button
-                    onClick={removeDoctorRequest}
-                    className="text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
-                    disabled={isUploading}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => doctorRequestRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
-                  disabled={isUploading}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
+              >
+                <span>{getDocumentTypeLabel(documentType)}</span>
+                <svg
+                  className={`w-5 h-5 text-gray-400 transition-transform ${isTypeDropdownOpen ? "rotate-180" : ""}`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
                 >
-                  <Upload className="w-4 h-4" />
-                  <span>Selecionar arquivo</span>
-                </button>
-              )}
-              <input
-                ref={doctorRequestRef}
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                onChange={handleDoctorRequestSelect}
-                className="hidden"
-              />
-            </div>
-            <p className="text-xs text-gray-500">
-              Aceita: PDF, JPG, PNG, DOC (máx. 1 arquivo)
-            </p>
-          </div>
-
-          {/* Outros Documentos */}
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-900">
-              Outros Documentos
-            </label>
-            <div className="border border-neutral-100 rounded-lg p-3 space-y-2">
-              {selectedFiles.otherDocuments.length > 0 && (
-                <div className="space-y-2">
-                  {selectedFiles.otherDocuments.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between gap-3 py-1"
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+              {isTypeDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
+                  {DOCUMENT_TYPES.map((type) => (
+                    <button
+                      key={type.key}
+                      type="button"
+                      onClick={() => {
+                        setDocumentType(type.key);
+                        setIsTypeDropdownOpen(false);
+                      }}
+                      className={`w-full px-4 py-2.5 text-sm text-left hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                        documentType === type.key
+                          ? "bg-teal-50 text-teal-700"
+                          : "text-gray-900"
+                      }`}
                     >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <FileText className="w-5 h-5 text-teal-700 flex-shrink-0" />
-                        <span className="text-sm text-gray-900 truncate">
-                          {file.name}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => removeOtherDocument(index)}
-                        className="text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
-                        disabled={isUploading}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                      {type.label}
+                    </button>
                   ))}
                 </div>
               )}
-              <button
-                onClick={() => otherDocumentsRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors border-t border-neutral-100 pt-3"
-                disabled={isUploading}
-              >
-                <Upload className="w-4 h-4" />
-                <span>Adicionar mais arquivos</span>
-              </button>
-              <input
-                ref={otherDocumentsRef}
-                type="file"
-                multiple
-                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                onChange={handleOtherDocumentsSelect}
-                className="hidden"
-              />
             </div>
-            <p className="text-xs text-gray-500">
-              Aceita: PDF, JPG, PNG, DOC (múltiplos arquivos)
-            </p>
+          </div>
+
+          {/* Nome do documento */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-900">
+              Nome
+            </label>
+            <input
+              type="text"
+              value={documentName}
+              onChange={(e) => setDocumentName(e.target.value)}
+              placeholder="Ex: Ressonância do Joelho"
+              className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors"
+            />
+          </div>
+
+          {/* Checkbox - Tornar obrigatório */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsRequired(!isRequired)}
+              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                isRequired
+                  ? "bg-teal-700 border-teal-700"
+                  : "bg-white border-gray-300"
+              }`}
+            >
+              {isRequired && <Check className="w-3 h-3 text-white" />}
+            </button>
+            <span className="text-sm text-gray-900">
+              Tornar documento obrigatório?
+            </span>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-neutral-100">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
           <button
             onClick={handleCancel}
-            className="flex items-center justify-center font-semibold text-gray-700 bg-white border border-neutral-100 hover:bg-gray-50 transition-colors py-2 px-4 rounded-lg text-sm"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             disabled={isUploading}
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center justify-center font-semibold text-white bg-teal-700 hover:bg-teal-800 transition-colors py-2 px-4 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isUploading || !hasFiles}
+            className="px-4 py-2 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isUploading || !selectedFile}
           >
             {isUploading ? (
-              <>
+              <span className="flex items-center gap-2">
                 <svg
-                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  className="animate-spin h-4 w-4 text-white"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -373,17 +340,17 @@ export function DocumentUploadModal({
                     r="10"
                     stroke="currentColor"
                     strokeWidth="4"
-                  ></circle>
+                  />
                   <path
                     className="opacity-75"
                     fill="currentColor"
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
+                  />
                 </svg>
                 Enviando...
-              </>
+              </span>
             ) : (
-              "Salvar"
+              "Adicionar"
             )}
           </button>
         </div>

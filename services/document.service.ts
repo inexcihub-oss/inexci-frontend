@@ -1,17 +1,17 @@
 import api from "@/lib/api";
 
 export interface Document {
-  id: number;
-  surgery_request_id: number;
+  id: string;
+  surgery_request_id: string;
   key: string;
   name: string;
   uri: string;
   created_at: string;
-  created_by: number;
+  created_by: string;
 }
 
 export interface CreateDocumentData {
-  surgery_request_id: number;
+  surgery_request_id: string;
   key: string;
   name: string;
   file: File;
@@ -35,9 +35,9 @@ export const documentService = {
   },
 
   async delete(data: {
-    id: number;
+    id: string;
     key: string;
-    surgery_request_id: number;
+    surgery_request_id: string;
   }): Promise<void> {
     await api.delete("/surgery-requests/documents", {
       data,

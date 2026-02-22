@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Combobox, Input } from "@/components/ui";
+import { SelectSearch } from "@/components/ui/SelectSearch";
 import { hospitalService } from "@/services/hospital.service";
 import { healthPlanService } from "@/services/health-plan.service";
 import { surgeryRequestService } from "@/services/surgery-request.service";
+import { cidService, CidItem } from "@/services/cid.service";
 import { useToast } from "@/hooks/useToast";
 
 interface EditableProcedureDataProps {
@@ -31,11 +33,21 @@ export function EditableProcedureData({
   // Estados para os valores do formulário
   const [formData, setFormData] = useState({
     hospitalId: solicitacao.hospital?.id?.toString() || "",
-    cidId: solicitacao.cid?.id || "",
+    cidId: solicitacao.cid_id || "",
+    cidDescription: solicitacao.cid_description || "",
     healthPlanId: solicitacao.health_plan?.id?.toString() || "",
     healthPlanRegistry: solicitacao.health_plan_registration || "",
     healthPlanType: solicitacao.health_plan_type || "",
   });
+
+  // Função para buscar CIDs
+  const searchCid = useCallback(async (search: string) => {
+    const response = await cidService.search(search, 50);
+    return response.records.map((item: CidItem) => ({
+      value: item.id,
+      label: `${item.id} - ${item.description}`,
+    }));
+  }, []);
 
   // Carregar dados dos selects
   useEffect(() => {
@@ -77,7 +89,8 @@ export function EditableProcedureData({
     // Resetar valores do formulário
     setFormData({
       hospitalId: solicitacao.hospital?.id?.toString() || "",
-      cidId: solicitacao.cid?.id || "",
+      cidId: solicitacao.cid_id || "",
+      cidDescription: solicitacao.cid_description || "",
       healthPlanId: solicitacao.health_plan?.id?.toString() || "",
       healthPlanRegistry: solicitacao.health_plan_registration || "",
       healthPlanType: solicitacao.health_plan_type || "",
@@ -86,8 +99,14 @@ export function EditableProcedureData({
 
   const handleSave = async () => {
     // Validação: Se preencheu convênio, deve preencher matrícula e plano
-    if (formData.healthPlanId && (!formData.healthPlanRegistry.trim() || !formData.healthPlanType.trim())) {
-      showToast("Ao selecionar um convênio, preencha também a Matrícula e o Plano", "error");
+    if (
+      formData.healthPlanId &&
+      (!formData.healthPlanRegistry.trim() || !formData.healthPlanType.trim())
+    ) {
+      showToast(
+        "Ao selecionar um convênio, preencha também a Matrícula e o Plano",
+        "error",
+      );
       return;
     }
 
@@ -95,10 +114,10 @@ export function EditableProcedureData({
 
     try {
       // Buscar dados completos dos itens selecionados (se preenchidos)
-      const hospital = formData.hospitalId 
+      const hospital = formData.hospitalId
         ? hospitals.find((h) => h.value === formData.hospitalId)
         : null;
-      
+
       const healthPlan = formData.healthPlanId
         ? healthPlans.find((hp) => hp.value === formData.healthPlanId)
         : null;
@@ -147,14 +166,11 @@ export function EditableProcedureData({
       if (formData.cidId) {
         updateData.cid = {
           id: formData.cidId,
-          description: solicitacao.cid?.description || "",
+          description: formData.cidDescription || "",
         };
       }
 
-      await surgeryRequestService.update(
-        solicitacao.id.toString(),
-        updateData,
-      );
+      await surgeryRequestService.update(solicitacao.id.toString(), updateData);
 
       showToast("Dados atualizados com sucesso!", "success");
       setIsEditing(false);
@@ -237,21 +253,23 @@ export function EditableProcedureData({
         {/* CID */}
         <div className="space-y-1">
           {isEditing ? (
-            <>
-              <label className="text-sm font-semibold text-black">
-                CID (Código Internacional de Doenças)
-              </label>
-              <input
-                type="text"
-                value={formData.cidId}
-                onChange={(e) =>
-                  setFormData({ ...formData, cidId: e.target.value })
-                }
-                maxLength={6}
-                placeholder="Digite o código CID"
-                className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 bg-white border border-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-200"
-              />
-            </>
+            <SelectSearch
+              label="CID (Código Internacional de Doenças)"
+              value={formData.cidId}
+              onChange={(value, label) => {
+                // Extrair a descrição do label (formato: "código - descrição")
+                const description = label
+                  ? label.split(" - ").slice(1).join(" - ")
+                  : "";
+                setFormData({
+                  ...formData,
+                  cidId: value,
+                  cidDescription: description,
+                });
+              }}
+              onSearch={searchCid}
+              placeholder="Buscar CID..."
+            />
           ) : (
             <>
               <label className="text-sm font-semibold text-black">
@@ -259,7 +277,11 @@ export function EditableProcedureData({
               </label>
               <input
                 type="text"
-                value={solicitacao.cid?.id || ""}
+                value={
+                  solicitacao.cid_id
+                    ? `${solicitacao.cid_id}${solicitacao.cid_description ? ` - ${solicitacao.cid_description}` : ""}`
+                    : ""
+                }
                 placeholder="Não informado"
                 className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
                 disabled
