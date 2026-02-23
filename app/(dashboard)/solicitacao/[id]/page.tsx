@@ -1,48 +1,53 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
 } from "@/services/surgery-request.service";
-import {
-  pendencyService,
-  ValidationResult,
-  CalculatedPendency,
-} from "@/services/pendency.service";
-import { Checkbox } from "@/components/ui";
+import { pendencyService, ValidationResult } from "@/services/pendency.service";
 import { DynamicPendencyList } from "@/components/pendencies";
-import { EditableProcedureData } from "@/components/surgery-request/EditableProcedureData";
 import {
   EditablePriority,
   EditableManager,
   EditableDeadline,
   StatusBadge,
 } from "@/components/surgery-request/EditableFields";
-import { DocumentUploadModal } from "@/components/documents/DocumentUploadModal";
-import { DeleteDocumentModal } from "@/components/documents/DeleteDocumentModal";
-import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
-import { OpmeModal } from "@/components/opme/OpmeModal";
 import { MedicalReportEditor } from "@/components/laudo/MedicalReportEditor";
 import { SendRequestModal } from "@/components/surgery-request/SendRequestModal";
-import { tussService } from "@/services/tuss.service";
-import { opmeService } from "@/services/opme.service";
-import { documentService } from "@/services/document.service";
-import { useToast } from "@/hooks/useToast";
-import PageContainer from "@/components/PageContainer";
+import { PrimaryActionButton } from "@/components/surgery-request/PrimaryActionButton";
+import { StartAnalysisModal } from "@/components/surgery-request/modals/StartAnalysisModal";
+import { UpdateAuthorizationsModal } from "@/components/surgery-request/modals/UpdateAuthorizationsModal";
+import { EditDateOptionsModal } from "@/components/surgery-request/modals/EditDateOptionsModal";
+import { RescheduleModal } from "@/components/surgery-request/modals/RescheduleModal";
+import { SurgeryStatusModal } from "@/components/surgery-request/modals/SurgeryStatusModal";
+import { InvoiceModal } from "@/components/surgery-request/modals/InvoiceModal";
+import { ConfirmReceiptModal } from "@/components/surgery-request/modals/ConfirmReceiptModal";
 
-type TabType = "informacoes-gerais" | "codigo-tuss" | "opme" | "laudo";
-type SidebarTab = "chat" | "pendencias";
+import PageContainer from "@/components/PageContainer";
+import { InformacoesGeraisTab } from "@/components/surgery-request/tabs/InformacoesGeraisTab";
+import { CodigoTussTab } from "@/components/surgery-request/tabs/CodigoTussTab";
+import { OpmeTab } from "@/components/surgery-request/tabs/OpmeTab";
+import { PosCirurgicoTab } from "@/components/surgery-request/tabs/PosCirurgicoTab";
+import { FaturamentoTab } from "@/components/surgery-request/tabs/FaturamentoTab";
+import { CloseRequestModal } from "@/components/surgery-request/modals/CloseRequestModal";
+
+type TabType =
+  | "informacoes-gerais"
+  | "codigo-tuss"
+  | "opme"
+  | "laudo"
+  | "pos-cirurgico"
+  | "faturamento";
 
 export default function SolicitacaoDetalhePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>("informacoes-gerais");
-  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>("chat");
-  
+
   // Carregar estado do localStorage ou usar valores padrão
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window !== "undefined") {
@@ -51,7 +56,7 @@ export default function SolicitacaoDetalhePage() {
     }
     return true;
   });
-  
+
   const [isActivitiesExpanded, setIsActivitiesExpanded] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("solicitacao-activities-expanded");
@@ -59,7 +64,7 @@ export default function SolicitacaoDetalhePage() {
     }
     return true;
   });
-  
+
   const [solicitacao, setSolicitacao] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
@@ -69,20 +74,42 @@ export default function SolicitacaoDetalhePage() {
   // Estado para validação dinâmica de pendências
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [loadingPendencies, setLoadingPendencies] = useState(false);
+
+  // Estados dos modais de ação
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
-  const { showToast } = useToast();
+  const [isStartAnalysisModalOpen, setIsStartAnalysisModalOpen] =
+    useState(false);
+  const [isUpdateAuthorizationsModalOpen, setIsUpdateAuthorizationsModalOpen] =
+    useState(false);
+  const [pendingDateIndex, setPendingDateIndex] = useState<number | null>(null);
+  const [isSavingDate, setIsSavingDate] = useState(false);
+  const [isEditDateOptionsModalOpen, setIsEditDateOptionsModalOpen] =
+    useState(false);
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [isSurgeryStatusModalOpen, setIsSurgeryStatusModalOpen] =
+    useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isConfirmReceiptModalOpen, setIsConfirmReceiptModalOpen] =
+    useState(false);
+  const [isCloseRequestModalOpen, setIsCloseRequestModalOpen] = useState(false);
 
   // Salvar estado da sidebar no localStorage quando mudar
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("solicitacao-sidebar-open", JSON.stringify(isSidebarOpen));
+      localStorage.setItem(
+        "solicitacao-sidebar-open",
+        JSON.stringify(isSidebarOpen),
+      );
     }
   }, [isSidebarOpen]);
 
   // Salvar estado das atividades no localStorage quando mudar
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("solicitacao-activities-expanded", JSON.stringify(isActivitiesExpanded));
+      localStorage.setItem(
+        "solicitacao-activities-expanded",
+        JSON.stringify(isActivitiesExpanded),
+      );
     }
   }, [isActivitiesExpanded]);
 
@@ -96,8 +123,8 @@ export default function SolicitacaoDetalhePage() {
         params.id as string,
       );
       setValidation(validationData);
-    } catch (error) {
-      console.error("Erro ao validar pendências:", error);
+    } catch {
+      // silently ignore
     } finally {
       setLoadingPendencies(false);
     }
@@ -109,8 +136,8 @@ export default function SolicitacaoDetalhePage() {
         setLoading(true);
         const data = await surgeryRequestService.getById(params.id as string);
         setSolicitacao(data);
-      } catch (error) {
-        console.error("Erro ao buscar solicitação:", error);
+      } catch {
+        // silently ignore
       } finally {
         setLoading(false);
       }
@@ -135,10 +162,66 @@ export default function SolicitacaoDetalhePage() {
       setSolicitacao(data);
       // Também recarregar pendências, pois podem ter mudado
       fetchPendencies();
-    } catch (error) {
-      console.error("Erro ao recarregar solicitação:", error);
+    } catch {
+      // silently ignore
     }
   }, [params.id, fetchPendencies]);
+
+  const handleConfirmDate = async () => {
+    if (pendingDateIndex === null) {
+      // sem data selecionada, ignora
+      return;
+    }
+    setIsSavingDate(true);
+    try {
+      await surgeryRequestService.confirmDate(solicitacao!.id, {
+        selected_date_index: pendingDateIndex as 0 | 1 | 2,
+      });
+      setPendingDateIndex(null);
+      handleUpdateProcedure();
+    } catch {
+      // silently ignore (toast pode ser adicionado aqui se necessário)
+    } finally {
+      setIsSavingDate(false);
+    }
+  };
+
+  // Abrir modal automaticamente quando há query param "action" (vindo do Kanban)
+  useEffect(() => {
+    if (!solicitacao) return;
+
+    const action = searchParams.get("action");
+    if (!action) return;
+
+    // Remover o query param da URL sem recarregar a página
+    router.replace(`/solicitacao/${params.id}`, { scroll: false });
+
+    switch (action) {
+      case "send":
+        setIsSendModalOpen(true);
+        break;
+      case "start-analysis":
+        setIsStartAnalysisModalOpen(true);
+        break;
+      case "update-authorizations":
+        setIsUpdateAuthorizationsModalOpen(true);
+        break;
+      case "surgery-status":
+        setIsSurgeryStatusModalOpen(true);
+        break;
+      case "invoice":
+        setIsInvoiceModalOpen(true);
+        break;
+      case "confirm-receipt":
+        setIsConfirmReceiptModalOpen(true);
+        break;
+      case "close":
+        setIsCloseRequestModalOpen(true);
+        break;
+      default:
+        break;
+    }
+  }, [solicitacao, searchParams, router, params.id]);
 
   const handleSelectDocument = (docId: string) => {
     const newSelected = new Set(selectedDocuments);
@@ -176,17 +259,12 @@ export default function SolicitacaoDetalhePage() {
 
     // Mapear abas para as keys de pendências correspondentes
     const tabPendencyMap: Record<TabType, string[]> = {
-      "informacoes-gerais": [
-        "patient_data",
-        "health_plan_data",
-        "hospital_data",
-        "diagnosis_data",
-        "document_personal_document",
-        "document_doctor_request",
-      ],
-      "codigo-tuss": ["insert_tuss"],
-      opme: ["insert_opme"],
+      "informacoes-gerais": ["patient_data", "hospital_data", "documents"],
+      "codigo-tuss": ["tuss_procedures"],
+      opme: ["opme_items"],
       laudo: ["medical_report"],
+      "pos-cirurgico": [],
+      faturamento: ["confirm_receipt"],
     };
 
     const pendencyKeys = tabPendencyMap[tabId] || [];
@@ -200,6 +278,9 @@ export default function SolicitacaoDetalhePage() {
     );
   };
 
+  const statusNum: number = solicitacao?.status ?? 0;
+
+  // Abas dinâmicas com base no status
   const tabs = [
     {
       id: "informacoes-gerais" as TabType,
@@ -221,6 +302,26 @@ export default function SolicitacaoDetalhePage() {
       label: "Laudo",
       hasWarning: getTabWarning("laudo"),
     },
+    // Aba Pós Cirúrgico: disponível a partir do status 6 (Realizada)
+    ...(statusNum >= 6
+      ? [
+          {
+            id: "pos-cirurgico" as TabType,
+            label: "Pós Cirúrgico",
+            hasWarning: false,
+          },
+        ]
+      : []),
+    // Aba Faturamento: disponível a partir do status 7 (Faturada)
+    ...(statusNum >= 7
+      ? [
+          {
+            id: "faturamento" as TabType,
+            label: "Faturamento",
+            hasWarning: getTabWarning("faturamento"),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -329,7 +430,7 @@ export default function SolicitacaoDetalhePage() {
           </header>
 
           {/* Content */}
-          <div className="flex-1 overflow-auto pb-2.5">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none pb-2.5">
             <div className="px-6 pt-2.5 pb-2.5 space-y-2.5">
               {/* Patient Card */}
               <div
@@ -360,12 +461,23 @@ export default function SolicitacaoDetalhePage() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setIsSendModalOpen(true)}
-                  className="bg-teal-700 text-white text-sm font-semibold hover:bg-teal-800 transition-colors flex-shrink-0 flex items-center justify-center px-6 py-2.5 gap-3 rounded-lg leading-normal"
-                >
-                  Enviar Solicitação
-                </button>
+
+                {/* Ações contextuais — dependem do status */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Botão primário dinâmico */}
+                  <PrimaryActionButton
+                    status={statusNum}
+                    onSendRequest={() => setIsSendModalOpen(true)}
+                    onStartAnalysis={() => setIsStartAnalysisModalOpen(true)}
+                    onUpdateAuthorizations={() =>
+                      setIsUpdateAuthorizationsModalOpen(true)
+                    }
+                    onConfirmDate={handleConfirmDate}
+                    onSurgeryStatus={() => setIsSurgeryStatusModalOpen(true)}
+                    onInvoice={() => setIsInvoiceModalOpen(true)}
+                    onConfirmReceipt={() => setIsConfirmReceiptModalOpen(true)}
+                  />
+                </div>
               </div>
 
               {/* Status Grid */}
@@ -505,22 +617,43 @@ export default function SolicitacaoDetalhePage() {
                     onUpdateProcedure={handleUpdateProcedure}
                     surgeryRequestId={solicitacao.id}
                     onDocumentsUploaded={handleUpdateProcedure}
+                    statusNum={statusNum}
+                    pendingDateIndex={pendingDateIndex}
+                    onSelectDate={setPendingDateIndex}
+                    onEditDateOptions={() =>
+                      setIsEditDateOptionsModalOpen(true)
+                    }
+                    onReschedule={() => setIsRescheduleModalOpen(true)}
                   />
                 )}
                 {activeTab === "codigo-tuss" && (
                   <CodigoTussTab
                     solicitacao={solicitacao}
                     onUpdate={handleUpdateProcedure}
+                    statusNum={statusNum}
                   />
                 )}
                 {activeTab === "opme" && (
                   <OpmeTab
                     solicitacao={solicitacao}
                     onUpdate={handleUpdateProcedure}
+                    statusNum={statusNum}
                   />
                 )}
                 {activeTab === "laudo" && (
                   <MedicalReportEditor
+                    solicitacao={solicitacao}
+                    onUpdate={handleUpdateProcedure}
+                  />
+                )}
+                {activeTab === "pos-cirurgico" && (
+                  <PosCirurgicoTab
+                    solicitacao={solicitacao}
+                    onUpdate={handleUpdateProcedure}
+                  />
+                )}
+                {activeTab === "faturamento" && (
+                  <FaturamentoTab
                     solicitacao={solicitacao}
                     onUpdate={handleUpdateProcedure}
                   />
@@ -693,718 +826,95 @@ export default function SolicitacaoDetalhePage() {
           setIsSendModalOpen(false);
         }}
       />
+
+      {/* Modal Solicitação em Análise (status 2 → 3) */}
+      <StartAnalysisModal
+        isOpen={isStartAnalysisModalOpen}
+        onClose={() => setIsStartAnalysisModalOpen(false)}
+        surgeryRequestId={solicitacao.id}
+        onSuccess={() => {
+          handleUpdateProcedure();
+          setIsStartAnalysisModalOpen(false);
+        }}
+      />
+
+      {/* Modal Atualizar Autorizações (status 3) */}
+      <UpdateAuthorizationsModal
+        isOpen={isUpdateAuthorizationsModalOpen}
+        onClose={() => setIsUpdateAuthorizationsModalOpen(false)}
+        solicitacao={solicitacao}
+        onSuccess={() => {
+          handleUpdateProcedure();
+          setIsUpdateAuthorizationsModalOpen(false);
+        }}
+        onClose2={() => setIsUpdateAuthorizationsModalOpen(false)}
+      />
+
+      {/* Modal Editar Datas (status 4, sem transição) */}
+      <EditDateOptionsModal
+        isOpen={isEditDateOptionsModalOpen}
+        onClose={() => setIsEditDateOptionsModalOpen(false)}
+        solicitacao={solicitacao}
+        onSuccess={() => {
+          handleUpdateProcedure();
+          setIsEditDateOptionsModalOpen(false);
+        }}
+      />
+
+      {/* Modal Reagendar (status 5, sem transição) */}
+      <RescheduleModal
+        isOpen={isRescheduleModalOpen}
+        onClose={() => setIsRescheduleModalOpen(false)}
+        solicitacao={solicitacao}
+        onSuccess={() => {
+          handleUpdateProcedure();
+          setIsRescheduleModalOpen(false);
+        }}
+      />
+
+      {/* Modal Status da Cirurgia (status 5 → 6/9/reagendada) */}
+      <SurgeryStatusModal
+        isOpen={isSurgeryStatusModalOpen}
+        onClose={() => setIsSurgeryStatusModalOpen(false)}
+        solicitacao={solicitacao}
+        onSuccess={() => {
+          handleUpdateProcedure();
+          setIsSurgeryStatusModalOpen(false);
+        }}
+      />
+
+      {/* Modal Faturar Solicitação (status 6 → 7) */}
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        solicitacao={solicitacao}
+        onSuccess={() => {
+          handleUpdateProcedure();
+          setIsInvoiceModalOpen(false);
+        }}
+      />
+
+      {/* Modal Confirmar Recebimento (status 7 → 8) */}
+      <ConfirmReceiptModal
+        isOpen={isConfirmReceiptModalOpen}
+        onClose={() => setIsConfirmReceiptModalOpen(false)}
+        solicitacao={solicitacao}
+        onSuccess={() => {
+          handleUpdateProcedure();
+          setIsConfirmReceiptModalOpen(false);
+        }}
+      />
+
+      {/* Modal de Encerrar Solicitação */}
+      <CloseRequestModal
+        isOpen={isCloseRequestModalOpen}
+        onClose={() => setIsCloseRequestModalOpen(false)}
+        surgeryRequestId={solicitacao.id}
+        onSuccess={() => {
+          handleUpdateProcedure();
+          setIsCloseRequestModalOpen(false);
+        }}
+      />
     </PageContainer>
   );
 }
-
-// Tab Components
-interface InformacoesGeraisTabProps {
-  solicitacao: any;
-  selectedDocuments: Set<string>;
-  handleSelectDocument: (docId: string) => void;
-  handleSelectAllDocuments: () => void;
-  onUpdateProcedure: () => void;
-  surgeryRequestId: string;
-  onDocumentsUploaded: () => void;
-}
-
-function InformacoesGeraisTab({
-  solicitacao,
-  selectedDocuments,
-  handleSelectDocument,
-  handleSelectAllDocuments,
-  onUpdateProcedure,
-  surgeryRequestId,
-  onDocumentsUploaded,
-}: InformacoesGeraisTabProps) {
-  const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
-  const [documentToDelete, setDocumentToDelete] = React.useState<any>(null);
-  const [isDeleting, setIsDeleting] = React.useState(false);
-  const { showToast } = useToast();
-
-  const handleAddDocuments = () => {
-    setIsUploadModalOpen(true);
-  };
-
-  const handleUploadSuccess = () => {
-    onDocumentsUploaded();
-  };
-
-  const handleOpenDeleteModal = (doc: any) => {
-    setDocumentToDelete(doc);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleCloseDeleteModal = () => {
-    if (!isDeleting) {
-      setIsDeleteModalOpen(false);
-      setDocumentToDelete(null);
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!documentToDelete || isDeleting) return;
-
-    setIsDeleting(true);
-    try {
-      await documentService.delete({
-        id: documentToDelete.id,
-        key: documentToDelete.key,
-        surgery_request_id: solicitacao.id,
-      });
-      showToast("Documento deletado com sucesso", "success");
-      onDocumentsUploaded();
-      setIsDeleteModalOpen(false);
-      setDocumentToDelete(null);
-    } catch (error) {
-      console.error("Erro ao deletar documento:", error);
-      showToast("Erro ao deletar documento", "error");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // Função para formatar o tipo de documento
-  const formatDocumentType = (key: string): string => {
-    const typeMap: Record<string, string> = {
-      personal_document: "RG/CNH",
-      doctor_request: "Pedido Médico",
-      additional_document: "Outro Documento",
-      rnm_report: "Laudo RNM",
-      authorization_guide: "Guia de Autorização",
-      invoice_protocol: "Protocolo de Fatura",
-      contest_file: "Arquivo de Contestação",
-    };
-    return typeMap[key] || key || "Documento";
-  };
-
-  return (
-    <div className="space-y-2.5">
-      {/* Dados do procedimento */}
-      <EditableProcedureData
-        solicitacao={solicitacao}
-        onUpdate={onUpdateProcedure}
-      />
-
-      {/* Documentos */}
-      <div className="border border-neutral-100 rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-4 h-10 border-b border-neutral-100">
-          <h3 className="text-sm font-semibold text-black">Documentos</h3>
-          <button
-            onClick={handleAddDocuments}
-            className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 gap-3 rounded-lg text-sm leading-normal"
-          >
-            Adicionar
-          </button>
-        </div>
-        <div className="space-y-0">
-          {/* Header */}
-          <div className="flex items-center gap-4 px-4 py-1.5 border-b border-neutral-100">
-            <Checkbox
-              checked={
-                solicitacao.documents &&
-                solicitacao.documents.length > 0 &&
-                selectedDocuments.size === solicitacao.documents.length
-              }
-              onCheckedChange={handleSelectAllDocuments}
-              indeterminate={
-                selectedDocuments.size > 0 &&
-                selectedDocuments.size < (solicitacao.documents?.length || 0)
-              }
-            />
-            <div className="flex-1 text-xs text-gray-900 opacity-70">Tipo</div>
-            <div className="flex-1 text-xs text-gray-900 opacity-70">
-              Anexado em:
-            </div>
-            <div className="flex-1 text-xs text-gray-900 opacity-70">
-              Tipo do arquivo:
-            </div>
-          </div>
-          {/* Rows */}
-          {solicitacao.documents && solicitacao.documents.length > 0 ? (
-            solicitacao.documents.map((doc: any, index: number) => (
-              <div
-                key={doc.id}
-                className="flex items-center gap-4 px-4 py-2 hover:bg-gray-50 transition-colors"
-                style={
-                  index < solicitacao.documents.length - 1
-                    ? { borderBottom: "1px solid #DCDFE3" }
-                    : {}
-                }
-              >
-                <Checkbox
-                  checked={selectedDocuments.has(doc.id)}
-                  onCheckedChange={() => handleSelectDocument(doc.id)}
-                />
-                <div className="flex-1 flex items-center gap-2">
-                  <svg
-                    className="w-6 h-6 text-gray-900"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <path
-                      d="M5 3V21H19V7.828L14.172 3H5Z"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                    <path
-                      d="M8 9H11M8 13H16M8 17H13"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                  </svg>
-                  <span className="text-xs font-semibold text-gray-900">
-                    {doc.name}
-                  </span>
-                </div>
-                <div className="flex-1 text-xs text-gray-900">
-                  {new Date(doc.created_at).toLocaleDateString("pt-BR", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </div>
-                <div className="flex-1 flex items-center justify-between">
-                  <span className="text-xs text-gray-900">
-                    {formatDocumentType(doc.key)}
-                  </span>
-                  <button
-                    onClick={() => handleOpenDeleteModal(doc)}
-                    className="w-6 h-6 flex items-center justify-center border border-neutral-100 rounded hover:bg-red-50 hover:border-red-200 transition-colors shadow-sm p-1"
-                    title="Deletar documento"
-                  >
-                    <svg
-                      className="w-4 h-4 text-red-500"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                    >
-                      <path
-                        d="M7 6H17M10 3H14M7 6V18C7 19.1046 7.89543 20 9 20H15C16.1046 20 17 19.1046 17 18V6M10 11V16M14 11V16"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="px-4 py-8 text-center text-gray-500">
-              Nenhum documento anexado
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Modal de Upload de Documentos */}
-      <DocumentUploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        surgeryRequestId={surgeryRequestId}
-        onSuccess={handleUploadSuccess}
-      />
-
-      {/* Modal de Deletar Documento */}
-      <DeleteDocumentModal
-        isOpen={isDeleteModalOpen}
-        onClose={handleCloseDeleteModal}
-        onConfirm={handleConfirmDelete}
-        documentName={documentToDelete?.name || ""}
-        isDeleting={isDeleting}
-      />
-    </div>
-  );
-}
-
-interface CodigoTussTabProps {
-  solicitacao: any;
-  onUpdate: () => void;
-}
-
-function CodigoTussTab({ solicitacao, onUpdate }: CodigoTussTabProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const { showToast } = useToast();
-
-  const filteredProcedures = React.useMemo(() => {
-    if (!solicitacao.procedures) return [];
-    if (!searchTerm.trim()) return solicitacao.procedures;
-
-    const term = searchTerm.toLowerCase();
-    return solicitacao.procedures.filter(
-      (proc: any) =>
-        proc.procedure?.name?.toLowerCase().includes(term) ||
-        proc.procedure?.tuss_code?.toLowerCase().includes(term)
-    );
-  }, [solicitacao.procedures, searchTerm]);
-
-  const handleDelete = async (procedureId: string) => {
-    if (isDeleting) return;
-
-    setIsDeleting(procedureId);
-    try {
-      await tussService.removeProcedure(solicitacao.id, procedureId);
-      showToast("Procedimento removido com sucesso", "success");
-      onUpdate();
-    } catch (error) {
-      console.error("Erro ao remover procedimento:", error);
-      showToast("Erro ao remover procedimento", "error");
-    } finally {
-      setIsDeleting(null);
-    }
-  };
-
-  return (
-    <div className="flex-1 border border-neutral-100 rounded-lg overflow-hidden flex flex-col">
-      {/* Header com Busca e Botão */}
-      <div className="flex items-center justify-between gap-2.5 px-4 py-2.5 border-b border-neutral-100">
-        <div className="flex items-center gap-2">
-          {/* Campo de Busca */}
-          <div className="flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded-lg bg-white w-80">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <circle
-                cx="11"
-                cy="11"
-                r="7"
-                stroke="#111111"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M16 16L20 20"
-                stroke="#111111"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            <input
-              type="text"
-              placeholder="Buscar procedimento"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug placeholder-gray-400"
-            />
-          </div>
-        </div>
-
-        {/* Botão Novo Procedimento */}
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors rounded-lg py-1.5 px-3 gap-3 text-sm leading-normal"
-        >
-          Novo Procedimento
-        </button>
-      </div>
-
-      {/* Header da Tabela */}
-      <div className="flex items-center gap-6 px-4 py-1 border-b border-neutral-100">
-        <div className="w-6 h-6 opacity-0">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <rect
-              x="3"
-              y="3"
-              width="18"
-              height="18"
-              rx="2"
-              stroke="#111111"
-              strokeWidth="1.5"
-            />
-          </svg>
-        </div>
-        <span className="flex-1 opacity-50 text-xs text-gray-900 leading-snug">
-          Procedimento
-        </span>
-        <span className="opacity-50 text-xs text-gray-900 leading-snug">
-          Quantidade
-        </span>
-        <div className="w-20" /> {/* Espaço para actions */}
-      </div>
-
-      {/* Linhas de Procedimentos */}
-      <div className="flex-1 overflow-auto">
-        {filteredProcedures.length > 0 ? (
-          filteredProcedures.map((proc: any) => (
-            <div
-              key={proc.id}
-              className="flex items-center gap-6 px-4 py-3 border-b border-neutral-100 hover:bg-gray-50 transition-colors"
-            >
-              {/* Checkbox */}
-              <div className="w-6 h-6 opacity-50">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <rect
-                    x="3"
-                    y="3"
-                    width="18"
-                    height="18"
-                    rx="2"
-                    stroke="#111111"
-                    strokeWidth="1.5"
-                  />
-                </svg>
-              </div>
-
-              {/* Procedimento */}
-              <span className="flex-1 text-sm text-gray-900 leading-normal">
-                {proc.procedure?.tuss_code || ""} - {proc.procedure?.name || ""}
-              </span>
-
-              {/* Quantidade */}
-              <span className="flex-1 text-xs text-gray-900 leading-snug">
-                {proc.quantity || "1"}
-              </span>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2">
-                {/* Botão Edit */}
-                <button className="w-6 h-6 flex items-center justify-center bg-white rounded hover:bg-gray-100 transition-colors">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M5 19H19"
-                      stroke="#111111"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                    <path
-                      d="M16 5L19 8L8 19H5V16L16 5Z"
-                      stroke="#111111"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-
-                {/* Botão Delete */}
-                <button
-                  onClick={() => handleDelete(proc.id)}
-                  disabled={isDeleting === proc.id}
-                  className="w-6 h-6 flex items-center justify-center bg-white rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
-                >
-                  {isDeleting === proc.id ? (
-                    <svg
-                      className="animate-spin h-4 w-4 text-red-500"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M7 6H17M10 3H14M7 6V18C7 19.1046 7.89543 20 9 20H15C16.1046 20 17 19.1046 17 18V6M10 11V16M14 11V16"
-                        stroke="#E34935"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="px-4 py-8 text-center text-gray-500">
-            {searchTerm
-              ? "Nenhum procedimento encontrado"
-              : "Nenhum procedimento cadastrado"}
-          </div>
-        )}
-      </div>
-
-      {/* Modal de Novo Procedimento */}
-      <TussProcedureModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        surgeryRequestId={solicitacao.id}
-        onSuccess={onUpdate}
-      />
-    </div>
-  );
-}
-
-interface OpmeTabProps {
-  solicitacao: any;
-  onUpdate: () => void;
-}
-
-function OpmeTab({ solicitacao, onUpdate }: OpmeTabProps) {
-  const [expandedItems, setExpandedItems] = useState<{
-    [key: number]: boolean;
-  }>({});
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingOpme, setEditingOpme] = useState<any>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const { showToast } = useToast();
-
-  const toggleItem = (index: number) => {
-    setExpandedItems((prev) => ({ ...prev, [index]: !prev[index] }));
-  };
-
-  const filteredOpmeItems = React.useMemo(() => {
-    if (!solicitacao.opme_items) return [];
-    if (!searchTerm.trim()) return solicitacao.opme_items;
-
-    const term = searchTerm.toLowerCase();
-    return solicitacao.opme_items.filter(
-      (item: any) =>
-        item.name?.toLowerCase().includes(term) ||
-        item.brand?.toLowerCase().includes(term) ||
-        item.distributor?.toLowerCase().includes(term)
-    );
-  }, [solicitacao.opme_items, searchTerm]);
-
-  const handleEdit = (opme: any) => {
-    setEditingOpme(opme);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = async (opmeId: string) => {
-    if (isDeleting) return;
-
-    setIsDeleting(opmeId);
-    try {
-      await opmeService.delete(opmeId, solicitacao.id);
-      showToast("Material removido com sucesso", "success");
-      onUpdate();
-    } catch (error) {
-      console.error("Erro ao remover OPME:", error);
-      showToast("Erro ao remover material", "error");
-    } finally {
-      setIsDeleting(null);
-    }
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingOpme(null);
-  };
-
-  return (
-    <div className="flex-1 border border-neutral-100 rounded-lg overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between gap-2.5 px-4 py-2.5 border-b border-neutral-100">
-        <div className="flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded-lg bg-white w-80">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="11" cy="11" r="7" stroke="#111111" strokeWidth="1.5" />
-            <path
-              d="M16 16L20 20"
-              stroke="#111111"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-          <input
-            type="text"
-            placeholder="Busque materiais e dispositivos"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 bg-transparent border-none outline-none text-gray-900 text-xs leading-snug placeholder-gray-400"
-          />
-        </div>
-
-        {/* Botão Novo OPME */}
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors rounded-lg py-1.5 px-3 gap-3 text-sm leading-normal"
-        >
-          Novo OPME
-        </button>
-      </div>
-
-      {/* Header da Lista */}
-      <div className="flex items-center gap-3 px-4 py-1 border-b border-neutral-100">
-        <div className="w-6 h-6 opacity-0">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <rect
-              x="3"
-              y="3"
-              width="18"
-              height="18"
-              rx="2"
-              stroke="#111111"
-              strokeWidth="1.5"
-            />
-          </svg>
-        </div>
-        <span className="flex-1 opacity-50 text-xs text-gray-900 leading-snug">
-          Descrição
-        </span>
-        <div className="w-6 h-6 opacity-0">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-            <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-            <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-          </svg>
-        </div>
-      </div>
-
-      {/* Lista de Materiais */}
-      <div className="flex-1 overflow-auto">
-        {filteredOpmeItems.length > 0 ? (
-          filteredOpmeItems.map((material: any, index: number) => (
-            <div key={material.id}>
-              {/* Header do Material */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-100 hover:bg-gray-50 transition-colors cursor-pointer">
-                {/* Seta de Expansão */}
-                <button
-                  onClick={() => toggleItem(index)}
-                  className={`w-6 h-6 flex items-center justify-center transition-transform ${
-                    expandedItems[index] ? "rotate-90" : "rotate-0"
-                  }`}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M10 8L14 12L10 16"
-                      stroke="#111111"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-
-                {/* Nome do Material */}
-                <span className="flex-1 font-semibold text-sm text-gray-900 leading-normal">
-                  {material.name}
-                </span>
-
-                {/* Botão Delete */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(material.id);
-                  }}
-                  disabled={isDeleting === material.id}
-                  className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
-                >
-                  {isDeleting === material.id ? (
-                    <svg
-                      className="animate-spin h-4 w-4 text-red-500"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M7 6H17M10 3H14M7 6V18C7 19.1046 7.89543 20 9 20H15C16.1046 20 17 19.1046 17 18V6M10 11V16M14 11V16"
-                        stroke="#E34935"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </button>
-              </div>
-
-              {/* Detalhes do Material (collapsible) */}
-              {expandedItems[index] && (
-                <div className="flex items-center gap-3 border-b border-neutral-100 bg-gray-50 py-3 pr-4 pl-14">
-                  {/* Coluna Marca */}
-                  <div className="flex-1 flex flex-col justify-center gap-1">
-                    <span className="text-xs text-gray-400 leading-snug">
-                      Marca
-                    </span>
-                    <span className="text-xs text-gray-900 leading-snug">
-                      {material.brand || "-"}
-                    </span>
-                  </div>
-
-                  {/* Coluna Distribuidor */}
-                  <div className="flex-1 flex flex-col justify-center gap-1">
-                    <span className="text-xs text-gray-400 leading-snug">
-                      Distribuidor
-                    </span>
-                    <span className="text-xs text-gray-900 leading-snug">
-                      {material.distributor || "-"}
-                    </span>
-                  </div>
-
-                  {/* Coluna Quantidade */}
-                  <div className="flex-1 flex flex-col justify-center gap-1">
-                    <span className="text-xs text-gray-400 leading-snug">
-                      Quantidade
-                    </span>
-                    <span className="text-xs text-gray-900 leading-snug">
-                      {material.quantity || "-"}
-                    </span>
-                  </div>
-
-                  {/* Botão Edit */}
-                  <button
-                    onClick={() => handleEdit(material)}
-                    className="w-6 h-6 flex items-center justify-center bg-white rounded hover:bg-gray-100 transition-colors"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M5 19H19"
-                        stroke="#111111"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
-                      <path
-                        d="M16 5L19 8L8 19H5V16L16 5Z"
-                        stroke="#111111"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
-          ))
-        ) : (
-          <div className="px-4 py-8 text-center text-gray-500">
-            {searchTerm
-              ? "Nenhum material encontrado"
-              : "Nenhum material OPME cadastrado"}
-          </div>
-        )}
-      </div>
-
-      {/* Modal de Novo/Editar OPME */}
-      <OpmeModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        surgeryRequestId={solicitacao.id}
-        onSuccess={onUpdate}
-        editingOpme={editingOpme}
-      />
-    </div>
-  );
-}
-

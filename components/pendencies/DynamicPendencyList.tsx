@@ -2,10 +2,11 @@
 
 import { cn } from "@/lib/utils";
 import { CalculatedPendency } from "@/services/pendency.service";
-import { Check, Clock, AlertCircle, Circle } from "lucide-react";
+import { Check, Clock, AlertCircle, Circle, ChevronDown } from "lucide-react";
+import { useState } from "react";
 
 interface DynamicPendencyListProps {
-  pendencies: CalculatedPendency[];
+  pendencies: CalculatedPendency[] | undefined | null;
   statusLabel: string;
   canAdvance: boolean;
   completedCount: number;
@@ -25,7 +26,19 @@ export function DynamicPendencyList({
   compact = false,
   className,
 }: DynamicPendencyListProps) {
-  if (pendencies.length === 0) {
+  // Filtra itens opcionais que já estão completos — não há nada a exibir para eles.
+  // Ex: 'contest_pending' aparece como completo quando não há contestação ativa;
+  // só deve ser exibido quando há contestação pendente (isOptional && !isComplete).
+  const displayPendencies = (pendencies ?? []).filter(
+    (p) => !(p.isOptional && p.isComplete),
+  );
+
+  const displayTotal = displayPendencies.length;
+  const displayCompleted = displayPendencies.filter((p) => p.isComplete).length;
+  const progress =
+    displayTotal > 0 ? (displayCompleted / displayTotal) * 100 : 100;
+
+  if (displayPendencies.length === 0) {
     return (
       <div className={cn("text-center py-8 text-gray-500", className)}>
         <Check className="h-12 w-12 mx-auto mb-2 text-green-500" />
@@ -33,8 +46,6 @@ export function DynamicPendencyList({
       </div>
     );
   }
-
-  const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -68,13 +79,13 @@ export function DynamicPendencyList({
         </div>
 
         <div className="text-xs text-gray-500 text-center">
-          {completedCount} de {totalCount} concluídas
+          {displayCompleted} de {displayTotal} concluídas
         </div>
       </div>
 
       {/* Lista de pendências */}
       <div className={cn(compact ? "space-y-1" : "space-y-2")}>
-        {pendencies.map((pendency, index) => (
+        {displayPendencies.map((pendency) => (
           <DynamicPendencyItem
             key={pendency.key}
             pendency={pendency}
@@ -95,93 +106,127 @@ function DynamicPendencyItem({
   pendency,
   compact = false,
 }: DynamicPendencyItemProps) {
-  const getStatusIcon = () => {
-    if (pendency.isComplete) {
-      return <Check className="h-4 w-4 text-green-600" />;
-    }
-    if (pendency.isWaiting) {
-      return <Clock className="h-4 w-4 text-blue-500" />;
-    }
-    if (pendency.isOptional) {
-      return <Circle className="h-4 w-4 text-gray-400" />;
-    }
-    return <AlertCircle className="h-4 w-4 text-amber-500" />;
-  };
+  const [expanded, setExpanded] = useState(false);
+  const hasCheckItems = pendency.checkItems && pendency.checkItems.length > 0;
+  const isClickable = hasCheckItems && !pendency.isComplete;
 
-  const getResponsibleLabel = () => {
-    switch (pendency.responsible) {
-      case "collaborator":
-        return "Colaborador";
-      case "patient":
-        return "Paciente";
-      case "doctor":
-        return "Médico";
-      default:
-        return "";
-    }
+  const getStatusIcon = () => {
+    if (pendency.isComplete)
+      return <Check className="h-4 w-4 text-green-600 flex-shrink-0" />;
+    if (pendency.isWaiting)
+      return <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />;
+    if (pendency.isOptional)
+      return <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />;
+    return <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />;
   };
 
   return (
     <div
       className={cn(
-        "flex items-start gap-3 p-3 rounded-lg border transition-colors",
+        "rounded-xl border transition-all overflow-hidden",
         pendency.isComplete
           ? "bg-green-50 border-green-200"
           : pendency.isWaiting
             ? "bg-blue-50 border-blue-200"
             : pendency.isOptional
-              ? "bg-gray-50 border-gray-200"
+              ? "bg-blue-50 border-blue-200"
               : "bg-amber-50 border-amber-200",
-        compact && "p-2",
       )}
     >
-      <div className="flex-shrink-0 mt-0.5">{getStatusIcon()}</div>
+      {/* Linha principal */}
+      <div
+        className={cn(
+          "flex items-center gap-3 px-3 py-2.5",
+          compact && "py-2",
+          isClickable && "cursor-pointer select-none",
+        )}
+        onClick={() => isClickable && setExpanded((v) => !v)}
+      >
+        {getStatusIcon()}
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "font-medium text-sm",
-              pendency.isComplete ? "text-green-700" : "text-gray-900",
-            )}
-          >
-            {pendency.name}
-          </span>
-
+        <span
+          className={cn(
+            "flex-1 text-sm font-semibold leading-tight",
+            pendency.isComplete
+              ? "text-green-700"
+              : pendency.isOptional
+                ? "text-blue-700"
+                : "text-gray-900",
+          )}
+        >
+          {pendency.name}
           {pendency.isOptional && (
-            <span className="px-1.5 py-0.5 bg-gray-200 text-gray-600 text-xs rounded">
-              Opcional
+            <span className="ml-1.5 text-xs font-normal text-gray-400">
+              (opcional)
             </span>
           )}
+        </span>
 
-          {pendency.isWaiting && (
-            <span className="px-1.5 py-0.5 bg-blue-200 text-blue-700 text-xs rounded">
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {pendency.isComplete ? (
+            <span className="text-xs text-green-600 font-semibold">
+              Completo
+            </span>
+          ) : pendency.isWaiting ? (
+            <span className="text-xs text-blue-600 font-semibold">
               Aguardando
             </span>
+          ) : pendency.isOptional ? (
+            <span className="text-xs text-blue-600 font-semibold">
+              Lembrete
+            </span>
+          ) : (
+            <span className="text-xs text-amber-600 font-semibold">
+              Pendente
+            </span>
+          )}
+          {isClickable && (
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 text-gray-400 transition-transform",
+                expanded && "rotate-180",
+              )}
+            />
           )}
         </div>
+      </div>
 
-        {!compact && pendency.description && (
-          <p className="text-xs text-gray-500 mt-0.5">{pendency.description}</p>
-        )}
-
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-gray-400">
-            Responsável: {getResponsibleLabel()}
-          </span>
+      {/* Sub-itens expandidos */}
+      {expanded && hasCheckItems && (
+        <div
+          className={cn(
+            "mx-3 mb-2.5 rounded-lg overflow-hidden border",
+            pendency.isOptional ? "border-gray-200" : "border-amber-200",
+          )}
+        >
+          {pendency.checkItems!.map((item, i) => (
+            <div
+              key={i}
+              className={cn(
+                "flex items-center gap-2.5 px-3 py-2 text-sm",
+                i > 0 && "border-t border-amber-100",
+                item.done ? "bg-green-50" : "bg-white",
+              )}
+            >
+              {item.done ? (
+                <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />
+              ) : (
+                <Circle className="h-3.5 w-3.5 text-gray-300 flex-shrink-0" />
+              )}
+              <span
+                className={cn(
+                  "text-xs leading-snug",
+                  item.done
+                    ? "text-green-700 line-through decoration-green-400"
+                    : "text-gray-700",
+                )}
+              >
+                {item.label}
+              </span>
+            </div>
+          ))}
         </div>
-      </div>
-
-      {/* Status indicator */}
-      <div className="flex-shrink-0">
-        {pendency.isComplete ? (
-          <span className="text-xs text-green-600 font-medium">✓ Completo</span>
-        ) : pendency.isWaiting ? (
-          <span className="text-xs text-blue-600 font-medium">Aguardando</span>
-        ) : (
-          <span className="text-xs text-amber-600 font-medium">Pendente</span>
-        )}
-      </div>
+      )}
     </div>
   );
 }

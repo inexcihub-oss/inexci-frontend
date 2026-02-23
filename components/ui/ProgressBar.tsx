@@ -125,7 +125,7 @@ const defaultStatusLabels = [
 
 export function StatusProgressBar({
   currentStatus,
-  totalStatuses = 9, // Excluding Cancelada as it's not a step in the normal flow
+  totalStatuses: _totalStatuses = 9, // Excluding Cancelada as it's not a step in the normal flow
   showSteps = false,
   statusLabels = defaultStatusLabels,
   className,

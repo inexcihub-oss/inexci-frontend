@@ -20,6 +20,8 @@ export interface CreateSurgeryRequestProcedureData {
   surgery_request_id: string;
   procedures: {
     procedure_id: string;
+    tuss_code?: string;
+    name?: string;
     quantity: number;
   }[];
 }
@@ -37,7 +39,10 @@ export const tussService = {
   /**
    * Busca códigos TUSS do arquivo JSON (novo endpoint)
    */
-  async searchTussFromJson(search?: string, limit: number = 50): Promise<TussCode[]> {
+  async searchTussFromJson(
+    search?: string,
+    limit: number = 50,
+  ): Promise<TussCode[]> {
     try {
       const params: Record<string, string | number> = { limit };
       if (search && search.length >= 2) {
@@ -80,7 +85,9 @@ export const tussService = {
   /**
    * Atualiza procedimentos TUSS de uma solicitação
    */
-  async updateProcedures(data: UpdateSurgeryRequestProcedureData): Promise<void> {
+  async updateProcedures(
+    data: UpdateSurgeryRequestProcedureData,
+  ): Promise<void> {
     try {
       await api.post("/surgery-requests/procedures", data);
     } catch (error: any) {
@@ -94,7 +101,7 @@ export const tussService = {
    */
   async removeProcedure(
     surgeryRequestId: string,
-    procedureId: string
+    procedureId: string,
   ): Promise<void> {
     try {
       await api.delete(`/surgery-requests/procedures/${procedureId}`, {

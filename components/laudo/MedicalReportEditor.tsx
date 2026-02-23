@@ -1,368 +1,1044 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { X } from "lucide-react";
 import { surgeryRequestService } from "@/services/surgery-request.service";
+import { documentService } from "@/services/document.service";
+import { healthPlanService } from "@/services/health-plan.service";
+import { Combobox } from "@/components/ui";
 import { useToast } from "@/hooks/useToast";
+import { MedicalReportPreviewModal } from "@/components/laudo/MedicalReportPreviewModal";
+import api from "@/lib/api";
+
+// ─── Interfaces ──────────────────────────────────────────────────────────────
 
 interface MedicalReportEditorProps {
   solicitacao: any;
   onUpdate: () => void;
 }
 
-interface ReportData {
-  patientIdentification: string;
-  surgicalIndication: string;
-  technicalJustification: string;
+interface PatientFormData {
+  name: string;
+  birthDate: string;
+  rg: string;
+  cpf: string;
+  phone: string;
+  address: string;
+  zipCode: string;
+  healthPlan: string;
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatDateBR(dateStr: string | undefined | null): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString("pt-BR");
+  } catch {
+    return dateStr;
+  }
+}
+
+function parseMedicalReport(sol: any): any {
+  if (!sol?.medical_report) return {};
+  try {
+    return JSON.parse(sol.medical_report);
+  } catch {
+    return {};
+  }
+}
+
+function buildPatientData(sol: any, parsed: any): PatientFormData {
+  const pd = parsed?.patientData;
+  const p = sol?.patient;
+  return {
+    name: pd?.name ?? p?.name ?? "",
+    birthDate: pd?.birthDate ?? formatDateBR(p?.birth_date) ?? "",
+    rg: pd?.rg ?? p?.rg ?? "",
+    cpf: pd?.cpf ?? p?.cpf ?? "",
+    phone: pd?.phone ?? p?.phone ?? "",
+    address: pd?.address ?? p?.address ?? "",
+    zipCode: pd?.zipCode ?? p?.zip_code ?? p?.cep ?? "",
+    healthPlan:
+      pd?.healthPlan ?? sol?.health_plan?.name ?? sol?.health_plan_name ?? "",
+  };
+}
+
+// ─── Upload helpers ──────────────────────────────────────────────────────────
+
+interface UploadItem {
+  id: string;
+  name: string;
+  size: number;
+  progress: number;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// ─── Spinner ─────────────────────────────────────────────────────────────────
+
+function Spinner({
+  className = "w-4 h-4 text-gray-400",
+}: {
+  className?: string;
+}) {
+  return (
+    <svg
+      className={`animate-spin ${className}`}
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
+    </svg>
+  );
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 
 export function MedicalReportEditor({
   solicitacao,
   onUpdate,
 }: MedicalReportEditorProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [reportData, setReportData] = useState<ReportData>({
-    patientIdentification: "",
-    surgicalIndication: "",
-    technicalJustification: "",
+  // ── Estado do formulário ─────────────────────────────────────────────────
+  const [patientData, setPatientData] = useState<PatientFormData>({
+    name: "",
+    birthDate: "",
+    rg: "",
+    cpf: "",
+    phone: "",
+    address: "",
+    zipCode: "",
+    healthPlan: "",
   });
+  const [isEditingPatient, setIsEditingPatient] = useState(false);
+  const [isEditingHistory, setIsEditingHistory] = useState(false);
+  const [isEditingConduct, setIsEditingConduct] = useState(false);
+  const [historyAndDiagnosis, setHistoryAndDiagnosis] = useState("");
+  const [conduct, setConduct] = useState("");
+
+  // ── Estado de UI ─────────────────────────────────────────────────────────
+  const [isSaving, setIsSaving] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [isUploadingSignedReport, setIsUploadingSignedReport] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [isDeletingDocId, setIsDeletingDocId] = useState<string | null>(null);
+  const [imageUploadItems, setImageUploadItems] = useState<UploadItem[]>([]);
+  const [signedUploadItem, setSignedUploadItem] = useState<UploadItem | null>(
+    null,
+  );
+  const [healthPlanId, setHealthPlanId] = useState("");
+  const [healthPlanOptions, setHealthPlanOptions] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
+
+  const signedReportInputRef = useRef<HTMLInputElement>(null);
+  const imagesInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
-  // Parse existing medical_report or generate default
+  // ── Máscaras ──────────────────────────────────────────────────────────────
+  const maskCpf = (v: string) =>
+    v
+      .replace(/\D/g, "")
+      .slice(0, 11)
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+
+  const maskDate = (v: string) =>
+    v
+      .replace(/\D/g, "")
+      .slice(0, 8)
+      .replace(/(\d{2})(\d)/, "$1/$2")
+      .replace(/(\d{2})(\d)/, "$1/$2");
+
+  const maskPhone = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 10)
+      return d
+        .replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3")
+        .replace(/-$/, "");
+    return d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+  };
+
+  const maskCep = (v: string) =>
+    v
+      .replace(/\D/g, "")
+      .slice(0, 8)
+      .replace(/(\d{5})(\d)/, "$1-$2");
+
+  // ── Documentos por tipo ──────────────────────────────────────────────────
+  const examImages =
+    solicitacao?.documents?.filter((d: any) => d.key === "exam_images") ?? [];
+  const signedReports =
+    solicitacao?.documents?.filter((d: any) => d.key === "signed_report") ?? [];
+
+  // ── Inicialização ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (solicitacao.medical_report) {
-      // Tentar parsear o JSON salvo
-      try {
-        const parsed = JSON.parse(solicitacao.medical_report);
-        setReportData(parsed);
-      } catch {
-        // Se não for JSON, usar como texto completo na justificativa
-        setReportData({
-          patientIdentification: generatePatientIdentification(),
-          surgicalIndication: generateSurgicalIndication(),
-          technicalJustification: solicitacao.medical_report,
-        });
-      }
-    } else {
-      // Gerar dados padrão baseados na solicitação
-      setReportData({
-        patientIdentification: generatePatientIdentification(),
-        surgicalIndication: generateSurgicalIndication(),
-        technicalJustification: "",
-      });
-    }
+    if (!solicitacao) return;
+    const parsed = parseMedicalReport(solicitacao);
+    setPatientData(buildPatientData(solicitacao, parsed));
+    setHistoryAndDiagnosis(
+      parsed.historyAndDiagnosis ?? parsed.surgicalIndication ?? "",
+    );
+    setConduct(parsed.conduct ?? parsed.technicalJustification ?? "");
+    setHealthPlanId(
+      parsed.patientData?.healthPlanId ?? solicitacao?.health_plan?.id ?? "",
+    );
   }, [solicitacao]);
 
-  const generatePatientIdentification = () => {
-    const patient = solicitacao.patient;
-    if (!patient) return "";
+  // Carregar convênios quando entrar em modo de edição do paciente
+  useEffect(() => {
+    if (!isEditingPatient) return;
+    healthPlanService
+      .getAll()
+      .then((data) => {
+        setHealthPlanOptions(
+          data.map((hp) => ({ value: hp.id.toString(), label: hp.name })),
+        );
+      })
+      .catch(() => {});
+  }, [isEditingPatient]);
 
-    const lines = [];
-    if (patient.name) lines.push(`Nome: ${patient.name}`);
-    if (patient.cpf) lines.push(`CPF: ${patient.cpf}`);
-    if (patient.birth_date) {
-      const birthDate = new Date(patient.birth_date).toLocaleDateString(
-        "pt-BR"
-      );
-      lines.push(`Data de Nascimento: ${birthDate}`);
-    }
-    if (solicitacao.health_plan_registration) {
-      lines.push(`Nº da Carteira: ${solicitacao.health_plan_registration}`);
-    }
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
-    return lines.join("\n");
-  };
-
-  const generateSurgicalIndication = () => {
-    const procedure = solicitacao.procedures?.[0]?.procedure;
-    if (!procedure) return "";
-    return procedure.name || "";
-  };
-
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      const reportJson = JSON.stringify(reportData);
+      const parsed = parseMedicalReport(solicitacao);
+      const updatedReport = {
+        ...parsed,
+        patientData: { ...patientData, healthPlanId },
+        historyAndDiagnosis,
+        conduct,
+        patientIdentification: [
+          patientData.name && `Nome: ${patientData.name}`,
+          patientData.birthDate &&
+            `Data de Nascimento: ${patientData.birthDate}`,
+          patientData.rg && `RG: ${patientData.rg}`,
+          patientData.cpf && `CPF: ${patientData.cpf}`,
+          patientData.phone && `Telefone: ${patientData.phone}`,
+          patientData.address && `Endereço: ${patientData.address}`,
+          patientData.zipCode && `CEP: ${patientData.zipCode}`,
+          patientData.healthPlan && `Convênio: ${patientData.healthPlan}`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      };
       await surgeryRequestService.update(solicitacao.id, {
-        medical_report: reportJson,
+        medical_report: JSON.stringify(updatedReport),
       });
       showToast("Laudo salvo com sucesso", "success");
-      setIsEditing(false);
+      setIsEditingPatient(false);
+      setIsEditingHistory(false);
+      setIsEditingConduct(false);
       onUpdate();
-    } catch (error) {
-      console.error("Erro ao salvar laudo:", error);
+    } catch {
       showToast("Erro ao salvar laudo", "error");
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [
+    patientData,
+    historyAndDiagnosis,
+    conduct,
+    solicitacao,
+    onUpdate,
+    showToast,
+  ]);
 
-  const handleApprove = async () => {
-    // Primeiro salva o laudo
-    await handleSave();
-    // Aqui poderia mudar um status de "rascunho" para "aprovado"
-    // Por enquanto, apenas salva
-    showToast("Laudo aprovado", "success");
-  };
+  const handleCancel = useCallback(() => {
+    if (!solicitacao) return;
+    const parsed = parseMedicalReport(solicitacao);
+    setPatientData(buildPatientData(solicitacao, parsed));
+    setHistoryAndDiagnosis(
+      parsed.historyAndDiagnosis ?? parsed.surgicalIndication ?? "",
+    );
+    setConduct(parsed.conduct ?? parsed.technicalJustification ?? "");
+    setIsEditingPatient(false);
+    setIsEditingHistory(false);
+    setIsEditingConduct(false);
+  }, [solicitacao]);
 
-  const reportStatus = solicitacao.medical_report ? "draft" : "empty";
+  const handleUploadSignedReport = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setIsUploadingSignedReport(true);
+      const item: UploadItem = {
+        id: `signed-${Date.now()}`,
+        name: file.name,
+        size: file.size,
+        progress: 0,
+      };
+      setSignedUploadItem(item);
+      try {
+        await documentService.upload({
+          surgery_request_id: solicitacao.id,
+          key: "signed_report",
+          name: file.name.replace(/\.[^.]+$/, ""),
+          file,
+          onUploadProgress: (pct) =>
+            setSignedUploadItem((prev) =>
+              prev ? { ...prev, progress: pct } : prev,
+            ),
+        });
+        showToast("Arquivo enviado", "success");
+        onUpdate();
+      } catch {
+        showToast("Erro ao enviar arquivo", "error");
+      } finally {
+        setIsUploadingSignedReport(false);
+        setSignedUploadItem(null);
+        if (signedReportInputRef.current)
+          signedReportInputRef.current.value = "";
+      }
+    },
+    [solicitacao?.id, onUpdate, showToast],
+  );
 
-  const getStatusBadge = () => {
-    switch (reportStatus) {
-      case "draft":
-        return (
-          <div className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-full bg-purple-50">
-            <span className="font-medium text-sm leading-tight text-purple-500">
-              Rascunho
-            </span>
-          </div>
+  const handleUploadImages = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const allFiles = Array.from(e.target.files ?? []);
+      if (!allFiles.length) return;
+
+      const allowed = /\.(jpe?g|png)$/i;
+      const files = allFiles.filter((f) => allowed.test(f.name));
+      const rejected = allFiles.length - files.length;
+      if (rejected > 0) {
+        showToast(
+          `${rejected} arquivo(s) ignorado(s): apenas JPG e PNG são aceitos`,
+          "error",
         );
-      case "empty":
-        return (
-          <div className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-full bg-gray-100">
-            <span className="font-medium text-sm leading-tight text-gray-500">
-              Vazio
-            </span>
-          </div>
+      }
+      if (!files.length) {
+        if (imagesInputRef.current) imagesInputRef.current.value = "";
+        return;
+      }
+      setIsUploadingImages(true);
+      const initialItems: UploadItem[] = files.map((f) => ({
+        id: `img-${Date.now()}-${f.name}`,
+        name: f.name,
+        size: f.size,
+        progress: 0,
+      }));
+      setImageUploadItems(initialItems);
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const itemId = initialItems[i].id;
+          await documentService.upload({
+            surgery_request_id: solicitacao.id,
+            key: "exam_images",
+            name: file.name.replace(/\.[^.]+$/, ""),
+            file,
+            onUploadProgress: (pct) =>
+              setImageUploadItems((prev) =>
+                prev.map((it) =>
+                  it.id === itemId ? { ...it, progress: pct } : it,
+                ),
+              ),
+          });
+          setImageUploadItems((prev) =>
+            prev.map((it) =>
+              it.id === itemId ? { ...it, progress: 100 } : it,
+            ),
+          );
+        }
+        showToast(
+          files.length > 1 ? "Arquivos enviados" : "Arquivo enviado",
+          "success",
         );
-      default:
-        return null;
+        onUpdate();
+      } catch {
+        showToast("Erro ao enviar arquivos", "error");
+      } finally {
+        setIsUploadingImages(false);
+        setImageUploadItems([]);
+        if (imagesInputRef.current) imagesInputRef.current.value = "";
+      }
+    },
+    [solicitacao?.id, onUpdate, showToast],
+  );
+
+  const handleDeleteDocument = useCallback(
+    async (docId: string, key: string) => {
+      setIsDeletingDocId(docId);
+      try {
+        await documentService.delete({
+          id: docId,
+          key,
+          surgery_request_id: solicitacao.id,
+        });
+        showToast("Arquivo removido", "success");
+        onUpdate();
+      } catch {
+        showToast("Erro ao remover arquivo", "error");
+      } finally {
+        setIsDeletingDocId(null);
+      }
+    },
+    [solicitacao?.id, onUpdate, showToast],
+  );
+
+  const handleExportPdf = useCallback(async () => {
+    setIsExportingPdf(true);
+    try {
+      const response = await api.get(
+        `/surgery-requests/${solicitacao.id}/report-pdf`,
+        { responseType: "arraybuffer" },
+      );
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    } catch {
+      showToast("Erro ao exportar PDF", "error");
+    } finally {
+      setIsExportingPdf(false);
     }
-  };
+  }, [solicitacao?.id, solicitacao?.protocol, showToast]);
 
-  if (isEditing) {
-    return (
-      <div className="flex-1 flex flex-col gap-2.5 overflow-auto">
-        {/* Banner de Aviso */}
-        <div className="flex flex-col justify-center gap-2 px-4 py-3 rounded-xl bg-blue-50">
-          <p className="m-0">
-            <span className="block font-semibold text-sm leading-6 text-blue-600">
-              Modo de Edição
+  // ── Classes utilitárias ───────────────────────────────────────────────────
+
+  const inputClass = (editing: boolean) =>
+    `w-full px-3 py-2 text-sm rounded-lg border outline-none transition-colors ${
+      editing
+        ? "bg-white text-gray-900 border-teal-600 focus:ring-2 focus:ring-teal-700 focus:border-teal-600"
+        : "bg-gray-50 text-gray-400 border-gray-100 cursor-default select-none"
+    }`;
+
+  const textareaClass = (editing: boolean) =>
+    `w-full h-40 px-3 py-2 text-sm border rounded-lg outline-none resize-none transition-colors ${
+      editing
+        ? "bg-white text-gray-900 border-teal-600 focus:ring-2 focus:ring-teal-700 focus:border-teal-600"
+        : "bg-gray-50 text-gray-400 border-gray-100 cursor-default select-none"
+    }`;
+
+  const editarBtnClass =
+    "flex-shrink-0 flex items-center px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-lg text-sm font-semibold text-black hover:bg-gray-50 transition-colors";
+
+  // ── Progresso do Laudo ───────────────────────────────────────────────────
+  const progressSteps = [
+    {
+      key: "identification",
+      label: "Identificação",
+      complete: !!patientData.name.trim(),
+      optional: false,
+    },
+    {
+      key: "history",
+      label: "Histórico e Diagnóstico",
+      complete: !!historyAndDiagnosis.trim(),
+      optional: false,
+    },
+    {
+      key: "images",
+      label: "Imagens do Exame",
+      complete: examImages.length > 0,
+      optional: true,
+    },
+    {
+      key: "conduct",
+      label: "Conduta",
+      complete: !!conduct.trim(),
+      optional: true,
+    },
+    {
+      key: "signed",
+      label: "Laudo Assinado",
+      complete: signedReports.length > 0,
+      optional: false,
+    },
+  ];
+  const requiredSteps = progressSteps.filter((s) => !s.optional);
+  const completedCount = requiredSteps.filter((s) => s.complete).length;
+  const totalRequired = requiredSteps.length;
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <>
+      <div className="flex flex-col gap-4 w-full px-6 py-6">
+        {/* ─── Progresso do Laudo ──────────────────────────────────────────── */}
+        <div className="flex flex-col gap-3 w-full bg-white border border-gray-200 rounded-2xl p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-gray-900">
+              Progresso do Laudo
+            </p>
+            <span
+              className={`text-sm font-bold ${
+                completedCount === totalRequired
+                  ? "text-teal-700"
+                  : "text-gray-500"
+              }`}
+            >
+              {completedCount}/{totalRequired} obrigatórios concluídos
             </span>
-            <span className="block mt-1 font-normal text-sm leading-none text-blue-600">
-              Edite os campos abaixo e clique em Salvar para guardar as
-              alterações.
-            </span>
-          </p>
+          </div>
+          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-teal-600 rounded-full transition-all duration-500"
+              style={{ width: `${(completedCount / totalRequired) * 100}%` }}
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {progressSteps.map((step) => (
+              <div
+                key={step.key}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${
+                  step.complete
+                    ? "bg-teal-50 text-teal-700 border-teal-200"
+                    : step.optional
+                      ? "bg-gray-50 text-gray-400 border-gray-100"
+                      : "bg-gray-50 text-gray-500 border-gray-200"
+                }`}
+              >
+                {step.complete ? (
+                  <svg
+                    className="w-3 h-3 flex-shrink-0"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                  >
+                    <path
+                      d="M2 6L5 9L10 3"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : (
+                  <div
+                    className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      step.optional ? "bg-gray-200" : "bg-gray-300"
+                    }`}
+                  />
+                )}
+                {step.label}
+                {step.optional && (
+                  <span className="text-gray-400 font-normal">(opcional)</span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Container do Laudo - Edição */}
-        <div className="flex-1 flex flex-col relative px-4 py-4 border border-neutral-100 rounded-xl bg-white overflow-auto gap-4">
-          {/* Identificação do Paciente */}
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-900">
-              IDENTIFICAÇÃO DO PACIENTE
-            </label>
-            <textarea
-              value={reportData.patientIdentification}
-              onChange={(e) =>
-                setReportData({
-                  ...reportData,
-                  patientIdentification: e.target.value,
-                })
-              }
-              rows={4}
-              className="w-full px-4 py-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
-              placeholder="Nome, CPF, Data de Nascimento, Nº da Carteira..."
-            />
-          </div>
-
-          {/* Indicação Cirúrgica */}
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-900">
-              INDICAÇÃO CIRÚRGICA
-            </label>
-            <input
-              type="text"
-              value={reportData.surgicalIndication}
-              onChange={(e) =>
-                setReportData({
-                  ...reportData,
-                  surgicalIndication: e.target.value,
-                })
-              }
-              className="w-full px-4 py-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              placeholder="Ex: Artroplastia Total de Quadril Direito"
-            />
-          </div>
-
-          {/* Justificativa Técnica */}
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-900">
-              JUSTIFICATIVA TÉCNICA
-            </label>
-            <textarea
-              value={reportData.technicalJustification}
-              onChange={(e) =>
-                setReportData({
-                  ...reportData,
-                  technicalJustification: e.target.value,
-                })
-              }
-              rows={8}
-              className="w-full px-4 py-3 text-sm text-gray-900 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
-              placeholder="Descreva a justificativa técnica para o procedimento..."
-            />
-          </div>
-        </div>
-
-        {/* Botões de Ação */}
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => setIsEditing(false)}
-            className="flex items-center justify-center px-4 h-10 gap-1 rounded-lg bg-transparent hover:bg-gray-50 transition-colors"
-            disabled={isSaving}
-          >
-            <span className="font-normal text-sm leading-tight text-gray-600">
-              Cancelar
-            </span>
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center justify-center px-4 h-10 gap-1 bg-teal-700 hover:bg-teal-800 transition-colors rounded-lg disabled:opacity-50"
-          >
-            {isSaving ? (
-              <span className="flex items-center gap-2">
-                <svg
-                  className="animate-spin h-4 w-4 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
+        {/* ─── Cards do laudo ───────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4 w-full">
+          {/* ── IDENTIFICAÇÃO DO PACIENTE ─────────────────────────────────── */}
+          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
+            <div className="flex items-center justify-between w-full gap-4">
+              <h3 className="text-base font-bold text-black leading-loose">
+                IDENTIFICAÇÃO DO PACIENTE
+              </h3>
+              {!isEditingPatient ? (
+                <button
+                  onClick={() => setIsEditingPatient(true)}
+                  className={editarBtnClass}
                 >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
+                  Editar
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-teal-700 rounded-lg text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <span className="flex items-center gap-2">
+                        <Spinner className="w-4 h-4 text-white" />
+                        Salvando...
+                      </span>
+                    ) : (
+                      "Salvar"
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 w-full">
+              {/* Nome */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-semibold text-black">
+                  Nome do paciente
+                </label>
+                <input
+                  type="text"
+                  value={patientData.name}
+                  readOnly={!isEditingPatient}
+                  onChange={(e) =>
+                    setPatientData({ ...patientData, name: e.target.value })
+                  }
+                  className={inputClass(isEditingPatient)}
+                />
+              </div>
+
+              {/* Data de nascimento — máscara DD/MM/AAAA */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-semibold text-black">
+                  Data de nascimento
+                </label>
+                <input
+                  type="text"
+                  value={patientData.birthDate}
+                  readOnly={!isEditingPatient}
+                  placeholder="DD/MM/AAAA"
+                  onChange={(e) =>
+                    setPatientData({
+                      ...patientData,
+                      birthDate: maskDate(e.target.value),
+                    })
+                  }
+                  className={inputClass(isEditingPatient)}
+                />
+              </div>
+
+              {/* RG */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-semibold text-black">RG</label>
+                <input
+                  type="text"
+                  value={patientData.rg}
+                  readOnly={!isEditingPatient}
+                  onChange={(e) =>
+                    setPatientData({ ...patientData, rg: e.target.value })
+                  }
+                  className={inputClass(isEditingPatient)}
+                />
+              </div>
+
+              {/* CPF — máscara 000.000.000-00 */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-semibold text-black">CPF</label>
+                <input
+                  type="text"
+                  value={patientData.cpf}
+                  readOnly={!isEditingPatient}
+                  placeholder="000.000.000-00"
+                  onChange={(e) =>
+                    setPatientData({
+                      ...patientData,
+                      cpf: maskCpf(e.target.value),
+                    })
+                  }
+                  className={inputClass(isEditingPatient)}
+                />
+              </div>
+
+              {/* Telefone — máscara (00) 00000-0000 */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-semibold text-black">
+                  Telefone
+                </label>
+                <input
+                  type="text"
+                  value={patientData.phone}
+                  readOnly={!isEditingPatient}
+                  placeholder="(00) 00000-0000"
+                  onChange={(e) =>
+                    setPatientData({
+                      ...patientData,
+                      phone: maskPhone(e.target.value),
+                    })
+                  }
+                  className={inputClass(isEditingPatient)}
+                />
+              </div>
+
+              {/* Endereço */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-semibold text-black">
+                  Endereço
+                </label>
+                <input
+                  type="text"
+                  value={patientData.address}
+                  readOnly={!isEditingPatient}
+                  onChange={(e) =>
+                    setPatientData({ ...patientData, address: e.target.value })
+                  }
+                  className={inputClass(isEditingPatient)}
+                />
+              </div>
+
+              {/* CEP — máscara 00000-000 */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-semibold text-black">CEP</label>
+                <input
+                  type="text"
+                  value={patientData.zipCode}
+                  readOnly={!isEditingPatient}
+                  placeholder="00000-000"
+                  onChange={(e) =>
+                    setPatientData({
+                      ...patientData,
+                      zipCode: maskCep(e.target.value),
+                    })
+                  }
+                  className={inputClass(isEditingPatient)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── HISTÓRICO E DIAGNÓSTICO ───────────────────────────────────── */}
+          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
+            <div className="flex items-center justify-between w-full gap-4">
+              <h3 className="text-base font-bold text-black leading-loose">
+                HISTÓRICO E DIAGNÓSTICO
+              </h3>
+              {!isEditingHistory ? (
+                <button
+                  onClick={() => setIsEditingHistory(true)}
+                  className={editarBtnClass}
+                >
+                  Editar
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-teal-700 rounded-lg text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <span className="flex items-center gap-2">
+                        <Spinner className="w-4 h-4 text-white" />
+                        Salvando...
+                      </span>
+                    ) : (
+                      "Salvar"
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <textarea
+              value={historyAndDiagnosis}
+              readOnly={!isEditingHistory}
+              onChange={(e) => setHistoryAndDiagnosis(e.target.value)}
+              placeholder="Descreva o histórico clínico e diagnóstico..."
+              className={textareaClass(isEditingHistory)}
+            />
+          </div>
+
+          {/* ── IMAGENS DO EXAME ──────────────────────────────────────────── */}
+          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
+            <h3 className="text-base font-bold text-black leading-loose">
+              IMAGENS DO EXAME
+            </h3>
+
+            {/* Dropzone */}
+            <input
+              ref={imagesInputRef}
+              type="file"
+              className="hidden"
+              multiple
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+              onChange={handleUploadImages}
+            />
+            <button
+              type="button"
+              onClick={() => imagesInputRef.current?.click()}
+              className="flex flex-col items-center justify-center gap-2 w-full py-2 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+            >
+              {isUploadingImages ? (
+                <Spinner className="w-8 h-8 text-gray-400" />
+              ) : (
+                <svg
+                  className="w-8 h-8 text-gray-400"
+                  viewBox="0 0 32 32"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M10.667 8H7.334C6.228 8 5.334 8.895 5.334 10v16c0 1.105.894 2 2 2h17.333c1.105 0 2-.895 2-2V10c0-1.105-.895-2-2-2h-3.333"
                     stroke="currentColor"
-                    strokeWidth="4"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                   <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    d="M16 4v16M12 8l4-4 4 4"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
                 </svg>
-                <span className="font-semibold text-sm leading-tight text-white">
-                  Salvando...
-                </span>
+              )}
+              <span className="text-sm text-gray-500 text-center">
+                {isUploadingImages
+                  ? "Enviando..."
+                  : "Clique para anexar imagens do exame (Raio-X, Ressonâncias, etc)"}
               </span>
-            ) : (
-              <span className="font-semibold text-sm leading-tight text-white">
-                Salvar Laudo
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-    );
-  }
+            </button>
 
-  // Modo de visualização
-  return (
-    <div className="flex-1 flex flex-col gap-2.5 overflow-auto">
-      {/* Banner de Aviso IA */}
-      {reportStatus === "draft" && (
-        <div className="flex flex-col justify-center gap-2 px-4 py-3 rounded-xl bg-purple-50">
-          <p className="m-0">
-            <span className="block font-semibold text-sm leading-6 text-purple-500">
-              Laudo em rascunho
-            </span>
-            <span className="block mt-1 font-normal text-sm leading-none text-purple-500">
-              Revise e edite o laudo conforme necessário antes de aprovar.
-            </span>
-          </p>
-        </div>
-      )}
-
-      {reportStatus === "empty" && (
-        <div className="flex flex-col justify-center gap-2 px-4 py-3 rounded-xl bg-amber-50">
-          <p className="m-0">
-            <span className="block font-semibold text-sm leading-6 text-amber-600">
-              Laudo não preenchido
-            </span>
-            <span className="block mt-1 font-normal text-sm leading-none text-amber-600">
-              Clique em "Editar Laudo" para preencher as informações do laudo
-              médico.
-            </span>
-          </p>
-        </div>
-      )}
-
-      {/* Container do Laudo */}
-      <div className="flex-1 flex flex-col relative px-4 py-4 border border-neutral-100 rounded-xl bg-white overflow-auto gap-2">
-        {/* Badge Status - Posicionamento Absoluto */}
-        <div className="absolute top-3 right-4">{getStatusBadge()}</div>
-
-        {/* Texto do Laudo */}
-        <div className="flex-1 overflow-auto font-normal text-sm leading-relaxed text-gray-900">
-          {reportData.patientIdentification && (
-            <p className="mb-4">
-              <strong className="font-semibold">
-                IDENTIFICAÇÃO DO PACIENTE
-              </strong>
-              <br />
-              {reportData.patientIdentification.split("\n").map((line, i) => (
-                <React.Fragment key={i}>
-                  {line}
-                  <br />
-                </React.Fragment>
-              ))}
-            </p>
-          )}
-
-          {reportData.surgicalIndication && (
-            <p className="mb-4">
-              <strong className="font-semibold">INDICAÇÃO CIRÚRGICA</strong>
-              <br />
-              {reportData.surgicalIndication}
-            </p>
-          )}
-
-          {reportData.technicalJustification && (
-            <p className="mb-0">
-              <strong className="font-semibold">JUSTIFICATIVA TÉCNICA</strong>
-              <br />
-              {reportData.technicalJustification}
-            </p>
-          )}
-
-          {!reportData.patientIdentification &&
-            !reportData.surgicalIndication &&
-            !reportData.technicalJustification && (
-              <div className="text-center py-8 text-gray-400">
-                Nenhum conteúdo no laudo. Clique em "Editar Laudo" para começar.
+            {/* Arquivos enviados + em envio */}
+            {(imageUploadItems.length > 0 || examImages.length > 0) && (
+              <div className="flex flex-col gap-2">
+                {/* Em envio */}
+                {imageUploadItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg"
+                  >
+                    <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
+                      {item.name}{" "}
+                      <span className="font-normal text-gray-400">
+                        ({formatBytes(item.size)})
+                      </span>
+                    </span>
+                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                      <div
+                        className="h-full bg-teal-600 rounded-full transition-all duration-300"
+                        style={{ width: `${item.progress}%` }}
+                      />
+                    </div>
+                    <div className="w-6 h-6 flex-shrink-0" />
+                  </div>
+                ))}
+                {/* Já carregados */}
+                {examImages.map((doc: any) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg"
+                  >
+                    <a
+                      href={doc.uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-sm font-semibold text-gray-900 truncate hover:text-teal-700 hover:underline transition-colors"
+                    >
+                      {doc.name}
+                    </a>
+                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                      <div className="h-full w-full bg-teal-600 rounded-full" />
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleDeleteDocument(doc.id, "exam_images")
+                      }
+                      disabled={isDeletingDocId === doc.id}
+                      className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                    >
+                      {isDeletingDocId === doc.id ? (
+                        <Spinner />
+                      ) : (
+                        <X className="w-4 h-4 text-gray-400" />
+                      )}
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
+          </div>
+
+          {/* ── CONDUTA ──────────────────────────────────────────────────── */}
+          <div className="flex flex-col items-end gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
+            <div className="flex items-center justify-between w-full gap-4">
+              <h3 className="text-base font-bold text-black leading-loose">
+                CONDUTA
+              </h3>
+              {!isEditingConduct ? (
+                <button
+                  onClick={() => setIsEditingConduct(true)}
+                  className={editarBtnClass}
+                >
+                  Editar
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-teal-700 rounded-lg text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <span className="flex items-center gap-2">
+                        <Spinner className="w-4 h-4 text-white" />
+                        Salvando...
+                      </span>
+                    ) : (
+                      "Salvar"
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <textarea
+              value={conduct}
+              readOnly={!isEditingConduct}
+              onChange={(e) => setConduct(e.target.value)}
+              placeholder="Descreva a conduta cirúrgica proposta..."
+              className={textareaClass(isEditingConduct)}
+            />
+          </div>
+
+          {/* ─── Laudo Assinado ──────────────────────────────────────────────── */}
+          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
+            <h3 className="text-base font-bold text-black leading-loose">
+              LAUDO ASSINADO
+            </h3>
+            {!signedUploadItem && signedReports.length === 0 && (
+              <div className="flex items-center gap-2 w-full py-3 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-lg">
+                <p className="text-sm text-gray-500 leading-snug flex-1">
+                  Após baixar e assinar o laudo gerado abaixo, insira o arquivo
+                  assinado.
+                </p>
+                <input
+                  ref={signedReportInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx"
+                  onChange={handleUploadSignedReport}
+                />
+                <button
+                  type="button"
+                  onClick={() => signedReportInputRef.current?.click()}
+                  className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-lg text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
+                >
+                  <span>Selecionar arquivo</span>
+                </button>
+              </div>
+            )}
+            {(signedUploadItem || signedReports.length > 0) && (
+              <div className="flex flex-col gap-2">
+                {/* Em envio */}
+                {signedUploadItem && (
+                  <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg">
+                    <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
+                      {signedUploadItem.name}{" "}
+                      <span className="font-normal text-gray-400">
+                        ({formatBytes(signedUploadItem.size)})
+                      </span>
+                    </span>
+                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                      <div
+                        className="h-full bg-teal-600 rounded-full transition-all duration-300"
+                        style={{ width: `${signedUploadItem.progress}%` }}
+                      />
+                    </div>
+                    <div className="w-6 h-6 flex-shrink-0" />
+                  </div>
+                )}
+                {/* Já carregados */}
+                {signedReports.map((doc: any) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg"
+                  >
+                    <a
+                      href={doc.uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 text-sm font-semibold text-gray-900 truncate hover:text-teal-700 hover:underline transition-colors"
+                    >
+                      {doc.name}
+                    </a>
+                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                      <div className="h-full w-full bg-teal-600 rounded-full" />
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleDeleteDocument(doc.id, "signed_report")
+                      }
+                      disabled={isDeletingDocId === doc.id}
+                      className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                    >
+                      {isDeletingDocId === doc.id ? (
+                        <Spinner />
+                      ) : (
+                        <X className="w-4 h-4 text-gray-400" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ─── Divisor ─────────────────────────────────────────────────────── */}
+        <hr className="border-gray-200" />
+
+        {/* ─── Botões de ação ───────────────────────────────────────────────── */}
+        <div className="flex items-center justify-end gap-2 w-full">
+          {(() => {
+            const canExport =
+              !!patientData.name.trim() && !!historyAndDiagnosis.trim();
+            return (
+              <>
+                <button
+                  onClick={() => setShowPreview(true)}
+                  disabled={!canExport}
+                  className="flex items-center h-10 px-4 text-sm font-semibold text-teal-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                >
+                  Pré-visualizar
+                </button>
+                <button
+                  onClick={handleExportPdf}
+                  disabled={isExportingPdf || !canExport}
+                  className="flex items-center h-10 px-4 bg-white border border-gray-200 shadow-sm text-sm font-semibold text-teal-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isExportingPdf ? "Exportando..." : "Exportar PDF"}
+                </button>
+              </>
+            );
+          })()}
         </div>
       </div>
 
-      {/* Botões de Ação */}
-      <div className="flex items-center justify-end gap-2">
-        {/* Botão Editar Laudo */}
-        <button
-          onClick={() => setIsEditing(true)}
-          className="flex items-center justify-center px-4 h-10 gap-1 rounded-lg bg-transparent hover:bg-gray-50 transition-colors"
-        >
-          <span className="font-normal text-sm leading-tight text-teal-700">
-            Editar Laudo
-          </span>
-        </button>
-
-        {/* Botão Aprovar Laudo */}
-        {reportStatus === "draft" && (
-          <button
-            onClick={handleApprove}
-            disabled={isSaving}
-            className="flex items-center justify-center px-4 h-10 gap-1 bg-white border border-neutral-100 hover:bg-gray-50 transition-colors rounded-lg shadow-sm disabled:opacity-50"
-          >
-            <span className="font-semibold text-sm leading-tight text-teal-700">
-              Aprovar Laudo
-            </span>
-          </button>
-        )}
-      </div>
-    </div>
+      {/* Modal de pré-visualização */}
+      <MedicalReportPreviewModal
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        solicitacao={solicitacao}
+      />
+    </>
   );
 }

@@ -9,13 +9,11 @@ import {
   X,
   Calendar,
   FileText,
-  AlertCircle,
   CheckCircle,
   MoreHorizontal,
 } from "lucide-react";
 import {
   SurgeryRequest,
-  PriorityLevel,
   SurgeryRequestStatus,
 } from "@/types/surgery-request.types";
 import { useToggle, useClickOutside } from "@/hooks";
@@ -24,6 +22,14 @@ import { priorityColors, getPriorityLabel } from "@/lib/design-system";
 interface ProcedureCardProps {
   procedure: SurgeryRequest;
   isDragging?: boolean;
+}
+
+// Tipo de ação contextual
+interface ContextualAction {
+  icon: React.ElementType;
+  label: string;
+  action: string;
+  color: string;
 }
 
 // Mapeamento de status para ícone SVG
@@ -36,54 +42,142 @@ const statusIconMap: Record<SurgeryRequestStatus, string> = {
   Realizada: "/icons/kanban/hospital-board-square.svg",
   Faturada: "/icons/kanban/coins.svg",
   Finalizada: "/icons/kanban/checkmark-circle-1.svg",
-  Cancelada: "/icons/kanban/Delete, Disabled.svg",
+  Encerrada: "/icons/kanban/Delete, Disabled.svg",
 };
 
-// Ações contextuais baseadas no status
-const getContextualActions = (status: SurgeryRequestStatus) => {
+// Ações contextuais atualizadas por status (conforme Fase 6.2 do TODO)
+const getContextualActions = (
+  status: SurgeryRequestStatus,
+): ContextualAction[] => {
   switch (status) {
     case "Pendente":
       return [
-        { icon: Edit, label: "Editar", color: "text-blue-600" },
-        { icon: Send, label: "Enviar", color: "text-green-600" },
-        { icon: X, label: "Cancelar", color: "text-red-600" },
+        {
+          icon: Edit,
+          label: "Editar",
+          action: "edit",
+          color: "text-blue-600",
+        },
+        {
+          icon: Send,
+          label: "Enviar Solicitação",
+          action: "send",
+          color: "text-green-600",
+        },
+        {
+          icon: X,
+          label: "Encerrar",
+          action: "close",
+          color: "text-red-600",
+        },
       ];
     case "Enviada":
       return [
-        { icon: FileText, label: "Ver Cotações", color: "text-blue-600" },
-        { icon: Edit, label: "Anexar Número", color: "text-gray-600" },
+        {
+          icon: FileText,
+          label: "Registrar Análise",
+          action: "start-analysis",
+          color: "text-blue-600",
+        },
+        {
+          icon: X,
+          label: "Encerrar",
+          action: "close",
+          color: "text-red-600",
+        },
       ];
     case "Em Análise":
       return [
-        { icon: CheckCircle, label: "Aprovar", color: "text-green-600" },
-        { icon: X, label: "Negar", color: "text-red-600" },
+        {
+          icon: CheckCircle,
+          label: "Atualizar Autorizações",
+          action: "update-authorizations",
+          color: "text-green-600",
+        },
+        {
+          icon: X,
+          label: "Encerrar",
+          action: "close",
+          color: "text-red-600",
+        },
       ];
     case "Em Agendamento":
       return [
-        { icon: Calendar, label: "Agendar", color: "text-green-600" },
-        { icon: AlertCircle, label: "Contestar", color: "text-orange-600" },
+        {
+          icon: Calendar,
+          label: "Confirmar Data",
+          action: "confirm-date",
+          color: "text-green-600",
+        },
+        {
+          icon: X,
+          label: "Encerrar",
+          action: "close",
+          color: "text-red-600",
+        },
       ];
     case "Agendada":
       return [
         {
           icon: CheckCircle,
-          label: "Marcar Realizada",
+          label: "Status da Cirurgia",
+          action: "surgery-status",
           color: "text-green-600",
+        },
+        {
+          icon: X,
+          label: "Encerrar",
+          action: "close",
+          color: "text-red-600",
         },
       ];
     case "Realizada":
-      return [{ icon: FileText, label: "Faturar", color: "text-green-600" }];
+      return [
+        {
+          icon: FileText,
+          label: "Faturar",
+          action: "invoice",
+          color: "text-green-600",
+        },
+        {
+          icon: X,
+          label: "Encerrar",
+          action: "close",
+          color: "text-red-600",
+        },
+      ];
     case "Faturada":
       return [
-        { icon: CheckCircle, label: "Finalizar", color: "text-green-600" },
+        {
+          icon: CheckCircle,
+          label: "Confirmar Recebimento",
+          action: "confirm-receipt",
+          color: "text-green-600",
+        },
+        {
+          icon: X,
+          label: "Encerrar",
+          action: "close",
+          color: "text-red-600",
+        },
       ];
     case "Finalizada":
       return [
-        { icon: CheckCircle, label: "Ver Detalhes", color: "text-gray-600" },
+        {
+          icon: FileText,
+          label: "Ver Detalhes",
+          action: "view",
+          color: "text-gray-600",
+        },
       ];
-    case "Cancelada":
+    case "Encerrada":
       return [
-        { icon: AlertCircle, label: "Ver Motivo", color: "text-red-600" },
+        {
+          icon: FileText,
+          label: "Ver Detalhes",
+          action: "view",
+          color: "text-gray-600",
+        },
       ];
     default:
       return [];
@@ -99,7 +193,6 @@ export const ProcedureCard = memo<ProcedureCardProps>(
       setFalse: closeActions,
     } = useToggle();
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const priorityStyle = priorityColors[procedure.priority];
     const contextualActions = getContextualActions(procedure.status);
     const statusIcon = statusIconMap[procedure.status];
 
@@ -108,8 +201,15 @@ export const ProcedureCard = memo<ProcedureCardProps>(
     const handleActionClick = useCallback(
       (action: string) => {
         closeActions();
+        // Para ações de "view" ou "edit", navegar sem query param
+        if (action === "view" || action === "edit") {
+          router.push(`/solicitacao/${procedure.id}`);
+          return;
+        }
+        // Para ações que abrem modais, navegar com query param "action"
+        router.push(`/solicitacao/${procedure.id}?action=${action}`);
       },
-      [closeActions],
+      [closeActions, router, procedure.id],
     );
 
     const handleCardClick = useCallback(
@@ -159,7 +259,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
                   key={index}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleActionClick(action.label);
+                    handleActionClick(action.action);
                   }}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors ${action.color}`}
                 >
@@ -265,7 +365,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
             </span>
           ) : (
             procedure.status !== "Finalizada" &&
-            procedure.status !== "Cancelada" && (
+            procedure.status !== "Encerrada" && (
               <span
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded"
                 style={{ backgroundColor: "#E6F4EA", color: "#137333" }}

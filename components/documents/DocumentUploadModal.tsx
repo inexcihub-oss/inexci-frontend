@@ -1,42 +1,59 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
-import { X, Upload, FileText, Trash2, Check } from "lucide-react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import ReactDOM from "react-dom";
+import { X, Upload, Check } from "lucide-react";
 import { documentService } from "@/services/document.service";
+
+// ─── Tipos de documento por contexto ─────────────────────────────────────────
+
+export const PRE_SURGERY_DOCUMENT_TYPES = [
+  { key: "personal_document", label: "RG/CNH" },
+  { key: "health_plan_card", label: "Carteirinha do Convênio" },
+  { key: "doctor_request", label: "Pedido Médico" },
+  { key: "exam", label: "Exames" },
+  { key: "exam_report", label: "Laudo do Exame" },
+  { key: "exam_images", label: "Imagens do Exame" },
+  { key: "clinical_history", label: "Histórico Clínico" },
+  { key: "medical_conduct", label: "Conduta Médica" },
+  { key: "signed_report", label: "Laudo Assinado" },
+  { key: "surgery_auth_document", label: "Guia de Autorização" },
+  { key: "additional_document", label: "Outros" },
+] as const;
+
+export const POST_SURGERY_DOCUMENT_TYPES = [
+  { key: "surgery_room", label: "Descrição cirúrgica (Folha de sala)" },
+  { key: "surgery_images", label: "Imagens" },
+  { key: "surgery_auth_document", label: "Documento de autorização" },
+  { key: "additional_document", label: "Outros" },
+] as const;
+
+export type DocumentTypeEntry = { key: string; label: string };
+
+// ─── Props ───────────────────────────────────────────────────────────────────
 
 interface DocumentUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   surgeryRequestId: string;
   onSuccess: () => void;
+  /** Lista de tipos disponíveis para seleção. Padrão: PRE_SURGERY_DOCUMENT_TYPES */
+  documentTypes?: readonly DocumentTypeEntry[];
 }
 
-// Tipos de documento disponíveis
-const DOCUMENT_TYPES = [
-  { key: "personal_document", label: "RG/CNH" },
-  { key: "health_plan_card", label: "Carteirinha do Convênio" },
-  { key: "doctor_request", label: "Pedido Médico" },
-  { key: "exam", label: "Exames" },
-  { key: "additional_document", label: "Outros" },
-] as const;
-
-type DocumentTypeKey = (typeof DOCUMENT_TYPES)[number]["key"];
-
-interface SelectedFile {
-  file: File;
-  type: DocumentTypeKey;
-  name: string;
-  isRequired: boolean;
-}
+// ─── Componente ───────────────────────────────────────────────────────────────
 
 export function DocumentUploadModal({
   isOpen,
   onClose,
   surgeryRequestId,
   onSuccess,
+  documentTypes = PRE_SURGERY_DOCUMENT_TYPES,
 }: DocumentUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [documentType, setDocumentType] = useState<DocumentTypeKey>("exam");
+  const [documentType, setDocumentType] = useState<string>(
+    documentTypes[0]?.key ?? "",
+  );
   const [documentName, setDocumentName] = useState("");
   const [isRequired, setIsRequired] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -46,15 +63,51 @@ export function DocumentUploadModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropzoneRef = useRef<HTMLDivElement>(null);
+  const typeButtonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    if (!isTypeDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        typeButtonRef.current &&
+        !typeButtonRef.current.contains(e.target as Node) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsTypeDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isTypeDropdownOpen]);
+
+  const handleToggleDropdown = () => {
+    if (!isTypeDropdownOpen && typeButtonRef.current) {
+      const rect = typeButtonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+    setIsTypeDropdownOpen((prev) => !prev);
+  };
 
   const resetForm = useCallback(() => {
     setSelectedFile(null);
-    setDocumentType("exam");
+    setDocumentType(documentTypes[0]?.key ?? "");
     setDocumentName("");
     setIsRequired(false);
     setError(null);
     setIsDragging(false);
-  }, []);
+  }, [documentTypes]);
 
   if (!isOpen) return null;
 
@@ -96,11 +149,6 @@ export function DocumentUploadModal({
     }
   };
 
-  const handleRemoveFile = () => {
-    setSelectedFile(null);
-    setDocumentName("");
-  };
-
   const handleCancel = () => {
     resetForm();
     onClose();
@@ -139,8 +187,8 @@ export function DocumentUploadModal({
     }
   };
 
-  const getDocumentTypeLabel = (key: DocumentTypeKey): string => {
-    return DOCUMENT_TYPES.find((t) => t.key === key)?.label || key;
+  const getDocumentTypeLabel = (key: string): string => {
+    return documentTypes.find((t) => t.key === key)?.label ?? key;
   };
 
   return (
@@ -152,7 +200,7 @@ export function DocumentUploadModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 flex flex-col">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -168,7 +216,7 @@ export function DocumentUploadModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-6 space-y-4">
+        <div className="flex-1 p-6 space-y-4 overflow-y-auto">
           {error && (
             <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
               {error}
@@ -237,8 +285,9 @@ export function DocumentUploadModal({
             </label>
             <div className="relative">
               <button
+                ref={typeButtonRef}
                 type="button"
-                onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                onClick={handleToggleDropdown}
                 className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
               >
                 <span>{getDocumentTypeLabel(documentType)}</span>
@@ -254,27 +303,40 @@ export function DocumentUploadModal({
                   />
                 </svg>
               </button>
-              {isTypeDropdownOpen && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
-                  {DOCUMENT_TYPES.map((type) => (
-                    <button
-                      key={type.key}
-                      type="button"
-                      onClick={() => {
-                        setDocumentType(type.key);
-                        setIsTypeDropdownOpen(false);
-                      }}
-                      className={`w-full px-4 py-2.5 text-sm text-left hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                        documentType === type.key
-                          ? "bg-teal-50 text-teal-700"
-                          : "text-gray-900"
-                      }`}
-                    >
-                      {type.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {isTypeDropdownOpen &&
+                typeof window !== "undefined" &&
+                ReactDOM.createPortal(
+                  <div
+                    ref={dropdownRef}
+                    style={{
+                      position: "fixed",
+                      top: dropdownPosition.top,
+                      left: dropdownPosition.left,
+                      width: dropdownPosition.width,
+                      zIndex: 9999,
+                    }}
+                    className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                  >
+                    {documentTypes.map((type) => (
+                      <button
+                        key={type.key}
+                        type="button"
+                        onClick={() => {
+                          setDocumentType(type.key);
+                          setIsTypeDropdownOpen(false);
+                        }}
+                        className={`w-full px-4 py-2.5 text-sm text-left hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                          documentType === type.key
+                            ? "bg-teal-50 text-teal-700"
+                            : "text-gray-900"
+                        }`}
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>,
+                  document.body,
+                )}
             </div>
           </div>
 
@@ -293,22 +355,6 @@ export function DocumentUploadModal({
           </div>
 
           {/* Checkbox - Tornar obrigatório */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsRequired(!isRequired)}
-              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                isRequired
-                  ? "bg-teal-700 border-teal-700"
-                  : "bg-white border-gray-300"
-              }`}
-            >
-              {isRequired && <Check className="w-3 h-3 text-white" />}
-            </button>
-            <span className="text-sm text-gray-900">
-              Tornar documento obrigatório?
-            </span>
-          </div>
         </div>
 
         {/* Footer */}

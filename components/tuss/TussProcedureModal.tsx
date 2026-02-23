@@ -34,6 +34,7 @@ interface TussProcedureModalProps {
   onClose: () => void;
   surgeryRequestId: string;
   onSuccess: () => void;
+  existingProcedures?: { procedure?: { id?: string; tuss_code?: string } }[];
   editingProcedure?: {
     id: string;
     procedure_id: string;
@@ -147,7 +148,8 @@ export function TussProcedureModal({
   onClose,
   surgeryRequestId,
   onSuccess,
-  editingProcedure,
+  existingProcedures = [],
+  editingProcedure: _editingProcedure,
 }: TussProcedureModalProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<TussCode[]>([]);
@@ -175,6 +177,7 @@ export function TussProcedureModal({
   }, [isOpen]);
 
   // Debounced search
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSearch = useCallback(
     debounce(async (term: string) => {
       if (term.length < 2) {
@@ -203,6 +206,28 @@ export function TussProcedureModal({
   }, [searchTerm, debouncedSearch]);
 
   if (!isOpen) return null;
+
+  const handleFocus = async () => {
+    if (!isDropdownOpen) {
+      if (searchResults.length > 0) {
+        setIsDropdownOpen(true);
+        return;
+      }
+      setIsSearching(true);
+      try {
+        const results = await tussService.searchTussFromJson(
+          searchTerm || "",
+          50,
+        );
+        setSearchResults(results);
+        setIsDropdownOpen(results.length > 0);
+      } catch (err) {
+        console.error("Erro na busca:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }
+  };
 
   const handleSelectProcedure = (procedure: TussCode) => {
     setProcedures((prev) => [
@@ -257,6 +282,8 @@ export function TussProcedureModal({
         surgery_request_id: surgeryRequestId,
         procedures: procedures.map((item) => ({
           procedure_id: item.procedure.id,
+          tuss_code: item.procedure.tuss_code,
+          name: item.procedure.name,
           quantity: item.quantity,
         })),
       });
@@ -286,13 +313,7 @@ export function TussProcedureModal({
       >
         {/* Header */}
         <div className="flex items-center px-6 py-4 border-b border-[#DCDFE3]">
-          <h2
-            className="flex-1 text-2xl font-light text-[#111111] tracking-tight"
-            style={{
-              fontFamily: "Gotham, Inter, sans-serif",
-              letterSpacing: "-0.02em",
-            }}
-          >
+          <h2 className="flex-1 text-lg font-semibold text-gray-900">
             Novo Procedimento
           </h2>
         </div>
@@ -305,17 +326,17 @@ export function TussProcedureModal({
             </div>
           )}
 
-          {/* Header da Tabela */}
-          <div className="flex items-center gap-4 pl-6 pr-14 py-1 border-b border-[#DCDFE3]">
-            <span className="flex-1 text-xs text-[#111111] opacity-50 text-left">
+          {/* Header da Tabela — 5 colunas idênticas às linhas */}
+          <div className="flex items-center gap-2 px-6 py-2 border-b border-[#DCDFE3]">
+            <span className="flex-1 text-xs text-[#111111] opacity-50">
               Procedimento
             </span>
-            <span
-              className="text-xs text-[#111111] opacity-50"
-              style={{ width: "148px" }}
-            >
-              Quantidade
+            <div className="w-8" />
+            <span className="w-12 text-xs text-[#111111] opacity-50 text-center">
+              Qtd.
             </span>
+            <div className="w-8" />
+            <div className="w-16" />
           </div>
 
           {/* Área de Scroll para Lista de Procedimentos */}
@@ -324,21 +345,17 @@ export function TussProcedureModal({
             {procedures.map((item, index) => (
               <div
                 key={index}
-                className="flex items-center gap-4 px-6 py-3 border-b border-[#DCDFE3]"
-                style={{ height: "64px" }}
+                className="flex items-center gap-2 px-6 py-3 border-b border-[#DCDFE3] min-h-16"
               >
-                <div className="flex-1 flex items-center gap-6">
-                  <span className="flex-1 text-sm text-[#111111]">
-                    {item.procedure.tuss_code} - {item.procedure.name}
-                  </span>
-                  <span
-                    className="text-xs text-[#111111]"
-                    style={{ width: "148px" }}
-                  >
-                    {item.quantity}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
+                <span className="flex-1 text-sm text-[#111111]">
+                  {item.procedure.tuss_code} - {item.procedure.name}
+                </span>
+                <div className="w-8" />
+                <span className="w-12 text-xs text-[#111111] text-center">
+                  {item.quantity}
+                </span>
+                <div className="w-8" />
+                <div className="flex items-center gap-2 w-16">
                   <button
                     onClick={() => handleEditProcedure(index)}
                     className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded transition-colors"
@@ -358,87 +375,95 @@ export function TussProcedureModal({
             ))}
 
             {/* Linha de Adição de Novo Procedimento */}
-            <div
-              className="flex items-center gap-4 px-6 py-3 border-b border-[#DCDFE3]"
-              style={{ height: "64px" }}
-            >
-              <div className="flex-1 flex items-center gap-6">
-                {/* Dropdown de Busca */}
-                <div className="flex-1 relative">
-                  <div className="flex items-center gap-2 px-3 py-2 border border-[#DCDFE3] rounded-lg bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.05)]">
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Código ou nome do procedimento"
-                      className="flex-1 bg-transparent border-none outline-none text-sm text-[#111111] placeholder:text-[#111111] placeholder:opacity-50"
-                    />
-                    <IconArrowDown className="w-4 h-4 text-[#111111] opacity-50" />
-                  </div>
-
-                  {/* Dropdown de Resultados */}
-                  {isDropdownOpen && searchResults.length > 0 && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {searchResults.map((procedure) => (
-                        <button
-                          key={procedure.id}
-                          type="button"
-                          onClick={() => handleSelectProcedure(procedure)}
-                          className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-[#DCDFE3] last:border-b-0"
-                        >
-                          <p className="text-sm font-medium text-[#111111]">
-                            {procedure.tuss_code} - {procedure.name}
-                          </p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Loading */}
-                  {isSearching && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-lg shadow-lg p-4 text-center">
-                      <span className="text-sm text-[#111111] opacity-50">
-                        Buscando...
-                      </span>
-                    </div>
-                  )}
+            <div className="flex items-center gap-2 px-6 py-3 border-b border-[#DCDFE3] min-h-16">
+              {/* Dropdown de Busca */}
+              <div className="flex-1 relative">
+                <div className="flex items-center gap-2 px-3 py-2 border border-[#DCDFE3] rounded-lg bg-white shadow-sm">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onFocus={handleFocus}
+                    onBlur={() =>
+                      setTimeout(() => setIsDropdownOpen(false), 150)
+                    }
+                    placeholder="Código ou nome do procedimento"
+                    className="flex-1 bg-transparent border-none outline-none text-sm text-[#111111] placeholder:text-[#111111] placeholder:opacity-50"
+                  />
+                  <IconArrowDown className="w-4 h-4 text-[#111111] opacity-50" />
                 </div>
 
-                {/* Controles de Quantidade */}
-                <div
-                  className="flex items-center gap-2"
-                  style={{ width: "148px" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNewItemQuantity((prev) => Math.max(1, prev - 1))
-                    }
-                    disabled={newItemQuantity <= 1}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <IconMinus className="w-5 h-5 text-[#111111] opacity-50" />
-                  </button>
-                  <div
-                    className="flex items-center justify-center px-3 py-2 border border-[#DCDFE3] rounded-lg bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
-                    style={{ width: "52px", height: "40px" }}
-                  >
-                    <span className="text-sm font-semibold text-[#111111]">
-                      {newItemQuantity}
+                {/* Dropdown de Resultados */}
+                {isDropdownOpen &&
+                  searchResults.length > 0 &&
+                  (() => {
+                    const addedIds = new Set([
+                      ...procedures.map((p) => p.procedure.id),
+                      ...existingProcedures
+                        .map((p) => p.procedure?.id)
+                        .filter(Boolean),
+                    ]);
+                    const filteredResults = searchResults.filter(
+                      (r) => !addedIds.has(r.id),
+                    );
+                    if (filteredResults.length === 0) return null;
+                    return (
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {filteredResults.map((procedure) => (
+                          <button
+                            key={procedure.id}
+                            type="button"
+                            onClick={() => handleSelectProcedure(procedure)}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-[#DCDFE3] last:border-b-0"
+                          >
+                            <p className="text-sm font-medium text-[#111111]">
+                              {procedure.tuss_code} - {procedure.name}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                {/* Loading */}
+                {isSearching && (
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-lg shadow-lg p-4 text-center">
+                    <span className="text-sm text-[#111111] opacity-50">
+                      Buscando...
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setNewItemQuantity((prev) => prev + 1)}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    <IconPlus className="w-5 h-5 text-[#111111]" />
-                  </button>
-                </div>
+                )}
               </div>
 
-              {/* Espaço para alinhar com as ações */}
-              <div style={{ width: "78px" }} />
+              {/* Botão − */}
+              <button
+                type="button"
+                onClick={() =>
+                  setNewItemQuantity((prev) => Math.max(1, prev - 1))
+                }
+                disabled={newItemQuantity <= 1}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <IconMinus className="w-4 h-4 text-[#111111] opacity-50" />
+              </button>
+
+              {/* Número */}
+              <div className="w-12 h-10 flex items-center justify-center border border-[#DCDFE3] rounded-lg bg-white">
+                <span className="text-sm font-semibold text-[#111111]">
+                  {newItemQuantity}
+                </span>
+              </div>
+
+              {/* Botão + */}
+              <button
+                type="button"
+                onClick={() => setNewItemQuantity((prev) => prev + 1)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <IconPlus className="w-4 h-4 text-[#111111]" />
+              </button>
+
+              <div className="w-16" />
             </div>
           </div>
         </div>

@@ -7,7 +7,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
 import { getInitials, getDisplayName, getAvatarColor } from "@/lib/utils";
-import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
 
 interface MenuItem {
   iconSrc: string;
@@ -47,7 +46,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
-  
+
   // Carregar estado do localStorage ou usar valor padrão
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -56,7 +55,7 @@ export default function Sidebar() {
     }
     return false;
   });
-  
+
   const {
     value: isMenuOpen,
     setFalse: closeMenu,

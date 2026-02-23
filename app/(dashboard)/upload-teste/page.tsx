@@ -9,7 +9,7 @@ export default function UploadTestePage() {
   >([]);
 
   const handleUploadComplete = (
-    files: Array<{ url: string; path: string; originalName: string }>
+    files: Array<{ url: string; path: string; originalName: string }>,
   ) => {
     setUploadedFiles((prev) => [...prev, ...files]);
   };
@@ -82,7 +82,9 @@ export default function UploadTestePage() {
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Tipos aceitos: Imagens, PDF, DOC, DOCX</li>
             <li>• Máximo de 5 arquivos por vez</li>
-            <li>• Arquivos são salvos na pasta "documents" do Supabase</li>
+            <li>
+              • Arquivos são salvos na pasta &quot;documents&quot; do Supabase
+            </li>
             <li>• URLs públicas são geradas automaticamente</li>
           </ul>
         </div>

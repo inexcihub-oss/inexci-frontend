@@ -144,7 +144,7 @@ interface AccordionProps {
 
 function Accordion({ title, isOpen, onToggle, children }: AccordionProps) {
   return (
-    <div className="border-b border-[#DCDFE3]" style={{ width: "342px" }}>
+    <div className="border-b border-[#DCDFE3] w-full">
       <button
         type="button"
         onClick={onToggle}
@@ -176,6 +176,8 @@ export function OpmeModal({
   const [newOpmeName, setNewOpmeName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingNameIndex, setEditingNameIndex] = useState<number | null>(null);
+  const [isAddingOpme, setIsAddingOpme] = useState(false);
 
   // Estados dos accordions
   const [manufacturersOpen, setManufacturersOpen] = useState(true);
@@ -186,14 +188,19 @@ export function OpmeModal({
   useEffect(() => {
     if (isOpen) {
       if (editingOpme) {
+        const parseList = (value?: string | null) =>
+          value
+            ? value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [""];
         setOpmeItems([
           {
             id: editingOpme.id,
             name: editingOpme.name,
-            manufacturers: editingOpme.brand ? [editingOpme.brand] : [""],
-            suppliers: editingOpme.distributor
-              ? [editingOpme.distributor]
-              : [""],
+            manufacturers: parseList(editingOpme.brand),
+            suppliers: parseList(editingOpme.distributor),
             quantity: editingOpme.quantity,
           },
         ]);
@@ -214,7 +221,7 @@ export function OpmeModal({
 
     const newItem: OpmeItemForm = {
       name: newOpmeName.trim(),
-      manufacturers: ["", "", ""],
+      manufacturers: [""],
       suppliers: [""],
       quantity: 1,
     };
@@ -222,6 +229,7 @@ export function OpmeModal({
     setOpmeItems((prev) => [...prev, newItem]);
     setSelectedOpmeIndex(opmeItems.length);
     setNewOpmeName("");
+    setIsAddingOpme(false);
   };
 
   const handleSelectOpme = (index: number) => {
@@ -369,16 +377,7 @@ export function OpmeModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#DCDFE3]">
-          <h2
-            className="text-2xl font-light text-[#111111]"
-            style={{
-              fontFamily: "Gotham, Inter, sans-serif",
-              letterSpacing: "-0.02em",
-              width: "410px",
-            }}
-          >
-            OPME
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900">OPME</h2>
           <button
             onClick={!isLoading ? handleCancel : undefined}
             className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded transition-colors"
@@ -391,7 +390,10 @@ export function OpmeModal({
         {/* Content Area - Split View */}
         <div className="flex-1 flex overflow-hidden">
           {/* Painel Esquerdo - Lista de OPME */}
-          <div className="flex flex-col" style={{ width: "458px" }}>
+          <div
+            className="flex flex-col"
+            style={opmeItems.length > 0 ? { width: "458px" } : { flex: 1 }}
+          >
             {error && (
               <div className="mx-4 mt-4 bg-red-50 text-red-700 p-3 rounded-lg text-sm">
                 {error}
@@ -404,15 +406,42 @@ export function OpmeModal({
                 <div
                   key={index}
                   className={`p-1 cursor-pointer ${selectedOpmeIndex === index ? "bg-gray-50" : ""}`}
-                  onClick={() => handleSelectOpme(index)}
+                  onClick={() =>
+                    editingNameIndex !== index && handleSelectOpme(index)
+                  }
                 >
                   <div
                     className="flex items-center gap-3 px-4 py-3 border border-[#DCDFE3] rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
                     style={{ height: "64px" }}
                   >
-                    <span className="flex-1 text-sm text-[#111111]">
-                      {item.name}
-                    </span>
+                    {editingNameIndex === index ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        value={item.name}
+                        onChange={(e) =>
+                          setOpmeItems((prev) =>
+                            prev.map((it, i) =>
+                              i === index
+                                ? { ...it, name: e.target.value }
+                                : it,
+                            ),
+                          )
+                        }
+                        onBlur={() => setEditingNameIndex(null)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === "Escape") {
+                            setEditingNameIndex(null);
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 px-2 py-1 text-sm text-[#111111] border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#147471]"
+                      />
+                    ) : (
+                      <span className="flex-1 text-sm text-[#111111]">
+                        {item.name}
+                      </span>
+                    )}
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -429,10 +458,10 @@ export function OpmeModal({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleSelectOpme(index);
+                          setEditingNameIndex(index);
                         }}
                         className="p-2 hover:bg-gray-100 rounded transition-colors"
-                        title="Editar"
+                        title="Renomear"
                       >
                         <IconEdit className="w-5 h-5 text-[#111111]" />
                       </button>
@@ -451,138 +480,167 @@ export function OpmeModal({
                   </div>
                 </div>
               ))}
+            </div>
 
-              {/* Input para adicionar novo OPME */}
-              <div className="p-1">
-                <div
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg"
-                  style={{ height: "64px" }}
+            {/* Footer do painel esquerdo - Adicionar OPME */}
+            <div
+              className={`border-t border-[#DCDFE3] px-4 py-3 ${opmeItems.length === 0 ? "flex justify-center" : ""}`}
+            >
+              {isAddingOpme ? (
+                <input
+                  type="text"
+                  autoFocus
+                  value={newOpmeName}
+                  onChange={(e) => setNewOpmeName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddOpme();
+                    if (e.key === "Escape") {
+                      setIsAddingOpme(false);
+                      setNewOpmeName("");
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!newOpmeName.trim()) {
+                      setIsAddingOpme(false);
+                      setNewOpmeName("");
+                    }
+                  }}
+                  placeholder="Nome da OPME..."
+                  className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#147471]"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingOpme(true)}
+                  className="flex items-center gap-2 text-sm font-semibold text-[#147471] hover:text-[#0f5c5a] transition-colors"
                 >
-                  <input
-                    type="text"
-                    value={newOpmeName}
-                    onChange={(e) => setNewOpmeName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddOpme()}
-                    placeholder="OPME"
-                    className="flex-1 px-3 py-2 text-sm text-[#111111] placeholder:text-[#111111] placeholder:opacity-50 bg-white border border-[#DCDFE3] rounded-lg"
-                  />
-                </div>
-              </div>
+                  <IconPlus className="w-4 h-4" />
+                  Adicionar OPME
+                </button>
+              )}
             </div>
           </div>
 
           {/* Painel Direito - Configurações do OPME selecionado */}
-          <div className="flex-1 flex flex-col border-l border-[#DCDFE3] overflow-y-auto">
-            {selectedItem ? (
-              <div className="flex flex-col items-center">
-                {/* Accordion: Fabricantes */}
-                <Accordion
-                  title="Fabricantes"
-                  isOpen={manufacturersOpen}
-                  onToggle={() => setManufacturersOpen(!manufacturersOpen)}
-                >
-                  {selectedItem.manufacturers.map((manufacturer, optIndex) => (
-                    <div key={optIndex} className="space-y-1">
-                      <label className="text-sm font-semibold text-[#000000]">
-                        Opção {optIndex + 1}
-                      </label>
-                      <input
-                        type="text"
-                        value={manufacturer}
-                        onChange={(e) =>
-                          handleManufacturerChange(optIndex, e.target.value)
-                        }
-                        placeholder="Fabricante"
-                        className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-lg"
-                      />
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={handleAddManufacturer}
-                    className="flex items-center gap-2 px-6 py-2 text-xs font-semibold text-[#111111] hover:text-[#147471] transition-colors"
+          {opmeItems.length > 0 && (
+            <div className="flex-1 flex flex-col border-l border-[#DCDFE3]">
+              {selectedItem ? (
+                <div className="flex flex-col overflow-y-auto flex-1">
+                  {/* Accordion: Fabricantes */}
+                  <Accordion
+                    title="Fabricantes"
+                    isOpen={manufacturersOpen}
+                    onToggle={() => setManufacturersOpen(!manufacturersOpen)}
                   >
-                    <IconPlus className="w-5 h-5" />
-                    Adicionar Opção
-                  </button>
-                </Accordion>
-
-                {/* Accordion: Fornecedores */}
-                <Accordion
-                  title="Fornecedores"
-                  isOpen={suppliersOpen}
-                  onToggle={() => setSuppliersOpen(!suppliersOpen)}
-                >
-                  {selectedItem.suppliers.map((supplier, optIndex) => (
-                    <div key={optIndex} className="space-y-1">
-                      <label className="text-sm font-semibold text-[#000000]">
-                        Opção {optIndex + 1}
-                      </label>
-                      <input
-                        type="text"
-                        value={supplier}
-                        onChange={(e) =>
-                          handleSupplierChange(optIndex, e.target.value)
-                        }
-                        placeholder="Fornecedor"
-                        className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-lg"
-                      />
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={handleAddSupplier}
-                    className="flex items-center gap-2 px-6 py-2 text-xs font-semibold text-[#111111] hover:text-[#147471] transition-colors"
-                  >
-                    <IconPlus className="w-5 h-5" />
-                    Adicionar Opção
-                  </button>
-                </Accordion>
-
-                {/* Accordion: Quantidade */}
-                <Accordion
-                  title="Quantidade"
-                  isOpen={quantityOpen}
-                  onToggle={() => setQuantityOpen(!quantityOpen)}
-                >
-                  <div className="space-y-1">
-                    <label className="text-sm font-semibold text-[#000000]">
-                      Quantidade
-                    </label>
-                    <div className="flex items-center gap-0.5">
+                    {selectedItem.manufacturers.map(
+                      (manufacturer, optIndex) => (
+                        <div key={optIndex} className="space-y-1">
+                          <label className="text-sm font-semibold text-[#000000]">
+                            Opção {optIndex + 1}
+                          </label>
+                          <input
+                            type="text"
+                            value={manufacturer}
+                            onChange={(e) =>
+                              handleManufacturerChange(optIndex, e.target.value)
+                            }
+                            placeholder="Fabricante"
+                            className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-lg"
+                          />
+                        </div>
+                      ),
+                    )}
+                    {selectedItem.manufacturers.length < 3 && (
                       <button
                         type="button"
-                        onClick={() => handleQuantityChange(-1)}
-                        disabled={selectedItem.quantity <= 1}
-                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        onClick={handleAddManufacturer}
+                        className="flex items-center gap-2 px-6 py-2 text-xs font-semibold text-[#111111] hover:text-[#147471] transition-colors"
                       >
-                        <IconMinus className="w-5 h-5 text-[#111111] opacity-50" />
+                        <IconPlus className="w-5 h-5" />
+                        Adicionar Opção
                       </button>
-                      <div
-                        className="flex items-center justify-center px-3 py-2 border border-[#DCDFE3] rounded-lg bg-white"
-                        style={{ width: "52px", height: "40px" }}
-                      >
-                        <span className="text-sm font-semibold text-[#111111]">
-                          {selectedItem.quantity}
-                        </span>
+                    )}
+                  </Accordion>
+
+                  {/* Accordion: Fornecedores */}
+                  <Accordion
+                    title="Fornecedores"
+                    isOpen={suppliersOpen}
+                    onToggle={() => setSuppliersOpen(!suppliersOpen)}
+                  >
+                    {selectedItem.suppliers.map((supplier, optIndex) => (
+                      <div key={optIndex} className="space-y-1">
+                        <label className="text-sm font-semibold text-[#000000]">
+                          Opção {optIndex + 1}
+                        </label>
+                        <input
+                          type="text"
+                          value={supplier}
+                          onChange={(e) =>
+                            handleSupplierChange(optIndex, e.target.value)
+                          }
+                          placeholder="Fornecedor"
+                          className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-lg"
+                        />
                       </div>
+                    ))}
+                    {selectedItem.suppliers.length < 3 && (
                       <button
                         type="button"
-                        onClick={() => handleQuantityChange(1)}
-                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white transition-colors"
+                        onClick={handleAddSupplier}
+                        className="flex items-center gap-2 px-6 py-2 text-xs font-semibold text-[#111111] hover:text-[#147471] transition-colors"
                       >
-                        <IconPlus className="w-5 h-5 text-[#111111]" />
+                        <IconPlus className="w-5 h-5" />
+                        Adicionar Opção
                       </button>
+                    )}
+                  </Accordion>
+
+                  {/* Accordion: Quantidade */}
+                  <Accordion
+                    title="Quantidade"
+                    isOpen={quantityOpen}
+                    onToggle={() => setQuantityOpen(!quantityOpen)}
+                  >
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-[#000000]">
+                        Quantidade
+                      </label>
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(-1)}
+                          disabled={selectedItem.quantity <= 1}
+                          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <IconMinus className="w-5 h-5 text-[#111111] opacity-50" />
+                        </button>
+                        <div
+                          className="flex items-center justify-center px-3 py-2 border border-[#DCDFE3] rounded-lg bg-white"
+                          style={{ width: "52px", height: "40px" }}
+                        >
+                          <span className="text-sm font-semibold text-[#111111]">
+                            {selectedItem.quantity}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(1)}
+                          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white transition-colors"
+                        >
+                          <IconPlus className="w-5 h-5 text-[#111111]" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </Accordion>
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-[#758195] text-sm">
-                Selecione um OPME para configurar
-              </div>
-            )}
-          </div>
+                  </Accordion>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-[#758195] text-sm">
+                  Selecione um OPME para configurar
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

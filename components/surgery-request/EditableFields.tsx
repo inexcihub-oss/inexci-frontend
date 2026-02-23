@@ -20,7 +20,7 @@ const ChevronDownIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// Estilos por status
+// Estilos por status (9 status corretos conforme backend)
 const statusStyles: Record<
   number,
   { bg: string; text: string; border: string; label: string }
@@ -44,46 +44,40 @@ const statusStyles: Record<
     label: "Em Análise",
   },
   4: {
-    bg: "bg-purple-50",
-    text: "text-purple-700",
-    border: "border-purple-200",
-    label: "Em Reanálise",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    border: "border-amber-200",
+    label: "Em Agendamento",
   },
   5: {
-    bg: "bg-indigo-50",
-    text: "text-indigo-700",
-    border: "border-indigo-200",
-    label: "Aguardando Agendamento",
-  },
-  6: {
     bg: "bg-teal-50",
     text: "text-teal-700",
     border: "border-teal-200",
     label: "Agendada",
   },
-  7: {
-    bg: "bg-cyan-50",
-    text: "text-cyan-700",
-    border: "border-cyan-200",
-    label: "A Faturar",
-  },
-  8: {
-    bg: "bg-pink-50",
-    text: "text-pink-700",
-    border: "border-pink-200",
-    label: "Faturada",
-  },
-  9: {
+  6: {
     bg: "bg-green-50",
     text: "text-green-700",
     border: "border-green-200",
-    label: "Concluída",
+    label: "Realizada",
   },
-  10: {
+  7: {
+    bg: "bg-indigo-50",
+    text: "text-indigo-700",
+    border: "border-indigo-200",
+    label: "Faturada",
+  },
+  8: {
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
+    label: "Finalizada",
+  },
+  9: {
     bg: "bg-red-50",
     text: "text-red-700",
     border: "border-red-200",
-    label: "Cancelada",
+    label: "Encerrada",
   },
 };
 

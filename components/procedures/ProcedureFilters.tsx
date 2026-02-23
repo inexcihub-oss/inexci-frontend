@@ -5,6 +5,7 @@ import { ChevronDown, X } from "lucide-react";
 import {
   SurgeryRequestStatus,
   PriorityLevel,
+  PRIORITY_LABELS,
 } from "@/types/surgery-request.types";
 
 interface FilterOptions {
@@ -34,21 +35,15 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
     "Pendente",
     "Enviada",
     "Em Análise",
-    "Em Reanálise",
-    "Autorizada",
+    "Em Agendamento",
     "Agendada",
-    "A Faturar",
+    "Realizada",
     "Faturada",
     "Finalizada",
-    "Cancelada",
+    "Encerrada",
   ];
 
-  const priorityOptions: PriorityLevel[] = [
-    PRIORITY.LOW,
-    PRIORITY.MEDIUM,
-    PRIORITY.HIGH,
-    PRIORITY.URGENT,
-  ];
+  const priorityOptions: PriorityLevel[] = [1, 2, 3, 4];
 
   const sortOptions = [
     { value: "createdAt", label: "Data de Criação" },

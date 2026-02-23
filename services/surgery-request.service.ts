@@ -1,10 +1,6 @@
 import api from "@/lib/api";
 import { SurgeryRequestStatus } from "@/types/surgery-request.types";
 
-export interface UpdateStatusPayload {
-  status: SurgeryRequestStatus;
-}
-
 // Mapeamento de status string para número (conforme backend)
 export const STATUS_MAP: Record<SurgeryRequestStatus, number> = {
   Pendente: 1,
@@ -15,7 +11,7 @@ export const STATUS_MAP: Record<SurgeryRequestStatus, number> = {
   Realizada: 6,
   Faturada: 7,
   Finalizada: 8,
-  Cancelada: 9,
+  Encerrada: 9,
 };
 
 // Mapeamento reverso: número para string
@@ -28,7 +24,7 @@ export const STATUS_NUMBER_TO_STRING: Record<number, SurgeryRequestStatus> = {
   6: "Realizada",
   7: "Faturada",
   8: "Finalizada",
-  9: "Cancelada",
+  9: "Encerrada",
 };
 
 // Cores de status para UI
@@ -76,12 +72,14 @@ export const STATUS_COLORS: Record<
     text: "text-emerald-700",
     border: "border-emerald-200",
   },
-  Cancelada: {
+  Encerrada: {
     bg: "bg-red-50",
     text: "text-red-700",
     border: "border-red-200",
   },
 };
+
+// ─── Payloads de criação/atualização básica ───────────────────────────────────
 
 export interface CreateSurgeryRequestPayload {
   procedureId: string;
@@ -109,162 +107,362 @@ export interface UpdateBasicDataPayload {
   manager_id?: string;
 }
 
+// ─── Payloads de transição de status ──────────────────────────────────────────
+
+export interface SendPayload {
+  method: "email" | "download";
+  to?: string;
+  subject?: string;
+  message?: string;
+}
+
+export interface StartAnalysisPayload {
+  request_number: string;
+  received_at: string;
+  quotation_1_number?: string;
+  quotation_1_received_at?: string;
+  quotation_2_number?: string;
+  quotation_2_received_at?: string;
+  quotation_3_number?: string;
+  quotation_3_received_at?: string;
+  notes?: string;
+}
+
+export interface AcceptAuthorizationPayload {
+  /** Mínimo 1, máximo 3 datas ISO no formato YYYY-MM-DDTHH:mm:ss */
+  date_options: string[];
+}
+
+export interface ContestAuthorizationPayload {
+  reason: string;
+  method: "email" | "document";
+  to?: string;
+  subject?: string;
+  message?: string;
+  attachments?: string[];
+}
+
+export interface ConfirmDatePayload {
+  selected_date_index: 0 | 1 | 2;
+}
+
+export interface UpdateDateOptionsPayload {
+  date_options: string[];
+}
+
+export interface ReschedulePayload {
+  new_date: string;
+}
+
+export interface MarkPerformedPayload {
+  surgery_performed_at: string;
+}
+
+export interface InvoicePayload {
+  invoice_protocol: string;
+  invoice_value: number;
+  invoice_sent_at: string;
+  set_as_default_for_health_plan?: boolean;
+}
+
+export interface ConfirmReceiptPayload {
+  received_value: number;
+  received_at: string;
+  receipt_notes?: string;
+}
+
+export interface ContestPaymentPayload {
+  to: string;
+  subject: string;
+  message: string;
+  attachments?: string[];
+}
+
+export interface UpdateReceiptPayload {
+  received_value: number;
+  received_at: string;
+}
+
+export interface ClosePayload {
+  reason?: string;
+}
+
+export interface NotifyPayload {
+  template: string;
+  to?: string;
+}
+
+export interface CreateTemplatePayload {
+  name: string;
+  template_data: object;
+}
+
+// ─── Serviço ──────────────────────────────────────────────────────────────────
+
 export const surgeryRequestService = {
-  /**
-   * Atualiza o status de um procedimento cirúrgico
-   */
-  async updateStatus(
-    requestId: string,
-    status: SurgeryRequestStatus,
-  ): Promise<void> {
-    try {
-      const statusNumber = STATUS_MAP[status];
-      if (!statusNumber) {
-        throw new Error(`Status inválido: ${status}`);
-      }
-      await api.patch(`/surgery-requests/${requestId}/status`, {
-        status: statusNumber,
-      });
-    } catch (error) {
-      throw error;
-    }
-  },
+  // ── Consultas ──────────────────────────────────────────────────────────────
 
-  /**
-   * Busca todos os procedimentos cirúrgicos
-   */
+  /** Busca todos os procedimentos cirúrgicos */
   async getAll(): Promise<any> {
-    try {
-      const response = await api.get("/surgery-requests");
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.get("/surgery-requests");
+    return response.data;
   },
 
-  /**
-   * Busca um procedimento específico por ID
-   */
+  /** Busca uma solicitação específica por ID */
   async getById(requestId: string): Promise<any> {
-    try {
-      const response = await api.get(`/surgery-requests/one?id=${requestId}`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.get(`/surgery-requests/one?id=${requestId}`);
+    return response.data;
   },
 
-  /**
-   * Cria um novo procedimento cirúrgico
-   */
+  // ── Criação e edição básica ────────────────────────────────────────────────
+
+  /** Cria uma nova solicitação cirúrgica (payload completo) */
   async create(data: CreateSurgeryRequestPayload): Promise<any> {
-    try {
-      const response = await api.post("/surgery-requests", data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.post("/surgery-requests", data);
+    return response.data;
   },
 
-  /**
-   * Cria uma nova solicitação cirúrgica simplificada
-   */
+  /** Cria uma nova solicitação cirúrgica simplificada */
   async createSimple(data: SimpleSurgeryRequestPayload): Promise<any> {
-    try {
-      const response = await api.post("/surgery-requests", data);
-      return response.data;
-    } catch (error: any) {
-      throw error;
-    }
+    const response = await api.post("/surgery-requests", data);
+    return response.data;
   },
 
-  /**
-   * Aprova uma solicitação (transição de Em Análise/Reanálise para Autorizada)
-   */
-  async approve(requestId: string): Promise<any> {
-    try {
-      const response = await api.post(`/surgery-requests/${requestId}/approve`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Nega uma solicitação
-   */
-  async deny(requestId: string, contestReason: string): Promise<any> {
-    try {
-      const response = await api.post(`/surgery-requests/${requestId}/deny`, {
-        contest_reason: contestReason,
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Transiciona manualmente para um status específico
-   */
-  async transition(requestId: string, newStatus: number): Promise<any> {
-    try {
-      const response = await api.post(
-        `/surgery-requests/${requestId}/transition`,
-        {
-          new_status: newStatus,
-        },
-      );
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Atualiza dados básicos da solicitação (prioridade, prazo, gestor)
-   */
+  /** Atualiza dados básicos (prioridade, prazo, gestor) */
   async updateBasicData(
     requestId: string,
     data: UpdateBasicDataPayload,
   ): Promise<any> {
-    try {
-      const response = await api.patch(
-        `/surgery-requests/${requestId}/basic`,
-        data,
-      );
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.patch(
+      `/surgery-requests/${requestId}/basic`,
+      data,
+    );
+    return response.data;
   },
 
-  /**
-   * Atualiza dados do procedimento
-   */
+  /** Atualiza dados genéricos do procedimento (laudo, etc.) */
   async update(requestId: string, data: any): Promise<any> {
-    try {
-      const response = await api.put("/surgery-requests", {
-        id: requestId,
-        ...data,
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.put("/surgery-requests", {
+      id: requestId,
+      ...data,
+    });
+    return response.data;
+  },
+
+  // ── Transições de status ───────────────────────────────────────────────────
+
+  /**
+   * PENDING (1) → SENT (2)
+   * Envia a solicitação ao convênio via e-mail ou download de PDF.
+   */
+  async send(requestId: string, data: SendPayload): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/send`,
+      data,
+    );
+    return response.data;
   },
 
   /**
-   * Envia a solicitação (muda status de Pendente para Enviada)
+   * SENT (2) → IN_ANALYSIS (3)
+   * Registra o início da análise pela operadora, com número e datas de cotação.
    */
-  async send(requestId: string): Promise<any> {
-    try {
-      const response = await api.post("/surgery-requests/send", {
-        id: requestId,
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+  async startAnalysis(
+    requestId: string,
+    data: StartAnalysisPayload,
+  ): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/start-analysis`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * Salva as quantidades autorizadas de procedimentos TUSS e OPME.
+   * Deve ser chamado antes de acceptAuthorization.
+   */
+  async authorizeQuantities(
+    surgeryRequestId: string,
+    procedures: { id: string; authorized_quantity: number }[],
+    opmeItems: { id: string; authorized_quantity: number }[],
+  ): Promise<any> {
+    const response = await api.post("/surgery-requests/procedures/authorize", {
+      surgery_request_id: surgeryRequestId,
+      surgery_request_procedures: procedures,
+      opme_items: opmeItems,
+    });
+    return response.data;
+  },
+
+  /**
+   * IN_ANALYSIS (3) → IN_SCHEDULING (4)
+   * Aceita a autorização e propõe datas disponíveis para a cirurgia.
+   */
+  async acceptAuthorization(
+    requestId: string,
+    data: AcceptAuthorizationPayload,
+  ): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/accept-authorization`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * IN_ANALYSIS (3) — mantém status, cria contestação de autorização.
+   */
+  async contestAuthorization(
+    requestId: string,
+    data: ContestAuthorizationPayload,
+  ): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/contest-authorization`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * IN_SCHEDULING (4) → SCHEDULED (5)
+   * Confirma a data escolhida pelo convênio.
+   */
+  async confirmDate(requestId: string, data: ConfirmDatePayload): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/confirm-date`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * IN_SCHEDULING (4) — sem mudança de status, atualiza as opções de datas.
+   */
+  async updateDateOptions(
+    requestId: string,
+    data: UpdateDateOptionsPayload,
+  ): Promise<any> {
+    const response = await api.patch(
+      `/surgery-requests/${requestId}/date-options`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * SCHEDULED (5) — sem mudança de status, reagenda a cirurgia.
+   */
+  async reschedule(requestId: string, data: ReschedulePayload): Promise<any> {
+    const response = await api.patch(
+      `/surgery-requests/${requestId}/reschedule`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * SCHEDULED (5) → PERFORMED (6)
+   * Marca a cirurgia como realizada, com data/hora da realização.
+   */
+  async markPerformed(
+    requestId: string,
+    data: MarkPerformedPayload,
+  ): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/mark-performed`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * PERFORMED (6) → INVOICED (7)
+   * Registra o faturamento enviado ao convênio.
+   */
+  async invoice(requestId: string, data: InvoicePayload): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/invoice`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * INVOICED (7) → FINALIZED (8)
+   * Confirma o recebimento do pagamento.
+   */
+  async confirmReceipt(
+    requestId: string,
+    data: ConfirmReceiptPayload,
+  ): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/confirm-receipt`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * FINALIZED (8) — sem mudança de status, contesta o pagamento recebido.
+   */
+  async contestPayment(
+    requestId: string,
+    data: ContestPaymentPayload,
+  ): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/contest-payment`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * FINALIZED (8) — edita os dados do recebimento após contestação.
+   */
+  async updateReceipt(
+    requestId: string,
+    data: UpdateReceiptPayload,
+  ): Promise<any> {
+    const response = await api.patch(
+      `/surgery-requests/${requestId}/billing/receipt`,
+      data,
+    );
+    return response.data;
+  },
+
+  /**
+   * Qualquer status (exceto 8 - Finalizada e 9 - Encerrada) → CLOSED (9)
+   * Encerra a solicitação com motivo opcional.
+   */
+  async close(requestId: string, data?: ClosePayload): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/close`,
+      data ?? {},
+    );
+    return response.data;
+  },
+
+  // ── Notificações e templates ───────────────────────────────────────────────
+
+  /** Envia notificação por e-mail manualmente */
+  async notify(requestId: string, data: NotifyPayload): Promise<any> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/notify`,
+      data,
+    );
+    return response.data;
+  },
+
+  /** Cria um template de solicitação */
+  async createTemplate(data: CreateTemplatePayload): Promise<any> {
+    const response = await api.post("/surgery-requests/templates", data);
+    return response.data;
+  },
+
+  /** Lista todos os templates salvos */
+  async getTemplates(): Promise<any> {
+    const response = await api.get("/surgery-requests/templates");
+    return response.data;
   },
 };

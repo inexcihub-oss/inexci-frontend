@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import ReactDOM from "react-dom";
 import { Search, ChevronDown, X, Loader2 } from "lucide-react";
 
 interface SelectSearchOption {
@@ -18,12 +19,13 @@ interface SelectSearchProps {
   label?: string;
   error?: string;
   clearable?: boolean;
+  initialLabel?: string;
 }
 
 // Custom debounce function
 function debounce<T extends (...args: any[]) => any>(
   func: T,
-  wait: number
+  wait: number,
 ): T & { cancel: () => void } {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -56,16 +58,24 @@ export function SelectSearch({
   label,
   error,
   clearable = true,
+  initialLabel,
 }: SelectSearchProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [options, setOptions] = useState<SelectSearchOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedLabel, setSelectedLabel] = useState("");
+  const [selectedLabel, setSelectedLabel] = useState(initialLabel || "");
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
 
   // Debounced search function
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSearch = useCallback(
     debounce(async (term: string) => {
       setIsLoading(true);
@@ -79,7 +89,7 @@ export function SelectSearch({
         setIsLoading(false);
       }
     }, 300),
-    [onSearch]
+    [onSearch],
   );
 
   // Effect to search when term changes
@@ -109,12 +119,23 @@ export function SelectSearch({
     }
   }, [value, options]);
 
+  // Sync initialLabel when value is set but options haven't loaded yet
+  useEffect(() => {
+    if (value && initialLabel && !selectedLabel) {
+      setSelectedLabel(initialLabel);
+    }
+  }, [value, initialLabel, selectedLabel]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
         containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        !containerRef.current.contains(event.target as Node) &&
+        !(
+          dropdownRef.current &&
+          dropdownRef.current.contains(event.target as Node)
+        )
       ) {
         setIsOpen(false);
       }
@@ -147,6 +168,14 @@ export function SelectSearch({
 
   const handleToggle = () => {
     if (!disabled) {
+      if (!isOpen && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom,
+          left: rect.left,
+          width: rect.width,
+        });
+      }
       setIsOpen(!isOpen);
       if (!isOpen) {
         setTimeout(() => inputRef.current?.focus(), 100);
@@ -157,7 +186,7 @@ export function SelectSearch({
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1 break-words">
           {label}
         </label>
       )}
@@ -170,7 +199,7 @@ export function SelectSearch({
         `}
         onClick={handleToggle}
       >
-        <div className="flex-1 flex items-center min-h-10 px-3">
+        <div className="flex-1 flex items-center min-h-10 px-3 min-w-0 overflow-hidden">
           {isOpen ? (
             <div className="flex items-center w-full">
               <Search className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
@@ -196,7 +225,9 @@ export function SelectSearch({
           )}
         </div>
         <div className="flex items-center pr-2 gap-1">
-          {isLoading && <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />}
+          {isLoading && (
+            <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+          )}
           {clearable && value && !disabled && (
             <button
               type="button"
@@ -214,36 +245,51 @@ export function SelectSearch({
         </div>
       </div>
 
-      {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-          {isLoading && options.length === 0 ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-              <span className="ml-2 text-sm text-gray-500">Carregando...</span>
-            </div>
-          ) : options.length === 0 ? (
-            <div className="py-4 text-center text-sm text-gray-500">
-              {searchTerm.length < 2
-                ? "Digite pelo menos 2 caracteres para buscar"
-                : "Nenhum resultado encontrado"}
-            </div>
-          ) : (
-            options.map((option) => (
-              <div
-                key={option.value}
-                className={`
-                  px-3 py-2 cursor-pointer text-sm
-                  ${option.value === value ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"}
-                `}
-                onClick={() => handleSelect(option)}
-              >
-                {option.label}
+      {/* Dropdown via portal */}
+      {isOpen &&
+        typeof window !== "undefined" &&
+        ReactDOM.createPortal(
+          <div
+            ref={dropdownRef}
+            style={{
+              position: "fixed",
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              width: dropdownPosition.width,
+              zIndex: 9999,
+            }}
+            className="mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto"
+          >
+            {isLoading && options.length === 0 ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                <span className="ml-2 text-sm text-gray-500">
+                  Carregando...
+                </span>
               </div>
-            ))
-          )}
-        </div>
-      )}
+            ) : options.length === 0 ? (
+              <div className="py-4 text-center text-sm text-gray-500">
+                {searchTerm.length < 2
+                  ? "Digite pelo menos 2 caracteres para buscar"
+                  : "Nenhum resultado encontrado"}
+              </div>
+            ) : (
+              options.map((option) => (
+                <div
+                  key={option.value}
+                  className={`
+                    px-3 py-2 cursor-pointer text-sm
+                    ${option.value === value ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"}
+                  `}
+                  onClick={() => handleSelect(option)}
+                >
+                  {option.label}
+                </div>
+              ))
+            )}
+          </div>,
+          document.body,
+        )}
 
       {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
     </div>

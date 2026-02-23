@@ -15,6 +15,7 @@ export interface CreateDocumentData {
   key: string;
   name: string;
   file: File;
+  onUploadProgress?: (pct: number) => void;
 }
 
 export const documentService = {
@@ -28,6 +29,14 @@ export const documentService = {
     const response = await api.post("/surgery-requests/documents", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
+      },
+      onUploadProgress: (progressEvent) => {
+        if (data.onUploadProgress && progressEvent.total) {
+          const pct = Math.round(
+            (progressEvent.loaded / progressEvent.total) * 100,
+          );
+          data.onUploadProgress(pct);
+        }
       },
     });
 

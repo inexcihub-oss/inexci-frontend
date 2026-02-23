@@ -27,11 +27,11 @@ const statusIconMap: Record<SurgeryRequestStatus, string> = {
   Realizada: "/icons/kanban/hospital-board-square.svg",
   Faturada: "/icons/kanban/coins.svg",
   Finalizada: "/icons/kanban/checkmark-circle-1.svg",
-  Cancelada: "/icons/kanban/Delete, Disabled.svg",
+  Encerrada: "/icons/kanban/Delete, Disabled.svg",
 };
 
 export const KanbanColumn = memo<KanbanColumnProps>(
-  ({ columnId, title, status, count, cards }) => {
+  ({ columnId: _columnId, title, status, count, cards }) => {
     const iconPath = statusIconMap[status] || "/icons/kanban/clock-watch.svg";
 
     return (

@@ -17,7 +17,7 @@ import {
   PriorityLevel,
   PRIORITY_LABELS,
 } from "@/types/surgery-request.types";
-import { priorityColors, getPriorityLabel } from "@/lib/design-system";
+
 import { cn } from "@/lib/utils";
 
 // Mapeamento de status para ícones
@@ -30,7 +30,7 @@ const STATUS_ICON_MAP: Record<SurgeryRequestStatus, string> = {
   Realizada: "/icons/kanban/hospital-board-square.svg",
   Faturada: "/icons/kanban/coins.svg",
   Finalizada: "/icons/kanban/checkmark-circle-1.svg",
-  Cancelada: "/icons/kanban/Delete, Disabled.svg",
+  Encerrada: "/icons/kanban/Delete, Disabled.svg",
 };
 
 // Ordem dos status
@@ -43,7 +43,7 @@ const STATUS_ORDER: SurgeryRequestStatus[] = [
   "Realizada",
   "Faturada",
   "Finalizada",
-  "Cancelada",
+  "Encerrada",
 ];
 
 // Estilos de prioridade conforme Figma
@@ -293,7 +293,7 @@ export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
       Realizada: [],
       Faturada: [],
       Finalizada: [],
-      Cancelada: [],
+      Encerrada: [],
     };
 
     requests.forEach((request) => {

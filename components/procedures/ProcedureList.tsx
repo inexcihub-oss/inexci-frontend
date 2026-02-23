@@ -66,15 +66,14 @@ const getContextualActions = (status: SurgeryRequestStatus) => {
         { icon: FileText, label: "Ver Cotações", color: "text-blue-600" },
         { icon: Edit, label: "Anexar Número", color: "text-gray-600" },
       ];
-    case "Autorizada":
+    case "Em Agendamento":
       return [
         { icon: Calendar, label: "Agendar", color: "text-green-600" },
         { icon: AlertCircle, label: "Contestar", color: "text-orange-600" },
       ];
-    case "Cancelada":
+    case "Encerrada":
       return [
         { icon: AlertCircle, label: "Ver Motivo", color: "text-red-600" },
-        { icon: Edit, label: "Contestar", color: "text-orange-600" },
       ];
     case "Finalizada":
       return [
@@ -117,7 +116,7 @@ const ProcedureRow: React.FC<{
     };
   }, [showActions]);
 
-  const handleActionClick = (action: string) => {
+  const handleActionClick = (_action: string) => {
     // TODO: Implementar lógica de cada ação
     setShowActions(false);
   };
@@ -242,22 +241,20 @@ const ProcedureRow: React.FC<{
                 : procedure.status === "Enviada"
                   ? "bg-blue-500 w-2/5"
                   : procedure.status === "Em Análise"
-                    ? "bg-purple-500 w-1/2"
-                    : procedure.status === "Em Reanálise"
-                      ? "bg-indigo-500 w-1/2"
-                      : procedure.status === "Autorizada"
-                        ? "bg-green-500 w-3/5"
-                        : procedure.status === "Agendada"
-                          ? "bg-teal-500 w-3/4"
-                          : procedure.status === "A Faturar"
-                            ? "bg-cyan-500 w-4/5"
-                            : procedure.status === "Faturada"
+                    ? "bg-purple-500 w-2/5"
+                    : procedure.status === "Em Agendamento"
+                      ? "bg-amber-500 w-1/2"
+                      : procedure.status === "Agendada"
+                        ? "bg-teal-500 w-3/5"
+                        : procedure.status === "Realizada"
+                          ? "bg-green-500 w-3/4"
+                          : procedure.status === "Faturada"
+                            ? "bg-indigo-500 w-5/6"
+                            : procedure.status === "Finalizada"
                               ? "bg-emerald-500 w-11/12"
-                              : procedure.status === "Finalizada"
-                                ? "bg-green-600 w-full"
-                                : procedure.status === "Cancelada"
-                                  ? "bg-red-500 w-1/3"
-                                  : "bg-gray-400 w-1/2"
+                              : procedure.status === "Encerrada"
+                                ? "bg-red-500 w-1/3"
+                                : "bg-gray-400 w-1/2"
             }`}
           />
         </div>

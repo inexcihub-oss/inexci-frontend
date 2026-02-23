@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import PageContainer from "@/components/PageContainer";
-import { SearchInput, Button } from "@/components/ui";
+import { SearchInput } from "@/components/ui";
 import Image from "next/image";
 import { useDebounce } from "@/hooks";
 

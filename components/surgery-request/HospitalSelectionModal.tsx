@@ -33,7 +33,7 @@ export function HospitalSelectionModal({
     try {
       const data = await hospitalService.getAll();
       setHospitals(data);
-    } catch (error) {
+    } catch {
       // Error handled silently
     } finally {
       setLoading(false);

@@ -35,7 +35,7 @@ export type SurgeryRequestStatus =
   | "Realizada" // 6
   | "Faturada" // 7
   | "Finalizada" // 8
-  | "Cancelada"; // 9
+  | "Encerrada"; // 9
 
 // Interface para pendência
 export interface Pendency {

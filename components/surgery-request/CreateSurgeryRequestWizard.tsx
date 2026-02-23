@@ -31,6 +31,7 @@ interface CreateSurgeryRequestWizardProps {
 
 type ModalState =
   | "none"
+  | "template-select"
   | "procedure-select"
   | "procedure-create"
   | "patient-select"
@@ -143,6 +144,34 @@ export function CreateSurgeryRequestWizard({
     setModalState("healthplan-select");
   };
 
+  const handleTemplateSelected = (template: any) => {
+    const data = template.template_data || {};
+    // Pré-preencher procedimento (primeiro da lista)
+    if (data.procedures?.length > 0) {
+      setSelectedProcedure(data.procedures[0]);
+    }
+    // Pré-preencher hospital (objeto completo salvo no template)
+    if (data.hospital) {
+      setSelectedHospital(data.hospital);
+    } else if (data.hospital_id) {
+      setSelectedHospital({
+        id: data.hospital_id,
+        name: "Hospital do modelo",
+      } as any);
+    }
+    // Pré-preencher convênio (objeto completo salvo no template)
+    if (data.health_plan) {
+      setSelectedHealthPlan(data.health_plan);
+    } else if (data.health_plan_id) {
+      setSelectedHealthPlan({
+        id: data.health_plan_id,
+        name: "Convênio do modelo",
+      } as any);
+    }
+    // Navegar para seleção de paciente (deve ser preenchido manualmente)
+    setModalState("patient-select");
+  };
+
   const handleSubmit = async () => {
     // Validar todos os campos obrigatórios para criar a solicitação
     if (!selectedPatient || !selectedManager || !selectedProcedure) {
@@ -167,7 +196,7 @@ export function CreateSurgeryRequestWizard({
         priority: priority,
       };
 
-      const result = await surgeryRequestService.createSimple(payload);
+      await surgeryRequestService.createSimple(payload);
 
       setToast({
         message: "Solicitação cirúrgica criada com sucesso!",
@@ -183,6 +212,7 @@ export function CreateSurgeryRequestWizard({
         handleClose();
         onSuccess();
       }, 1500);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message ||
@@ -203,7 +233,7 @@ export function CreateSurgeryRequestWizard({
     setSelectedHospital(null);
     setSelectedHealthPlan(null);
     setSelectedManager(null);
-    setPriority("Baixa");
+    setPriority(PRIORITY.LOW);
     onClose();
   };
 
@@ -243,10 +273,34 @@ export function CreateSurgeryRequestWizard({
             {/* Left Panel - Form */}
             <div className="w-full md:w-3/5 flex flex-col bg-white h-full md:border-r border-gray-200">
               {/* Header */}
-              <div className="px-6 py-4 border-b border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900">
                   Nova solicitação
                 </h2>
+                <button
+                  type="button"
+                  onClick={() => setModalState("template-select")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                    modalState === "template-select"
+                      ? "bg-teal-50 text-teal-700 border-teal-300"
+                      : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414A1 1 0 0120 8.414V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
+                    />
+                  </svg>
+                  Usar modelo
+                </button>
               </div>
 
               {/* Form Fields */}
@@ -424,6 +478,7 @@ export function CreateSurgeryRequestWizard({
               {/* Header com botão de fechar - SEMPRE VISÍVEL */}
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
                 <h3 className="text-xl font-semibold text-gray-900">
+                  {modalState === "template-select" && "Usar modelo"}
                   {modalState === "procedure-select" && "Procedimento"}
                   {modalState === "patient-select" && "Paciente"}
                   {modalState === "manager-select" && "Gestor"}
@@ -452,6 +507,15 @@ export function CreateSurgeryRequestWizard({
               </div>
 
               {/* Content */}
+              {modalState === "template-select" && (
+                <div className="flex-1 overflow-y-auto">
+                  <TemplateSelectionContent
+                    onSelect={handleTemplateSelected}
+                    isActive={modalState === "template-select"}
+                  />
+                </div>
+              )}
+
               {modalState === "procedure-select" && (
                 <div className="flex-1 overflow-y-auto">
                   <ProcedureSelectionContent
@@ -670,7 +734,7 @@ function ProcedureSelectionContent({
       const data = await procedureService.getAll();
       setProcedures(Array.isArray(data) ? data : []);
       setHasLoaded(true);
-    } catch (error: any) {
+    } catch {
       setProcedures([]);
     } finally {
       setLoading(false);
@@ -790,7 +854,7 @@ function PatientSelectionContent({
       const data = await patientService.getAll();
       setPatients(Array.isArray(data) ? data : []);
       setHasLoaded(true);
-    } catch (error: any) {
+    } catch {
       setPatients([]);
     } finally {
       setLoading(false);
@@ -902,7 +966,7 @@ function HospitalSelectionContent({
       const data = await hospitalService.getAll();
       setHospitals(Array.isArray(data) ? data : []);
       setHasLoaded(true);
-    } catch (error: any) {
+    } catch {
       setHospitals([]);
     } finally {
       setLoading(false);
@@ -1015,7 +1079,7 @@ function HealthPlanSelectionContent({
       const data = await healthPlanService.getAll();
       setHealthPlans(Array.isArray(data) ? data : []);
       setHasLoaded(true);
-    } catch (error: any) {
+    } catch {
       setHealthPlans([]);
     } finally {
       setLoading(false);
@@ -1129,7 +1193,7 @@ function ManagerSelectionContent({
       const data = await userService.getAll();
       setManagers(Array.isArray(data) ? data : []);
       setHasLoaded(true);
-    } catch (error: any) {
+    } catch {
       setManagers([]);
     } finally {
       setLoading(false);
@@ -1201,6 +1265,124 @@ function ManagerSelectionContent({
                     <div className="w-3 h-3 rounded-full bg-teal-500" />
                   )}
                 </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TemplateSelectionContent({
+  onSelect,
+  isActive,
+}: {
+  onSelect: (template: any) => void;
+  isActive?: boolean;
+}) {
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  useEffect(() => {
+    if (isActive && !hasLoaded) {
+      loadTemplates();
+    }
+  }, [isActive, hasLoaded]);
+
+  const loadTemplates = async () => {
+    setLoading(true);
+    try {
+      const data = await surgeryRequestService.getTemplates();
+      setTemplates(Array.isArray(data) ? data : []);
+      setHasLoaded(true);
+    } catch {
+      setTemplates([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = templates.filter((t) =>
+    t.name?.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  return (
+    <div className="p-6">
+      <div className="relative mb-4">
+        <Image
+          src="/icons/search.svg"
+          alt="Buscar"
+          width={20}
+          height={20}
+          className="absolute left-3 top-1/2 -translate-y-1/2"
+        />
+        <input
+          type="text"
+          placeholder="Buscar modelo..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+        />
+      </div>
+
+      <div className="border-t border-gray-200">
+        {loading ? (
+          <div className="text-center py-8 text-gray-500">
+            Carregando modelos...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-gray-500">Nenhum modelo encontrado</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Salve uma solicitação como modelo ao enviá-la
+            </p>
+          </div>
+        ) : (
+          filtered.map((template) => {
+            const procedureName = template.template_data?.procedures?.[0]?.name;
+            const hospitalName = template.template_data?.hospital?.name;
+            const healthPlanName = template.template_data?.health_plan?.name;
+            const meta = [hospitalName, healthPlanName]
+              .filter(Boolean)
+              .join(" · ");
+            return (
+              <button
+                key={template.id}
+                type="button"
+                onClick={() => onSelect(template)}
+                className="w-full flex items-start justify-between px-4 py-4 text-left hover:bg-gray-50 transition-colors border-b border-gray-200 last:border-b-0"
+              >
+                <div className="flex-1 min-w-0 pr-3">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {template.name}
+                  </p>
+                  {procedureName && (
+                    <p className="text-xs text-teal-700 mt-0.5 truncate">
+                      {procedureName}
+                    </p>
+                  )}
+                  {meta && (
+                    <p className="text-xs text-gray-400 mt-0.5 truncate">
+                      {meta}
+                    </p>
+                  )}
+                </div>
+                <svg
+                  className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
               </button>
             );
           })

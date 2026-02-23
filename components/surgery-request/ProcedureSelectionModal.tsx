@@ -33,7 +33,7 @@ export function ProcedureSelectionModal({
     try {
       const data = await procedureService.getAll();
       setProcedures(data);
-    } catch (error) {
+    } catch {
       // Error handled silently
     } finally {
       setLoading(false);

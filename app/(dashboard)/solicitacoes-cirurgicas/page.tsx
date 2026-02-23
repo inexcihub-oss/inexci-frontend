@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { SurgeryRequestList } from "@/components/procedures/SurgeryRequestList";
 import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
-import {
-  KanbanColumn,
-  SurgeryRequestStatus,
-  SurgeryRequest,
-} from "@/types/surgery-request.types";
+import { KanbanColumn, SurgeryRequest } from "@/types/surgery-request.types";
 import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
@@ -19,11 +15,7 @@ import { SearchInput } from "@/components/ui";
 import Image from "next/image";
 import Button from "@/components/ui/Button";
 import PageContainer from "@/components/PageContainer";
-import {
-  formatDateWithMonth,
-  getInitials,
-  includesIgnoreCase,
-} from "@/lib/utils";
+import { getInitials, includesIgnoreCase } from "@/lib/utils";
 
 const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "pendente", title: "Pendente", status: "Pendente", cards: [] },
@@ -39,7 +31,7 @@ const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "realizada", title: "Realizada", status: "Realizada", cards: [] },
   { id: "faturada", title: "Faturada", status: "Faturada", cards: [] },
   { id: "finalizada", title: "Finalizada", status: "Finalizada", cards: [] },
-  { id: "cancelada", title: "Cancelada", status: "Cancelada", cards: [] },
+  { id: "encerrada", title: "Encerrada", status: "Encerrada", cards: [] },
 ];
 
 export default function ProcedimentosCirurgicos() {
@@ -47,7 +39,7 @@ export default function ProcedimentosCirurgicos() {
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [columns, setColumns] = useState<KanbanColumn[]>(INITIAL_COLUMNS);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
@@ -55,6 +47,7 @@ export default function ProcedimentosCirurgicos() {
   // Carregar dados do backend
   useEffect(() => {
     loadSurgeryRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadSurgeryRequests = useCallback(async () => {

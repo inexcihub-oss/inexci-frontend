@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Combobox, Input } from "@/components/ui";
+import { Combobox } from "@/components/ui";
 import { SelectSearch } from "@/components/ui/SelectSearch";
 import { hospitalService } from "@/services/hospital.service";
 import { healthPlanService } from "@/services/health-plan.service";
@@ -12,11 +12,13 @@ import { useToast } from "@/hooks/useToast";
 interface EditableProcedureDataProps {
   solicitacao: any;
   onUpdate?: () => void;
+  readOnly?: boolean;
 }
 
 export function EditableProcedureData({
   solicitacao,
   onUpdate,
+  readOnly = false,
 }: EditableProcedureDataProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -39,6 +41,42 @@ export function EditableProcedureData({
     healthPlanRegistry: solicitacao.health_plan_registration || "",
     healthPlanType: solicitacao.health_plan_type || "",
   });
+
+  // Label de exibição do CID (inclui a descrição buscada da API quando necessário)
+  const [cidDisplayLabel, setCidDisplayLabel] = useState(
+    solicitacao.cid_id
+      ? `${solicitacao.cid_id}${solicitacao.cid_description ? ` - ${solicitacao.cid_description}` : ""}`
+      : "",
+  );
+
+  // Busca a descrição do CID quando cid_description não está disponível
+  useEffect(() => {
+    if (solicitacao.cid_id && !solicitacao.cid_description) {
+      cidService
+        .search(solicitacao.cid_id, 10)
+        .then((res) => {
+          const found = res.records.find((r) => r.id === solicitacao.cid_id);
+          if (found) {
+            setCidDisplayLabel(`${found.id} - ${found.description}`);
+            setFormData((prev) => ({
+              ...prev,
+              cidDescription: found.description,
+            }));
+          } else {
+            setCidDisplayLabel(solicitacao.cid_id);
+          }
+        })
+        .catch(() => {
+          setCidDisplayLabel(solicitacao.cid_id);
+        });
+    } else if (solicitacao.cid_id) {
+      setCidDisplayLabel(
+        `${solicitacao.cid_id} - ${solicitacao.cid_description}`,
+      );
+    } else {
+      setCidDisplayLabel("");
+    }
+  }, [solicitacao.cid_id, solicitacao.cid_description]);
 
   // Função para buscar CIDs
   const searchCid = useCallback(async (search: string) => {
@@ -70,7 +108,7 @@ export function EditableProcedureData({
             label: hp.name,
           })),
         );
-      } catch (error) {
+      } catch {
         showToast("Erro ao carregar opções de seleção", "error");
       }
     };
@@ -98,18 +136,6 @@ export function EditableProcedureData({
   };
 
   const handleSave = async () => {
-    // Validação: Se preencheu convênio, deve preencher matrícula e plano
-    if (
-      formData.healthPlanId &&
-      (!formData.healthPlanRegistry.trim() || !formData.healthPlanType.trim())
-    ) {
-      showToast(
-        "Ao selecionar um convênio, preencha também a Matrícula e o Plano",
-        "error",
-      );
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -142,15 +168,17 @@ export function EditableProcedureData({
         patient_history: solicitacao.patient_history || "",
       };
 
-      // Adicionar hospital se preenchido
+      // Adicionar hospital se preenchido, ou null se foi limpo
       if (hospital) {
         updateData.hospital = {
           name: hospital.label,
           email: solicitacao.hospital?.email || "contato@hospital.com",
         };
+      } else if (!formData.hospitalId) {
+        updateData.hospital = null;
       }
 
-      // Adicionar convênio se preenchido
+      // Adicionar convênio se preenchido, ou null se foi limpo
       if (healthPlan) {
         updateData.health_plan = {
           id: formData.healthPlanId,
@@ -158,16 +186,21 @@ export function EditableProcedureData({
           email: solicitacao.health_plan?.email || "contato@convenio.com",
           phone: solicitacao.health_plan?.phone || "0000000000",
         };
-        updateData.health_plan_registration = formData.healthPlanRegistry;
-        updateData.health_plan_type = formData.healthPlanType;
+      } else if (!formData.healthPlanId) {
+        updateData.health_plan = null;
       }
+      // Sempre envia matrícula e plano (permite limpar os campos)
+      updateData.health_plan_registration = formData.healthPlanRegistry || null;
+      updateData.health_plan_type = formData.healthPlanType || null;
 
-      // Adicionar CID se preenchido
+      // Adicionar CID se preenchido, ou null se foi limpo
       if (formData.cidId) {
         updateData.cid = {
           id: formData.cidId,
           description: formData.cidDescription || "",
         };
+      } else {
+        updateData.cid = null;
       }
 
       await surgeryRequestService.update(solicitacao.id.toString(), updateData);
@@ -193,12 +226,14 @@ export function EditableProcedureData({
           Dados do procedimento
         </h3>
         {!isEditing ? (
-          <button
-            onClick={handleEdit}
-            className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 gap-3 rounded text-sm leading-normal"
-          >
-            Editar
-          </button>
+          !readOnly && (
+            <button
+              onClick={handleEdit}
+              className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 gap-3 rounded text-sm leading-normal"
+            >
+              Editar
+            </button>
+          )
         ) : (
           <div className="flex items-center gap-2">
             <button
@@ -243,7 +278,11 @@ export function EditableProcedureData({
                 type="text"
                 value={solicitacao.hospital?.name || ""}
                 placeholder="Não informado"
-                className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
+                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-lg focus:outline-none cursor-default ${
+                  solicitacao.hospital?.name
+                    ? "text-gray-500"
+                    : "text-gray-400 italic"
+                }`}
                 disabled
               />
             </>
@@ -251,11 +290,14 @@ export function EditableProcedureData({
         </div>
 
         {/* CID */}
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0">
           {isEditing ? (
             <SelectSearch
               label="CID (Código Internacional de Doenças)"
               value={formData.cidId}
+              initialLabel={
+                formData.cidId ? cidDisplayLabel || formData.cidId : ""
+              }
               onChange={(value, label) => {
                 // Extrair a descrição do label (formato: "código - descrição")
                 const description = label
@@ -269,6 +311,7 @@ export function EditableProcedureData({
               }}
               onSearch={searchCid}
               placeholder="Buscar CID..."
+              className="min-w-0 w-full"
             />
           ) : (
             <>
@@ -277,13 +320,11 @@ export function EditableProcedureData({
               </label>
               <input
                 type="text"
-                value={
-                  solicitacao.cid_id
-                    ? `${solicitacao.cid_id}${solicitacao.cid_description ? ` - ${solicitacao.cid_description}` : ""}`
-                    : ""
-                }
+                value={cidDisplayLabel}
                 placeholder="Não informado"
-                className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
+                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-lg focus:outline-none cursor-default ${
+                  cidDisplayLabel ? "text-gray-500" : "text-gray-400 italic"
+                }`}
                 disabled
               />
             </>
@@ -312,10 +353,12 @@ export function EditableProcedureData({
               <input
                 type="text"
                 value={solicitacao.health_plan?.name || ""}
-                placeholder={
-                  !solicitacao.health_plan?.name ? "Não informado" : ""
-                }
-                className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
+                placeholder="Não informado"
+                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-lg focus:outline-none cursor-default ${
+                  solicitacao.health_plan?.name
+                    ? "text-gray-500"
+                    : "text-gray-400 italic"
+                }`}
                 disabled
               />
             </>
@@ -351,10 +394,12 @@ export function EditableProcedureData({
               <input
                 type="text"
                 value={solicitacao.health_plan_registration || ""}
-                placeholder={
-                  !solicitacao.health_plan_registration ? "Não informado" : ""
-                }
-                className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
+                placeholder="Não informado"
+                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-lg focus:outline-none cursor-default ${
+                  solicitacao.health_plan_registration
+                    ? "text-gray-500"
+                    : "text-gray-400 italic"
+                }`}
                 disabled
               />
             </>
@@ -386,10 +431,12 @@ export function EditableProcedureData({
               <input
                 type="text"
                 value={solicitacao.health_plan_type || ""}
-                placeholder={
-                  !solicitacao.health_plan_type ? "Não informado" : ""
-                }
-                className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 opacity-50 bg-white border border-neutral-100 rounded-lg focus:outline-none"
+                placeholder="Não informado"
+                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-lg focus:outline-none cursor-default ${
+                  solicitacao.health_plan_type
+                    ? "text-gray-500"
+                    : "text-gray-400 italic"
+                }`}
                 disabled
               />
             </>

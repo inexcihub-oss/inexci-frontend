@@ -26,6 +26,7 @@ export interface CalculatedPendency {
   isWaiting: boolean;
   responsible: "collaborator" | "patient" | "doctor";
   statusContext: number;
+  checkItems?: Array<{ label: string; done: boolean }>;
 }
 
 // Resultado da validação dinâmica

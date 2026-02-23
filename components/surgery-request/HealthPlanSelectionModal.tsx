@@ -33,7 +33,7 @@ export function HealthPlanSelectionModal({
     try {
       const data = await healthPlanService.getAll();
       setHealthPlans(data);
-    } catch (error) {
+    } catch {
       // Error handled silently
     } finally {
       setLoading(false);

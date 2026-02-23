@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { X, Check, AlertCircle, Mail, Download, FileText } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, Download, Mail, ExternalLink, CheckCircle } from "lucide-react";
+import api from "@/lib/api";
 import { surgeryRequestService } from "@/services/surgery-request.service";
-import { pendencyService, ValidationResult } from "@/services/pendency.service";
+import { pendencyService } from "@/services/pendency.service";
 import { useToast } from "@/hooks/useToast";
+import { SurgeryRequestDocumentPreviewModal } from "@/components/laudo/SurgeryRequestDocumentPreviewModal";
 
 interface SendRequestModalProps {
   isOpen: boolean;
@@ -13,7 +15,7 @@ interface SendRequestModalProps {
   onSuccess: () => void;
 }
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2 | 3 | 4;
 type SendMethod = "email" | "download" | null;
 
 interface ChecklistItem {
@@ -34,76 +36,89 @@ export function SendRequestModal({
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [isDocumentPreviewOpen, setIsDocumentPreviewOpen] = useState(false);
 
   // Email form state
-  const [emailForm, setEmailForm] = useState({
-    sender: "",
-    recipients: "",
-    subject: "",
-    message: "",
-  });
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailTags, setEmailTags] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState("");
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { showToast } = useToast();
 
-  // Load validation when modal opens
+  const SEND_CHECKLIST_KEYS: Record<string, string> = {
+    documents: "Documentos",
+    tuss_procedures: "Código TUSS",
+    opme_items: "OPME",
+    medical_report: "Laudo",
+  };
+
   useEffect(() => {
     if (isOpen && solicitacao?.id) {
       loadValidation();
-      // Reset state
       setCurrentStep(1);
       setSendMethod(null);
       setSaveAsTemplate(false);
-      setEmailForm({
-        sender: "",
-        recipients: "",
-        subject: `Solicitação de Cirurgia - ${solicitacao.patient?.name || "Paciente"}`,
-        message: "",
-      });
+      setEmailSubject(
+        `Solicitação Cirúrgica - ${solicitacao.patient?.name || "Paciente"}`,
+      );
+      setEmailMessage("");
+      setEmailTags([]);
+      setEmailInput("");
+      setAttachments([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, solicitacao?.id]);
 
   const loadValidation = async () => {
     setIsLoading(true);
     try {
       const result = await pendencyService.validate(solicitacao.id);
-      setValidation(result);
-
-      // Build checklist from validation
-      const items: ChecklistItem[] = [
-        {
-          key: "documents",
-          label: "Documentos anexados",
-          isComplete:
-            solicitacao.documents && solicitacao.documents.length > 0,
-          isRequired: true,
-        },
-        {
-          key: "tuss",
-          label: "Códigos TUSS preenchidos",
-          isComplete:
-            solicitacao.procedures && solicitacao.procedures.length > 0,
-          isRequired: true,
-        },
-        {
-          key: "opme",
-          label: "OPME configurado",
-          isComplete:
-            solicitacao.opme_items && solicitacao.opme_items.length > 0,
-          isRequired: false,
-        },
-        {
-          key: "laudo",
-          label: "Laudo médico preenchido",
-          isComplete: !!solicitacao.medical_report,
-          isRequired: true,
-        },
-      ];
-
-      setChecklist(items);
-    } catch (error) {
-      console.error("Erro ao carregar validação:", error);
+      if (result.pendencies && result.pendencies.length > 0) {
+        const items: ChecklistItem[] = Object.entries(SEND_CHECKLIST_KEYS).map(
+          ([key, label]) => {
+            const found = result.pendencies.find((p) => p.key === key);
+            return {
+              key,
+              label,
+              isComplete: found ? found.isComplete : false,
+              isRequired: true,
+            };
+          },
+        );
+        setChecklist(items);
+      } else {
+        setChecklist([
+          {
+            key: "documents",
+            label: "Documentos",
+            isComplete: !!(solicitacao.documents?.length > 0),
+            isRequired: true,
+          },
+          {
+            key: "tuss_procedures",
+            label: "Código TUSS",
+            isComplete: !!(solicitacao.procedures?.length > 0),
+            isRequired: true,
+          },
+          {
+            key: "opme_items",
+            label: "OPME",
+            isComplete: !!(solicitacao.opme_items?.length > 0),
+            isRequired: true,
+          },
+          {
+            key: "medical_report",
+            label: "Laudo",
+            isComplete: !!solicitacao.medical_report,
+            isRequired: true,
+          },
+        ]);
+      }
+    } catch {
     } finally {
       setIsLoading(false);
     }
@@ -111,62 +126,88 @@ export function SendRequestModal({
 
   if (!isOpen) return null;
 
-  const canProceed = () => {
-    // Check if all required items are complete
-    return checklist.every((item) => !item.isRequired || item.isComplete);
-  };
+  const canProceed = () =>
+    checklist.every((item) => !item.isRequired || item.isComplete);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === 1) {
+      if (saveAsTemplate) {
+        try {
+          await surgeryRequestService.createTemplate({
+            name: `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
+            template_data: {
+              procedures: solicitacao.procedures,
+              opme_items: solicitacao.opme_items,
+              hospital_id: solicitacao.hospital_id,
+              health_plan_id: solicitacao.health_plan_id,
+              medical_report: solicitacao.medical_report,
+            },
+          });
+          showToast("Modelo salvo com sucesso!", "success");
+        } catch {
+          showToast("Erro ao salvar modelo", "error");
+        }
+      }
       setCurrentStep(2);
     } else if (currentStep === 2 && sendMethod) {
       if (sendMethod === "download") {
-        handleDownload();
+        await handleDownload();
       } else {
         setCurrentStep(3);
       }
+    } else if (currentStep === 3) {
+      await handleSendEmail();
     }
   };
 
   const handleBack = () => {
-    if (currentStep === 2) {
-      setCurrentStep(1);
-    } else if (currentStep === 3) {
-      setCurrentStep(2);
-    }
+    if (currentStep === 2) setCurrentStep(1);
+    else if (currentStep === 3) setCurrentStep(2);
   };
 
   const handleDownload = async () => {
     setIsSending(true);
     try {
-      // Enviar solicitação para o backend
-      await surgeryRequestService.send(solicitacao.id);
-      showToast("Solicitação enviada com sucesso!", "success");
+      const response = await api.post(
+        `/surgery-requests/${solicitacao.id}/send`,
+        { method: "download" },
+        { responseType: "blob" },
+      );
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `solicitacao-${solicitacao.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       onSuccess();
-      onClose();
-    } catch (error) {
-      console.error("Erro ao enviar solicitação:", error);
-      showToast("Erro ao enviar solicitação", "error");
+      setCurrentStep(4);
+    } catch {
+      showToast("Erro ao baixar solicitação", "error");
     } finally {
       setIsSending(false);
     }
   };
 
   const handleSendEmail = async () => {
-    if (!emailForm.recipients.trim()) {
+    const recipients = emailTags.join(";");
+    if (!recipients.trim()) {
       showToast("Informe pelo menos um destinatário", "error");
       return;
     }
-
     setIsSending(true);
     try {
-      // Enviar solicitação para o backend
-      await surgeryRequestService.send(solicitacao.id);
-      showToast("Solicitação enviada com sucesso!", "success");
+      await surgeryRequestService.send(solicitacao.id, {
+        method: "email",
+        to: recipients,
+        subject: emailSubject,
+        message: emailMessage,
+      });
       onSuccess();
-      onClose();
-    } catch (error) {
-      console.error("Erro ao enviar solicitação:", error);
+      setCurrentStep(4);
+    } catch {
       showToast("Erro ao enviar solicitação", "error");
     } finally {
       setIsSending(false);
@@ -174,410 +215,460 @@ export function SendRequestModal({
   };
 
   const handleClose = () => {
-    if (!isSending) {
-      onClose();
+    if (!isSending) onClose();
+  };
+
+  const addEmailTag = (email: string) => {
+    const trimmed = email.trim().replace(/[;,]$/, "");
+    if (trimmed && !emailTags.includes(trimmed)) {
+      setEmailTags((prev) => [...prev, trimmed]);
+    }
+    setEmailInput("");
+  };
+
+  const removeEmailTag = (tag: string) => {
+    setEmailTags((prev) => prev.filter((t) => t !== tag));
+  };
+
+  const handleEmailKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ";" || e.key === ",") {
+      e.preventDefault();
+      if (emailInput.trim()) addEmailTag(emailInput);
+    } else if (e.key === "Backspace" && !emailInput && emailTags.length > 0) {
+      setEmailTags((prev) => prev.slice(0, -1));
     }
   };
 
-  // Step 1: Checklist
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAttachments((prev) => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ---- STEP RENDERS ----
+
   const renderStep1 = () => (
-    <div className="flex-1 p-6 space-y-4 overflow-auto">
-      <p className="text-sm text-gray-600">
-        Verifique se todos os itens obrigatórios estão preenchidos antes de
-        enviar a solicitação.
-      </p>
-
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-700"></div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {checklist.map((item) => (
-            <div
-              key={item.key}
-              className={`flex items-center gap-3 p-3 rounded-lg border ${
-                item.isComplete
-                  ? "border-green-200 bg-green-50"
-                  : item.isRequired
-                    ? "border-red-200 bg-red-50"
-                    : "border-gray-200 bg-gray-50"
-              }`}
-            >
+    <div className="flex-1 overflow-y-auto">
+      <div className="flex flex-col gap-4 p-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-700" />
+          </div>
+        ) : (
+          <>
+            {checklist.map((item) => (
               <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                  item.isComplete
-                    ? "bg-green-500"
-                    : item.isRequired
-                      ? "bg-red-500"
-                      : "bg-gray-300"
-                }`}
+                key={item.key}
+                className="flex items-center justify-between px-5 py-4 rounded-lg border border-gray-200"
               >
-                {item.isComplete ? (
-                  <Check className="w-4 h-4 text-white" />
-                ) : (
-                  <X className="w-4 h-4 text-white" />
-                )}
+                <span className="flex-1 text-sm font-semibold text-gray-900">
+                  {item.label}
+                </span>
+                <span
+                  className={`flex items-center gap-1 px-3 py-2 rounded-full text-sm font-medium shrink-0 ${
+                    item.isComplete
+                      ? "bg-green-100 text-green-800"
+                      : "bg-yellow-50 text-yellow-800"
+                  }`}
+                >
+                  {item.isComplete ? "Completo" : "Incompleto"}
+                </span>
               </div>
-              <span
-                className={`flex-1 text-sm ${
-                  item.isComplete
-                    ? "text-green-700"
-                    : item.isRequired
-                      ? "text-red-700"
-                      : "text-gray-600"
+            ))}
+
+            <div className="flex items-center gap-4 p-4 rounded-lg bg-blue-50">
+              <div className="flex flex-col gap-1 flex-1">
+                <span className="text-sm font-semibold text-blue-600">
+                  Deseja salvar a solicitação como modelo?
+                </span>
+                <span className="text-sm font-normal text-blue-500">
+                  Salve configuração de documentos, exames, OPME e TUSS para
+                  futuras solicitações semelhantes.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSaveAsTemplate(!saveAsTemplate)}
+                disabled={!canProceed()}
+                className={`shrink-0 px-5 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  saveAsTemplate
+                    ? "bg-blue-600 border-blue-600 text-white"
+                    : "bg-blue-50 border-blue-500 text-blue-600 hover:bg-blue-100"
                 }`}
               >
-                {item.label}
-                {!item.isRequired && (
-                  <span className="text-gray-400 ml-1">(opcional)</span>
-                )}
-              </span>
+                Salvar modelo
+              </button>
             </div>
-          ))}
-        </div>
-      )}
-
-      {!canProceed() && !isLoading && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-700">
-            Preencha todos os itens obrigatórios antes de continuar.
-          </p>
-        </div>
-      )}
-
-      {/* Checkbox salvar como template */}
-      <div className="flex items-center gap-2 pt-2">
-        <button
-          type="button"
-          onClick={() => setSaveAsTemplate(!saveAsTemplate)}
-          className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-            saveAsTemplate
-              ? "bg-teal-700 border-teal-700"
-              : "bg-white border-gray-300"
-          }`}
-        >
-          {saveAsTemplate && <Check className="w-3 h-3 text-white" />}
-        </button>
-        <span className="text-sm text-gray-700">
-          Salvar como template para futuras solicitações
-        </span>
+          </>
+        )}
       </div>
     </div>
   );
 
-  // Step 2: Choose send method
   const renderStep2 = () => (
-    <div className="flex-1 p-6 space-y-4 overflow-auto">
-      <p className="text-sm text-gray-600">
-        Escolha como deseja enviar a solicitação:
-      </p>
+    <div className="flex-1 overflow-y-auto">
+      <div className="flex flex-col gap-4 p-6">
+        <p className="text-sm text-gray-900">
+          Como deseja enviar a solicitação?
+        </p>
 
-      <div className="space-y-3">
-        {/* Option: Email */}
-        <button
-          type="button"
-          onClick={() => setSendMethod("email")}
-          className={`w-full flex items-center gap-4 p-4 rounded-lg border-2 transition-colors ${
-            sendMethod === "email"
-              ? "border-teal-500 bg-teal-50"
-              : "border-gray-200 hover:border-gray-300"
-          }`}
-        >
-          <div
-            className={`w-12 h-12 rounded-full flex items-center justify-center ${
-              sendMethod === "email" ? "bg-teal-100" : "bg-gray-100"
-            }`}
-          >
-            <Mail
-              className={`w-6 h-6 ${sendMethod === "email" ? "text-teal-600" : "text-gray-500"}`}
-            />
-          </div>
-          <div className="flex-1 text-left">
-            <p
-              className={`font-semibold ${sendMethod === "email" ? "text-teal-700" : "text-gray-900"}`}
-            >
-              Enviar por E-mail
-            </p>
-            <p className="text-sm text-gray-500">
-              Envie a solicitação diretamente para o convênio por e-mail
-            </p>
-          </div>
-          {sendMethod === "email" && (
-            <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center">
-              <Check className="w-4 h-4 text-white" />
-            </div>
-          )}
-        </button>
-
-        {/* Option: Download */}
         <button
           type="button"
           onClick={() => setSendMethod("download")}
-          className={`w-full flex items-center gap-4 p-4 rounded-lg border-2 transition-colors ${
+          className={`w-full flex items-start gap-4 p-6 rounded-lg border text-left transition-colors ${
             sendMethod === "download"
               ? "border-teal-500 bg-teal-50"
               : "border-gray-200 hover:border-gray-300"
           }`}
         >
-          <div
-            className={`w-12 h-12 rounded-full flex items-center justify-center ${
-              sendMethod === "download" ? "bg-teal-100" : "bg-gray-100"
-            }`}
-          >
-            <Download
-              className={`w-6 h-6 ${sendMethod === "download" ? "text-teal-600" : "text-gray-500"}`}
-            />
-          </div>
-          <div className="flex-1 text-left">
-            <p
-              className={`font-semibold ${sendMethod === "download" ? "text-teal-700" : "text-gray-900"}`}
-            >
+          <Download className="w-5 h-5 shrink-0 text-gray-700 mt-0.5" />
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold text-gray-900">
               Download Manual
-            </p>
-            <p className="text-sm text-gray-500">
-              Baixe os documentos e envie manualmente pelo portal do convênio
-            </p>
+            </span>
+            <span className="text-sm text-gray-400">
+              Baixe um arquivo PDF contendo: Laudo médico, documentos, OPME e
+              códigos TUSS
+            </span>
           </div>
-          {sendMethod === "download" && (
-            <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center">
-              <Check className="w-4 h-4 text-white" />
-            </div>
-          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSendMethod("email")}
+          className={`w-full flex items-start gap-4 p-6 rounded-lg border text-left transition-colors ${
+            sendMethod === "email"
+              ? "border-teal-500 bg-teal-50"
+              : "border-gray-200 hover:border-gray-300"
+          }`}
+        >
+          <Mail className="w-5 h-5 shrink-0 text-gray-700 mt-0.5" />
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold text-gray-900">
+              Enviar por e-mail
+            </span>
+            <span className="text-sm text-gray-400">
+              Envie a solicitação diretamente para o convênio por e-mail
+            </span>
+          </div>
         </button>
       </div>
     </div>
   );
 
-  // Step 3: Email form
   const renderStep3 = () => (
-    <div className="flex-1 p-6 space-y-4 overflow-auto">
-      <p className="text-sm text-gray-600">
-        Configure os detalhes do e-mail para envio:
-      </p>
-
-      <div className="space-y-4">
-        {/* Remetente */}
-        <div className="space-y-2">
-          <label className="block text-sm font-semibold text-gray-900">
-            Remetente
-          </label>
-          <input
-            type="email"
-            value={emailForm.sender}
-            onChange={(e) =>
-              setEmailForm({ ...emailForm, sender: e.target.value })
-            }
-            placeholder="seu@email.com"
-            className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-          />
+    <div className="flex-1 overflow-y-auto">
+      <div className="flex flex-col gap-4 p-6">
+        {/* De */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-gray-900">De:</label>
+          <div className="flex items-center px-3 py-2 rounded-lg border border-gray-200 bg-white">
+            <span className="text-sm text-gray-900">inexci@mail.com</span>
+          </div>
         </div>
 
-        {/* Destinatários */}
-        <div className="space-y-2">
-          <label className="block text-sm font-semibold text-gray-900">
-            Destinatários <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={emailForm.recipients}
-            onChange={(e) =>
-              setEmailForm({ ...emailForm, recipients: e.target.value })
-            }
-            placeholder="email1@convenio.com; email2@convenio.com"
-            className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-          />
-          <p className="text-xs text-gray-500">
-            Separe múltiplos e-mails com ponto e vírgula (;)
+        {/* Para */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-gray-900">Para:</label>
+          <p className="text-sm text-teal-600">
+            Para incluir mais de um e-mail separe-os com ponto e vírgula (;)
           </p>
+          <div
+            className="flex flex-wrap items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-white min-h-10 cursor-text"
+            onClick={() => document.getElementById("send-email-input")?.focus()}
+          >
+            {emailTags.map((tag) => (
+              <span
+                key={tag}
+                className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-sm text-gray-900"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeEmailTag(tag)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            <input
+              id="send-email-input"
+              type="text"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              onKeyDown={handleEmailKeyDown}
+              onBlur={() => {
+                if (emailInput.trim()) addEmailTag(emailInput);
+              }}
+              placeholder={
+                emailTags.length === 0 ? "email@convenio.com" : undefined
+              }
+              className="flex-1 min-w-24 text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
+            />
+          </div>
         </div>
 
         {/* Assunto */}
-        <div className="space-y-2">
-          <label className="block text-sm font-semibold text-gray-900">
-            Assunto
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-gray-900">
+            Assunto:
           </label>
           <input
             type="text"
-            value={emailForm.subject}
-            onChange={(e) =>
-              setEmailForm({ ...emailForm, subject: e.target.value })
-            }
-            placeholder="Assunto do e-mail"
-            className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            value={emailSubject}
+            onChange={(e) => setEmailSubject(e.target.value)}
+            className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
 
         {/* Mensagem */}
-        <div className="space-y-2">
-          <label className="block text-sm font-semibold text-gray-900">
-            Mensagem
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-gray-900">
+            Mensagem:
           </label>
           <textarea
-            value={emailForm.message}
-            onChange={(e) =>
-              setEmailForm({ ...emailForm, message: e.target.value })
-            }
-            rows={5}
-            placeholder="Escreva uma mensagem para acompanhar a solicitação..."
-            className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+            value={emailMessage}
+            onChange={(e) => setEmailMessage(e.target.value)}
+            rows={4}
+            placeholder="Digite sua mensagem..."
+            className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
           />
+        </div>
+
+        {/* Anexos */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-semibold text-gray-900">Anexos</label>
+          <div className="flex items-center justify-between px-4 py-4 rounded-lg border border-dashed border-gray-200 bg-gray-50">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 border border-gray-200">
+                <svg
+                  className="w-4 h-4 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold text-gray-900">
+                Anexos
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              Selecionar arquivo
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+          </div>
+          {attachments.map((file, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between px-4 py-2 rounded-lg border border-gray-200 bg-white"
+            >
+              <span className="text-sm font-semibold text-gray-900">
+                {file.name}{" "}
+                <span className="text-gray-400 font-normal">
+                  ({(file.size / 1024 / 1024).toFixed(1)}MB)
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => removeAttachment(index)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 
-  const getStepTitle = () => {
+  const renderStep4 = () => (
+    <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
+      <div className="flex items-center justify-center w-20 h-20 rounded-full bg-green-100">
+        <CheckCircle className="w-10 h-10 text-green-600" />
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <span className="text-lg font-semibold text-gray-900 text-center">
+          Solicitação enviada com sucesso!
+        </span>
+        <span className="text-sm text-gray-400 text-center">
+          {sendMethod === "download"
+            ? "Download iniciado automaticamente"
+            : "E-mail enviado com sucesso"}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-1 w-full px-4 py-4 rounded-lg bg-blue-50">
+        <span className="text-sm font-semibold text-purple-600">
+          Status atualizado:
+        </span>
+        <span className="text-sm text-purple-500">
+          {" "}
+          A solicitação agora está com status &ldquo;
+        </span>
+        <span className="text-sm font-semibold text-purple-600">Enviado</span>
+        <span className="text-sm text-purple-500">&rdquo;</span>
+      </div>
+    </div>
+  );
+
+  const renderFooter = () => {
+    if (currentStep === 4) {
+      return (
+        <div className="px-6 py-4 border-t-2 border-gray-200">
+          <button
+            onClick={handleClose}
+            className="w-full py-3 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center justify-between px-6 py-4 border-t-2 border-gray-200">
+        {currentStep === 2 ? (
+          <button
+            type="button"
+            onClick={() => setIsDocumentPreviewOpen(true)}
+            className="flex items-center gap-1.5 h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Visualizar documento
+            <ExternalLink className="w-3.5 h-3.5" />
+          </button>
+        ) : (
+          <div />
+        )}
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={currentStep === 1 ? handleClose : handleBack}
+            className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            disabled={isSending}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleNext}
+            disabled={
+              (currentStep === 1 && (!canProceed() || isLoading)) ||
+              (currentStep === 2 && !sendMethod) ||
+              isSending
+            }
+            className="px-6 py-2.5 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSending ? (
+              <span className="flex items-center gap-2">
+                <svg
+                  className="animate-spin h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                {currentStep === 3 ? "Enviando..." : "Processando..."}
+              </span>
+            ) : currentStep === 3 ? (
+              "Enviar e-mail"
+            ) : (
+              "Próximo"
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const getTitle = () => {
     switch (currentStep) {
       case 1:
-        return "Verificar Solicitação";
-      case 2:
-        return "Método de Envio";
-      case 3:
-        return "Enviar por E-mail";
-      default:
         return "Enviar Solicitação";
+      case 2:
+        return "Escolha o método de envio";
+      case 3:
+        return "Enviar por e-mail";
+      case 4:
+        return "Solicitação enviada";
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
-        onClick={handleClose}
+        onClick={currentStep !== 4 ? handleClose : undefined}
       />
-
-      {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
+      <div
+        className="relative bg-white rounded-lg shadow-xl flex flex-col"
+        style={{ width: "640px", height: "650px" }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {getStepTitle()}
-            </h2>
-            <span className="text-sm text-gray-400">
-              Etapa {currentStep} de 3
-            </span>
-          </div>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            disabled={isSending}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Progress bar */}
-        <div className="h-1 bg-gray-100">
-          <div
-            className="h-full bg-teal-500 transition-all duration-300"
-            style={{ width: `${(currentStep / 3) * 100}%` }}
-          />
+        <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200 shrink-0">
+          <h2 className="flex-1 text-lg font-semibold text-gray-900">
+            {getTitle()}
+          </h2>
+          {currentStep !== 4 && (
+            <button
+              onClick={handleClose}
+              className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 transition-colors"
+              disabled={isSending}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Content */}
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
+        {currentStep === 4 && renderStep4()}
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-          <button
-            onClick={currentStep === 1 ? handleClose : handleBack}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            disabled={isSending}
-          >
-            {currentStep === 1 ? "Cancelar" : "Voltar"}
-          </button>
-
-          {currentStep === 1 && (
-            <button
-              onClick={handleNext}
-              disabled={!canProceed() || isLoading}
-              className="px-4 py-2 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Continuar
-            </button>
-          )}
-
-          {currentStep === 2 && (
-            <button
-              onClick={handleNext}
-              disabled={!sendMethod || isSending}
-              className="px-4 py-2 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSending ? (
-                <span className="flex items-center gap-2">
-                  <svg
-                    className="animate-spin h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Enviando...
-                </span>
-              ) : sendMethod === "download" ? (
-                "Enviar e Baixar"
-              ) : (
-                "Continuar"
-              )}
-            </button>
-          )}
-
-          {currentStep === 3 && (
-            <button
-              onClick={handleSendEmail}
-              disabled={isSending}
-              className="px-4 py-2 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSending ? (
-                <span className="flex items-center gap-2">
-                  <svg
-                    className="animate-spin h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Enviando...
-                </span>
-              ) : (
-                "Enviar Solicitação"
-              )}
-            </button>
-          )}
-        </div>
+        <div className="shrink-0">{renderFooter()}</div>
       </div>
+
+      {/* Document preview modal */}
+      <SurgeryRequestDocumentPreviewModal
+        isOpen={isDocumentPreviewOpen}
+        onClose={() => setIsDocumentPreviewOpen(false)}
+        solicitacao={solicitacao}
+      />
     </div>
   );
 }
