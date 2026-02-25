@@ -276,11 +276,15 @@ StatusGroup.displayName = "StatusGroup";
 interface SurgeryRequestListProps {
   requests: SurgeryRequest[];
   onRequestClick?: (request: SurgeryRequest) => void;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
 }
 
 export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
   requests,
   onRequestClick,
+  hasActiveFilters = false,
+  onClearFilters,
 }) => {
   // Agrupar solicitações por status
   const groupedRequests = useMemo(() => {
@@ -313,25 +317,42 @@ export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
         msOverflowStyle: "none",
       }}
     >
-      {STATUS_ORDER.map((status) => (
-        <StatusGroup
-          key={status}
-          status={status}
-          requests={groupedRequests[status]}
-          defaultExpanded={groupedRequests[status].length > 0}
-          onRequestClick={onRequestClick}
-        />
-      ))}
+      {STATUS_ORDER.filter((status) => groupedRequests[status].length > 0).map(
+        (status) => (
+          <StatusGroup
+            key={status}
+            status={status}
+            requests={groupedRequests[status]}
+            defaultExpanded={true}
+            onRequestClick={onRequestClick}
+          />
+        ),
+      )}
 
       {/* Estado vazio */}
       {requests.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16">
-          <p className="text-lg font-semibold text-neutral-900 mb-2">
-            Nenhuma solicitação encontrada
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center">
+            <AlertTriangle className="w-7 h-7 text-neutral-400" />
+          </div>
+          <p className="text-base font-semibold text-neutral-700">
+            {hasActiveFilters
+              ? "Nenhuma solicitação encontrada"
+              : "Nenhuma solicitação cadastrada"}
           </p>
-          <p className="text-sm text-neutral-200">
-            Comece criando uma nova solicitação cirúrgica
+          <p className="text-sm text-neutral-400 text-center max-w-xs">
+            {hasActiveFilters
+              ? "Nenhuma solicitação corresponde aos filtros selecionados. Tente ajustar ou limpar os filtros."
+              : "Comece criando uma nova solicitação cirúrgica."}
           </p>
+          {hasActiveFilters && onClearFilters && (
+            <button
+              onClick={onClearFilters}
+              className="text-sm font-medium text-teal-700 hover:underline"
+            >
+              Limpar filtros
+            </button>
+          )}
         </div>
       )}
     </div>

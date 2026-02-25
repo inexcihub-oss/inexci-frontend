@@ -35,15 +35,15 @@ export function CodigoTussTab({
   const { showToast } = useToast();
 
   const filteredProcedures = useMemo(() => {
-    if (!solicitacao.procedures) return [];
-    if (!searchTerm.trim()) return solicitacao.procedures;
+    if (!solicitacao.tuss_items) return [];
+    if (!searchTerm.trim()) return solicitacao.tuss_items;
     const term = searchTerm.toLowerCase();
-    return solicitacao.procedures.filter(
+    return solicitacao.tuss_items.filter(
       (proc: any) =>
-        proc.procedure?.name?.toLowerCase().includes(term) ||
-        proc.procedure?.tuss_code?.toLowerCase().includes(term),
+        proc.name?.toLowerCase().includes(term) ||
+        proc.tuss_code?.toLowerCase().includes(term),
     );
-  }, [solicitacao.procedures, searchTerm]);
+  }, [solicitacao.tuss_items, searchTerm]);
 
   const handleDelete = async (procedureId: string) => {
     if (isDeleting) return;
@@ -147,8 +147,7 @@ export function CodigoTussTab({
                   ))}
 
                 <span className="flex-1 text-sm text-gray-900 leading-normal">
-                  {proc.procedure?.tuss_code || ""} -{" "}
-                  {proc.procedure?.name || ""}
+                  {proc.tuss_code || ""} - {proc.name || ""}
                 </span>
 
                 <span className="text-xs text-gray-900 leading-snug font-semibold">
@@ -236,7 +235,7 @@ export function CodigoTussTab({
         onClose={() => setIsModalOpen(false)}
         surgeryRequestId={solicitacao.id}
         onSuccess={onUpdate}
-        existingProcedures={solicitacao.procedures ?? []}
+        existingProcedures={solicitacao.tuss_items ?? []}
       />
     </div>
   );

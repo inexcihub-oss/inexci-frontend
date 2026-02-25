@@ -8,21 +8,18 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
-import {
-  collaboratorService,
-  Collaborator,
-} from "@/services/collaborator.service";
+import { collaboratorService, Doctor } from "@/services/collaborator.service";
 import { formatPhone } from "@/lib/formatters";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ChevronRight } from "lucide-react";
 
-export default function AssistenteDetalhePage() {
+export default function MedicoDetalhePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [collaborator, setCollaborator] = useState<Collaborator | null>(null);
+  const [doctor, setDoctor] = useState<Doctor | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
   // Form state
@@ -31,12 +28,13 @@ export default function AssistenteDetalhePage() {
     email: "",
     phone: "",
     specialty: "",
+    crm: "",
+    crmState: "",
     gender: "",
     birth_date: "",
     cpf: "",
     country: "Brasil",
     city: "",
-    role: "editor" as "admin" | "editor" | "viewer",
   });
   const [originalData, setOriginalData] = useState<typeof formData | null>(
     null,
@@ -53,43 +51,45 @@ export default function AssistenteDetalhePage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const collab = await collaboratorService.getById(params.id);
+      const doc = await collaboratorService.getDoctorById(params.id);
 
-      if (!collab) {
-        console.error("Colaborador não encontrado");
+      if (!doc) {
+        console.error("Médico não encontrado");
         setLoading(false);
         return;
       }
 
-      setCollaborator(collab);
+      setDoctor(doc);
 
       // Preenche o formulário
       setFormData({
-        name: collab.name || "",
-        email: collab.email || "",
-        phone: collab.phone || "",
-        specialty: collab.specialty || "",
-        gender: collab.gender || "",
-        birth_date: collab.birthDate || "",
-        cpf: collab.document || "",
+        name: doc.name || "",
+        email: doc.email || "",
+        phone: doc.phone || "",
+        specialty: doc.specialty || "",
+        crm: doc.crm || "",
+        crmState: doc.crmState || "",
+        gender: doc.gender || "",
+        birth_date: doc.birthDate || "",
+        cpf: doc.document || "",
         country: "Brasil",
         city: "",
-        role: collab.role || "editor",
       });
       setOriginalData({
-        name: collab.name || "",
-        email: collab.email || "",
-        phone: collab.phone || "",
-        specialty: collab.specialty || "",
-        gender: collab.gender || "",
-        birth_date: collab.birthDate || "",
-        cpf: collab.document || "",
+        name: doc.name || "",
+        email: doc.email || "",
+        phone: doc.phone || "",
+        specialty: doc.specialty || "",
+        crm: doc.crm || "",
+        crmState: doc.crmState || "",
+        gender: doc.gender || "",
+        birth_date: doc.birthDate || "",
+        cpf: doc.document || "",
         country: "Brasil",
         city: "",
-        role: collab.role || "editor",
       });
     } catch (error) {
-      console.error("Erro ao carregar colaborador:", error);
+      console.error("Erro ao carregar médico:", error);
     } finally {
       setLoading(false);
     }
@@ -100,11 +100,11 @@ export default function AssistenteDetalhePage() {
   };
 
   const handleSave = async () => {
-    if (!collaborator) return;
+    if (!doctor) return;
 
     setSaving(true);
     try {
-      await collaboratorService.updateProfile(collaborator.id, {
+      await collaboratorService.updateProfile(doctor.id, {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
@@ -114,7 +114,7 @@ export default function AssistenteDetalhePage() {
         cpf: formData.cpf || undefined,
       });
       setOriginalData(formData);
-      showToast("Assistente atualizado com sucesso!", "success");
+      showToast("Médico atualizado com sucesso!", "success");
     } catch (error) {
       console.error("Erro ao salvar:", error);
       showToast("Erro ao salvar as alterações.", "error");
@@ -141,11 +141,11 @@ export default function AssistenteDetalhePage() {
     );
   }
 
-  if (!collaborator) {
+  if (!doctor) {
     return (
       <PageContainer>
         <div className="flex items-center justify-center h-full">
-          <p className="text-gray-500">Assistente não encontrado.</p>
+          <p className="text-gray-500">Médico não encontrado.</p>
         </div>
       </PageContainer>
     );
@@ -165,16 +165,46 @@ export default function AssistenteDetalhePage() {
     { value: "neurologia", label: "Neurologia" },
     { value: "cirurgia-geral", label: "Cirurgia Geral" },
     { value: "anestesiologia", label: "Anestesiologia" },
+    { value: "ginecologia", label: "Ginecologia e Obstetrícia" },
+    { value: "urologia", label: "Urologia" },
+    { value: "oftalmologia", label: "Oftalmologia" },
+    { value: "otorrinolaringologia", label: "Otorrinolaringologia" },
+    { value: "pediatria", label: "Pediatria" },
   ];
 
-  const roleOptions = [
-    { value: "admin", label: "Administrador" },
-    { value: "editor", label: "Editor" },
-    { value: "viewer", label: "Visualizador" },
+  const crmStateOptions = [
+    { value: "", label: "UF" },
+    { value: "AC", label: "AC" },
+    { value: "AL", label: "AL" },
+    { value: "AM", label: "AM" },
+    { value: "AP", label: "AP" },
+    { value: "BA", label: "BA" },
+    { value: "CE", label: "CE" },
+    { value: "DF", label: "DF" },
+    { value: "ES", label: "ES" },
+    { value: "GO", label: "GO" },
+    { value: "MA", label: "MA" },
+    { value: "MG", label: "MG" },
+    { value: "MS", label: "MS" },
+    { value: "MT", label: "MT" },
+    { value: "PA", label: "PA" },
+    { value: "PB", label: "PB" },
+    { value: "PE", label: "PE" },
+    { value: "PI", label: "PI" },
+    { value: "PR", label: "PR" },
+    { value: "RJ", label: "RJ" },
+    { value: "RN", label: "RN" },
+    { value: "RO", label: "RO" },
+    { value: "RR", label: "RR" },
+    { value: "RS", label: "RS" },
+    { value: "SC", label: "SC" },
+    { value: "SE", label: "SE" },
+    { value: "SP", label: "SP" },
+    { value: "TO", label: "TO" },
   ];
 
-  // Sidebar com últimos pacientes (mock)
-  const recentPatients = [
+  // Sidebar com últimas solicitações (mock)
+  const recentRequests = [
     {
       id: "1",
       name: "Amanda Rodrigues",
@@ -190,7 +220,7 @@ export default function AssistenteDetalhePage() {
     {
       id: "3",
       name: "David Souza",
-      procedure: "Cirurgias de menisco",
+      procedure: "Cirurgia de menisco",
       time: "2 semanas atrás",
     },
     {
@@ -202,7 +232,7 @@ export default function AssistenteDetalhePage() {
     {
       id: "5",
       name: "Suzane Oliveira",
-      procedure: "Cirurgias de menisco",
+      procedure: "Cirurgia de menisco",
       time: "2 meses atrás",
     },
   ];
@@ -233,34 +263,32 @@ export default function AssistenteDetalhePage() {
       {/* Header */}
       <div className="flex items-center px-6 py-0 border-b border-neutral-100 h-13">
         <h3 className="text-sm font-semibold text-gray-900">
-          Últimos pacientes
+          Últimas solicitações
         </h3>
       </div>
 
-      {/* Lista de pacientes */}
+      {/* Lista de solicitações */}
       <div className="flex-1 overflow-y-auto">
-        {recentPatients.map((patient) => (
+        {recentRequests.map((req) => (
           <div
-            key={patient.id}
+            key={req.id}
             className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
           >
             <div className="flex items-center gap-2">
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(patient.id)}`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(req.id)}`}
               >
-                {getInitials(patient.name)}
+                {getInitials(req.name)}
               </div>
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-gray-900">
-                  {patient.name}
+                  {req.name}
                 </span>
-                <span className="text-xs text-gray-500">
-                  {patient.procedure}
-                </span>
+                <span className="text-xs text-gray-500">{req.procedure}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">{patient.time}</span>
+              <span className="text-xs text-gray-400">{req.time}</span>
               <ChevronRight className="w-4 h-4 text-gray-400" />
             </div>
           </div>
@@ -274,8 +302,8 @@ export default function AssistenteDetalhePage() {
       <DetailPageLayout
         sectionTitle="Colaboradores"
         backHref="/colaboradores"
-        itemName={collaborator.name}
-        itemSubtitle={formData.specialty || "Assistente"}
+        itemName={doctor.name}
+        itemSubtitle={formData.specialty || "Médico"}
         sidebarContent={sidebarContent}
       >
         {/* Seção: Informações pessoais */}
@@ -328,11 +356,23 @@ export default function AssistenteDetalhePage() {
               onChange={(e) => handleInputChange("specialty", e.target.value)}
               options={specialtyOptions}
             />
+          </div>
+        </FormSection>
+
+        {/* Seção: Dados profissionais */}
+        <FormSection title="Dados profissionais">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Input
+              label="CRM"
+              value={formData.crm}
+              onChange={(e) => handleInputChange("crm", e.target.value)}
+              placeholder="000000"
+            />
             <Select
-              label="Função"
-              value={formData.role}
-              onChange={(e) => handleInputChange("role", e.target.value as any)}
-              options={roleOptions}
+              label="Estado do CRM"
+              value={formData.crmState}
+              onChange={(e) => handleInputChange("crmState", e.target.value)}
+              options={crmStateOptions}
             />
           </div>
         </FormSection>
@@ -365,7 +405,7 @@ export default function AssistenteDetalhePage() {
                   </td>
                 </tr>
                 <tr className="border-t border-gray-100">
-                  <td className="py-3">Terça-feira</td>
+                  <td className="py-3">Quarta-feira</td>
                   <td className="py-3">08:00 - 15:00</td>
                   <td className="py-3">Hospital B</td>
                   <td className="py-3">
@@ -379,22 +419,8 @@ export default function AssistenteDetalhePage() {
                   </td>
                 </tr>
                 <tr className="border-t border-gray-100">
-                  <td className="py-3">Quinta-feira</td>
-                  <td className="py-3">08:00 - 18:00</td>
-                  <td className="py-3">Hospital B</td>
-                  <td className="py-3">
-                    <button className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1">
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                        <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-                <tr className="border-t border-gray-100">
                   <td className="py-3">Sexta-feira</td>
-                  <td className="py-3">10:00 - 15:00</td>
+                  <td className="py-3">08:00 - 18:00</td>
                   <td className="py-3">Clínica A</td>
                   <td className="py-3">
                     <button className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1">

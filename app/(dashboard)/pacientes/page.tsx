@@ -7,6 +7,7 @@ import { Checkbox, SearchInput, Button } from "@/components/ui";
 import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
+import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import {
   useReactTable,
   getCoreRowModel,
@@ -33,6 +34,26 @@ export default function PacientesPage() {
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
+
+  // Estados do modal de exclusão
+  const [deleteModal, setDeleteModal] = useState<{
+    open: boolean;
+    patient: Patient | null;
+    loading: boolean;
+  }>({
+    open: false,
+    patient: null,
+    loading: false,
+  });
+
+  // Estado do modal de exclusão em lote
+  const [bulkDeleteModal, setBulkDeleteModal] = useState<{
+    open: boolean;
+    loading: boolean;
+  }>({
+    open: false,
+    loading: false,
+  });
 
   // Debounce do termo de pesquisa para evitar re-renderizações excessivas
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -68,6 +89,13 @@ export default function PacientesPage() {
       );
     });
   }, [patients, debouncedSearchTerm]);
+
+  const selectedPatients = useMemo(() => {
+    return Object.keys(rowSelection)
+      .filter((key) => (rowSelection as Record<string, boolean>)[key])
+      .map((key) => filteredPatients[parseInt(key)])
+      .filter((p): p is Patient => Boolean(p));
+  }, [rowSelection, filteredPatients]);
 
   const getInitials = (name: string) => {
     const parts = name.split(" ");
@@ -119,6 +147,59 @@ export default function PacientesPage() {
 
   const handlePatientClick = (id: string) => {
     router.push(`/pacientes/${id}`);
+  };
+
+  const handleDeleteClick = (patient: Patient, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeleteModal({ open: true, patient, loading: false });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.patient) return;
+    setDeleteModal((prev) => ({ ...prev, loading: true }));
+    try {
+      await patientService.delete(deleteModal.patient.id);
+      setPatients((prev) =>
+        prev.filter((p) => p.id !== deleteModal.patient!.id),
+      );
+      setDeleteModal({ open: false, patient: null, loading: false });
+    } catch (error) {
+      console.error("Erro ao excluir paciente:", error);
+      setDeleteModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    if (!deleteModal.loading) {
+      setDeleteModal({ open: false, patient: null, loading: false });
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    setBulkDeleteModal({ open: true, loading: false });
+  };
+
+  const handleBulkDeleteConfirm = async () => {
+    setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
+    try {
+      await Promise.all(
+        selectedPatients.map((p) => patientService.delete(p.id)),
+      );
+      setPatients((prev) =>
+        prev.filter((p) => !selectedPatients.some((sp) => sp.id === p.id)),
+      );
+      setRowSelection({});
+      setBulkDeleteModal({ open: false, loading: false });
+    } catch (error) {
+      console.error("Erro ao excluir pacientes:", error);
+      setBulkDeleteModal((prev) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleBulkDeleteCancel = () => {
+    if (!bulkDeleteModal.loading) {
+      setBulkDeleteModal({ open: false, loading: false });
+    }
   };
 
   // Definição das colunas
@@ -203,15 +284,15 @@ export default function PacientesPage() {
       ),
     },
     {
-      accessorKey: "dateOfBirth",
+      accessorKey: "birth_date",
       header: "Data de Nascimento",
       size: 150,
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
-          title={formatDate(row.original.dateOfBirth)}
+          title={formatDate(row.original.birth_date)}
         >
-          {formatDate(row.original.dateOfBirth)}
+          {formatDate(row.original.birth_date)}
         </span>
       ),
     },
@@ -219,9 +300,26 @@ export default function PacientesPage() {
       id: "actions",
       size: 50,
       header: "",
-      cell: () => (
-        <button className="w-6 h-6 flex items-center justify-center bg-white border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50">
-          <Image src="/icons/dots-menu.svg" alt="Menu" width={16} height={16} />
+      cell: ({ row }) => (
+        <button
+          className="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 transition-colors group"
+          title="Excluir paciente"
+          onClick={(e) => handleDeleteClick(row.original, e)}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-4 h-4 text-red-400 group-hover:text-red-600 transition-colors"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-1V5a1 1 0 00-1-1h-4a1 1 0 00-1 1v1H7a1 1 0 000 2h10z"
+            />
+          </svg>
         </button>
       ),
       enableResizing: false,
@@ -281,10 +379,34 @@ export default function PacientesPage() {
           </Button>
         </div>
 
-        {/* New Button */}
-        <Button variant="primary" size="md">
-          Novo paciente
-        </Button>
+        {/* Bulk delete + New Button */}
+        <div className="flex items-center gap-2">
+          {selectedPatients.length > 0 && (
+            <button
+              onClick={handleBulkDeleteClick}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-1V5a1 1 0 00-1-1h-4a1 1 0 00-1 1v1H7a1 1 0 000 2h10z"
+                />
+              </svg>
+              Excluir selecionados ({selectedPatients.length})
+            </button>
+          )}
+          <Button variant="primary" size="md">
+            Novo paciente
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -381,6 +503,22 @@ export default function PacientesPage() {
           </div>
         )}
       </div>
+      <ConfirmDeleteModal
+        isOpen={deleteModal.open}
+        title="Excluir paciente"
+        itemName={deleteModal.patient?.name}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        loading={deleteModal.loading}
+      />
+      <ConfirmDeleteModal
+        isOpen={bulkDeleteModal.open}
+        title={`Excluir ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? "s" : ""}`}
+        description={`Tem certeza que deseja excluir ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? "s" : ""} selecionado${selectedPatients.length !== 1 ? "s" : ""}? Esta ação não pode ser desfeita.`}
+        onConfirm={handleBulkDeleteConfirm}
+        onCancel={handleBulkDeleteCancel}
+        loading={bulkDeleteModal.loading}
+      />
     </PageContainer>
   );
 }

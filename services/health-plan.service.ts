@@ -12,9 +12,9 @@ export interface HealthPlan {
 
 export interface CreateHealthPlanPayload {
   name: string;
+  phone: string;
+  email: string;
   cnpj?: string;
-  phone?: string;
-  email?: string;
 }
 
 export const healthPlanService = {
@@ -26,14 +26,14 @@ export const healthPlanService = {
       const response = await api.get("/health_plans");
       const data = response.data.records || response.data;
       // Mapeia os campos do backend para o frontend
-      return data.map((user: any) => ({
-        id: user.id,
-        name: user.name,
-        cnpj: user.document, // O campo 'document' armazena CNPJ
-        phone: user.phone,
-        email: user.email,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
+      return data.map((h: any) => ({
+        id: h.id,
+        name: h.name,
+        cnpj: h.cnpj,
+        phone: h.phone,
+        email: h.email,
+        createdAt: h.created_at,
+        updatedAt: h.updated_at,
       }));
     } catch (error) {
       throw error;

@@ -58,10 +58,7 @@ export const KanbanColumn = memo<KanbanColumnProps>(
         {/* Área de cards com scroll */}
         <div
           className="flex flex-col gap-2 p-4 bg-gray-100 flex-1 overflow-y-auto rounded-b-lg"
-          style={{
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
+          style={{}}
         >
           {cards.length === 0 ? (
             <EmptyState

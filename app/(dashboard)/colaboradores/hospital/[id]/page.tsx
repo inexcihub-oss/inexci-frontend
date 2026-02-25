@@ -10,6 +10,8 @@ import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { hospitalService, Hospital } from "@/services/hospital.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 import { ChevronRight } from "lucide-react";
 
 export default function HospitalDetalhePage() {
@@ -18,6 +20,7 @@ export default function HospitalDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hospital, setHospital] = useState<Hospital | null>(null);
+  const { toast, showToast, hideToast } = useToast();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -34,6 +37,12 @@ export default function HospitalDetalhePage() {
     contact: "",
     contactPhone: "",
   });
+  const [originalData, setOriginalData] = useState<typeof formData | null>(
+    null,
+  );
+  const isDirty =
+    originalData !== null &&
+    JSON.stringify(formData) !== JSON.stringify(originalData);
 
   useEffect(() => {
     loadData();
@@ -60,13 +69,27 @@ export default function HospitalDetalhePage() {
         email: hospitalData.email || "",
         phone: hospitalData.phone || "",
         address: hospitalData.address || "",
-        city: "",
-        state: "",
-        zipCode: "",
-        neighborhood: "",
+        city: hospitalData.city || "",
+        state: hospitalData.state || "",
+        zipCode: hospitalData.zip_code || "",
+        neighborhood: hospitalData.neighborhood || "",
         type: "",
-        contact: "",
-        contactPhone: "",
+        contact: hospitalData.contact_name || "",
+        contactPhone: hospitalData.contact_phone || "",
+      });
+      setOriginalData({
+        name: hospitalData.name || "",
+        cnpj: hospitalData.cnpj || "",
+        email: hospitalData.email || "",
+        phone: hospitalData.phone || "",
+        address: hospitalData.address || "",
+        city: hospitalData.city || "",
+        state: hospitalData.state || "",
+        zipCode: hospitalData.zip_code || "",
+        neighborhood: hospitalData.neighborhood || "",
+        type: "",
+        contact: hospitalData.contact_name || "",
+        contactPhone: hospitalData.contact_phone || "",
       });
     } catch (error) {
       console.error("Erro ao carregar hospital:", error);
@@ -86,17 +109,30 @@ export default function HospitalDetalhePage() {
     try {
       await hospitalService.update(hospital.id, {
         name: formData.name,
-        cnpj: formData.cnpj,
-        email: formData.email,
-        phone: formData.phone,
-        address: formData.address,
+        cnpj: formData.cnpj || undefined,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
+        address: formData.address || undefined,
+        neighborhood: formData.neighborhood || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        zip_code: formData.zipCode.replace(/\D/g, "") || undefined,
       });
-      alert("Hospital atualizado com sucesso!");
+      setOriginalData(formData);
+      showToast("Hospital atualizado com sucesso!", "success");
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      alert("Erro ao salvar as alterações.");
+      showToast("Erro ao salvar as alterações.", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (isDirty && originalData) {
+      setFormData(originalData);
+    } else {
+      router.push("/colaboradores");
     }
   };
 
@@ -328,17 +364,21 @@ export default function HospitalDetalhePage() {
 
         {/* Botão de salvar */}
         <div className="flex justify-end gap-3 pt-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/colaboradores")}
-          >
+          <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} isLoading={saving}>
+          <Button onClick={handleSave} isLoading={saving} disabled={!isDirty}>
             Salvar alterações
           </Button>
         </div>
       </DetailPageLayout>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type as any}
+          onClose={hideToast}
+        />
+      )}
     </PageContainer>
   );
 }

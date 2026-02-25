@@ -5,6 +5,7 @@ import { CreateProcedureModal } from "./CreateProcedureModal";
 import { CreatePatientModal } from "./CreatePatientModal";
 import { CreateHospitalModal } from "./CreateHospitalModal";
 import { CreateHealthPlanModal } from "./CreateHealthPlanModal";
+import { CreateManagerModal } from "./CreateManagerModal";
 import { Toast, ToastType } from "@/components/ui/Toast";
 import Image from "next/image";
 import {
@@ -40,7 +41,8 @@ type ModalState =
   | "hospital-create"
   | "healthplan-select"
   | "healthplan-create"
-  | "manager-select";
+  | "manager-select"
+  | "manager-create";
 
 export function CreateSurgeryRequestWizard({
   isOpen,
@@ -142,6 +144,11 @@ export function CreateSurgeryRequestWizard({
   const handleManagerSelected = (manager: User) => {
     setSelectedManager(manager);
     setModalState("healthplan-select");
+  };
+
+  const handleManagerCreated = (manager: User) => {
+    setSelectedManager(manager);
+    setModalState("manager-select");
   };
 
   const handleTemplateSelected = (template: any) => {
@@ -341,9 +348,16 @@ export function CreateSurgeryRequestWizard({
 
                 {/* Paciente - OBRIGATÓRIO */}
                 <button
-                  onClick={() => setModalState("patient-select")}
-                  className={`w-full h-20 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                    modalState === "patient-select" ? "bg-gray-50" : ""
+                  disabled={!selectedProcedure}
+                  onClick={() =>
+                    selectedProcedure && setModalState("patient-select")
+                  }
+                  className={`w-full h-20 px-6 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${
+                    !selectedProcedure
+                      ? "opacity-40 cursor-not-allowed"
+                      : modalState === "patient-select"
+                        ? "bg-gray-50"
+                        : "hover:bg-gray-50 cursor-pointer"
                   }`}
                 >
                   <span className="text-lg font-semibold text-gray-900">
@@ -373,9 +387,16 @@ export function CreateSurgeryRequestWizard({
 
                 {/* Gestor - OBRIGATÓRIO */}
                 <button
-                  onClick={() => setModalState("manager-select")}
-                  className={`w-full h-20 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                    modalState === "manager-select" ? "bg-gray-50" : ""
+                  disabled={!selectedPatient}
+                  onClick={() =>
+                    selectedPatient && setModalState("manager-select")
+                  }
+                  className={`w-full h-20 px-6 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${
+                    !selectedPatient
+                      ? "opacity-40 cursor-not-allowed"
+                      : modalState === "manager-select"
+                        ? "bg-gray-50"
+                        : "hover:bg-gray-50 cursor-pointer"
                   }`}
                 >
                   <span className="text-lg font-semibold text-gray-900">
@@ -405,9 +426,16 @@ export function CreateSurgeryRequestWizard({
 
                 {/* Convênio - OPCIONAL */}
                 <button
-                  onClick={() => setModalState("healthplan-select")}
-                  className={`w-full h-20 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                    modalState === "healthplan-select" ? "bg-gray-50" : ""
+                  disabled={!selectedManager}
+                  onClick={() =>
+                    selectedManager && setModalState("healthplan-select")
+                  }
+                  className={`w-full h-20 px-6 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${
+                    !selectedManager
+                      ? "opacity-40 cursor-not-allowed"
+                      : modalState === "healthplan-select"
+                        ? "bg-gray-50"
+                        : "hover:bg-gray-50 cursor-pointer"
                   }`}
                 >
                   <span className="text-lg font-semibold text-gray-900">
@@ -422,6 +450,30 @@ export function CreateSurgeryRequestWizard({
                         ? selectedHealthPlan.name
                         : "Selecionar"}
                     </span>
+                    {selectedHealthPlan && (
+                      <span
+                        role="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedHealthPlan(null);
+                        }}
+                        className="p-0.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </span>
+                    )}
                     <svg
                       className="w-5 h-5 text-gray-900"
                       fill="none"
@@ -440,9 +492,16 @@ export function CreateSurgeryRequestWizard({
 
                 {/* Hospital - OPCIONAL */}
                 <button
-                  onClick={() => setModalState("hospital-select")}
-                  className={`w-full h-20 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                    modalState === "hospital-select" ? "bg-gray-50" : ""
+                  disabled={!selectedManager}
+                  onClick={() =>
+                    selectedManager && setModalState("hospital-select")
+                  }
+                  className={`w-full h-20 px-6 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${
+                    !selectedManager
+                      ? "opacity-40 cursor-not-allowed"
+                      : modalState === "hospital-select"
+                        ? "bg-gray-50"
+                        : "hover:bg-gray-50 cursor-pointer"
                   }`}
                 >
                   <span className="text-lg font-semibold text-gray-900">
@@ -455,6 +514,30 @@ export function CreateSurgeryRequestWizard({
                     >
                       {selectedHospital ? selectedHospital.name : "Selecionar"}
                     </span>
+                    {selectedHospital && (
+                      <span
+                        role="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedHospital(null);
+                        }}
+                        className="p-0.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </span>
+                    )}
                     <svg
                       className="w-5 h-5 text-gray-900"
                       fill="none"
@@ -548,6 +631,7 @@ export function CreateSurgeryRequestWizard({
                 <div className="flex-1 overflow-y-auto">
                   <HospitalSelectionContent
                     onSelect={handleHospitalSelected}
+                    onDeselect={() => setSelectedHospital(null)}
                     onCreateNew={() => setModalState("hospital-create")}
                     onNewItemCreated={(callback: (item: Hospital) => void) => {
                       setAddHospitalToList(() => callback);
@@ -562,6 +646,7 @@ export function CreateSurgeryRequestWizard({
                 <div className="flex-1 overflow-y-auto">
                   <HealthPlanSelectionContent
                     onSelect={handleHealthPlanSelected}
+                    onDeselect={() => setSelectedHealthPlan(null)}
                     onCreateNew={() => setModalState("healthplan-create")}
                     onNewItemCreated={(
                       callback: (item: HealthPlan) => void,
@@ -578,6 +663,7 @@ export function CreateSurgeryRequestWizard({
                 <div className="flex-1 overflow-y-auto">
                   <ManagerSelectionContent
                     onSelect={handleManagerSelected}
+                    onCreateNew={() => setModalState("manager-create")}
                     selectedItemId={selectedManager?.id}
                     isActive={modalState === "manager-select"}
                   />
@@ -708,6 +794,12 @@ export function CreateSurgeryRequestWizard({
         isOpen={modalState === "healthplan-create"}
         onClose={() => setModalState("healthplan-select")}
         onSuccess={handleHealthPlanCreated}
+      />
+
+      <CreateManagerModal
+        isOpen={modalState === "manager-create"}
+        onClose={() => setModalState("manager-select")}
+        onSuccess={handleManagerCreated}
       />
     </>
   );
@@ -949,6 +1041,7 @@ function PatientSelectionContent({
 
 function HospitalSelectionContent({
   onSelect,
+  onDeselect,
   onCreateNew,
   onNewItemCreated,
   selectedItemId,
@@ -1036,7 +1129,11 @@ function HospitalSelectionContent({
                 type="button"
                 key={hospital.id}
                 onClick={() => {
-                  onSelect(hospital);
+                  if (isSelected) {
+                    onDeselect?.();
+                  } else {
+                    onSelect(hospital);
+                  }
                 }}
                 className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
@@ -1061,6 +1158,7 @@ function HospitalSelectionContent({
 
 function HealthPlanSelectionContent({
   onSelect,
+  onDeselect,
   onCreateNew,
   onNewItemCreated,
   selectedItemId,
@@ -1149,7 +1247,11 @@ function HealthPlanSelectionContent({
                 type="button"
                 key={healthPlan.id}
                 onClick={() => {
-                  onSelect(healthPlan);
+                  if (isSelected) {
+                    onDeselect?.();
+                  } else {
+                    onSelect(healthPlan);
+                  }
                 }}
                 className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
@@ -1174,17 +1276,19 @@ function HealthPlanSelectionContent({
 
 function ManagerSelectionContent({
   onSelect,
+  onCreateNew,
   selectedItemId,
   isActive,
 }: {
   onSelect: (manager: User) => void;
+  onCreateNew?: () => void;
+  onNewItemCreated?: (callback: (item: User) => void) => void;
   selectedItemId?: string | number | null;
   isActive?: boolean;
 }) {
   const [managers, setManagers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
 
   const loadManagers = async () => {
     setLoading(true);
@@ -1192,7 +1296,6 @@ function ManagerSelectionContent({
       const { userService } = await import("@/services/user.service");
       const data = await userService.getAll();
       setManagers(Array.isArray(data) ? data : []);
-      setHasLoaded(true);
     } catch {
       setManagers([]);
     } finally {
@@ -1201,10 +1304,11 @@ function ManagerSelectionContent({
   };
 
   useEffect(() => {
-    if (isActive && !hasLoaded) {
+    if (isActive) {
       loadManagers();
     }
-  }, [isActive, hasLoaded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
 
   const filteredManagers = managers.filter(
     (m) =>
@@ -1231,6 +1335,15 @@ function ManagerSelectionContent({
             className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
+        {onCreateNew && (
+          <button
+            type="button"
+            onClick={onCreateNew}
+            className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm"
+          >
+            Novo
+          </button>
+        )}
       </div>
 
       <div className="border-t border-gray-200">

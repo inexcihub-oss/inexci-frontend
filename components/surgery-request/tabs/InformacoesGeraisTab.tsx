@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { documentService } from "@/services/document.service";
+import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { EditableProcedureData } from "@/components/surgery-request/EditableProcedureData";
 import {
   DocumentUploadModal,
@@ -19,7 +19,6 @@ import { useToast } from "@/hooks/useToast";
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   personal_document: "RG/CNH",
   health_plan_card: "Carteirinha do Convênio",
-  doctor_request: "Pedido Médico",
   exam: "Exames",
   exam_report: "Laudo do Exame",
   exam_images: "Imagens do Exame",
@@ -28,12 +27,6 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   signed_report: "Laudo Assinado",
   surgery_auth_document: "Guia de Autorização",
   additional_document: "Outro Documento",
-  surgery_room: "Folha de Sala",
-  surgery_images: "Imagens da Cirurgia",
-  post_surgery_document: "Documento Pós-Cirúrgico",
-  authorization_guide: "Guia de Autorização",
-  invoice_protocol: "Protocolo de Fatura",
-  contest_file: "Arquivo de Contestação",
 };
 
 function formatDocumentType(key: string): string {
@@ -87,6 +80,17 @@ export function InformacoesGeraisTab({
   const { showToast } = useToast();
 
   const isReadOnly = statusNum >= 2;
+
+  // Documentos pré-cirúrgicos: excluir pastas post-surgical e report
+  const preSurgeryDocs = React.useMemo(
+    () =>
+      (solicitacao.documents ?? []).filter(
+        (d: any) =>
+          !d.path?.startsWith("post-surgical/") &&
+          !d.path?.startsWith("report/"),
+      ),
+    [solicitacao.documents],
+  );
 
   const handleConfirmDelete = async () => {
     if (!documentToDelete || isDeleting) return;
@@ -160,14 +164,13 @@ export function InformacoesGeraisTab({
             {!isReadOnly && (
               <Checkbox
                 checked={
-                  solicitacao.documents &&
-                  solicitacao.documents.length > 0 &&
-                  selectedDocuments.size === solicitacao.documents.length
+                  preSurgeryDocs.length > 0 &&
+                  selectedDocuments.size === preSurgeryDocs.length
                 }
                 onCheckedChange={handleSelectAllDocuments}
                 indeterminate={
                   selectedDocuments.size > 0 &&
-                  selectedDocuments.size < (solicitacao.documents?.length || 0)
+                  selectedDocuments.size < preSurgeryDocs.length
                 }
               />
             )}
@@ -183,13 +186,13 @@ export function InformacoesGeraisTab({
           </div>
 
           {/* Linhas de documentos */}
-          {solicitacao.documents && solicitacao.documents.length > 0 ? (
-            solicitacao.documents.map((doc: any, index: number) => (
+          {preSurgeryDocs.length > 0 ? (
+            preSurgeryDocs.map((doc: any, index: number) => (
               <div
                 key={doc.id}
                 className={`flex items-center gap-4 px-4 py-2${isReadOnly ? " bg-gray-50" : " hover:bg-gray-50 transition-colors"}`}
                 style={
-                  index < solicitacao.documents.length - 1
+                  index < preSurgeryDocs.length - 1
                     ? { borderBottom: "1px solid #DCDFE3" }
                     : {}
                 }
@@ -283,6 +286,7 @@ export function InformacoesGeraisTab({
         onClose={() => setIsUploadModalOpen(false)}
         surgeryRequestId={surgeryRequestId}
         documentTypes={PRE_SURGERY_DOCUMENT_TYPES}
+        folder={DOCUMENT_FOLDERS.PRE_SURGERY}
         onSuccess={() => {
           onDocumentsUploaded();
           setIsUploadModalOpen(false);

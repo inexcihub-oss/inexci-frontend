@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { documentService } from "@/services/document.service";
+import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import {
   DocumentUploadModal,
   POST_SURGERY_DOCUMENT_TYPES,
@@ -19,7 +19,6 @@ const POST_DOC_TYPE_LABELS: Record<string, string> = {
   surgery_room: "Descrição cirúrgica",
   surgery_images: "Imagens",
   surgery_auth_document: "Documento de autorização",
-  post_surgery_document: "Outros",
   additional_document: "Outros",
 };
 
@@ -83,7 +82,7 @@ export function PosCirurgicoTab({
   const postSurgeryDocs = React.useMemo(
     () =>
       (solicitacao.documents ?? []).filter((d: any) =>
-        POST_DOC_KEYS.includes(d.type),
+        d.path?.startsWith("post-surgical/"),
       ),
     [solicitacao.documents],
   );
@@ -219,7 +218,7 @@ export function PosCirurgicoTab({
 
               {/* Tipo do arquivo */}
               <div className="flex-1 text-xs text-gray-900">
-                {formatPostDocType(doc.type)}
+                {formatPostDocType(doc.key)}
               </div>
 
               {/* Anexado em */}
@@ -270,6 +269,7 @@ export function PosCirurgicoTab({
           setIsUploadModalOpen(false);
         }}
         documentTypes={POST_SURGERY_DOCUMENT_TYPES}
+        folder={DOCUMENT_FOLDERS.POST_SURGERY}
       />
 
       <DeleteDocumentModal

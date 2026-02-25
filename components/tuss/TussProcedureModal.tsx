@@ -230,6 +230,23 @@ export function TussProcedureModal({
   };
 
   const handleSelectProcedure = (procedure: TussCode) => {
+    const alreadyInSession = procedures.some(
+      (p) => p.procedure.tuss_code === procedure.tuss_code,
+    );
+    const alreadyExists = existingProcedures.some(
+      (p: any) =>
+        (p.tuss_code ?? p.procedure?.tuss_code) === procedure.tuss_code,
+    );
+
+    if (alreadyInSession || alreadyExists) {
+      setError(
+        `O procedimento ${procedure.tuss_code} já foi adicionado a esta solicitação.`,
+      );
+      setIsDropdownOpen(false);
+      setSearchTerm("");
+      return;
+    }
+
     setProcedures((prev) => [
       ...prev,
       { procedure, quantity: newItemQuantity },
@@ -238,6 +255,7 @@ export function TussProcedureModal({
     setSearchResults([]);
     setIsDropdownOpen(false);
     setNewItemQuantity(1);
+    setError(null);
   };
 
   const handleRemoveProcedure = (index: number) => {
@@ -397,14 +415,14 @@ export function TussProcedureModal({
                 {isDropdownOpen &&
                   searchResults.length > 0 &&
                   (() => {
-                    const addedIds = new Set([
-                      ...procedures.map((p) => p.procedure.id),
+                    const addedCodes = new Set([
+                      ...procedures.map((p) => p.procedure.tuss_code),
                       ...existingProcedures
-                        .map((p) => p.procedure?.id)
+                        .map((p: any) => p.tuss_code ?? p.procedure?.tuss_code)
                         .filter(Boolean),
                     ]);
                     const filteredResults = searchResults.filter(
-                      (r) => !addedIds.has(r.id),
+                      (r) => !addedCodes.has(r.tuss_code),
                     );
                     if (filteredResults.length === 0) return null;
                     return (

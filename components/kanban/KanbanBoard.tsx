@@ -10,13 +10,7 @@ interface KanbanBoardProps {
 
 export const KanbanBoard = memo<KanbanBoardProps>(({ initialColumns }) => {
   return (
-    <div
-      className="flex items-start gap-4 h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
-      style={{
-        scrollbarWidth: "none",
-        msOverflowStyle: "none",
-      }}
-    >
+    <div className="flex items-start gap-4 h-full overflow-x-auto overflow-y-hidden">
       {initialColumns.map((column) => (
         <KanbanColumn
           key={column.id}

@@ -50,7 +50,7 @@ export function UpdateAuthorizationsModal({
   const [isSaving, setIsSaving] = useState(false);
 
   const [tussAuth, setTussAuth] = useState<AuthorizationEntry[]>(() =>
-    (solicitacao?.procedures ?? []).map((p: any) => ({
+    (solicitacao?.tuss_items ?? []).map((p: any) => ({
       id: p.id,
       quantity: p.quantity ?? 1,
       authorized_quantity:
@@ -103,7 +103,7 @@ export function UpdateAuthorizationsModal({
       { date: "", time: "00:00" },
     ]);
     setTussAuth(
-      (solicitacao?.procedures ?? []).map((p: any) => ({
+      (solicitacao?.tuss_items ?? []).map((p: any) => ({
         id: p.id,
         quantity: p.quantity ?? 1,
         authorized_quantity:
@@ -291,10 +291,10 @@ export function UpdateAuthorizationsModal({
                 items={tussAuth}
                 labelHeader="Procedimento"
                 renderLabel={(item) => {
-                  const proc = solicitacao.procedures?.find(
+                  const proc = solicitacao.tuss_items?.find(
                     (p: any) => p.id === item.id,
                   );
-                  return `${proc?.procedure?.tuss_code ?? ""} — ${proc?.procedure?.name ?? ""}`;
+                  return `${proc?.tuss_code ?? ""} — ${proc?.name ?? ""}`;
                 }}
                 onChange={(id, val) =>
                   setTussAuth((prev) =>
@@ -387,11 +387,11 @@ export function UpdateAuthorizationsModal({
                   <SummaryTable
                     labelHeader="Procedimento"
                     items={tussAuth.map((e) => {
-                      const proc = solicitacao.procedures?.find(
+                      const proc = solicitacao.tuss_items?.find(
                         (p: any) => p.id === e.id,
                       );
                       return {
-                        label: `${proc?.procedure?.tuss_code ?? ""} — ${proc?.procedure?.name ?? ""}`,
+                        label: `${proc?.tuss_code ?? ""} — ${proc?.name ?? ""}`,
                         requested: e.quantity,
                         authorized:
                           e.authorized_quantity !== ""

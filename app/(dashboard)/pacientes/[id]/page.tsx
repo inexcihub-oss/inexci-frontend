@@ -8,9 +8,11 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
+import { Toast } from "@/components/ui/Toast";
 import { patientService, Patient } from "@/services/patient.service";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { formatCPF, formatPhone } from "@/lib/formatters";
+import { useToast } from "@/hooks/useToast";
 import { ChevronRight } from "lucide-react";
 
 export default function PacienteDetalhePage() {
@@ -20,6 +22,7 @@ export default function PacienteDetalhePage() {
   const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
+  const { toast, showToast, hideToast } = useToast();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -27,15 +30,26 @@ export default function PacienteDetalhePage() {
     cpf: "",
     email: "",
     phone: "",
-    dateOfBirth: "",
+    birth_date: "",
     gender: "",
     address: "",
+    address_number: "",
+    address_complement: "",
+    neighborhood: "",
     city: "",
     state: "",
-    zipCode: "",
-    healthPlanId: "",
-    healthPlanNumber: "",
+    zip_code: "",
+    health_plan_id: "",
+    health_plan_number: "",
+    health_plan_type: "",
+    medical_notes: "",
   });
+  const [originalData, setOriginalData] = useState<typeof formData | null>(
+    null,
+  );
+  const isDirty =
+    originalData !== null &&
+    JSON.stringify(formData) !== JSON.stringify(originalData);
 
   useEffect(() => {
     loadData();
@@ -65,14 +79,38 @@ export default function PacienteDetalhePage() {
         cpf: patientData.cpf || "",
         email: patientData.email || "",
         phone: patientData.phone || "",
-        dateOfBirth: patientData.dateOfBirth || "",
+        birth_date: patientData.birth_date || "",
         gender: patientData.gender || "",
         address: patientData.address || "",
-        city: "",
-        state: "",
-        zipCode: "",
-        healthPlanId: patientData.healthPlanId || "",
-        healthPlanNumber: "",
+        address_number: patientData.address_number || "",
+        address_complement: patientData.address_complement || "",
+        neighborhood: patientData.neighborhood || "",
+        city: patientData.city || "",
+        state: patientData.state || "",
+        zip_code: patientData.zip_code || "",
+        health_plan_id: patientData.health_plan_id || "",
+        health_plan_number: patientData.health_plan_number || "",
+        health_plan_type: patientData.health_plan_type || "",
+        medical_notes: patientData.medical_notes || "",
+      });
+      setOriginalData({
+        name: patientData.name || "",
+        cpf: patientData.cpf || "",
+        email: patientData.email || "",
+        phone: patientData.phone || "",
+        birth_date: patientData.birth_date || "",
+        gender: patientData.gender || "",
+        address: patientData.address || "",
+        address_number: patientData.address_number || "",
+        address_complement: patientData.address_complement || "",
+        neighborhood: patientData.neighborhood || "",
+        city: patientData.city || "",
+        state: patientData.state || "",
+        zip_code: patientData.zip_code || "",
+        health_plan_id: patientData.health_plan_id || "",
+        health_plan_number: patientData.health_plan_number || "",
+        health_plan_type: patientData.health_plan_type || "",
+        medical_notes: patientData.medical_notes || "",
       });
     } catch (error) {
       console.error("Erro ao carregar paciente:", error);
@@ -92,20 +130,38 @@ export default function PacienteDetalhePage() {
     try {
       await patientService.update(patient.id, {
         name: formData.name,
-        cpf: formData.cpf,
-        email: formData.email,
-        phone: formData.phone,
-        dateOfBirth: formData.dateOfBirth,
-        gender: formData.gender,
-        address: formData.address,
-        healthPlanId: formData.healthPlanId,
+        cpf: formData.cpf || undefined,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
+        birth_date: formData.birth_date || undefined,
+        gender: formData.gender || undefined,
+        address: formData.address || undefined,
+        address_number: formData.address_number || undefined,
+        address_complement: formData.address_complement || undefined,
+        neighborhood: formData.neighborhood || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        zip_code: formData.zip_code.replace(/\D/g, "") || undefined,
+        health_plan_id: formData.health_plan_id || undefined,
+        health_plan_number: formData.health_plan_number || undefined,
+        health_plan_type: formData.health_plan_type || undefined,
+        medical_notes: formData.medical_notes || undefined,
       });
-      alert("Paciente atualizado com sucesso!");
+      setOriginalData(formData);
+      showToast("Paciente atualizado com sucesso!", "success");
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      alert("Erro ao salvar as alterações.");
+      showToast("Erro ao salvar as alterações.", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (isDirty && originalData) {
+      setFormData(originalData);
+    } else {
+      router.push("/pacientes");
     }
   };
 
@@ -257,8 +313,8 @@ export default function PacienteDetalhePage() {
             <Input
               label="Data de nascimento"
               type="date"
-              value={formData.dateOfBirth}
-              onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+              value={formData.birth_date}
+              onChange={(e) => handleInputChange("birth_date", e.target.value)}
             />
             <Select
               label="Gênero"
@@ -288,12 +344,33 @@ export default function PacienteDetalhePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <Input
-                label="Endereço completo"
+                label="Logradouro"
                 value={formData.address}
                 onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="Rua, número, complemento"
+                placeholder="Rua / Avenida / Travessa"
               />
             </div>
+            <Input
+              label="Número"
+              value={formData.address_number}
+              onChange={(e) =>
+                handleInputChange("address_number", e.target.value)
+              }
+            />
+            <Input
+              label="Complemento"
+              value={formData.address_complement}
+              onChange={(e) =>
+                handleInputChange("address_complement", e.target.value)
+              }
+            />
+            <Input
+              label="Bairro"
+              value={formData.neighborhood}
+              onChange={(e) =>
+                handleInputChange("neighborhood", e.target.value)
+              }
+            />
             <Input
               label="Cidade"
               value={formData.city}
@@ -307,8 +384,10 @@ export default function PacienteDetalhePage() {
             />
             <Input
               label="CEP"
-              value={formData.zipCode}
-              onChange={(e) => handleInputChange("zipCode", e.target.value)}
+              value={formData.zip_code.replace(/^(\d{5})(\d)/, "$1-$2")}
+              onChange={(e) =>
+                handleInputChange("zip_code", e.target.value.replace(/\D/g, ""))
+              }
               placeholder="00000-000"
             />
           </div>
@@ -319,17 +398,17 @@ export default function PacienteDetalhePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Select
               label="Convênio"
-              value={formData.healthPlanId}
+              value={formData.health_plan_id}
               onChange={(e) =>
-                handleInputChange("healthPlanId", e.target.value)
+                handleInputChange("health_plan_id", e.target.value)
               }
               options={healthPlanOptions}
             />
             <Input
               label="Número da carteirinha"
-              value={formData.healthPlanNumber}
+              value={formData.health_plan_number}
               onChange={(e) =>
-                handleInputChange("healthPlanNumber", e.target.value)
+                handleInputChange("health_plan_number", e.target.value)
               }
               placeholder="Número do convênio"
             />
@@ -338,14 +417,21 @@ export default function PacienteDetalhePage() {
 
         {/* Botão de salvar */}
         <div className="flex justify-end gap-3 pt-4">
-          <Button variant="outline" onClick={() => router.push("/pacientes")}>
+          <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} isLoading={saving}>
+          <Button onClick={handleSave} isLoading={saving} disabled={!isDirty}>
             Salvar alterações
           </Button>
         </div>
       </DetailPageLayout>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type as any}
+          onClose={hideToast}
+        />
+      )}
     </PageContainer>
   );
 }

@@ -1,16 +1,19 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { X, Upload, Check } from "lucide-react";
-import { documentService } from "@/services/document.service";
+import {
+  documentService,
+  DOCUMENT_FOLDERS,
+  DocumentFolder,
+} from "@/services/document.service";
 
 // ─── Tipos de documento por contexto ─────────────────────────────────────────
 
 export const PRE_SURGERY_DOCUMENT_TYPES = [
   { key: "personal_document", label: "RG/CNH" },
   { key: "health_plan_card", label: "Carteirinha do Convênio" },
-  { key: "doctor_request", label: "Pedido Médico" },
   { key: "exam", label: "Exames" },
   { key: "exam_report", label: "Laudo do Exame" },
   { key: "exam_images", label: "Imagens do Exame" },
@@ -39,16 +42,28 @@ interface DocumentUploadModalProps {
   onSuccess: () => void;
   /** Lista de tipos disponíveis para seleção. Padrão: PRE_SURGERY_DOCUMENT_TYPES */
   documentTypes?: readonly DocumentTypeEntry[];
+  /** Pasta de destino no bucket. Padrão: DOCUMENT_FOLDERS.PRE_SURGERY */
+  folder?: DocumentFolder;
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
-export function DocumentUploadModal({
-  isOpen,
+/**
+ * Wrapper externo: só monta o conteúdo quando o modal está aberto.
+ * Isso garante que todos os estados reiniciem do zero a cada abertura.
+ */
+export function DocumentUploadModal(props: DocumentUploadModalProps) {
+  if (!props.isOpen) return null;
+  return <DocumentUploadModalContent {...props} />;
+}
+
+function DocumentUploadModalContent({
+  isOpen: _isOpen,
   onClose,
   surgeryRequestId,
   onSuccess,
   documentTypes = PRE_SURGERY_DOCUMENT_TYPES,
+  folder = DOCUMENT_FOLDERS.PRE_SURGERY,
 }: DocumentUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState<string>(
@@ -100,24 +115,23 @@ export function DocumentUploadModal({
     setIsTypeDropdownOpen((prev) => !prev);
   };
 
-  const resetForm = useCallback(() => {
+  const resetForm = () => {
     setSelectedFile(null);
-    setDocumentType(documentTypes[0]?.key ?? "");
     setDocumentName("");
     setIsRequired(false);
     setError(null);
     setIsDragging(false);
-  }, [documentTypes]);
-
-  if (!isOpen) return null;
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      // Auto-preencher nome com o nome do arquivo (sem extensão)
-      const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
-      setDocumentName(nameWithoutExtension);
+      // Auto-preencher nome com o nome do arquivo (sem extensão) apenas se o campo estiver vazio
+      if (!documentName.trim()) {
+        const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
+        setDocumentName(nameWithoutExtension);
+      }
       setError(null);
     }
     event.target.value = "";
@@ -143,8 +157,11 @@ export function DocumentUploadModal({
     const file = e.dataTransfer.files?.[0];
     if (file) {
       setSelectedFile(file);
-      const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
-      setDocumentName(nameWithoutExtension);
+      // Auto-preencher nome com o nome do arquivo (sem extensão) apenas se o campo estiver vazio
+      if (!documentName.trim()) {
+        const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
+        setDocumentName(nameWithoutExtension);
+      }
       setError(null);
     }
   };
@@ -174,6 +191,7 @@ export function DocumentUploadModal({
         key: documentType,
         name: documentName.trim(),
         file: selectedFile,
+        folder,
       });
 
       resetForm();

@@ -101,7 +101,7 @@ export function SendRequestModal({
           {
             key: "tuss_procedures",
             label: "Código TUSS",
-            isComplete: !!(solicitacao.procedures?.length > 0),
+            isComplete: !!(solicitacao.tuss_items?.length > 0),
             isRequired: true,
           },
           {
@@ -136,7 +136,7 @@ export function SendRequestModal({
           await surgeryRequestService.createTemplate({
             name: `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
             template_data: {
-              procedures: solicitacao.procedures,
+              procedures: solicitacao.tuss_items,
               opme_items: solicitacao.opme_items,
               hospital_id: solicitacao.hospital_id,
               health_plan_id: solicitacao.health_plan_id,

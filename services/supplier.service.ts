@@ -6,17 +6,33 @@ export interface Supplier {
   cnpj?: string;
   phone?: string;
   email?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  zip_code?: string;
   address?: string;
+  address_number?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateSupplierPayload {
-  name: string;
+  name?: string;
   cnpj?: string;
   phone?: string;
   email?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  zip_code?: string;
   address?: string;
+  address_number?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
 }
 
 export const supplierService = {
@@ -28,15 +44,23 @@ export const supplierService = {
       const response = await api.get("/suppliers");
       const data = response.data.records || response.data;
       // Mapeia os campos do backend para o frontend
-      return data.map((user: any) => ({
-        id: user.id,
-        name: user.name,
-        cnpj: user.document, // O campo 'document' armazena CNPJ
-        phone: user.phone,
-        email: user.email,
-        address: user.company, // O campo 'company' é usado para endereço
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
+      return data.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        cnpj: s.cnpj,
+        phone: s.phone,
+        email: s.email,
+        contact_name: s.contact_name,
+        contact_phone: s.contact_phone,
+        contact_email: s.contact_email,
+        zip_code: s.zip_code,
+        address: s.address,
+        address_number: s.address_number,
+        neighborhood: s.neighborhood,
+        city: s.city,
+        state: s.state,
+        createdAt: s.created_at,
+        updatedAt: s.updated_at,
       }));
     } catch (error) {
       throw error;

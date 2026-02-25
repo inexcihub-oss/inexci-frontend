@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { surgeryRequestService } from "@/services/surgery-request.service";
-import { documentService } from "@/services/document.service";
-import { healthPlanService } from "@/services/health-plan.service";
-import { Combobox } from "@/components/ui";
+import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import { MedicalReportPreviewModal } from "@/components/laudo/MedicalReportPreviewModal";
 import api from "@/lib/api";
@@ -66,6 +65,29 @@ function buildPatientData(sol: any, parsed: any): PatientFormData {
   };
 }
 
+// Máscaras de exibição (somente formatam para mostrar ao usuário)
+function applyCpfMask(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  return d
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+function applyPhoneMask(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 10)
+    return d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+}
+
+function applyCepMask(v: string): string {
+  return v
+    .replace(/\D/g, "")
+    .slice(0, 8)
+    .replace(/(\d{5})(\d)/, "$1-$2");
+}
+
 // ─── Upload helpers ──────────────────────────────────────────────────────────
 
 interface UploadItem {
@@ -117,6 +139,8 @@ export function MedicalReportEditor({
   solicitacao,
   onUpdate,
 }: MedicalReportEditorProps) {
+  const router = useRouter();
+
   // ── Estado do formulário ─────────────────────────────────────────────────
   const [patientData, setPatientData] = useState<PatientFormData>({
     name: "",
@@ -128,7 +152,6 @@ export function MedicalReportEditor({
     zipCode: "",
     healthPlan: "",
   });
-  const [isEditingPatient, setIsEditingPatient] = useState(false);
   const [isEditingHistory, setIsEditingHistory] = useState(false);
   const [isEditingConduct, setIsEditingConduct] = useState(false);
   const [historyAndDiagnosis, setHistoryAndDiagnosis] = useState("");
@@ -145,10 +168,6 @@ export function MedicalReportEditor({
   const [signedUploadItem, setSignedUploadItem] = useState<UploadItem | null>(
     null,
   );
-  const [healthPlanId, setHealthPlanId] = useState("");
-  const [healthPlanOptions, setHealthPlanOptions] = useState<
-    Array<{ value: string; label: string }>
-  >([]);
 
   const signedReportInputRef = useRef<HTMLInputElement>(null);
   const imagesInputRef = useRef<HTMLInputElement>(null);
@@ -200,23 +219,7 @@ export function MedicalReportEditor({
       parsed.historyAndDiagnosis ?? parsed.surgicalIndication ?? "",
     );
     setConduct(parsed.conduct ?? parsed.technicalJustification ?? "");
-    setHealthPlanId(
-      parsed.patientData?.healthPlanId ?? solicitacao?.health_plan?.id ?? "",
-    );
   }, [solicitacao]);
-
-  // Carregar convênios quando entrar em modo de edição do paciente
-  useEffect(() => {
-    if (!isEditingPatient) return;
-    healthPlanService
-      .getAll()
-      .then((data) => {
-        setHealthPlanOptions(
-          data.map((hp) => ({ value: hp.id.toString(), label: hp.name })),
-        );
-      })
-      .catch(() => {});
-  }, [isEditingPatient]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -224,21 +227,21 @@ export function MedicalReportEditor({
     setIsSaving(true);
     try {
       const parsed = parseMedicalReport(solicitacao);
+      const p = solicitacao?.patient;
       const updatedReport = {
         ...parsed,
-        patientData: { ...patientData, healthPlanId },
         historyAndDiagnosis,
         conduct,
+        // Identificação sempre vem dos dados reais do paciente
         patientIdentification: [
-          patientData.name && `Nome: ${patientData.name}`,
-          patientData.birthDate &&
-            `Data de Nascimento: ${patientData.birthDate}`,
-          patientData.rg && `RG: ${patientData.rg}`,
-          patientData.cpf && `CPF: ${patientData.cpf}`,
-          patientData.phone && `Telefone: ${patientData.phone}`,
-          patientData.address && `Endereço: ${patientData.address}`,
-          patientData.zipCode && `CEP: ${patientData.zipCode}`,
-          patientData.healthPlan && `Convênio: ${patientData.healthPlan}`,
+          p?.name && `Nome: ${p.name}`,
+          p?.birth_date && `Data de Nascimento: ${formatDateBR(p.birth_date)}`,
+          p?.rg && `RG: ${p.rg}`,
+          p?.cpf && `CPF: ${applyCpfMask(p.cpf)}`,
+          p?.phone && `Telefone: ${applyPhoneMask(p.phone)}`,
+          p?.address && `Endereço: ${p.address}`,
+          (p?.zip_code ?? p?.cep) &&
+            `CEP: ${applyCepMask(p?.zip_code ?? p?.cep ?? "")}`,
         ]
           .filter(Boolean)
           .join("\n"),
@@ -247,7 +250,6 @@ export function MedicalReportEditor({
         medical_report: JSON.stringify(updatedReport),
       });
       showToast("Laudo salvo com sucesso", "success");
-      setIsEditingPatient(false);
       setIsEditingHistory(false);
       setIsEditingConduct(false);
       onUpdate();
@@ -256,24 +258,15 @@ export function MedicalReportEditor({
     } finally {
       setIsSaving(false);
     }
-  }, [
-    patientData,
-    historyAndDiagnosis,
-    conduct,
-    solicitacao,
-    onUpdate,
-    showToast,
-  ]);
+  }, [historyAndDiagnosis, conduct, solicitacao, onUpdate, showToast]);
 
   const handleCancel = useCallback(() => {
     if (!solicitacao) return;
     const parsed = parseMedicalReport(solicitacao);
-    setPatientData(buildPatientData(solicitacao, parsed));
     setHistoryAndDiagnosis(
       parsed.historyAndDiagnosis ?? parsed.surgicalIndication ?? "",
     );
     setConduct(parsed.conduct ?? parsed.technicalJustification ?? "");
-    setIsEditingPatient(false);
     setIsEditingHistory(false);
     setIsEditingConduct(false);
   }, [solicitacao]);
@@ -296,6 +289,7 @@ export function MedicalReportEditor({
           key: "signed_report",
           name: file.name.replace(/\.[^.]+$/, ""),
           file,
+          folder: DOCUMENT_FOLDERS.PRE_SURGERY,
           onUploadProgress: (pct) =>
             setSignedUploadItem((prev) =>
               prev ? { ...prev, progress: pct } : prev,
@@ -350,6 +344,7 @@ export function MedicalReportEditor({
             key: "exam_images",
             name: file.name.replace(/\.[^.]+$/, ""),
             file,
+            folder: DOCUMENT_FOLDERS.REPORT,
             onUploadProgress: (pct) =>
               setImageUploadItems((prev) =>
                 prev.map((it) =>
@@ -437,11 +432,21 @@ export function MedicalReportEditor({
     "flex-shrink-0 flex items-center px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-lg text-sm font-semibold text-black hover:bg-gray-50 transition-colors";
 
   // ── Progresso do Laudo ───────────────────────────────────────────────────
+  const p = solicitacao?.patient;
+  const patientComplete = !!(
+    p?.name &&
+    p?.birth_date &&
+    p?.cpf &&
+    p?.phone &&
+    p?.address &&
+    p?.zip_code
+  );
+
   const progressSteps = [
     {
       key: "identification",
       label: "Identificação",
-      complete: !!patientData.name.trim(),
+      complete: patientComplete,
       optional: false,
     },
     {
@@ -550,39 +555,35 @@ export function MedicalReportEditor({
               <h3 className="text-base font-bold text-black leading-loose">
                 IDENTIFICAÇÃO DO PACIENTE
               </h3>
-              {!isEditingPatient ? (
-                <button
-                  onClick={() => setIsEditingPatient(true)}
-                  className={editarBtnClass}
-                >
-                  Editar
-                </button>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleCancel}
-                    disabled={isSaving}
-                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-teal-700 rounded-lg text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
-                  >
-                    {isSaving ? (
-                      <span className="flex items-center gap-2">
-                        <Spinner className="w-4 h-4 text-white" />
-                        Salvando...
-                      </span>
-                    ) : (
-                      "Salvar"
-                    )}
-                  </button>
-                </div>
-              )}
+              {/* Botão navega para a tela de detalhes do paciente */}
+              <button
+                onClick={() =>
+                  router.push(`/pacientes/${solicitacao?.patient?.id}`)
+                }
+                className={editarBtnClass}
+              >
+                Editar
+              </button>
             </div>
+
+            {!patientComplete && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                <svg
+                  className="w-4 h-4 flex-shrink-0"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Campos obrigatórios incompletos. Clique em
+                <strong className="mx-0">Editar</strong> para preencher os dados
+                do paciente.
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4 w-full">
               {/* Nome */}
@@ -590,87 +591,49 @@ export function MedicalReportEditor({
                 <label className="text-sm font-semibold text-black">
                   Nome do paciente
                 </label>
-                <input
-                  type="text"
-                  value={patientData.name}
-                  readOnly={!isEditingPatient}
-                  onChange={(e) =>
-                    setPatientData({ ...patientData, name: e.target.value })
-                  }
-                  className={inputClass(isEditingPatient)}
-                />
+                <div className={inputClass(false)}>
+                  {p?.name || <span className="text-gray-300">—</span>}
+                </div>
               </div>
 
-              {/* Data de nascimento — máscara DD/MM/AAAA */}
+              {/* Data de nascimento */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-semibold text-black">
                   Data de nascimento
                 </label>
-                <input
-                  type="text"
-                  value={patientData.birthDate}
-                  readOnly={!isEditingPatient}
-                  placeholder="DD/MM/AAAA"
-                  onChange={(e) =>
-                    setPatientData({
-                      ...patientData,
-                      birthDate: maskDate(e.target.value),
-                    })
-                  }
-                  className={inputClass(isEditingPatient)}
-                />
+                <div className={inputClass(false)}>
+                  {p?.birth_date ? (
+                    formatDateBR(p.birth_date)
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </div>
               </div>
 
-              {/* RG */}
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">RG</label>
-                <input
-                  type="text"
-                  value={patientData.rg}
-                  readOnly={!isEditingPatient}
-                  onChange={(e) =>
-                    setPatientData({ ...patientData, rg: e.target.value })
-                  }
-                  className={inputClass(isEditingPatient)}
-                />
-              </div>
-
-              {/* CPF — máscara 000.000.000-00 */}
+              {/* CPF */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-semibold text-black">CPF</label>
-                <input
-                  type="text"
-                  value={patientData.cpf}
-                  readOnly={!isEditingPatient}
-                  placeholder="000.000.000-00"
-                  onChange={(e) =>
-                    setPatientData({
-                      ...patientData,
-                      cpf: maskCpf(e.target.value),
-                    })
-                  }
-                  className={inputClass(isEditingPatient)}
-                />
+                <div className={inputClass(false)}>
+                  {p?.cpf ? (
+                    applyCpfMask(p.cpf)
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </div>
               </div>
 
-              {/* Telefone — máscara (00) 00000-0000 */}
+              {/* Telefone */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-semibold text-black">
                   Telefone
                 </label>
-                <input
-                  type="text"
-                  value={patientData.phone}
-                  readOnly={!isEditingPatient}
-                  placeholder="(00) 00000-0000"
-                  onChange={(e) =>
-                    setPatientData({
-                      ...patientData,
-                      phone: maskPhone(e.target.value),
-                    })
-                  }
-                  className={inputClass(isEditingPatient)}
-                />
+                <div className={inputClass(false)}>
+                  {p?.phone ? (
+                    applyPhoneMask(p.phone)
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </div>
               </div>
 
               {/* Endereço */}
@@ -678,33 +641,21 @@ export function MedicalReportEditor({
                 <label className="text-sm font-semibold text-black">
                   Endereço
                 </label>
-                <input
-                  type="text"
-                  value={patientData.address}
-                  readOnly={!isEditingPatient}
-                  onChange={(e) =>
-                    setPatientData({ ...patientData, address: e.target.value })
-                  }
-                  className={inputClass(isEditingPatient)}
-                />
+                <div className={inputClass(false)}>
+                  {p?.address || <span className="text-gray-300">—</span>}
+                </div>
               </div>
 
-              {/* CEP — máscara 00000-000 */}
+              {/* CEP */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-semibold text-black">CEP</label>
-                <input
-                  type="text"
-                  value={patientData.zipCode}
-                  readOnly={!isEditingPatient}
-                  placeholder="00000-000"
-                  onChange={(e) =>
-                    setPatientData({
-                      ...patientData,
-                      zipCode: maskCep(e.target.value),
-                    })
-                  }
-                  className={inputClass(isEditingPatient)}
-                />
+                <div className={inputClass(false)}>
+                  {p?.zip_code ? (
+                    applyCepMask(p.zip_code)
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

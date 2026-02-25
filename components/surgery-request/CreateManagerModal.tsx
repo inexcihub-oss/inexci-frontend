@@ -2,15 +2,12 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import {
-  patientService,
-  CreatePatientPayload,
-} from "@/services/patient.service";
+import api from "@/lib/api";
 
-interface CreatePatientModalProps {
+interface CreateManagerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (patient: any) => void;
+  onSuccess: (manager: any) => void;
 }
 
 function applyPhoneMask(value: string): string {
@@ -26,11 +23,11 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export function CreatePatientModal({
+export function CreateManagerModal({
   isOpen,
   onClose,
   onSuccess,
-}: CreatePatientModalProps) {
+}: CreateManagerModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ name: "", phone: "", email: "" });
   const [emailError, setEmailError] = useState("");
@@ -63,27 +60,29 @@ export function CreatePatientModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.email && !isValidEmail(formData.email)) {
+    if (!isValidEmail(formData.email)) {
       setEmailError("E-mail inválido");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      const payload: CreatePatientPayload = {
+      const response = await api.post("/users", {
         name: formData.name,
-        email: formData.email || undefined,
-        phone: formData.phone || undefined,
-      };
-      const newPatient = await patientService.create(payload);
-      onSuccess(newPatient);
+        email: formData.email,
+        phone: formData.phone,
+        role: "collaborator",
+      });
+      onSuccess(response.data);
       setFormData({ name: "", phone: "", email: "" });
       setEmailError("");
       onClose();
     } catch (err: any) {
+      const msg = err?.response?.data?.message;
       setError(
-        err?.response?.data?.message ||
-          "Erro ao criar paciente. Tente novamente.",
+        Array.isArray(msg)
+          ? msg.join(", ")
+          : msg || "Erro ao criar gestor. Tente novamente.",
       );
     } finally {
       setLoading(false);
@@ -100,7 +99,7 @@ export function CreatePatientModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5">
           <h2 className="text-[28px] font-bold text-gray-900 leading-tight">
-            Novo paciente
+            Novo gestor
           </h2>
           <button
             onClick={handleClose}
@@ -127,7 +126,7 @@ export function CreatePatientModal({
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                placeholder="Nome do paciente"
+                placeholder="Nome do gestor"
                 className="w-full px-4 py-3 border border-[#DCDFE3] rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
@@ -139,6 +138,7 @@ export function CreatePatientModal({
               </label>
               <input
                 type="tel"
+                required
                 value={formData.phone}
                 onChange={handlePhoneChange}
                 placeholder="(21) 98765-4321"
@@ -151,10 +151,11 @@ export function CreatePatientModal({
               <label className="text-sm font-bold text-gray-900">E-mail</label>
               <input
                 type="email"
+                required
                 value={formData.email}
                 onChange={handleEmailChange}
                 onBlur={handleEmailBlur}
-                placeholder="paciente@mail.com"
+                placeholder="gestor@mail.com"
                 className={`w-full px-4 py-3 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 ${
                   emailError ? "border-red-400" : "border-[#DCDFE3]"
                 }`}
@@ -177,7 +178,7 @@ export function CreatePatientModal({
               disabled={loading || !!emailError}
               className="px-6 py-3 bg-teal-700 text-white text-sm font-semibold rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Adicionando..." : "Adicionar paciente"}
+              {loading ? "Adicionando..." : "Adicionar gestor"}
             </button>
           </div>
         </form>

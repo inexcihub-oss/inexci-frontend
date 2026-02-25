@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { SurgeryRequestList } from "@/components/procedures/SurgeryRequestList";
 import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
+import {
+  FilterModal,
+  FilterState,
+  DEFAULT_FILTERS,
+  countActiveFilters,
+} from "@/components/surgery-request/FilterModal";
 import { KanbanColumn, SurgeryRequest } from "@/types/surgery-request.types";
 import {
   surgeryRequestService,
@@ -38,6 +44,8 @@ export default function ProcedimentosCirurgicos() {
   const router = useRouter();
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [searchTerm, setSearchTerm] = useState("");
   const [, setLoading] = useState(true);
   const [columns, setColumns] = useState<KanbanColumn[]>(INITIAL_COLUMNS);
@@ -111,9 +119,12 @@ export default function ProcedimentosCirurgicos() {
               pendenciesWaiting: 0,
               messagesCount: record.messagesCount || 0,
               attachmentsCount: record.attachmentsCount || 0,
-              createdAt: new Date(record.created_at).toLocaleDateString(
-                "pt-BR",
-              ),
+              createdAt: (() => {
+                const d = new Date(record.created_at);
+                const dd = d.getDate().toString().padStart(2, "0");
+                const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+                return `${dd}/${mm}/${d.getFullYear()}`;
+              })(),
               deadline: record.deadline
                 ? new Date(record.deadline).toLocaleDateString("pt-BR")
                 : "",
@@ -141,46 +152,154 @@ export default function ProcedimentosCirurgicos() {
     }
   }, []);
 
-  // Filtrar procedimentos com base no termo de busca
-  const filteredColumns = useMemo(() => {
-    if (!debouncedSearch.trim()) {
-      return columns;
-    }
-
-    return columns.map((column) => ({
-      ...column,
-      cards: column.cards.filter(
-        (card) =>
-          includesIgnoreCase(card.patient.name, debouncedSearch) ||
-          includesIgnoreCase(card.doctor.name, debouncedSearch) ||
-          includesIgnoreCase(card.procedureName, debouncedSearch) ||
-          includesIgnoreCase(card.id, debouncedSearch) ||
-          includesIgnoreCase(`SC-${card.id.padStart(6, "0")}`, debouncedSearch),
-      ),
-    }));
-  }, [columns, debouncedSearch]);
-
-  // Obter todos os procedimentos para visualização em lista
-  const allProcedures = useMemo(() => {
-    return columns.flatMap((column) => column.cards);
+  // Dados derivados para o modal de filtros (convênios e procedimentos únicos)
+  const availableHealthPlans = useMemo(() => {
+    const map = new Map<string, string>();
+    columns.forEach((col) =>
+      col.cards.forEach((card) => {
+        if (card.healthPlan) map.set(card.healthPlan, card.healthPlan);
+      }),
+    );
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [columns]);
 
-  const filteredProcedures = useMemo(() => {
-    if (!debouncedSearch.trim()) {
-      return allProcedures;
+  const availableProcedures = useMemo(() => {
+    const seen = new Set<string>();
+    const result: { id: string; name: string }[] = [];
+    columns.forEach((col) =>
+      col.cards.forEach((card) => {
+        // Split composite procedure names (e.g. "Proc A +2")
+        const base = card.procedureName.replace(/ \+\d+$/, "");
+        if (base && !seen.has(base)) {
+          seen.add(base);
+          result.push({ id: base, name: base });
+        }
+      }),
+    );
+    return result;
+  }, [columns]);
+
+  // Filtrar colunas com base na busca E nos filtros
+  const filteredColumns = useMemo(() => {
+    // 1. Filtrar por status: ocultar colunas cujo status não está selecionado
+    let cols =
+      filters.statuses.length > 0
+        ? columns.filter((col) => filters.statuses.includes(col.status))
+        : columns;
+
+    // 2. Filtrar cards
+    cols = cols.map((column) => ({
+      ...column,
+      cards: column.cards.filter((card) => {
+        // Busca textual
+        if (debouncedSearch.trim()) {
+          const matchesSearch =
+            includesIgnoreCase(card.patient.name, debouncedSearch) ||
+            includesIgnoreCase(card.doctor.name, debouncedSearch) ||
+            includesIgnoreCase(card.procedureName, debouncedSearch) ||
+            includesIgnoreCase(card.id, debouncedSearch) ||
+            includesIgnoreCase(
+              `SC-${card.id.padStart(6, "0")}`,
+              debouncedSearch,
+            );
+          if (!matchesSearch) return false;
+        }
+
+        // Prioridade
+        if (
+          filters.priorities.length > 0 &&
+          !filters.priorities.includes(card.priority as any)
+        ) {
+          return false;
+        }
+
+        // Pendências
+        if (filters.pendencies.length > 0) {
+          const count = card.pendenciesCount;
+          const matches = filters.pendencies.some((p) => {
+            if (p === "none") return count === 0;
+            if (p === "1") return count === 1;
+            if (p === "2") return count === 2;
+            if (p === "3+") return count >= 3;
+            return false;
+          });
+          if (!matches) return false;
+        }
+
+        // Convênios
+        if (
+          filters.healthPlanIds.length > 0 &&
+          !filters.healthPlanIds.includes(card.healthPlan || "")
+        ) {
+          return false;
+        }
+
+        // Procedimentos
+        if (filters.procedureNames.length > 0) {
+          const base = card.procedureName.replace(/ \+\d+$/, "");
+          if (!filters.procedureNames.includes(base)) return false;
+        }
+
+        // Data de criação
+        if (filters.createdAtFrom || filters.createdAtTo) {
+          const parts = card.createdAt.split("/");
+          if (parts.length === 3) {
+            const cardDate = new Date(
+              parseInt(parts[2]),
+              parseInt(parts[1]) - 1,
+              parseInt(parts[0]),
+            );
+            if (!isNaN(cardDate.getTime())) {
+              const norm = (d: Date) =>
+                new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+              const cardMs = norm(cardDate);
+              const fromMs = filters.createdAtFrom
+                ? norm(filters.createdAtFrom)
+                : null;
+              // Se só "from" está definido, tratar como dia exato
+              const toMs = filters.createdAtTo
+                ? norm(filters.createdAtTo)
+                : filters.createdAtFrom
+                  ? norm(filters.createdAtFrom)
+                  : null;
+              const [startMs, endMs] =
+                fromMs !== null && toMs !== null
+                  ? fromMs <= toMs
+                    ? [fromMs, toMs]
+                    : [toMs, fromMs]
+                  : [fromMs, toMs];
+              if (startMs !== null && cardMs < startMs) return false;
+              if (endMs !== null && cardMs > endMs) return false;
+            }
+          }
+        }
+
+        return true;
+      }),
+    }));
+
+    // 3. Ocultar colunas vazias quando há qualquer filtro ou busca ativa
+    const hasActiveFilters =
+      debouncedSearch.trim() ||
+      filters.statuses.length > 0 ||
+      filters.priorities.length > 0 ||
+      filters.pendencies.length > 0 ||
+      filters.healthPlanIds.length > 0 ||
+      filters.procedureNames.length > 0 ||
+      filters.createdAtFrom ||
+      filters.createdAtTo;
+
+    if (hasActiveFilters) {
+      cols = cols.filter((col) => col.cards.length > 0);
     }
 
-    return allProcedures.filter(
-      (procedure) =>
-        includesIgnoreCase(procedure.patient.name, debouncedSearch) ||
-        includesIgnoreCase(procedure.doctor.name, debouncedSearch) ||
-        includesIgnoreCase(procedure.procedureName, debouncedSearch) ||
-        (procedure.protocol &&
-          includesIgnoreCase(procedure.protocol, debouncedSearch)) ||
-        (procedure.protocol &&
-          includesIgnoreCase(`SC-${procedure.protocol}`, debouncedSearch)),
-    );
-  }, [allProcedures, debouncedSearch]);
+    return cols;
+  }, [columns, debouncedSearch, filters]);
+
+  // Obter todos os procedimentos para visualização em lista (já filtrados)
+  const filteredProcedures = useMemo(() => {
+    return filteredColumns.flatMap((column) => column.cards);
+  }, [filteredColumns]);
 
   const handleProcedureClick = useCallback(
     (procedure: SurgeryRequest) => {
@@ -244,20 +363,45 @@ export default function ProcedimentosCirurgicos() {
             className="w-85"
           />
 
-          {/* Filter Button - Estilo Figma */}
-          <button className="flex items-center gap-1 h-10 px-3 py-2 border border-teal-700 rounded-lg bg-white hover:bg-teal-50 transition-colors">
-            <Image
-              src="/icons/filter.svg"
-              alt="Filtro"
-              width={24}
-              height={24}
-            />
-            <span className="text-sm text-teal-700">Filtro</span>
-            {/* Contador */}
-            <div className="flex items-center justify-center w-6 h-6 bg-white border border-teal-700 rounded-full ml-1">
-              <span className="text-xs font-semibold text-teal-700">5</span>
-            </div>
-          </button>
+          {/* Filter Button */}
+          {(() => {
+            const activeCount = countActiveFilters(filters);
+            const isActive = activeCount > 0;
+            return (
+              <button
+                onClick={() => setIsFilterOpen(true)}
+                className={`flex items-center gap-1.5 h-10 px-3 py-2 border rounded-lg transition-colors ${
+                  isActive
+                    ? "border-teal-600 bg-teal-50 hover:bg-teal-100"
+                    : "border-neutral-100 bg-white hover:bg-neutral-50"
+                }`}
+              >
+                <Image
+                  src="/icons/filter.svg"
+                  alt="Filtro"
+                  width={20}
+                  height={20}
+                  className={
+                    isActive
+                      ? "[filter:invert(29%)sepia(74%)saturate(485%)hue-rotate(134deg)brightness(92%)contrast(87%)]"
+                      : ""
+                  }
+                />
+                <span
+                  className={`text-sm font-medium ${
+                    isActive ? "text-teal-700" : "text-black"
+                  }`}
+                >
+                  Filtro
+                </span>
+                {isActive && (
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-teal-700 text-white text-xs font-bold rounded-full">
+                    {activeCount}
+                  </span>
+                )}
+              </button>
+            );
+          })()}
 
           {/* Divider */}
           <div className="w-px h-8 bg-neutral-100" />
@@ -283,11 +427,46 @@ export default function ProcedimentosCirurgicos() {
       {/* Kanban Board ou Lista */}
       <div className="flex-1 overflow-hidden px-4 py-4 flex flex-col">
         {view === "kanban" ? (
-          <KanbanBoard initialColumns={filteredColumns} />
+          filteredColumns.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3">
+              <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center">
+                <Image
+                  src="/icons/filter.svg"
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="opacity-40"
+                />
+              </div>
+              <p className="text-base font-semibold text-neutral-700">
+                Nenhuma solicitação encontrada
+              </p>
+              <p className="text-sm text-neutral-400 text-center max-w-xs">
+                Nenhuma solicitação corresponde aos filtros selecionados. Tente
+                ajustar ou limpar os filtros.
+              </p>
+              <button
+                onClick={() => setFilters(DEFAULT_FILTERS)}
+                className="mt-1 text-sm font-medium text-teal-700 hover:underline"
+              >
+                Limpar filtros
+              </button>
+            </div>
+          ) : (
+            <KanbanBoard initialColumns={filteredColumns} />
+          )
         ) : (
           <SurgeryRequestList
             requests={filteredProcedures}
+            hasActiveFilters={
+              countActiveFilters(filters) > 0 ||
+              debouncedSearch.trim().length > 0
+            }
             onRequestClick={handleProcedureClick}
+            onClearFilters={() => {
+              setFilters(DEFAULT_FILTERS);
+              setSearchTerm("");
+            }}
           />
         )}
       </div>
@@ -300,6 +479,20 @@ export default function ProcedimentosCirurgicos() {
           // Recarregar dados do backend
           loadSurgeryRequests();
         }}
+      />
+
+      {/* Filter Modal */}
+      <FilterModal
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        onApply={(newFilters) => setFilters(newFilters)}
+        onClear={() => {
+          setFilters(DEFAULT_FILTERS);
+          setIsFilterOpen(false);
+        }}
+        currentFilters={filters}
+        availableHealthPlans={availableHealthPlans}
+        availableProcedures={availableProcedures}
       />
     </PageContainer>
   );

@@ -10,6 +10,8 @@ import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 import { ChevronRight } from "lucide-react";
 
 export default function ConvenioDetalhePage() {
@@ -18,6 +20,7 @@ export default function ConvenioDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [healthPlan, setHealthPlan] = useState<HealthPlan | null>(null);
+  const { toast, showToast, hideToast } = useToast();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -36,6 +39,12 @@ export default function ConvenioDetalhePage() {
     contactPhone: "",
     contactEmail: "",
   });
+  const [originalData, setOriginalData] = useState<typeof formData | null>(
+    null,
+  );
+  const isDirty =
+    originalData !== null &&
+    JSON.stringify(formData) !== JSON.stringify(originalData);
 
   useEffect(() => {
     loadData();
@@ -57,6 +66,22 @@ export default function ConvenioDetalhePage() {
 
       // Preenche o formulário
       setFormData({
+        name: healthPlanData.name || "",
+        cnpj: healthPlanData.cnpj || "",
+        email: healthPlanData.email || "",
+        phone: healthPlanData.phone || "",
+        website: "",
+        type: "",
+        ansRegistry: "",
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        contact: "",
+        contactPhone: "",
+        contactEmail: "",
+      });
+      setOriginalData({
         name: healthPlanData.name || "",
         cnpj: healthPlanData.cnpj || "",
         email: healthPlanData.email || "",
@@ -94,12 +119,21 @@ export default function ConvenioDetalhePage() {
         email: formData.email,
         phone: formData.phone,
       });
-      alert("Convênio atualizado com sucesso!");
+      setOriginalData(formData);
+      showToast("Convênio atualizado com sucesso!", "success");
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      alert("Erro ao salvar as alterações.");
+      showToast("Erro ao salvar as alterações.", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (isDirty && originalData) {
+      setFormData(originalData);
+    } else {
+      router.push("/colaboradores");
     }
   };
 
@@ -337,8 +371,10 @@ export default function ConvenioDetalhePage() {
             />
             <Input
               label="CEP"
-              value={formData.zipCode}
-              onChange={(e) => handleInputChange("zipCode", e.target.value)}
+              value={formData.zipCode.replace(/^(\d{5})(\d)/, "$1-$2")}
+              onChange={(e) =>
+                handleInputChange("zipCode", e.target.value.replace(/\D/g, ""))
+              }
               placeholder="00000-000"
             />
           </div>
@@ -374,17 +410,21 @@ export default function ConvenioDetalhePage() {
 
         {/* Botão de salvar */}
         <div className="flex justify-end gap-3 pt-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/colaboradores")}
-          >
+          <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} isLoading={saving}>
+          <Button onClick={handleSave} isLoading={saving} disabled={!isDirty}>
             Salvar alterações
           </Button>
         </div>
       </DetailPageLayout>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type as any}
+          onClose={hideToast}
+        />
+      )}
     </PageContainer>
   );
 }

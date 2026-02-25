@@ -7,14 +7,17 @@ export interface TussCode {
   active: boolean;
 }
 
-export interface SurgeryRequestProcedure {
+export interface SurgeryRequestTussItem {
   id: string;
   surgery_request_id: string;
-  procedure_id: string;
+  tuss_code: string;
+  name: string;
   quantity: number;
   authorized_quantity?: number;
-  procedure: TussCode;
 }
+
+// Mantido por compatibilidade
+export interface SurgeryRequestProcedure extends SurgeryRequestTussItem {}
 
 export interface CreateSurgeryRequestProcedureData {
   surgery_request_id: string;

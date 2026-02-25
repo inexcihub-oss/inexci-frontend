@@ -57,7 +57,7 @@ export function InvoiceModal({
 
   const healthPlanName = solicitacao?.health_plan?.name || "Convênio";
   const patientName = solicitacao?.patient?.name || "—";
-  const procedureName = solicitacao?.procedures?.[0]?.procedure?.name || "—";
+  const procedureName = solicitacao?.procedure?.name || "—";
 
   const handleClose = () => {
     if (isSaving) return;

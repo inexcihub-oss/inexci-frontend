@@ -3,16 +3,12 @@ import api from "@/lib/api";
 export interface Procedure {
   id: string;
   name: string;
-  description?: string;
-  estimatedDuration?: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateProcedurePayload {
   name: string;
-  description?: string;
-  estimatedDuration?: number;
 }
 
 export const procedureService = {
@@ -60,7 +56,7 @@ export const procedureService = {
    */
   async update(
     procedureId: string,
-    payload: Partial<CreateProcedurePayload>
+    payload: Partial<CreateProcedurePayload>,
   ): Promise<Procedure> {
     try {
       const response = await api.patch(`/procedures/${procedureId}`, payload);

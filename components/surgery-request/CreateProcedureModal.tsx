@@ -28,7 +28,6 @@ export function CreateProcedureModal({
     try {
       const payload: CreateProcedurePayload = {
         name: name,
-        description: "",
       };
 
       const newProcedure = await procedureService.create(payload);
@@ -51,9 +50,9 @@ export function CreateProcedureModal({
     <div className="fixed inset-0 z-60 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
         {/* Header */}
-        <div className="p-6 border-b flex items-center justify-between">
+        <div className="px-6 pt-6 pb-5 flex items-center justify-between border-b border-gray-200">
           <h2 className="text-2xl font-semibold text-gray-900">
             Novo procedimento
           </h2>
@@ -61,31 +60,36 @@ export function CreateProcedureModal({
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="mb-6">
+        <form onSubmit={handleSubmit}>
+          <div className="px-6 pt-5 pb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nome do procedimento
+            </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 placeholder:text-gray-400"
-              placeholder="Nome do procedimento"
+              className="w-full px-4 py-2.5 border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 placeholder:text-gray-400 text-sm"
+              placeholder="Ex. Artroscopia de Joelho"
             />
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-teal-500 text-white rounded-lg hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-          >
-            {loading ? "Adicionando..." : "Adicionar procedimento"}
-          </button>
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-5 py-2.5 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+            >
+              {loading ? "Adicionando..." : "Adicionar procedimento"}
+            </button>
+          </div>
         </form>
       </div>
     </div>

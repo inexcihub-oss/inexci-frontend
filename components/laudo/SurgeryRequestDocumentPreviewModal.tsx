@@ -167,10 +167,10 @@ function ProceduresTable({ procedures }: { procedures: any[] }) {
             className={`flex border-b border-[#DCDFE3] last:border-b-0 ${bg}`}
           >
             <div className="flex-[3] px-[10px] py-2 border-r border-[#DCDFE3] leading-[1.333]">
-              {proc.procedure?.name || "—"}
+              {proc.name || "—"}
             </div>
             <div className="flex-[1.5] px-[10px] py-2 border-r border-[#DCDFE3] leading-[1.333]">
-              {proc.procedure?.tuss_code || "—"}
+              {proc.tuss_code || "—"}
             </div>
             <div className="flex-[0.8] px-[10px] py-2 leading-[1.333]">
               {proc.quantity ?? 1}
@@ -277,7 +277,7 @@ export function SurgeryRequestDocumentPreviewModal({
   const conduct = report?.conduct || report?.technicalJustification || "";
 
   // ── Procedimentos e OPME ─────────────────────────────────────────────────
-  const procedures: any[] = solicitacao?.procedures ?? [];
+  const procedures: any[] = solicitacao?.tuss_items ?? [];
   const opmeItems: any[] = solicitacao?.opme_items ?? [];
 
   // ── Fabricantes e Fornecedores ────────────────────────────────────────────

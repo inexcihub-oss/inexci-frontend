@@ -10,6 +10,8 @@ import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { supplierService, Supplier } from "@/services/supplier.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 import { ChevronRight } from "lucide-react";
 
 export default function FornecedorDetalhePage() {
@@ -18,6 +20,7 @@ export default function FornecedorDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [supplier, setSupplier] = useState<Supplier | null>(null);
+  const { toast, showToast, hideToast } = useToast();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -28,16 +31,23 @@ export default function FornecedorDetalhePage() {
     website: "",
     category: "",
     address: "",
+    address_number: "",
+    neighborhood: "",
     city: "",
     state: "",
-    zipCode: "",
-    neighborhood: "",
-    contact: "",
-    contactPhone: "",
-    contactEmail: "",
+    zip_code: "",
+    contact_name: "",
+    contact_phone: "",
+    contact_email: "",
     paymentTerms: "",
     deliveryTime: "",
   });
+  const [originalData, setOriginalData] = useState<typeof formData | null>(
+    null,
+  );
+  const isDirty =
+    originalData !== null &&
+    JSON.stringify(formData) !== JSON.stringify(originalData);
 
   useEffect(() => {
     loadData();
@@ -66,13 +76,33 @@ export default function FornecedorDetalhePage() {
         website: "",
         category: "",
         address: supplierData.address || "",
-        city: "",
-        state: "",
-        zipCode: "",
-        neighborhood: "",
-        contact: "",
-        contactPhone: "",
-        contactEmail: "",
+        address_number: supplierData.address_number || "",
+        neighborhood: supplierData.neighborhood || "",
+        city: supplierData.city || "",
+        state: supplierData.state || "",
+        zip_code: supplierData.zip_code || "",
+        contact_name: supplierData.contact_name || "",
+        contact_phone: supplierData.contact_phone || "",
+        contact_email: supplierData.contact_email || "",
+        paymentTerms: "",
+        deliveryTime: "",
+      });
+      setOriginalData({
+        name: supplierData.name || "",
+        cnpj: supplierData.cnpj || "",
+        email: supplierData.email || "",
+        phone: supplierData.phone || "",
+        website: "",
+        category: "",
+        address: supplierData.address || "",
+        address_number: supplierData.address_number || "",
+        neighborhood: supplierData.neighborhood || "",
+        city: supplierData.city || "",
+        state: supplierData.state || "",
+        zip_code: supplierData.zip_code || "",
+        contact_name: supplierData.contact_name || "",
+        contact_phone: supplierData.contact_phone || "",
+        contact_email: supplierData.contact_email || "",
         paymentTerms: "",
         deliveryTime: "",
       });
@@ -94,17 +124,34 @@ export default function FornecedorDetalhePage() {
     try {
       await supplierService.update(supplier.id, {
         name: formData.name,
-        cnpj: formData.cnpj,
-        email: formData.email,
-        phone: formData.phone,
-        address: formData.address,
+        cnpj: formData.cnpj || undefined,
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
+        address: formData.address || undefined,
+        address_number: formData.address_number || undefined,
+        neighborhood: formData.neighborhood || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        zip_code: formData.zip_code.replace(/\D/g, "") || undefined,
+        contact_name: formData.contact_name || undefined,
+        contact_phone: formData.contact_phone || undefined,
+        contact_email: formData.contact_email || undefined,
       });
-      alert("Fornecedor atualizado com sucesso!");
+      setOriginalData(formData);
+      showToast("Fornecedor atualizado com sucesso!", "success");
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      alert("Erro ao salvar as alterações.");
+      showToast("Erro ao salvar as alterações.", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (isDirty && originalData) {
+      setFormData(originalData);
+    } else {
+      router.push("/colaboradores");
     }
   };
 
@@ -351,8 +398,10 @@ export default function FornecedorDetalhePage() {
             />
             <Input
               label="CEP"
-              value={formData.zipCode}
-              onChange={(e) => handleInputChange("zipCode", e.target.value)}
+              value={formData.zip_code.replace(/^(\d{5})(\d)/, "$1-$2")}
+              onChange={(e) =>
+                handleInputChange("zip_code", e.target.value.replace(/\D/g, ""))
+              }
               placeholder="00000-000"
             />
           </div>
@@ -363,24 +412,29 @@ export default function FornecedorDetalhePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
               label="Nome do contato"
-              value={formData.contact}
-              onChange={(e) => handleInputChange("contact", e.target.value)}
+              value={formData.contact_name}
+              onChange={(e) =>
+                handleInputChange("contact_name", e.target.value)
+              }
               placeholder="Nome do representante"
             />
             <Input
               label="Telefone do contato"
-              value={formData.contactPhone}
+              value={formatPhone(formData.contact_phone)}
               onChange={(e) =>
-                handleInputChange("contactPhone", e.target.value)
+                handleInputChange(
+                  "contact_phone",
+                  e.target.value.replace(/\D/g, ""),
+                )
               }
               placeholder="(00) 00000-0000"
             />
             <Input
               label="E-mail do contato"
               type="email"
-              value={formData.contactEmail}
+              value={formData.contact_email}
               onChange={(e) =>
-                handleInputChange("contactEmail", e.target.value)
+                handleInputChange("contact_email", e.target.value)
               }
             />
           </div>
@@ -410,17 +464,21 @@ export default function FornecedorDetalhePage() {
 
         {/* Botão de salvar */}
         <div className="flex justify-end gap-3 pt-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/colaboradores")}
-          >
+          <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} isLoading={saving}>
+          <Button onClick={handleSave} isLoading={saving} disabled={!isDirty}>
             Salvar alterações
           </Button>
         </div>
       </DetailPageLayout>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type as any}
+          onClose={hideToast}
+        />
+      )}
     </PageContainer>
   );
 }
