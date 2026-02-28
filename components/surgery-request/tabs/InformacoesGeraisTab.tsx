@@ -81,13 +81,14 @@ export function InformacoesGeraisTab({
 
   const isReadOnly = statusNum >= 2;
 
-  // Documentos pré-cirúrgicos: excluir pastas post-surgical e report
+  // Documentos pré-cirúrgicos: excluir pastas post-surgical e report, e imagens do laudo
   const preSurgeryDocs = React.useMemo(
     () =>
       (solicitacao.documents ?? []).filter(
         (d: any) =>
           !d.path?.startsWith("post-surgical/") &&
-          !d.path?.startsWith("report/"),
+          !d.path?.startsWith("report/") &&
+          d.key !== "report_images",
       ),
     [solicitacao.documents],
   );

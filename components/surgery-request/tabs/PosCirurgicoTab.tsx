@@ -9,6 +9,7 @@ import {
 import { DeleteDocumentModal } from "@/components/documents/DeleteDocumentModal";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { useToast } from "@/hooks/useToast";
+import { mergeDocumentsAsPdf } from "@/lib/merge-pdf";
 
 interface PosCirurgicoTabProps {
   solicitacao: any;
@@ -77,6 +78,7 @@ export function PosCirurgicoTab({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const { showToast } = useToast();
 
   const postSurgeryDocs = React.useMemo(
@@ -107,13 +109,90 @@ export function PosCirurgicoTab({
     }
   };
 
+  const handleExportPdf = async () => {
+    if (isExporting || postSurgeryDocs.length === 0) return;
+    setIsExporting(true);
+    try {
+      const blob = await mergeDocumentsAsPdf(
+        postSurgeryDocs.map((d: any) => ({ uri: d.uri, name: d.name })),
+      );
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, "_blank");
+      // Revoga a URL após o carregamento para liberar memória
+      if (win) {
+        win.addEventListener("load", () => URL.revokeObjectURL(url));
+      } else {
+        // fallback: revoga após alguns segundos caso o pop-up seja bloqueado
+        setTimeout(() => URL.revokeObjectURL(url), 10_000);
+        showToast(
+          "O pop-up foi bloqueado pelo navegador. Libere pop-ups para este site.",
+          "error",
+        );
+      }
+    } catch {
+      showToast("Erro ao gerar o PDF. Tente novamente.", "error");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const headerAction = (
-    <button
-      onClick={() => setIsUploadModalOpen(true)}
-      className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 rounded-lg text-sm leading-normal"
-    >
-      Adicionar
-    </button>
+    <div className="flex items-center gap-2">
+      {postSurgeryDocs.length > 0 && (
+        <button
+          onClick={handleExportPdf}
+          disabled={isExporting}
+          className="flex items-center gap-1.5 font-semibold text-teal-700 bg-transparent border border-teal-200 hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors py-1.5 px-3 rounded-lg text-sm leading-normal"
+        >
+          {isExporting ? (
+            <>
+              <svg
+                className="w-4 h-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+              Gerando...
+            </>
+          ) : (
+            <>
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 16L7 11M12 16L17 11M12 16V4" />
+                <path d="M3 20H21" />
+              </svg>
+              Exportar PDF
+            </>
+          )}
+        </button>
+      )}
+      <button
+        onClick={() => setIsUploadModalOpen(true)}
+        className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 rounded-lg text-sm leading-normal"
+      >
+        Adicionar
+      </button>
+    </div>
   );
 
   const performedAt: string | null = solicitacao.surgery_performed_at ?? null;

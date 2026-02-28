@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { userService } from "@/services/user.service";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -238,7 +239,12 @@ function A4Page({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="bg-white shadow-md flex flex-col"
-      style={{ width: "595px", minHeight: "842px", padding: "32px" }}
+      style={{
+        width: "595px",
+        minHeight: "842px",
+        padding: "32px",
+        position: "relative",
+      }}
     >
       {children}
     </div>
@@ -253,6 +259,24 @@ export function SurgeryRequestDocumentPreviewModal({
   solicitacao,
 }: SurgeryRequestDocumentPreviewModalProps) {
   const [isExporting, setIsExporting] = useState(false);
+  const [signatureUrl, setSignatureUrl] = useState<string>("");
+
+  // Busca a URL assinada da assinatura do médico ao abrir o modal
+  useEffect(() => {
+    if (!isOpen) return;
+    userService
+      .getProfile()
+      .then((profile: any) => {
+        const dp = profile?.doctor_profile ?? {};
+        const url = dp.signature_url ?? profile?.signature_url ?? "";
+        setSignatureUrl(url);
+      })
+      .catch(() => {
+        // fallback: tenta usar o valor bruto da solicitacao
+        const rawUrl = solicitacao?.doctor?.signature_url ?? "";
+        if (rawUrl.startsWith("http")) setSignatureUrl(rawUrl);
+      });
+  }, [isOpen, solicitacao]);
 
   if (!isOpen) return null;
 
@@ -288,7 +312,7 @@ export function SurgeryRequestDocumentPreviewModal({
 
   // ── Imagens de exame ─────────────────────────────────────────────────────
   const examImages: Array<{ id: string; name: string; uri: string }> =
-    solicitacao?.documents?.filter((d: any) => d.key === "exam_images") ?? [];
+    solicitacao?.documents?.filter((d: any) => d.key === "report_images") ?? [];
 
   // ── Hospital (Local) ─────────────────────────────────────────────────────
   const hospitalName = solicitacao?.hospital?.name || "";
@@ -324,11 +348,8 @@ export function SurgeryRequestDocumentPreviewModal({
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `solicitacao-${solicitacao.protocol ?? solicitacao.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       // silently fail
     } finally {
@@ -474,6 +495,69 @@ export function SurgeryRequestDocumentPreviewModal({
                 </p>
               </div>
             </div>
+            {/* Rodapé de assinatura — canto inferior direito */}
+            {signatureUrl && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "32px",
+                  right: "32px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "2px",
+                  textAlign: "center",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={signatureUrl}
+                  alt="Assinatura"
+                  style={{
+                    maxWidth: "80px",
+                    maxHeight: "40px",
+                    objectFit: "contain",
+                    display: "block",
+                    marginBottom: "2px",
+                  }}
+                />
+                {doctorName && (
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      fontWeight: 600,
+                      color: "#111111",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {doctorName}
+                  </span>
+                )}
+                {doctorSpecialty && (
+                  <span
+                    style={{
+                      fontSize: "8px",
+                      color: "#111111",
+                      lineHeight: 1.2,
+                      maxWidth: "130px",
+                    }}
+                  >
+                    {doctorSpecialty}
+                  </span>
+                )}
+                {doctorCRM && (
+                  <span
+                    style={{
+                      fontSize: "8px",
+                      color: "#111111",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {doctorCRM}
+                  </span>
+                )}
+              </div>
+            )}
           </A4Page>
 
           {/* ════════════════ PÁGINA 2 ════════════════ */}
@@ -556,6 +640,69 @@ export function SurgeryRequestDocumentPreviewModal({
                 </div>
               )}
             </div>
+            {/* Rodapé de assinatura — canto inferior direito */}
+            {signatureUrl && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: "32px",
+                  right: "32px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "2px",
+                  textAlign: "center",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={signatureUrl}
+                  alt="Assinatura"
+                  style={{
+                    maxWidth: "80px",
+                    maxHeight: "40px",
+                    objectFit: "contain",
+                    display: "block",
+                    marginBottom: "2px",
+                  }}
+                />
+                {doctorName && (
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      fontWeight: 600,
+                      color: "#111111",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {doctorName}
+                  </span>
+                )}
+                {doctorSpecialty && (
+                  <span
+                    style={{
+                      fontSize: "8px",
+                      color: "#111111",
+                      lineHeight: 1.2,
+                      maxWidth: "130px",
+                    }}
+                  >
+                    {doctorSpecialty}
+                  </span>
+                )}
+                {doctorCRM && (
+                  <span
+                    style={{
+                      fontSize: "8px",
+                      color: "#111111",
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {doctorCRM}
+                  </span>
+                )}
+              </div>
+            )}
           </A4Page>
 
           {/* ════════════════ PÁGINA 3 ════════════════ */}
@@ -596,11 +743,25 @@ export function SurgeryRequestDocumentPreviewModal({
 
               {/* Assinatura */}
               <div className="flex items-end gap-8 mt-4">
-                {/* Linha de assinatura + nome */}
+                {/* Imagem + Linha de assinatura + nome */}
                 <div
                   className="flex flex-col items-center gap-2"
                   style={{ minWidth: "225px" }}
                 >
+                  {signatureUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={signatureUrl}
+                      alt="Assinatura"
+                      style={{
+                        maxWidth: "120px",
+                        maxHeight: "60px",
+                        objectFit: "contain",
+                        display: "block",
+                        marginBottom: "4px",
+                      }}
+                    />
+                  )}
                   <div className="w-full border-t border-[#DCDFE3]" />
                   <span className="text-[12px] text-[#000000] leading-[1.333] text-center">
                     {doctorName || "___________________"}

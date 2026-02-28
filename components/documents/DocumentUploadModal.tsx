@@ -16,7 +16,6 @@ export const PRE_SURGERY_DOCUMENT_TYPES = [
   { key: "health_plan_card", label: "Carteirinha do Convênio" },
   { key: "exam", label: "Exames" },
   { key: "exam_report", label: "Laudo do Exame" },
-  { key: "exam_images", label: "Imagens do Exame" },
   { key: "clinical_history", label: "Histórico Clínico" },
   { key: "medical_conduct", label: "Conduta Médica" },
   { key: "signed_report", label: "Laudo Assinado" },

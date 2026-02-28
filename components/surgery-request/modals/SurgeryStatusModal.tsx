@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { surgeryRequestService } from "@/services/surgery-request.service";
-import { documentService } from "@/services/document.service";
+import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -274,6 +274,7 @@ export function SurgeryStatusModal({
           key: sectionKey,
           name: file.name,
           file,
+          folder: DOCUMENT_FOLDERS.POST_SURGERY,
           onUploadProgress: (pct) => {
             setSections((prev) =>
               prev.map((s) =>

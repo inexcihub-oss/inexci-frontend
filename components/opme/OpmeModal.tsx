@@ -134,6 +134,37 @@ const IconTrash = ({ className = "" }: { className?: string }) => (
   </svg>
 );
 
+const IconEmptyOpme = ({ className = "" }: { className?: string }) => (
+  <svg
+    className={className}
+    viewBox="0 0 32 32"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect
+      x="2.75"
+      y="2.75"
+      width="26.5"
+      height="26.5"
+      rx="3.25"
+      stroke="currentColor"
+      strokeWidth="1.5"
+    />
+    <path
+      d="M8 10H24M8 16H24M8 22H17"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+    <path
+      d="M22 20V26M19 23H25"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 // Componente de Accordion colapsável
 interface AccordionProps {
   title: string;
@@ -184,17 +215,23 @@ export function OpmeModal({
   const [suppliersOpen, setSuppliersOpen] = useState(false);
   const [quantityOpen, setQuantityOpen] = useState(true);
 
+  const MIN_OPTIONS = 3;
+
   // Reset form quando modal abre/fecha
   useEffect(() => {
     if (isOpen) {
       if (editingOpme) {
-        const parseList = (value?: string | null) =>
-          value
+        const parseList = (value?: string | null) => {
+          const items = value
             ? value
                 .split(",")
                 .map((s) => s.trim())
                 .filter(Boolean)
-            : [""];
+            : [];
+          // garantir no mínimo MIN_OPTIONS slots
+          while (items.length < MIN_OPTIONS) items.push("");
+          return items;
+        };
         setOpmeItems([
           {
             id: editingOpme.id,
@@ -221,8 +258,8 @@ export function OpmeModal({
 
     const newItem: OpmeItemForm = {
       name: newOpmeName.trim(),
-      manufacturers: [""],
-      suppliers: [""],
+      manufacturers: ["", "", ""],
+      suppliers: ["", "", ""],
       quantity: 1,
     };
 
@@ -401,7 +438,64 @@ export function OpmeModal({
             )}
 
             {/* Lista de OPMEs adicionados */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 flex flex-col overflow-y-auto">
+              {opmeItems.length === 0 && (
+                <div className="flex flex-col items-center justify-center flex-1 gap-5 px-10 py-12">
+                  <div className="w-16 h-16 rounded-full bg-[#EAF4F4] flex items-center justify-center">
+                    <IconEmptyOpme className="w-8 h-8 text-[#147471]" />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-base font-semibold text-[#111111]">
+                      Nenhum OPME adicionado
+                    </p>
+                    <p className="text-sm text-[#758195] leading-relaxed">
+                      Adicione os itens de OPME necessários para esta
+                      solicitação cirúrgica
+                    </p>
+                  </div>
+                  {isAddingOpme ? (
+                    <div className="w-full max-w-xs flex flex-col items-center gap-2">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={newOpmeName}
+                        onChange={(e) => setNewOpmeName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleAddOpme();
+                          if (e.key === "Escape") {
+                            setIsAddingOpme(false);
+                            setNewOpmeName("");
+                          }
+                        }}
+                        onBlur={() => {
+                          if (!newOpmeName.trim()) {
+                            setIsAddingOpme(false);
+                            setNewOpmeName("");
+                          }
+                        }}
+                        placeholder="Nome da OPME..."
+                        className="w-full px-3 py-2.5 text-sm text-[#111111] placeholder:text-[#758195] bg-white border-2 border-[#147471] rounded-lg focus:outline-none shadow-sm"
+                      />
+                      <p className="text-xs text-[#758195]">
+                        Pressione{" "}
+                        <kbd className="px-1.5 py-0.5 text-xs font-medium bg-gray-100 border border-gray-300 rounded">
+                          Enter
+                        </kbd>{" "}
+                        para adicionar
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingOpme(true)}
+                      className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#147471] rounded-lg hover:bg-[#0f5c5a] transition-colors shadow-sm"
+                    >
+                      <IconPlus className="w-4 h-4" />
+                      Adicionar OPME
+                    </button>
+                  )}
+                </div>
+              )}
               {opmeItems.map((item, index) => (
                 <div
                   key={index}
@@ -482,43 +576,43 @@ export function OpmeModal({
               ))}
             </div>
 
-            {/* Footer do painel esquerdo - Adicionar OPME */}
-            <div
-              className={`border-t border-[#DCDFE3] px-4 py-3 ${opmeItems.length === 0 ? "flex justify-center" : ""}`}
-            >
-              {isAddingOpme ? (
-                <input
-                  type="text"
-                  autoFocus
-                  value={newOpmeName}
-                  onChange={(e) => setNewOpmeName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAddOpme();
-                    if (e.key === "Escape") {
-                      setIsAddingOpme(false);
-                      setNewOpmeName("");
-                    }
-                  }}
-                  onBlur={() => {
-                    if (!newOpmeName.trim()) {
-                      setIsAddingOpme(false);
-                      setNewOpmeName("");
-                    }
-                  }}
-                  placeholder="Nome da OPME..."
-                  className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#147471]"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingOpme(true)}
-                  className="flex items-center gap-2 text-sm font-semibold text-[#147471] hover:text-[#0f5c5a] transition-colors"
-                >
-                  <IconPlus className="w-4 h-4" />
-                  Adicionar OPME
-                </button>
-              )}
-            </div>
+            {/* Footer do painel esquerdo - Adicionar OPME (só aparece quando já há itens) */}
+            {opmeItems.length > 0 && (
+              <div className="border-t border-[#DCDFE3] px-4 py-3">
+                {isAddingOpme ? (
+                  <input
+                    type="text"
+                    autoFocus
+                    value={newOpmeName}
+                    onChange={(e) => setNewOpmeName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddOpme();
+                      if (e.key === "Escape") {
+                        setIsAddingOpme(false);
+                        setNewOpmeName("");
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!newOpmeName.trim()) {
+                        setIsAddingOpme(false);
+                        setNewOpmeName("");
+                      }
+                    }}
+                    placeholder="Nome da OPME..."
+                    className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#147471]"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingOpme(true)}
+                    className="flex items-center gap-2 text-sm font-semibold text-[#147471] hover:text-[#0f5c5a] transition-colors"
+                  >
+                    <IconPlus className="w-4 h-4" />
+                    Adicionar OPME
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Painel Direito - Configurações do OPME selecionado */}
@@ -550,16 +644,14 @@ export function OpmeModal({
                         </div>
                       ),
                     )}
-                    {selectedItem.manufacturers.length < 3 && (
-                      <button
-                        type="button"
-                        onClick={handleAddManufacturer}
-                        className="flex items-center gap-2 px-6 py-2 text-xs font-semibold text-[#111111] hover:text-[#147471] transition-colors"
-                      >
-                        <IconPlus className="w-5 h-5" />
-                        Adicionar Opção
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={handleAddManufacturer}
+                      className="flex items-center gap-2 px-6 py-2 text-xs font-semibold text-[#111111] hover:text-[#147471] transition-colors"
+                    >
+                      <IconPlus className="w-5 h-5" />
+                      Adicionar Opção
+                    </button>
                   </Accordion>
 
                   {/* Accordion: Fornecedores */}
@@ -584,16 +676,14 @@ export function OpmeModal({
                         />
                       </div>
                     ))}
-                    {selectedItem.suppliers.length < 3 && (
-                      <button
-                        type="button"
-                        onClick={handleAddSupplier}
-                        className="flex items-center gap-2 px-6 py-2 text-xs font-semibold text-[#111111] hover:text-[#147471] transition-colors"
-                      >
-                        <IconPlus className="w-5 h-5" />
-                        Adicionar Opção
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={handleAddSupplier}
+                      className="flex items-center gap-2 px-6 py-2 text-xs font-semibold text-[#111111] hover:text-[#147471] transition-colors"
+                    >
+                      <IconPlus className="w-5 h-5" />
+                      Adicionar Opção
+                    </button>
                   </Accordion>
 
                   {/* Accordion: Quantidade */}

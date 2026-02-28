@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
+import { userService } from "@/services/user.service";
+import { uploadService } from "@/services/upload.service";
 import { useToast } from "@/hooks/useToast";
 import { MedicalReportPreviewModal } from "@/components/laudo/MedicalReportPreviewModal";
 import api from "@/lib/api";
@@ -133,6 +135,82 @@ function Spinner({
   );
 }
 
+// ─── removeBackground ────────────────────────────────────────────────────────
+
+/** Processa um File de imagem, remove o fundo (amostrado nos 4 cantos) e
+ *  retorna um novo File PNG com o fundo transparente. */
+function removeBackground(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        const { width, height } = canvas;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        function cornerColor(x: number, y: number): [number, number, number] {
+          const idx = (y * width + x) * 4;
+          return [data[idx], data[idx + 1], data[idx + 2]];
+        }
+        const corners = [
+          cornerColor(0, 0),
+          cornerColor(width - 1, 0),
+          cornerColor(0, height - 1),
+          cornerColor(width - 1, height - 1),
+        ];
+        const bgR = corners.reduce((s, c) => s + c[0], 0) / 4;
+        const bgG = corners.reduce((s, c) => s + c[1], 0) / 4;
+        const bgB = corners.reduce((s, c) => s + c[2], 0) / 4;
+
+        const tolerance = 40;
+        const softRange = 20;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const dr = data[i] - bgR;
+          const dg = data[i + 1] - bgG;
+          const db = data[i + 2] - bgB;
+          const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+          if (dist <= tolerance) {
+            data[i + 3] = 0;
+          } else if (dist <= tolerance + softRange) {
+            data[i + 3] = Math.round(
+              ((dist - tolerance) / softRange) * data[i + 3],
+            );
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const baseName = file.name.replace(/\.[^.]+$/, "");
+          resolve(new File([blob], `${baseName}.png`, { type: "image/png" }));
+        }, "image/png");
+      } catch {
+        resolve(file);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export function MedicalReportEditor({
@@ -168,9 +246,15 @@ export function MedicalReportEditor({
   const [signedUploadItem, setSignedUploadItem] = useState<UploadItem | null>(
     null,
   );
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false);
+  const [isDeletingSignature, setIsDeletingSignature] = useState(false);
+  const [signatureUploadItem, setSignatureUploadItem] =
+    useState<UploadItem | null>(null);
 
   const signedReportInputRef = useRef<HTMLInputElement>(null);
   const imagesInputRef = useRef<HTMLInputElement>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
   // ── Máscaras ──────────────────────────────────────────────────────────────
@@ -206,7 +290,7 @@ export function MedicalReportEditor({
 
   // ── Documentos por tipo ──────────────────────────────────────────────────
   const examImages =
-    solicitacao?.documents?.filter((d: any) => d.key === "exam_images") ?? [];
+    solicitacao?.documents?.filter((d: any) => d.key === "report_images") ?? [];
   const signedReports =
     solicitacao?.documents?.filter((d: any) => d.key === "signed_report") ?? [];
 
@@ -220,6 +304,20 @@ export function MedicalReportEditor({
     );
     setConduct(parsed.conduct ?? parsed.technicalJustification ?? "");
   }, [solicitacao]);
+
+  // ── Carrega assinatura do médico ─────────────────────────────────────────
+  useEffect(() => {
+    userService
+      .getProfile()
+      .then((profile: any) => {
+        const url =
+          profile?.doctor_profile?.signature_url ??
+          profile?.signature_url ??
+          null;
+        setSignatureUrl(url || null);
+      })
+      .catch(() => {});
+  }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -270,6 +368,61 @@ export function MedicalReportEditor({
     setIsEditingHistory(false);
     setIsEditingConduct(false);
   }, [solicitacao]);
+
+  const handleUploadSignature = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawFile = e.target.files?.[0];
+      if (!rawFile) return;
+      setIsUploadingSignature(true);
+      const item: UploadItem = {
+        id: `sig-${Date.now()}`,
+        name: rawFile.name,
+        size: rawFile.size,
+        progress: 0,
+      };
+      setSignatureUploadItem(item);
+      try {
+        // Remove o fundo antes de salvar — a imagem já é armazenada tratada
+        const file = await removeBackground(rawFile);
+        setSignatureUploadItem((prev) =>
+          prev ? { ...prev, progress: 60 } : prev,
+        );
+        const result = await uploadService.uploadSingle(file, "signatures");
+        setSignatureUploadItem((prev) =>
+          prev ? { ...prev, progress: 90 } : prev,
+        );
+        const { url: signedUrl, path } = result.data;
+        await userService.updateProfile({ signature_url: path });
+        setSignatureUrl(signedUrl);
+        setSignatureUploadItem((prev) =>
+          prev ? { ...prev, progress: 100 } : prev,
+        );
+        showToast("Assinatura salva com sucesso", "success");
+      } catch {
+        setSignatureUploadItem(null);
+        showToast("Erro ao salvar assinatura", "error");
+      } finally {
+        setIsUploadingSignature(false);
+        setSignatureUploadItem(null);
+        if (signatureInputRef.current) signatureInputRef.current.value = "";
+      }
+    },
+    [showToast],
+  );
+
+  const handleDeleteSignature = useCallback(async () => {
+    setIsDeletingSignature(true);
+    try {
+      await userService.updateProfile({ signature_url: null });
+      setSignatureUrl(null);
+      setSignatureUploadItem(null);
+      showToast("Assinatura removida", "success");
+    } catch {
+      showToast("Erro ao remover assinatura", "error");
+    } finally {
+      setIsDeletingSignature(false);
+    }
+  }, [showToast]);
 
   const handleUploadSignedReport = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -341,7 +494,7 @@ export function MedicalReportEditor({
           const itemId = initialItems[i].id;
           await documentService.upload({
             surgery_request_id: solicitacao.id,
-            key: "exam_images",
+            key: "report_images",
             name: file.name.replace(/\.[^.]+$/, ""),
             file,
             folder: DOCUMENT_FOLDERS.REPORT,
@@ -457,7 +610,7 @@ export function MedicalReportEditor({
     },
     {
       key: "images",
-      label: "Imagens do Exame",
+      label: "Imagens a serem anexadas ao laudo",
       complete: examImages.length > 0,
       optional: true,
     },
@@ -470,7 +623,7 @@ export function MedicalReportEditor({
     {
       key: "signed",
       label: "Laudo Assinado",
-      complete: signedReports.length > 0,
+      complete: signedReports.length > 0 || !!signatureUrl,
       optional: false,
     },
   ];
@@ -709,10 +862,10 @@ export function MedicalReportEditor({
             />
           </div>
 
-          {/* ── IMAGENS DO EXAME ──────────────────────────────────────────── */}
+          {/* ── IMAGENS A SEREM ANEXADAS AO LAUDO ───────────────────────────────────────── */}
           <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
             <h3 className="text-base font-bold text-black leading-loose">
-              IMAGENS DO EXAME
+              IMAGENS A SEREM ANEXADAS AO LAUDO
             </h3>
 
             {/* Dropzone */}
@@ -804,7 +957,7 @@ export function MedicalReportEditor({
                     </div>
                     <button
                       onClick={() =>
-                        handleDeleteDocument(doc.id, "exam_images")
+                        handleDeleteDocument(doc.id, "report_images")
                       }
                       disabled={isDeletingDocId === doc.id}
                       className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
@@ -875,82 +1028,174 @@ export function MedicalReportEditor({
             <h3 className="text-base font-bold text-black leading-loose">
               LAUDO ASSINADO
             </h3>
-            {!signedUploadItem && signedReports.length === 0 && (
-              <div className="flex items-center gap-2 w-full py-3 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-lg">
-                <p className="text-sm text-gray-500 leading-snug flex-1">
-                  Após baixar e assinar o laudo gerado abaixo, insira o arquivo
-                  assinado.
-                </p>
-                <input
-                  ref={signedReportInputRef}
-                  type="file"
-                  className="hidden"
-                  accept="image/*,.pdf,.doc,.docx"
-                  onChange={handleUploadSignedReport}
-                />
-                <button
-                  type="button"
-                  onClick={() => signedReportInputRef.current?.click()}
-                  className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-lg text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
-                >
-                  <span>Selecionar arquivo</span>
-                </button>
-              </div>
-            )}
-            {(signedUploadItem || signedReports.length > 0) && (
-              <div className="flex flex-col gap-2">
-                {/* Em envio */}
-                {signedUploadItem && (
-                  <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg">
-                    <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
-                      {signedUploadItem.name}{" "}
-                      <span className="font-normal text-gray-400">
-                        ({formatBytes(signedUploadItem.size)})
-                      </span>
-                    </span>
-                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
-                      <div
-                        className="h-full bg-teal-600 rounded-full transition-all duration-300"
-                        style={{ width: `${signedUploadItem.progress}%` }}
-                      />
-                    </div>
-                    <div className="w-6 h-6 flex-shrink-0" />
-                  </div>
-                )}
-                {/* Já carregados */}
-                {signedReports.map((doc: any) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg"
+
+            {/* ── Assinatura do Médico ─────────────────────────────────────── */}
+            <div className="flex flex-col gap-2 w-full">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Assinatura do Médico
+              </p>
+
+              {/* Estado vazio — sem assinatura e sem upload em curso */}
+              {!signatureUploadItem && !signatureUrl && (
+                <div className="flex items-center gap-2 w-full py-3 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-lg">
+                  <p className="text-sm text-gray-500 leading-snug flex-1">
+                    Adicione a assinatura do médico para incluí-la no laudo.
+                  </p>
+                  <input
+                    ref={signatureInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/png,image/jpeg,image/jpg"
+                    onChange={handleUploadSignature}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => signatureInputRef.current?.click()}
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-lg text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
                   >
-                    <a
-                      href={doc.uri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 text-sm font-semibold text-gray-900 truncate hover:text-teal-700 hover:underline transition-colors"
-                    >
-                      {doc.name}
-                    </a>
-                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
-                      <div className="h-full w-full bg-teal-600 rounded-full" />
-                    </div>
-                    <button
-                      onClick={() =>
-                        handleDeleteDocument(doc.id, "signed_report")
-                      }
-                      disabled={isDeletingDocId === doc.id}
-                      className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
-                    >
-                      {isDeletingDocId === doc.id ? (
-                        <Spinner />
-                      ) : (
-                        <X className="w-4 h-4 text-gray-400" />
-                      )}
-                    </button>
+                    Selecionar arquivo
+                  </button>
+                </div>
+              )}
+
+              {/* Em upload */}
+              {signatureUploadItem && (
+                <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg">
+                  <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
+                    {signatureUploadItem.name}{" "}
+                    <span className="font-normal text-gray-400">
+                      ({formatBytes(signatureUploadItem.size)})
+                    </span>
+                  </span>
+                  <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                    <div
+                      className="h-full bg-teal-600 rounded-full transition-all duration-300"
+                      style={{ width: `${signatureUploadItem.progress}%` }}
+                    />
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="w-6 h-6 flex-shrink-0" />
+                </div>
+              )}
+
+              {/* Assinatura já salva */}
+              {!signatureUploadItem && signatureUrl && (
+                <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={signatureUrl}
+                    alt="Assinatura do médico"
+                    className="h-8 max-w-[120px] object-contain flex-shrink-0"
+                  />
+                  <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
+                    Assinatura
+                  </span>
+                  <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                    <div className="h-full w-full bg-teal-600 rounded-full" />
+                  </div>
+                  <input
+                    ref={signatureInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/png,image/jpeg,image/jpg"
+                    onChange={handleUploadSignature}
+                  />
+                  <button
+                    onClick={handleDeleteSignature}
+                    disabled={isDeletingSignature}
+                    className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                  >
+                    {isDeletingSignature ? (
+                      <Spinner />
+                    ) : (
+                      <X className="w-4 h-4 text-gray-400" />
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ── Arquivo do laudo assinado ─────────────────────────────────── */}
+            <div className="flex flex-col gap-2 w-full">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Arquivo Assinado
+              </p>
+              {!signedUploadItem && signedReports.length === 0 && (
+                <div className="flex items-center gap-2 w-full py-3 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-lg">
+                  <p className="text-sm text-gray-500 leading-snug flex-1">
+                    Após gerar e assinar o laudo, insira o arquivo assinado
+                    aqui.
+                  </p>
+                  <input
+                    ref={signedReportInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/*,.pdf,.doc,.docx"
+                    onChange={handleUploadSignedReport}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => signedReportInputRef.current?.click()}
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-lg text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
+                  >
+                    <span>Selecionar arquivo</span>
+                  </button>
+                </div>
+              )}
+              {(signedUploadItem || signedReports.length > 0) && (
+                <div className="flex flex-col gap-2">
+                  {/* Em envio */}
+                  {signedUploadItem && (
+                    <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg">
+                      <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
+                        {signedUploadItem.name}{" "}
+                        <span className="font-normal text-gray-400">
+                          ({formatBytes(signedUploadItem.size)})
+                        </span>
+                      </span>
+                      <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                        <div
+                          className="h-full bg-teal-600 rounded-full transition-all duration-300"
+                          style={{ width: `${signedUploadItem.progress}%` }}
+                        />
+                      </div>
+                      <div className="w-6 h-6 flex-shrink-0" />
+                    </div>
+                  )}
+                  {/* Já carregados */}
+                  {signedReports.map((doc: any) => (
+                    <div
+                      key={doc.id}
+                      className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg"
+                    >
+                      <a
+                        href={doc.uri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 text-sm font-semibold text-gray-900 truncate hover:text-teal-700 hover:underline transition-colors"
+                      >
+                        {doc.name}
+                      </a>
+                      <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                        <div className="h-full w-full bg-teal-600 rounded-full" />
+                      </div>
+                      <button
+                        onClick={() =>
+                          handleDeleteDocument(doc.id, "signed_report")
+                        }
+                        disabled={isDeletingDocId === doc.id}
+                        className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                      >
+                        {isDeletingDocId === doc.id ? (
+                          <Spinner />
+                        ) : (
+                          <X className="w-4 h-4 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -960,13 +1205,14 @@ export function MedicalReportEditor({
         {/* ─── Botões de ação ───────────────────────────────────────────────── */}
         <div className="flex items-center justify-end gap-2 w-full">
           {(() => {
-            const canExport =
+            const canPreview =
               !!patientData.name.trim() && !!historyAndDiagnosis.trim();
+            const canExport = canPreview && !!conduct.trim();
             return (
               <>
                 <button
                   onClick={() => setShowPreview(true)}
-                  disabled={!canExport}
+                  disabled={!canPreview}
                   className="flex items-center h-10 px-4 text-sm font-semibold text-teal-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 >
                   Pré-visualizar

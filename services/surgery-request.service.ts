@@ -1,6 +1,21 @@
 import api from "@/lib/api";
 import { SurgeryRequestStatus } from "@/types/surgery-request.types";
 
+// ── Tipos de Atividades ───────────────────────────────────────────────────────
+export interface ActivityUser {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
+
+export interface Activity {
+  id: string;
+  type: "comment" | "status_change" | "system";
+  content: string;
+  created_at: string;
+  user: ActivityUser | null;
+}
+
 // Mapeamento de status string para número (conforme backend)
 export const STATUS_MAP: Record<SurgeryRequestStatus, number> = {
   Pendente: 1,
@@ -463,6 +478,23 @@ export const surgeryRequestService = {
   /** Lista todos os templates salvos */
   async getTemplates(): Promise<any> {
     const response = await api.get("/surgery-requests/templates");
+    return response.data;
+  },
+
+  // ── Atividades ────────────────────────────────────────────────────────────
+
+  /** Busca o histórico de atividades e comentários de uma solicitação */
+  async getActivities(requestId: string): Promise<Activity[]> {
+    const response = await api.get(`/surgery-requests/${requestId}/activities`);
+    return response.data;
+  },
+
+  /** Adiciona um comentário/anotação à solicitação */
+  async createActivity(requestId: string, content: string): Promise<Activity> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/activities`,
+      { content, type: "comment" },
+    );
     return response.data;
   },
 };

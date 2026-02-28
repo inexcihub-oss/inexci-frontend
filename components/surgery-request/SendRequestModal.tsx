@@ -50,7 +50,6 @@ export function SendRequestModal({
   const { showToast } = useToast();
 
   const SEND_CHECKLIST_KEYS: Record<string, string> = {
-    documents: "Documentos",
     tuss_procedures: "Código TUSS",
     opme_items: "OPME",
     medical_report: "Laudo",
@@ -92,12 +91,6 @@ export function SendRequestModal({
         setChecklist(items);
       } else {
         setChecklist([
-          {
-            key: "documents",
-            label: "Documentos",
-            isComplete: !!(solicitacao.documents?.length > 0),
-            isRequired: true,
-          },
           {
             key: "tuss_procedures",
             label: "Código TUSS",
@@ -171,9 +164,16 @@ export function SendRequestModal({
       const response = await api.post(
         `/surgery-requests/${solicitacao.id}/send`,
         { method: "download" },
-        { responseType: "blob" },
       );
-      const blob = new Blob([response.data], { type: "application/pdf" });
+      const base64 = response.data?.pdf;
+      if (!base64) throw new Error("PDF não gerado");
+      // Decodifica base64 → Uint8Array → Blob
+      const byteChars = atob(base64);
+      const byteNums = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) {
+        byteNums[i] = byteChars.charCodeAt(i);
+      }
+      const blob = new Blob([byteNums], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -181,8 +181,7 @@ export function SendRequestModal({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      onSuccess();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
       setCurrentStep(4);
     } catch {
       showToast("Erro ao baixar solicitação", "error");
@@ -205,7 +204,6 @@ export function SendRequestModal({
         subject: emailSubject,
         message: emailMessage,
       });
-      onSuccess();
       setCurrentStep(4);
     } catch {
       showToast("Erro ao enviar solicitação", "error");
@@ -215,7 +213,10 @@ export function SendRequestModal({
   };
 
   const handleClose = () => {
-    if (!isSending) onClose();
+    if (!isSending) {
+      if (currentStep === 4) onSuccess();
+      onClose();
+    }
   };
 
   const addEmailTag = (email: string) => {

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
+import { userService } from "@/services/user.service";
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,68 @@ function parseMedicalReport(sol: any) {
   } catch {
     return {};
   }
+}
+
+// ─── removeBackground ───────────────────────────────────────────────────────
+
+function removeBackground(imageUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(imageUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      const { width, height } = canvas;
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+
+      // ── 1. Amostra os 4 cantos para detectar a cor do fundo ──────────────
+      function cornerColor(x: number, y: number): [number, number, number] {
+        const idx = (y * width + x) * 4;
+        return [data[idx], data[idx + 1], data[idx + 2]];
+      }
+      const corners = [
+        cornerColor(0, 0),
+        cornerColor(width - 1, 0),
+        cornerColor(0, height - 1),
+        cornerColor(width - 1, height - 1),
+      ];
+      // Média dos cantos = cor dominante do fundo
+      const bgR = corners.reduce((s, c) => s + c[0], 0) / 4;
+      const bgG = corners.reduce((s, c) => s + c[1], 0) / 4;
+      const bgB = corners.reduce((s, c) => s + c[2], 0) / 4;
+
+      // ── 2. Remove pixels próximos ao fundo; suaviza a borda ──────────────
+      const tolerance = 40; // distância máxima para considerar fundo
+      const softRange = 20; // faixa de suavização
+
+      for (let i = 0; i < data.length; i += 4) {
+        const dr = data[i] - bgR;
+        const dg = data[i + 1] - bgG;
+        const db = data[i + 2] - bgB;
+        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+
+        if (dist <= tolerance) {
+          data[i + 3] = 0;
+        } else if (dist <= tolerance + softRange) {
+          const t = (dist - tolerance) / softRange;
+          data[i + 3] = Math.round(t * data[i + 3]);
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => resolve(imageUrl);
+    img.src = imageUrl;
+  });
 }
 
 // ─── Spinner ─────────────────────────────────────────────────────────────────
@@ -112,6 +175,46 @@ export function MedicalReportPreviewModal({
   const [isExporting, setIsExporting] = useState(false);
   const { showToast } = useToast();
 
+  // ── Dados da assinatura do médico ────────────────────────────────────────
+  const [doctorSignatureUrl, setDoctorSignatureUrl] = useState<string | null>(
+    null,
+  );
+  const [doctorName, setDoctorName] = useState<string>("");
+  const [doctorSpecialty, setDoctorSpecialty] = useState<string>("");
+  const [doctorCrm, setDoctorCrm] = useState<string>("");
+  const [doctorCrmState, setDoctorCrmState] = useState<string>("");
+
+  const [processedSignatureUrl, setProcessedSignatureUrl] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    userService
+      .getProfile()
+      .then((profile: any) => {
+        const dp = profile?.doctor_profile ?? {};
+        setDoctorSignatureUrl(
+          dp.signature_url ?? profile?.signature_url ?? null,
+        );
+        setDoctorName(profile?.name ?? "");
+        setDoctorSpecialty(dp.specialty ?? "");
+        setDoctorCrm(dp.crm ?? "");
+        setDoctorCrmState(dp.crm_state ?? "");
+      })
+      .catch(() => {});
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!doctorSignatureUrl) {
+      setProcessedSignatureUrl(null);
+      return;
+    }
+    removeBackground(doctorSignatureUrl)
+      .then(setProcessedSignatureUrl)
+      .catch(() => setProcessedSignatureUrl(doctorSignatureUrl));
+  }, [doctorSignatureUrl]);
+
   if (!isOpen) return null;
 
   // ── Dados do laudo ───────────────────────────────────────────────────────
@@ -133,7 +236,7 @@ export function MedicalReportPreviewModal({
   const conduct = report?.conduct || report?.technicalJustification || "";
 
   const examImages: Array<{ id: string; name: string; uri: string }> =
-    solicitacao?.documents?.filter((d: any) => d.key === "exam_images") ?? [];
+    solicitacao?.documents?.filter((d: any) => d.key === "report_images") ?? [];
 
   const today = new Date().toLocaleDateString("pt-BR");
 
@@ -147,12 +250,8 @@ export function MedicalReportPreviewModal({
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `laudo-${solicitacao.protocol ?? solicitacao.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast("PDF exportado com sucesso", "success");
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       showToast("Erro ao exportar PDF", "error");
     } finally {
@@ -278,12 +377,12 @@ export function MedicalReportPreviewModal({
               </p>
             </div>
 
-            {/* ── IMAGENS DO EXAME ───────────────────────────────────── */}
+            {/* ── IMAGENS A SEREM ANEXADAS AO LAUDO ───────────────────── */}
             {examImages.length > 0 && (
               <div className="flex flex-col gap-2.5 w-full">
                 <div className="pb-2 border-b border-gray-200">
                   <h3 className="text-base font-bold tracking-tight text-neutral-900">
-                    IMAGENS DO EXAME
+                    IMAGENS A SEREM ANEXADAS AO LAUDO
                   </h3>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -304,6 +403,36 @@ export function MedicalReportPreviewModal({
               <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">
                 {conduct || "—"}
               </p>
+            </div>
+
+            {/* ── ASSINATURA DO MÉDICO ───────────────────────────────── */}
+            <div className="flex flex-col items-center gap-1 w-full pt-2">
+              {doctorSignatureUrl && (
+                <img
+                  src={processedSignatureUrl ?? doctorSignatureUrl}
+                  alt="Assinatura do médico"
+                  className="h-14 max-w-xs object-contain mb-1"
+                />
+              )}
+              <hr className="w-48 border-t border-gray-400" />
+              <div className="flex flex-col items-center gap-0.5 mt-1">
+                {doctorName && (
+                  <span className="text-sm font-bold text-black">
+                    {doctorName}
+                  </span>
+                )}
+                {doctorSpecialty && (
+                  <span className="text-xs text-gray-600">
+                    {doctorSpecialty}
+                  </span>
+                )}
+                {doctorCrm && (
+                  <span className="text-xs text-gray-600">
+                    CRM {doctorCrm}
+                    {doctorCrmState ? `/${doctorCrmState}` : ""}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

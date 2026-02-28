@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
+  Activity,
 } from "@/services/surgery-request.service";
 import { pendencyService, ValidationResult } from "@/services/pendency.service";
 import { DynamicPendencyList } from "@/components/pendencies";
@@ -41,6 +42,97 @@ type TabType =
   | "laudo"
   | "pos-cirurgico"
   | "faturamento";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getInitialsFromName(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
+}
+
+function formatActivityDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffH = Math.floor(diffMin / 60);
+  const diffD = Math.floor(diffH / 24);
+
+  if (diffMin < 1) return "agora";
+  if (diffMin < 60) return `há ${diffMin} min`;
+  if (diffH < 24) return `há ${diffH}h`;
+  if (diffD === 1) return "ontem";
+  return date.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+}
+
+// ── Componente de Item de Atividade ───────────────────────────────────────────
+function ActivityItem({ activity }: { activity: Activity }) {
+  const isComment = activity.type === "comment";
+  const isStatusChange = activity.type === "status_change";
+
+  return (
+    <div className="flex items-start gap-3 px-4 py-3 border-b border-neutral-100 last:border-b-0">
+      {/* Avatar / Ícone */}
+      <div className="flex-shrink-0 mt-0.5">
+        {isComment && activity.user ? (
+          <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-semibold">
+            {activity.user.avatar_url ? (
+              <Image
+                src={activity.user.avatar_url}
+                alt={activity.user.name}
+                width={28}
+                height={28}
+                className="rounded-full object-cover"
+              />
+            ) : (
+              getInitialsFromName(activity.user.name)
+            )}
+          </div>
+        ) : (
+          <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
+            {isStatusChange ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                  stroke="#6b7280"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M13 16H12V12H11M12 8H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                  stroke="#6b7280"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Conteúdo */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2 mb-0.5">
+          <span className="text-xs font-medium text-gray-800 truncate">
+            {activity.user?.name ?? "Sistema"}
+          </span>
+          <span className="text-[11px] text-gray-400 flex-shrink-0">
+            {formatActivityDate(activity.created_at)}
+          </span>
+        </div>
+        <p className="text-xs text-gray-600 leading-snug break-words">
+          {activity.content}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function SolicitacaoDetalhePage() {
   const params = useParams();
@@ -92,6 +184,13 @@ export default function SolicitacaoDetalhePage() {
   const [isConfirmReceiptModalOpen, setIsConfirmReceiptModalOpen] =
     useState(false);
   const [isCloseRequestModalOpen, setIsCloseRequestModalOpen] = useState(false);
+
+  // Estados de atividades
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [sendingComment, setSendingComment] = useState(false);
+  const activitiesEndRef = useRef<HTMLDivElement>(null);
 
   // Salvar estado da sidebar no localStorage quando mudar
   useEffect(() => {
@@ -166,6 +265,60 @@ export default function SolicitacaoDetalhePage() {
       // silently ignore
     }
   }, [params.id, fetchPendencies]);
+
+  // ── Atividades ──────────────────────────────────────────────────────────────
+  const fetchActivities = useCallback(async () => {
+    if (!params.id) return;
+    setLoadingActivities(true);
+    try {
+      const data = await surgeryRequestService.getActivities(
+        params.id as string,
+      );
+      setActivities(data);
+    } catch {
+      // silently ignore
+    } finally {
+      setLoadingActivities(false);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    if (params.id) {
+      fetchActivities();
+    }
+  }, [params.id, fetchActivities]);
+
+  // Rolar para o fim quando novas atividades chegam
+  useEffect(() => {
+    if (isActivitiesExpanded && activities.length > 0) {
+      activitiesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [activities, isActivitiesExpanded]);
+
+  const handleSendComment = async () => {
+    const text = newComment.trim();
+    if (!text || sendingComment || !params.id) return;
+    setSendingComment(true);
+    try {
+      const created = await surgeryRequestService.createActivity(
+        params.id as string,
+        text,
+      );
+      setActivities((prev) => [...prev, created]);
+      setNewComment("");
+    } catch {
+      // silently ignore
+    } finally {
+      setSendingComment(false);
+    }
+  };
+
+  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendComment();
+    }
+  };
 
   const handleConfirmDate = async () => {
     if (pendingDateIndex === null) {
@@ -259,7 +412,7 @@ export default function SolicitacaoDetalhePage() {
 
     // Mapear abas para as keys de pendências correspondentes
     const tabPendencyMap: Record<TabType, string[]> = {
-      "informacoes-gerais": ["patient_data", "hospital_data", "documents"],
+      "informacoes-gerais": ["patient_data", "hospital_data"],
       "codigo-tuss": ["tuss_procedures"],
       opme: ["opme_items"],
       laudo: ["medical_report"],
@@ -702,13 +855,13 @@ export default function SolicitacaoDetalhePage() {
 
                 {/* Seção Atividades - Collapsible com fundo que cobre o input */}
                 <div
-                  className={`bg-white transition-all duration-200 ${isActivitiesExpanded ? "flex-1" : ""}`}
+                  className={`bg-white transition-all duration-200 flex flex-col ${isActivitiesExpanded ? "flex-1 min-h-0" : ""}`}
                 >
                   <button
                     onClick={() =>
                       setIsActivitiesExpanded(!isActivitiesExpanded)
                     }
-                    className="w-full flex items-center justify-between px-4 py-4 border-t border-b border-neutral-100 hover:bg-gray-50 transition-colors bg-white"
+                    className="w-full flex items-center justify-between px-4 py-4 border-t border-b border-neutral-100 hover:bg-gray-50 transition-colors bg-white flex-shrink-0"
                   >
                     <h3 className="font-semibold text-sm text-black leading-normal">
                       Atividades
@@ -728,84 +881,62 @@ export default function SolicitacaoDetalhePage() {
                     </svg>
                   </button>
 
-                  {/* Timeline de Atividades - Expande para mostrar conteúdo */}
+                  {/* Timeline de Atividades */}
                   {isActivitiesExpanded && (
-                    <div className="flex flex-col overflow-auto bg-white">
-                      {/* Mostra o último status update se existir */}
-                      {solicitacao.status_updates &&
-                        solicitacao.status_updates.length > 0 && (
-                          <div className="flex items-center justify-between border-b border-neutral-100 gap-1 py-3 pr-2 pl-4">
-                            <div className="flex items-center flex-1 gap-2">
-                              <div className="w-6 h-6 flex-shrink-0">
-                                <svg
-                                  width="24"
-                                  height="24"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                >
-                                  <path
-                                    d="M5 3V21H19V7.828L14.172 3H5Z"
-                                    stroke="#111111"
-                                    strokeWidth="1.5"
-                                  />
-                                  <path
-                                    d="M8 9H11M8 13H16M8 17H13"
-                                    stroke="#111111"
-                                    strokeWidth="1.5"
-                                  />
-                                </svg>
-                              </div>
-                              <span className="text-xs text-gray-900 leading-snug">
-                                Status alterado para{" "}
-                                {STATUS_NUMBER_TO_STRING[
-                                  solicitacao.status_updates[0].new_status
-                                ] || solicitacao.status_updates[0].new_status}
-                              </span>
-                            </div>
-                            <span className="text-xs text-gray-900 opacity-70 leading-snug">
-                              {new Date(
-                                solicitacao.status_updates[0].created_at,
-                              ).toLocaleDateString("pt-BR", {
-                                day: "numeric",
-                                month: "short",
-                              })}{" "}
-                              às{" "}
-                              {new Date(
-                                solicitacao.status_updates[0].created_at,
-                              ).toLocaleTimeString("pt-BR", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
-                        )}
-                      {/* Exibe mensagem se não houver atividades */}
-                      {(!solicitacao.status_updates ||
-                        solicitacao.status_updates.length === 0) && (
-                        <div className="px-4 py-8 text-center text-gray-500">
-                          Nenhuma atividade registrada
+                    <div className="flex-1 overflow-y-auto min-h-0">
+                      {loadingActivities ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-700" />
+                        </div>
+                      ) : activities.length === 0 ? (
+                        <div className="px-4 py-8 text-center text-xs text-gray-400">
+                          Nenhuma atividade registrada.
+                          <br />
+                          Adicione um comentário abaixo.
+                        </div>
+                      ) : (
+                        <div className="flex flex-col">
+                          {activities.map((activity) => (
+                            <ActivityItem
+                              key={activity.id}
+                              activity={activity}
+                            />
+                          ))}
+                          <div ref={activitiesEndRef} />
                         </div>
                       )}
                     </div>
                   )}
                 </div>
 
-                {/* Campo de Comentário - Sempre visível quando Atividades está expandido */}
+                {/* Campo de Comentário */}
                 {isActivitiesExpanded && (
-                  <div className="bg-white py-2 px-4 border-t border-neutral-100">
+                  <div className="bg-white py-2 px-4 border-t border-neutral-100 flex-shrink-0">
                     <div className="flex items-center bg-white border border-neutral-100 gap-2 py-2 px-3 rounded-lg">
                       <input
                         type="text"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        onKeyDown={handleCommentKeyDown}
                         placeholder="Escreva um comentário"
-                        className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug"
+                        disabled={sendingComment}
+                        className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug disabled:opacity-50"
                       />
-                      <button className="w-6 h-6 flex-shrink-0 hover:opacity-70 transition-opacity">
-                        <Image
-                          src="/icons/send.svg"
-                          alt="Enviar"
-                          width={24}
-                          height={24}
-                        />
+                      <button
+                        onClick={handleSendComment}
+                        disabled={!newComment.trim() || sendingComment}
+                        className="w-6 h-6 flex-shrink-0 hover:opacity-70 transition-opacity disabled:opacity-30"
+                      >
+                        {sendingComment ? (
+                          <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Image
+                            src="/icons/send.svg"
+                            alt="Enviar"
+                            width={24}
+                            height={24}
+                          />
+                        )}
                       </button>
                     </div>
                   </div>
