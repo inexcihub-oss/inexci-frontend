@@ -413,7 +413,7 @@ export function MedicalReportEditor({
   const handleDeleteSignature = useCallback(async () => {
     setIsDeletingSignature(true);
     try {
-      await userService.updateProfile({ signature_url: null });
+      await userService.updateProfile({ signature_url: undefined });
       setSignatureUrl(null);
       setSignatureUploadItem(null);
       showToast("Assinatura removida", "success");
