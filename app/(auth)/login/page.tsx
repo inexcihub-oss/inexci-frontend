@@ -42,8 +42,8 @@ function LoginForm() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Left Side - Form */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-8">
+      <div className="flex-1 flex items-center justify-center px-5 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-6 sm:space-y-8">
           {/* Logo */}
           <div className="flex justify-center">
             <Image
@@ -57,7 +57,7 @@ function LoginForm() {
 
           {/* Title */}
           <div className="text-center">
-            <h2 className="text-3xl font-semibold text-black font-urbanist">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-black font-urbanist">
               Bem-vindo de volta
             </h2>
             <p className="mt-2 text-sm text-gray-600">
@@ -85,7 +85,7 @@ function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors"
                   placeholder="seu@email.com"
                 />
               </div>
@@ -107,7 +107,7 @@ function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors"
                   placeholder="••••••••"
                 />
               </div>
@@ -115,14 +115,14 @@ function LoginForm() {
 
             {/* Success Message */}
             {success && (
-              <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">
+              <div className="rounded-xl bg-green-50 border border-green-200 p-3.5 text-sm text-green-700">
                 {success}
               </div>
             )}
 
             {/* Error Message */}
             {error && (
-              <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700">
                 {error}
               </div>
             )}
@@ -131,7 +131,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-teal-500 hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-teal-500 hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 min-h-[48px] active:scale-[0.98]"
             >
               {isLoading ? "Entrando..." : "Entrar"}
             </button>

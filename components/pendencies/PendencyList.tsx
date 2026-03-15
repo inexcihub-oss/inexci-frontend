@@ -175,11 +175,11 @@ export function GroupedPendencyList({
         return (
           <div
             key={key}
-            className="border border-gray-200 rounded-lg overflow-hidden"
+            className="border border-gray-200 rounded-xl overflow-hidden"
           >
             <button
               onClick={() => toggleGroup(key)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 min-h-[44px] bg-gray-50 hover:bg-gray-100 transition-colors"
             >
               <div className="flex items-center gap-2">
                 <Icon className={cn("h-5 w-5", statusColors[key])} />
@@ -229,7 +229,7 @@ export function PendencySummaryCard({
   return (
     <div
       className={cn(
-        "bg-white rounded-lg border border-gray-200 p-4",
+        "bg-white rounded-xl border border-gray-200 p-4",
         className,
       )}
     >

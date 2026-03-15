@@ -158,15 +158,6 @@ export default function AssistenteDetalhePage() {
     { value: "O", label: "Outro" },
   ];
 
-  const specialtyOptions = [
-    { value: "", label: "Selecione" },
-    { value: "ortopedia", label: "Ortopedia" },
-    { value: "cardiologia", label: "Cardiologia" },
-    { value: "neurologia", label: "Neurologia" },
-    { value: "cirurgia-geral", label: "Cirurgia Geral" },
-    { value: "anestesiologia", label: "Anestesiologia" },
-  ];
-
   const roleOptions = [
     { value: "admin", label: "Administrador" },
     { value: "editor", label: "Editor" },
@@ -323,91 +314,11 @@ export default function AssistenteDetalhePage() {
               onChange={(e) => handleInputChange("email", e.target.value)}
             />
             <Select
-              label="Especialidade"
-              value={formData.specialty}
-              onChange={(e) => handleInputChange("specialty", e.target.value)}
-              options={specialtyOptions}
-            />
-            <Select
               label="Função"
               value={formData.role}
               onChange={(e) => handleInputChange("role", e.target.value as any)}
               options={roleOptions}
             />
-          </div>
-        </FormSection>
-
-        {/* Seção: Horários de trabalho */}
-        <FormSection title="Consultório/Ambulatório">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs text-gray-500">
-                  <th className="pb-3 font-normal">Dia da semana</th>
-                  <th className="pb-3 font-normal">Horário</th>
-                  <th className="pb-3 font-normal">Local</th>
-                  <th className="pb-3 font-normal w-10"></th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                <tr className="border-t border-gray-100">
-                  <td className="py-3">Segunda-feira</td>
-                  <td className="py-3">08:00 - 18:00</td>
-                  <td className="py-3">Hospital A</td>
-                  <td className="py-3">
-                    <button className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1">
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                        <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-                <tr className="border-t border-gray-100">
-                  <td className="py-3">Terça-feira</td>
-                  <td className="py-3">08:00 - 15:00</td>
-                  <td className="py-3">Hospital B</td>
-                  <td className="py-3">
-                    <button className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1">
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                        <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-                <tr className="border-t border-gray-100">
-                  <td className="py-3">Quinta-feira</td>
-                  <td className="py-3">08:00 - 18:00</td>
-                  <td className="py-3">Hospital B</td>
-                  <td className="py-3">
-                    <button className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1">
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                        <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-                <tr className="border-t border-gray-100">
-                  <td className="py-3">Sexta-feira</td>
-                  <td className="py-3">10:00 - 15:00</td>
-                  <td className="py-3">Clínica A</td>
-                  <td className="py-3">
-                    <button className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1">
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                        <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         </FormSection>
 

@@ -105,7 +105,7 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
         </div>
 
         {/* Col 2: ID da Solicitação - padding 0 8px */}
-        <div className="flex items-center px-2 shrink-0">
+        <div className="hidden lg:flex items-center px-2 shrink-0">
           <span className="text-xs text-neutral-200 whitespace-nowrap">
             {formattedId}
           </span>
@@ -130,21 +130,21 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
         </div>
 
         {/* Col 4: Procedimento - padding 0 8px, flex-1 */}
-        <div className="flex items-center px-2 min-w-0 flex-1">
+        <div className="hidden md:flex items-center px-2 min-w-0 flex-1">
           <span className="text-base text-neutral-900 truncate">
             {request.procedureName}
           </span>
         </div>
 
         {/* Col 5: Convênio - width 140px, padding 0 8px */}
-        <div className="flex items-center px-2 w-36 shrink-0">
+        <div className="hidden lg:flex items-center px-2 w-36 shrink-0">
           <span className="text-base text-neutral-900 truncate">
             {request.healthPlan || "-"}
           </span>
         </div>
 
         {/* Col 6: Badge Pendências - padding 0 4px */}
-        <div className="flex items-center justify-center px-1 shrink-0">
+        <div className="hidden lg:flex items-center justify-center px-1 shrink-0">
           {request.pendenciesCount > 0 ? (
             <div className="flex items-center gap-1 px-3 py-1 border border-[#E34935] rounded-full bg-white">
               <AlertTriangle className="w-5 h-5 text-[#E34935]" />
@@ -158,7 +158,7 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
         </div>
 
         {/* Col 7: Badge Comentários - padding 0 4px */}
-        <div className="flex items-center justify-center px-1 shrink-0">
+        <div className="hidden lg:flex items-center justify-center px-1 shrink-0">
           <div className="flex items-center gap-1 px-3 py-1 border border-neutral-100 rounded-full bg-white">
             <MessageCircle className="w-5 h-5 text-neutral-200" />
             <span className="text-sm text-neutral-900">
@@ -168,7 +168,7 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
         </div>
 
         {/* Col 8: Badge Anexos - padding 0 4px */}
-        <div className="flex items-center justify-center px-1 shrink-0">
+        <div className="hidden lg:flex items-center justify-center px-1 shrink-0">
           <div className="flex items-center gap-1 px-3 py-1 border border-neutral-100 rounded-full bg-white">
             <Paperclip className="w-5 h-5 text-neutral-200" />
             <span className="text-sm text-neutral-900">
@@ -311,7 +311,7 @@ export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
 
   return (
     <div
-      className="flex flex-col h-full overflow-y-auto bg-white rounded-lg"
+      className="flex flex-col h-full overflow-y-auto bg-white rounded-xl"
       style={{
         scrollbarWidth: "none",
         msOverflowStyle: "none",

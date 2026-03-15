@@ -49,5 +49,5 @@ export interface AverageCompletionTime {
 export interface PendingNotifications {
   total: number;
   pending_analysis: number;
-  pending_reanalysis: number;
+  pending_scheduling: number;
 }

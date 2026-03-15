@@ -8,6 +8,7 @@ import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
+import { NewPatientModal } from "@/components/patients/NewPatientModal";
 import {
   useReactTable,
   getCoreRowModel,
@@ -54,6 +55,9 @@ export default function PacientesPage() {
     open: false,
     loading: false,
   });
+
+  // Estado do modal de novo paciente
+  const [newPatientModalOpen, setNewPatientModalOpen] = useState(false);
 
   // Debounce do termo de pesquisa para evitar re-renderizações excessivas
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -122,8 +126,9 @@ export default function PacientesPage() {
   const formatDate = (dateString?: string) => {
     if (!dateString) return "-";
     try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("pt-BR");
+      // Parseia a string diretamente (YYYY-MM-DD) para evitar conversão de fuso
+      const [year, month, day] = dateString.substring(0, 10).split("-");
+      return `${day}/${month}/${year}`;
     } catch {
       return "-";
     }
@@ -251,6 +256,7 @@ export default function PacientesPage() {
       accessorKey: "cpf",
       header: "CPF",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -264,6 +270,7 @@ export default function PacientesPage() {
       accessorKey: "email",
       header: "E-mail",
       size: 200,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span className="text-xs text-black" title={row.original.email || "-"}>
           {row.original.email || "-"}
@@ -274,6 +281,7 @@ export default function PacientesPage() {
       accessorKey: "phone",
       header: "Telefone",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -287,6 +295,7 @@ export default function PacientesPage() {
       accessorKey: "birth_date",
       header: "Data de Nascimento",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -302,7 +311,7 @@ export default function PacientesPage() {
       header: "",
       cell: ({ row }) => (
         <button
-          className="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 transition-colors group"
+          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 transition-colors group"
           title="Excluir paciente"
           onClick={(e) => handleDeleteClick(row.original, e)}
         >
@@ -346,28 +355,28 @@ export default function PacientesPage() {
   return (
     <PageContainer className="border-gray-200">
       {/* Header */}
-      <div className="flex-none flex items-center gap-2 px-8 py-3 border-b border-gray-200">
-        <h1 className="text-3xl font-semibold text-black font-urbanist">
+      <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3.5 border-b border-gray-200">
+        <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold text-black font-urbanist">
           Pacientes
         </h1>
       </div>
 
       {/* Search and Actions */}
-      <div className="flex-none flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-200">
-        <div className="flex items-center gap-2">
+      <div className="flex-none flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Search */}
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Buscar por nome, e-mail ou CPF"
-            className="w-85"
+            className="w-full sm:w-85"
           />
 
-          {/* Divider */}
-          <div className="w-px h-8 bg-neutral-100" />
+          {/* Divider - hidden on mobile */}
+          <div className="hidden sm:block w-px h-8 bg-neutral-100" />
 
           {/* Filter Button */}
-          <Button variant="outline" size="md">
+          <Button variant="outline" size="md" className="hidden sm:flex">
             <Image
               src="/icons/filter.svg"
               alt="Filtro"
@@ -384,7 +393,7 @@ export default function PacientesPage() {
           {selectedPatients.length > 0 && (
             <button
               onClick={handleBulkDeleteClick}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 transition-colors min-h-[44px]"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -403,7 +412,11 @@ export default function PacientesPage() {
               Excluir selecionados ({selectedPatients.length})
             </button>
           )}
-          <Button variant="primary" size="md">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setNewPatientModalOpen(true)}
+          >
             Novo paciente
           </Button>
         </div>
@@ -431,7 +444,7 @@ export default function PacientesPage() {
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
-                        className="text-xs text-black opacity-70 font-normal h-12 relative"
+                        className={`text-xs text-black opacity-70 font-normal h-12 relative ${(header.column.columnDef.meta as any)?.className ?? ""}`}
                         style={{
                           width: header.getSize(),
                         }}
@@ -485,7 +498,7 @@ export default function PacientesPage() {
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className="py-3 px-4"
+                        className={`py-3 px-4 ${(cell.column.columnDef.meta as any)?.className ?? ""}`}
                         style={{
                           width: cell.column.getSize(),
                         }}
@@ -503,6 +516,14 @@ export default function PacientesPage() {
           </div>
         )}
       </div>
+      <NewPatientModal
+        isOpen={newPatientModalOpen}
+        onClose={() => setNewPatientModalOpen(false)}
+        onSuccess={() => {
+          loadPatients();
+          setNewPatientModalOpen(false);
+        }}
+      />
       <ConfirmDeleteModal
         isOpen={deleteModal.open}
         title="Excluir paciente"

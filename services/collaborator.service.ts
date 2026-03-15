@@ -34,7 +34,7 @@ export interface CreateCollaboratorPayload {
   email: string;
   phone?: string;
   specialty?: string;
-  role?: "admin" | "editor" | "viewer";
+  role?: "admin" | "doctor" | "collaborator";
 }
 
 export const collaboratorService = {

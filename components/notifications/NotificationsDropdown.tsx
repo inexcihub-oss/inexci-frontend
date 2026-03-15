@@ -139,7 +139,7 @@ export default function NotificationsDropdown({
       <button
         onClick={handleOpen}
         className={cn(
-          "relative flex items-center gap-2 px-2 py-2 rounded-lg opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-colors",
+          "relative flex items-center gap-2 px-2 py-2 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px]",
           isCollapsed ? "justify-center" : "",
         )}
         title={isCollapsed ? "Notificações" : undefined}
@@ -158,7 +158,7 @@ export default function NotificationsDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 bottom-full mb-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
+        <div className="absolute left-0 bottom-full mb-2 w-[calc(100vw-2rem)] sm:w-80 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden z-50">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900">Notificações</h3>
@@ -240,7 +240,7 @@ export default function NotificationsDropdown({
                         {!notification.read && (
                           <button
                             onClick={() => handleMarkAsRead(notification.id)}
-                            className="p-1 text-gray-400 hover:text-primary-600 rounded"
+                            className="p-2 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-gray-100 active:scale-[0.95] transition-all"
                             title="Marcar como lida"
                           >
                             <Check className="w-4 h-4" />
@@ -248,7 +248,7 @@ export default function NotificationsDropdown({
                         )}
                         <button
                           onClick={() => handleDelete(notification.id)}
-                          className="p-1 text-gray-400 hover:text-red-600 rounded"
+                          className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 active:scale-[0.95] transition-all"
                           title="Remover"
                         >
                           <X className="w-4 h-4" />

@@ -16,6 +16,7 @@ import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
 } from "@/services/surgery-request.service";
+import { pendencyService } from "@/services/pendency.service";
 import { useDebounce } from "@/hooks";
 import { SearchInput } from "@/components/ui";
 import Image from "next/image";
@@ -117,7 +118,7 @@ export default function ProcedimentosCirurgicos() {
               pendenciesCount: record.pendenciesCount || 0,
               pendenciesCompleted: 0,
               pendenciesWaiting: 0,
-              messagesCount: record.messagesCount || 0,
+              messagesCount: record.activitiesCount || 0,
               attachmentsCount: record.attachmentsCount || 0,
               createdAt: (() => {
                 const d = new Date(record.created_at);
@@ -126,7 +127,18 @@ export default function ProcedimentosCirurgicos() {
                 return `${dd}/${mm}/${d.getFullYear()}`;
               })(),
               deadline: record.deadline
-                ? new Date(record.deadline).toLocaleDateString("pt-BR")
+                ? (() => {
+                    const m = record.deadline.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                    if (m)
+                      return new Date(
+                        +m[1],
+                        +m[2] - 1,
+                        +m[3],
+                      ).toLocaleDateString("pt-BR");
+                    return new Date(record.deadline).toLocaleDateString(
+                      "pt-BR",
+                    );
+                  })()
                 : "",
               status,
               healthPlan: record.health_plan?.name || "",
@@ -143,6 +155,28 @@ export default function ProcedimentosCirurgicos() {
         }));
 
         setColumns(newColumns);
+
+        // Atualizar pendenciesCount com o validador real (async, sem bloquear o render)
+        const allIds = mappedRequests.map((r) => r.id);
+        if (allIds.length > 0) {
+          pendencyService
+            .getBatchSummary(allIds)
+            .then((batchSummary) => {
+              setColumns((prev) =>
+                prev.map((col) => ({
+                  ...col,
+                  cards: col.cards.map((card) => {
+                    const summary = batchSummary[card.id];
+                    if (summary == null) return card;
+                    return { ...card, pendenciesCount: summary.pending };
+                  }),
+                })),
+              );
+            })
+            .catch(() => {
+              // silently ignore — contagens estimadas do backend já estão no estado
+            });
+        }
       }
 
       setLoading(false);
@@ -311,19 +345,19 @@ export default function ProcedimentosCirurgicos() {
   return (
     <PageContainer>
       {/* Header */}
-      <div className="flex-none flex items-center gap-2 px-4 py-6 border-b border-neutral-100">
-        <h1 className="text-3xl font-semibold text-neutral-900 font-urbanist">
+      <div className="flex-none flex items-center gap-2 px-4 py-4 lg:py-6 border-b border-neutral-100">
+        <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold text-neutral-900 font-urbanist">
           Solicitações Cirúrgicos
         </h1>
       </div>
 
       {/* Toolbar */}
-      <div className="flex-none border-b border-neutral-100 px-4 py-0 flex items-center justify-between">
+      <div className="flex-none border-b border-neutral-100 px-4 py-0 flex flex-wrap items-center justify-between gap-y-2">
         {/* View Toggle */}
-        <div className="flex items-center">
+        <div className="flex items-center shrink-0">
           <button
             onClick={() => setView("kanban")}
-            className={`flex items-center gap-2.5 px-3 py-4 ${
+            className={`flex items-center gap-2.5 px-3 py-4 min-h-[44px] transition-colors ${
               view === "kanban" ? "border-b-[3px] border-teal-700" : ""
             }`}
           >
@@ -338,7 +372,7 @@ export default function ProcedimentosCirurgicos() {
           </button>
           <button
             onClick={() => setView("lista")}
-            className={`flex items-center gap-2.5 px-3 py-4 ${
+            className={`flex items-center gap-2.5 px-3 py-4 min-h-[44px] transition-colors ${
               view === "lista" ? "border-b-[3px] border-teal-700" : ""
             }`}
           >
@@ -354,13 +388,13 @@ export default function ProcedimentosCirurgicos() {
         </div>
 
         {/* Search and Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto pb-3 lg:pb-0">
           {/* Search */}
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Buscar por paciente, gestor, procedimento, ID..."
-            className="w-85"
+            className="w-full lg:w-85"
           />
 
           {/* Filter Button */}
@@ -370,7 +404,7 @@ export default function ProcedimentosCirurgicos() {
             return (
               <button
                 onClick={() => setIsFilterOpen(true)}
-                className={`flex items-center gap-1.5 h-10 px-3 py-2 border rounded-lg transition-colors ${
+                className={`flex items-center gap-1.5 h-11 px-3.5 py-2 border rounded-xl transition-colors min-h-[44px] ${
                   isActive
                     ? "border-teal-600 bg-teal-50 hover:bg-teal-100"
                     : "border-neutral-100 bg-white hover:bg-neutral-50"
@@ -404,10 +438,10 @@ export default function ProcedimentosCirurgicos() {
           })()}
 
           {/* Divider */}
-          <div className="w-px h-8 bg-neutral-100" />
+          <div className="hidden lg:block w-px h-8 bg-neutral-100" />
 
           {/* Export Button */}
-          <button className="flex items-center gap-1 h-10 px-3 py-2 border border-neutral-100 rounded-lg bg-white hover:bg-neutral-50 transition-colors">
+          <button className="hidden lg:flex items-center gap-1 h-11 px-3.5 py-2 border border-neutral-100 rounded-xl bg-white hover:bg-neutral-50 transition-colors">
             <Image
               src="/icons/download.svg"
               alt="Exportar"
@@ -419,17 +453,18 @@ export default function ProcedimentosCirurgicos() {
 
           {/* New Request Button */}
           <Button onClick={() => setIsNewRequestOpen(true)} variant="primary">
-            Nova solicitação
+            <span className="hidden sm:inline">Nova solicitação</span>
+            <span className="sm:hidden">+ Nova</span>
           </Button>
         </div>
       </div>
 
       {/* Kanban Board ou Lista */}
-      <div className="flex-1 overflow-hidden px-4 py-4 flex flex-col">
+      <div className="flex-1 overflow-hidden px-2 lg:px-4 py-4 flex flex-col">
         {view === "kanban" ? (
           filteredColumns.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center">
                 <Image
                   src="/icons/filter.svg"
                   alt=""

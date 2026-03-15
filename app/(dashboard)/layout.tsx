@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import Loading from "@/components/ui/Loading";
 import Sidebar from "@/components/Sidebar";
+import BottomNavBar from "@/components/BottomNavBar";
+import Image from "next/image";
 
 export default function DashboardLayout({
   children,
@@ -13,13 +15,18 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Só redireciona se terminou de carregar e não tem usuário
     if (!loading && !user) {
       router.replace("/login");
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   if (loading) {
     return (
@@ -35,8 +42,35 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-white overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-hidden">{children}</main>
+      {/* Sidebar - apenas visível no desktop ou como drawer */}
+      <Sidebar
+        isMobileOpen={isMobileMenuOpen}
+        onMobileClose={() => setIsMobileMenuOpen(false)}
+      />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header Mobile - Compacto com logo e ações */}
+        <header className="flex items-center justify-between px-4 h-14 border-b border-neutral-100 lg:hidden">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/brand/icon.png"
+              alt="Inexci"
+              width={28}
+              height={28}
+              className="object-contain"
+            />
+            <span className="text-sm font-semibold text-neutral-900">
+              Inexci
+            </span>
+          </div>
+        </header>
+
+        {/* Conteúdo principal com padding para bottom nav no mobile */}
+        <main className="flex-1 overflow-hidden pb-16 lg:pb-0">{children}</main>
+      </div>
+
+      {/* Bottom Navigation - apenas mobile */}
+      <BottomNavBar />
     </div>
   );
 }

@@ -60,11 +60,11 @@ export function CodigoTussTab({
   };
 
   return (
-    <div className="flex-1 border border-neutral-100 rounded-lg overflow-hidden flex flex-col">
+    <div className="flex-1 border border-neutral-100 rounded-2xl overflow-hidden flex flex-col">
       {/* Header com Busca e Botão */}
-      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-neutral-100">
-        <div className="flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded-lg bg-white w-80">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-4 py-3 border-b border-neutral-100">
+        <div className="flex items-center gap-2 px-3 py-2.5 border border-neutral-100 rounded-xl bg-white w-full sm:w-80">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="#111111" strokeWidth="1.5" />
             <path
               d="M16 16L20 20"
@@ -78,7 +78,7 @@ export function CodigoTussTab({
             placeholder="Buscar procedimento"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug placeholder-gray-400"
+            className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 leading-snug placeholder-gray-400"
           />
         </div>
 
@@ -86,7 +86,7 @@ export function CodigoTussTab({
         <button
           onClick={() => setIsModalOpen(true)}
           disabled={statusNum >= 2}
-          className={`flex items-center justify-center font-semibold bg-transparent border border-neutral-100 transition-colors rounded-lg py-1.5 px-3 text-sm leading-normal ${
+          className={`flex items-center justify-center font-semibold bg-transparent border border-neutral-100 transition-colors rounded-xl py-1.5 px-3 text-sm leading-normal ${
             statusNum >= 2
               ? "text-gray-400 cursor-not-allowed opacity-60"
               : "text-gray-900 hover:bg-gray-50"

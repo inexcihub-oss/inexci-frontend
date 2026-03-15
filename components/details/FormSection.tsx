@@ -15,7 +15,7 @@ export function FormSection({
 }: FormSectionProps) {
   return (
     <div
-      className={`border border-gray-200 rounded-lg overflow-hidden ${className}`}
+      className={`border border-gray-200 rounded-2xl overflow-hidden ${className}`}
     >
       {/* Header da seção */}
       <div className="flex items-center px-4 py-3 border-b border-gray-200">
@@ -23,7 +23,7 @@ export function FormSection({
       </div>
 
       {/* Conteúdo do formulário */}
-      <div className="p-4">{children}</div>
+      <div className="p-3.5 sm:p-4">{children}</div>
     </div>
   );
 }

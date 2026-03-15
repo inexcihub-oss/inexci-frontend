@@ -3,12 +3,13 @@ import api from "@/lib/api";
 export interface DashboardData {
   surgery_request: {
     total: number;
-    total_authorized: number;
     total_scheduled: number;
-    total_done: number;
-    total_invoiced: number | null;
-    total_received: number | null;
+    total_performed: number;
+    total_invoiced_count: number;
+    total_invoiced_value: number | null;
+    total_received_value: number | null;
     total_by_health_plan: Array<{
+      health_plan_id: string;
       health_plan_name: string;
       total: number;
     }>;
@@ -17,6 +18,7 @@ export interface DashboardData {
       total: number;
     }>;
     total_by_hospital: Array<{
+      hospital_id: string;
       hospital_name: string;
       total: number;
     }>;
@@ -36,7 +38,7 @@ export interface AverageCompletionTimeData {
 export interface PendingNotificationsData {
   total: number;
   pending_analysis: number;
-  pending_reanalysis: number;
+  pending_scheduling: number;
 }
 
 export interface MonthlyEvolutionData {

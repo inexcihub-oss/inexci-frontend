@@ -105,7 +105,7 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
       {/* Filter Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded-lg hover:bg-gray-50 transition-colors"
+        className="flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded-xl hover:bg-gray-50 transition-colors"
       >
         <span className="text-sm">Filtros</span>
         {activeFiltersCount > 0 && (
@@ -122,7 +122,7 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white border border-neutral-100 rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-80 bg-white border border-neutral-100 rounded-xl shadow-lg z-50">
           <div className="p-4">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
@@ -189,7 +189,7 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
                   <button
                     key={option.value}
                     onClick={() => handleSortChange(option.value)}
-                    className={`px-3 py-2 rounded-lg text-sm text-left transition-colors flex items-center justify-between ${
+                    className={`px-3 py-2 rounded-xl text-sm text-left transition-colors flex items-center justify-between ${
                       sortBy === option.value
                         ? "bg-teal-500 text-white"
                         : "hover:bg-gray-100 text-gray-700"
@@ -210,13 +210,13 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
             <div className="flex gap-2 pt-4 border-t border-neutral-100">
               <button
                 onClick={handleClearFilters}
-                className="flex-1 px-4 py-2 border border-neutral-100 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2 border border-neutral-100 rounded-xl text-sm hover:bg-gray-50 transition-colors"
               >
                 Limpar
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="flex-1 px-4 py-2 bg-teal-500 text-white rounded-lg text-sm hover:bg-teal-600 transition-colors"
+                className="flex-1 px-4 py-2 bg-teal-500 text-white rounded-xl text-sm hover:bg-teal-600 transition-colors"
               >
                 Aplicar
               </button>

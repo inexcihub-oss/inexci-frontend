@@ -32,7 +32,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         onClick={handleClick}
         disabled={props.disabled}
         className={cn(
-          "peer h-5 w-5 shrink-0 rounded border-[1.5px] transition-all duration-200 ease-in-out",
+          "peer h-6 w-6 md:h-5 md:w-5 shrink-0 rounded-md border-[1.5px] transition-all duration-200 ease-in-out",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25b4b0] focus-visible:ring-offset-2",
           "disabled:cursor-not-allowed disabled:opacity-50",
           checked || indeterminate

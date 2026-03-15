@@ -66,7 +66,7 @@ export function Tooltip({
         <div
           role="tooltip"
           className={cn(
-            "absolute z-50 px-3 py-2 text-sm text-white bg-gray-800 rounded-lg shadow-lg whitespace-nowrap",
+            "absolute z-50 px-3 py-2 text-sm text-white bg-gray-800 rounded-xl shadow-lg whitespace-nowrap",
             positionClasses[position],
             className,
           )}

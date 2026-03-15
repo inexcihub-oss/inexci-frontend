@@ -227,7 +227,7 @@ export function EditablePriority({
       </button>
 
       {isEditing && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[120px] animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="absolute top-full left-0 mt-1 z-50 bg-white rounded-xl shadow-lg border border-gray-200 py-1 min-w-[120px] animate-in fade-in slide-in-from-top-1 duration-150">
           {priorities.map((priority) => {
             const style = priorityStyles[priority];
             const isSelected = priority === value;
@@ -356,7 +356,7 @@ export function EditableManager({
       <button
         onClick={() => setIsEditing(!isEditing)}
         className={`
-          inline-flex items-center gap-2 h-7 px-3 text-xs rounded-md
+          flex items-center gap-2 w-full h-7 px-3 text-xs rounded-md
           border border-gray-200 bg-white transition-all duration-150
           hover:bg-gray-50 hover:border-gray-300
           ${isEditing ? "ring-2 ring-offset-1 ring-teal-500 border-teal-500" : ""}
@@ -365,21 +365,25 @@ export function EditableManager({
       >
         {value?.name ? (
           <>
-            <span className="w-5 h-5 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600">
+            <span className="w-5 h-5 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600">
               {getInitials(value.name)}
             </span>
-            <span className="text-gray-700">{value.name}</span>
+            <span className="flex-1 min-w-0 truncate text-left text-gray-700">
+              {value.name}
+            </span>
           </>
         ) : (
-          <span className="text-gray-400">Selecionar gestor</span>
+          <span className="flex-1 min-w-0 truncate text-left text-gray-400">
+            Selecionar gestor
+          </span>
         )}
         <ChevronDownIcon
-          className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isEditing ? "rotate-180" : ""}`}
+          className={`flex-shrink-0 w-3.5 h-3.5 text-gray-400 transition-transform ${isEditing ? "rotate-180" : ""}`}
         />
       </button>
 
       {isEditing && (
-        <div className="absolute top-full left-0 mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[180px] max-h-[200px] overflow-auto animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="absolute top-full left-0 mt-1 z-50 bg-white rounded-xl shadow-lg border border-gray-200 py-1 min-w-[180px] max-h-[200px] overflow-auto animate-in fade-in slide-in-from-top-1 duration-150">
           {isLoadingManagers ? (
             <div className="px-3 py-2 text-xs text-gray-500 text-center">
               Carregando...
@@ -465,15 +469,23 @@ export function EditableDeadline({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isEditing]);
 
+  // Interpreta string de data YYYY-MM-DD como horário local (não UTC)
+  const parseDate = (s: string): Date => {
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(s);
+  };
+
   const formatDateForInput = (dateString: string | null): string => {
     if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toISOString().split("T")[0];
+    // Se já está no formato YYYY-MM-DD, retorna direto (sem conversão via UTC)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return dateString;
+    const d = new Date(dateString);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   };
 
   const formatDateForDisplay = (dateString: string | null): string => {
     if (!dateString) return "Definir prazo";
-    return new Date(dateString).toLocaleDateString("pt-BR", {
+    return parseDate(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -482,12 +494,12 @@ export function EditableDeadline({
 
   const isOverdue = (dateString: string | null): boolean => {
     if (!dateString) return false;
-    return new Date(dateString) < new Date();
+    return parseDate(dateString) < new Date();
   };
 
   const isNearDeadline = (dateString: string | null): boolean => {
     if (!dateString) return false;
-    const deadline = new Date(dateString);
+    const deadline = parseDate(dateString);
     const now = new Date();
     const diffDays =
       (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
@@ -549,22 +561,32 @@ export function EditableDeadline({
     <button
       onClick={() => setIsEditing(true)}
       className={`
-        inline-flex items-center gap-1.5 h-7 px-3 text-xs rounded-md
+        flex items-center gap-1.5 w-full h-7 px-3 text-xs rounded-md
         border transition-all duration-150
         ${getDeadlineStyle()}
         ${isEditing ? "ring-2 ring-offset-1 ring-teal-500" : ""}
       `}
       disabled={isLoading}
     >
-      <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+      <svg
+        className="flex-shrink-0 w-3.5 h-3.5"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
         <path
           fillRule="evenodd"
           d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
           clipRule="evenodd"
         />
       </svg>
-      {isLoading ? "..." : formatDateForDisplay(value)}
-      <ChevronDownIcon className="w-3.5 h-3.5 opacity-60" />
+      {isLoading ? (
+        "..."
+      ) : (
+        <span className="flex-1 min-w-0 truncate text-left">
+          {formatDateForDisplay(value)}
+        </span>
+      )}
+      <ChevronDownIcon className="flex-shrink-0 w-3.5 h-3.5 opacity-60" />
     </button>
   );
 }

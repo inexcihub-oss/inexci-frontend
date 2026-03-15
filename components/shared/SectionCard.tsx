@@ -3,7 +3,7 @@
 import React from "react";
 
 interface SectionCardProps {
-  title: string;
+  title: React.ReactNode;
   /** Elemento exibido no lado direito do cabeçalho (ex: botão "Adicionar") */
   headerAction?: React.ReactNode;
   children: React.ReactNode;
@@ -23,9 +23,9 @@ export function SectionCard({
 }: SectionCardProps) {
   return (
     <div
-      className={`border border-neutral-100 rounded-lg overflow-hidden ${className}`}
+      className={`border border-neutral-100 rounded-2xl overflow-hidden ${className}`}
     >
-      <div className="flex items-center justify-between px-4 h-10 border-b border-neutral-100">
+      <div className="flex items-center justify-between px-4 h-11 border-b border-neutral-100">
         <h3 className="text-sm font-semibold text-black">{title}</h3>
         {headerAction}
       </div>

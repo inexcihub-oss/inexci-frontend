@@ -400,24 +400,21 @@ export function OpmeModal({
     selectedOpmeIndex !== null ? opmeItems[selectedOpmeIndex] : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
         onClick={!isLoading ? handleCancel : undefined}
       />
 
-      {/* Modal - 800x650px conforme Figma */}
-      <div
-        className="relative bg-white rounded-lg shadow-xl flex flex-col"
-        style={{ width: "800px", height: "650px" }}
-      >
+      {/* Modal - fullscreen mobile, centered desktop */}
+      <div className="relative bg-white sm:rounded-2xl shadow-xl flex flex-col w-full h-full sm:w-[800px] sm:h-[650px] sm:max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#DCDFE3]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[#DCDFE3]">
           <h2 className="text-lg font-semibold text-gray-900">OPME</h2>
           <button
             onClick={!isLoading ? handleCancel : undefined}
-            className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded transition-colors"
+            className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors"
             disabled={isLoading}
           >
             <IconClose className="w-6 h-6 text-[#111111]" />
@@ -425,14 +422,14 @@ export function OpmeModal({
         </div>
 
         {/* Content Area - Split View */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex flex-col sm:flex-row overflow-hidden">
           {/* Painel Esquerdo - Lista de OPME */}
           <div
             className="flex flex-col"
-            style={opmeItems.length > 0 ? { width: "458px" } : { flex: 1 }}
+            style={opmeItems.length > 0 ? { minWidth: 0 } : { flex: 1 }}
           >
             {error && (
-              <div className="mx-4 mt-4 bg-red-50 text-red-700 p-3 rounded-lg text-sm">
+              <div className="mx-4 mt-4 bg-red-50 text-red-700 p-3 rounded-xl text-sm">
                 {error}
               </div>
             )}
@@ -440,7 +437,7 @@ export function OpmeModal({
             {/* Lista de OPMEs adicionados */}
             <div className="flex-1 flex flex-col overflow-y-auto">
               {opmeItems.length === 0 && (
-                <div className="flex flex-col items-center justify-center flex-1 gap-5 px-10 py-12">
+                <div className="flex flex-col items-center justify-center flex-1 gap-5 px-6 sm:px-10 py-8 sm:py-12">
                   <div className="w-16 h-16 rounded-full bg-[#EAF4F4] flex items-center justify-center">
                     <IconEmptyOpme className="w-8 h-8 text-[#147471]" />
                   </div>
@@ -474,7 +471,7 @@ export function OpmeModal({
                           }
                         }}
                         placeholder="Nome da OPME..."
-                        className="w-full px-3 py-2.5 text-sm text-[#111111] placeholder:text-[#758195] bg-white border-2 border-[#147471] rounded-lg focus:outline-none shadow-sm"
+                        className="w-full px-3 py-2.5 text-sm text-[#111111] placeholder:text-[#758195] bg-white border-2 border-[#147471] rounded-xl focus:outline-none shadow-sm"
                       />
                       <p className="text-xs text-[#758195]">
                         Pressione{" "}
@@ -488,7 +485,7 @@ export function OpmeModal({
                     <button
                       type="button"
                       onClick={() => setIsAddingOpme(true)}
-                      className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#147471] rounded-lg hover:bg-[#0f5c5a] transition-colors shadow-sm"
+                      className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors shadow-sm"
                     >
                       <IconPlus className="w-4 h-4" />
                       Adicionar OPME
@@ -504,10 +501,7 @@ export function OpmeModal({
                     editingNameIndex !== index && handleSelectOpme(index)
                   }
                 >
-                  <div
-                    className="flex items-center gap-3 px-4 py-3 border border-[#DCDFE3] rounded-lg shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
-                    style={{ height: "64px" }}
-                  >
+                  <div className="flex items-center gap-3 px-4 py-3 border border-[#DCDFE3] rounded-xl shadow-[0px_1px_2px_rgba(0,0,0,0.05)] min-h-[64px]">
                     {editingNameIndex === index ? (
                       <input
                         type="text"
@@ -529,7 +523,7 @@ export function OpmeModal({
                           }
                         }}
                         onClick={(e) => e.stopPropagation()}
-                        className="flex-1 px-2 py-1 text-sm text-[#111111] border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#147471]"
+                        className="flex-1 px-2 py-1 text-sm text-[#111111] border border-[#DCDFE3] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#147471]"
                       />
                     ) : (
                       <span className="flex-1 text-sm text-[#111111]">
@@ -599,7 +593,7 @@ export function OpmeModal({
                       }
                     }}
                     placeholder="Nome da OPME..."
-                    className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#147471]"
+                    className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#147471]"
                   />
                 ) : (
                   <button
@@ -617,7 +611,7 @@ export function OpmeModal({
 
           {/* Painel Direito - Configurações do OPME selecionado */}
           {opmeItems.length > 0 && (
-            <div className="flex-1 flex flex-col border-l border-[#DCDFE3]">
+            <div className="flex-1 flex flex-col border-t sm:border-t-0 sm:border-l border-[#DCDFE3] min-w-0 sm:max-w-[342px]">
               {selectedItem ? (
                 <div className="flex flex-col overflow-y-auto flex-1">
                   {/* Accordion: Fabricantes */}
@@ -639,7 +633,7 @@ export function OpmeModal({
                               handleManufacturerChange(optIndex, e.target.value)
                             }
                             placeholder="Fabricante"
-                            className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-lg"
+                            className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-xl"
                           />
                         </div>
                       ),
@@ -672,7 +666,7 @@ export function OpmeModal({
                             handleSupplierChange(optIndex, e.target.value)
                           }
                           placeholder="Fornecedor"
-                          className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-lg"
+                          className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-xl"
                         />
                       </div>
                     ))}
@@ -706,7 +700,7 @@ export function OpmeModal({
                           <IconMinus className="w-5 h-5 text-[#111111] opacity-50" />
                         </button>
                         <div
-                          className="flex items-center justify-center px-3 py-2 border border-[#DCDFE3] rounded-lg bg-white"
+                          className="flex items-center justify-center px-3 py-2 border border-[#DCDFE3] rounded-xl bg-white"
                           style={{ width: "52px", height: "40px" }}
                         >
                           <span className="text-sm font-semibold text-[#111111]">
@@ -734,17 +728,17 @@ export function OpmeModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-3 py-4 bg-white border-t-2 border-[#DCDFE3]">
+        <div className="flex items-center justify-end gap-2 px-4 sm:px-3 py-4 bg-white border-t-2 border-[#DCDFE3] safe-area-bottom">
           <button
             onClick={handleCancel}
-            className="px-6 py-2.5 text-sm font-normal text-[#111111] bg-white border-2 border-[#DCDFE3] rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-6 py-2.5 text-sm font-normal text-[#111111] bg-white border-2 border-[#DCDFE3] rounded-xl hover:bg-gray-50 transition-colors"
             disabled={isLoading}
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2.5 text-sm font-semibold text-white bg-[#147471] rounded-lg hover:bg-[#0f5c5a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading || opmeItems.length === 0}
           >
             {isLoading ? (

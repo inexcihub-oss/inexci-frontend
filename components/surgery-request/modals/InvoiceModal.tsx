@@ -42,7 +42,8 @@ export function InvoiceModal({
   solicitacao,
   onSuccess,
 }: InvoiceModalProps) {
-  const todayStr = new Date().toISOString().split("T")[0];
+  const _td = new Date();
+  const todayStr = `${_td.getFullYear()}-${String(_td.getMonth() + 1).padStart(2, "0")}-${String(_td.getDate()).padStart(2, "0")}`;
 
   const [protocol, setProtocol] = useState("");
   const [sentAt, setSentAt] = useState(todayStr);
@@ -78,9 +79,13 @@ export function InvoiceModal({
     }
     setIsSaving(true);
     try {
+      // Converte sentAt (YYYY-MM-DD de input) para data local sem shift UTC
+      const [sy, sm, sd] = sentAt.split("-").map(Number);
+      const sentAtDate = new Date(sy, sm - 1, sd);
+
       let paymentDeadlineISO: string | undefined;
       if (paymentDeadline && sentAt) {
-        const deadlineDate = new Date(sentAt);
+        const deadlineDate = new Date(sy, sm - 1, sd);
         deadlineDate.setDate(
           deadlineDate.getDate() + parseInt(paymentDeadline, 10),
         );
@@ -90,7 +95,7 @@ export function InvoiceModal({
       await surgeryRequestService.invoice(solicitacao.id, {
         invoice_protocol: protocol.trim(),
         invoice_value: numericValue,
-        invoice_sent_at: new Date(sentAt).toISOString(),
+        invoice_sent_at: sentAtDate.toISOString(),
         payment_deadline: paymentDeadlineISO,
         set_as_default_for_health_plan: setAsDefault || undefined,
       } as any);
@@ -110,10 +115,13 @@ export function InvoiceModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={handleClose}
+      />
 
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col max-h-screen overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center gap-2.5 px-6 py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-2xl font-light tracking-tight text-gray-900">
@@ -131,7 +139,7 @@ export function InvoiceModal({
         {/* Content */}
         <div className="flex flex-col gap-6 p-6 overflow-y-auto">
           {/* Info box */}
-          <div className="flex flex-col gap-1 p-4 bg-blue-50 rounded-lg">
+          <div className="flex flex-col gap-1 p-4 bg-blue-50 rounded-xl">
             <p className="text-sm font-semibold text-blue-600">
               Informações da solicitação
             </p>
@@ -159,7 +167,7 @@ export function InvoiceModal({
                   onChange={(e) => setProtocol(e.target.value)}
                   placeholder="Protocolo"
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -172,7 +180,7 @@ export function InvoiceModal({
                     value={sentAt}
                     onChange={(e) => setSentAt(e.target.value)}
                     disabled={isSaving}
-                    className="w-full px-3 py-2 pr-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                    className="w-full px-3 py-2 pr-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
                   />
                   <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
@@ -192,7 +200,7 @@ export function InvoiceModal({
                   onChange={(e) => setValue(applyBRLMask(e.target.value))}
                   placeholder="R$ 0,00"
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -206,14 +214,14 @@ export function InvoiceModal({
                   onChange={(e) => setPaymentDeadline(e.target.value)}
                   placeholder="Ex.30 dias"
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
                 />
               </div>
             </div>
           </div>
 
           {/* Save deadline as default */}
-          <div className="flex items-start gap-3 p-4 bg-gray-100 rounded-lg">
+          <div className="flex items-start gap-3 p-4 bg-gray-100 rounded-xl">
             <input
               type="checkbox"
               id="invoice-set-default"
@@ -242,14 +250,14 @@ export function InvoiceModal({
           <button
             onClick={handleClose}
             disabled={isSaving}
-            className="h-10 px-4 text-sm text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="h-10 px-4 text-sm text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || isSaving}
-            className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+            className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
             {isSaving ? "Salvando..." : "Concluir faturamento"}

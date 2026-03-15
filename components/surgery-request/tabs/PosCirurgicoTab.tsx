@@ -142,7 +142,7 @@ export function PosCirurgicoTab({
         <button
           onClick={handleExportPdf}
           disabled={isExporting}
-          className="flex items-center gap-1.5 font-semibold text-teal-700 bg-transparent border border-teal-200 hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors py-1.5 px-3 rounded-lg text-sm leading-normal"
+          className="flex items-center gap-1.5 font-semibold text-teal-700 bg-transparent border border-teal-200 hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors py-1.5 px-3 rounded-xl text-sm leading-normal"
         >
           {isExporting ? (
             <>
@@ -188,7 +188,7 @@ export function PosCirurgicoTab({
       )}
       <button
         onClick={() => setIsUploadModalOpen(true)}
-        className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 rounded-lg text-sm leading-normal"
+        className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 rounded-xl text-sm leading-normal"
       >
         Adicionar
       </button>
@@ -203,7 +203,7 @@ export function PosCirurgicoTab({
       <SectionCard title="Data da realização">
         {performedAt ? (
           <div className="p-4">
-            <div className="flex border border-neutral-100 rounded-lg overflow-hidden">
+            <div className="flex border border-neutral-100 rounded-xl overflow-hidden">
               {/* Data */}
               <div className="flex-1 flex flex-col items-center gap-2 px-6 py-5 bg-neutral-50">
                 <span className="text-sm text-black/50">Data</span>

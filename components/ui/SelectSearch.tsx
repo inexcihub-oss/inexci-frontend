@@ -192,14 +192,14 @@ export function SelectSearch({
       )}
       <div
         className={`
-          relative flex items-center w-full border rounded-lg bg-white cursor-pointer
+          relative flex items-center w-full border rounded-xl bg-white cursor-pointer
           ${error ? "border-red-500" : "border-gray-300"}
           ${disabled ? "bg-gray-100 cursor-not-allowed" : "hover:border-gray-400"}
           ${isOpen ? "ring-2 ring-blue-500 border-blue-500" : ""}
         `}
         onClick={handleToggle}
       >
-        <div className="flex-1 flex items-center min-h-10 px-3 min-w-0 overflow-hidden">
+        <div className="flex-1 flex items-center min-h-[48px] md:min-h-10 px-3.5 min-w-0 overflow-hidden">
           {isOpen ? (
             <div className="flex items-center w-full">
               <Search className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
@@ -209,14 +209,14 @@ export function SelectSearch({
                 value={searchTerm}
                 onChange={handleInputChange}
                 placeholder={placeholder}
-                className="flex-1 outline-none text-sm bg-transparent"
+                className="flex-1 outline-none text-base md:text-sm bg-transparent"
                 onClick={(e) => e.stopPropagation()}
                 disabled={disabled}
               />
             </div>
           ) : (
             <span
-              className={`text-sm truncate ${
+              className={`text-base md:text-sm truncate ${
                 selectedLabel ? "text-gray-900" : "text-gray-500"
               }`}
             >
@@ -232,7 +232,7 @@ export function SelectSearch({
             <button
               type="button"
               onClick={handleClear}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1.5 hover:bg-gray-100 rounded-lg"
             >
               <X className="w-4 h-4 text-gray-400" />
             </button>
@@ -258,7 +258,7 @@ export function SelectSearch({
               width: dropdownPosition.width,
               zIndex: 9999,
             }}
-            className="mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto"
+            className="mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto"
           >
             {isLoading && options.length === 0 ? (
               <div className="flex items-center justify-center py-4">
@@ -278,7 +278,7 @@ export function SelectSearch({
                 <div
                   key={option.value}
                   className={`
-                    px-3 py-2 cursor-pointer text-sm
+                    px-3.5 py-3 md:py-2 cursor-pointer text-sm min-h-[44px] md:min-h-0 flex items-center active:bg-gray-100
                     ${option.value === value ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"}
                   `}
                   onClick={() => handleSelect(option)}

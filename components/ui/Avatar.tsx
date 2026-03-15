@@ -27,7 +27,7 @@ export default function Avatar({
         alt={name}
         width={size === "sm" ? 32 : size === "md" ? 40 : 48}
         height={size === "sm" ? 32 : size === "md" ? 40 : 48}
-        className={cn("rounded-lg object-cover", className)}
+        className={cn("rounded-xl object-cover", className)}
       />
     );
   }
@@ -35,7 +35,7 @@ export default function Avatar({
   return (
     <div
       className={cn(
-        "rounded-lg flex items-center justify-center font-semibold",
+        "rounded-xl flex items-center justify-center font-semibold",
         sizeClasses[size],
         getAvatarColor(name),
         className,

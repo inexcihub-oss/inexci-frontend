@@ -57,7 +57,7 @@ export function PrimaryActionButton({
   return (
     <button
       onClick={handleClick}
-      className="bg-teal-700 text-white text-sm font-semibold hover:bg-teal-800 transition-colors flex-shrink-0 flex items-center justify-center px-6 py-2.5 gap-3 rounded-lg leading-normal"
+      className="bg-teal-700 text-white text-sm font-semibold hover:bg-teal-800 active:scale-[0.98] transition-all flex items-center justify-center w-full px-6 py-2.5 gap-3 rounded-xl leading-normal min-h-[44px]"
     >
       {config.label}
     </button>

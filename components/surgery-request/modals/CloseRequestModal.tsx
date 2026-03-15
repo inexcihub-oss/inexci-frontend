@@ -54,9 +54,12 @@ export function CloseRequestModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={handleClose}
+      />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between gap-2.5 px-6 py-4 border-b border-neutral-100">
           <h2 className="flex-1 text-2xl font-light tracking-tight text-neutral-900">
@@ -91,14 +94,14 @@ export function CloseRequestModal({
           <button
             onClick={handleClose}
             disabled={isClosing}
-            className="h-10 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="h-10 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleConfirm}
             disabled={isClosing}
-            className="h-10 px-6 text-sm font-semibold bg-priority-urgente-bg text-priority-urgente-text rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="h-10 px-6 text-sm font-semibold bg-priority-urgente-bg text-priority-urgente-text rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {isClosing ? "Encerrando..." : "Encerrar"}
           </button>

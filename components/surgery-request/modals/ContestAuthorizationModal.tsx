@@ -89,7 +89,7 @@ export function ContestFlow({
               onChange={(e) => onReasonChange(e.target.value)}
               placeholder="Descreva detalhadamente o motivo da contestação..."
               rows={5}
-              className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+              className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
             />
           </div>
         )}
@@ -105,7 +105,7 @@ export function ContestFlow({
                 <button
                   key={m}
                   onClick={() => onMethodChange(m)}
-                  className={`flex flex-col items-center justify-center gap-2 p-6 border-2 rounded-lg transition-colors ${
+                  className={`flex flex-col items-center justify-center gap-2 p-6 border-2 rounded-xl transition-colors ${
                     method === m
                       ? "border-teal-600 bg-teal-50"
                       : "border-gray-200 hover:border-gray-300"
@@ -164,7 +164,7 @@ export function ContestFlow({
                 value={emailForm.to}
                 onChange={(e) => onEmailChange("to", e.target.value)}
                 placeholder="email@convenio.com.br"
-                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
             <div className="space-y-1.5">
@@ -176,7 +176,7 @@ export function ContestFlow({
                 value={emailForm.subject}
                 onChange={(e) => onEmailChange("subject", e.target.value)}
                 placeholder="Contestação de autorização"
-                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
             <div className="space-y-1.5">
@@ -188,7 +188,7 @@ export function ContestFlow({
                 onChange={(e) => onEmailChange("message", e.target.value)}
                 placeholder="Mensagem detalhada..."
                 rows={5}
-                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
               />
             </div>
           </div>
@@ -202,7 +202,7 @@ export function ContestFlow({
               base no motivo informado e poderá ser baixado e enviado
               manualmente ao convênio.
             </p>
-            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
               <p className="text-sm font-medium text-gray-700">
                 Motivo registrado:
               </p>
@@ -215,7 +215,7 @@ export function ContestFlow({
       <ModalFooter>
         <button
           onClick={onBack}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
         >
           Voltar
         </button>
@@ -223,7 +223,7 @@ export function ContestFlow({
           <button
             onClick={onNext}
             disabled={step === 1 && !canProceedStep1}
-            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Próximo
           </button>
@@ -231,7 +231,7 @@ export function ContestFlow({
           <button
             onClick={onSubmit}
             disabled={!canSubmit || isSaving}
-            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving
               ? "Enviando..."

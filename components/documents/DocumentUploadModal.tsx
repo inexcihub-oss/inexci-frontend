@@ -217,7 +217,7 @@ function DocumentUploadModalContent({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 flex flex-col max-h-[90vh]">
+      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -235,7 +235,7 @@ function DocumentUploadModalContent({
         {/* Content */}
         <div className="flex-1 p-6 space-y-4 overflow-y-auto">
           {error && (
-            <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
+            <div className="bg-red-50 text-red-700 p-3 rounded-xl text-sm">
               {error}
             </div>
           )}
@@ -248,7 +248,7 @@ function DocumentUploadModalContent({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={`
-              border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
+              border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors
               ${isDragging ? "border-teal-500 bg-teal-50" : "border-gray-300 hover:border-gray-400"}
               ${selectedFile ? "bg-gray-50" : ""}
             `}
@@ -271,7 +271,7 @@ function DocumentUploadModalContent({
                     e.stopPropagation();
                     fileInputRef.current?.click();
                   }}
-                  className="px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   Selecionar
                 </button>
@@ -305,7 +305,7 @@ function DocumentUploadModalContent({
                 ref={typeButtonRef}
                 type="button"
                 onClick={handleToggleDropdown}
-                className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-xl hover:border-gray-400 transition-colors"
               >
                 <span>{getDocumentTypeLabel(documentType)}</span>
                 <svg
@@ -332,7 +332,7 @@ function DocumentUploadModalContent({
                       width: dropdownPosition.width,
                       zIndex: 9999,
                     }}
-                    className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                    className="bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"
                   >
                     {documentTypes.map((type) => (
                       <button
@@ -367,7 +367,7 @@ function DocumentUploadModalContent({
               value={documentName}
               onChange={(e) => setDocumentName(e.target.value)}
               placeholder="Ex: Ressonância do Joelho"
-              className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors"
+              className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors"
             />
           </div>
 
@@ -378,14 +378,14 @@ function DocumentUploadModalContent({
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
           <button
             onClick={handleCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
             disabled={isUploading}
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isUploading || !selectedFile}
           >
             {isUploading ? (

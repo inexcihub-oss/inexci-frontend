@@ -49,7 +49,7 @@ export function CreateSurgeryRequestWizard({
   onClose,
   onSuccess,
 }: CreateSurgeryRequestWizardProps) {
-  const [modalState, setModalState] = useState<ModalState>("procedure-select");
+  const [modalState, setModalState] = useState<ModalState>("none");
   const [loading, setLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
@@ -91,7 +91,7 @@ export function CreateSurgeryRequestWizard({
 
   const handleProcedureSelected = (procedure: Procedure) => {
     setSelectedProcedure(procedure);
-    setModalState("patient-select");
+    setModalState("none");
   };
 
   const handleProcedureCreated = (procedure: Procedure) => {
@@ -99,12 +99,12 @@ export function CreateSurgeryRequestWizard({
       addProcedureToList(procedure);
     }
     setSelectedProcedure(procedure);
-    setModalState("patient-select");
+    setModalState("none");
   };
 
   const handlePatientSelected = (patient: Patient) => {
     setSelectedPatient(patient);
-    setModalState("manager-select");
+    setModalState("none");
   };
 
   const handlePatientCreated = (patient: Patient) => {
@@ -112,12 +112,12 @@ export function CreateSurgeryRequestWizard({
       addPatientToList(patient);
     }
     setSelectedPatient(patient);
-    setModalState("manager-select");
+    setModalState("none");
   };
 
   const handleHospitalSelected = (hospital: Hospital) => {
     setSelectedHospital(hospital);
-    // Mantém na tela de hospital após selecionar
+    setModalState("none");
   };
 
   const handleHospitalCreated = (hospital: Hospital) => {
@@ -125,12 +125,12 @@ export function CreateSurgeryRequestWizard({
       addHospitalToList(hospital);
     }
     setSelectedHospital(hospital);
-    // Mantém na tela de hospital após criar
+    setModalState("none");
   };
 
   const handleHealthPlanSelected = (healthPlan: HealthPlan) => {
     setSelectedHealthPlan(healthPlan);
-    setModalState("hospital-select");
+    setModalState("none");
   };
 
   const handleHealthPlanCreated = (healthPlan: HealthPlan) => {
@@ -138,17 +138,17 @@ export function CreateSurgeryRequestWizard({
       addHealthPlanToList(healthPlan);
     }
     setSelectedHealthPlan(healthPlan);
-    setModalState("hospital-select");
+    setModalState("none");
   };
 
   const handleManagerSelected = (manager: User) => {
     setSelectedManager(manager);
-    setModalState("healthplan-select");
+    setModalState("none");
   };
 
   const handleManagerCreated = (manager: User) => {
     setSelectedManager(manager);
-    setModalState("manager-select");
+    setModalState("none");
   };
 
   const handleTemplateSelected = (template: any) => {
@@ -234,7 +234,7 @@ export function CreateSurgeryRequestWizard({
   };
 
   const handleClose = () => {
-    setModalState("procedure-select");
+    setModalState("none");
     setSelectedProcedure(null);
     setSelectedPatient(null);
     setSelectedHospital(null);
@@ -242,6 +242,17 @@ export function CreateSurgeryRequestWizard({
     setSelectedManager(null);
     setPriority(PRIORITY.LOW);
     onClose();
+  };
+
+  // No mobile, quando um painel de seleção está ativo, oculta o formulário principal
+  const isSelectionOpen = modalState !== "none";
+  const selectionTitle: Record<string, string> = {
+    "template-select": "Usar modelo",
+    "procedure-select": "Procedimento",
+    "patient-select": "Paciente",
+    "manager-select": "Gestor",
+    "healthplan-select": "Convênio",
+    "hospital-select": "Hospital",
   };
 
   return (
@@ -256,13 +267,13 @@ export function CreateSurgeryRequestWizard({
       )}
 
       {/* Main Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
         {/* Loading Overlay */}
         {loading && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-            <div className="bg-white rounded-lg p-8 flex flex-col items-center gap-4 shadow-2xl">
+            <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-4 shadow-2xl">
               <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
               <p className="text-lg font-semibold text-gray-900">
                 Criando solicitação...
@@ -272,66 +283,87 @@ export function CreateSurgeryRequestWizard({
           </div>
         )}
 
-        <div
-          className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto overflow-hidden flex flex-col"
-          style={{ height: "min(85vh, 800px)" }}
-        >
-          <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-            {/* Left Panel - Form */}
-            <div className="w-full md:w-3/5 flex flex-col bg-white h-full md:border-r border-gray-200">
+        <div className="relative bg-white w-full rounded-2xl shadow-xl max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+          {/* ── LAYOUT PRINCIPAL ── */}
+          <div className="flex flex-col sm:flex-row flex-1 overflow-hidden min-h-0">
+            {/* LEFT PANEL — formulário (no mobile, fica oculto quando um painel de seleção está aberto) */}
+            <div
+              className={`w-full sm:w-3/5 flex flex-col bg-white sm:border-r border-gray-200 ${isSelectionOpen ? "hidden sm:flex" : "flex"}`}
+            >
               {/* Header */}
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">
+              <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+                <h2 className="text-lg font-semibold text-gray-900">
                   Nova solicitação
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setModalState("template-select")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                    modalState === "template-select"
-                      ? "bg-teal-50 text-teal-700 border-teal-300"
-                      : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <svg
-                    className="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalState("template-select")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors border ${
+                      modalState === "template-select"
+                        ? "bg-teal-50 text-teal-700 border-teal-300"
+                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                    }`}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414A1 1 0 0120 8.414V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
-                    />
-                  </svg>
-                  Usar modelo
-                </button>
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414A1 1 0 0120 8.414V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
+                      />
+                    </svg>
+                    Usar modelo
+                  </button>
+                  {/* Fechar — apenas desktop */}
+                  <button
+                    onClick={handleClose}
+                    className="hidden sm:flex p-1 hover:bg-gray-100 rounded transition-colors"
+                  >
+                    <svg
+                      className="w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {/* Form Fields */}
-              <div className="flex-1 flex flex-col">
-                {/* Procedimento - OBRIGATÓRIO (PRIMEIRO) */}
+              <div className="flex-1 overflow-y-auto">
+                {/* Procedimento */}
                 <button
                   onClick={() => setModalState("procedure-select")}
-                  className={`w-full h-20 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                    modalState === "procedure-select" ? "bg-gray-50" : ""
-                  }`}
+                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100 ${modalState === "procedure-select" ? "bg-gray-50" : ""}`}
                 >
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span
+                    className={`text-base font-semibold ${selectedProcedure ? "text-gray-900" : "text-gray-900"}`}
+                  >
                     Procedimento
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 min-w-0 ml-3">
                     <span
-                      className={`text-sm ${selectedProcedure ? "text-gray-900" : "text-gray-400"}`}
+                      className={`text-sm truncate max-w-[140px] ${selectedProcedure ? "text-teal-700 font-medium" : "text-gray-400"}`}
                     >
                       {selectedProcedure
                         ? selectedProcedure.name
                         : "Selecionar"}
                     </span>
                     <svg
-                      className="w-5 h-5 text-gray-900"
+                      className="w-4 h-4 text-gray-400 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -346,31 +378,25 @@ export function CreateSurgeryRequestWizard({
                   </span>
                 </button>
 
-                {/* Paciente - OBRIGATÓRIO */}
+                {/* Paciente */}
                 <button
                   disabled={!selectedProcedure}
                   onClick={() =>
                     selectedProcedure && setModalState("patient-select")
                   }
-                  className={`w-full h-20 px-6 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${
-                    !selectedProcedure
-                      ? "opacity-40 cursor-not-allowed"
-                      : modalState === "patient-select"
-                        ? "bg-gray-50"
-                        : "hover:bg-gray-50 cursor-pointer"
-                  }`}
+                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedProcedure ? "opacity-40 cursor-not-allowed" : modalState === "patient-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className="text-base font-semibold text-gray-900">
                     Paciente
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 min-w-0 ml-3">
                     <span
-                      className={`text-sm ${selectedPatient ? "text-gray-900" : "text-gray-400"}`}
+                      className={`text-sm truncate max-w-[140px] ${selectedPatient ? "text-teal-700 font-medium" : "text-gray-400"}`}
                     >
                       {selectedPatient ? selectedPatient.name : "Selecionar"}
                     </span>
                     <svg
-                      className="w-5 h-5 text-gray-900"
+                      className="w-4 h-4 text-gray-400 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -385,31 +411,25 @@ export function CreateSurgeryRequestWizard({
                   </span>
                 </button>
 
-                {/* Gestor - OBRIGATÓRIO */}
+                {/* Gestor */}
                 <button
                   disabled={!selectedPatient}
                   onClick={() =>
                     selectedPatient && setModalState("manager-select")
                   }
-                  className={`w-full h-20 px-6 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${
-                    !selectedPatient
-                      ? "opacity-40 cursor-not-allowed"
-                      : modalState === "manager-select"
-                        ? "bg-gray-50"
-                        : "hover:bg-gray-50 cursor-pointer"
-                  }`}
+                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedPatient ? "opacity-40 cursor-not-allowed" : modalState === "manager-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className="text-base font-semibold text-gray-900">
                     Gestor
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 min-w-0 ml-3">
                     <span
-                      className={`text-sm ${selectedManager ? "text-gray-900" : "text-gray-400"}`}
+                      className={`text-sm truncate max-w-[140px] ${selectedManager ? "text-teal-700 font-medium" : "text-gray-400"}`}
                     >
                       {selectedManager ? selectedManager.name : "Selecionar"}
                     </span>
                     <svg
-                      className="w-5 h-5 text-gray-900"
+                      className="w-4 h-4 text-gray-400 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -430,21 +450,17 @@ export function CreateSurgeryRequestWizard({
                   onClick={() =>
                     selectedManager && setModalState("healthplan-select")
                   }
-                  className={`w-full h-20 px-6 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${
-                    !selectedManager
-                      ? "opacity-40 cursor-not-allowed"
-                      : modalState === "healthplan-select"
-                        ? "bg-gray-50"
-                        : "hover:bg-gray-50 cursor-pointer"
-                  }`}
+                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedManager ? "opacity-40 cursor-not-allowed" : modalState === "healthplan-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className="text-base font-semibold text-gray-900">
                     Convênio{" "}
-                    <span className="text-gray-400 text-sm">(opcional)</span>
+                    <span className="text-gray-400 text-sm font-normal">
+                      (opcional)
+                    </span>
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 min-w-0 ml-3">
                     <span
-                      className={`text-sm ${selectedHealthPlan ? "text-gray-900" : "text-gray-400"}`}
+                      className={`text-sm truncate max-w-[120px] ${selectedHealthPlan ? "text-teal-700 font-medium" : "text-gray-400"}`}
                     >
                       {selectedHealthPlan
                         ? selectedHealthPlan.name
@@ -457,10 +473,10 @@ export function CreateSurgeryRequestWizard({
                           e.stopPropagation();
                           setSelectedHealthPlan(null);
                         }}
-                        className="p-0.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                        className="p-0.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
                       >
                         <svg
-                          className="w-4 h-4"
+                          className="w-3.5 h-3.5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -475,7 +491,7 @@ export function CreateSurgeryRequestWizard({
                       </span>
                     )}
                     <svg
-                      className="w-5 h-5 text-gray-900"
+                      className="w-4 h-4 text-gray-400 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -496,21 +512,17 @@ export function CreateSurgeryRequestWizard({
                   onClick={() =>
                     selectedManager && setModalState("hospital-select")
                   }
-                  className={`w-full h-20 px-6 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${
-                    !selectedManager
-                      ? "opacity-40 cursor-not-allowed"
-                      : modalState === "hospital-select"
-                        ? "bg-gray-50"
-                        : "hover:bg-gray-50 cursor-pointer"
-                  }`}
+                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedManager ? "opacity-40 cursor-not-allowed" : modalState === "hospital-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
-                  <span className="text-lg font-semibold text-gray-900">
+                  <span className="text-base font-semibold text-gray-900">
                     Hospital{" "}
-                    <span className="text-gray-400 text-sm">(opcional)</span>
+                    <span className="text-gray-400 text-sm font-normal">
+                      (opcional)
+                    </span>
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 min-w-0 ml-3">
                     <span
-                      className={`text-sm truncate max-w-xs ${selectedHospital ? "text-gray-900" : "text-gray-400"}`}
+                      className={`text-sm truncate max-w-[120px] ${selectedHospital ? "text-teal-700 font-medium" : "text-gray-400"}`}
                     >
                       {selectedHospital ? selectedHospital.name : "Selecionar"}
                     </span>
@@ -521,10 +533,10 @@ export function CreateSurgeryRequestWizard({
                           e.stopPropagation();
                           setSelectedHospital(null);
                         }}
-                        className="p-0.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                        className="p-0.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
                       >
                         <svg
-                          className="w-4 h-4"
+                          className="w-3.5 h-3.5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -539,7 +551,7 @@ export function CreateSurgeryRequestWizard({
                       </span>
                     )}
                     <svg
-                      className="w-5 h-5 text-gray-900"
+                      className="w-4 h-4 text-gray-400 flex-shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -554,27 +566,92 @@ export function CreateSurgeryRequestWizard({
                   </span>
                 </button>
               </div>
+
+              {/* Footer — apenas no painel esquerdo no mobile (quando nenhum painel de seleção está aberto) */}
+              <div className="px-4 py-4 border-t border-gray-200 bg-white flex-shrink-0 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {(
+                      [
+                        PRIORITY.LOW,
+                        PRIORITY.MEDIUM,
+                        PRIORITY.HIGH,
+                        PRIORITY.URGENT,
+                      ] as PriorityLevel[]
+                    ).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPriority(p)}
+                        className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${priority === p ? "" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}
+                        style={
+                          priority === p
+                            ? {
+                                backgroundColor: priorityColors[p].bg,
+                                color: priorityColors[p].text,
+                              }
+                            : {}
+                        }
+                      >
+                        {PRIORITY_LABELS[p]}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={
+                      loading ||
+                      isClosing ||
+                      !selectedPatient ||
+                      !selectedManager ||
+                      !selectedProcedure
+                    }
+                    className="w-full px-6 py-3 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+                  >
+                    {loading
+                      ? "Criando..."
+                      : isClosing
+                        ? "Salvando..."
+                        : "Nova solicitação"}
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {/* Right Panel - Will show selection modal content */}
-            <div className="w-full md:w-2/5 bg-white h-full overflow-hidden flex flex-col border-l border-gray-200">
-              {/* Header com botão de fechar - SEMPRE VISÍVEL */}
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-                <h3 className="text-xl font-semibold text-gray-900">
-                  {modalState === "template-select" && "Usar modelo"}
-                  {modalState === "procedure-select" && "Procedimento"}
-                  {modalState === "patient-select" && "Paciente"}
-                  {modalState === "manager-select" && "Gestor"}
-                  {modalState === "healthplan-select" && "Convênio"}
-                  {modalState === "hospital-select" && "Hospital"}
+            {/* RIGHT PANEL — painel de seleção (no mobile, ocupa tela inteira quando ativo) */}
+            <div
+              className={`w-full sm:w-2/5 bg-white flex flex-col sm:border-l border-gray-200 ${isSelectionOpen ? "flex" : "hidden sm:flex"}`}
+            >
+              {/* Header do painel de seleção */}
+              <div className="px-5 py-4 border-b border-gray-200 flex items-center gap-3 flex-shrink-0">
+                {/* Botão voltar — apenas mobile */}
+                <button
+                  onClick={() => setModalState("none")}
+                  className="sm:hidden w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors flex-shrink-0"
+                >
+                  <svg
+                    className="w-5 h-5 text-gray-700"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
+                <h3 className="text-base font-semibold text-gray-900 flex-1">
+                  {selectionTitle[modalState] ?? ""}
                 </h3>
+                {/* Fechar — apenas desktop */}
                 <button
                   onClick={handleClose}
-                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                  className="hidden sm:flex p-1 hover:bg-gray-100 rounded transition-colors"
                 >
-                  <span className="sr-only">Fechar</span>
                   <svg
-                    className="w-6 h-6 text-gray-400"
+                    className="w-5 h-5 text-gray-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -590,17 +667,14 @@ export function CreateSurgeryRequestWizard({
               </div>
 
               {/* Content */}
-              {modalState === "template-select" && (
-                <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {modalState === "template-select" && (
                   <TemplateSelectionContent
                     onSelect={handleTemplateSelected}
                     isActive={modalState === "template-select"}
                   />
-                </div>
-              )}
-
-              {modalState === "procedure-select" && (
-                <div className="flex-1 overflow-y-auto">
+                )}
+                {modalState === "procedure-select" && (
                   <ProcedureSelectionContent
                     onSelect={handleProcedureSelected}
                     onCreateNew={() => setModalState("procedure-create")}
@@ -610,11 +684,8 @@ export function CreateSurgeryRequestWizard({
                     selectedItemId={selectedProcedure?.id}
                     isActive={modalState === "procedure-select"}
                   />
-                </div>
-              )}
-
-              {modalState === "patient-select" && (
-                <div className="flex-1 overflow-y-auto">
+                )}
+                {modalState === "patient-select" && (
                   <PatientSelectionContent
                     onSelect={handlePatientSelected}
                     onCreateNew={() => setModalState("patient-create")}
@@ -624,11 +695,8 @@ export function CreateSurgeryRequestWizard({
                     selectedItemId={selectedPatient?.id}
                     isActive={modalState === "patient-select"}
                   />
-                </div>
-              )}
-
-              {modalState === "hospital-select" && (
-                <div className="flex-1 overflow-y-auto">
+                )}
+                {modalState === "hospital-select" && (
                   <HospitalSelectionContent
                     onSelect={handleHospitalSelected}
                     onDeselect={() => setSelectedHospital(null)}
@@ -639,11 +707,8 @@ export function CreateSurgeryRequestWizard({
                     selectedItemId={selectedHospital?.id}
                     isActive={modalState === "hospital-select"}
                   />
-                </div>
-              )}
-
-              {modalState === "healthplan-select" && (
-                <div className="flex-1 overflow-y-auto">
+                )}
+                {modalState === "healthplan-select" && (
                   <HealthPlanSelectionContent
                     onSelect={handleHealthPlanSelected}
                     onDeselect={() => setSelectedHealthPlan(null)}
@@ -656,116 +721,16 @@ export function CreateSurgeryRequestWizard({
                     selectedItemId={selectedHealthPlan?.id}
                     isActive={modalState === "healthplan-select"}
                   />
-                </div>
-              )}
-
-              {modalState === "manager-select" && (
-                <div className="flex-1 overflow-y-auto">
+                )}
+                {modalState === "manager-select" && (
                   <ManagerSelectionContent
                     onSelect={handleManagerSelected}
                     onCreateNew={() => setModalState("manager-create")}
                     selectedItemId={selectedManager?.id}
                     isActive={modalState === "manager-select"}
                   />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Footer - Full Width - SEMPRE VISÍVEL */}
-          <div className="px-3 py-4 border-t-2 border-gray-200 bg-white flex-shrink-0">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
-                <button
-                  onClick={() => setPriority(PRIORITY.LOW)}
-                  className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                    priority === PRIORITY.LOW
-                      ? ""
-                      : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                  }`}
-                  style={
-                    priority === PRIORITY.LOW
-                      ? {
-                          backgroundColor: priorityColors[PRIORITY.LOW].bg,
-                          color: priorityColors[PRIORITY.LOW].text,
-                        }
-                      : {}
-                  }
-                >
-                  {PRIORITY_LABELS[PRIORITY.LOW]}
-                </button>
-                <button
-                  onClick={() => setPriority(PRIORITY.MEDIUM)}
-                  className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                    priority === PRIORITY.MEDIUM
-                      ? ""
-                      : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                  }`}
-                  style={
-                    priority === PRIORITY.MEDIUM
-                      ? {
-                          backgroundColor: priorityColors[PRIORITY.MEDIUM].bg,
-                          color: priorityColors[PRIORITY.MEDIUM].text,
-                        }
-                      : {}
-                  }
-                >
-                  {PRIORITY_LABELS[PRIORITY.MEDIUM]}
-                </button>
-                <button
-                  onClick={() => setPriority(PRIORITY.HIGH)}
-                  className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                    priority === PRIORITY.HIGH
-                      ? ""
-                      : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                  }`}
-                  style={
-                    priority === PRIORITY.HIGH
-                      ? {
-                          backgroundColor: priorityColors[PRIORITY.HIGH].bg,
-                          color: priorityColors[PRIORITY.HIGH].text,
-                        }
-                      : {}
-                  }
-                >
-                  {PRIORITY_LABELS[PRIORITY.HIGH]}
-                </button>
-                <button
-                  onClick={() => setPriority(PRIORITY.URGENT)}
-                  className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                    priority === PRIORITY.URGENT
-                      ? ""
-                      : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                  }`}
-                  style={
-                    priority === PRIORITY.URGENT
-                      ? {
-                          backgroundColor: priorityColors[PRIORITY.URGENT].bg,
-                          color: priorityColors[PRIORITY.URGENT].text,
-                        }
-                      : {}
-                  }
-                >
-                  {PRIORITY_LABELS[PRIORITY.URGENT]}
-                </button>
+                )}
               </div>
-              <button
-                onClick={handleSubmit}
-                disabled={
-                  loading ||
-                  isClosing ||
-                  !selectedPatient ||
-                  !selectedManager ||
-                  !selectedProcedure
-                }
-                className="w-full sm:w-auto px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
-              >
-                {loading
-                  ? "Criando..."
-                  : isClosing
-                    ? "Salvando..."
-                    : "Nova solicitação"}
-              </button>
             </div>
           </div>
         </div>
@@ -877,12 +842,12 @@ function ProcedureSelectionContent({
             placeholder="Procedimento"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 pl-11 pr-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs text-gray-400 placeholder:text-gray-400"
+            className="w-full h-10 pl-11 pr-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs text-gray-400 placeholder:text-gray-400"
           />
         </div>
         <button
           onClick={onCreateNew}
-          className="h-10 px-4 bg-white border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm shadow-sm"
+          className="h-10 px-4 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm shadow-sm"
         >
           Novo
         </button>
@@ -990,12 +955,12 @@ function PatientSelectionContent({
             placeholder="Paciente"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <button
           onClick={onCreateNew}
-          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm"
+          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm"
         >
           Novo
         </button>
@@ -1103,12 +1068,12 @@ function HospitalSelectionContent({
             placeholder="Hospital"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <button
           onClick={onCreateNew}
-          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm"
+          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm"
         >
           Novo
         </button>
@@ -1221,12 +1186,12 @@ function HealthPlanSelectionContent({
             placeholder="Convênio"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <button
           onClick={onCreateNew}
-          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm"
+          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm"
         >
           Novo
         </button>
@@ -1332,14 +1297,14 @@ function ManagerSelectionContent({
             placeholder="Gestor"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
         {onCreateNew && (
           <button
             type="button"
             onClick={onCreateNew}
-            className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm"
+            className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm"
           >
             Novo
           </button>
@@ -1437,7 +1402,7 @@ function TemplateSelectionContent({
           placeholder="Buscar modelo..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+          className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
         />
       </div>
 

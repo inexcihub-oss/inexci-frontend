@@ -306,18 +306,13 @@ export function MedicalReportEditor({
   }, [solicitacao]);
 
   // ── Carrega assinatura do médico ─────────────────────────────────────────
+  // Usa exclusivamente a assinatura do médico vinculado à solicitação.
+  // O backend já converte o path para URL assinada em findOne().
   useEffect(() => {
-    userService
-      .getProfile()
-      .then((profile: any) => {
-        const url =
-          profile?.doctor_profile?.signature_url ??
-          profile?.signature_url ??
-          null;
-        setSignatureUrl(url || null);
-      })
-      .catch(() => {});
-  }, []);
+    const doctor = (solicitacao as any)?.doctor;
+    const url: string | null = doctor?.signature_url ?? null;
+    setSignatureUrl(url);
+  }, [solicitacao]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -568,21 +563,21 @@ export function MedicalReportEditor({
   // ── Classes utilitárias ───────────────────────────────────────────────────
 
   const inputClass = (editing: boolean) =>
-    `w-full px-3 py-2 text-sm rounded-lg border outline-none transition-colors ${
+    `w-full px-3 py-2 text-sm rounded-xl border outline-none transition-colors ${
       editing
         ? "bg-white text-gray-900 border-teal-600 focus:ring-2 focus:ring-teal-700 focus:border-teal-600"
         : "bg-gray-50 text-gray-400 border-gray-100 cursor-default select-none"
     }`;
 
   const textareaClass = (editing: boolean) =>
-    `w-full h-40 px-3 py-2 text-sm border rounded-lg outline-none resize-none transition-colors ${
+    `w-full h-40 px-3 py-2 text-sm border rounded-xl outline-none resize-none transition-colors ${
       editing
         ? "bg-white text-gray-900 border-teal-600 focus:ring-2 focus:ring-teal-700 focus:border-teal-600"
         : "bg-gray-50 text-gray-400 border-gray-100 cursor-default select-none"
     }`;
 
   const editarBtnClass =
-    "flex-shrink-0 flex items-center px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-lg text-sm font-semibold text-black hover:bg-gray-50 transition-colors";
+    "flex-shrink-0 flex items-center px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-xl text-sm font-semibold text-black hover:bg-gray-50 transition-colors";
 
   // ── Progresso do Laudo ───────────────────────────────────────────────────
   const p = solicitacao?.patient;
@@ -615,12 +610,6 @@ export function MedicalReportEditor({
       optional: true,
     },
     {
-      key: "conduct",
-      label: "Conduta",
-      complete: !!conduct.trim(),
-      optional: true,
-    },
-    {
       key: "signed",
       label: "Laudo Assinado",
       complete: signedReports.length > 0 || !!signatureUrl,
@@ -635,10 +624,10 @@ export function MedicalReportEditor({
 
   return (
     <>
-      <div className="flex flex-col gap-4 w-full px-6 py-6">
+      <div className="flex flex-col gap-3 w-full py-4">
         {/* ─── Progresso do Laudo ──────────────────────────────────────────── */}
         <div className="flex flex-col gap-3 w-full bg-white border border-gray-200 rounded-2xl p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
             <p className="text-sm font-semibold text-gray-900">
               Progresso do Laudo
             </p>
@@ -701,9 +690,9 @@ export function MedicalReportEditor({
         </div>
 
         {/* ─── Cards do laudo ───────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4 w-full">
+        <div className="flex flex-col gap-3 w-full">
           {/* ── IDENTIFICAÇÃO DO PACIENTE ─────────────────────────────────── */}
-          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
+          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-2xl p-4">
             <div className="flex items-center justify-between w-full gap-4">
               <h3 className="text-base font-bold text-black leading-loose">
                 IDENTIFICAÇÃO DO PACIENTE
@@ -711,7 +700,9 @@ export function MedicalReportEditor({
               {/* Botão navega para a tela de detalhes do paciente */}
               <button
                 onClick={() =>
-                  router.push(`/pacientes/${solicitacao?.patient?.id}`)
+                  router.push(
+                    `/pacientes/${solicitacao?.patient?.id}?returnUrl=${encodeURIComponent(`/solicitacao/${solicitacao?.id}?tab=laudo`)}`,
+                  )
                 }
                 className={editarBtnClass}
               >
@@ -720,7 +711,7 @@ export function MedicalReportEditor({
             </div>
 
             {!patientComplete && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
                 <svg
                   className="w-4 h-4 flex-shrink-0"
                   viewBox="0 0 20 20"
@@ -738,7 +729,7 @@ export function MedicalReportEditor({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
               {/* Nome */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-semibold text-black">
@@ -814,7 +805,7 @@ export function MedicalReportEditor({
           </div>
 
           {/* ── HISTÓRICO E DIAGNÓSTICO ───────────────────────────────────── */}
-          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
+          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-2xl p-4">
             <div className="flex items-center justify-between w-full gap-4">
               <h3 className="text-base font-bold text-black leading-loose">
                 HISTÓRICO E DIAGNÓSTICO
@@ -831,14 +822,14 @@ export function MedicalReportEditor({
                   <button
                     onClick={handleCancel}
                     disabled={isSaving}
-                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-teal-700 rounded-lg text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-teal-700 rounded-xl text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
                   >
                     {isSaving ? (
                       <span className="flex items-center gap-2">
@@ -863,7 +854,7 @@ export function MedicalReportEditor({
           </div>
 
           {/* ── IMAGENS A SEREM ANEXADAS AO LAUDO ───────────────────────────────────────── */}
-          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
+          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-2xl p-4">
             <h3 className="text-base font-bold text-black leading-loose">
               IMAGENS A SEREM ANEXADAS AO LAUDO
             </h3>
@@ -880,7 +871,7 @@ export function MedicalReportEditor({
             <button
               type="button"
               onClick={() => imagesInputRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-2 w-full py-2 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+              className="flex flex-col items-center justify-center gap-2 w-full py-2 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-200 transition-colors"
             >
               {isUploadingImages ? (
                 <Spinner className="w-8 h-8 text-gray-400" />
@@ -921,7 +912,7 @@ export function MedicalReportEditor({
                 {imageUploadItems.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg"
+                    className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-xl"
                   >
                     <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
                       {item.name}{" "}
@@ -929,7 +920,7 @@ export function MedicalReportEditor({
                         ({formatBytes(item.size)})
                       </span>
                     </span>
-                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                    <div className="w-20 sm:w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
                       <div
                         className="h-full bg-teal-600 rounded-full transition-all duration-300"
                         style={{ width: `${item.progress}%` }}
@@ -942,7 +933,7 @@ export function MedicalReportEditor({
                 {examImages.map((doc: any) => (
                   <div
                     key={doc.id}
-                    className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg"
+                    className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-xl"
                   >
                     <a
                       href={doc.uri}
@@ -952,7 +943,7 @@ export function MedicalReportEditor({
                     >
                       {doc.name}
                     </a>
-                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                    <div className="w-20 sm:w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
                       <div className="h-full w-full bg-teal-600 rounded-full" />
                     </div>
                     <button
@@ -974,57 +965,8 @@ export function MedicalReportEditor({
             )}
           </div>
 
-          {/* ── CONDUTA ──────────────────────────────────────────────────── */}
-          <div className="flex flex-col items-end gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
-            <div className="flex items-center justify-between w-full gap-4">
-              <h3 className="text-base font-bold text-black leading-loose">
-                CONDUTA
-              </h3>
-              {!isEditingConduct ? (
-                <button
-                  onClick={() => setIsEditingConduct(true)}
-                  className={editarBtnClass}
-                >
-                  Editar
-                </button>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handleCancel}
-                    disabled={isSaving}
-                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex-shrink-0 flex items-center justify-center h-8 px-4 bg-teal-700 rounded-lg text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
-                  >
-                    {isSaving ? (
-                      <span className="flex items-center gap-2">
-                        <Spinner className="w-4 h-4 text-white" />
-                        Salvando...
-                      </span>
-                    ) : (
-                      "Salvar"
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <textarea
-              value={conduct}
-              readOnly={!isEditingConduct}
-              onChange={(e) => setConduct(e.target.value)}
-              placeholder="Descreva a conduta cirúrgica proposta..."
-              className={textareaClass(isEditingConduct)}
-            />
-          </div>
-
           {/* ─── Laudo Assinado ──────────────────────────────────────────────── */}
-          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-3xl p-4">
+          <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-2xl p-4">
             <h3 className="text-base font-bold text-black leading-loose">
               LAUDO ASSINADO
             </h3>
@@ -1037,7 +979,7 @@ export function MedicalReportEditor({
 
               {/* Estado vazio — sem assinatura e sem upload em curso */}
               {!signatureUploadItem && !signatureUrl && (
-                <div className="flex items-center gap-2 w-full py-3 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-lg">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full py-3 px-4 sm:pl-4 sm:pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-xl">
                   <p className="text-sm text-gray-500 leading-snug flex-1">
                     Adicione a assinatura do médico para incluí-la no laudo.
                   </p>
@@ -1051,7 +993,7 @@ export function MedicalReportEditor({
                   <button
                     type="button"
                     onClick={() => signatureInputRef.current?.click()}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-lg text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-xl text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
                   >
                     Selecionar arquivo
                   </button>
@@ -1060,14 +1002,14 @@ export function MedicalReportEditor({
 
               {/* Em upload */}
               {signatureUploadItem && (
-                <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg">
+                <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-xl">
                   <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
                     {signatureUploadItem.name}{" "}
                     <span className="font-normal text-gray-400">
                       ({formatBytes(signatureUploadItem.size)})
                     </span>
                   </span>
-                  <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                  <div className="w-20 sm:w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
                     <div
                       className="h-full bg-teal-600 rounded-full transition-all duration-300"
                       style={{ width: `${signatureUploadItem.progress}%` }}
@@ -1079,7 +1021,7 @@ export function MedicalReportEditor({
 
               {/* Assinatura já salva */}
               {!signatureUploadItem && signatureUrl && (
-                <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg">
+                <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-xl">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={signatureUrl}
@@ -1089,7 +1031,7 @@ export function MedicalReportEditor({
                   <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
                     Assinatura
                   </span>
-                  <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                  <div className="w-20 sm:w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
                     <div className="h-full w-full bg-teal-600 rounded-full" />
                   </div>
                   <input
@@ -1120,7 +1062,7 @@ export function MedicalReportEditor({
                 Arquivo Assinado
               </p>
               {!signedUploadItem && signedReports.length === 0 && (
-                <div className="flex items-center gap-2 w-full py-3 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-lg">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full py-3 px-4 sm:pl-4 sm:pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-xl">
                   <p className="text-sm text-gray-500 leading-snug flex-1">
                     Após gerar e assinar o laudo, insira o arquivo assinado
                     aqui.
@@ -1135,7 +1077,7 @@ export function MedicalReportEditor({
                   <button
                     type="button"
                     onClick={() => signedReportInputRef.current?.click()}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-lg text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-xl text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
                   >
                     <span>Selecionar arquivo</span>
                   </button>
@@ -1145,14 +1087,14 @@ export function MedicalReportEditor({
                 <div className="flex flex-col gap-2">
                   {/* Em envio */}
                   {signedUploadItem && (
-                    <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg">
+                    <div className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-xl">
                       <span className="flex-1 text-sm font-semibold text-gray-900 truncate">
                         {signedUploadItem.name}{" "}
                         <span className="font-normal text-gray-400">
                           ({formatBytes(signedUploadItem.size)})
                         </span>
                       </span>
-                      <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                      <div className="w-20 sm:w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
                         <div
                           className="h-full bg-teal-600 rounded-full transition-all duration-300"
                           style={{ width: `${signedUploadItem.progress}%` }}
@@ -1165,7 +1107,7 @@ export function MedicalReportEditor({
                   {signedReports.map((doc: any) => (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-lg"
+                      className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-xl"
                     >
                       <a
                         href={doc.uri}
@@ -1175,7 +1117,7 @@ export function MedicalReportEditor({
                       >
                         {doc.name}
                       </a>
-                      <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
+                      <div className="w-20 sm:w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
                         <div className="h-full w-full bg-teal-600 rounded-full" />
                       </div>
                       <button
@@ -1203,24 +1145,24 @@ export function MedicalReportEditor({
         <hr className="border-gray-200" />
 
         {/* ─── Botões de ação ───────────────────────────────────────────────── */}
-        <div className="flex items-center justify-end gap-2 w-full">
+        <div className="flex items-center justify-end gap-2 w-full flex-wrap">
           {(() => {
             const canPreview =
               !!patientData.name.trim() && !!historyAndDiagnosis.trim();
-            const canExport = canPreview && !!conduct.trim();
+            const canExport = canPreview;
             return (
               <>
                 <button
                   onClick={() => setShowPreview(true)}
                   disabled={!canPreview}
-                  className="flex items-center h-10 px-4 text-sm font-semibold text-teal-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  className="flex items-center h-10 px-4 text-sm font-semibold text-teal-700 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 >
                   Pré-visualizar
                 </button>
                 <button
                   onClick={handleExportPdf}
                   disabled={isExportingPdf || !canExport}
-                  className="flex items-center h-10 px-4 bg-white border border-gray-200 shadow-sm text-sm font-semibold text-teal-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center h-10 px-4 bg-white border border-gray-200 shadow-sm text-sm font-semibold text-teal-700 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {isExportingPdf ? "Exportando..." : "Exportar PDF"}
                 </button>

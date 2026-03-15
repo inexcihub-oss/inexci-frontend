@@ -53,10 +53,13 @@ export function RescheduleModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={handleClose}
+      />
 
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -92,7 +95,7 @@ export function RescheduleModal({
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
               disabled={isSaving}
-              className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+              className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
             />
           </div>
         </div>
@@ -102,14 +105,14 @@ export function RescheduleModal({
           <button
             onClick={handleClose}
             disabled={isSaving}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={!newDate.trim() || isSaving}
-            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? "Salvando..." : "Reagendar"}
           </button>

@@ -238,7 +238,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
     return (
       <div
         onClick={handleCardClick}
-        className={`relative bg-white border border-gray-200 rounded-lg p-4 cursor-pointer transition-shadow hover:shadow-md ${
+        className={`relative bg-white border border-gray-200 rounded-2xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.99] ${
           isDragging ? "opacity-50" : ""
         }`}
       >
@@ -246,14 +246,14 @@ export const ProcedureCard = memo<ProcedureCardProps>(
         <div className="absolute top-3 right-3" ref={dropdownRef}>
           <button
             onClick={handleMenuClick}
-            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center -m-1"
           >
             <MoreHorizontal className="w-5 h-5 text-gray-400" />
           </button>
 
           {/* Dropdown de ações contextuais */}
           {showActions && contextualActions.length > 0 && (
-            <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-40">
+            <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-44">
               {contextualActions.map((action, index) => (
                 <button
                   key={index}
@@ -261,7 +261,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
                     e.stopPropagation();
                     handleActionClick(action.action);
                   }}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors ${action.color}`}
+                  className={`w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-2.5 transition-colors min-h-[44px] ${action.color}`}
                 >
                   <action.icon className="w-4 h-4" />
                   <span>{action.label}</span>
@@ -319,7 +319,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
         <div className="flex items-center gap-2 flex-wrap mb-2">
           {/* Tag Prioridade */}
           <span
-            className="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded"
+            className="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg"
             style={{
               backgroundColor: priorityColors[procedure.priority].bg,
               color: priorityColors[procedure.priority].text,
@@ -331,7 +331,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
           {/* Badge Pendências ao lado da prioridade */}
           {procedure.pendenciesCount && procedure.pendenciesCount > 0 ? (
             <span
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg"
               style={{ backgroundColor: "#F0E6E4", color: "#E34935" }}
             >
               <svg
@@ -367,7 +367,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
             procedure.status !== "Finalizada" &&
             procedure.status !== "Encerrada" && (
               <span
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg"
                 style={{ backgroundColor: "#E6F4EA", color: "#137333" }}
               >
                 <svg

@@ -75,11 +75,11 @@ export function SchedulingSection({
   // ── Status 4 — Em Agendamento ─────────────────────────────────────────────
   if (statusNum === 4) {
     return (
-      <div className="border border-neutral-100 rounded-lg overflow-hidden">
+      <div className="border border-neutral-100 rounded-xl overflow-hidden">
         {/* Cabeçalho */}
-        <div className="flex items-center justify-between pr-4 border-b border-neutral-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pr-4 border-b border-neutral-100">
           {/* Título + badge */}
-          <div className="flex items-center gap-3 px-3 py-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 py-3 sm:py-4">
             <h3 className="text-sm font-semibold text-black">Agendamento</h3>
             {dateOptions.length > 0 && (
               <span className="bg-[#EBF3FF] text-[#1D7AFC] text-xs font-semibold px-2 py-1 rounded-sm leading-none">
@@ -107,7 +107,7 @@ export function SchedulingSection({
               adicionar.
             </p>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {dateOptions.map((date, index) => {
                 const isSelected = pendingSelectedIndex === index;
                 return (
@@ -201,7 +201,7 @@ export function SchedulingSection({
   // ── Status 5 — Agendada ───────────────────────────────────────────────────
   if (statusNum === 5) {
     return (
-      <div className="border border-neutral-100 rounded-lg overflow-hidden">
+      <div className="border border-neutral-100 rounded-xl overflow-hidden">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between pr-4 border-b border-neutral-100">
           <div className="flex items-center gap-3 px-3 py-4">
@@ -218,20 +218,20 @@ export function SchedulingSection({
         {/* Data confirmada */}
         {surgeryDate ? (
           <div className="p-4">
-            <div className="flex border border-neutral-100 rounded-lg overflow-hidden">
+            <div className="flex flex-col sm:flex-row border border-neutral-100 rounded-xl overflow-hidden">
               {/* Data */}
-              <div className="flex-1 flex flex-col items-center gap-2 px-6 py-5 bg-neutral-50">
+              <div className="flex-1 flex flex-col items-center gap-2 px-6 py-4 sm:py-5 bg-neutral-50">
                 <span className="text-sm text-black/50">Data</span>
-                <span className="text-2xl font-bold text-black">
+                <span className="text-xl sm:text-2xl font-bold text-black">
                   {formatDate(surgeryDate)}
                 </span>
               </div>
-              {/* Divisor vertical */}
-              <div className="w-px bg-neutral-100 self-stretch" />
+              {/* Divisor */}
+              <div className="h-px sm:h-auto sm:w-px bg-neutral-100" />
               {/* Horário */}
-              <div className="flex-1 flex flex-col items-center gap-2 px-6 py-5 bg-neutral-50">
+              <div className="flex-1 flex flex-col items-center gap-2 px-6 py-4 sm:py-5 bg-neutral-50">
                 <span className="text-sm text-black/50">Horário</span>
-                <span className="text-2xl font-bold text-black">
+                <span className="text-xl sm:text-2xl font-bold text-black">
                   {formatTime(surgeryDate)}
                 </span>
               </div>

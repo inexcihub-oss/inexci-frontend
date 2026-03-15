@@ -253,7 +253,7 @@ export function SendRequestModal({
   // ---- STEP RENDERS ----
 
   const renderStep1 = () => (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto min-h-0">
       <div className="flex flex-col gap-4 p-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -264,7 +264,7 @@ export function SendRequestModal({
             {checklist.map((item) => (
               <div
                 key={item.key}
-                className="flex items-center justify-between px-5 py-4 rounded-lg border border-gray-200"
+                className="flex items-center justify-between px-5 py-4 rounded-xl border border-gray-200"
               >
                 <span className="flex-1 text-sm font-semibold text-gray-900">
                   {item.label}
@@ -280,30 +280,6 @@ export function SendRequestModal({
                 </span>
               </div>
             ))}
-
-            <div className="flex items-center gap-4 p-4 rounded-lg bg-blue-50">
-              <div className="flex flex-col gap-1 flex-1">
-                <span className="text-sm font-semibold text-blue-600">
-                  Deseja salvar a solicitação como modelo?
-                </span>
-                <span className="text-sm font-normal text-blue-500">
-                  Salve configuração de documentos, exames, OPME e TUSS para
-                  futuras solicitações semelhantes.
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSaveAsTemplate(!saveAsTemplate)}
-                disabled={!canProceed()}
-                className={`shrink-0 px-5 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                  saveAsTemplate
-                    ? "bg-blue-600 border-blue-600 text-white"
-                    : "bg-blue-50 border-blue-500 text-blue-600 hover:bg-blue-100"
-                }`}
-              >
-                Salvar modelo
-              </button>
-            </div>
           </>
         )}
       </div>
@@ -311,7 +287,7 @@ export function SendRequestModal({
   );
 
   const renderStep2 = () => (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto min-h-0">
       <div className="flex flex-col gap-4 p-6">
         <p className="text-sm text-gray-900">
           Como deseja enviar a solicitação?
@@ -320,7 +296,7 @@ export function SendRequestModal({
         <button
           type="button"
           onClick={() => setSendMethod("download")}
-          className={`w-full flex items-start gap-4 p-6 rounded-lg border text-left transition-colors ${
+          className={`w-full flex items-start gap-4 p-6 rounded-xl border text-left transition-colors ${
             sendMethod === "download"
               ? "border-teal-500 bg-teal-50"
               : "border-gray-200 hover:border-gray-300"
@@ -341,7 +317,7 @@ export function SendRequestModal({
         <button
           type="button"
           onClick={() => setSendMethod("email")}
-          className={`w-full flex items-start gap-4 p-6 rounded-lg border text-left transition-colors ${
+          className={`w-full flex items-start gap-4 p-6 rounded-xl border text-left transition-colors ${
             sendMethod === "email"
               ? "border-teal-500 bg-teal-50"
               : "border-gray-200 hover:border-gray-300"
@@ -362,12 +338,12 @@ export function SendRequestModal({
   );
 
   const renderStep3 = () => (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto min-h-0">
       <div className="flex flex-col gap-4 p-6">
         {/* De */}
         <div className="flex flex-col gap-1">
           <label className="text-sm font-semibold text-gray-900">De:</label>
-          <div className="flex items-center px-3 py-2 rounded-lg border border-gray-200 bg-white">
+          <div className="flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white">
             <span className="text-sm text-gray-900">inexci@mail.com</span>
           </div>
         </div>
@@ -379,7 +355,7 @@ export function SendRequestModal({
             Para incluir mais de um e-mail separe-os com ponto e vírgula (;)
           </p>
           <div
-            className="flex flex-wrap items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 bg-white min-h-10 cursor-text"
+            className="flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white min-h-10 cursor-text"
             onClick={() => document.getElementById("send-email-input")?.focus()}
           >
             {emailTags.map((tag) => (
@@ -423,7 +399,7 @@ export function SendRequestModal({
             type="text"
             value={emailSubject}
             onChange={(e) => setEmailSubject(e.target.value)}
-            className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
 
@@ -437,14 +413,14 @@ export function SendRequestModal({
             onChange={(e) => setEmailMessage(e.target.value)}
             rows={4}
             placeholder="Digite sua mensagem..."
-            className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+            className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
           />
         </div>
 
         {/* Anexos */}
         <div className="flex flex-col gap-2">
           <label className="text-sm font-semibold text-gray-900">Anexos</label>
-          <div className="flex items-center justify-between px-4 py-4 rounded-lg border border-dashed border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between px-4 py-4 rounded-xl border border-dashed border-gray-200 bg-gray-50">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 border border-gray-200">
                 <svg
@@ -468,7 +444,7 @@ export function SendRequestModal({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
             >
               Selecionar arquivo
             </button>
@@ -483,7 +459,7 @@ export function SendRequestModal({
           {attachments.map((file, index) => (
             <div
               key={index}
-              className="flex items-center justify-between px-4 py-2 rounded-lg border border-gray-200 bg-white"
+              className="flex items-center justify-between px-4 py-2 rounded-xl border border-gray-200 bg-white"
             >
               <span className="text-sm font-semibold text-gray-900">
                 {file.name}{" "}
@@ -506,7 +482,7 @@ export function SendRequestModal({
   );
 
   const renderStep4 = () => (
-    <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
+    <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 min-h-0">
       <div className="flex items-center justify-center w-20 h-20 rounded-full bg-green-100">
         <CheckCircle className="w-10 h-10 text-green-600" />
       </div>
@@ -520,7 +496,7 @@ export function SendRequestModal({
             : "E-mail enviado com sucesso"}
         </span>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-1 w-full px-4 py-4 rounded-lg bg-blue-50">
+      <div className="flex flex-wrap items-center justify-center gap-1 w-full px-4 py-4 rounded-xl bg-blue-50">
         <span className="text-sm font-semibold text-purple-600">
           Status atualizado:
         </span>
@@ -540,7 +516,7 @@ export function SendRequestModal({
         <div className="px-6 py-4 border-t-2 border-gray-200">
           <button
             onClick={handleClose}
-            className="w-full py-3 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors"
+            className="w-full py-3 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors"
           >
             Fechar
           </button>
@@ -554,7 +530,7 @@ export function SendRequestModal({
           <button
             type="button"
             onClick={() => setIsDocumentPreviewOpen(true)}
-            className="flex items-center gap-1.5 h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1.5 h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
           >
             Visualizar documento
             <ExternalLink className="w-3.5 h-3.5" />
@@ -566,7 +542,7 @@ export function SendRequestModal({
         <div className="flex items-center gap-2">
           <button
             onClick={currentStep === 1 ? handleClose : handleBack}
-            className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
             disabled={isSending}
           >
             Cancelar
@@ -578,7 +554,7 @@ export function SendRequestModal({
               (currentStep === 2 && !sendMethod) ||
               isSending
             }
-            className="px-6 py-2.5 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSending ? (
               <span className="flex items-center gap-2">
@@ -629,24 +605,21 @@ export function SendRequestModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
         onClick={currentStep !== 4 ? handleClose : undefined}
       />
-      <div
-        className="relative bg-white rounded-lg shadow-xl flex flex-col"
-        style={{ width: "640px", height: "650px" }}
-      >
+      <div className="relative bg-white rounded-2xl shadow-xl flex flex-col w-full max-w-[640px] h-[650px] max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-200 shrink-0">
-          <h2 className="flex-1 text-lg font-semibold text-gray-900">
+        <div className="flex items-center gap-2 px-4 sm:px-6 py-4 border-b border-gray-200 shrink-0">
+          <h2 className="flex-1 text-base sm:text-lg font-semibold text-gray-900">
             {getTitle()}
           </h2>
           {currentStep !== 4 && (
             <button
               onClick={handleClose}
-              className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 transition-colors"
+              className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 active:scale-[0.95] transition-all"
               disabled={isSending}
             >
               <X className="w-4 h-4" />

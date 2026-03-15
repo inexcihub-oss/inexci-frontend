@@ -6,20 +6,98 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
+    /* Safe area insets para dispositivos com notch */
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+    /* Bottom nav height */
+    --bottom-nav-height: 4.5rem;
   }
 
   * {
     @apply border-gray-200;
+    /* Previne highlight azul no tap (mobile) */
+    -webkit-tap-highlight-color: transparent;
   }
 
   html,
   body {
     height: 100%;
     overflow: hidden;
+    /* Previne zoom indesejado no iOS ao focar inputs */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html {
+    /* Scroll suave para navegação por âncoras */
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-gray-50 text-gray-900;
+    /* Permite safe areas em dispositivos com notch */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0
+      env(safe-area-inset-left);
+  }
+
+  /* Previne zoom em inputs no iOS (font-size < 16px causa zoom) */
+  @media screen and (max-width: 767px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="search"],
+    input[type="date"],
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+@layer components {
+  /* Touch target mínimo de 44px (Apple HIG / Material Design) */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Card mobile-friendly com bordas mais arredondadas */
+  .mobile-card {
+    @apply rounded-2xl border border-neutral-100 bg-white shadow-sm
+           transition-shadow duration-200
+           active:shadow-none;
+  }
+
+  /* Container com safe area na parte inferior (para bottom nav) */
+  .safe-bottom {
+    padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+  }
+
+  /* Bottom sheet base style */
+  .bottom-sheet {
+    @apply fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl
+           animate-slide-up;
+    padding-bottom: env(safe-area-inset-bottom);
+    max-height: 90vh;
+    max-height: 90dvh;
+  }
+
+  /* Drag handle para bottom sheets */
+  .drag-handle {
+    @apply w-10 h-1 bg-neutral-200 rounded-full mx-auto mt-3 mb-2;
+  }
+
+  /* Active press feedback para botões e cards interativos */
+  .press-feedback {
+    @apply transition-transform duration-100 active:scale-[0.98];
+  }
+
+  /* Backdrop blur overlay */
+  .overlay-blur {
+    @apply fixed inset-0 bg-black/40 backdrop-blur-sm animate-fade-in;
   }
 }
 
@@ -59,14 +137,25 @@
     background: #a0aec0;
   }
 
+  /* Esconder scrollbar no mobile para scroll horizontal limpo */
+  @media screen and (max-width: 767px) {
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
+    * {
+      scrollbar-width: none;
+    }
+  }
+
   /* Hide scrollbar utility class */
   .scrollbar-hide {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
   .scrollbar-hide::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    display: none;
   }
 
   /* Table resize handle styling */
@@ -79,5 +168,25 @@
     cursor: col-resize;
     user-select: none;
     touch-action: none;
+  }
+
+  /* Utilidade para forçar hardware acceleration (smooth scroll) */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  /* Snap scroll utilities melhoradas */
+  .snap-x-mandatory {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Line clamp utilities */
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }

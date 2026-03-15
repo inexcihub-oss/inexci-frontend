@@ -6,7 +6,9 @@ import { uploadService } from "@/services/upload.service";
 import { useToast } from "@/hooks/useToast";
 
 interface FileUploadProps {
-  onUploadComplete?: (files: Array<{ url: string; path: string; originalName: string }>) => void;
+  onUploadComplete?: (
+    files: Array<{ url: string; path: string; originalName: string }>,
+  ) => void;
   maxFiles?: number;
   acceptedFileTypes?: string;
   folder?: string;
@@ -24,7 +26,9 @@ export function FileUpload({
 }: FileUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{ url: string; path: string; originalName: string }>>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<
+    Array<{ url: string; path: string; originalName: string }>
+  >([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
@@ -59,7 +63,10 @@ export function FileUpload({
 
       if (selectedFiles.length === 1) {
         // Upload único
-        const response = await uploadService.uploadSingle(selectedFiles[0], folder);
+        const response = await uploadService.uploadSingle(
+          selectedFiles[0],
+          folder,
+        );
         result = [
           {
             url: response.data.url,
@@ -69,12 +76,18 @@ export function FileUpload({
         ];
       } else {
         // Upload múltiplo
-        const response = await uploadService.uploadMultiple(selectedFiles, folder);
+        const response = await uploadService.uploadMultiple(
+          selectedFiles,
+          folder,
+        );
         result = response.data;
       }
 
       setUploadedFiles(result);
-      showToast(`${result.length} arquivo(s) enviado(s) com sucesso!`, "success");
+      showToast(
+        `${result.length} arquivo(s) enviado(s) com sucesso!`,
+        "success",
+      );
 
       // Callback com os arquivos enviados
       if (onUploadComplete) {
@@ -87,7 +100,10 @@ export function FileUpload({
         fileInputRef.current.value = "";
       }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || "Erro ao fazer upload";
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Erro ao fazer upload";
       showToast(errorMessage, "error");
     } finally {
       setUploading(false);
@@ -99,13 +115,13 @@ export function FileUpload({
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
   return (
     <div className="w-full space-y-4">
       {/* Área de seleção de arquivos */}
-      <div className="border-2 border-dashed border-neutral-200 rounded-lg p-6 hover:border-neutral-300 transition-colors">
+      <div className="border-2 border-dashed border-neutral-200 rounded-2xl p-6 md:p-8 hover:border-neutral-300 transition-colors">
         <div className="flex flex-col items-center justify-center space-y-3">
           <Upload className="h-10 w-10 text-neutral-400" />
           <div className="text-center">
@@ -145,7 +161,7 @@ export function FileUpload({
             {selectedFiles.map((file, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-100"
+                className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100"
               >
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
                   <File className="h-5 w-5 text-neutral-400 flex-shrink-0" />
@@ -173,7 +189,7 @@ export function FileUpload({
           <button
             onClick={handleUpload}
             disabled={uploading || disabled}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
           >
             {uploading ? (
               <>
@@ -200,7 +216,7 @@ export function FileUpload({
             {uploadedFiles.map((file, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-100"
+                className="flex items-center justify-between p-3 bg-green-50 rounded-xl border border-green-100"
               >
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
                   <File className="h-5 w-5 text-green-600 flex-shrink-0" />

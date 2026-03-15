@@ -9,10 +9,39 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Faz o parse de uma string de data sem deslocamento de fuso horário.
+ * Strings no formato YYYY-MM-DD são interpretadas como horário local (não UTC).
+ */
+export function parseLocalDate(dateStr: string | Date): Date {
+  if (dateStr instanceof Date) return dateStr;
+  const m = (dateStr as string).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  return new Date(dateStr as string);
+}
+
+/**
+ * Converte uma string YYYY-MM-DD (de um <input type="date">) para ISO 8601
+ * usando horário local, evitando deslocamento por UTC.
+ */
+export function localDateToISO(dateStr: string): string {
+  const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return new Date(dateStr).toISOString();
+  return new Date(+m[1], +m[2] - 1, +m[3]).toISOString();
+}
+
+/**
+ * Retorna a data de hoje no formato YYYY-MM-DD (horário local).
+ */
+export function getTodayString(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
  * Formata data no formato brasileiro
  */
 export function formatDate(date: string | Date): string {
-  const d = new Date(date);
+  const d = parseLocalDate(date);
   return new Intl.DateTimeFormat("pt-BR").format(d);
 }
 
@@ -20,7 +49,7 @@ export function formatDate(date: string | Date): string {
  * Formata data no formato brasileiro com mês abreviado
  */
 export function formatDateWithMonth(dateString: string): string {
-  const date = new Date(dateString);
+  const date = parseLocalDate(dateString);
   return date
     .toLocaleDateString("pt-BR", {
       day: "2-digit",

@@ -35,9 +35,9 @@ export const KanbanColumn = memo<KanbanColumnProps>(
     const statusIcon = statusIconMap[status];
 
     return (
-      <div className="flex flex-col flex-shrink-0 w-80 h-full">
+      <div className="flex flex-col flex-shrink-0 w-[82vw] sm:w-80 h-full snap-start">
         {/* Header da coluna */}
-        <div className="flex items-center gap-2 px-4 py-3 bg-gray-100 border-b border-gray-200 rounded-t-lg">
+        <div className="flex items-center gap-2 px-4 py-3.5 bg-gray-100 border-b border-gray-200 rounded-t-2xl">
           <Image
             src={statusIcon}
             alt={status}
@@ -48,7 +48,7 @@ export const KanbanColumn = memo<KanbanColumnProps>(
           <h2 className="font-medium text-sm text-gray-900 leading-normal">
             {title}
           </h2>
-          <div className="flex items-center justify-center min-w-6 h-6 px-1 bg-white border border-gray-200 rounded-full">
+          <div className="flex items-center justify-center min-w-6 h-6 px-1.5 bg-white border border-gray-200 rounded-full">
             <span className="text-xs font-semibold text-gray-900 leading-none">
               {count}
             </span>
@@ -57,7 +57,7 @@ export const KanbanColumn = memo<KanbanColumnProps>(
 
         {/* Área de cards com scroll */}
         <div
-          className="flex flex-col gap-2 p-4 bg-gray-100 flex-1 overflow-y-auto rounded-b-lg"
+          className="flex flex-col gap-3 p-3 sm:p-4 bg-gray-100 flex-1 overflow-y-auto rounded-b-2xl"
           style={{}}
         >
           {cards.length === 0 ? (

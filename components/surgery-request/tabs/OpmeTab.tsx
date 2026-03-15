@@ -87,12 +87,12 @@ export function OpmeTab({
   };
 
   return (
-    <div className="flex-1 border border-neutral-100 rounded-lg overflow-hidden flex flex-col">
+    <div className="flex-1 border border-neutral-100 rounded-2xl overflow-hidden flex flex-col">
       {/* ── Header: busca + botão ───────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-2.5 px-4 py-2.5 border-b border-neutral-100">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-4 py-3 border-b border-neutral-100">
         {/* Campo de busca */}
-        <div className="flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded-lg bg-white">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <div className="flex items-center gap-2 px-3 py-2.5 border border-neutral-100 rounded-xl bg-white flex-1 sm:flex-initial sm:min-w-[288px]">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="#111111" strokeWidth="1.5" />
             <path
               d="M16 16L20 20"
@@ -106,7 +106,7 @@ export function OpmeTab({
             placeholder="Busque materiais e dispositivos"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 bg-transparent border-none outline-none text-gray-900 text-xs leading-snug placeholder-gray-400 w-72"
+            className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm leading-snug placeholder-gray-400"
           />
         </div>
 
@@ -117,7 +117,7 @@ export function OpmeTab({
             setIsModalOpen(true);
           }}
           disabled={statusNum >= 2}
-          className={`flex items-center justify-center font-semibold border border-neutral-100 transition-colors rounded-lg py-1.5 px-3 text-sm leading-normal ${
+          className={`flex items-center justify-center font-semibold border border-neutral-100 transition-colors rounded-xl py-1.5 px-3 text-sm leading-normal ${
             statusNum >= 2
               ? "text-gray-400 bg-white cursor-not-allowed opacity-60"
               : "text-black bg-white hover:bg-gray-50"
@@ -215,7 +215,7 @@ export function OpmeTab({
                           handleDelete(material.id);
                         }}
                         disabled={isDeleting === material.id}
-                        className="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 transition-colors disabled:opacity-50"
+                        className="w-8 h-8 flex items-center justify-center rounded hover:bg-red-50 transition-colors disabled:opacity-50"
                         aria-label="Remover material"
                       >
                         {isDeleting === material.id ? (
@@ -251,9 +251,9 @@ export function OpmeTab({
 
                 {/* Tabela Fabricantes / Fornecedores */}
                 {expanded && (
-                  <div className="flex w-full border-b border-neutral-100">
+                  <div className="flex flex-col sm:flex-row w-full border-b border-neutral-100">
                     {/* Fabricantes */}
-                    <div className="flex-1 flex flex-col border-r border-neutral-100">
+                    <div className="flex-1 flex flex-col sm:border-r border-b sm:border-b-0 border-neutral-100">
                       {/* Header */}
                       <div className="flex w-full px-4 py-3 bg-white border-b border-neutral-100">
                         <span className="text-xs font-semibold text-gray-500 w-full">

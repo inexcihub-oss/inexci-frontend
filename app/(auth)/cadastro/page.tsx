@@ -48,7 +48,7 @@ export default function CadastroPage() {
       router.push("/login?registered=true");
     } catch (err: any) {
       setError(
-        err.response?.data?.message || "Erro ao criar conta. Tente novamente."
+        err.response?.data?.message || "Erro ao criar conta. Tente novamente.",
       );
     } finally {
       setIsLoading(false);
@@ -58,8 +58,8 @@ export default function CadastroPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Left Side - Form */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-8">
+      <div className="flex-1 flex items-center justify-center px-5 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-6 sm:space-y-8">
           {/* Logo */}
           <div className="flex justify-center">
             <Image
@@ -73,7 +73,7 @@ export default function CadastroPage() {
 
           {/* Title */}
           <div className="text-center">
-            <h2 className="text-3xl font-semibold text-black font-urbanist">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-black font-urbanist">
               Criar sua conta
             </h2>
             <p className="mt-2 text-sm text-gray-600">
@@ -101,7 +101,7 @@ export default function CadastroPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={isLoading}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors"
                   placeholder="Seu nome completo"
                 />
               </div>
@@ -123,7 +123,7 @@ export default function CadastroPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors"
                   placeholder="seu@email.com"
                 />
               </div>
@@ -145,7 +145,7 @@ export default function CadastroPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors"
                   placeholder="Mínimo 8 caracteres"
                 />
               </div>
@@ -167,7 +167,7 @@ export default function CadastroPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={isLoading}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors"
                   placeholder="Digite a senha novamente"
                 />
               </div>
@@ -175,7 +175,7 @@ export default function CadastroPage() {
 
             {/* Error Message */}
             {error && (
-              <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700">
                 {error}
               </div>
             )}
@@ -184,7 +184,7 @@ export default function CadastroPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-teal-500 hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-teal-500 hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 min-h-[48px] active:scale-[0.98]"
             >
               {isLoading ? "Criando conta..." : "Criar conta"}
             </button>
@@ -212,8 +212,14 @@ export default function CadastroPage() {
           </div>
           {/* Floating Orbs */}
           <div className="absolute top-20 right-20 w-72 h-72 bg-teal-500 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-pulse"></div>
-          <div className="absolute bottom-32 left-20 w-96 h-96 bg-purple-500 rounded-full mix-blend-screen filter blur-3xl opacity-15 animate-pulse" style={{ animationDelay: '2s' }}></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-secondary-500 rounded-full mix-blend-screen filter blur-3xl opacity-10 animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div
+            className="absolute bottom-32 left-20 w-96 h-96 bg-purple-500 rounded-full mix-blend-screen filter blur-3xl opacity-15 animate-pulse"
+            style={{ animationDelay: "2s" }}
+          ></div>
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-secondary-500 rounded-full mix-blend-screen filter blur-3xl opacity-10 animate-pulse"
+            style={{ animationDelay: "1s" }}
+          ></div>
         </div>
 
         {/* Content */}
@@ -223,7 +229,9 @@ export default function CadastroPage() {
             <div className="text-center space-y-4">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
                 <div className="w-2 h-2 bg-secondary-500 rounded-full animate-pulse"></div>
-                <span className="text-sm text-white/90 font-medium">Junte-se a nós</span>
+                <span className="text-sm text-white/90 font-medium">
+                  Junte-se a nós
+                </span>
               </div>
               <h2 className="text-4xl font-bold text-white leading-tight">
                 Transforme sua gestão cirúrgica
@@ -239,13 +247,27 @@ export default function CadastroPage() {
               <div className="group relative bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white mb-1">Velocidade e Eficiência</h3>
-                    <p className="text-sm text-gray-400">Gerencie procedimentos em tempo real com agilidade</p>
+                    <h3 className="text-lg font-semibold text-white mb-1">
+                      Velocidade e Eficiência
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      Gerencie procedimentos em tempo real com agilidade
+                    </p>
                   </div>
                 </div>
               </div>
@@ -254,13 +276,27 @@ export default function CadastroPage() {
               <div className="group relative bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white mb-1">Segurança Total</h3>
-                    <p className="text-sm text-gray-400">Seus dados protegidos com criptografia de ponta</p>
+                    <h3 className="text-lg font-semibold text-white mb-1">
+                      Segurança Total
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      Seus dados protegidos com criptografia de ponta
+                    </p>
                   </div>
                 </div>
               </div>
@@ -269,13 +305,27 @@ export default function CadastroPage() {
               <div className="group relative bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:scale-105 hover:shadow-2xl">
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-secondary-500 to-secondary-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white mb-1">Insights Inteligentes</h3>
-                    <p className="text-sm text-gray-400">Análises e relatórios para decisões assertivas</p>
+                    <h3 className="text-lg font-semibold text-white mb-1">
+                      Insights Inteligentes
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      Análises e relatórios para decisões assertivas
+                    </p>
                   </div>
                 </div>
               </div>
@@ -284,8 +334,16 @@ export default function CadastroPage() {
             {/* Bottom CTA */}
             <div className="text-center pt-6">
               <div className="inline-flex items-center gap-2 text-sm text-gray-400">
-                <svg className="w-5 h-5 text-secondary-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                <svg
+                  className="w-5 h-5 text-secondary-500"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 <span>Sem cartão de crédito • Configuração em 2 minutos</span>
               </div>

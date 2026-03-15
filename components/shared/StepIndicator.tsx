@@ -23,11 +23,11 @@ export function StepIndicator({
   className = "",
 }: StepIndicatorProps) {
   return (
-    <div className={`flex items-center gap-1 ${className}`}>
+    <div className={`flex items-center gap-1.5 ${className}`}>
       {Array.from({ length: totalSteps }, (_, i) => i + 1).map((step) => (
         <React.Fragment key={step}>
           <div
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
+            className={`w-7 h-7 md:w-6 md:h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
               step === currentStep
                 ? "bg-teal-700 text-white"
                 : step < currentStep
@@ -37,7 +37,7 @@ export function StepIndicator({
           >
             {step}
           </div>
-          {step < totalSteps && <div className="w-4 h-px bg-gray-200" />}
+          {step < totalSteps && <div className="w-4 md:w-5 h-px bg-gray-200" />}
         </React.Fragment>
       ))}
     </div>

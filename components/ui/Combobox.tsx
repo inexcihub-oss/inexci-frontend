@@ -124,7 +124,7 @@ export function Combobox({
           onClick={() => !disabled && setOpen(!open)}
           disabled={disabled}
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-lg border border-neutral-100 bg-white px-3 py-2 text-sm",
+            "flex h-12 md:h-10 w-full items-center justify-between rounded-xl border border-neutral-100 bg-white px-3.5 py-2 text-base md:text-sm",
             "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-200",
             "disabled:cursor-not-allowed disabled:opacity-50",
             !selectedOption && "text-gray-500",
@@ -145,7 +145,7 @@ export function Combobox({
                     handleClear(e as any);
                   }
                 }}
-                className="hover:bg-neutral-100 rounded p-0.5 transition-colors cursor-pointer"
+                className="hover:bg-neutral-100 rounded-lg p-1.5 transition-colors cursor-pointer"
               >
                 <X className="h-4 w-4 text-gray-500" />
               </span>
@@ -166,12 +166,12 @@ export function Combobox({
                 width: `${dropdownPosition.width}px`,
                 zIndex: 9999,
               }}
-              className="mt-1 rounded-lg border border-neutral-100 bg-white shadow-lg"
+              className="mt-1 rounded-xl border border-neutral-100 bg-white shadow-lg"
             >
               <div className="p-2">
                 <input
                   type="text"
-                  className="flex h-9 w-full rounded-md border border-neutral-100 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-neutral-200"
+                  className="flex h-11 md:h-9 w-full rounded-xl border border-neutral-100 bg-white px-3.5 py-2 text-base md:text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-neutral-200"
                   placeholder={searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -190,7 +190,7 @@ export function Combobox({
                       type="button"
                       onClick={() => handleSelect(option.value)}
                       className={cn(
-                        "relative flex w-full cursor-pointer select-none items-center rounded-md px-2 py-2 text-sm outline-none",
+                        "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-sm outline-none min-h-[44px] active:bg-neutral-100",
                         "hover:bg-neutral-50",
                         value === option.value
                           ? "bg-neutral-100 text-black"

@@ -15,14 +15,20 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+// Interpreta string de data YYYY-MM-DD como horário local (não UTC)
+function parseDate(s: string): Date {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(s);
+}
+
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("pt-BR");
+  return parseDate(dateStr).toLocaleDateString("pt-BR");
 }
 
 function formatDateDisplay(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
-  const date = new Date(dateStr);
+  const date = parseDate(dateStr);
   const months = [
     "Jan",
     "Fev",
@@ -42,6 +48,8 @@ function formatDateDisplay(dateStr: string | null | undefined): string {
 
 function safeDate(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
+  // Se já é YYYY-MM-DD, retorna como está (sem converter para UTC)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
   const date = new Date(dateStr);
   return isNaN(date.getTime()) ? null : date.toISOString();
 }
@@ -59,7 +67,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
 
   if (!billing) {
     return (
-      <div className="px-4 py-12 text-center text-gray-500 text-sm border border-neutral-100 rounded-lg">
+      <div className="px-4 py-12 text-center text-gray-500 text-sm border border-neutral-100 rounded-xl">
         Nenhum dado de faturamento registrado
       </div>
     );
@@ -81,7 +89,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
     <div className="flex flex-col gap-3">
       {/* ── Seção Recebimento (status 8+) — aparece primeiro quando disponível ── */}
       {receipt && (
-        <div className="flex flex-col border border-gray-200 rounded-lg overflow-hidden">
+        <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 h-12 border-b border-gray-200">
             <span className="text-sm font-semibold text-gray-900">
@@ -106,12 +114,12 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
 
           {/* Grade: 4 colunas quando resolvido, 2 quando normal */}
           {isContestResolved ? (
-            <div className="grid grid-cols-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4">
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100">
                 <span className="text-sm text-gray-500">
                   Data do recebimento
                 </span>
-                <span className="text-3xl font-light tracking-tight text-gray-900">
+                <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatDateDisplay(
                     receipt.contested_received_at ?? receipt.received_at,
                   )}
@@ -119,38 +127,38 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-l border-gray-200">
                 <span className="text-sm text-gray-500">Valor recebido</span>
-                <span className="text-3xl font-light tracking-tight text-gray-900">
+                <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatCurrency(receipt.contested_received_value ?? 0)}
                 </span>
               </div>
-              <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-l border-gray-200">
+              <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-t sm:border-t-0 sm:border-l border-gray-200">
                 <span className="text-sm text-gray-500">
                   Data do recebimento
                 </span>
-                <span className="text-3xl font-light tracking-tight text-gray-900">
+                <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatDateDisplay(receipt.received_at)}
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-l border-gray-200">
                 <span className="text-sm text-gray-500">Valor recebido</span>
-                <span className="text-3xl font-light tracking-tight text-gray-900">
+                <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatCurrency(receipt.received_value)}
                 </span>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2">
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100">
                 <span className="text-sm text-gray-500">
                   Data do recebimento
                 </span>
-                <span className="text-3xl font-light tracking-tight text-gray-900">
+                <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatDateDisplay(receipt.received_at)}
                 </span>
               </div>
-              <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-l border-gray-200">
+              <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-t sm:border-t-0 sm:border-l border-gray-200">
                 <span className="text-sm text-gray-500">Valor recebido</span>
-                <span className="text-3xl font-light tracking-tight text-gray-900">
+                <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatCurrency(receipt.received_value)}
                 </span>
               </div>
@@ -162,7 +170,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
               <label className="text-sm font-semibold text-black">
                 Observações
               </label>
-              <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg">
+              <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
                 {receipt.receipt_notes}
               </div>
             </div>
@@ -171,7 +179,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
       )}
 
       {/* ── Seção Faturamento ── */}
-      <div className="flex flex-col border border-gray-200 rounded-lg overflow-hidden">
+      <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-gray-200">
           <span className="text-sm font-semibold text-gray-900">
@@ -185,16 +193,16 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
         </div>
 
         {/* Data prevista + Valor */}
-        <div className="grid grid-cols-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2">
           <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100">
             <span className="text-sm text-gray-500">Data prevista</span>
-            <span className="text-3xl font-light tracking-tight text-gray-900">
+            <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
               {expectedDateStr ? formatDateDisplay(expectedDateStr) : "—"}
             </span>
           </div>
-          <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-l border-gray-200">
+          <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-t sm:border-t-0 sm:border-l border-gray-200">
             <span className="text-sm text-gray-500">Valor</span>
-            <span className="text-3xl font-light tracking-tight text-gray-900">
+            <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
               {billing.invoice_value != null
                 ? formatCurrency(billing.invoice_value)
                 : "—"}
@@ -204,7 +212,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
       </div>
 
       {/* ── Seção Dados do faturamento ── */}
-      <div className="flex flex-col border border-gray-200 rounded-lg overflow-hidden">
+      <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center px-4 h-12 border-b border-gray-200">
           <span className="text-sm font-semibold text-gray-900">
@@ -213,12 +221,12 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
         </div>
 
         {/* Fields */}
-        <div className="grid grid-cols-2 gap-6 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 p-4">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold text-black">
               Nº do protocolo de faturamento
             </label>
-            <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg">
+            <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
               {billing.invoice_protocol ?? "—"}
             </div>
           </div>
@@ -226,7 +234,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
             <label className="text-sm font-semibold text-black">
               Envio do faturamento
             </label>
-            <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg">
+            <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
               {formatDate(billing.invoice_sent_at)}
             </div>
           </div>

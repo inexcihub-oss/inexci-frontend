@@ -35,9 +35,9 @@ export const KanbanColumn = memo<KanbanColumnProps>(
     const iconPath = statusIconMap[status] || "/icons/kanban/clock-watch.svg";
 
     return (
-      <div className="flex flex-col flex-shrink-0 w-80 h-full">
+      <div className="flex flex-col flex-shrink-0 w-[82vw] sm:w-80 h-full snap-start">
         {/* Header da coluna - Design Figma */}
-        <div className="flex items-center gap-2 px-4 py-4 bg-gray-100 border-b border-gray-200 rounded-t-lg">
+        <div className="flex items-center gap-2 px-4 py-4 bg-gray-100 border-b border-gray-200 rounded-t-2xl">
           <Image
             src={iconPath}
             alt={status}
@@ -57,7 +57,7 @@ export const KanbanColumn = memo<KanbanColumnProps>(
 
         {/* Área de cards com scroll */}
         <div
-          className="flex flex-col gap-2 p-4 bg-gray-100 flex-1 overflow-y-auto rounded-b-lg"
+          className="flex flex-col gap-3 p-3 sm:p-4 bg-gray-100 flex-1 overflow-y-auto rounded-b-2xl"
           style={{
             scrollbarWidth: "none",
             msOverflowStyle: "none",

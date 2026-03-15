@@ -17,6 +17,11 @@ import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
+import { NewCollaboratorModal } from "@/components/colaboradores/NewCollaboratorModal";
+import { NewDoctorModal } from "@/components/colaboradores/NewDoctorModal";
+import { NewHospitalModal } from "@/components/colaboradores/NewHospitalModal";
+import { NewHealthPlanModal } from "@/components/colaboradores/NewHealthPlanModal";
+import { NewSupplierModal } from "@/components/colaboradores/NewSupplierModal";
 import {
   useReactTable,
   getCoreRowModel,
@@ -86,6 +91,9 @@ export default function ColaboradoresPage() {
     open: false,
     loading: false,
   });
+
+  // Estado do modal de criação
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   // Debounce do termo de pesquisa para evitar re-renderizações excessivas
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -465,6 +473,7 @@ export default function ColaboradoresPage() {
       accessorKey: "email",
       header: "E-mail",
       size: 200,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span className="text-xs text-black" title={row.original.email || "-"}>
           {row.original.email || "-"}
@@ -475,6 +484,7 @@ export default function ColaboradoresPage() {
       accessorKey: "phone",
       header: "Telefone",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -488,6 +498,7 @@ export default function ColaboradoresPage() {
       accessorKey: "role",
       header: "Permissão",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => getRoleBadge(row.original.role),
     },
     {
@@ -498,7 +509,7 @@ export default function ColaboradoresPage() {
       header: () => <div />,
       cell: ({ row }) => (
         <button
-          className="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 transition-colors group"
+          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 active:scale-[0.95] transition-all group min-h-[44px]"
           title="Excluir colaborador"
           onClick={(e) =>
             handleDeleteClick(
@@ -578,6 +589,7 @@ export default function ColaboradoresPage() {
       accessorKey: "cnpj",
       header: "CNPJ",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -591,6 +603,7 @@ export default function ColaboradoresPage() {
       accessorKey: "email",
       header: "E-mail",
       size: 200,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span className="text-xs text-black" title={row.original.email || "-"}>
           {row.original.email || "-"}
@@ -601,6 +614,7 @@ export default function ColaboradoresPage() {
       accessorKey: "phone",
       header: "Telefone",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -614,6 +628,7 @@ export default function ColaboradoresPage() {
       accessorKey: "address",
       header: "Endereço",
       size: 200,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => {
         const h = row.original;
         const parts = [
@@ -636,7 +651,7 @@ export default function ColaboradoresPage() {
       header: () => <div />,
       cell: ({ row }) => (
         <button
-          className="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 transition-colors group"
+          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 active:scale-[0.95] transition-all group min-h-[44px]"
           title="Excluir hospital"
           onClick={(e) =>
             handleDeleteClick(
@@ -716,6 +731,7 @@ export default function ColaboradoresPage() {
       accessorKey: "cnpj",
       header: "CNPJ",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -729,6 +745,7 @@ export default function ColaboradoresPage() {
       accessorKey: "email",
       header: "E-mail",
       size: 200,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span className="text-xs text-black" title={row.original.email || "-"}>
           {row.original.email || "-"}
@@ -739,6 +756,7 @@ export default function ColaboradoresPage() {
       accessorKey: "phone",
       header: "Telefone",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -756,7 +774,7 @@ export default function ColaboradoresPage() {
       header: () => <div />,
       cell: ({ row }) => (
         <button
-          className="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 transition-colors group"
+          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 active:scale-[0.95] transition-all group min-h-[44px]"
           title="Excluir convênio"
           onClick={(e) =>
             handleDeleteClick(
@@ -836,6 +854,7 @@ export default function ColaboradoresPage() {
       accessorKey: "cnpj",
       header: "CNPJ",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -849,6 +868,7 @@ export default function ColaboradoresPage() {
       accessorKey: "email",
       header: "E-mail",
       size: 200,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span className="text-xs text-black" title={row.original.email || "-"}>
           {row.original.email || "-"}
@@ -859,6 +879,7 @@ export default function ColaboradoresPage() {
       accessorKey: "phone",
       header: "Telefone",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -872,6 +893,7 @@ export default function ColaboradoresPage() {
       accessorKey: "address",
       header: "Endereço",
       size: 200,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -889,7 +911,7 @@ export default function ColaboradoresPage() {
       header: () => <div />,
       cell: ({ row }) => (
         <button
-          className="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 transition-colors group"
+          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 active:scale-[0.95] transition-all group min-h-[44px]"
           title="Excluir fornecedor"
           onClick={(e) =>
             handleDeleteClick(
@@ -969,6 +991,7 @@ export default function ColaboradoresPage() {
       accessorKey: "email",
       header: "E-mail",
       size: 200,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span className="text-xs text-black" title={row.original.email || "-"}>
           {row.original.email || "-"}
@@ -979,6 +1002,7 @@ export default function ColaboradoresPage() {
       accessorKey: "phone",
       header: "Telefone",
       size: 150,
+      meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
@@ -996,7 +1020,7 @@ export default function ColaboradoresPage() {
       header: () => <div />,
       cell: ({ row }) => (
         <button
-          className="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 transition-colors group"
+          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 active:scale-[0.95] transition-all group min-h-[44px]"
           title="Excluir médico"
           onClick={(e) =>
             handleDeleteClick(row.original.id, row.original.name, "medicos", e)
@@ -1129,61 +1153,61 @@ export default function ColaboradoresPage() {
   return (
     <PageContainer className="border-gray-200">
       {/* Header */}
-      <div className="flex-none flex items-center gap-2 px-8 py-3 border-b border-gray-200">
-        <h1 className="text-3xl font-semibold text-black font-urbanist">
+      <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3 border-b border-gray-200">
+        <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold text-black font-urbanist">
           Colaboradores
         </h1>
       </div>
 
       {/* Tabs */}
-      <div className="flex-none flex items-center px-8 border-b border-gray-200">
-        <div className="flex items-center h-full">
+      <div className="flex-none flex items-center px-4 lg:px-8 border-b border-gray-200 overflow-x-auto scrollbar-hide">
+        <div className="flex items-center h-full whitespace-nowrap">
           <button
             onClick={() => setActiveTab("assistentes")}
-            className={`px-3 py-4 text-sm transition-colors ${
+            className={`px-4 py-3 text-sm transition-all min-h-[44px] -mb-px ${
               activeTab === "assistentes"
                 ? "font-semibold text-black border-b-[3px] border-teal-500"
-                : "font-normal text-black hover:bg-gray-50"
+                : "font-normal text-gray-500 hover:text-black"
             }`}
           >
             Colaboradores
           </button>
           <button
             onClick={() => setActiveTab("medicos")}
-            className={`px-3 py-4 text-sm transition-colors ${
+            className={`px-4 py-3 text-sm transition-all min-h-[44px] -mb-px ${
               activeTab === "medicos"
                 ? "font-semibold text-black border-b-[3px] border-teal-500"
-                : "font-normal text-black hover:bg-gray-50"
+                : "font-normal text-gray-500 hover:text-black"
             }`}
           >
             Médicos
           </button>
           <button
             onClick={() => setActiveTab("hospitais")}
-            className={`px-3 py-4 text-sm transition-colors ${
+            className={`px-4 py-3 text-sm transition-all min-h-[44px] -mb-px ${
               activeTab === "hospitais"
                 ? "font-semibold text-black border-b-[3px] border-teal-500"
-                : "font-normal text-black hover:bg-gray-50"
+                : "font-normal text-gray-500 hover:text-black"
             }`}
           >
             Hospitais
           </button>
           <button
             onClick={() => setActiveTab("convenios")}
-            className={`px-3 py-4 text-sm transition-colors ${
+            className={`px-4 py-3 text-sm transition-all min-h-[44px] -mb-px ${
               activeTab === "convenios"
                 ? "font-semibold text-black border-b-[3px] border-teal-500"
-                : "font-normal text-black hover:bg-gray-50"
+                : "font-normal text-gray-500 hover:text-black"
             }`}
           >
             Convênios
           </button>
           <button
             onClick={() => setActiveTab("fornecedores")}
-            className={`px-3 py-4 text-sm transition-colors ${
+            className={`px-4 py-3 text-sm transition-all min-h-[44px] -mb-px ${
               activeTab === "fornecedores"
                 ? "font-semibold text-black border-b-[3px] border-teal-500"
-                : "font-normal text-black hover:bg-gray-50"
+                : "font-normal text-gray-500 hover:text-black"
             }`}
           >
             Fornecedores
@@ -1192,21 +1216,25 @@ export default function ColaboradoresPage() {
       </div>
 
       {/* Search and Actions */}
-      <div className="flex-none flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-200">
-        <div className="flex items-center gap-2">
+      <div className="flex-none flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Search */}
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Buscar por nome ou e-mail"
-            className="w-85"
+            className="w-full sm:w-85"
           />
 
           {/* Divider */}
-          <div className="w-px h-8 bg-neutral-100" />
+          <div className="hidden sm:block w-px h-8 bg-neutral-100" />
 
           {/* Filter Button */}
-          <Button variant="outline" size="md">
+          <Button
+            variant="outline"
+            size="md"
+            className="hidden sm:flex min-h-[44px] rounded-xl"
+          >
             <Image
               src="/icons/filter.svg"
               alt="Filtro"
@@ -1223,7 +1251,7 @@ export default function ColaboradoresPage() {
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteClick}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 active:scale-[0.98] transition-all min-h-[44px]"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1242,7 +1270,11 @@ export default function ColaboradoresPage() {
               Excluir selecionados ({selectedItems.length})
             </button>
           )}
-          <Button variant="primary" size="md">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setCreateModalOpen(true)}
+          >
             {activeTab === "assistentes" && "Novo colaborador"}
             {activeTab === "medicos" && "Novo médico"}
             {activeTab === "hospitais" && "Novo hospital"}
@@ -1274,7 +1306,7 @@ export default function ColaboradoresPage() {
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
-                        className="text-xs text-black opacity-70 font-normal h-12 relative"
+                        className={`text-xs text-black opacity-70 font-normal h-12 relative ${(header.column.columnDef.meta as any)?.className ?? ""}`}
                         style={{
                           width: header.getSize(),
                         }}
@@ -1328,7 +1360,7 @@ export default function ColaboradoresPage() {
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className="py-3 px-4"
+                        className={`py-3 px-4 ${(cell.column.columnDef.meta as any)?.className ?? ""}`}
                         style={{
                           width: cell.column.getSize(),
                         }}
@@ -1363,6 +1395,47 @@ export default function ColaboradoresPage() {
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
         loading={deleteModal.loading}
+      />
+      {/* Modais de criação */}
+      <NewCollaboratorModal
+        isOpen={createModalOpen && activeTab === "assistentes"}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={() => {
+          loadData();
+          setCreateModalOpen(false);
+        }}
+      />
+      <NewDoctorModal
+        isOpen={createModalOpen && activeTab === "medicos"}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={() => {
+          loadData();
+          setCreateModalOpen(false);
+        }}
+      />
+      <NewHospitalModal
+        isOpen={createModalOpen && activeTab === "hospitais"}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={() => {
+          loadData();
+          setCreateModalOpen(false);
+        }}
+      />
+      <NewHealthPlanModal
+        isOpen={createModalOpen && activeTab === "convenios"}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={() => {
+          loadData();
+          setCreateModalOpen(false);
+        }}
+      />
+      <NewSupplierModal
+        isOpen={createModalOpen && activeTab === "fornecedores"}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={() => {
+          loadData();
+          setCreateModalOpen(false);
+        }}
       />
       <ConfirmDeleteModal
         isOpen={bulkDeleteModal.open}

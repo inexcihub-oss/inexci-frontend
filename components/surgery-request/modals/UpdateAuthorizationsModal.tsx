@@ -220,12 +220,12 @@ export function UpdateAuthorizationsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div
-        className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col"
-        style={{ maxHeight: "100vh" }}
-      >
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={handleClose}
+      />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center gap-2.5 px-6 py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
@@ -308,13 +308,13 @@ export function UpdateAuthorizationsModal({
             <ModalFooter className="justify-end">
               <button
                 onClick={handleClose}
-                className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => setStep(2)}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors"
+                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors"
               >
                 Próximo
               </button>
@@ -354,13 +354,13 @@ export function UpdateAuthorizationsModal({
             <ModalFooter className="justify-end">
               <button
                 onClick={() => setStep(1)}
-                className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 Voltar
               </button>
               <button
                 onClick={() => setStep(3)}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors"
+                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors"
               >
                 Próximo
               </button>
@@ -372,7 +372,7 @@ export function UpdateAuthorizationsModal({
         {!showContest && step === 3 && (
           <>
             <div className="flex flex-col gap-4 p-6 overflow-y-auto">
-              <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
                 <p className="text-base text-blue-600 leading-normal">
                   O médico responsável pela solicitação deve selecionar como
                   deseja prosseguir com a solicitação com base nos itens
@@ -432,14 +432,14 @@ export function UpdateAuthorizationsModal({
                     .then(onSuccess)
                     .catch(() => showToast("Erro ao encerrar", "error"))
                 }
-                className="flex-1 h-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 h-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 Encerrar solicitação
               </button>
               {hasPartialOrRejected && (
                 <button
                   onClick={() => setShowContest(true)}
-                  className="flex-1 h-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex-1 h-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   Contestar
                 </button>
@@ -447,7 +447,7 @@ export function UpdateAuthorizationsModal({
               {hasSomeAuthorization && (
                 <button
                   onClick={() => setStep(4)}
-                  className="flex-1 h-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex-1 h-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   Aceitar
                 </button>
@@ -461,7 +461,7 @@ export function UpdateAuthorizationsModal({
           <>
             <div className="flex flex-col gap-4 px-6 py-6 overflow-y-auto">
               {/* Caixa de informação */}
-              <div className="flex items-center bg-blue-50 rounded-lg p-4">
+              <div className="flex items-center bg-blue-50 rounded-xl p-4">
                 <p className="text-base text-blue-600 leading-normal">
                   Selecione 3 opções para o agendamento do paciente. Após
                   selecionadas o paciente poderá escolher a melhor opção.
@@ -573,14 +573,14 @@ export function UpdateAuthorizationsModal({
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0">
               <button
                 onClick={() => setStep(3)}
-                className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleAccept}
                 disabled={!canAccept || isSaving}
-                className={`h-10 px-6 text-sm font-semibold rounded-lg transition-colors ${
+                className={`h-10 px-6 text-sm font-semibold rounded-xl transition-colors ${
                   canAccept && !isSaving
                     ? "bg-teal-700 text-white hover:bg-teal-800"
                     : "bg-gray-100 text-gray-900 opacity-50 cursor-not-allowed"
@@ -628,7 +628,7 @@ function AuthorizationTable({
   onChange,
 }: AuthorizationTableProps) {
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 rounded-xl overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-1 border-b border-gray-200">
         <span className="flex-1 text-xs text-gray-900 opacity-50">
           {labelHeader}
@@ -653,7 +653,7 @@ function AuthorizationTable({
             {renderLabel(item)}
           </span>
           <div className="w-24 flex justify-center">
-            <div className="w-14 h-10 flex items-center justify-center border border-gray-200 rounded-lg text-sm font-semibold text-gray-500">
+            <div className="w-14 h-10 flex items-center justify-center border border-gray-200 rounded-xl text-sm font-semibold text-gray-500">
               {item.quantity}
             </div>
           </div>
@@ -663,7 +663,7 @@ function AuthorizationTable({
               min="0"
               value={item.authorized_quantity}
               onChange={(e) => onChange(item.id, e.target.value)}
-              className="w-14 h-10 text-sm font-semibold text-gray-900 text-center border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white appearance-none"
+              className="w-14 h-10 text-sm font-semibold text-gray-900 text-center border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white appearance-none"
             />
           </div>
         </div>
@@ -679,7 +679,7 @@ interface SummaryTableProps {
 
 function SummaryTable({ labelHeader, items }: SummaryTableProps) {
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 rounded-xl overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-1 border-b border-gray-200">
         <span className="flex-1 text-xs text-gray-900 opacity-50">
           {labelHeader}
@@ -704,12 +704,12 @@ function SummaryTable({ labelHeader, items }: SummaryTableProps) {
             {item.label}
           </span>
           <div className="w-24 flex justify-center">
-            <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-500">
+            <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-500">
               {item.requested}
             </div>
           </div>
           <div className="w-24 flex justify-center">
-            <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-500">
+            <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-500">
               {item.authorized ?? "—"}
             </div>
           </div>
@@ -772,7 +772,7 @@ function ContestFlow({
               value={reason}
               onChange={(e) => onReasonChange(e.target.value)}
               placeholder="Digite o motivo"
-              className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
+              className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
             />
           </div>
         )}
@@ -786,7 +786,7 @@ function ContestFlow({
             <div className="flex flex-col gap-4">
               <button
                 onClick={() => onMethodChange("document")}
-                className={`flex items-center gap-4 p-6 border rounded-lg text-left transition-colors ${
+                className={`flex items-center gap-4 p-6 border rounded-xl text-left transition-colors ${
                   method === "document"
                     ? "border-teal-600 bg-teal-50"
                     : "border-neutral-100 hover:border-neutral-200"
@@ -819,7 +819,7 @@ function ContestFlow({
 
               <button
                 onClick={() => onMethodChange("email")}
-                className={`flex items-center gap-4 p-6 border rounded-lg text-left transition-colors ${
+                className={`flex items-center gap-4 p-6 border rounded-xl text-left transition-colors ${
                   method === "email"
                     ? "border-teal-600 bg-teal-50"
                     : "border-neutral-100 hover:border-neutral-200"
@@ -864,7 +864,7 @@ function ContestFlow({
                 type="text"
                 defaultValue="inexci@mail.com"
                 disabled
-                className="w-full px-3 py-2 text-sm text-neutral-200 bg-white border border-neutral-100 rounded-lg disabled:opacity-70 cursor-not-allowed"
+                className="w-full px-3 py-2 text-sm text-neutral-200 bg-white border border-neutral-100 rounded-xl disabled:opacity-70 cursor-not-allowed"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -879,7 +879,7 @@ function ContestFlow({
                 value={emailForm.to}
                 onChange={(e) => onEmailChange("to", e.target.value)}
                 placeholder="autorizacoes@unimed.com.br"
-                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
+                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -891,7 +891,7 @@ function ContestFlow({
                 value={emailForm.subject}
                 onChange={(e) => onEmailChange("subject", e.target.value)}
                 placeholder="Contestação de autorizações - Maria Silva Santos"
-                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
+                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -903,14 +903,14 @@ function ContestFlow({
                 onChange={(e) => onEmailChange("message", e.target.value)}
                 placeholder="Digite sua mensagem..."
                 rows={4}
-                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none transition-colors"
+                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none transition-colors"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold text-neutral-900">
                 Documento de contestação
               </label>
-              <div className="flex items-center gap-3 px-4 py-4 bg-neutral-50 border border-dashed border-neutral-100 rounded-lg">
+              <div className="flex items-center gap-3 px-4 py-4 bg-neutral-50 border border-dashed border-neutral-100 rounded-xl">
                 <div className="flex items-center justify-center w-10 h-10 bg-white border border-neutral-100 rounded-full shrink-0">
                   <svg
                     className="w-5 h-5 text-neutral-900"
@@ -940,7 +940,7 @@ function ContestFlow({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-8 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+                  className="h-8 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
                 >
                   Selecionar arquivo
                 </button>
@@ -961,14 +961,14 @@ function ContestFlow({
                 onChange={(e) => onEmailChange("message", e.target.value)}
                 placeholder="Digite sua mensagem..."
                 rows={8}
-                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none transition-colors"
+                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none transition-colors"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold text-neutral-900">
                 Documento de contestação
               </label>
-              <div className="flex items-center gap-3 px-4 py-4 bg-neutral-50 border border-dashed border-neutral-100 rounded-lg">
+              <div className="flex items-center gap-3 px-4 py-4 bg-neutral-50 border border-dashed border-neutral-100 rounded-xl">
                 <div className="flex items-center justify-center w-10 h-10 bg-white border border-neutral-100 rounded-full shrink-0">
                   <svg
                     className="w-5 h-5 text-neutral-900"
@@ -998,7 +998,7 @@ function ContestFlow({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-8 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+                  className="h-8 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
                 >
                   Selecionar arquivo
                 </button>
@@ -1012,7 +1012,7 @@ function ContestFlow({
       <ModalFooter className="justify-end">
         <button
           onClick={onBack}
-          className="h-10 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-lg hover:bg-gray-50 transition-colors"
+          className="h-10 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-xl hover:bg-gray-50 transition-colors"
         >
           {step < 3 ? "Cancelar" : "Voltar"}
         </button>
@@ -1020,7 +1020,7 @@ function ContestFlow({
           <button
             onClick={onNext}
             disabled={step === 1 && !canProceedStep1}
-            className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Próximo
           </button>
@@ -1028,7 +1028,7 @@ function ContestFlow({
           <button
             onClick={onSubmit}
             disabled={!canSubmit || isSaving}
-            className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving
               ? "Enviando..."

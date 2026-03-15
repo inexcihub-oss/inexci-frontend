@@ -317,35 +317,53 @@ export function TussProcedureModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
         onClick={!isLoading ? handleCancel : undefined}
       />
 
-      {/* Modal - 800x650px conforme Figma */}
-      <div
-        className="relative bg-white rounded-lg shadow-xl flex flex-col"
-        style={{ width: "800px", height: "650px" }}
-      >
+      {/* Modal - fullscreen mobile, centered desktop */}
+      <div className="relative bg-white sm:rounded-xl shadow-xl flex flex-col w-full h-full sm:w-[800px] sm:h-[650px] sm:max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center px-6 py-4 border-b border-[#DCDFE3]">
+        <div className="flex items-center px-4 sm:px-6 py-4 border-b border-[#DCDFE3]">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
             Novo Procedimento
           </h2>
+          <button
+            onClick={!isLoading ? handleCancel : undefined}
+            className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors sm:hidden"
+            disabled={isLoading}
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M18 6L6 18M6 6l12 12"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden rounded-lg">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {error && (
-            <div className="mx-6 mt-4 bg-red-50 text-red-700 p-3 rounded-lg text-sm">
+            <div className="mx-4 sm:mx-6 mt-4 bg-red-50 text-red-700 p-3 rounded-xl text-sm">
               {error}
             </div>
           )}
 
           {/* Header da Tabela — 5 colunas idênticas às linhas */}
-          <div className="flex items-center gap-2 px-6 py-2 border-b border-[#DCDFE3]">
+          <div className="hidden sm:flex items-center gap-2 px-6 py-2 border-b border-[#DCDFE3]">
             <span className="flex-1 text-xs text-[#111111] opacity-50">
               Procedimento
             </span>
@@ -363,17 +381,17 @@ export function TussProcedureModal({
             {procedures.map((item, index) => (
               <div
                 key={index}
-                className="flex items-center gap-2 px-6 py-3 border-b border-[#DCDFE3] min-h-16"
+                className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 sm:px-6 py-3 border-b border-[#DCDFE3] min-h-16"
               >
-                <span className="flex-1 text-sm text-[#111111]">
+                <span className="w-full sm:w-auto sm:flex-1 text-sm text-[#111111]">
                   {item.procedure.tuss_code} - {item.procedure.name}
                 </span>
-                <div className="w-8" />
+                <div className="hidden sm:block w-8" />
                 <span className="w-12 text-xs text-[#111111] text-center">
                   {item.quantity}
                 </span>
-                <div className="w-8" />
-                <div className="flex items-center gap-2 w-16">
+                <div className="hidden sm:block w-8" />
+                <div className="flex items-center gap-2 sm:w-16 ml-auto sm:ml-0">
                   <button
                     onClick={() => handleEditProcedure(index)}
                     className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded transition-colors"
@@ -393,10 +411,10 @@ export function TussProcedureModal({
             ))}
 
             {/* Linha de Adição de Novo Procedimento */}
-            <div className="flex items-center gap-2 px-6 py-3 border-b border-[#DCDFE3] min-h-16">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 sm:px-6 py-3 border-b border-[#DCDFE3] min-h-16">
               {/* Dropdown de Busca */}
-              <div className="flex-1 relative">
-                <div className="flex items-center gap-2 px-3 py-2 border border-[#DCDFE3] rounded-lg bg-white shadow-sm">
+              <div className="w-full sm:w-auto sm:flex-1 relative">
+                <div className="flex items-center gap-2 px-3 py-2 border border-[#DCDFE3] rounded-xl bg-white shadow-sm">
                   <input
                     type="text"
                     value={searchTerm}
@@ -426,7 +444,7 @@ export function TussProcedureModal({
                     );
                     if (filteredResults.length === 0) return null;
                     return (
-                      <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-xl shadow-lg max-h-60 overflow-y-auto">
                         {filteredResults.map((procedure) => (
                           <button
                             key={procedure.id}
@@ -445,7 +463,7 @@ export function TussProcedureModal({
 
                 {/* Loading */}
                 {isSearching && (
-                  <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-lg shadow-lg p-4 text-center">
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-xl shadow-lg p-4 text-center">
                     <span className="text-sm text-[#111111] opacity-50">
                       Buscando...
                     </span>
@@ -466,7 +484,7 @@ export function TussProcedureModal({
               </button>
 
               {/* Número */}
-              <div className="w-12 h-10 flex items-center justify-center border border-[#DCDFE3] rounded-lg bg-white">
+              <div className="w-12 h-10 flex items-center justify-center border border-[#DCDFE3] rounded-xl bg-white">
                 <span className="text-sm font-semibold text-[#111111]">
                   {newItemQuantity}
                 </span>
@@ -481,23 +499,23 @@ export function TussProcedureModal({
                 <IconPlus className="w-4 h-4 text-[#111111]" />
               </button>
 
-              <div className="w-16" />
+              <div className="hidden sm:block w-16" />
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-3 py-4 border-t-2 border-[#DCDFE3]">
+        <div className="flex items-center justify-end gap-2 px-4 sm:px-3 py-4 border-t-2 border-[#DCDFE3] safe-area-bottom">
           <button
             onClick={handleCancel}
-            className="px-6 py-2.5 text-sm font-normal text-[#111111] bg-white border-2 border-[#DCDFE3] rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-6 py-2.5 text-sm font-normal text-[#111111] bg-white border-2 border-[#DCDFE3] rounded-xl hover:bg-gray-50 transition-colors"
             disabled={isLoading}
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2.5 text-sm font-semibold text-white bg-[#147471] rounded-lg hover:bg-[#0f5c5a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading || procedures.length === 0}
           >
             {isLoading ? (
@@ -538,7 +556,7 @@ export function TussProcedureModal({
             className="absolute inset-0 bg-black/30"
             onClick={() => setEditingIndex(null)}
           />
-          <div className="relative bg-white rounded-lg shadow-xl p-4 flex items-center gap-3">
+          <div className="relative bg-white rounded-xl shadow-xl p-4 flex items-center gap-3">
             <button
               onClick={() => setTempQuantity((prev) => Math.max(1, prev - 1))}
               disabled={tempQuantity <= 1}
@@ -547,7 +565,7 @@ export function TussProcedureModal({
               <IconMinus className="w-5 h-5 text-[#111111]" />
             </button>
             <div
-              className="px-3 py-2 text-center text-sm font-semibold text-[#111111] border border-[#DCDFE3] rounded-lg bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
+              className="px-3 py-2 text-center text-sm font-semibold text-[#111111] border border-[#DCDFE3] rounded-xl bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
               style={{ width: "52px" }}
             >
               {tempQuantity}
@@ -560,7 +578,7 @@ export function TussProcedureModal({
             </button>
             <button
               onClick={() => handleSaveEdit(editingIndex)}
-              className="ml-2 px-4 py-2 text-sm font-semibold text-white bg-[#147471] rounded-lg hover:bg-[#0f5c5a] transition-colors"
+              className="ml-2 px-4 py-2 text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors"
             >
               <IconCheck className="w-4 h-4" />
             </button>

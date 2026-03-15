@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
 import Input from "@/components/ui/Input";
@@ -18,6 +18,8 @@ import { ChevronRight } from "lucide-react";
 export default function PacienteDetalhePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -149,6 +151,9 @@ export default function PacienteDetalhePage() {
       });
       setOriginalData(formData);
       showToast("Paciente atualizado com sucesso!", "success");
+      if (returnUrl) {
+        setTimeout(() => router.push(decodeURIComponent(returnUrl)), 800);
+      }
     } catch (error) {
       console.error("Erro ao salvar:", error);
       showToast("Erro ao salvar as alterações.", "error");
@@ -161,7 +166,7 @@ export default function PacienteDetalhePage() {
     if (isDirty && originalData) {
       setFormData(originalData);
     } else {
-      router.push("/pacientes");
+      router.push(returnUrl ? decodeURIComponent(returnUrl) : "/pacientes");
     }
   };
 
@@ -264,7 +269,7 @@ export default function PacienteDetalhePage() {
         {surgeryHistory.map((surgery) => (
           <div
             key={surgery.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+            className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
           >
             <div className="flex flex-col">
               <span className="text-xs font-semibold text-gray-900">
@@ -273,7 +278,7 @@ export default function PacienteDetalhePage() {
               <span className="text-xs text-gray-500">{surgery.date}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
+              <span className="text-xs text-green-600 bg-green-50 px-2.5 py-1 rounded-lg">
                 {surgery.status}
               </span>
               <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -416,11 +421,20 @@ export default function PacienteDetalhePage() {
         </FormSection>
 
         {/* Botão de salvar */}
-        <div className="flex justify-end gap-3 pt-4">
-          <Button variant="outline" onClick={handleCancel}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            className="min-h-[44px] rounded-xl"
+          >
             Cancelar
           </Button>
-          <Button onClick={handleSave} isLoading={saving} disabled={!isDirty}>
+          <Button
+            onClick={handleSave}
+            isLoading={saving}
+            disabled={!isDirty}
+            className="min-h-[44px] rounded-xl"
+          >
             Salvar alterações
           </Button>
         </div>

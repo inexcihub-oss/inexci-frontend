@@ -363,10 +363,13 @@ export function SurgeryStatusModal({
   // ══════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={handleClose}
+      />
 
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2.5 px-6 py-4 border-b border-neutral-100">
           <h2 className="flex-1 text-2xl font-light tracking-tight text-neutral-900">
@@ -412,7 +415,7 @@ export function SurgeryStatusModal({
                   <button
                     key={opt.value}
                     onClick={() => setOutcome(opt.value)}
-                    className={`flex-1 flex items-center justify-center gap-2 p-4 border rounded-lg transition-colors ${
+                    className={`flex-1 flex items-center justify-center gap-2 p-4 border rounded-xl transition-colors ${
                       outcome === opt.value
                         ? "border-teal-700"
                         : "border-neutral-100 hover:border-neutral-200"
@@ -431,14 +434,14 @@ export function SurgeryStatusModal({
             <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-100">
               <button
                 onClick={handleClose}
-                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-lg hover:bg-neutral-50"
+                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-xl hover:bg-neutral-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => setStep(2)}
                 disabled={!outcome}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Próximo
               </button>
@@ -473,7 +476,7 @@ export function SurgeryStatusModal({
 
                     {sec.files.length === 0 ? (
                       /* ── Sem arquivo: container pontilhado ── */
-                      <div className="flex items-center gap-2 pl-4 pr-2 py-2 bg-neutral-50 border border-dashed border-neutral-100 rounded-lg">
+                      <div className="flex items-center gap-2 pl-4 pr-2 py-2 bg-neutral-50 border border-dashed border-neutral-100 rounded-xl">
                         <span className="flex-1 text-sm font-semibold text-neutral-900">
                           {sec.label}
                           {sec.optional && (
@@ -483,7 +486,7 @@ export function SurgeryStatusModal({
                         <button
                           type="button"
                           onClick={() => fileRefs.current[sec.key]?.click()}
-                          className="text-sm text-neutral-900 border border-neutral-100 rounded-lg px-4 py-2 bg-white hover:bg-neutral-50 shadow-sm flex-shrink-0"
+                          className="text-sm text-neutral-900 border border-neutral-100 rounded-xl px-4 py-2 bg-white hover:bg-neutral-50 shadow-sm flex-shrink-0"
                         >
                           Selecionar arquivo
                         </button>
@@ -512,7 +515,7 @@ export function SurgeryStatusModal({
                         {sec.files.map((f) => (
                           <div
                             key={f.id}
-                            className="flex items-center gap-2 px-4 py-2 border border-neutral-100 rounded-lg"
+                            className="flex items-center gap-2 px-4 py-2 border border-neutral-100 rounded-xl"
                           >
                             <span className="flex-1 text-sm font-semibold text-neutral-900 truncate min-w-0">
                               {f.file.name}{" "}
@@ -554,14 +557,14 @@ export function SurgeryStatusModal({
               <button
                 onClick={() => setStep(1)}
                 disabled={isSaving}
-                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-lg hover:bg-neutral-50 disabled:opacity-50"
+                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-xl hover:bg-neutral-50 disabled:opacity-50"
               >
                 Voltar
               </button>
               <button
                 onClick={submitRealizada}
                 disabled={!canSendRealizada || isSaving}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 disabled:bg-neutral-50 disabled:text-neutral-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 disabled:bg-neutral-50 disabled:text-neutral-900 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isSaving ? "Enviando..." : "Enviar"}
               </button>
@@ -627,14 +630,14 @@ export function SurgeryStatusModal({
               <button
                 onClick={handleClose}
                 disabled={isSaving}
-                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-lg hover:bg-neutral-50 disabled:opacity-50"
+                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-xl hover:bg-neutral-50 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={submitReagendada}
                 disabled={!canSendReagendada || isSaving}
-                className={`h-10 px-6 text-sm font-semibold rounded-lg transition-colors disabled:cursor-not-allowed ${
+                className={`h-10 px-6 text-sm font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${
                   canSendReagendada && !isSaving
                     ? "bg-teal-700 text-white hover:bg-teal-800"
                     : "bg-neutral-50 text-neutral-900 opacity-40"
@@ -661,14 +664,14 @@ export function SurgeryStatusModal({
               <button
                 onClick={handleClose}
                 disabled={isSaving}
-                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-lg hover:bg-neutral-50 disabled:opacity-50"
+                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-xl hover:bg-neutral-50 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={submitCancelada}
                 disabled={isSaving}
-                className="h-10 px-6 text-sm font-semibold bg-priority-urgente-bg text-priority-urgente-text rounded-lg hover:opacity-90 disabled:opacity-50"
+                className="h-10 px-6 text-sm font-semibold bg-priority-urgente-bg text-priority-urgente-text rounded-xl hover:opacity-90 disabled:opacity-50"
               >
                 {isSaving ? "Encerrando..." : "Encerrar"}
               </button>

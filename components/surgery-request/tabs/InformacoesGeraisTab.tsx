@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { EditableProcedureData } from "@/components/surgery-request/EditableProcedureData";
 import {
@@ -116,14 +116,116 @@ export function InformacoesGeraisTab({
   const documentHeaderAction = isReadOnly ? null : (
     <button
       onClick={() => setIsUploadModalOpen(true)}
-      className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 gap-3 rounded-lg text-sm leading-normal"
+      className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 gap-3 rounded-xl text-sm leading-normal"
     >
       Adicionar
     </button>
   );
 
+  // ── Tooltip de info sobre a seção Documentos ────────────────────────────────
+  const [showDocTooltip, setShowDocTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number }>({
+    top: 0,
+    left: 0,
+  });
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const infoButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Fecha ao clicar fora
+  useEffect(() => {
+    if (!showDocTooltip) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        tooltipRef.current &&
+        !tooltipRef.current.contains(e.target as Node) &&
+        infoButtonRef.current &&
+        !infoButtonRef.current.contains(e.target as Node)
+      ) {
+        setShowDocTooltip(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showDocTooltip]);
+
+  // Fecha ao rolar a página
+  useEffect(() => {
+    if (!showDocTooltip) return;
+    const close = () => setShowDocTooltip(false);
+    window.addEventListener("scroll", close, true);
+    return () => window.removeEventListener("scroll", close, true);
+  }, [showDocTooltip]);
+
+  function openTooltip() {
+    if (!infoButtonRef.current) return;
+    const rect = infoButtonRef.current.getBoundingClientRect();
+    setTooltipPos({ top: rect.bottom + 8, left: rect.left });
+    setShowDocTooltip(true);
+  }
+
+  const documentTitle = (
+    <span className="flex items-center gap-1.5">
+      Documentos
+      <button
+        ref={infoButtonRef}
+        type="button"
+        aria-label="Informações sobre documentos"
+        className="w-4 h-4 flex items-center justify-center text-teal-500 hover:text-teal-700 transition-colors focus:outline-none"
+        onMouseEnter={openTooltip}
+        onMouseLeave={(e) => {
+          const related = e.relatedTarget as Node | null;
+          if (
+            tooltipRef.current &&
+            related &&
+            tooltipRef.current.contains(related)
+          )
+            return;
+          setShowDocTooltip(false);
+        }}
+        onClick={() =>
+          showDocTooltip ? setShowDocTooltip(false) : openTooltip()
+        }
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M12 11v5"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <circle cx="12" cy="7.5" r="0.9" fill="currentColor" />
+        </svg>
+      </button>
+      {showDocTooltip && typeof window !== "undefined" && (
+        <div
+          ref={tooltipRef}
+          role="tooltip"
+          style={{ top: tooltipPos.top, left: tooltipPos.left }}
+          className="fixed z-[9999] w-64 bg-gray-900 text-white text-xs rounded-xl px-3 py-2.5 shadow-xl leading-relaxed"
+          onMouseEnter={() => setShowDocTooltip(true)}
+          onMouseLeave={() => setShowDocTooltip(false)}
+        >
+          <div
+            className="absolute -top-1.5 left-2 w-3 h-3 bg-gray-900 rotate-45 rounded-sm"
+            aria-hidden="true"
+          />
+          Os documentos anexados aqui serão incluídos nas{" "}
+          <strong>últimas páginas</strong> do documento da solicitação cirúrgica
+          gerado pelo sistema.
+        </div>
+      )}
+    </span>
+  );
+
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-4">
       {/* Agendamento (status 4 ou 5) — aparece antes dos dados do procedimento */}
       {(statusNum === 4 || statusNum === 5) && (
         <SchedulingSection
@@ -141,7 +243,7 @@ export function InformacoesGeraisTab({
         solicitacao.contestations?.some(
           (c: any) => c.type === "authorization" && !c.resolved_at,
         ) && (
-          <div className="px-4 py-3 bg-indigo-50 rounded-lg">
+          <div className="px-4 py-3 bg-indigo-50 rounded-xl">
             <p className="text-sm font-semibold text-indigo-600">
               A solicitação está em estado de contestação.
             </p>
@@ -156,7 +258,7 @@ export function InformacoesGeraisTab({
       />
 
       {/* Documentos */}
-      <SectionCard title="Documentos" headerAction={documentHeaderAction}>
+      <SectionCard title={documentTitle} headerAction={documentHeaderAction}>
         <div className="space-y-0">
           {/* Cabeçalho da tabela */}
           <div
@@ -178,10 +280,10 @@ export function InformacoesGeraisTab({
             <div className="flex-1 min-w-0 text-xs text-gray-900 opacity-70">
               Tipo
             </div>
-            <div className="w-36 flex-shrink-0 text-xs text-gray-900 opacity-70">
+            <div className="hidden sm:block w-36 flex-shrink-0 text-xs text-gray-900 opacity-70">
               Anexado em:
             </div>
-            <div className="w-48 flex-shrink-0 text-xs text-gray-900 opacity-70">
+            <div className="hidden sm:block w-48 flex-shrink-0 text-xs text-gray-900 opacity-70">
               Tipo do arquivo:
             </div>
           </div>
@@ -230,14 +332,14 @@ export function InformacoesGeraisTab({
                     {doc.name}
                   </a>
                 </div>
-                <div className="w-36 flex-shrink-0 text-xs text-gray-900">
+                <div className="hidden sm:block w-36 flex-shrink-0 text-xs text-gray-900">
                   {new Date(doc.created_at).toLocaleDateString("pt-BR", {
                     weekday: "short",
                     day: "numeric",
                     month: "short",
                   })}
                 </div>
-                <div className="w-48 flex-shrink-0 flex items-center justify-between">
+                <div className="hidden sm:flex w-48 flex-shrink-0 items-center justify-between">
                   <span className="text-xs text-gray-900">
                     {formatDocumentType(doc.key)}
                   </span>

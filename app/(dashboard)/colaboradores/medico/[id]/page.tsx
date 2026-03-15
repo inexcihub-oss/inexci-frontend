@@ -395,7 +395,7 @@ export default function MedicoDetalhePage() {
                   <td className="py-3">08:00 - 18:00</td>
                   <td className="py-3">Hospital A</td>
                   <td className="py-3">
-                    <button className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1">
+                    <button className="w-8 h-8 min-h-[44px] min-w-[44px] flex items-center justify-center border border-[#DCDFE3] rounded-lg shadow-sm hover:bg-gray-50 active:scale-[0.95] transition-all p-1.5">
                       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
                         <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
                         <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
@@ -409,7 +409,7 @@ export default function MedicoDetalhePage() {
                   <td className="py-3">08:00 - 15:00</td>
                   <td className="py-3">Hospital B</td>
                   <td className="py-3">
-                    <button className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1">
+                    <button className="w-8 h-8 min-h-[44px] min-w-[44px] flex items-center justify-center border border-[#DCDFE3] rounded-lg shadow-sm hover:bg-gray-50 active:scale-[0.95] transition-all p-1.5">
                       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
                         <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
                         <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
@@ -423,7 +423,7 @@ export default function MedicoDetalhePage() {
                   <td className="py-3">08:00 - 18:00</td>
                   <td className="py-3">Clínica A</td>
                   <td className="py-3">
-                    <button className="w-6 h-6 flex items-center justify-center border border-[#DCDFE3] rounded shadow-sm hover:bg-gray-50 transition-colors p-1">
+                    <button className="w-8 h-8 min-h-[44px] min-w-[44px] flex items-center justify-center border border-[#DCDFE3] rounded-lg shadow-sm hover:bg-gray-50 active:scale-[0.95] transition-all p-1.5">
                       <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
                         <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
                         <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />

@@ -19,7 +19,9 @@ interface AnalysisDataSectionProps {
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("pt-BR");
+  const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(dateStr);
+  return d.toLocaleDateString("pt-BR");
 }
 
 /**
@@ -49,12 +51,12 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
       {/* Dados da Solicitação */}
       <SectionCard title="Dados da solicitação">
         <SectionCardBody>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-semibold text-gray-900">
                 Nº da solicitação
               </label>
-              <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg">
+              <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
                 {analysis.request_number ?? "—"}
               </div>
             </div>
@@ -62,7 +64,7 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
               <label className="text-sm font-semibold text-gray-900">
                 Data de recebimento
               </label>
-              <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg">
+              <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
                 {formatDate(analysis.received_at)}
               </div>
             </div>
@@ -76,12 +78,12 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
           <SectionCardBody>
             <div className="flex flex-col gap-4">
               {quotations.map((q, i) => (
-                <div key={i} className="grid grid-cols-2 gap-4">
+                <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-semibold text-gray-900">
                       Nº proposta de cotação
                     </label>
-                    <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg">
+                    <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
                       {q.number}
                     </div>
                   </div>
@@ -89,7 +91,7 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
                     <label className="text-sm font-semibold text-gray-900">
                       Data de recebimento
                     </label>
-                    <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg">
+                    <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
                       {formatDate(q.date)}
                     </div>
                   </div>
@@ -101,7 +103,7 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
                   <label className="text-sm font-semibold text-gray-900">
                     Observações
                   </label>
-                  <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg min-h-20 whitespace-pre-wrap">
+                  <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl min-h-20 whitespace-pre-wrap">
                     {analysis.notes}
                   </div>
                 </div>

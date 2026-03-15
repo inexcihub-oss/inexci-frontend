@@ -66,10 +66,13 @@ export function ConfirmDateModal({
     });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={handleClose}
+      />
 
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -106,7 +109,7 @@ export function ConfirmDateModal({
                   <button
                     key={index}
                     onClick={() => setSelectedIndex(index as 0 | 1 | 2)}
-                    className={`w-full flex items-center gap-3 p-4 border-2 rounded-lg transition-colors text-left ${
+                    className={`w-full flex items-center gap-3 p-4 border-2 rounded-xl transition-colors text-left ${
                       isSelected
                         ? "border-teal-600 bg-teal-50"
                         : "border-gray-200 hover:border-gray-300 bg-white"
@@ -132,7 +135,7 @@ export function ConfirmDateModal({
               })}
             </div>
           ) : (
-            <div className="p-6 text-center text-gray-400 text-sm border border-dashed border-gray-200 rounded-lg">
+            <div className="p-6 text-center text-gray-400 text-sm border border-dashed border-gray-200 rounded-xl">
               Nenhuma data proposta disponível.
             </div>
           )}
@@ -143,7 +146,7 @@ export function ConfirmDateModal({
           <button
             onClick={handleClose}
             disabled={isSaving}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -152,7 +155,7 @@ export function ConfirmDateModal({
             disabled={
               selectedIndex === null || isSaving || dateOptions.length === 0
             }
-            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? (
               <span className="flex items-center gap-2">

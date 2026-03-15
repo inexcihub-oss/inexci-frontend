@@ -127,7 +127,7 @@ export function PendencyItem({
         {!isCompleted && !isWaiting && action && (
           <button
             onClick={handleNavigate}
-            className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
+            className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 min-h-[44px] px-2"
           >
             {action.label}
             <ArrowRight className="h-3 w-3" />
@@ -137,7 +137,7 @@ export function PendencyItem({
           <button
             onClick={() => onComplete(pendency.id)}
             disabled={isLoading}
-            className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+            className="text-xs text-primary-600 hover:text-primary-700 font-medium min-h-[44px] px-2"
           >
             Concluir
           </button>
@@ -149,7 +149,7 @@ export function PendencyItem({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 p-3 rounded-lg border",
+        "flex items-start gap-3 p-3 rounded-xl border",
         isCompleted ? "bg-gray-50 border-gray-200" : "bg-white border-gray-200",
         className,
       )}

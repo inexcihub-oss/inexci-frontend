@@ -75,7 +75,7 @@ export function CreateProcedureModal({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 placeholder:text-gray-400 text-sm"
+              className="w-full px-4 py-2.5 border border-[#DCDFE3] rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 placeholder:text-gray-400 text-sm"
               placeholder="Ex. Artroscopia de Joelho"
             />
           </div>
@@ -85,7 +85,7 @@ export function CreateProcedureModal({
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+              className="px-5 py-2.5 bg-teal-700 text-white rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
             >
               {loading ? "Adicionando..." : "Adicionar procedimento"}
             </button>

@@ -85,7 +85,7 @@ function TabButton({
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all w-full text-left",
+        "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-left whitespace-nowrap min-h-[44px] active:scale-[0.98]",
         active
           ? "bg-primary-50 text-primary-700 border border-primary-200"
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
@@ -115,7 +115,7 @@ function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out",
+        "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
         "disabled:cursor-not-allowed disabled:opacity-50",
         checked ? "bg-primary-600" : "bg-gray-200",
@@ -123,7 +123,7 @@ function Toggle({
     >
       <span
         className={cn(
-          "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+          "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
           checked ? "translate-x-5" : "translate-x-0",
         )}
       />
@@ -146,9 +146,9 @@ function NotificationItem({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0">
+    <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0 min-h-[56px]">
       <div className="flex items-start gap-3">
-        <div className="p-2 bg-gray-100 rounded-lg">
+        <div className="p-2.5 bg-gray-100 rounded-xl">
           <Icon className="w-5 h-5 text-gray-600" />
         </div>
         <div>
@@ -174,7 +174,7 @@ function PlanCard({
   return (
     <div
       className={cn(
-        "relative border rounded-xl p-6 transition-all",
+        "relative border rounded-2xl p-6 transition-all",
         plan.popular
           ? "border-primary-500 shadow-lg shadow-primary-100"
           : "border-gray-200",
@@ -520,7 +520,7 @@ export default function ConfiguracoesPage() {
     return (
       <div className="space-y-6">
         {/* Foto do perfil */}
-        <Card className="border border-gray-200 rounded-xl">
+        <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Foto do Perfil
@@ -588,7 +588,7 @@ export default function ConfiguracoesPage() {
         </Card>
 
         {/* Dados pessoais */}
-        <Card className="border border-gray-200 rounded-xl">
+        <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Dados Pessoais
@@ -598,7 +598,7 @@ export default function ConfiguracoesPage() {
             </p>
           </CardHeader>
           <CardContent className="p-6 pt-0">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="Nome completo"
                 value={profile.name}
@@ -659,7 +659,7 @@ export default function ConfiguracoesPage() {
 
         {/* Dados profissionais (apenas para médicos) */}
         {profile.userType === UserProfiles.DOCTOR && (
-          <Card className="border border-gray-200 rounded-xl">
+          <Card className="border border-gray-200 rounded-2xl">
             <CardHeader className="p-6 pb-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 Dados Profissionais
@@ -669,7 +669,7 @@ export default function ConfiguracoesPage() {
               </p>
             </CardHeader>
             <CardContent className="p-6 pt-0">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Input
                   label="Especialidade"
                   value={profile.specialty || ""}
@@ -730,7 +730,7 @@ export default function ConfiguracoesPage() {
 
         {/* Assinatura digital (apenas para médicos) */}
         {profile.userType === UserProfiles.DOCTOR && (
-          <Card className="border border-gray-200 rounded-xl">
+          <Card className="border border-gray-200 rounded-2xl">
             <CardHeader className="p-6 pb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <FileSignature className="w-5 h-5" />
@@ -793,8 +793,12 @@ export default function ConfiguracoesPage() {
         )}
 
         {/* Botão salvar */}
-        <div className="flex justify-end">
-          <Button onClick={handleSaveProfile} isLoading={saving}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
+          <Button
+            onClick={handleSaveProfile}
+            isLoading={saving}
+            className="min-h-[44px] rounded-xl"
+          >
             Salvar Alterações
           </Button>
         </div>
@@ -815,7 +819,7 @@ export default function ConfiguracoesPage() {
     return (
       <div className="space-y-6">
         {/* Canais de notificação */}
-        <Card className="border border-gray-200 rounded-xl">
+        <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Canais de Notificação
@@ -865,7 +869,7 @@ export default function ConfiguracoesPage() {
         </Card>
 
         {/* Tipos de notificação */}
-        <Card className="border border-gray-200 rounded-xl">
+        <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Tipos de Notificação
@@ -931,7 +935,11 @@ export default function ConfiguracoesPage() {
 
         {/* Botão salvar */}
         <div className="flex justify-end">
-          <Button onClick={handleSaveNotifications} isLoading={saving}>
+          <Button
+            onClick={handleSaveNotifications}
+            isLoading={saving}
+            className="min-h-[44px] rounded-xl"
+          >
             Salvar Preferências
           </Button>
         </div>
@@ -978,7 +986,7 @@ export default function ConfiguracoesPage() {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           {currentPlan ? "Alterar Plano" : "Escolha seu Plano"}
         </h3>
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {plans.map((plan) => (
             <PlanCard
               key={plan.id}
@@ -996,7 +1004,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Histórico de pagamentos */}
-      <Card className="border border-gray-200 rounded-xl">
+      <Card className="border border-gray-200 rounded-2xl">
         <CardHeader className="p-6 pb-4">
           <h3 className="text-lg font-semibold text-gray-900">
             Histórico de Pagamentos
@@ -1024,7 +1032,7 @@ export default function ConfiguracoesPage() {
                     <p className="text-xs text-gray-500">{payment.date}</p>
                   </div>
                 </div>
-                <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-lg">
                   {payment.status}
                 </span>
               </div>
@@ -1039,7 +1047,7 @@ export default function ConfiguracoesPage() {
   const renderSecurityTab = () => (
     <div className="space-y-6">
       {/* Alterar senha */}
-      <Card className="border border-gray-200 rounded-xl">
+      <Card className="border border-gray-200 rounded-2xl">
         <CardHeader className="p-6 pb-4">
           <h3 className="text-lg font-semibold text-gray-900">Alterar Senha</h3>
           <p className="text-sm text-gray-500">
@@ -1084,7 +1092,11 @@ export default function ConfiguracoesPage() {
               }
               required
             />
-            <Button onClick={handleChangePassword} isLoading={saving}>
+            <Button
+              onClick={handleChangePassword}
+              isLoading={saving}
+              className="min-h-[44px] rounded-xl"
+            >
               Alterar Senha
             </Button>
           </div>
@@ -1095,20 +1107,22 @@ export default function ConfiguracoesPage() {
 
   return (
     <PageContainer>
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 lg:p-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+            Configurações
+          </h1>
+          <p className="text-sm md:text-base text-gray-500 mt-1">
             Gerencie suas preferências e configurações da conta
           </p>
         </div>
 
         {/* Layout com sidebar e conteúdo */}
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
           {/* Sidebar de navegação */}
-          <div className="w-64 shrink-0">
-            <nav className="space-y-1">
+          <div className="w-full lg:w-64 shrink-0">
+            <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible scrollbar-hide pb-2 lg:pb-0">
               <TabButton
                 active={activeTab === "profile"}
                 onClick={() => setActiveTab("profile")}

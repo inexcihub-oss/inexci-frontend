@@ -35,14 +35,20 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+// Interpreta string de data YYYY-MM-DD como horário local (não UTC)
+function parseDate(s: string): Date {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(s);
+}
+
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("pt-BR");
+  return parseDate(dateStr).toLocaleDateString("pt-BR");
 }
 
 function formatExpectedDate(deadlineISO: string | null | undefined): string {
   if (!deadlineISO) return "—";
-  const date = new Date(deadlineISO);
+  const date = parseDate(deadlineISO);
   return isNaN(date.getTime()) ? "—" : date.toLocaleDateString("pt-BR");
 }
 
@@ -88,7 +94,8 @@ export function ConfirmReceiptModal({
   initialReceivedValue,
   isEditMode = false,
 }: ConfirmReceiptModalProps) {
-  const todayStr = new Date().toISOString().split("T")[0];
+  const _td = new Date();
+  const todayStr = `${_td.getFullYear()}-${String(_td.getMonth() + 1).padStart(2, "0")}-${String(_td.getDate()).padStart(2, "0")}`;
 
   const [step, setStep] = useState<Step>(1);
 
@@ -162,13 +169,13 @@ export function ConfirmReceiptModal({
       if (isEditMode) {
         await surgeryRequestService.updateReceipt(solicitacao.id, {
           received_value: parsedReceivedValue,
-          received_at: new Date(receivedAt).toISOString(),
+          received_at: parseDate(receivedAt).toISOString(),
         });
         showToast("Recebimento atualizado com sucesso.", "success");
       } else {
         await surgeryRequestService.confirmReceipt(solicitacao.id, {
           received_value: parsedReceivedValue,
-          received_at: new Date(receivedAt).toISOString(),
+          received_at: parseDate(receivedAt).toISOString(),
           receipt_notes: receiptNotes.trim() || undefined,
         });
         showToast(
@@ -239,13 +246,13 @@ export function ConfirmReceiptModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
-
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div
-        className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col overflow-hidden"
-        style={{ height: "650px" }}
-      >
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={handleClose}
+      />
+
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden h-[650px] max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center gap-2.5 px-6 py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
@@ -265,7 +272,7 @@ export function ConfirmReceiptModal({
           <>
             <div className="flex flex-col gap-6 p-6 overflow-y-auto">
               {/* Billing info box */}
-              <div className="flex flex-col gap-2 p-4 bg-blue-50 rounded-lg">
+              <div className="flex flex-col gap-2 p-4 bg-blue-50 rounded-xl">
                 <p className="text-sm font-semibold text-blue-600">
                   Dados do faturamento
                 </p>
@@ -313,7 +320,7 @@ export function ConfirmReceiptModal({
                     }
                     placeholder="R$ 0,00"
                     disabled={isSaving}
-                    className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                    className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -325,7 +332,7 @@ export function ConfirmReceiptModal({
                     value={receivedAt}
                     onChange={(e) => setReceivedAt(e.target.value)}
                     disabled={isSaving}
-                    className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                    className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -333,7 +340,7 @@ export function ConfirmReceiptModal({
               {/* Value comparison alert */}
               {valueIsValid &&
                 (hasDivergence ? (
-                  <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg">
+                  <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-xl">
                     <AlertTriangle className="w-6 h-6 shrink-0 text-yellow-600 mt-0.5" />
                     <div className="flex flex-col gap-1">
                       <p className="text-sm font-semibold text-yellow-800">
@@ -347,7 +354,7 @@ export function ConfirmReceiptModal({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-lg">
+                  <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl">
                     <CheckCircle className="w-6 h-6 shrink-0 text-emerald-600" />
                     <p className="text-sm font-semibold text-emerald-700">
                       Valor confere com o faturamento!
@@ -366,12 +373,12 @@ export function ConfirmReceiptModal({
                   placeholder="Ex: Recebido via transferência bancária, glosa parcial do procedimento, etc."
                   rows={4}
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-base text-gray-500 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none disabled:opacity-50"
+                  className="w-full px-3 py-2 text-base text-gray-500 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none disabled:opacity-50"
                 />
               </div>
 
               {/* Attachments */}
-              <div className="flex items-center justify-between gap-3 p-4 bg-gray-100 border border-dashed border-gray-300 rounded-lg">
+              <div className="flex items-center justify-between gap-3 p-4 bg-gray-100 border border-dashed border-gray-300 rounded-xl">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 flex items-center justify-center bg-gray-100 border border-gray-200 rounded-full">
                     <Paperclip className="w-5 h-5 text-gray-500" />
@@ -382,7 +389,7 @@ export function ConfirmReceiptModal({
                 </div>
                 <button
                   type="button"
-                  className="px-4 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                  className="px-4 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
                 >
                   Selecionar arquivo
                 </button>
@@ -394,7 +401,7 @@ export function ConfirmReceiptModal({
               <button
                 onClick={handleClose}
                 disabled={isSaving}
-                className="h-10 px-4 text-sm text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="h-10 px-4 text-sm text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -402,7 +409,7 @@ export function ConfirmReceiptModal({
                 <button
                   onClick={handleConfirmAndContest}
                   disabled={!canProceedStep1 || isSaving}
-                  className="h-10 px-4 text-sm font-semibold text-teal-700 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="h-10 px-4 text-sm font-semibold text-teal-700 bg-gray-100 border border-gray-200 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Confirmar e recorrer
                 </button>
@@ -410,7 +417,7 @@ export function ConfirmReceiptModal({
               <button
                 onClick={handleConfirm}
                 disabled={!canProceedStep1 || isSaving}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isSaving ? "Confirmando..." : "Confirmar"}
@@ -432,7 +439,7 @@ export function ConfirmReceiptModal({
                   onChange={(e) => setContestFrom(e.target.value)}
                   placeholder="inexci@mail.com"
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="w-full px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
                 />
               </div>
 
@@ -451,7 +458,7 @@ export function ConfirmReceiptModal({
                   onChange={(e) => setContestTo(e.target.value)}
                   placeholder="autorizacoes@convenio.com.br"
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="w-full px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
                 />
               </div>
 
@@ -465,7 +472,7 @@ export function ConfirmReceiptModal({
                   value={contestSubject}
                   onChange={(e) => setContestSubject(e.target.value)}
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
                 />
               </div>
 
@@ -479,7 +486,7 @@ export function ConfirmReceiptModal({
                   onChange={(e) => setContestMessage(e.target.value)}
                   rows={8}
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-base text-gray-900 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none disabled:opacity-50"
+                  className="w-full px-3 py-2 text-base text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none disabled:opacity-50"
                 />
               </div>
 
@@ -488,7 +495,7 @@ export function ConfirmReceiptModal({
                 <label className="text-sm font-semibold text-black">
                   Documento de contestação
                 </label>
-                <div className="flex items-center justify-between gap-3 p-4 bg-gray-100 border border-dashed border-gray-300 rounded-lg">
+                <div className="flex items-center justify-between gap-3 p-4 bg-gray-100 border border-dashed border-gray-300 rounded-xl">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 flex items-center justify-center bg-gray-100 border border-gray-200 rounded-full">
                       <Paperclip className="w-5 h-5 text-gray-500" />
@@ -499,7 +506,7 @@ export function ConfirmReceiptModal({
                   </div>
                   <button
                     type="button"
-                    className="px-4 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                    className="px-4 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
                   >
                     Selecionar arquivo
                   </button>
@@ -512,14 +519,14 @@ export function ConfirmReceiptModal({
               <button
                 onClick={() => setStep(1)}
                 disabled={isSaving}
-                className="h-10 px-4 text-sm text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="h-10 px-4 text-sm text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Voltar
               </button>
               <button
                 onClick={handleSubmitContest}
                 disabled={!canSubmitContest || isSaving}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isSaving ? "Enviando..." : "Enviar e-mail"}

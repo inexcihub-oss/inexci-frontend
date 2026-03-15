@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { userService } from "@/services/user.service";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -87,7 +86,7 @@ function ExamImageItem({
         href={doc.uri}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex flex-col items-center justify-center gap-2 aspect-square px-2 bg-gray-50 border border-dashed border-[#DCDFE3] rounded-lg hover:bg-gray-100 transition-colors"
+        className="flex flex-col items-center justify-center gap-2 aspect-square px-2 bg-gray-50 border border-dashed border-[#DCDFE3] rounded-xl hover:bg-gray-100 transition-colors"
       >
         <svg className="w-8 h-8 text-gray-300" viewBox="0 0 24 24" fill="none">
           <path
@@ -120,7 +119,7 @@ function ExamImageItem({
         src={doc.uri}
         alt={doc.name}
         onError={() => setFailed(true)}
-        className="w-full aspect-square object-cover rounded-lg border border-dashed border-[#DCDFE3] bg-gray-50"
+        className="w-full aspect-square object-cover rounded-xl border border-dashed border-[#DCDFE3] bg-gray-50"
       />
       <span className="text-xs text-gray-400 text-center truncate px-1">
         {doc.name}
@@ -261,21 +260,12 @@ export function SurgeryRequestDocumentPreviewModal({
   const [isExporting, setIsExporting] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string>("");
 
-  // Busca a URL assinada da assinatura do médico ao abrir o modal
+  // Usa exclusivamente a assinatura do médico vinculado à solicitação.
+  // O backend já converte signature_url para URL assinada em findOne().
   useEffect(() => {
     if (!isOpen) return;
-    userService
-      .getProfile()
-      .then((profile: any) => {
-        const dp = profile?.doctor_profile ?? {};
-        const url = dp.signature_url ?? profile?.signature_url ?? "";
-        setSignatureUrl(url);
-      })
-      .catch(() => {
-        // fallback: tenta usar o valor bruto da solicitacao
-        const rawUrl = solicitacao?.doctor?.signature_url ?? "";
-        if (rawUrl.startsWith("http")) setSignatureUrl(rawUrl);
-      });
+    const doctor = (solicitacao as any)?.doctor;
+    setSignatureUrl(doctor?.signature_url ?? "");
   }, [isOpen, solicitacao]);
 
   if (!isOpen) return null;
@@ -369,7 +359,7 @@ export function SurgeryRequestDocumentPreviewModal({
 
       {/* Modal */}
       <div
-        className="relative z-10 flex flex-col bg-white rounded-lg shadow-xl overflow-hidden"
+        className="relative z-10 flex flex-col bg-white rounded-xl shadow-xl overflow-hidden"
         style={{ width: "720px", maxHeight: "92vh" }}
       >
         {/* Header */}
@@ -580,7 +570,7 @@ export function SurgeryRequestDocumentPreviewModal({
                   {[0, 1, 2].map((i) => (
                     <div
                       key={i}
-                      className="flex flex-col items-center justify-center aspect-square bg-white border border-dashed border-[#DCDFE3] rounded-lg"
+                      className="flex flex-col items-center justify-center aspect-square bg-white border border-dashed border-[#DCDFE3] rounded-xl"
                     >
                       <svg
                         className="w-10 h-10 text-[#DCDFE3]"
@@ -818,14 +808,14 @@ export function SurgeryRequestDocumentPreviewModal({
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200 shrink-0">
           <button
             onClick={onClose}
-            className="flex items-center justify-center h-10 px-4 bg-white border border-gray-200 shadow-sm rounded-lg text-sm text-gray-900 hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-center h-10 px-4 bg-white border border-gray-200 shadow-sm rounded-xl text-sm text-gray-900 hover:bg-gray-50 transition-colors"
           >
             Fechar
           </button>
           <button
             onClick={handleExportPdf}
             disabled={isExporting}
-            className="flex items-center justify-center gap-2 h-10 px-6 bg-teal-700 rounded-lg text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+            className="flex items-center justify-center gap-2 h-10 px-6 bg-teal-700 rounded-xl text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
           >
             {isExporting ? "Exportando..." : "Exportar PDF"}
           </button>

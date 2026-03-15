@@ -220,8 +220,8 @@ export function EditableProcedureData({
   };
 
   return (
-    <div className="border border-neutral-100 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 h-10 border-b border-neutral-100">
+    <div className="border border-neutral-100 rounded-2xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 h-11 border-b border-neutral-100">
         <h3 className="text-sm font-semibold text-black">
           Dados do procedimento
         </h3>
@@ -254,7 +254,7 @@ export function EditableProcedureData({
           </div>
         )}
       </div>
-      <div className="p-3 grid grid-cols-2 gap-x-6 gap-y-3">
+      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
         {/* Hospital */}
         <div className="space-y-1">
           {isEditing ? (
@@ -278,7 +278,7 @@ export function EditableProcedureData({
                 type="text"
                 value={solicitacao.hospital?.name || ""}
                 placeholder="Não informado"
-                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-lg focus:outline-none cursor-default ${
+                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-xl focus:outline-none cursor-default ${
                   solicitacao.hospital?.name
                     ? "text-gray-500"
                     : "text-gray-400 italic"
@@ -322,7 +322,7 @@ export function EditableProcedureData({
                 type="text"
                 value={cidDisplayLabel}
                 placeholder="Não informado"
-                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-lg focus:outline-none cursor-default ${
+                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-xl focus:outline-none cursor-default ${
                   cidDisplayLabel ? "text-gray-500" : "text-gray-400 italic"
                 }`}
                 disabled
@@ -354,7 +354,7 @@ export function EditableProcedureData({
                 type="text"
                 value={solicitacao.health_plan?.name || ""}
                 placeholder="Não informado"
-                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-lg focus:outline-none cursor-default ${
+                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-xl focus:outline-none cursor-default ${
                   solicitacao.health_plan?.name
                     ? "text-gray-500"
                     : "text-gray-400 italic"
@@ -383,7 +383,7 @@ export function EditableProcedureData({
                 }
                 maxLength={20}
                 placeholder="Digite a matrícula"
-                className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 bg-white border border-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-200"
+                className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-200"
               />
             </>
           ) : (
@@ -395,7 +395,7 @@ export function EditableProcedureData({
                 type="text"
                 value={solicitacao.health_plan_registration || ""}
                 placeholder="Não informado"
-                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-lg focus:outline-none cursor-default ${
+                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-xl focus:outline-none cursor-default ${
                   solicitacao.health_plan_registration
                     ? "text-gray-500"
                     : "text-gray-400 italic"
@@ -420,7 +420,7 @@ export function EditableProcedureData({
                   setFormData({ ...formData, healthPlanType: e.target.value })
                 }
                 placeholder="Digite o tipo do plano"
-                className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 bg-white border border-neutral-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-200"
+                className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-500 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-neutral-200"
               />
             </>
           ) : (
@@ -432,7 +432,7 @@ export function EditableProcedureData({
                 type="text"
                 value={solicitacao.health_plan_type || ""}
                 placeholder="Não informado"
-                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-lg focus:outline-none cursor-default ${
+                className={`w-full px-3 py-2 text-sm bg-gray-50 border border-neutral-100 rounded-xl focus:outline-none cursor-default ${
                   solicitacao.health_plan_type
                     ? "text-gray-500"
                     : "text-gray-400 italic"

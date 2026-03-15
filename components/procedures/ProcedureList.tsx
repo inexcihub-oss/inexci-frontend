@@ -334,7 +334,7 @@ const ProcedureRow: React.FC<{
         </div>
         <div className="relative" ref={dropdownRef}>
           <button
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               setShowActions(!showActions);
@@ -345,7 +345,7 @@ const ProcedureRow: React.FC<{
 
           {/* Dropdown de ações contextuais */}
           {showActions && contextualActions.length > 0 && (
-            <div className="absolute right-0 top-10 z-10 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-40">
+            <div className="absolute right-0 top-10 z-10 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-40">
               {contextualActions.map((action, index) => (
                 <button
                   key={index}

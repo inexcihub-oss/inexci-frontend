@@ -61,14 +61,14 @@ export function ProcedureSelectionModal({
               placeholder="Buscar procedimento..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[#DCDFE3] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-[#DCDFE3] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           {/* New Button */}
           <button
             onClick={onCreateNew}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-5 h-5" />
             Novo Procedimento
@@ -91,7 +91,7 @@ export function ProcedureSelectionModal({
                   onSelectProcedure(procedure);
                   onClose();
                 }}
-                className="w-full text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-blue-500 transition-all"
+                className="w-full text-left p-4 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-blue-500 transition-all"
               >
                 <div className="font-medium text-gray-900">
                   {procedure.name}

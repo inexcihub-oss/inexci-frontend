@@ -91,20 +91,20 @@ export function StartAnalysisModal({
   };
 
   const inputClass =
-    "w-full px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:opacity-50";
+    "w-full px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:opacity-50";
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={handleClose}
+      />
 
       {/* Modal — largura fiel ao Figma (~650px), altura fixa igual aos modais OPME/TUSS */}
-      <div
-        className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col"
-        style={{ height: "650px" }}
-      >
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col h-[650px] max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center gap-2.5 px-6 py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
@@ -129,7 +129,7 @@ export function StartAnalysisModal({
         {/* Conteúdo com scroll */}
         <div className="flex flex-col gap-4 p-6 overflow-y-auto">
           {/* Alert informativo */}
-          <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-lg">
+          <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
             <p className="text-base text-blue-600 leading-normal">
               Para indicar que sua solicitação está em análise, preencha o
               número da solicitação e a data de recebimento.
@@ -281,7 +281,7 @@ export function StartAnalysisModal({
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Digite sua observação..."
                   disabled={isSaving}
-                  className="w-full h-40 px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 resize transition-colors disabled:opacity-50"
+                  className="w-full h-40 px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 resize transition-colors disabled:opacity-50"
                 />
               </div>
             </div>
@@ -293,14 +293,14 @@ export function StartAnalysisModal({
           <button
             onClick={handleClose}
             disabled={isSaving}
-            className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || isSaving}
-            className={`h-10 px-6 text-sm font-semibold rounded-lg transition-colors ${
+            className={`h-10 px-6 text-sm font-semibold rounded-xl transition-colors ${
               canSubmit && !isSaving
                 ? "bg-teal-700 text-white hover:bg-teal-800"
                 : "bg-gray-100 text-gray-800 opacity-50 cursor-not-allowed"

@@ -15,6 +15,22 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    /**
+     * Breakpoints Mobile-First
+     * xs: smartphones pequenos
+     * sm: smartphones grandes
+     * md: tablets portrait
+     * lg: tablets landscape / desktop
+     * xl: desktop grande
+     */
+    screens: {
+      xs: "375px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     extend: {
       /**
        * Sistema de Cores
@@ -163,12 +179,51 @@ const config: Config = {
       },
       /**
        * Border Radius
-       * Mantém consistência nos arredondamentos
+       * Arredondamentos mais suaves e modernos para look mobile-friendly
        */
       borderRadius: {
         xl: "0.75rem",
         "2xl": "1rem",
         "3xl": "1.5rem",
+        "4xl": "2rem",
+      },
+      /**
+       * Spacing extras para safe areas e mobile
+       */
+      spacing: {
+        "safe-top": "env(safe-area-inset-top)",
+        "safe-bottom": "env(safe-area-inset-bottom)",
+        "safe-left": "env(safe-area-inset-left)",
+        "safe-right": "env(safe-area-inset-right)",
+        18: "4.5rem",
+        22: "5.5rem",
+      },
+      /**
+       * Keyframes e animações para mobile
+       */
+      keyframes: {
+        "slide-up": {
+          from: { transform: "translateY(100%)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+        "slide-down": {
+          from: { transform: "translateY(0)", opacity: "1" },
+          to: { transform: "translateY(100%)", opacity: "0" },
+        },
+        "fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "scale-in": {
+          from: { transform: "scale(0.95)", opacity: "0" },
+          to: { transform: "scale(1)", opacity: "1" },
+        },
+      },
+      animation: {
+        "slide-up": "slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+        "slide-down": "slide-down 0.2s cubic-bezier(0.32, 0.72, 0, 1)",
+        "fade-in": "fade-in 0.2s ease-out",
+        "scale-in": "scale-in 0.2s ease-out",
       },
     },
   },

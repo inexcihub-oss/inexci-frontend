@@ -290,7 +290,7 @@ function SearchableMultiSelect({
     <div ref={containerRef} className="relative">
       {/* Input trigger */}
       <div
-        className={`flex items-center gap-2 min-h-10 px-3 py-2 border rounded-lg cursor-text transition-colors ${
+        className={`flex items-center gap-2 min-h-10 px-3 py-2 border rounded-xl cursor-text transition-colors ${
           open
             ? "border-teal-600 ring-1 ring-teal-600/20"
             : "border-neutral-200 hover:border-neutral-300"
@@ -361,7 +361,7 @@ function SearchableMultiSelect({
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
           {filtered.length === 0 ? (
             <p className="text-sm text-neutral-400 text-center py-4">
               Nenhum resultado
@@ -800,7 +800,7 @@ export function FilterModal({
           <button
             type="button"
             onClick={handleApply}
-            className="h-11 px-6 bg-teal-700 text-white text-sm font-semibold rounded-lg hover:bg-teal-800 transition-colors"
+            className="h-11 px-6 bg-teal-700 text-white text-sm font-semibold rounded-xl hover:bg-teal-800 transition-colors"
           >
             Mostrar resultados
           </button>

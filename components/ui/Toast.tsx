@@ -80,15 +80,15 @@ export function Toast({ message, type, onClose, duration = 5000 }: ToastProps) {
   }[type];
 
   return (
-    <div className="fixed top-4 right-4 z-100 animate-slide-in-right">
+    <div className="fixed bottom-20 md:bottom-auto md:top-4 left-3 right-3 z-100 animate-slide-up md:animate-slide-in-right md:left-auto md:right-4 md:max-w-md">
       <div
-        className={`${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-75 max-w-md`}
+        className={`${bgColor} text-white px-4 py-3.5 md:px-6 md:py-4 rounded-2xl shadow-lg flex items-center gap-3 md:min-w-75`}
       >
         <div className="flex-shrink-0">{icon}</div>
         <p className="flex-1 text-sm font-medium">{message}</p>
         <button
           onClick={onClose}
-          className="flex-shrink-0 hover:bg-white/20 rounded p-1 transition-colors"
+          className="flex-shrink-0 hover:bg-white/20 rounded p-2 -m-1 transition-colors"
         >
           <svg
             className="w-5 h-5"
