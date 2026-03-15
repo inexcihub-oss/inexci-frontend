@@ -7,8 +7,6 @@ import {
   ChevronDown,
   ChevronRight,
   MoreHorizontal,
-  MessageCircle,
-  Paperclip,
   AlertTriangle,
 } from "lucide-react";
 import {
@@ -124,21 +122,21 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
                 "brightness(0) saturate(100%) invert(53%) sepia(9%) saturate(712%) hue-rotate(183deg) brightness(92%) contrast(88%)",
             }}
           />
-          <span className="text-base font-semibold text-teal-700 hover:underline truncate">
+          <span className="text-sm md:text-base font-semibold text-teal-700 hover:underline truncate">
             {request.patient.name}
           </span>
         </div>
 
         {/* Col 4: Procedimento - padding 0 8px, flex-1 */}
         <div className="hidden md:flex items-center px-2 min-w-0 flex-1">
-          <span className="text-base text-neutral-900 truncate">
+          <span className="text-sm md:text-base text-neutral-900 truncate">
             {request.procedureName}
           </span>
         </div>
 
         {/* Col 5: Convênio - width 140px, padding 0 8px */}
         <div className="hidden lg:flex items-center px-2 w-36 shrink-0">
-          <span className="text-base text-neutral-900 truncate">
+          <span className="text-sm md:text-base text-neutral-900 truncate">
             {request.healthPlan || "-"}
           </span>
         </div>
@@ -148,7 +146,7 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
           {request.pendenciesCount > 0 ? (
             <div className="flex items-center gap-1 px-3 py-1 border border-[#E34935] rounded-full bg-white">
               <AlertTriangle className="w-5 h-5 text-[#E34935]" />
-              <span className="text-sm text-[#E34935]">
+              <span className="text-xs md:text-sm text-[#E34935]">
                 {request.pendenciesCount}
               </span>
             </div>
@@ -157,29 +155,9 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
           )}
         </div>
 
-        {/* Col 7: Badge Comentários - padding 0 4px */}
-        <div className="hidden lg:flex items-center justify-center px-1 shrink-0">
-          <div className="flex items-center gap-1 px-3 py-1 border border-neutral-100 rounded-full bg-white">
-            <MessageCircle className="w-5 h-5 text-neutral-200" />
-            <span className="text-sm text-neutral-900">
-              {request.messagesCount}
-            </span>
-          </div>
-        </div>
-
-        {/* Col 8: Badge Anexos - padding 0 4px */}
-        <div className="hidden lg:flex items-center justify-center px-1 shrink-0">
-          <div className="flex items-center gap-1 px-3 py-1 border border-neutral-100 rounded-full bg-white">
-            <Paperclip className="w-5 h-5 text-neutral-200" />
-            <span className="text-sm text-neutral-900">
-              {request.attachmentsCount}
-            </span>
-          </div>
-        </div>
-
-        {/* Col 9: Data de Criação - formato DD/MM/YYYY */}
+        {/* Col 7: Data de Criação - formato DD/MM/YYYY */}
         <div className="flex items-center px-2 shrink-0">
-          <span className="text-sm text-neutral-200 whitespace-nowrap">
+          <span className="text-xs md:text-sm text-neutral-200 whitespace-nowrap">
             {request.createdAt}
           </span>
         </div>
@@ -244,7 +222,7 @@ const StatusGroup = memo<StatusGroupProps>(
           />
 
           {/* Nome do Status */}
-          <span className="text-base font-semibold text-black">{status}</span>
+          <span className="text-sm md:text-base font-semibold text-black">{status}</span>
 
           {/* Contador */}
           <div className="flex items-center justify-center w-6 h-6 bg-white border border-neutral-100 rounded-full">
@@ -335,12 +313,12 @@ export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
           <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center">
             <AlertTriangle className="w-7 h-7 text-neutral-400" />
           </div>
-          <p className="text-base font-semibold text-neutral-700">
+          <p className="text-sm md:text-base font-semibold text-neutral-700">
             {hasActiveFilters
               ? "Nenhuma solicitação encontrada"
               : "Nenhuma solicitação cadastrada"}
           </p>
-          <p className="text-sm text-neutral-400 text-center max-w-xs">
+          <p className="text-xs md:text-sm text-neutral-400 text-center max-w-xs">
             {hasActiveFilters
               ? "Nenhuma solicitação corresponde aos filtros selecionados. Tente ajustar ou limpar os filtros."
               : "Comece criando uma nova solicitação cirúrgica."}
@@ -348,7 +326,7 @@ export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
           {hasActiveFilters && onClearFilters && (
             <button
               onClick={onClearFilters}
-              className="text-sm font-medium text-teal-700 hover:underline"
+              className="text-xs md:text-sm font-medium text-teal-700 hover:underline"
             >
               Limpar filtros
             </button>

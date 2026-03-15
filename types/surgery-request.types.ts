@@ -105,8 +105,6 @@ export interface SurgeryRequest {
   pendenciesCount: number;
   pendenciesCompleted?: number;
   pendenciesWaiting?: number;
-  messagesCount: number;
-  attachmentsCount: number;
   createdAt: string;
   deadline: string;
   status: SurgeryRequestStatus;

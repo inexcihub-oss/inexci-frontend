@@ -45,7 +45,7 @@ export const KanbanColumn = memo<KanbanColumnProps>(
             height={24}
             className="flex-shrink-0"
           />
-          <h2 className="font-semibold text-base text-gray-900 leading-normal">
+          <h2 className="font-semibold text-sm md:text-base text-gray-900 leading-normal">
             {title}
           </h2>
           <div className="flex items-center justify-center min-w-6 h-6 px-1 bg-white border border-gray-200 rounded-full">

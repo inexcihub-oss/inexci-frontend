@@ -356,9 +356,7 @@ export default function PacientesPage() {
     <PageContainer className="border-gray-200">
       {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3.5 border-b border-gray-200">
-        <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold text-black font-urbanist">
-          Pacientes
-        </h1>
+        <h1 className="ds-page-title">Pacientes</h1>
       </div>
 
       {/* Search and Actions */}

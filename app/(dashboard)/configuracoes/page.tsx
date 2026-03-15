@@ -191,7 +191,7 @@ function PlanCard({
           Plano Atual
         </span>
       )}
-      <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
+      <h3 className="text-base font-semibold text-gray-900">{plan.name}</h3>
       <div className="mt-2 mb-4">
         <span className="text-3xl font-bold text-gray-900">
           R$ {plan.price.toFixed(2).replace(".", ",")}
@@ -522,7 +522,7 @@ export default function ConfiguracoesPage() {
         {/* Foto do perfil */}
         <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-base font-semibold text-gray-900">
               Foto do Perfil
             </h3>
             <p className="text-sm text-gray-500">
@@ -590,7 +590,7 @@ export default function ConfiguracoesPage() {
         {/* Dados pessoais */}
         <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-base font-semibold text-gray-900">
               Dados Pessoais
             </h3>
             <p className="text-sm text-gray-500">
@@ -661,7 +661,7 @@ export default function ConfiguracoesPage() {
         {profile.userType === UserProfiles.DOCTOR && (
           <Card className="border border-gray-200 rounded-2xl">
             <CardHeader className="p-6 pb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-base font-semibold text-gray-900">
                 Dados Profissionais
               </h3>
               <p className="text-sm text-gray-500">
@@ -732,7 +732,7 @@ export default function ConfiguracoesPage() {
         {profile.userType === UserProfiles.DOCTOR && (
           <Card className="border border-gray-200 rounded-2xl">
             <CardHeader className="p-6 pb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <FileSignature className="w-5 h-5" />
                 Assinatura Digital
               </h3>
@@ -821,7 +821,7 @@ export default function ConfiguracoesPage() {
         {/* Canais de notificação */}
         <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-base font-semibold text-gray-900">
               Canais de Notificação
             </h3>
             <p className="text-sm text-gray-500">
@@ -871,7 +871,7 @@ export default function ConfiguracoesPage() {
         {/* Tipos de notificação */}
         <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-base font-semibold text-gray-900">
               Tipos de Notificação
             </h3>
             <p className="text-sm text-gray-500">
@@ -983,7 +983,7 @@ export default function ConfiguracoesPage() {
 
       {/* Lista de planos */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <h3 className="text-base font-semibold text-gray-900 mb-4">
           {currentPlan ? "Alterar Plano" : "Escolha seu Plano"}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1006,7 +1006,7 @@ export default function ConfiguracoesPage() {
       {/* Histórico de pagamentos */}
       <Card className="border border-gray-200 rounded-2xl">
         <CardHeader className="p-6 pb-4">
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-base font-semibold text-gray-900">
             Histórico de Pagamentos
           </h3>
         </CardHeader>
@@ -1049,7 +1049,9 @@ export default function ConfiguracoesPage() {
       {/* Alterar senha */}
       <Card className="border border-gray-200 rounded-2xl">
         <CardHeader className="p-6 pb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Alterar Senha</h3>
+          <h3 className="text-base font-semibold text-gray-900">
+            Alterar Senha
+          </h3>
           <p className="text-sm text-gray-500">
             Mantenha sua conta segura com uma senha forte
           </p>
@@ -1110,9 +1112,7 @@ export default function ConfiguracoesPage() {
       <div className="flex-1 overflow-auto p-4 lg:p-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-            Configurações
-          </h1>
+          <h1 className="ds-page-title">Configurações</h1>
           <p className="text-sm md:text-base text-gray-500 mt-1">
             Gerencie suas preferências e configurações da conta
           </p>

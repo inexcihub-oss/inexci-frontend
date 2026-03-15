@@ -166,8 +166,7 @@ export function CreateHospitalModal({
 
   if (!isOpen) return null;
 
-  const inputClass =
-    "w-full px-4 py-3 border border-[#DCDFE3] rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500";
+  const inputClass = "ds-input";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
@@ -176,9 +175,7 @@ export function CreateHospitalModal({
       <div className="relative bg-white rounded-xl shadow-xl w-[600px] mx-4 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5 flex-shrink-0">
-          <h2 className="text-[28px] font-bold text-gray-900 leading-tight">
-            Novo hospital
-          </h2>
+          <h2 className="ds-modal-title">Novo hospital</h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -194,12 +191,10 @@ export function CreateHospitalModal({
           onSubmit={handleSubmit}
           className="flex flex-col flex-1 overflow-hidden"
         >
-          <div className="px-6 py-6 flex flex-col gap-5">
+          <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
             {/* Hospital */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-bold text-gray-900">
-                Hospital
-              </label>
+              <label className="ds-label mb-0">Hospital</label>
               <input
                 type="text"
                 required
@@ -212,9 +207,7 @@ export function CreateHospitalModal({
 
             {/* Telefone */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-bold text-gray-900">
-                Telefone
-              </label>
+              <label className="ds-label mb-0">Telefone</label>
               <input
                 type="tel"
                 value={formData.phone}
@@ -226,16 +219,14 @@ export function CreateHospitalModal({
 
             {/* E-mail */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-bold text-gray-900">E-mail</label>
+              <label className="ds-label mb-0">E-mail</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={handleEmailChange}
                 onBlur={handleEmailBlur}
                 placeholder="hospital@mail.com"
-                className={`w-full px-4 py-3 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  emailError ? "border-red-400" : "border-[#DCDFE3]"
-                }`}
+                className={`ds-input ${emailError ? "border-red-400" : ""}`}
               />
               {emailError && (
                 <span className="text-xs text-red-500">{emailError}</span>
@@ -245,7 +236,7 @@ export function CreateHospitalModal({
             {/* CEP + Número */}
             <div className="flex gap-3">
               <div className="flex-1 flex flex-col gap-1.5">
-                <label className="text-sm font-bold text-gray-900">CEP</label>
+                <label className="ds-label mb-0">CEP</label>
                 <input
                   type="text"
                   required
@@ -256,9 +247,7 @@ export function CreateHospitalModal({
                 />
               </div>
               <div className="w-32 flex flex-col gap-1.5">
-                <label className="text-sm font-bold text-gray-900">
-                  Número
-                </label>
+                <label className="ds-label mb-0">Número</label>
                 <input
                   type="text"
                   required
@@ -273,9 +262,7 @@ export function CreateHospitalModal({
             {/* Endereço + Bairro */}
             <div className="flex gap-3">
               <div className="flex-1 flex flex-col gap-1.5">
-                <label className="text-sm font-bold text-gray-900">
-                  Endereço
-                </label>
+                <label className="ds-label mb-0">Endereço</label>
                 <input
                   type="text"
                   required
@@ -286,9 +273,7 @@ export function CreateHospitalModal({
                 />
               </div>
               <div className="flex-1 flex flex-col gap-1.5">
-                <label className="text-sm font-bold text-gray-900">
-                  Bairro
-                </label>
+                <label className="ds-label mb-0">Bairro</label>
                 <input
                   type="text"
                   required
@@ -303,9 +288,7 @@ export function CreateHospitalModal({
             {/* Cidade + Estado */}
             <div className="flex gap-3">
               <div className="flex-1 flex flex-col gap-1.5">
-                <label className="text-sm font-bold text-gray-900">
-                  Cidade
-                </label>
+                <label className="ds-label mb-0">Cidade</label>
                 <input
                   type="text"
                   required
@@ -316,14 +299,12 @@ export function CreateHospitalModal({
                 />
               </div>
               <div className="w-24 flex flex-col gap-1.5">
-                <label className="text-sm font-bold text-gray-900">
-                  Estado
-                </label>
+                <label className="ds-label mb-0">Estado</label>
                 <select
                   required
                   value={formData.state}
                   onChange={(e) => set("state")(e.target.value)}
-                  className="w-full px-3 py-3 border border-[#DCDFE3] rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                  className="ds-input"
                 >
                   <option value="">UF</option>
                   {ESTADOS_BR.map((uf) => (
@@ -342,11 +323,11 @@ export function CreateHospitalModal({
 
           {/* Footer */}
           <div className="h-px bg-gray-200 flex-shrink-0" />
-          <div className="flex items-center justify-end px-6 py-4 flex-shrink-0">
+          <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
             <button
               type="submit"
               disabled={loading || !!emailError}
-              className="px-6 py-3 bg-teal-700 text-white text-sm font-semibold rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ds-btn-primary"
             >
               {loading ? "Adicionando..." : "Adicionar hospital"}
             </button>

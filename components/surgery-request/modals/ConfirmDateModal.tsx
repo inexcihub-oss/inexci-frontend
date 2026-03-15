@@ -74,7 +74,7 @@ export function ConfirmDateModal({
 
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             Confirmar Data
           </h2>
@@ -95,8 +95,8 @@ export function ConfirmDateModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
-          <p className="text-sm text-gray-500">
+        <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+          <p className="text-xs md:text-sm text-gray-500">
             Selecione a data disponível para confirmar o agendamento da
             cirurgia.
           </p>
@@ -126,7 +126,7 @@ export function ConfirmDateModal({
                       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
                         Opção {index + 1}
                       </span>
-                      <p className="text-sm font-medium text-gray-900 mt-0.5">
+                      <p className="text-xs md:text-sm font-medium text-gray-900 mt-0.5">
                         {formatDate(date)}
                       </p>
                     </div>
@@ -135,18 +135,18 @@ export function ConfirmDateModal({
               })}
             </div>
           ) : (
-            <div className="p-6 text-center text-gray-400 text-sm border border-dashed border-gray-200 rounded-xl">
+            <div className="p-4 md:p-6 text-center text-gray-400 text-xs md:text-sm border border-dashed border-gray-200 rounded-xl">
               Nenhuma data proposta disponível.
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
           <button
             onClick={handleClose}
             disabled={isSaving}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="ds-btn-outline disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -155,7 +155,7 @@ export function ConfirmDateModal({
             disabled={
               selectedIndex === null || isSaving || dateOptions.length === 0
             }
-            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? (
               <span className="flex items-center gap-2">

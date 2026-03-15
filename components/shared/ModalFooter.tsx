@@ -22,7 +22,7 @@ export function ModalFooter({
 
   return (
     <div
-      className={`flex items-center ${justifyClass} gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 sticky bottom-0 bg-white ${className}`}
+      className={`flex items-center ${justifyClass} gap-3 px-4 sm:px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 sticky bottom-0 bg-white ${className}`}
       style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
       {children}
@@ -70,7 +70,7 @@ export function SpinnerButton({
       type={type}
       onClick={onClick}
       disabled={disabled || isLoading}
-      className={`px-4 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200 min-h-[44px] active:scale-[0.98] ${variantClasses[variant]} ${className}`}
+      className={`px-3 py-1.5 md:px-4 md:py-2.5 text-xs md:text-sm font-semibold rounded-xl transition-all duration-200 min-h-[36px] md:min-h-[44px] active:scale-[0.98] ${variantClasses[variant]} ${className}`}
     >
       {isLoading ? (
         <span className="flex items-center gap-2">

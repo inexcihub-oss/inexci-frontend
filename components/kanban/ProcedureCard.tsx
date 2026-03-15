@@ -291,26 +291,26 @@ export const ProcedureCard = memo<ProcedureCardProps>(
               }}
             />
           </div>
-          <h3 className="font-semibold text-base text-teal-700 leading-normal line-clamp-1">
+          <h3 className="font-semibold text-sm md:text-base text-teal-700 leading-normal line-clamp-1">
             {procedure.patient.name}
           </h3>
         </div>
 
         {/* Procedimento */}
-        <p className="text-base text-gray-900 leading-normal line-clamp-2 mb-6">
+        <p className="text-sm md:text-base text-gray-900 leading-normal line-clamp-2 mb-6">
           {procedure.procedureName}
         </p>
 
         {/* Nome do Médico/Gestor */}
         <p
-          className={`text-base text-gray-500 leading-normal line-clamp-1 ${procedure.healthPlan ? "mb-1" : "mb-3"}`}
+          className={`text-sm md:text-base text-gray-500 leading-normal line-clamp-1 ${procedure.healthPlan ? "mb-1" : "mb-3"}`}
         >
           {procedure.doctor.name}
         </p>
 
         {/* Convênio - sempre abaixo do gestor se existir */}
         {procedure.healthPlan && (
-          <p className="text-base text-gray-500 leading-normal line-clamp-1 mb-3">
+          <p className="text-sm md:text-base text-gray-500 leading-normal line-clamp-1 mb-3">
             {procedure.healthPlan}
           </p>
         )}
@@ -414,27 +414,6 @@ export const ProcedureCard = memo<ProcedureCardProps>(
             >
               {procedure.createdAt}
             </span>
-          </div>
-
-          {/* Chat e Anexos - Direita */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <Image src="/icons/chat.svg" alt="Chat" width={16} height={16} />
-              <span className="text-sm text-gray-500">
-                {procedure.messagesCount}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Image
-                src="/icons/attachment.svg"
-                alt="Anexos"
-                width={16}
-                height={16}
-              />
-              <span className="text-sm text-gray-500">
-                {procedure.attachmentsCount}
-              </span>
-            </div>
           </div>
         </div>
       </div>

@@ -76,14 +76,8 @@ export default function ProcedimentosCirurgicos() {
                 return record.indication_name;
               }
 
-              if (record.procedures && record.procedures.length > 0) {
-                const firstProcedure = record.procedures[0];
-                if (firstProcedure.procedure && firstProcedure.procedure.name) {
-                  if (record.procedures.length > 1) {
-                    return `${firstProcedure.procedure.name} +${record.procedures.length - 1}`;
-                  }
-                  return firstProcedure.procedure.name;
-                }
+              if (record.procedure?.name) {
+                return record.procedure.name;
               }
 
               return "Procedimento não especificado";
@@ -118,8 +112,6 @@ export default function ProcedimentosCirurgicos() {
               pendenciesCount: record.pendenciesCount || 0,
               pendenciesCompleted: 0,
               pendenciesWaiting: 0,
-              messagesCount: record.activitiesCount || 0,
-              attachmentsCount: record.attachmentsCount || 0,
               createdAt: (() => {
                 const d = new Date(record.created_at);
                 const dd = d.getDate().toString().padStart(2, "0");
@@ -346,9 +338,7 @@ export default function ProcedimentosCirurgicos() {
     <PageContainer>
       {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 py-4 lg:py-6 border-b border-neutral-100">
-        <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold text-neutral-900 font-urbanist">
-          Solicitações Cirúrgicos
-        </h1>
+        <h1 className="ds-page-title">Solicitações Cirúrgicos</h1>
       </div>
 
       {/* Toolbar */}

@@ -327,10 +327,8 @@ export function TussProcedureModal({
       {/* Modal - fullscreen mobile, centered desktop */}
       <div className="relative bg-white sm:rounded-xl shadow-xl flex flex-col w-full h-full sm:w-[800px] sm:h-[650px] sm:max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center px-4 sm:px-6 py-4 border-b border-[#DCDFE3]">
-          <h2 className="flex-1 text-lg font-semibold text-gray-900">
-            Novo Procedimento
-          </h2>
+        <div className="flex items-center px-4 sm:px-4 py-3 md:px-6 md:py-4 border-b border-[#DCDFE3]">
+          <h2 className="flex-1 ds-modal-title">Novo Procedimento</h2>
           <button
             onClick={!isLoading ? handleCancel : undefined}
             className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors sm:hidden"
@@ -357,7 +355,7 @@ export function TussProcedureModal({
         {/* Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {error && (
-            <div className="mx-4 sm:mx-6 mt-4 bg-red-50 text-red-700 p-3 rounded-xl text-sm">
+            <div className="mx-4 sm:mx-6 mt-4 bg-red-50 text-red-700 p-3 rounded-xl text-xs md:text-sm">
               {error}
             </div>
           )}
@@ -383,7 +381,7 @@ export function TussProcedureModal({
                 key={index}
                 className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 sm:px-6 py-3 border-b border-[#DCDFE3] min-h-16"
               >
-                <span className="w-full sm:w-auto sm:flex-1 text-sm text-[#111111]">
+                <span className="w-full sm:w-auto sm:flex-1 text-xs md:text-sm text-[#111111]">
                   {item.procedure.tuss_code} - {item.procedure.name}
                 </span>
                 <div className="hidden sm:block w-8" />
@@ -424,7 +422,7 @@ export function TussProcedureModal({
                       setTimeout(() => setIsDropdownOpen(false), 150)
                     }
                     placeholder="Código ou nome do procedimento"
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-[#111111] placeholder:text-[#111111] placeholder:opacity-50"
+                    className="flex-1 bg-transparent border-none outline-none text-xs md:text-sm text-[#111111] placeholder:text-[#111111] placeholder:opacity-50"
                   />
                   <IconArrowDown className="w-4 h-4 text-[#111111] opacity-50" />
                 </div>
@@ -452,7 +450,7 @@ export function TussProcedureModal({
                             onClick={() => handleSelectProcedure(procedure)}
                             className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-[#DCDFE3] last:border-b-0"
                           >
-                            <p className="text-sm font-medium text-[#111111]">
+                            <p className="text-xs md:text-sm font-medium text-[#111111]">
                               {procedure.tuss_code} - {procedure.name}
                             </p>
                           </button>
@@ -464,7 +462,7 @@ export function TussProcedureModal({
                 {/* Loading */}
                 {isSearching && (
                   <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-xl shadow-lg p-4 text-center">
-                    <span className="text-sm text-[#111111] opacity-50">
+                    <span className="text-xs md:text-sm text-[#111111] opacity-50">
                       Buscando...
                     </span>
                   </div>
@@ -485,7 +483,7 @@ export function TussProcedureModal({
 
               {/* Número */}
               <div className="w-12 h-10 flex items-center justify-center border border-[#DCDFE3] rounded-xl bg-white">
-                <span className="text-sm font-semibold text-[#111111]">
+                <span className="text-xs md:text-sm font-semibold text-[#111111]">
                   {newItemQuantity}
                 </span>
               </div>
@@ -508,14 +506,14 @@ export function TussProcedureModal({
         <div className="flex items-center justify-end gap-2 px-4 sm:px-3 py-4 border-t-2 border-[#DCDFE3] safe-area-bottom">
           <button
             onClick={handleCancel}
-            className="px-6 py-2.5 text-sm font-normal text-[#111111] bg-white border-2 border-[#DCDFE3] rounded-xl hover:bg-gray-50 transition-colors"
+            className="ds-btn-outline"
             disabled={isLoading}
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2.5 text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ds-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading || procedures.length === 0}
           >
             {isLoading ? (
@@ -565,7 +563,7 @@ export function TussProcedureModal({
               <IconMinus className="w-5 h-5 text-[#111111]" />
             </button>
             <div
-              className="px-3 py-2 text-center text-sm font-semibold text-[#111111] border border-[#DCDFE3] rounded-xl bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
+              className="px-3 py-2 text-center text-xs md:text-sm font-semibold text-[#111111] border border-[#DCDFE3] rounded-xl bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
               style={{ width: "52px" }}
             >
               {tempQuantity}
@@ -578,7 +576,7 @@ export function TussProcedureModal({
             </button>
             <button
               onClick={() => handleSaveEdit(editingIndex)}
-              className="ml-2 px-4 py-2 text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors"
+              className="ml-2 px-4 py-2 text-xs md:text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors"
             >
               <IconCheck className="w-4 h-4" />
             </button>

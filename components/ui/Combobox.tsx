@@ -112,11 +112,7 @@ export function Combobox({
 
   return (
     <div className={cn("w-full", className)} ref={containerRef}>
-      {label && (
-        <label className="block text-sm font-semibold text-black mb-1">
-          {label}
-        </label>
-      )}
+      {label && <label className="ds-label">{label}</label>}
       <div className="relative">
         <button
           ref={buttonRef}
@@ -124,7 +120,7 @@ export function Combobox({
           onClick={() => !disabled && setOpen(!open)}
           disabled={disabled}
           className={cn(
-            "flex h-12 md:h-10 w-full items-center justify-between rounded-xl border border-neutral-100 bg-white px-3.5 py-2 text-base md:text-sm",
+            "flex h-9 md:h-10 w-full items-center justify-between rounded-xl border border-neutral-100 bg-white px-3 md:px-3.5 py-1.5 md:py-2 text-xs md:text-sm",
             "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-200",
             "disabled:cursor-not-allowed disabled:opacity-50",
             !selectedOption && "text-gray-500",
@@ -171,7 +167,7 @@ export function Combobox({
               <div className="p-2">
                 <input
                   type="text"
-                  className="flex h-11 md:h-9 w-full rounded-xl border border-neutral-100 bg-white px-3.5 py-2 text-base md:text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-neutral-200"
+                  className="ds-input h-10 md:h-9"
                   placeholder={searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -180,7 +176,7 @@ export function Combobox({
               </div>
               <div className="max-h-60 overflow-auto p-1">
                 {filteredOptions.length === 0 ? (
-                  <div className="py-6 text-center text-sm text-gray-500">
+                  <div className="py-6 text-center text-xs md:text-sm text-gray-500">
                     {emptyText}
                   </div>
                 ) : (
@@ -190,7 +186,7 @@ export function Combobox({
                       type="button"
                       onClick={() => handleSelect(option.value)}
                       className={cn(
-                        "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-sm outline-none min-h-[44px] active:bg-neutral-100",
+                        "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-xs md:text-sm outline-none min-h-[36px] md:min-h-[44px] active:bg-neutral-100",
                         "hover:bg-neutral-50",
                         value === option.value
                           ? "bg-neutral-100 text-black"

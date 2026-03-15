@@ -1,6 +1,41 @@
 /**
  * Design System - Inexci Platform
  * Cores e estilos padronizados para toda a plataforma
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * MOBILE DESIGN SYSTEM — Tokens CSS (definidos em globals.css)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * TIPOGRAFIA:
+ *   .ds-page-title    → Título de página (text-base md:text-2xl lg:text-3xl font-semibold)
+ *   .ds-modal-title   → Título de modal (text-sm md:text-lg font-semibold)
+ *   .ds-section-title → Título de seção (text-sm font-semibold text-gray-900)
+ *   .ds-label         → Label de campo (text-xs md:text-sm font-medium text-gray-700)
+ *   .ds-body          → Texto de corpo (text-xs md:text-sm text-gray-900)
+ *   .ds-caption       → Caption/helper (text-xs text-gray-500)
+ *
+ * INPUTS:
+ *   .ds-input          → Input/Select padrão (h-9 md:h-10, text-base md:text-sm)
+ *   .ds-textarea       → Textarea padrão (min-h-[80px] md:min-h-[100px])
+ *   .ds-field-readonly → Campo somente leitura
+ *
+ * BOTÕES:
+ *   .ds-btn-primary → Primário (h-11, min-h-[44px], teal-700)
+ *   .ds-btn-outline → Outline (h-11, min-h-[44px])
+ *   .ds-btn-inline  → Ação inline (h-9, min-h-[36px])
+ *   .ds-btn-danger  → Danger (h-11, min-h-[44px], red-500)
+ *
+ * BADGES:
+ *   .ds-badge-sm → Pequeno (px-2 py-0.5 text-xs)
+ *   .ds-badge-md → Médio (px-2.5 py-0.5 text-xs)
+ *   .ds-badge-lg → Grande (px-3 py-1 text-sm)
+ *
+ * LAYOUT:
+ *   .ds-section-header → Header de seção (px-4 h-11 border-b)
+ *   .ds-section-body   → Body de seção (p-4)
+ *   .ds-modal-body     → Body de modal (px-5 py-4)
+ *   .ds-modal-footer   → Footer de modal (px-5 py-4 border-t)
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 import { PriorityLevel, PRIORITY_LABELS } from "@/types/surgery-request.types";

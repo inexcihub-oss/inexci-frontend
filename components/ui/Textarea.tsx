@@ -11,18 +11,14 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="ds-label">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
         )}
         <textarea
           className={cn(
-            "flex min-h-[80px] w-full rounded-xl border border-[#DCDFE3] bg-white px-3.5 py-3 text-base md:text-sm",
-            "placeholder:text-gray-400",
-            "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent",
-            "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-gray-50",
-            "resize-none transition-colors duration-200",
+            "ds-textarea",
             error && "border-red-500 focus:ring-red-500",
             className,
           )}

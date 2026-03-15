@@ -53,7 +53,7 @@ export function PatientSelectionModal({
       title="Selecionar Paciente"
       size="lg"
     >
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <div className="flex gap-4 mb-6">
           {/* Search */}
           <div className="flex-1 relative">
@@ -63,14 +63,14 @@ export function PatientSelectionModal({
               placeholder="Buscar paciente por nome ou CPF..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[#DCDFE3] rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="ds-input pl-10"
             />
           </div>
 
           {/* New Button */}
           <button
             onClick={onCreateNew}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+            className="ds-btn-primary flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
             Novo Paciente
@@ -96,7 +96,7 @@ export function PatientSelectionModal({
                 className="w-full text-left p-4 border border-gray-200 rounded-xl hover:bg-gray-50 hover:border-blue-500 transition-all"
               >
                 <div className="font-medium text-gray-900">{patient.name}</div>
-                <div className="text-sm text-gray-500 mt-1 flex gap-4">
+                <div className="text-xs md:text-sm text-gray-500 mt-1 flex gap-4">
                   {patient.cpf && <span>CPF: {patient.cpf}</span>}
                   {patient.phone && <span>Tel: {patient.phone}</span>}
                 </div>

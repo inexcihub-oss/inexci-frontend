@@ -189,7 +189,7 @@ export default function Sidebar({
                     className="text-neutral-900 shrink-0"
                   />
                   <span
-                    className={`text-sm font-semibold text-neutral-900 ${
+                    className={`text-xs md:text-sm font-semibold text-neutral-900 ${
                       isCollapsed ? "lg:hidden" : ""
                     }`}
                   >
@@ -221,7 +221,7 @@ export default function Sidebar({
               className="text-neutral-900 shrink-0"
             />
             <span
-              className={`text-sm font-semibold text-neutral-900 ${
+              className={`text-xs md:text-sm font-semibold text-neutral-900 ${
                 isCollapsed ? "lg:hidden" : ""
               }`}
             >
@@ -240,7 +240,7 @@ export default function Sidebar({
           >
             {/* Avatar or Initials */}
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold overflow-hidden shrink-0 ${getAvatarColor(
+              className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs md:text-sm font-semibold overflow-hidden shrink-0 ${getAvatarColor(
                 user?.name || "User",
               )}`}
               title={isCollapsed ? user?.name || "Usuário" : undefined}
@@ -252,7 +252,7 @@ export default function Sidebar({
                 isCollapsed ? "lg:hidden" : ""
               }`}
             >
-              <span className="text-sm font-semibold text-neutral-900 truncate">
+              <span className="text-xs md:text-sm font-semibold text-neutral-900 truncate">
                 {getDisplayName(user?.name || "Usuário")}
               </span>
             </div>
@@ -298,7 +298,7 @@ export default function Sidebar({
                     strokeLinejoin="round"
                   />
                 </svg>
-                <span className="text-sm text-neutral-900">Sair</span>
+                <span className="text-xs md:text-sm text-neutral-900">Sair</span>
               </button>
             </div>
           )}

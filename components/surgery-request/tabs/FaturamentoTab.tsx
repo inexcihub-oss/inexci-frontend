@@ -67,7 +67,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
 
   if (!billing) {
     return (
-      <div className="px-4 py-12 text-center text-gray-500 text-sm border border-neutral-100 rounded-xl">
+      <div className="px-4 py-12 text-center text-gray-500 text-xs md:text-sm border border-neutral-100 rounded-xl">
         Nenhum dado de faturamento registrado
       </div>
     );
@@ -92,9 +92,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
         <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 h-12 border-b border-gray-200">
-            <span className="text-sm font-semibold text-gray-900">
-              Recebimento
-            </span>
+            <span className="ds-section-title">Recebimento</span>
             <div className="flex items-center gap-2">
               {isContestPending && (
                 <>
@@ -103,7 +101,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
                   </span>
                   <button
                     onClick={() => setIsConfirmReceiptOpen(true)}
-                    className="px-3 py-1.5 text-sm font-semibold text-gray-900 border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                    className="ds-btn-inline"
                   >
                     Editar
                   </button>
@@ -116,7 +114,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
           {isContestResolved ? (
             <div className="grid grid-cols-2 sm:grid-cols-4">
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100">
-                <span className="text-sm text-gray-500">
+                <span className="text-xs md:text-sm text-gray-500">
                   Data do recebimento
                 </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
@@ -126,13 +124,13 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-l border-gray-200">
-                <span className="text-sm text-gray-500">Valor recebido</span>
+                <span className="text-xs md:text-sm text-gray-500">Valor recebido</span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatCurrency(receipt.contested_received_value ?? 0)}
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-t sm:border-t-0 sm:border-l border-gray-200">
-                <span className="text-sm text-gray-500">
+                <span className="text-xs md:text-sm text-gray-500">
                   Data do recebimento
                 </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
@@ -140,7 +138,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-l border-gray-200">
-                <span className="text-sm text-gray-500">Valor recebido</span>
+                <span className="text-xs md:text-sm text-gray-500">Valor recebido</span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatCurrency(receipt.received_value)}
                 </span>
@@ -149,7 +147,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2">
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100">
-                <span className="text-sm text-gray-500">
+                <span className="text-xs md:text-sm text-gray-500">
                   Data do recebimento
                 </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
@@ -157,7 +155,7 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-t sm:border-t-0 sm:border-l border-gray-200">
-                <span className="text-sm text-gray-500">Valor recebido</span>
+                <span className="text-xs md:text-sm text-gray-500">Valor recebido</span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatCurrency(receipt.received_value)}
                 </span>
@@ -167,12 +165,8 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
 
           {receipt.receipt_notes && (
             <div className="flex flex-col gap-1 p-4 border-t border-gray-200">
-              <label className="text-sm font-semibold text-black">
-                Observações
-              </label>
-              <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
-                {receipt.receipt_notes}
-              </div>
+              <label className="ds-label mb-0">Observações</label>
+              <div className="ds-field-readonly">{receipt.receipt_notes}</div>
             </div>
           )}
         </div>
@@ -182,26 +176,20 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
       <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-gray-200">
-          <span className="text-sm font-semibold text-gray-900">
-            Faturamento
-          </span>
-          {!receipt && (
-            <button className="px-3 py-1.5 text-sm font-semibold text-gray-900 border border-gray-200 rounded hover:bg-gray-50 transition-colors">
-              Editar
-            </button>
-          )}
+          <span className="ds-section-title">Faturamento</span>
+          {!receipt && <button className="ds-btn-inline">Editar</button>}
         </div>
 
         {/* Data prevista + Valor */}
         <div className="grid grid-cols-1 sm:grid-cols-2">
           <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100">
-            <span className="text-sm text-gray-500">Data prevista</span>
+            <span className="text-xs md:text-sm text-gray-500">Data prevista</span>
             <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
               {expectedDateStr ? formatDateDisplay(expectedDateStr) : "—"}
             </span>
           </div>
           <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-t sm:border-t-0 sm:border-l border-gray-200">
-            <span className="text-sm text-gray-500">Valor</span>
+            <span className="text-xs md:text-sm text-gray-500">Valor</span>
             <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
               {billing.invoice_value != null
                 ? formatCurrency(billing.invoice_value)
@@ -215,26 +203,22 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
       <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center px-4 h-12 border-b border-gray-200">
-          <span className="text-sm font-semibold text-gray-900">
-            Dados do faturamento
-          </span>
+          <span className="ds-section-title">Dados do faturamento</span>
         </div>
 
         {/* Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 p-4">
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-black">
+            <label className="ds-label mb-0">
               Nº do protocolo de faturamento
             </label>
-            <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
+            <div className="ds-field-readonly">
               {billing.invoice_protocol ?? "—"}
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-black">
-              Envio do faturamento
-            </label>
-            <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
+            <label className="ds-label mb-0">Envio do faturamento</label>
+            <div className="ds-field-readonly">
               {formatDate(billing.invoice_sent_at)}
             </div>
           </div>

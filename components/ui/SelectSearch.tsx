@@ -186,7 +186,7 @@ export function SelectSearch({
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1 break-words">
+        <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 break-words">
           {label}
         </label>
       )}
@@ -199,7 +199,7 @@ export function SelectSearch({
         `}
         onClick={handleToggle}
       >
-        <div className="flex-1 flex items-center min-h-[48px] md:min-h-10 px-3.5 min-w-0 overflow-hidden">
+        <div className="flex-1 flex items-center min-h-[36px] md:min-h-10 px-3 md:px-3.5 min-w-0 overflow-hidden">
           {isOpen ? (
             <div className="flex items-center w-full">
               <Search className="w-4 h-4 text-gray-400 mr-2 flex-shrink-0" />
@@ -216,7 +216,7 @@ export function SelectSearch({
             </div>
           ) : (
             <span
-              className={`text-base md:text-sm truncate ${
+              className={`text-xs md:text-sm truncate ${
                 selectedLabel ? "text-gray-900" : "text-gray-500"
               }`}
             >

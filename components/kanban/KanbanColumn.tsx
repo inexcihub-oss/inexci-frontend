@@ -45,9 +45,7 @@ export const KanbanColumn = memo<KanbanColumnProps>(
             height={20}
             className="flex-shrink-0"
           />
-          <h2 className="font-medium text-sm text-gray-900 leading-normal">
-            {title}
-          </h2>
+          <h2 className="ds-section-title leading-normal">{title}</h2>
           <div className="flex items-center justify-center min-w-6 h-6 px-1.5 bg-white border border-gray-200 rounded-full">
             <span className="text-xs font-semibold text-gray-900 leading-none">
               {count}

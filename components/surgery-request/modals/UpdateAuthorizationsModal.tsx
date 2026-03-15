@@ -227,7 +227,7 @@ export function UpdateAuthorizationsModal({
       />
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center gap-2.5 px-6 py-4 border-b border-gray-200 shrink-0">
+        <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
             {showContest
               ? "Contestar Autorizações"
@@ -283,8 +283,8 @@ export function UpdateAuthorizationsModal({
         {/* Etapa 1: TUSS */}
         {!showContest && step === 1 && (
           <>
-            <div className="flex flex-col gap-4 p-6 overflow-y-auto">
-              <p className="text-base font-semibold text-gray-900">
+            <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
+              <p className="text-sm md:text-base font-semibold text-gray-900">
                 Código TUSS
               </p>
               <AuthorizationTable
@@ -306,16 +306,10 @@ export function UpdateAuthorizationsModal({
               />
             </div>
             <ModalFooter className="justify-end">
-              <button
-                onClick={handleClose}
-                className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-              >
+              <button onClick={handleClose} className="ds-btn-outline">
                 Cancelar
               </button>
-              <button
-                onClick={() => setStep(2)}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors"
-              >
+              <button onClick={() => setStep(2)} className="ds-btn-primary">
                 Próximo
               </button>
             </ModalFooter>
@@ -325,8 +319,8 @@ export function UpdateAuthorizationsModal({
         {/* Etapa 2: OPME */}
         {!showContest && step === 2 && (
           <>
-            <div className="flex flex-col gap-4 p-6 overflow-y-auto">
-              <p className="text-base font-semibold text-gray-900">OPME</p>
+            <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
+              <p className="text-sm md:text-base font-semibold text-gray-900">OPME</p>
               {opmeAuth.length > 0 ? (
                 <AuthorizationTable
                   items={opmeAuth}
@@ -346,22 +340,16 @@ export function UpdateAuthorizationsModal({
                   }
                 />
               ) : (
-                <p className="text-sm text-gray-400 text-center py-6">
+                <p className="text-xs md:text-sm text-gray-400 text-center py-6">
                   Nenhum item OPME nesta solicitação.
                 </p>
               )}
             </div>
             <ModalFooter className="justify-end">
-              <button
-                onClick={() => setStep(1)}
-                className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-              >
+              <button onClick={() => setStep(1)} className="ds-btn-outline">
                 Voltar
               </button>
-              <button
-                onClick={() => setStep(3)}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors"
-              >
+              <button onClick={() => setStep(3)} className="ds-btn-primary">
                 Próximo
               </button>
             </ModalFooter>
@@ -371,17 +359,17 @@ export function UpdateAuthorizationsModal({
         {/* Etapa 3: Resumo */}
         {!showContest && step === 3 && (
           <>
-            <div className="flex flex-col gap-4 p-6 overflow-y-auto">
-              <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
-                <p className="text-base text-blue-600 leading-normal">
+            <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
+              <div className="flex items-center gap-3 p-3 md:p-4 bg-blue-50 rounded-xl">
+                <p className="text-sm md:text-base text-blue-600 leading-normal">
                   O médico responsável pela solicitação deve selecionar como
                   deseja prosseguir com a solicitação com base nos itens
                   autorizados.
                 </p>
               </div>
               {tussAuth.length > 0 && (
-                <div className="flex flex-col gap-4">
-                  <p className="text-base font-semibold text-gray-900">
+                <div className="flex flex-col gap-3 md:gap-4">
+                  <p className="text-sm md:text-base font-semibold text-gray-900">
                     Código TUSS
                   </p>
                   <SummaryTable
@@ -403,8 +391,8 @@ export function UpdateAuthorizationsModal({
                 </div>
               )}
               {opmeAuth.length > 0 && (
-                <div className="flex flex-col gap-4">
-                  <p className="text-base font-semibold text-gray-900">OPME</p>
+                <div className="flex flex-col gap-3 md:gap-4">
+                  <p className="text-sm md:text-base font-semibold text-gray-900">OPME</p>
                   <SummaryTable
                     labelHeader="Descrição"
                     items={opmeAuth.map((e) => {
@@ -424,7 +412,7 @@ export function UpdateAuthorizationsModal({
                 </div>
               )}
             </div>
-            <div className="flex items-stretch gap-2 px-6 py-4 border-t-2 border-gray-200 shrink-0">
+            <div className="flex items-stretch gap-2 px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200 shrink-0">
               <button
                 onClick={() =>
                   surgeryRequestService
@@ -432,14 +420,14 @@ export function UpdateAuthorizationsModal({
                     .then(onSuccess)
                     .catch(() => showToast("Erro ao encerrar", "error"))
                 }
-                className="flex-1 h-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                className="flex-1 ds-btn-outline"
               >
                 Encerrar solicitação
               </button>
               {hasPartialOrRejected && (
                 <button
                   onClick={() => setShowContest(true)}
-                  className="flex-1 h-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="flex-1 ds-btn-outline"
                 >
                   Contestar
                 </button>
@@ -447,7 +435,7 @@ export function UpdateAuthorizationsModal({
               {hasSomeAuthorization && (
                 <button
                   onClick={() => setStep(4)}
-                  className="flex-1 h-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="flex-1 ds-btn-outline"
                 >
                   Aceitar
                 </button>
@@ -459,10 +447,10 @@ export function UpdateAuthorizationsModal({
         {/* Etapa 4: Agendamento */}
         {!showContest && step === 4 && (
           <>
-            <div className="flex flex-col gap-4 px-6 py-6 overflow-y-auto">
+            <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6 overflow-y-auto">
               {/* Caixa de informação */}
               <div className="flex items-center bg-blue-50 rounded-xl p-4">
-                <p className="text-base text-blue-600 leading-normal">
+                <p className="text-sm md:text-base text-blue-600 leading-normal">
                   Selecione 3 opções para o agendamento do paciente. Após
                   selecionadas o paciente poderá escolher a melhor opção.
                 </p>
@@ -481,7 +469,7 @@ export function UpdateAuthorizationsModal({
                     key={index}
                     className="flex items-center gap-2 py-3 pl-2 pr-4"
                   >
-                    <span className="flex-1 text-sm font-semibold text-gray-900">
+                    <span className="flex-1 text-xs md:text-sm font-semibold text-gray-900">
                       {label}
                     </span>
                     <div className="flex items-center gap-2">
@@ -498,7 +486,7 @@ export function UpdateAuthorizationsModal({
                             };
                             setScheduleDates(next);
                           }}
-                          className="flex-1 min-w-0 text-sm text-gray-900 bg-transparent outline-none"
+                          className="flex-1 min-w-0 text-xs md:text-sm text-gray-900 bg-transparent outline-none"
                         />
                         <svg
                           className="w-4 h-4 text-gray-400 shrink-0 opacity-50"
@@ -540,7 +528,7 @@ export function UpdateAuthorizationsModal({
                             };
                             setScheduleDates(next);
                           }}
-                          className="text-sm text-gray-900 bg-transparent outline-none w-20"
+                          className="text-xs md:text-sm text-gray-900 bg-transparent outline-none w-20"
                         />
                         <svg
                           className="w-4 h-4 text-gray-400 shrink-0 opacity-50"
@@ -570,21 +558,14 @@ export function UpdateAuthorizationsModal({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0">
-              <button
-                onClick={() => setStep(3)}
-                className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-              >
+            <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 shrink-0">
+              <button onClick={() => setStep(3)} className="ds-btn-outline">
                 Cancelar
               </button>
               <button
                 onClick={handleAccept}
                 disabled={!canAccept || isSaving}
-                className={`h-10 px-6 text-sm font-semibold rounded-xl transition-colors ${
-                  canAccept && !isSaving
-                    ? "bg-teal-700 text-white hover:bg-teal-800"
-                    : "bg-gray-100 text-gray-900 opacity-50 cursor-not-allowed"
-                }`}
+                className="ds-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? "Enviando..." : "Enviar"}
               </button>
@@ -607,7 +588,7 @@ function ModalFooter({
 }) {
   return (
     <div
-      className={`flex items-center gap-2 px-6 py-4 border-t-2 border-gray-200 shrink-0 ${className}`}
+      className={`flex items-center gap-2 px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200 shrink-0 ${className}`}
     >
       {children}
     </div>
@@ -649,11 +630,11 @@ function AuthorizationTable({
           key={item.id}
           className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 last:border-b-0"
         >
-          <span className="flex-1 text-sm text-gray-900 leading-snug">
+          <span className="flex-1 text-xs md:text-sm text-gray-900 leading-snug">
             {renderLabel(item)}
           </span>
           <div className="w-24 flex justify-center">
-            <div className="w-14 h-10 flex items-center justify-center border border-gray-200 rounded-xl text-sm font-semibold text-gray-500">
+            <div className="w-14 h-10 flex items-center justify-center border border-gray-200 rounded-xl text-xs md:text-sm font-semibold text-gray-500">
               {item.quantity}
             </div>
           </div>
@@ -663,7 +644,7 @@ function AuthorizationTable({
               min="0"
               value={item.authorized_quantity}
               onChange={(e) => onChange(item.id, e.target.value)}
-              className="w-14 h-10 text-sm font-semibold text-gray-900 text-center border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white appearance-none"
+              className="ds-input w-14 h-10 !px-0 text-center font-semibold appearance-none"
             />
           </div>
         </div>
@@ -700,16 +681,16 @@ function SummaryTable({ labelHeader, items }: SummaryTableProps) {
           key={index}
           className={`flex items-center gap-2 px-4 py-3 border-b border-gray-200 last:border-b-0 ${getSummaryRowBg(item.authorized, item.requested)}`}
         >
-          <span className="flex-1 text-sm text-gray-900 leading-snug">
+          <span className="flex-1 text-xs md:text-sm text-gray-900 leading-snug">
             {item.label}
           </span>
           <div className="w-24 flex justify-center">
-            <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-500">
+            <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-xs md:text-sm font-semibold text-gray-500">
               {item.requested}
             </div>
           </div>
           <div className="w-24 flex justify-center">
-            <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-500">
+            <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-xs md:text-sm font-semibold text-gray-500">
               {item.authorized ?? "—"}
             </div>
           </div>
@@ -760,33 +741,31 @@ function ContestFlow({
   return (
     <>
       {/* Body */}
-      <div className="flex flex-col gap-4 p-6 overflow-y-auto">
+      <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
         {/* Etapa 1: Motivo da contestação */}
         {step === 1 && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold text-neutral-900">
-              Motivo da contestação
-            </label>
+            <label className="ds-label mb-0">Motivo da contestação</label>
             <input
               type="text"
               value={reason}
               onChange={(e) => onReasonChange(e.target.value)}
               placeholder="Digite o motivo"
-              className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
+              className="ds-input"
             />
           </div>
         )}
 
         {/* Etapa 2: Método de envio */}
         {step === 2 && (
-          <div className="flex flex-col gap-4">
-            <p className="text-base text-neutral-900">
+          <div className="flex flex-col gap-3 md:gap-4">
+            <p className="text-sm md:text-base text-neutral-900">
               Como deseja enviar a solicitação?
             </p>
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 md:gap-4">
               <button
                 onClick={() => onMethodChange("document")}
-                className={`flex items-center gap-4 p-6 border rounded-xl text-left transition-colors ${
+                className={`flex items-center gap-3 p-4 md:p-6 border rounded-xl text-left transition-colors ${
                   method === "document"
                     ? "border-teal-600 bg-teal-50"
                     : "border-neutral-100 hover:border-neutral-200"
@@ -811,7 +790,7 @@ function ContestFlow({
                   <span className="text-xl font-light tracking-tight text-neutral-900">
                     Criar documento
                   </span>
-                  <span className="text-sm text-neutral-200">
+                  <span className="text-xs md:text-sm text-neutral-200">
                     Crie um arquivo PDF com contestação + anexos
                   </span>
                 </div>
@@ -819,7 +798,7 @@ function ContestFlow({
 
               <button
                 onClick={() => onMethodChange("email")}
-                className={`flex items-center gap-4 p-6 border rounded-xl text-left transition-colors ${
+                className={`flex items-center gap-3 p-4 md:p-6 border rounded-xl text-left transition-colors ${
                   method === "email"
                     ? "border-teal-600 bg-teal-50"
                     : "border-neutral-100 hover:border-neutral-200"
@@ -844,7 +823,7 @@ function ContestFlow({
                   <span className="text-xl font-light tracking-tight text-neutral-900">
                     Enviar por e-mail
                   </span>
-                  <span className="text-sm text-neutral-200">
+                  <span className="text-xs md:text-sm text-neutral-200">
                     Envie a contestação diretamente por e-mail
                   </span>
                 </div>
@@ -855,23 +834,19 @@ function ContestFlow({
 
         {/* Etapa 3a: Formulário de e-mail */}
         {step === 3 && method === "email" && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 md:gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-neutral-900">
-                De:
-              </label>
+              <label className="ds-label mb-0">De:</label>
               <input
                 type="text"
                 defaultValue="inexci@mail.com"
                 disabled
-                className="w-full px-3 py-2 text-sm text-neutral-200 bg-white border border-neutral-100 rounded-xl disabled:opacity-70 cursor-not-allowed"
+                className="ds-input disabled:opacity-70 cursor-not-allowed"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-neutral-900">
-                Para:
-              </label>
-              <p className="text-sm text-neutral-200 leading-tight">
+              <label className="ds-label mb-0">Para:</label>
+              <p className="text-xs md:text-sm text-neutral-200 leading-tight">
                 Para incluir mais de um e-mail separe-os com ponto e vírgula (;)
               </p>
               <input
@@ -879,37 +854,31 @@ function ContestFlow({
                 value={emailForm.to}
                 onChange={(e) => onEmailChange("to", e.target.value)}
                 placeholder="autorizacoes@unimed.com.br"
-                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
+                className="ds-input"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-neutral-900">
-                Assunto:
-              </label>
+              <label className="ds-label mb-0">Assunto:</label>
               <input
                 type="text"
                 value={emailForm.subject}
                 onChange={(e) => onEmailChange("subject", e.target.value)}
                 placeholder="Contestação de autorizações - Maria Silva Santos"
-                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
+                className="ds-input"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-neutral-900">
-                Mensagem de contestação:
-              </label>
+              <label className="ds-label mb-0">Mensagem de contestação:</label>
               <textarea
                 value={emailForm.message}
                 onChange={(e) => onEmailChange("message", e.target.value)}
                 placeholder="Digite sua mensagem..."
                 rows={4}
-                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none transition-colors"
+                className="ds-textarea"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-neutral-900">
-                Documento de contestação
-              </label>
+              <label className="ds-label mb-0">Documento de contestação</label>
               <div className="flex items-center gap-3 px-4 py-4 bg-neutral-50 border border-dashed border-neutral-100 rounded-xl">
                 <div className="flex items-center justify-center w-10 h-10 bg-white border border-neutral-100 rounded-full shrink-0">
                   <svg
@@ -926,7 +895,7 @@ function ContestFlow({
                     />
                   </svg>
                 </div>
-                <span className="flex-1 text-sm font-semibold text-neutral-900 truncate">
+                <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900 truncate">
                   {attachedFile ? attachedFile.name : "Anexos"}
                 </span>
                 <input
@@ -940,7 +909,7 @@ function ContestFlow({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-8 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
+                  className="ds-btn-outline"
                 >
                   Selecionar arquivo
                 </button>
@@ -951,23 +920,19 @@ function ContestFlow({
 
         {/* Etapa 3b: Documento PDF */}
         {step === 3 && method === "document" && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 md:gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-neutral-900">
-                Mensagem de contestação:
-              </label>
+              <label className="ds-label mb-0">Mensagem de contestação:</label>
               <textarea
                 value={emailForm.message}
                 onChange={(e) => onEmailChange("message", e.target.value)}
                 placeholder="Digite sua mensagem..."
                 rows={8}
-                className="w-full px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none transition-colors"
+                className="ds-textarea"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-neutral-900">
-                Documento de contestação
-              </label>
+              <label className="ds-label mb-0">Documento de contestação</label>
               <div className="flex items-center gap-3 px-4 py-4 bg-neutral-50 border border-dashed border-neutral-100 rounded-xl">
                 <div className="flex items-center justify-center w-10 h-10 bg-white border border-neutral-100 rounded-full shrink-0">
                   <svg
@@ -984,7 +949,7 @@ function ContestFlow({
                     />
                   </svg>
                 </div>
-                <span className="flex-1 text-sm font-semibold text-neutral-900 truncate">
+                <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900 truncate">
                   {attachedFile ? attachedFile.name : "Anexos"}
                 </span>
                 <input
@@ -998,7 +963,7 @@ function ContestFlow({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-8 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
+                  className="ds-btn-outline"
                 >
                   Selecionar arquivo
                 </button>
@@ -1010,17 +975,14 @@ function ContestFlow({
 
       {/* Footer */}
       <ModalFooter className="justify-end">
-        <button
-          onClick={onBack}
-          className="h-10 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-xl hover:bg-gray-50 transition-colors"
-        >
+        <button onClick={onBack} className="ds-btn-outline">
           {step < 3 ? "Cancelar" : "Voltar"}
         </button>
         {step < 3 ? (
           <button
             onClick={onNext}
             disabled={step === 1 && !canProceedStep1}
-            className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Próximo
           </button>
@@ -1028,7 +990,7 @@ function ContestFlow({
           <button
             onClick={onSubmit}
             disabled={!canSubmit || isSaving}
-            className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving
               ? "Enviando..."

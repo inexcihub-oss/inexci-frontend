@@ -78,7 +78,7 @@ export function CodigoTussTab({
             placeholder="Buscar procedimento"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 leading-snug placeholder-gray-400"
+            className="flex-1 bg-transparent border-none outline-none text-base md:text-sm text-gray-900 leading-snug placeholder-gray-400"
           />
         </div>
 
@@ -86,10 +86,8 @@ export function CodigoTussTab({
         <button
           onClick={() => setIsModalOpen(true)}
           disabled={statusNum >= 2}
-          className={`flex items-center justify-center font-semibold bg-transparent border border-neutral-100 transition-colors rounded-xl py-1.5 px-3 text-sm leading-normal ${
-            statusNum >= 2
-              ? "text-gray-400 cursor-not-allowed opacity-60"
-              : "text-gray-900 hover:bg-gray-50"
+          className={`ds-btn-inline ${
+            statusNum >= 2 ? "text-gray-400 cursor-not-allowed opacity-60" : ""
           }`}
         >
           Novo Procedimento
@@ -146,7 +144,7 @@ export function CodigoTussTab({
                     <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
                   ))}
 
-                <span className="flex-1 text-sm text-gray-900 leading-normal">
+                <span className="flex-1 text-xs md:text-sm text-gray-900 leading-normal">
                   {proc.tuss_code || ""} - {proc.name || ""}
                 </span>
 

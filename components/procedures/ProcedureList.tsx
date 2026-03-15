@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-  MessageCircle,
-  Paperclip,
   Send,
   Edit,
   X,
@@ -172,7 +170,7 @@ const ProcedureRow: React.FC<{
         </div>
         <div className="flex flex-col min-w-0 flex-1">
           <span
-            className="font-semibold text-sm text-gray-900 truncate"
+            className="font-semibold text-xs md:text-sm text-gray-900 truncate"
             title={procedure.patient.name}
           >
             {procedure.patient.name}
@@ -183,7 +181,7 @@ const ProcedureRow: React.FC<{
       {/* Procedimento */}
       <div className="col-span-2 flex items-center min-w-0">
         <span
-          className="text-sm text-gray-900 truncate"
+          className="text-xs md:text-sm text-gray-900 truncate"
           title={procedure.procedureName}
         >
           {procedure.procedureName}
@@ -214,7 +212,7 @@ const ProcedureRow: React.FC<{
         </div>
         <div className="flex flex-col min-w-0 flex-1">
           <span
-            className="text-sm text-gray-700 truncate"
+            className="text-xs md:text-sm text-gray-700 truncate"
             title={getDisplayName(procedure.doctor.name)}
           >
             {getDisplayName(procedure.doctor.name)}
@@ -316,22 +314,6 @@ const ProcedureRow: React.FC<{
 
       {/* Ações */}
       <div className="col-span-1 flex items-center justify-end gap-2">
-        <div
-          className="flex items-center gap-0.5 text-gray-500 hover:text-gray-700 transition-colors"
-          title={`${procedure.messagesCount} mensagem${procedure.messagesCount !== 1 ? "ns" : ""}`}
-        >
-          <MessageCircle className="w-3.5 h-3.5" />
-          <span className="text-xs font-medium">{procedure.messagesCount}</span>
-        </div>
-        <div
-          className="flex items-center gap-0.5 text-gray-500 hover:text-gray-700 transition-colors"
-          title={`${procedure.attachmentsCount} anexo${procedure.attachmentsCount !== 1 ? "s" : ""}`}
-        >
-          <Paperclip className="w-3.5 h-3.5" />
-          <span className="text-xs font-medium">
-            {procedure.attachmentsCount}
-          </span>
-        </div>
         <div className="relative" ref={dropdownRef}>
           <button
             className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -353,7 +335,7 @@ const ProcedureRow: React.FC<{
                     e.stopPropagation();
                     handleActionClick(action.label);
                   }}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors ${action.color}`}
+                  className={`w-full px-4 py-2 text-left text-xs md:text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors ${action.color}`}
                 >
                   <action.icon className="w-4 h-4" />
                   <span>{action.label}</span>
@@ -405,7 +387,7 @@ export const ProcedureList: React.FC<ProcedureListProps> = ({
           <p className="text-lg font-semibold text-neutral-900 mb-2">
             Nenhum procedimento encontrado
           </p>
-          <p className="text-sm text-neutral-200">
+          <p className="text-xs md:text-sm text-neutral-200">
             Comece criando um novo procedimento cirúrgico
           </p>
         </div>

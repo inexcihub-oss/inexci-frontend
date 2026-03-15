@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { X } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 
@@ -244,7 +245,12 @@ export function MedicalReportPreviewModal({
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `laudo-${solicitacao.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       showToast("Erro ao exportar PDF", "error");
@@ -255,28 +261,39 @@ export function MedicalReportPreviewModal({
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Modal — max-w-3xl ≈ 768px, próximo ao 810px do Figma */}
-      <div className="relative z-10 flex flex-col bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-screen mx-4 my-6 overflow-hidden">
+      {/* Modal — bottom sheet no mobile, centralizado no desktop */}
+      <div className="relative z-10 flex flex-col bg-white w-full md:max-w-3xl md:mx-4 md:my-6 rounded-t-3xl md:rounded-2xl max-h-[calc(92vh-64px)] md:max-h-[85vh] shadow-xl overflow-hidden">
+        {/* Drag handle — apenas mobile */}
+        <div className="flex md:hidden justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+        </div>
+
         {/* ─── Header ────────────────────────────────────────────────────── */}
-        {/* padding: 16px 24px; border-bottom: 1px #DCDFE3 */}
-        <div className="flex items-center px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="flex items-center justify-between px-5 py-3 md:px-6 md:py-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-sm md:text-base md:text-lg font-semibold text-gray-900">
             Pré-visualização do Laudo Médico
           </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Fechar"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* ─── Scrollable Content ─────────────────────────────────────────── */}
-        <div className="flex flex-col flex-1 overflow-y-auto gap-6 p-6">
+        <div className="flex flex-col flex-1 overflow-y-auto overscroll-contain gap-6 p-5 md:p-6">
           {/* ── Corpo do Documento ─────────────────────────────────────── */}
-          <div className="flex flex-col gap-6 w-full">
+          <div className="flex flex-col gap-3 md:gap-6 w-full">
             {/* Título + Data — alinhados nas extremidades */}
             <div className="flex items-end justify-between pb-px">
               <span className="text-xl font-bold text-black">LAUDO MÉDICO</span>
@@ -286,7 +303,7 @@ export function MedicalReportPreviewModal({
             {/* ── DADOS DO PACIENTE ──────────────────────────────────── */}
             <div className="flex flex-col gap-2.5 w-full">
               <div className="pb-2 border-b border-gray-200">
-                <h3 className="text-base font-bold text-black">
+                <h3 className="text-sm md:text-base font-bold text-black">
                   DADOS DO PACIENTE
                 </h3>
               </div>
@@ -362,7 +379,7 @@ export function MedicalReportPreviewModal({
             {/* ── HISTÓRICO E DIAGNÓSTICO ────────────────────────────── */}
             <div className="flex flex-col gap-2.5 w-full">
               <div className="pb-2 border-b border-gray-200">
-                <h3 className="text-base font-bold tracking-tight text-neutral-900">
+                <h3 className="text-sm md:text-base font-bold tracking-tight text-neutral-900">
                   HISTÓRICO E DIAGNÓSTICO
                 </h3>
               </div>
@@ -375,7 +392,7 @@ export function MedicalReportPreviewModal({
             {examImages.length > 0 && (
               <div className="flex flex-col gap-2.5 w-full">
                 <div className="pb-2 border-b border-gray-200">
-                  <h3 className="text-base font-bold tracking-tight text-neutral-900">
+                  <h3 className="text-sm md:text-base font-bold tracking-tight text-neutral-900">
                     IMAGENS A SEREM ANEXADAS AO LAUDO
                   </h3>
                 </div>
@@ -390,7 +407,7 @@ export function MedicalReportPreviewModal({
             {/* ── CONDUTA ───────────────────────────────────────────── */}
             <div className="flex flex-col gap-2.5 w-full">
               <div className="pb-2 border-b border-gray-200">
-                <h3 className="text-base font-bold tracking-tight text-neutral-900">
+                <h3 className="text-sm md:text-base font-bold tracking-tight text-neutral-900">
                   CONDUTA
                 </h3>
               </div>
@@ -411,7 +428,7 @@ export function MedicalReportPreviewModal({
               <hr className="w-48 border-t border-gray-400" />
               <div className="flex flex-col items-center gap-0.5 mt-1">
                 {doctorName && (
-                  <span className="text-sm font-bold text-black">
+                  <span className="text-xs md:text-sm font-bold text-black">
                     {doctorName}
                   </span>
                 )}
@@ -432,12 +449,10 @@ export function MedicalReportPreviewModal({
         </div>
 
         {/* ─── Footer ────────────────────────────────────────────────────── */}
-        {/* padding: 16px 12px; border-top: 2px #DCDFE3; justify-end */}
-        <div className="flex items-center justify-end gap-2 px-3 py-4 border-t-2 border-gray-200">
-          {/* Fechar: height 40px, padding 0 16px → h-10 px-4 */}
+        <div className="flex items-center justify-end gap-2 px-5 py-4 md:px-3 border-t-2 border-gray-200 flex-shrink-0">
           <button
             onClick={onClose}
-            className="flex items-center justify-center h-10 px-4 bg-white border border-gray-200 shadow-sm rounded-xl text-sm text-gray-900 hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-center h-10 px-4 bg-white border border-gray-200 shadow-sm rounded-xl text-xs md:text-sm text-gray-900 hover:bg-gray-50 transition-colors"
           >
             Fechar
           </button>
@@ -445,7 +460,7 @@ export function MedicalReportPreviewModal({
           <button
             onClick={handleExportPdf}
             disabled={isExporting}
-            className="flex items-center justify-center gap-2 py-2.5 px-6 bg-teal-700 rounded-xl text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+            className="flex items-center justify-center gap-2 py-2.5 px-6 bg-teal-700 rounded-xl text-xs md:text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
           >
             {isExporting ? (
               <>

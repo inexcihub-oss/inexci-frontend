@@ -61,7 +61,7 @@ export function RescheduleModal({
 
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             Reagendar Cirurgia
           </h2>
@@ -82,12 +82,12 @@ export function RescheduleModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
-          <p className="text-sm text-gray-500">
+        <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+          <p className="text-xs md:text-sm text-gray-500">
             Informe a nova data para a realização da cirurgia.
           </p>
           <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-gray-900">
+            <label className="block ds-label mb-0">
               Nova Data <span className="text-red-500">*</span>
             </label>
             <input
@@ -95,24 +95,24 @@ export function RescheduleModal({
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
               disabled={isSaving}
-              className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+              className="ds-input disabled:opacity-50"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
           <button
             onClick={handleClose}
             disabled={isSaving}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="ds-btn-outline disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={!newDate.trim() || isSaving}
-            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? "Salvando..." : "Reagendar"}
           </button>

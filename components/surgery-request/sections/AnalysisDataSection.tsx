@@ -53,18 +53,14 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
         <SectionCardBody>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-gray-900">
-                Nº da solicitação
-              </label>
-              <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
+              <label className="ds-label mb-0">Nº da solicitação</label>
+              <div className="ds-field-readonly">
                 {analysis.request_number ?? "—"}
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-gray-900">
-                Data de recebimento
-              </label>
-              <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
+              <label className="ds-label mb-0">Data de recebimento</label>
+              <div className="ds-field-readonly">
                 {formatDate(analysis.received_at)}
               </div>
             </div>
@@ -76,22 +72,18 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
       {hasQuotationData && (
         <SectionCard title="Dados da cotação">
           <SectionCardBody>
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 md:gap-4">
               {quotations.map((q, i) => (
                 <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-gray-900">
+                    <label className="ds-label mb-0">
                       Nº proposta de cotação
                     </label>
-                    <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
-                      {q.number}
-                    </div>
+                    <div className="ds-field-readonly">{q.number}</div>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-semibold text-gray-900">
-                      Data de recebimento
-                    </label>
-                    <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl">
+                    <label className="ds-label mb-0">Data de recebimento</label>
+                    <div className="ds-field-readonly">
                       {formatDate(q.date)}
                     </div>
                   </div>
@@ -100,10 +92,8 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
 
               {analysis.notes && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold text-gray-900">
-                    Observações
-                  </label>
-                  <div className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl min-h-20 whitespace-pre-wrap">
+                  <label className="ds-label mb-0">Observações</label>
+                  <div className="ds-field-readonly min-h-20 whitespace-pre-wrap">
                     {analysis.notes}
                   </div>
                 </div>

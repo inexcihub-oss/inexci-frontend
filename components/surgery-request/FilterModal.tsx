@@ -156,7 +156,7 @@ function PillToggle({ label, selected, onClick }: PillToggleProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`h-9 px-4 rounded-full border text-sm font-medium transition-all whitespace-nowrap
+      className={`h-9 px-4 rounded-full border text-xs md:text-sm font-medium transition-all whitespace-nowrap
         ${
           selected
             ? "border-teal-700 bg-teal-700 text-white"
@@ -188,7 +188,7 @@ function CollapsibleSection({
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between mb-4"
       >
-        <span className="text-sm font-semibold text-neutral-900">{title}</span>
+        <span className="text-xs md:text-sm font-semibold text-neutral-900">{title}</span>
         <Image
           src="/icons/chevron-right.svg"
           alt={open ? "Fechar" : "Abrir"}
@@ -237,7 +237,7 @@ function CheckboxItem({ label, checked, onChange }: CheckboxItemProps) {
           </svg>
         )}
       </div>
-      <span className="text-sm text-neutral-700 leading-tight">{label}</span>
+      <span className="text-xs md:text-sm text-neutral-700 leading-tight">{label}</span>
     </button>
   );
 }
@@ -319,7 +319,7 @@ function SearchableMultiSelect({
           }}
           onFocus={() => setOpen(true)}
           placeholder={selected.length === 0 ? placeholder : ""}
-          className="flex-1 text-sm outline-none bg-transparent text-neutral-700 placeholder:text-neutral-400"
+          className="flex-1 text-xs md:text-sm outline-none bg-transparent text-neutral-700 placeholder:text-neutral-400"
         />
         {selected.length > 0 && (
           <span className="flex-shrink-0 text-xs font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
@@ -363,7 +363,7 @@ function SearchableMultiSelect({
       {open && (
         <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
           {filtered.length === 0 ? (
-            <p className="text-sm text-neutral-400 text-center py-4">
+            <p className="text-xs md:text-sm text-neutral-400 text-center py-4">
               Nenhum resultado
             </p>
           ) : (
@@ -395,7 +395,7 @@ function SearchableMultiSelect({
                       </svg>
                     )}
                   </div>
-                  <span className="text-sm text-neutral-700 leading-tight">
+                  <span className="text-xs md:text-sm text-neutral-700 leading-tight">
                     {opt.name}
                   </span>
                 </button>
@@ -484,7 +484,7 @@ function Calendar({ from, to, onChange }: CalendarProps) {
             height={16}
           />
         </button>
-        <span className="text-sm font-semibold text-neutral-900">
+        <span className="text-xs md:text-sm font-semibold text-neutral-900">
           {MONTH_NAMES[calMonth]} de {calYear}
         </span>
         <button
@@ -550,7 +550,7 @@ function Calendar({ from, to, onChange }: CalendarProps) {
               <button
                 type="button"
                 onClick={() => handleDayClick(day)}
-                className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-sm transition-colors
+                className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs md:text-sm transition-colors
                   ${
                     isSelected
                       ? "bg-teal-700 text-white font-semibold"
@@ -672,8 +672,8 @@ export function FilterModal({
         className="relative z-10 w-[420px] max-w-full h-full bg-white flex flex-col shadow-2xl animate-slide-in-right"
       >
         {/* Header */}
-        <div className="flex-none flex items-center justify-between px-6 py-5 border-b border-neutral-100">
-          <h2 className="text-xl font-semibold text-neutral-900">Filtros</h2>
+        <div className="flex-none flex items-center justify-between px-4 py-3 md:px-6 md:py-5 border-b border-neutral-100">
+          <h2 className="ds-modal-title">Filtros</h2>
           <button
             type="button"
             onClick={onClose}
@@ -691,10 +691,10 @@ export function FilterModal({
         </div>
 
         {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+        <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6 md:py-4 space-y-3 md:space-y-5">
           {/* Status da Solicitação */}
           <div>
-            <p className="text-sm font-semibold text-neutral-900 mb-3">
+            <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
               Status da solicitação
             </p>
             <div className="flex flex-wrap gap-2">
@@ -712,7 +712,7 @@ export function FilterModal({
           {/* Prioridade */}
           <div>
             <div className="h-px bg-neutral-100 mb-4" />
-            <p className="text-sm font-semibold text-neutral-900 mb-3">
+            <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
               Prioridade
             </p>
             <div className="flex flex-wrap gap-2">
@@ -730,7 +730,7 @@ export function FilterModal({
           {/* Pendências */}
           <div>
             <div className="h-px bg-neutral-100 mb-4" />
-            <p className="text-sm font-semibold text-neutral-900 mb-3">
+            <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
               Pendências
             </p>
             <div className="flex flex-wrap gap-2">
@@ -789,18 +789,18 @@ export function FilterModal({
         </div>
 
         {/* Footer */}
-        <div className="flex-none px-6 py-4 border-t border-neutral-100 flex items-center justify-between">
+        <div className="flex-none px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 flex items-center justify-between">
           <button
             type="button"
             onClick={handleClear}
-            className="text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
+            className="text-xs md:text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
           >
             Limpar filtros
           </button>
           <button
             type="button"
             onClick={handleApply}
-            className="h-11 px-6 bg-teal-700 text-white text-sm font-semibold rounded-xl hover:bg-teal-800 transition-colors"
+            className="ds-btn-primary"
           >
             Mostrar resultados
           </button>

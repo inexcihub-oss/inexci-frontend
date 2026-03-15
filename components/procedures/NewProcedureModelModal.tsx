@@ -66,8 +66,8 @@ export function NewProcedureModelModal({
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col">
         {/* Header */}
-        <div className="flex items-center gap-2.5 px-6 py-4 border-b border-neutral-200">
-          <h2 className="flex-1 text-2xl font-semibold text-neutral-900 font-urbanist">
+        <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-200">
+          <h2 className="flex-1 ds-modal-title font-urbanist">
             Procedimento - Novo modelo
           </h2>
           <button
@@ -79,48 +79,38 @@ export function NewProcedureModelModal({
         </div>
 
         {/* Body */}
-        <div className="flex flex-col gap-4 p-6">
+        <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6">
           {/* Nome do modelo */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-black">
-              Nome do modelo:
-            </label>
+            <label className="ds-label mb-0">Nome do modelo:</label>
             <input
               type="text"
               value={modelName}
               onChange={(e) => setModelName(e.target.value)}
               placeholder="Artroplastia padrão Bradesco"
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-xl bg-white text-neutral-900 placeholder:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="ds-input"
             />
           </div>
 
           {/* Procedimento */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-black">
-              Procedimento:
-            </label>
+            <label className="ds-label mb-0">Procedimento:</label>
             <input
               type="text"
               value={procedureName}
               onChange={(e) => setProcedureName(e.target.value)}
               placeholder="Artroplastia total do quadril"
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-xl bg-white text-neutral-900 placeholder:text-neutral-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="ds-input"
             />
           </div>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between px-3 py-4 border-t-2 border-neutral-200">
-          <button
-            onClick={handleClear}
-            className="px-6 py-2.5 text-sm font-semibold text-neutral-900 hover:bg-neutral-50 rounded-xl transition-colors"
-          >
+          <button onClick={handleClear} className="ds-btn-outline">
             Limpar filtros
           </button>
-          <button
-            onClick={handleSubmit}
-            className="px-6 py-2.5 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors"
-          >
+          <button onClick={handleSubmit} className="ds-btn-primary">
             Mostrar resultados
           </button>
         </div>

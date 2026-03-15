@@ -835,9 +835,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex justify-between items-center px-4 lg:px-6 py-4 lg:py-5 border-b border-gray-200">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-neutral-900">
-            Dashboard
-          </h1>
+          <h1 className="ds-page-title">Dashboard</h1>
           <p className="text-xs md:text-sm text-gray-500 mt-0.5">
             Visão geral das solicitações cirúrgicas
           </p>
@@ -990,9 +988,7 @@ export default function DashboardPage() {
             {/* Donut: Por Status */}
             <Card className="border border-gray-200 rounded-2xl">
               <CardHeader className="p-4 pb-0">
-                <h3 className="text-base font-semibold text-neutral-900">
-                  Distribuição por Status
-                </h3>
+                <h3 className="ds-section-title">Distribuição por Status</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Todas as solicitações
                 </p>
@@ -1037,9 +1033,7 @@ export default function DashboardPage() {
             {/* Linha: Evolução de Faturamento */}
             <Card className="border border-gray-200 rounded-2xl">
               <CardHeader className="p-4 pb-0">
-                <h3 className="text-base font-semibold text-neutral-900">
-                  Evolução de Faturamento
-                </h3>
+                <h3 className="ds-section-title">Evolução de Faturamento</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Valores faturados nos últimos 30 dias
                 </p>
@@ -1070,9 +1064,7 @@ export default function DashboardPage() {
               <CardHeader className="p-4 pb-0">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-base font-semibold text-neutral-900">
-                      Evolução Mensal
-                    </h3>
+                    <h3 className="ds-section-title">Evolução Mensal</h3>
                     <p className="text-xs text-gray-500 mt-0.5">
                       Solicitações criadas por mês
                     </p>
@@ -1092,9 +1084,7 @@ export default function DashboardPage() {
 
             <Card className="border border-gray-200 rounded-2xl">
               <CardHeader className="p-4 pb-0">
-                <h3 className="text-base font-semibold text-neutral-900">
-                  Procedimentos por Hospital
-                </h3>
+                <h3 className="ds-section-title">Procedimentos por Hospital</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Distribuição entre hospitais
                 </p>
@@ -1113,7 +1103,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="border border-gray-200 rounded-2xl">
               <CardHeader className="p-4 pb-0">
-                <h3 className="text-base font-semibold text-neutral-900">
+                <h3 className="ds-section-title">
                   Volume Diário de Solicitações
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
@@ -1127,9 +1117,7 @@ export default function DashboardPage() {
 
             <Card className="border border-gray-200 rounded-2xl">
               <CardHeader className="p-4 pb-0">
-                <h3 className="text-base font-semibold text-neutral-900">
-                  Procedimentos por Convênio
-                </h3>
+                <h3 className="ds-section-title">Procedimentos por Convênio</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Ranking por volume de solicitações
                 </p>

@@ -67,4 +67,20 @@ export const opmeService = {
       throw error;
     }
   },
+
+  /**
+   * Indica se a solicitação utiliza OPME ou não.
+   * true  = utiliza OPME (itens devem ser cadastrados)
+   * false = não utiliza OPME (pendência dispensada)
+   */
+  async setHasOpme(surgeryRequestId: string, hasOpme: boolean): Promise<void> {
+    try {
+      await api.patch(`/surgery-requests/${surgeryRequestId}/has-opme`, {
+        has_opme: hasOpme,
+      });
+    } catch (error: any) {
+      console.error("Erro ao definir status de OPME:", error);
+      throw error;
+    }
+  },
 };

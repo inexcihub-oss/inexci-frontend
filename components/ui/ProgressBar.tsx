@@ -82,7 +82,7 @@ export function ProgressBar({
         </div>
       </div>
       {showLabel && labelPosition === "right" && (
-        <span className="text-sm text-gray-600 font-medium min-w-[3rem] text-right">
+        <span className="text-xs md:text-sm text-gray-600 font-medium min-w-[3rem] text-right">
           {Math.round(clampedValue)}%
         </span>
       )}

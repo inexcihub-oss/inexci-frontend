@@ -123,7 +123,7 @@ export function InvoiceModal({
 
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center gap-2.5 px-6 py-4 border-b border-gray-200 shrink-0">
+        <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-2xl font-light tracking-tight text-gray-900">
             Faturamento de solicitação cirúrgica
           </h2>
@@ -137,7 +137,7 @@ export function InvoiceModal({
         </div>
 
         {/* Content */}
-        <div className="flex flex-col gap-6 p-6 overflow-y-auto">
+        <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
           {/* Info box */}
           <div className="flex flex-col gap-1 p-4 bg-blue-50 rounded-xl">
             <p className="text-sm font-semibold text-blue-600">
@@ -149,16 +149,16 @@ export function InvoiceModal({
             </p>
           </div>
 
-          <p className="text-base text-gray-900">
+          <p className="text-sm md:text-base text-gray-900">
             Preencha os dados para concluir o faturamento
           </p>
 
           {/* Form fields */}
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3 md:gap-4">
             {/* Row 1: Protocol + Sent date */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-3 md:gap-6">
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">
+                <label className="ds-label mb-0">
                   Nº do protocolo de faturamento
                 </label>
                 <input
@@ -167,20 +167,18 @@ export function InvoiceModal({
                   onChange={(e) => setProtocol(e.target.value)}
                   placeholder="Protocolo"
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="ds-input disabled:opacity-50"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">
-                  Envio do faturamento
-                </label>
+                <label className="ds-label mb-0">Envio do faturamento</label>
                 <div className="relative">
                   <input
                     type="date"
                     value={sentAt}
                     onChange={(e) => setSentAt(e.target.value)}
                     disabled={isSaving}
-                    className="w-full px-3 py-2 pr-10 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                    className="ds-input pr-10 disabled:opacity-50"
                   />
                   <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
@@ -188,11 +186,9 @@ export function InvoiceModal({
             </div>
 
             {/* Row 2: Value + Payment deadline */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-3 md:gap-6">
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">
-                  Valor
-                </label>
+                <label className="ds-label mb-0">Valor</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -200,11 +196,11 @@ export function InvoiceModal({
                   onChange={(e) => setValue(applyBRLMask(e.target.value))}
                   placeholder="R$ 0,00"
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="ds-input disabled:opacity-50"
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">
+                <label className="ds-label mb-0">
                   Prazo para recebimento (dias)
                 </label>
                 <input
@@ -214,7 +210,7 @@ export function InvoiceModal({
                   onChange={(e) => setPaymentDeadline(e.target.value)}
                   placeholder="Ex.30 dias"
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="ds-input disabled:opacity-50"
                 />
               </div>
             </div>
@@ -233,7 +229,7 @@ export function InvoiceModal({
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="invoice-set-default"
-                className="text-sm font-semibold text-gray-900 cursor-pointer"
+                className="ds-label mb-0 cursor-pointer"
               >
                 Salvar prazo como padrão para este convênio?
               </label>
@@ -246,18 +242,18 @@ export function InvoiceModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t-2 border-gray-200 shrink-0">
+        <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200 shrink-0">
           <button
             onClick={handleClose}
             disabled={isSaving}
-            className="h-10 px-4 text-sm text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="ds-btn-outline disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || isSaving}
-            className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+            className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
             {isSaving ? "Salvando..." : "Concluir faturamento"}

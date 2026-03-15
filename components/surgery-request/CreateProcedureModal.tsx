@@ -53,9 +53,7 @@ export function CreateProcedureModal({
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
         {/* Header */}
         <div className="px-6 pt-6 pb-5 flex items-center justify-between border-b border-gray-200">
-          <h2 className="text-2xl font-semibold text-gray-900">
-            Novo procedimento
-          </h2>
+          <h2 className="ds-modal-title">Novo procedimento</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -67,26 +65,20 @@ export function CreateProcedureModal({
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <div className="px-6 pt-5 pb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nome do procedimento
-            </label>
+            <label className="ds-label">Nome do procedimento</label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 border border-[#DCDFE3] rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 placeholder:text-gray-400 text-sm"
+              className="ds-input"
               placeholder="Ex. Artroscopia de Joelho"
             />
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-5 py-2.5 bg-teal-700 text-white rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
-            >
+          <div className="px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 flex justify-end">
+            <button type="submit" disabled={loading} className="ds-btn-primary">
               {loading ? "Adicionando..." : "Adicionar procedimento"}
             </button>
           </div>

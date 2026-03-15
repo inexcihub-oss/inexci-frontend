@@ -254,7 +254,7 @@ export function ConfirmReceiptModal({
 
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden h-[650px] max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center gap-2.5 px-6 py-4 border-b border-gray-200 shrink-0">
+        <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
             {step === 1 ? "Confirmar recebimento" : "Contestar recebimento"}
           </h2>
@@ -270,47 +270,45 @@ export function ConfirmReceiptModal({
         {/* ── Etapa 1: Confirmar recebimento ── */}
         {step === 1 && (
           <>
-            <div className="flex flex-col gap-6 p-6 overflow-y-auto">
+            <div className="flex flex-col gap-3 md:gap-6 p-4 md:p-6 overflow-y-auto">
               {/* Billing info box */}
               <div className="flex flex-col gap-2 p-4 bg-blue-50 rounded-xl">
-                <p className="text-sm font-semibold text-blue-600">
+                <p className="text-xs md:text-sm font-semibold text-blue-600">
                   Dados do faturamento
                 </p>
                 <div className="flex flex-col gap-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <p className="text-sm text-blue-600">
+                    <p className="text-xs md:text-sm text-blue-600">
                       Protocolo: {protocol}
                     </p>
-                    <p className="text-sm text-blue-600">
+                    <p className="text-xs md:text-sm text-blue-600">
                       Valor: {invoiceValueStr}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <p className="text-sm text-blue-600">
+                    <p className="text-xs md:text-sm text-blue-600">
                       Envio do faturamento : {sentAtStr}
                     </p>
-                    <p className="text-sm text-blue-600">
+                    <p className="text-xs md:text-sm text-blue-600">
                       Previsão: {expectedDate}
                     </p>
                   </div>
                   {alreadyReceivedValue != null && (
-                    <p className="text-sm text-blue-600">
+                    <p className="text-xs md:text-sm text-blue-600">
                       Valor já recebido: {formatCurrency(alreadyReceivedValue)}
                     </p>
                   )}
                 </div>
               </div>
 
-              <p className="text-base text-gray-900">
+              <p className="text-sm md:text-base text-gray-900">
                 Confirme os valores recebidos do convênio
               </p>
 
               {/* Value + Date fields */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-black">
-                    Valor recebido
-                  </label>
+                  <label className="ds-label mb-0">Valor recebido</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -320,19 +318,17 @@ export function ConfirmReceiptModal({
                     }
                     placeholder="R$ 0,00"
                     disabled={isSaving}
-                    className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                    className="ds-input disabled:opacity-50"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-black">
-                    Data do recebimento
-                  </label>
+                  <label className="ds-label mb-0">Data do recebimento</label>
                   <input
                     type="date"
                     value={receivedAt}
                     onChange={(e) => setReceivedAt(e.target.value)}
                     disabled={isSaving}
-                    className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                    className="ds-input disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -343,11 +339,11 @@ export function ConfirmReceiptModal({
                   <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-xl">
                     <AlertTriangle className="w-6 h-6 shrink-0 text-yellow-600 mt-0.5" />
                     <div className="flex flex-col gap-1">
-                      <p className="text-sm font-semibold text-yellow-800">
+                      <p className="text-xs md:text-sm font-semibold text-yellow-800">
                         Valor divergente! Faltam{" "}
                         {formatCurrency(Math.abs(valueDifference))}
                       </p>
-                      <p className="text-sm text-yellow-800">
+                      <p className="text-xs md:text-sm text-yellow-800">
                         Você poderá enviar um recurso após confirmar o
                         recebimento.
                       </p>
@@ -356,7 +352,7 @@ export function ConfirmReceiptModal({
                 ) : (
                   <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl">
                     <CheckCircle className="w-6 h-6 shrink-0 text-emerald-600" />
-                    <p className="text-sm font-semibold text-emerald-700">
+                    <p className="text-xs md:text-sm font-semibold text-emerald-700">
                       Valor confere com o faturamento!
                     </p>
                   </div>
@@ -364,7 +360,7 @@ export function ConfirmReceiptModal({
 
               {/* Observations */}
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">
+                <label className="ds-label mb-0">
                   Observações sobre o Recebimento (Opcional)
                 </label>
                 <textarea
@@ -373,7 +369,7 @@ export function ConfirmReceiptModal({
                   placeholder="Ex: Recebido via transferência bancária, glosa parcial do procedimento, etc."
                   rows={4}
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-base text-gray-500 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none disabled:opacity-50"
+                  className="ds-textarea disabled:opacity-50"
                 />
               </div>
 
@@ -383,25 +379,22 @@ export function ConfirmReceiptModal({
                   <div className="w-10 h-10 flex items-center justify-center bg-gray-100 border border-gray-200 rounded-full">
                     <Paperclip className="w-5 h-5 text-gray-500" />
                   </div>
-                  <span className="text-sm font-semibold text-gray-900">
+                  <span className="text-xs md:text-sm font-semibold text-gray-900">
                     Anexos
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className="px-4 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
-                >
+                <button type="button" className="ds-btn-outline">
                   Selecionar arquivo
                 </button>
               </div>
             </div>
 
             {/* Footer Etapa 1 */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t-2 border-gray-200 shrink-0">
+            <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200 shrink-0">
               <button
                 onClick={handleClose}
                 disabled={isSaving}
-                className="h-10 px-4 text-sm text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="ds-btn-outline disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -409,7 +402,7 @@ export function ConfirmReceiptModal({
                 <button
                   onClick={handleConfirmAndContest}
                   disabled={!canProceedStep1 || isSaving}
-                  className="h-10 px-4 text-sm font-semibold text-teal-700 bg-gray-100 border border-gray-200 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="ds-btn-outline disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Confirmar e recorrer
                 </button>
@@ -417,7 +410,7 @@ export function ConfirmReceiptModal({
               <button
                 onClick={handleConfirm}
                 disabled={!canProceedStep1 || isSaving}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isSaving ? "Confirmando..." : "Confirmar"}
@@ -429,26 +422,24 @@ export function ConfirmReceiptModal({
         {/* ── Etapa 2: Contestar recebimento ── */}
         {step === 2 && (
           <>
-            <div className="flex flex-col gap-4 p-6 overflow-y-auto">
+            <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
               {/* De */}
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">De:</label>
+                <label className="ds-label mb-0">De:</label>
                 <input
                   type="email"
                   value={contestFrom}
                   onChange={(e) => setContestFrom(e.target.value)}
                   placeholder="inexci@mail.com"
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="ds-input disabled:opacity-50"
                 />
               </div>
 
               {/* Para */}
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">
-                  Para:
-                </label>
-                <p className="text-sm text-gray-400">
+                <label className="ds-label mb-0">Para:</label>
+                <p className="text-xs md:text-sm text-gray-400">
                   Para incluir mais de um e-mail separe-os com ponto e vírgula
                   (;)
                 </p>
@@ -458,41 +449,37 @@ export function ConfirmReceiptModal({
                   onChange={(e) => setContestTo(e.target.value)}
                   placeholder="autorizacoes@convenio.com.br"
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="ds-input disabled:opacity-50"
                 />
               </div>
 
               {/* Assunto */}
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">
-                  Assunto:
-                </label>
+                <label className="ds-label mb-0">Assunto:</label>
                 <input
                   type="text"
                   value={contestSubject}
                   onChange={(e) => setContestSubject(e.target.value)}
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50"
+                  className="ds-input disabled:opacity-50"
                 />
               </div>
 
               {/* Mensagem */}
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">
-                  Mensagem
-                </label>
+                <label className="ds-label mb-0">Mensagem</label>
                 <textarea
                   value={contestMessage}
                   onChange={(e) => setContestMessage(e.target.value)}
                   rows={8}
                   disabled={isSaving}
-                  className="w-full px-3 py-2 text-base text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none disabled:opacity-50"
+                  className="ds-textarea disabled:opacity-50"
                 />
               </div>
 
               {/* Documento de contestação */}
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-black">
+                <label className="ds-label mb-0">
                   Documento de contestação
                 </label>
                 <div className="flex items-center justify-between gap-3 p-4 bg-gray-100 border border-dashed border-gray-300 rounded-xl">
@@ -500,14 +487,11 @@ export function ConfirmReceiptModal({
                     <div className="w-10 h-10 flex items-center justify-center bg-gray-100 border border-gray-200 rounded-full">
                       <Paperclip className="w-5 h-5 text-gray-500" />
                     </div>
-                    <span className="text-sm font-semibold text-gray-900">
+                    <span className="text-xs md:text-sm font-semibold text-gray-900">
                       Anexos
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className="px-4 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
-                  >
+                  <button type="button" className="ds-btn-outline">
                     Selecionar arquivo
                   </button>
                 </div>
@@ -515,18 +499,18 @@ export function ConfirmReceiptModal({
             </div>
 
             {/* Footer Etapa 2 */}
-            <div className="flex items-center justify-between px-6 py-4 border-t-2 border-gray-200 shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200 shrink-0">
               <button
                 onClick={() => setStep(1)}
                 disabled={isSaving}
-                className="h-10 px-4 text-sm text-gray-900 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="ds-btn-outline disabled:opacity-50"
               >
                 Voltar
               </button>
               <button
                 onClick={handleSubmitContest}
                 disabled={!canSubmitContest || isSaving}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isSaving ? "Enviando..." : "Enviar e-mail"}

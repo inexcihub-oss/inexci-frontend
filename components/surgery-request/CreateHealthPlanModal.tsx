@@ -97,8 +97,7 @@ export function CreateHealthPlanModal({
 
   if (!isOpen) return null;
 
-  const inputClass =
-    "w-full px-4 py-3 border border-[#DCDFE3] rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500";
+  const inputClass = "ds-input";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
@@ -107,9 +106,7 @@ export function CreateHealthPlanModal({
       <div className="relative bg-white rounded-xl shadow-xl w-[480px] mx-4 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5">
-          <h2 className="text-[28px] font-bold text-gray-900 leading-tight">
-            Novo convênio
-          </h2>
+          <h2 className="ds-modal-title">Novo convênio</h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -122,12 +119,10 @@ export function CreateHealthPlanModal({
 
         {/* Body */}
         <form onSubmit={handleSubmit}>
-          <div className="px-6 py-6 flex flex-col gap-5">
+          <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
             {/* Convênio */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-bold text-gray-900">
-                Convênio
-              </label>
+              <label className="ds-label mb-0">Convênio</label>
               <input
                 type="text"
                 required
@@ -142,9 +137,7 @@ export function CreateHealthPlanModal({
 
             {/* Telefone */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-bold text-gray-900">
-                Telefone
-              </label>
+              <label className="ds-label mb-0">Telefone</label>
               <input
                 type="tel"
                 required
@@ -157,7 +150,7 @@ export function CreateHealthPlanModal({
 
             {/* E-mail */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-bold text-gray-900">E-mail</label>
+              <label className="ds-label mb-0">E-mail</label>
               <input
                 type="email"
                 required
@@ -165,9 +158,7 @@ export function CreateHealthPlanModal({
                 onChange={handleEmailChange}
                 onBlur={handleEmailBlur}
                 placeholder="convenio@mail.com"
-                className={`w-full px-4 py-3 border rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  emailError ? "border-red-400" : "border-[#DCDFE3]"
-                }`}
+                className={`ds-input ${emailError ? "border-red-400" : ""}`}
               />
               {emailError && (
                 <span className="text-xs text-red-500">{emailError}</span>
@@ -181,11 +172,11 @@ export function CreateHealthPlanModal({
 
           {/* Footer */}
           <div className="h-px bg-gray-200" />
-          <div className="flex items-center justify-end px-6 py-4">
+          <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4">
             <button
               type="submit"
               disabled={loading || !!emailError}
-              className="px-6 py-3 bg-teal-700 text-white text-sm font-semibold rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ds-btn-primary"
             >
               {loading ? "Adicionando..." : "Adicionar convênio"}
             </button>

@@ -137,9 +137,7 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
 
             {/* Status Filter */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                Status
-              </label>
+              <label className="ds-label">Status</label>
               <div className="flex flex-wrap gap-2">
                 {statusOptions.map((status) => (
                   <button
@@ -159,9 +157,7 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
 
             {/* Priority Filter */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                Prioridade
-              </label>
+              <label className="ds-label">Prioridade</label>
               <div className="flex flex-wrap gap-2">
                 {priorityOptions.map((priority) => (
                   <button
@@ -181,9 +177,7 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
 
             {/* Sort Options */}
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-neutral-900 mb-2">
-                Ordenar por
-              </label>
+              <label className="ds-label">Ordenar por</label>
               <div className="flex flex-col gap-1">
                 {sortOptions.map((option) => (
                   <button

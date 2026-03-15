@@ -45,7 +45,7 @@ export function CardTitle({ className, children, ...props }: CardProps) {
 
 export function CardDescription({ className, children, ...props }: CardProps) {
   return (
-    <p className={cn("text-sm text-gray-500", className)} {...props}>
+    <p className={cn("text-xs md:text-sm text-gray-500", className)} {...props}>
       {children}
     </p>
   );

@@ -222,10 +222,10 @@ export function DynamicPendencyList({
   }
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-3 md:space-y-4", className)}>
       {/* Header com resumo */}
       <div className="bg-gray-50 rounded-xl p-3 space-y-2">
-        <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center justify-between text-xs md:text-sm">
           <span className="font-medium text-gray-700">
             Status: {statusLabel}
           </span>
@@ -328,7 +328,7 @@ function DynamicPendencyItem({
 
         <span
           className={cn(
-            "flex-1 text-sm font-semibold leading-tight",
+            "flex-1 text-xs md:text-sm font-semibold leading-tight",
             pendency.isComplete
               ? "text-green-700"
               : pendency.isOptional
@@ -388,7 +388,7 @@ function DynamicPendencyItem({
             <div
               key={i}
               className={cn(
-                "flex items-center gap-2.5 px-3 py-2 text-sm",
+                "flex items-center gap-2.5 px-3 py-2 text-xs md:text-sm",
                 i > 0 && "border-t border-amber-100",
                 item.done ? "bg-green-50" : "bg-white",
               )}

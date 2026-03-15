@@ -46,7 +46,7 @@ export function ConfirmDeleteModal({
 
       {/* Modal */}
       <div
-        className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6"
+        className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4 md:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Ícone */}
@@ -73,7 +73,7 @@ export function ConfirmDeleteModal({
         </h2>
 
         {/* Descrição */}
-        <p className="text-sm text-gray-500 text-center mb-6">
+        <p className="text-xs md:text-sm text-gray-500 text-center mb-6">
           {description ?? defaultDescription}
           <br />
           Esta ação não pode ser desfeita.
@@ -84,14 +84,14 @@ export function ConfirmDeleteModal({
           <button
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[44px] active:scale-[0.98]"
+            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-xs md:text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[36px] md:min-h-[44px] active:scale-[0.98]"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
-            className="flex-1 px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-sm font-medium text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px] active:scale-[0.98]"
+            className="flex-1 px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-xs md:text-sm font-medium text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-[36px] md:min-h-[44px] active:scale-[0.98]"
           >
             {loading ? (
               <>

@@ -153,21 +153,19 @@ export function NewDoctorModal({
 
   if (!isOpen) return null;
 
-  const inputClass =
-    "w-full px-4 py-3 border border-[#DCDFE3] rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white";
-  const labelClass = "text-sm font-bold text-gray-900";
+  const inputClass = "ds-input";
+  const labelClass = "ds-label mb-0";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={handleClose} />
       <div
-        className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh]"
-      >
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={handleClose}
+      />
+      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-5 flex-shrink-0">
-          <h2 className="text-[28px] font-bold text-gray-900 leading-tight">
-            Novo médico
-          </h2>
+        <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 flex-shrink-0">
+          <h2 className="ds-modal-title">Novo médico</h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -183,7 +181,7 @@ export function NewDoctorModal({
           onSubmit={handleSubmit}
           className="flex flex-col flex-1 overflow-hidden"
         >
-          <div className="px-6 py-6 flex flex-col gap-5 overflow-y-auto">
+          <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
             {/* Row 1: Nome + Telefone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
@@ -286,11 +284,11 @@ export function NewDoctorModal({
 
           {/* Footer */}
           <div className="h-px bg-gray-200 flex-shrink-0" />
-          <div className="flex items-center justify-end px-6 py-4 flex-shrink-0">
+          <div className="ds-modal-footer">
             <button
               type="submit"
               disabled={loading || !!emailError}
-              className="px-6 py-3 bg-teal-700 text-white text-sm font-semibold rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ds-btn-primary"
             >
               {loading ? "Adicionando..." : "Adicionar médico"}
             </button>

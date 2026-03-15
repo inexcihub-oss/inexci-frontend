@@ -219,7 +219,7 @@ function DocumentUploadModalContent({
       {/* Modal */}
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             Adicionar Documento
           </h2>
@@ -233,9 +233,9 @@ function DocumentUploadModalContent({
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+        <div className="flex-1 p-4 md:p-6 space-y-3 md:space-y-4 overflow-y-auto">
           {error && (
-            <div className="bg-red-50 text-red-700 p-3 rounded-xl text-sm">
+            <div className="bg-red-50 text-red-700 p-3 rounded-xl text-xs md:text-sm">
               {error}
             </div>
           )}
@@ -260,7 +260,7 @@ function DocumentUploadModalContent({
                     <Check className="w-5 h-5 text-green-600" />
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-medium text-gray-900">Enviado</p>
+                    <p className="text-xs md:text-sm font-medium text-gray-900">Enviado</p>
                     <p className="text-xs text-gray-500 truncate">
                       {selectedFile.name}
                     </p>
@@ -271,7 +271,7 @@ function DocumentUploadModalContent({
                     e.stopPropagation();
                     fileInputRef.current?.click();
                   }}
-                  className="px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="px-3 py-1.5 text-xs md:text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   Selecionar
                 </button>
@@ -281,7 +281,7 @@ function DocumentUploadModalContent({
                 <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
                   <Upload className="w-6 h-6 text-gray-400" />
                 </div>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs md:text-sm text-gray-500">
                   Clique para anexar documento ou exames.
                 </p>
               </div>
@@ -297,7 +297,7 @@ function DocumentUploadModalContent({
 
           {/* Tipo do documento */}
           <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-900">
+            <label className="block text-xs md:text-sm font-semibold text-gray-900">
               Tipo do documento
             </label>
             <div className="relative">
@@ -305,7 +305,7 @@ function DocumentUploadModalContent({
                 ref={typeButtonRef}
                 type="button"
                 onClick={handleToggleDropdown}
-                className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-xl hover:border-gray-400 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-2.5 text-xs md:text-sm text-gray-900 bg-white border border-gray-300 rounded-xl hover:border-gray-400 transition-colors"
               >
                 <span>{getDocumentTypeLabel(documentType)}</span>
                 <svg
@@ -342,7 +342,7 @@ function DocumentUploadModalContent({
                           setDocumentType(type.key);
                           setIsTypeDropdownOpen(false);
                         }}
-                        className={`w-full px-4 py-2.5 text-sm text-left hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                        className={`w-full px-4 py-2.5 text-xs md:text-sm text-left hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
                           documentType === type.key
                             ? "bg-teal-50 text-teal-700"
                             : "text-gray-900"
@@ -359,7 +359,7 @@ function DocumentUploadModalContent({
 
           {/* Nome do documento */}
           <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-900">
+            <label className="block text-xs md:text-sm font-semibold text-gray-900">
               Nome
             </label>
             <input
@@ -367,7 +367,7 @@ function DocumentUploadModalContent({
               value={documentName}
               onChange={(e) => setDocumentName(e.target.value)}
               placeholder="Ex: Ressonância do Joelho"
-              className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors"
+              className="w-full px-4 py-2.5 text-xs md:text-sm text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors"
             />
           </div>
 
@@ -375,17 +375,17 @@ function DocumentUploadModalContent({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
           <button
             onClick={handleCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+            className="ds-btn-outline"
             disabled={isUploading}
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ds-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isUploading || !selectedFile}
           >
             {isUploading ? (

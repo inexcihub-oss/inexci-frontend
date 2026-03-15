@@ -65,9 +65,9 @@ export function ContestFlow({
 
   return (
     <>
-      <div className="p-6 space-y-5">
+      <div className="p-4 md:p-6 space-y-3 md:space-y-5">
         {/* Indicador de etapas */}
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500">
           {([1, 2, 3] as ContestStep[]).map((s) => (
             <React.Fragment key={s}>
               <span className={s === step ? "text-teal-700 font-semibold" : ""}>
@@ -81,7 +81,7 @@ export function ContestFlow({
         {/* Parte 1: Motivo */}
         {step === 1 && (
           <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-gray-900">
+            <label className="block ds-label mb-0">
               Motivo da Contestação <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -89,15 +89,15 @@ export function ContestFlow({
               onChange={(e) => onReasonChange(e.target.value)}
               placeholder="Descreva detalhadamente o motivo da contestação..."
               rows={5}
-              className="w-full px-4 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+              className="ds-textarea"
             />
           </div>
         )}
 
         {/* Parte 2: Método */}
         {step === 2 && (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
+          <div className="space-y-3 md:space-y-4">
+            <p className="text-xs md:text-sm text-gray-600">
               Como deseja enviar a contestação?
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -143,7 +143,7 @@ export function ContestFlow({
                       />
                     </svg>
                   )}
-                  <span className="text-sm font-semibold text-gray-900">
+                  <span className="text-xs md:text-sm font-semibold text-gray-900">
                     {m === "email" ? "Enviar E-mail" : "Criar Documento"}
                   </span>
                 </button>
@@ -154,9 +154,9 @@ export function ContestFlow({
 
         {/* Parte 3a: Formulário de e-mail */}
         {step === 3 && method === "email" && (
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-gray-900">
+              <label className="block ds-label mb-0">
                 Para <span className="text-red-500">*</span>
               </label>
               <input
@@ -164,11 +164,11 @@ export function ContestFlow({
                 value={emailForm.to}
                 onChange={(e) => onEmailChange("to", e.target.value)}
                 placeholder="email@convenio.com.br"
-                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="ds-input"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-gray-900">
+              <label className="block ds-label mb-0">
                 Assunto <span className="text-red-500">*</span>
               </label>
               <input
@@ -176,11 +176,11 @@ export function ContestFlow({
                 value={emailForm.subject}
                 onChange={(e) => onEmailChange("subject", e.target.value)}
                 placeholder="Contestação de autorização"
-                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="ds-input"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-gray-900">
+              <label className="block ds-label mb-0">
                 Mensagem <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -188,7 +188,7 @@ export function ContestFlow({
                 onChange={(e) => onEmailChange("message", e.target.value)}
                 placeholder="Mensagem detalhada..."
                 rows={5}
-                className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                className="ds-textarea"
               />
             </div>
           </div>
@@ -196,34 +196,31 @@ export function ContestFlow({
 
         {/* Parte 3b: Documento PDF */}
         {step === 3 && method === "document" && (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
+          <div className="space-y-3 md:space-y-4">
+            <p className="text-xs md:text-sm text-gray-600">
               Um documento PDF de contestação será gerado automaticamente com
               base no motivo informado e poderá ser baixado e enviado
               manualmente ao convênio.
             </p>
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <p className="text-sm font-medium text-gray-700">
+              <p className="text-xs md:text-sm font-medium text-gray-700">
                 Motivo registrado:
               </p>
-              <p className="text-sm text-gray-600 mt-1">{reason}</p>
+              <p className="text-xs md:text-sm text-gray-600 mt-1">{reason}</p>
             </div>
           </div>
         )}
       </div>
 
       <ModalFooter>
-        <button
-          onClick={onBack}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-        >
+        <button onClick={onBack} className="ds-btn-outline">
           Voltar
         </button>
         {step < 3 ? (
           <button
             onClick={onNext}
             disabled={step === 1 && !canProceedStep1}
-            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Próximo
           </button>
@@ -231,7 +228,7 @@ export function ContestFlow({
           <button
             onClick={onSubmit}
             disabled={!canSubmit || isSaving}
-            className="px-6 py-2 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving
               ? "Enviando..."

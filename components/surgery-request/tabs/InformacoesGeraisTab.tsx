@@ -116,7 +116,7 @@ export function InformacoesGeraisTab({
   const documentHeaderAction = isReadOnly ? null : (
     <button
       onClick={() => setIsUploadModalOpen(true)}
-      className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 gap-3 rounded-xl text-sm leading-normal"
+      className="ds-btn-inline"
     >
       Adicionar
     </button>
@@ -225,7 +225,7 @@ export function InformacoesGeraisTab({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 md:space-y-4">
       {/* Agendamento (status 4 ou 5) — aparece antes dos dados do procedimento */}
       {(statusNum === 4 || statusNum === 5) && (
         <SchedulingSection
@@ -244,7 +244,7 @@ export function InformacoesGeraisTab({
           (c: any) => c.type === "authorization" && !c.resolved_at,
         ) && (
           <div className="px-4 py-3 bg-indigo-50 rounded-xl">
-            <p className="text-sm font-semibold text-indigo-600">
+            <p className="text-xs md:text-sm font-semibold text-indigo-600">
               A solicitação está em estado de contestação.
             </p>
           </div>
@@ -371,7 +371,7 @@ export function InformacoesGeraisTab({
               </div>
             ))
           ) : (
-            <div className="px-4 py-8 text-center text-gray-500">
+            <div className="px-4 py-6 md:py-8 text-center text-xs md:text-sm text-gray-500">
               Nenhum documento anexado
             </div>
           )}

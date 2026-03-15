@@ -573,10 +573,7 @@ export default function SolicitacaoDetalhePage() {
                     {solicitacao.patient?.name || "Sem nome"}
                   </span>
                   <span className="hidden md:inline text-sm text-gray-900">
-                    (
-                    {solicitacao.procedures?.[0]?.procedure?.name ||
-                      "Sem procedimento"}
-                    )
+                    ({solicitacao.procedure?.name || "Sem procedimento"})
                   </span>
                 </div>
                 {/* Progresso removido conforme solicitação */}
@@ -660,8 +657,7 @@ export default function SolicitacaoDetalhePage() {
                       {solicitacao.patient?.name || "Sem nome"}
                     </h2>
                     <p className="text-xs text-gray-500 leading-normal truncate">
-                      {solicitacao.procedures?.[0]?.procedure?.name ||
-                        "Sem procedimento"}
+                      {solicitacao.procedure?.name || "Sem procedimento"}
                     </p>
                   </div>
                 </div>

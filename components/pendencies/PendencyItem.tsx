@@ -118,7 +118,7 @@ export function PendencyItem({
         {getStatusIcon()}
         <span
           className={cn(
-            "text-sm flex-1",
+            "text-xs md:text-sm flex-1",
             isCompleted && "line-through text-gray-500",
           )}
         >
@@ -160,7 +160,7 @@ export function PendencyItem({
         <div className="flex items-center gap-2 mb-1">
           <h4
             className={cn(
-              "text-sm font-medium",
+              "text-xs md:text-sm font-medium",
               isCompleted ? "text-gray-500 line-through" : "text-gray-900",
             )}
           >

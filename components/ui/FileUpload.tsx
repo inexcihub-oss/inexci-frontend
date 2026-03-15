@@ -119,7 +119,7 @@ export function FileUpload({
   };
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-3 md:space-y-4">
       {/* Área de seleção de arquivos */}
       <div className="border-2 border-dashed border-neutral-200 rounded-2xl p-6 md:p-8 hover:border-neutral-300 transition-colors">
         <div className="flex flex-col items-center justify-center space-y-3">
@@ -127,7 +127,7 @@ export function FileUpload({
           <div className="text-center">
             <label
               htmlFor="file-upload"
-              className="cursor-pointer text-sm font-semibold text-teal-600 hover:text-teal-700"
+              className="cursor-pointer text-xs md:text-sm font-semibold text-teal-600 hover:text-teal-700"
             >
               Clique para selecionar arquivo(s)
               <input
@@ -154,7 +154,7 @@ export function FileUpload({
       {/* Lista de arquivos selecionados */}
       {selectedFiles.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-black">
+          <h4 className="text-xs md:text-sm font-semibold text-black">
             Arquivos selecionados ({selectedFiles.length})
           </h4>
           <div className="space-y-2">
@@ -166,7 +166,7 @@ export function FileUpload({
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
                   <File className="h-5 w-5 text-neutral-400 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-black truncate">
+                    <p className="text-xs md:text-sm font-medium text-black truncate">
                       {file.name}
                     </p>
                     <p className="text-xs text-neutral-500">
@@ -189,7 +189,7 @@ export function FileUpload({
           <button
             onClick={handleUpload}
             disabled={uploading || disabled}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs md:text-sm min-h-[36px] md:min-h-[44px]"
           >
             {uploading ? (
               <>
@@ -209,7 +209,7 @@ export function FileUpload({
       {/* Lista de arquivos enviados */}
       {uploadedFiles.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-green-600">
+          <h4 className="text-xs md:text-sm font-semibold text-green-600">
             Arquivos enviados com sucesso
           </h4>
           <div className="space-y-2">
@@ -221,7 +221,7 @@ export function FileUpload({
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
                   <File className="h-5 w-5 text-green-600 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-black truncate">
+                    <p className="text-xs md:text-sm font-medium text-black truncate">
                       {file.originalName}
                     </p>
                     <a

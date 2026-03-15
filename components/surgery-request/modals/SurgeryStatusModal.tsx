@@ -371,7 +371,7 @@ export function SurgeryStatusModal({
 
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-2.5 px-6 py-4 border-b border-neutral-100">
+        <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100">
           <h2 className="flex-1 text-2xl font-light tracking-tight text-neutral-900">
             {title}
           </h2>
@@ -387,12 +387,12 @@ export function SurgeryStatusModal({
         {/* ══════════ PASSO 1: Status da cirurgia ════════════════════════════ */}
         {step === 1 && (
           <>
-            <div className="flex flex-col gap-4 px-6 py-6">
-              <p className="text-base text-neutral-900">
+            <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6">
+              <p className="text-sm md:text-base text-neutral-900">
                 Qual o status atual da cirurgia?
               </p>
 
-              <div className="flex gap-4">
+              <div className="flex gap-3 md:gap-4">
                 {(
                   [
                     {
@@ -422,7 +422,7 @@ export function SurgeryStatusModal({
                     }`}
                   >
                     {opt.icon}
-                    <span className="text-sm font-semibold text-neutral-900">
+                    <span className="text-xs md:text-sm font-semibold text-neutral-900">
                       {opt.label}
                     </span>
                   </button>
@@ -431,17 +431,14 @@ export function SurgeryStatusModal({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-100">
-              <button
-                onClick={handleClose}
-                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-xl hover:bg-neutral-50"
-              >
+            <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
+              <button onClick={handleClose} className="ds-btn-outline">
                 Cancelar
               </button>
               <button
                 onClick={() => setStep(2)}
                 disabled={!outcome}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Próximo
               </button>
@@ -452,12 +449,12 @@ export function SurgeryStatusModal({
         {/* ══════════ PASSO 2a: Cirurgia Realizada ═══════════════════════════ */}
         {step === 2 && outcome === "realizada" && (
           <>
-            <div className="flex flex-col gap-4 px-6 py-6">
-              <p className="text-base text-neutral-900">
+            <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6">
+              <p className="text-sm md:text-base text-neutral-900">
                 Envie os documentos cirúrgicos para confirmar a realização.
               </p>
 
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 md:gap-4">
                 {sections.map((sec) => (
                   <div key={sec.key}>
                     {/* Input oculto para seleção de arquivo */}
@@ -477,7 +474,7 @@ export function SurgeryStatusModal({
                     {sec.files.length === 0 ? (
                       /* ── Sem arquivo: container pontilhado ── */
                       <div className="flex items-center gap-2 pl-4 pr-2 py-2 bg-neutral-50 border border-dashed border-neutral-100 rounded-xl">
-                        <span className="flex-1 text-sm font-semibold text-neutral-900">
+                        <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900">
                           {sec.label}
                           {sec.optional && (
                             <span className="font-normal"> (Opcional)</span>
@@ -486,7 +483,7 @@ export function SurgeryStatusModal({
                         <button
                           type="button"
                           onClick={() => fileRefs.current[sec.key]?.click()}
-                          className="text-sm text-neutral-900 border border-neutral-100 rounded-xl px-4 py-2 bg-white hover:bg-neutral-50 shadow-sm flex-shrink-0"
+                          className="ds-btn-outline flex-shrink-0"
                         >
                           Selecionar arquivo
                         </button>
@@ -496,7 +493,7 @@ export function SurgeryStatusModal({
                       <div className="flex flex-col gap-2">
                         {/* Cabeçalho: label + "Adicionar arquivo" */}
                         <div className="flex items-center">
-                          <span className="flex-1 text-sm font-semibold text-neutral-900">
+                          <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900">
                             {sec.label}
                             {sec.optional && (
                               <span className="font-normal"> (Opcional)</span>
@@ -505,7 +502,7 @@ export function SurgeryStatusModal({
                           <button
                             type="button"
                             onClick={() => fileRefs.current[sec.key]?.click()}
-                            className="text-sm text-neutral-900 underline"
+                            className="text-xs md:text-sm text-neutral-900 underline"
                           >
                             Adicionar arquivo
                           </button>
@@ -517,7 +514,7 @@ export function SurgeryStatusModal({
                             key={f.id}
                             className="flex items-center gap-2 px-4 py-2 border border-neutral-100 rounded-xl"
                           >
-                            <span className="flex-1 text-sm font-semibold text-neutral-900 truncate min-w-0">
+                            <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900 truncate min-w-0">
                               {f.file.name}{" "}
                               <span className="font-normal text-neutral-200">
                                 ({formatSize(f.file.size)})
@@ -553,18 +550,18 @@ export function SurgeryStatusModal({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-100">
+            <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
               <button
                 onClick={() => setStep(1)}
                 disabled={isSaving}
-                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-xl hover:bg-neutral-50 disabled:opacity-50"
+                className="ds-btn-outline disabled:opacity-50"
               >
                 Voltar
               </button>
               <button
                 onClick={submitRealizada}
                 disabled={!canSendRealizada || isSaving}
-                className="h-10 px-6 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 disabled:bg-neutral-50 disabled:text-neutral-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isSaving ? "Enviando..." : "Enviar"}
               </button>
@@ -575,14 +572,14 @@ export function SurgeryStatusModal({
         {/* ══════════ PASSO 2b: Cirurgia Reagendada ══════════════════════════ */}
         {step === 2 && outcome === "reagendada" && (
           <>
-            <div className="flex flex-col gap-4 px-6 py-6">
-              <p className="text-base text-neutral-900">
+            <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6">
+              <p className="text-sm md:text-base text-neutral-900">
                 Confirme a nova data da cirurgia.
               </p>
 
               {/* Linha: Nova data */}
               <div className="flex items-center gap-2 pl-2 pr-4 py-2">
-                <span className="flex-1 text-sm font-semibold text-neutral-900">
+                <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900">
                   Nova data
                 </span>
 
@@ -590,7 +587,7 @@ export function SurgeryStatusModal({
                   {/* Seletor de data */}
                   <div className="relative flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded">
                     <span
-                      className={`text-sm text-neutral-900 select-none ${!newDate ? "opacity-50" : ""}`}
+                      className={`text-xs md:text-sm text-neutral-900 select-none ${!newDate ? "opacity-50" : ""}`}
                     >
                       {newDate
                         ? new Date(`${newDate}T00:00`).toLocaleDateString(
@@ -615,7 +612,7 @@ export function SurgeryStatusModal({
                       type="time"
                       value={newTime}
                       onChange={(e) => setNewTime(e.target.value)}
-                      className="text-sm text-neutral-900 bg-transparent outline-none w-16"
+                      className="text-xs md:text-sm text-neutral-900 bg-transparent outline-none w-16"
                     />
                     <span className="opacity-50 flex-shrink-0 text-neutral-900">
                       <IconClock size={16} />
@@ -626,21 +623,19 @@ export function SurgeryStatusModal({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-100">
+            <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
               <button
                 onClick={handleClose}
                 disabled={isSaving}
-                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-xl hover:bg-neutral-50 disabled:opacity-50"
+                className="ds-btn-outline disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={submitReagendada}
                 disabled={!canSendReagendada || isSaving}
-                className={`h-10 px-6 text-sm font-semibold rounded-xl transition-colors disabled:cursor-not-allowed ${
-                  canSendReagendada && !isSaving
-                    ? "bg-teal-700 text-white hover:bg-teal-800"
-                    : "bg-neutral-50 text-neutral-900 opacity-40"
+                className={`ds-btn-primary disabled:cursor-not-allowed ${
+                  canSendReagendada && !isSaving ? "" : "opacity-40"
                 }`}
               >
                 {isSaving ? "Reagendando..." : "Reagendar"}
@@ -652,26 +647,26 @@ export function SurgeryStatusModal({
         {/* ══════════ PASSO 2c: Cirurgia Cancelada ═══════════════════════════ */}
         {step === 2 && outcome === "cancelada" && (
           <>
-            <div className="px-6 py-6">
-              <p className="text-base text-neutral-900">
+            <div className="px-4 py-4 md:px-6 md:py-6">
+              <p className="text-sm md:text-base text-neutral-900">
                 Tem certeza que deseja encerrar a solicitação e marcá-la como
                 cancelada?
               </p>
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-100">
+            <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
               <button
                 onClick={handleClose}
                 disabled={isSaving}
-                className="h-10 px-4 text-sm text-neutral-900 border border-neutral-100 rounded-xl hover:bg-neutral-50 disabled:opacity-50"
+                className="ds-btn-outline disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={submitCancelada}
                 disabled={isSaving}
-                className="h-10 px-6 text-sm font-semibold bg-priority-urgente-bg text-priority-urgente-text rounded-xl hover:opacity-90 disabled:opacity-50"
+                className="ds-btn-danger disabled:opacity-50"
               >
                 {isSaving ? "Encerrando..." : "Encerrar"}
               </button>

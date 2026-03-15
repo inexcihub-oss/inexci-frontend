@@ -1154,9 +1154,7 @@ export default function ColaboradoresPage() {
     <PageContainer className="border-gray-200">
       {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3 border-b border-gray-200">
-        <h1 className="text-xl md:text-2xl lg:text-3xl font-semibold text-black font-urbanist">
-          Colaboradores
-        </h1>
+        <h1 className="ds-page-title">Colaboradores</h1>
       </div>
 
       {/* Tabs */}

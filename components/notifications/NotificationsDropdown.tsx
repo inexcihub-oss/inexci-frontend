@@ -146,7 +146,7 @@ export default function NotificationsDropdown({
       >
         <Bell className="w-5 h-5 text-neutral-900" />
         {!isCollapsed && (
-          <span className="text-sm font-semibold text-neutral-900">
+          <span className="text-xs md:text-sm font-semibold text-neutral-900">
             Notificações
           </span>
         )}
@@ -181,7 +181,7 @@ export default function NotificationsDropdown({
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-gray-500">
                 <Bell className="w-8 h-8 mb-2 opacity-50" />
-                <p className="text-sm">Nenhuma notificação</p>
+                <p className="text-xs md:text-sm">Nenhuma notificação</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
@@ -209,7 +209,7 @@ export default function NotificationsDropdown({
                             }}
                             className="block"
                           >
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-xs md:text-sm font-medium text-gray-900 truncate">
                               {notification.title}
                             </p>
                             <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">
@@ -218,7 +218,7 @@ export default function NotificationsDropdown({
                           </Link>
                         ) : (
                           <>
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-xs md:text-sm font-medium text-gray-900 truncate">
                               {notification.title}
                             </p>
                             <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">

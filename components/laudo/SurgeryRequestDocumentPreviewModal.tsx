@@ -338,7 +338,12 @@ export function SurgeryRequestDocumentPreviewModal({
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `solicitacao-${solicitacao.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       // silently fail
@@ -349,7 +354,7 @@ export function SurgeryRequestDocumentPreviewModal({
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/50"
@@ -358,464 +363,464 @@ export function SurgeryRequestDocumentPreviewModal({
       />
 
       {/* Modal */}
-      <div
-        className="relative z-10 flex flex-col bg-white rounded-xl shadow-xl overflow-hidden"
-        style={{ width: "720px", maxHeight: "92vh" }}
-      >
+      <div className="relative z-10 flex flex-col bg-white rounded-xl shadow-xl overflow-hidden w-full max-w-[720px] max-h-[92vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="flex items-center justify-between px-4 sm:px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
+          <h2 className="ds-modal-title">
             Pré-visualização da Solicitação Cirúrgica
           </h2>
           <button
             onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 transition-colors"
+            className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 active:scale-[0.95] transition-all"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable content — simula pages A4 */}
-        <div className="flex-1 overflow-y-auto bg-[#EFEFEF] p-6 flex flex-col items-center gap-3">
-          {/* ════════════════ PÁGINA 1 ════════════════ */}
-          <A4Page>
-            <div className="flex flex-col gap-4 w-full">
-              {/* Título + Data */}
-              <div className="flex items-end justify-between pb-[1px]">
-                <span
-                  className="text-[20px] text-black"
-                  style={{
-                    fontFamily: "Gotham, Inter, sans-serif",
-                    fontWeight: 350,
-                  }}
-                >
-                  LAUDO MÉDICO
-                </span>
-                <span className="text-[12px] text-[#737373]">
-                  Data: {today}
-                </span>
-              </div>
+        <div className="flex-1 overflow-y-auto overflow-x-auto bg-[#EFEFEF] p-3 sm:p-6">
+          <div className="flex flex-col items-center gap-3 min-w-[595px]">
+            {/* ════════════════ PÁGINA 1 ════════════════ */}
+            <A4Page>
+              <div className="flex flex-col gap-4 w-full">
+                {/* Título + Data */}
+                <div className="flex items-end justify-between pb-[1px]">
+                  <span
+                    className="text-[20px] text-black"
+                    style={{
+                      fontFamily: "Gotham, Inter, sans-serif",
+                      fontWeight: 350,
+                    }}
+                  >
+                    LAUDO MÉDICO
+                  </span>
+                  <span className="text-[12px] text-[#737373]">
+                    Data: {today}
+                  </span>
+                </div>
 
-              {/* Dados do paciente */}
-              <div className="flex flex-col gap-[10.5px] w-full">
-                <SectionHeading>Dados do paciente</SectionHeading>
-                <div className="grid grid-cols-2 gap-y-[5.25px]">
-                  {name && (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-[12px] font-semibold text-[#111111]">
-                        Nome:
-                      </span>
-                      <span className="text-[12px] text-[#111111]">{name}</span>
-                    </div>
-                  )}
-                  {birthDate && (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-[12px] font-semibold text-[#111111]">
-                        Data de Nascimento:
-                      </span>
-                      <span className="text-[12px] text-[#111111]">
-                        {birthDate}
-                      </span>
-                    </div>
-                  )}
-                  {rg && (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-[12px] font-semibold text-[#111111]">
-                        RG:
-                      </span>
-                      <span className="text-[12px] text-[#111111]">{rg}</span>
-                    </div>
-                  )}
-                  {cpf && (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-[12px] font-semibold text-[#111111]">
-                        CPF:
-                      </span>
-                      <span className="text-[12px] text-[#111111]">{cpf}</span>
-                    </div>
-                  )}
-                  {address && (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-[12px] font-semibold text-[#111111]">
-                        Endereço:
-                      </span>
-                      <span className="text-[12px] text-[#111111]">
-                        {address}
-                      </span>
-                    </div>
-                  )}
-                  {zipCode && (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-[12px] font-semibold text-[#111111]">
-                        CEP:
-                      </span>
-                      <span className="text-[12px] text-[#111111]">
-                        {zipCode}
-                      </span>
-                    </div>
-                  )}
-                  {phone && (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-[12px] font-semibold text-[#111111]">
-                        Telefone:
-                      </span>
-                      <span className="text-[12px] text-[#111111]">
-                        {phone}
-                      </span>
-                    </div>
-                  )}
-                  {healthPlan && (
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-[12px] font-semibold text-[#111111]">
-                        Convênio:
-                      </span>
-                      <span className="text-[12px] text-[#111111]">
-                        {healthPlan}
-                      </span>
-                    </div>
-                  )}
+                {/* Dados do paciente */}
+                <div className="flex flex-col gap-[10.5px] w-full">
+                  <SectionHeading>Dados do paciente</SectionHeading>
+                  <div className="grid grid-cols-2 gap-y-[5.25px]">
+                    {name && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[12px] font-semibold text-[#111111]">
+                          Nome:
+                        </span>
+                        <span className="text-[12px] text-[#111111]">
+                          {name}
+                        </span>
+                      </div>
+                    )}
+                    {birthDate && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[12px] font-semibold text-[#111111]">
+                          Data de Nascimento:
+                        </span>
+                        <span className="text-[12px] text-[#111111]">
+                          {birthDate}
+                        </span>
+                      </div>
+                    )}
+                    {rg && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[12px] font-semibold text-[#111111]">
+                          RG:
+                        </span>
+                        <span className="text-[12px] text-[#111111]">{rg}</span>
+                      </div>
+                    )}
+                    {cpf && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[12px] font-semibold text-[#111111]">
+                          CPF:
+                        </span>
+                        <span className="text-[12px] text-[#111111]">
+                          {cpf}
+                        </span>
+                      </div>
+                    )}
+                    {address && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[12px] font-semibold text-[#111111]">
+                          Endereço:
+                        </span>
+                        <span className="text-[12px] text-[#111111]">
+                          {address}
+                        </span>
+                      </div>
+                    )}
+                    {zipCode && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[12px] font-semibold text-[#111111]">
+                          CEP:
+                        </span>
+                        <span className="text-[12px] text-[#111111]">
+                          {zipCode}
+                        </span>
+                      </div>
+                    )}
+                    {phone && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[12px] font-semibold text-[#111111]">
+                          Telefone:
+                        </span>
+                        <span className="text-[12px] text-[#111111]">
+                          {phone}
+                        </span>
+                      </div>
+                    )}
+                    {healthPlan && (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[12px] font-semibold text-[#111111]">
+                          Convênio:
+                        </span>
+                        <span className="text-[12px] text-[#111111]">
+                          {healthPlan}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Histórico e diagnóstico */}
+                <div className="flex flex-col gap-2 w-full">
+                  <SectionHeading>Histórico e diagnóstico</SectionHeading>
+                  <p className="text-[12px] text-[#111111] leading-[1.333] whitespace-pre-line">
+                    {historyAndDiagnosis || "—"}
+                  </p>
                 </div>
               </div>
-
-              {/* Histórico e diagnóstico */}
-              <div className="flex flex-col gap-2 w-full">
-                <SectionHeading>Histórico e diagnóstico</SectionHeading>
-                <p className="text-[12px] text-[#111111] leading-[1.333] whitespace-pre-line">
-                  {historyAndDiagnosis || "—"}
-                </p>
-              </div>
-            </div>
-            {/* Rodapé de assinatura — canto inferior direito */}
-            {signatureUrl && (
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "32px",
-                  right: "32px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "2px",
-                  textAlign: "center",
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={signatureUrl}
-                  alt="Assinatura"
+              {/* Rodapé de assinatura — canto inferior direito */}
+              {signatureUrl && (
+                <div
                   style={{
-                    maxWidth: "80px",
-                    maxHeight: "40px",
-                    objectFit: "contain",
-                    display: "block",
-                    marginBottom: "2px",
+                    position: "absolute",
+                    bottom: "32px",
+                    right: "32px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "2px",
+                    textAlign: "center",
                   }}
-                />
-                {doctorName && (
-                  <span
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={signatureUrl}
+                    alt="Assinatura"
                     style={{
-                      fontSize: "9px",
-                      fontWeight: 600,
-                      color: "#111111",
-                      lineHeight: 1.2,
+                      maxWidth: "80px",
+                      maxHeight: "40px",
+                      objectFit: "contain",
+                      display: "block",
+                      marginBottom: "2px",
                     }}
-                  >
-                    {doctorName}
-                  </span>
-                )}
-                {doctorSpecialty && (
-                  <span
-                    style={{
-                      fontSize: "8px",
-                      color: "#111111",
-                      lineHeight: 1.2,
-                      maxWidth: "130px",
-                    }}
-                  >
-                    {doctorSpecialty}
-                  </span>
-                )}
-                {doctorCRM && (
-                  <span
-                    style={{
-                      fontSize: "8px",
-                      color: "#111111",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {doctorCRM}
-                  </span>
-                )}
-              </div>
-            )}
-          </A4Page>
+                  />
+                  {doctorName && (
+                    <span
+                      style={{
+                        fontSize: "9px",
+                        fontWeight: 600,
+                        color: "#111111",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {doctorName}
+                    </span>
+                  )}
+                  {doctorSpecialty && (
+                    <span
+                      style={{
+                        fontSize: "8px",
+                        color: "#111111",
+                        lineHeight: 1.2,
+                        maxWidth: "130px",
+                      }}
+                    >
+                      {doctorSpecialty}
+                    </span>
+                  )}
+                  {doctorCRM && (
+                    <span
+                      style={{
+                        fontSize: "8px",
+                        color: "#111111",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {doctorCRM}
+                    </span>
+                  )}
+                </div>
+              )}
+            </A4Page>
 
-          {/* ════════════════ PÁGINA 2 ════════════════ */}
-          <A4Page>
-            <div className="flex flex-col gap-4 w-full">
-              {/* Imagens de exame */}
-              {examImages.length > 0 && (
-                <div className="flex flex-col gap-2 w-full">
+            {/* ════════════════ PÁGINA 2 ════════════════ */}
+            <A4Page>
+              <div className="flex flex-col gap-4 w-full">
+                {/* Imagens de exame */}
+                {examImages.length > 0 && (
+                  <div className="flex flex-col gap-2 w-full">
+                    <div className="grid grid-cols-3 gap-2">
+                      {examImages.map((doc) => (
+                        <ExamImageItem key={doc.id} doc={doc} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Imagens placeholder quando não houver imagens */}
+                {examImages.length === 0 && (
                   <div className="grid grid-cols-3 gap-2">
-                    {examImages.map((doc) => (
-                      <ExamImageItem key={doc.id} doc={doc} />
+                    {[0, 1, 2].map((i) => (
+                      <div
+                        key={i}
+                        className="flex flex-col items-center justify-center aspect-square bg-white border border-dashed border-[#DCDFE3] rounded-xl"
+                      >
+                        <svg
+                          className="w-10 h-10 text-[#DCDFE3]"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <rect
+                            x="3"
+                            y="3"
+                            width="18"
+                            height="18"
+                            rx="2"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          />
+                          <circle
+                            cx="8.5"
+                            cy="8.5"
+                            r="1.5"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          />
+                          <path
+                            d="M21 15L16 10L5 21"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Imagens placeholder quando não houver imagens */}
-              {examImages.length === 0 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      className="flex flex-col items-center justify-center aspect-square bg-white border border-dashed border-[#DCDFE3] rounded-xl"
-                    >
-                      <svg
-                        className="w-10 h-10 text-[#DCDFE3]"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                      >
-                        <rect
-                          x="3"
-                          y="3"
-                          width="18"
-                          height="18"
-                          rx="2"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                        />
-                        <circle
-                          cx="8.5"
-                          cy="8.5"
-                          r="1.5"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                        />
-                        <path
-                          d="M21 15L16 10L5 21"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Conduta */}
-              <div className="flex flex-col gap-2 w-full">
-                <SectionHeading>Conduta</SectionHeading>
-                <p className="text-[12px] text-[#111111] leading-[1.333] whitespace-pre-line">
-                  {conduct || "—"}
-                </p>
-              </div>
-
-              {/* Procedimento solicitado */}
-              {procedures.length > 0 && (
+                {/* Conduta */}
                 <div className="flex flex-col gap-2 w-full">
-                  <SectionHeading>Procedimento solicitado</SectionHeading>
-                  <ProceduresTable procedures={procedures} />
+                  <SectionHeading>Conduta</SectionHeading>
+                  <p className="text-[12px] text-[#111111] leading-[1.333] whitespace-pre-line">
+                    {conduct || "—"}
+                  </p>
                 </div>
-              )}
 
-              {/* Material solicitado */}
-              {opmeItems.length > 0 && (
-                <div className="flex flex-col gap-2 w-full">
-                  <SectionHeading>Material solicitado</SectionHeading>
-                  <MaterialsTable opmeItems={opmeItems} />
-                </div>
-              )}
-            </div>
-            {/* Rodapé de assinatura — canto inferior direito */}
-            {signatureUrl && (
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "32px",
-                  right: "32px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "2px",
-                  textAlign: "center",
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={signatureUrl}
-                  alt="Assinatura"
-                  style={{
-                    maxWidth: "80px",
-                    maxHeight: "40px",
-                    objectFit: "contain",
-                    display: "block",
-                    marginBottom: "2px",
-                  }}
-                />
-                {doctorName && (
-                  <span
-                    style={{
-                      fontSize: "9px",
-                      fontWeight: 600,
-                      color: "#111111",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {doctorName}
-                  </span>
+                {/* Procedimento solicitado */}
+                {procedures.length > 0 && (
+                  <div className="flex flex-col gap-2 w-full">
+                    <SectionHeading>Procedimento solicitado</SectionHeading>
+                    <ProceduresTable procedures={procedures} />
+                  </div>
                 )}
-                {doctorSpecialty && (
-                  <span
-                    style={{
-                      fontSize: "8px",
-                      color: "#111111",
-                      lineHeight: 1.2,
-                      maxWidth: "130px",
-                    }}
-                  >
-                    {doctorSpecialty}
-                  </span>
-                )}
-                {doctorCRM && (
-                  <span
-                    style={{
-                      fontSize: "8px",
-                      color: "#111111",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {doctorCRM}
-                  </span>
+
+                {/* Material solicitado */}
+                {opmeItems.length > 0 && (
+                  <div className="flex flex-col gap-2 w-full">
+                    <SectionHeading>Material solicitado</SectionHeading>
+                    <MaterialsTable opmeItems={opmeItems} />
+                  </div>
                 )}
               </div>
-            )}
-          </A4Page>
-
-          {/* ════════════════ PÁGINA 3 ════════════════ */}
-          <A4Page>
-            <div className="flex flex-col gap-4 w-full flex-1">
-              {/* Fabricantes e Fornecedores */}
-              <div className="flex flex-col gap-4">
-                {fabricantes.length > 0 && (
-                  <p className="text-[12px] text-black leading-[1.333]">
-                    <span className="font-semibold">Fabricantes:</span>{" "}
-                    {fabricantes.join(", ")}
-                  </p>
-                )}
-                {fornecedores.length > 0 && (
-                  <p className="text-[12px] text-black leading-[1.333]">
-                    <span className="font-semibold">Fornecedores:</span>{" "}
-                    {fornecedores.join(", ")}
-                  </p>
-                )}
-              </div>
-
-              {/* Linha separadora */}
-              {(fabricantes.length > 0 || fornecedores.length > 0) && (
-                <div className="w-full border-t border-[#DCDFE3]" />
-              )}
-
-              {/* Local */}
-              {localText && (
-                <p className="text-[12px] text-black leading-[1.333]">
-                  <span className="font-semibold">Local:</span> {localText}
-                </p>
-              )}
-
-              {/* Texto de encerramento */}
-              <p className="text-[12px] text-black leading-[1.333]">
-                Colocando-me a disposição para maiores informações,
-              </p>
-
-              {/* Assinatura */}
-              <div className="flex items-end gap-8 mt-4">
-                {/* Imagem + Linha de assinatura + nome */}
+              {/* Rodapé de assinatura — canto inferior direito */}
+              {signatureUrl && (
                 <div
-                  className="flex flex-col items-center gap-2"
-                  style={{ minWidth: "225px" }}
+                  style={{
+                    position: "absolute",
+                    bottom: "32px",
+                    right: "32px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "2px",
+                    textAlign: "center",
+                  }}
                 >
-                  {signatureUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={signatureUrl}
-                      alt="Assinatura"
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={signatureUrl}
+                    alt="Assinatura"
+                    style={{
+                      maxWidth: "80px",
+                      maxHeight: "40px",
+                      objectFit: "contain",
+                      display: "block",
+                      marginBottom: "2px",
+                    }}
+                  />
+                  {doctorName && (
+                    <span
                       style={{
-                        maxWidth: "120px",
-                        maxHeight: "60px",
-                        objectFit: "contain",
-                        display: "block",
-                        marginBottom: "4px",
+                        fontSize: "9px",
+                        fontWeight: 600,
+                        color: "#111111",
+                        lineHeight: 1.2,
                       }}
-                    />
+                    >
+                      {doctorName}
+                    </span>
                   )}
-                  <div className="w-full border-t border-[#DCDFE3]" />
-                  <span className="text-[12px] text-[#000000] leading-[1.333] text-center">
-                    {doctorName || "___________________"}
-                  </span>
+                  {doctorSpecialty && (
+                    <span
+                      style={{
+                        fontSize: "8px",
+                        color: "#111111",
+                        lineHeight: 1.2,
+                        maxWidth: "130px",
+                      }}
+                    >
+                      {doctorSpecialty}
+                    </span>
+                  )}
+                  {doctorCRM && (
+                    <span
+                      style={{
+                        fontSize: "8px",
+                        color: "#111111",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {doctorCRM}
+                    </span>
+                  )}
+                </div>
+              )}
+            </A4Page>
+
+            {/* ════════════════ PÁGINA 3 ════════════════ */}
+            <A4Page>
+              <div className="flex flex-col gap-4 w-full flex-1">
+                {/* Fabricantes e Fornecedores */}
+                <div className="flex flex-col gap-4">
+                  {fabricantes.length > 0 && (
+                    <p className="text-[12px] text-black leading-[1.333]">
+                      <span className="font-semibold">Fabricantes:</span>{" "}
+                      {fabricantes.join(", ")}
+                    </p>
+                  )}
+                  {fornecedores.length > 0 && (
+                    <p className="text-[12px] text-black leading-[1.333]">
+                      <span className="font-semibold">Fornecedores:</span>{" "}
+                      {fornecedores.join(", ")}
+                    </p>
+                  )}
                 </div>
 
-                {/* Email e telefone */}
-                {(doctorEmail || doctorPhone) && (
-                  <div className="flex flex-col gap-0.5 pb-0.5">
-                    {doctorEmail && (
-                      <span className="text-[10px] text-[#111111] leading-[1.2]">
-                        <span className="font-semibold">E-mail:</span>{" "}
-                        {doctorEmail}
-                      </span>
-                    )}
-                    {doctorPhone && (
-                      <span className="text-[10px] text-[#111111] leading-[1.2]">
-                        <span className="font-semibold">Tel:</span>{" "}
-                        {doctorPhone}
-                      </span>
-                    )}
-                  </div>
+                {/* Linha separadora */}
+                {(fabricantes.length > 0 || fornecedores.length > 0) && (
+                  <div className="w-full border-t border-[#DCDFE3]" />
                 )}
 
-                {/* Dados do médico */}
-                {(doctorName || doctorSpecialty || doctorCRM) && (
-                  <div className="flex flex-col items-center gap-0.5">
-                    {doctorName && (
-                      <span className="text-[12px] font-semibold text-[#111111] leading-[1]">
-                        {doctorName}
-                      </span>
-                    )}
-                    {doctorSpecialty && (
-                      <span
-                        className="text-[10px] text-[#111111] leading-[1.2] text-center"
-                        style={{ maxWidth: "150px" }}
-                      >
-                        {doctorSpecialty}
-                      </span>
-                    )}
-                    {doctorCRM && (
-                      <span className="text-[10px] text-[#111111] leading-[1.2]">
-                        {doctorCRM}
-                      </span>
-                    )}
-                  </div>
+                {/* Local */}
+                {localText && (
+                  <p className="text-[12px] text-black leading-[1.333]">
+                    <span className="font-semibold">Local:</span> {localText}
+                  </p>
                 )}
+
+                {/* Texto de encerramento */}
+                <p className="text-[12px] text-black leading-[1.333]">
+                  Colocando-me a disposição para maiores informações,
+                </p>
+
+                {/* Assinatura */}
+                <div className="flex items-end gap-8 mt-4">
+                  {/* Imagem + Linha de assinatura + nome */}
+                  <div
+                    className="flex flex-col items-center gap-2"
+                    style={{ minWidth: "225px" }}
+                  >
+                    {signatureUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={signatureUrl}
+                        alt="Assinatura"
+                        style={{
+                          maxWidth: "120px",
+                          maxHeight: "60px",
+                          objectFit: "contain",
+                          display: "block",
+                          marginBottom: "4px",
+                        }}
+                      />
+                    )}
+                    <div className="w-full border-t border-[#DCDFE3]" />
+                    <span className="text-[12px] text-[#000000] leading-[1.333] text-center">
+                      {doctorName || "___________________"}
+                    </span>
+                  </div>
+
+                  {/* Email e telefone */}
+                  {(doctorEmail || doctorPhone) && (
+                    <div className="flex flex-col gap-0.5 pb-0.5">
+                      {doctorEmail && (
+                        <span className="text-[10px] text-[#111111] leading-[1.2]">
+                          <span className="font-semibold">E-mail:</span>{" "}
+                          {doctorEmail}
+                        </span>
+                      )}
+                      {doctorPhone && (
+                        <span className="text-[10px] text-[#111111] leading-[1.2]">
+                          <span className="font-semibold">Tel:</span>{" "}
+                          {doctorPhone}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Dados do médico */}
+                  {(doctorName || doctorSpecialty || doctorCRM) && (
+                    <div className="flex flex-col items-center gap-0.5">
+                      {doctorName && (
+                        <span className="text-[12px] font-semibold text-[#111111] leading-[1]">
+                          {doctorName}
+                        </span>
+                      )}
+                      {doctorSpecialty && (
+                        <span
+                          className="text-[10px] text-[#111111] leading-[1.2] text-center"
+                          style={{ maxWidth: "150px" }}
+                        >
+                          {doctorSpecialty}
+                        </span>
+                      )}
+                      {doctorCRM && (
+                        <span className="text-[10px] text-[#111111] leading-[1.2]">
+                          {doctorCRM}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </A4Page>
+            </A4Page>
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-200 shrink-0">
-          <button
-            onClick={onClose}
-            className="flex items-center justify-center h-10 px-4 bg-white border border-gray-200 shadow-sm rounded-xl text-sm text-gray-900 hover:bg-gray-50 transition-colors"
-          >
+        <div className="flex items-center justify-end gap-2 px-4 sm:px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 shrink-0">
+          <button onClick={onClose} className="ds-btn-outline">
             Fechar
           </button>
           <button
             onClick={handleExportPdf}
             disabled={isExporting}
-            className="flex items-center justify-center gap-2 h-10 px-6 bg-teal-700 rounded-xl text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+            className="ds-btn-primary disabled:opacity-50"
           >
             {isExporting ? "Exportando..." : "Exportar PDF"}
           </button>

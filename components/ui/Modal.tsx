@@ -61,9 +61,7 @@ export function Modal({
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 md:p-6 border-b border-neutral-100">
-          <h2 className="text-base md:text-xl font-semibold text-gray-900">
-            {title}
-          </h2>
+          <h2 className="ds-modal-title">{title}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"

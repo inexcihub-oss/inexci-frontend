@@ -142,7 +142,7 @@ export function DetailPageLayout({
             {/* Breadcrumb */}
             <div className="flex items-center min-w-0">
               <div className="hidden md:flex items-center justify-center px-2 py-4">
-                <span className="text-sm text-gray-900">{sectionTitle}</span>
+                <span className="text-xs md:text-sm text-gray-900">{sectionTitle}</span>
               </div>
               <svg
                 className="hidden md:block w-6 h-6 text-gray-400 shrink-0"
@@ -158,7 +158,7 @@ export function DetailPageLayout({
                 />
               </svg>
               <div className="flex items-center gap-1 px-2 py-4 min-w-0">
-                <span className="text-sm font-semibold text-gray-900 truncate">
+                <span className="text-xs md:text-sm font-semibold text-gray-900 truncate">
                   {itemName}
                 </span>
               </div>
@@ -242,7 +242,7 @@ export function DetailPageLayout({
         </div>
 
         {/* Área de conteúdo com scroll */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4 lg:space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-4 md:p-6 space-y-3 md:space-y-4 lg:space-y-6">
           {/* Card de perfil */}
           <div className="flex items-center gap-3 lg:gap-4 p-3 lg:p-4 bg-gradient-to-r from-white to-transparent border border-[#DCDFE3] rounded-2xl shadow-sm">
             {/* Avatar */}
@@ -268,7 +268,7 @@ export function DetailPageLayout({
                 {itemName}
               </h1>
               {itemSubtitle && (
-                <p className="text-sm text-gray-500 opacity-70">
+                <p className="text-xs md:text-sm text-gray-500 opacity-70">
                   {itemSubtitle}
                 </p>
               )}
@@ -295,7 +295,7 @@ export function DetailPageLayout({
             </div>
             {/* Mobile close header */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-100 lg:hidden">
-              <span className="text-sm font-semibold text-gray-900">
+              <span className="text-xs md:text-sm font-semibold text-gray-900">
                 Detalhes
               </span>
               <button

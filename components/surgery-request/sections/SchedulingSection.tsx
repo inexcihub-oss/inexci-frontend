@@ -80,7 +80,7 @@ export function SchedulingSection({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pr-4 border-b border-neutral-100">
           {/* Título + badge */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 py-3 sm:py-4">
-            <h3 className="text-sm font-semibold text-black">Agendamento</h3>
+            <h3 className="ds-section-title">Agendamento</h3>
             {dateOptions.length > 0 && (
               <span className="bg-[#EBF3FF] text-[#1D7AFC] text-xs font-semibold px-2 py-1 rounded-sm leading-none">
                 Aguardando paciente escolher a melhor opção.
@@ -90,10 +90,7 @@ export function SchedulingSection({
 
           {/* Botões */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={onEditDateOptions}
-              className="text-sm font-semibold text-black border border-neutral-100 bg-transparent px-3 py-1.5 rounded hover:bg-gray-50 transition-colors"
-            >
+            <button onClick={onEditDateOptions} className="ds-btn-inline">
               Editar
             </button>
           </div>
@@ -205,12 +202,9 @@ export function SchedulingSection({
         {/* Cabeçalho */}
         <div className="flex items-center justify-between pr-4 border-b border-neutral-100">
           <div className="flex items-center gap-3 px-3 py-4">
-            <h3 className="text-sm font-semibold text-black">Agendamento</h3>
+            <h3 className="ds-section-title">Agendamento</h3>
           </div>
-          <button
-            onClick={onReschedule}
-            className="text-sm font-semibold text-black border border-neutral-100 bg-transparent px-3 py-1.5 rounded hover:bg-gray-50 transition-colors"
-          >
+          <button onClick={onReschedule} className="ds-btn-inline">
             Editar
           </button>
         </div>
@@ -220,7 +214,7 @@ export function SchedulingSection({
           <div className="p-4">
             <div className="flex flex-col sm:flex-row border border-neutral-100 rounded-xl overflow-hidden">
               {/* Data */}
-              <div className="flex-1 flex flex-col items-center gap-2 px-6 py-4 sm:py-5 bg-neutral-50">
+              <div className="flex-1 flex flex-col items-center gap-2 px-4 py-3 md:px-6 md:py-4 sm:py-5 bg-neutral-50">
                 <span className="text-sm text-black/50">Data</span>
                 <span className="text-xl sm:text-2xl font-bold text-black">
                   {formatDate(surgeryDate)}
@@ -229,7 +223,7 @@ export function SchedulingSection({
               {/* Divisor */}
               <div className="h-px sm:h-auto sm:w-px bg-neutral-100" />
               {/* Horário */}
-              <div className="flex-1 flex flex-col items-center gap-2 px-6 py-4 sm:py-5 bg-neutral-50">
+              <div className="flex-1 flex flex-col items-center gap-2 px-4 py-3 md:px-6 md:py-4 sm:py-5 bg-neutral-50">
                 <span className="text-sm text-black/50">Horário</span>
                 <span className="text-xl sm:text-2xl font-bold text-black">
                   {formatTime(surgeryDate)}

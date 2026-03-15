@@ -59,10 +59,10 @@ export function PendencyList({
   }
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-3 md:space-y-4", className)}>
       {showProgress && (
         <div className="space-y-1">
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-xs md:text-sm">
             <span className="text-gray-600">Progresso das Pendências</span>
             <span className="font-medium text-gray-900">
               {completed} de {total} concluídas
@@ -167,7 +167,7 @@ export function GroupedPendencyList({
   }
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-3 md:space-y-4", className)}>
       {groups.map(({ key, items }) => {
         const Icon = statusIcons[key];
         const isExpanded = expandedGroups[key];
@@ -186,7 +186,7 @@ export function GroupedPendencyList({
                 <span className="font-medium text-gray-900">
                   {statusLabels[key]}
                 </span>
-                <span className="text-sm text-gray-500">({items.length})</span>
+                <span className="text-xs md:text-sm text-gray-500">({items.length})</span>
               </div>
               {isExpanded ? (
                 <ChevronDown className="h-5 w-5 text-gray-400" />
@@ -237,7 +237,7 @@ export function PendencySummaryCard({
         <h3 className="font-medium text-gray-900">Resumo das Pendências</h3>
         <span
           className={cn(
-            "text-sm font-medium",
+            "text-xs md:text-sm font-medium",
             progress === 100 ? "text-green-600" : "text-gray-600",
           )}
         >
@@ -252,7 +252,7 @@ export function PendencySummaryCard({
         className="mb-4"
       />
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
+      <div className="grid grid-cols-2 gap-3 text-xs md:text-sm">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-red-500" />
           <span className="text-gray-600">Pendentes:</span>

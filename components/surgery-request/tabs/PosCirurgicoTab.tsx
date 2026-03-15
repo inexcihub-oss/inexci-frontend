@@ -117,18 +117,13 @@ export function PosCirurgicoTab({
         postSurgeryDocs.map((d: any) => ({ uri: d.uri, name: d.name })),
       );
       const url = URL.createObjectURL(blob);
-      const win = window.open(url, "_blank");
-      // Revoga a URL após o carregamento para liberar memória
-      if (win) {
-        win.addEventListener("load", () => URL.revokeObjectURL(url));
-      } else {
-        // fallback: revoga após alguns segundos caso o pop-up seja bloqueado
-        setTimeout(() => URL.revokeObjectURL(url), 10_000);
-        showToast(
-          "O pop-up foi bloqueado pelo navegador. Libere pop-ups para este site.",
-          "error",
-        );
-      }
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `pos-cirurgico-${solicitacao?.id ?? "documentos"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       showToast("Erro ao gerar o PDF. Tente novamente.", "error");
     } finally {
@@ -142,7 +137,7 @@ export function PosCirurgicoTab({
         <button
           onClick={handleExportPdf}
           disabled={isExporting}
-          className="flex items-center gap-1.5 font-semibold text-teal-700 bg-transparent border border-teal-200 hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors py-1.5 px-3 rounded-xl text-sm leading-normal"
+          className="ds-btn-inline flex items-center gap-1.5 text-teal-700 border-teal-200 hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isExporting ? (
             <>
@@ -188,7 +183,7 @@ export function PosCirurgicoTab({
       )}
       <button
         onClick={() => setIsUploadModalOpen(true)}
-        className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1.5 px-3 rounded-xl text-sm leading-normal"
+        className="ds-btn-inline"
       >
         Adicionar
       </button>
@@ -206,7 +201,7 @@ export function PosCirurgicoTab({
             <div className="flex border border-neutral-100 rounded-xl overflow-hidden">
               {/* Data */}
               <div className="flex-1 flex flex-col items-center gap-2 px-6 py-5 bg-neutral-50">
-                <span className="text-sm text-black/50">Data</span>
+                <span className="text-xs md:text-sm text-black/50">Data</span>
                 <span className="text-2xl font-bold text-black">
                   {formatDate(performedAt)}
                 </span>
@@ -215,7 +210,7 @@ export function PosCirurgicoTab({
               <div className="w-px bg-neutral-100 self-stretch" />
               {/* Horário */}
               <div className="flex-1 flex flex-col items-center gap-2 px-6 py-5 bg-neutral-50">
-                <span className="text-sm text-black/50">Horário</span>
+                <span className="text-xs md:text-sm text-black/50">Horário</span>
                 <span className="text-2xl font-bold text-black">
                   {formatTime(performedAt)}
                 </span>
@@ -223,7 +218,7 @@ export function PosCirurgicoTab({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-gray-400 text-center p-4">
+          <p className="text-xs md:text-sm text-gray-400 text-center p-4">
             Data de realização não informada.
           </p>
         )}
@@ -333,7 +328,7 @@ export function PosCirurgicoTab({
             </div>
           ))
         ) : (
-          <div className="px-4 py-8 text-center text-gray-500 text-sm">
+          <div className="px-4 py-8 text-center text-gray-500 text-xs md:text-sm">
             Nenhum documento pós-cirúrgico adicionado
           </div>
         )}

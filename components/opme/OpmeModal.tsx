@@ -181,7 +181,7 @@ function Accordion({ title, isOpen, onToggle, children }: AccordionProps) {
         onClick={onToggle}
         className={`flex items-center justify-between w-full px-4 py-2 ${isOpen ? "border-b border-[#DCDFE3]" : ""}`}
       >
-        <span className="text-base font-semibold text-[#000000]">{title}</span>
+        <span className="text-sm md:text-base font-semibold text-[#000000]">{title}</span>
         <div
           className={`transform transition-transform ${isOpen ? "rotate-180" : ""}`}
         >
@@ -408,10 +408,10 @@ export function OpmeModal({
       />
 
       {/* Modal - fullscreen mobile, centered desktop */}
-      <div className="relative bg-white sm:rounded-2xl shadow-xl flex flex-col w-full h-full sm:w-[800px] sm:h-[650px] sm:max-h-[90vh]">
+      <div className="relative bg-white sm:rounded-2xl shadow-xl flex flex-col w-full h-full sm:w-[800px] sm:h-[650px] sm:max-h-[90vh] sm:overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[#DCDFE3]">
-          <h2 className="text-lg font-semibold text-gray-900">OPME</h2>
+        <div className="flex items-center justify-between px-4 sm:px-4 py-3 md:px-6 md:py-4 border-b border-[#DCDFE3]">
+          <h2 className="ds-modal-title">OPME</h2>
           <button
             onClick={!isLoading ? handleCancel : undefined}
             className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors"
@@ -424,12 +424,9 @@ export function OpmeModal({
         {/* Content Area - Split View */}
         <div className="flex-1 flex flex-col sm:flex-row overflow-hidden">
           {/* Painel Esquerdo - Lista de OPME */}
-          <div
-            className="flex flex-col"
-            style={opmeItems.length > 0 ? { minWidth: 0 } : { flex: 1 }}
-          >
+          <div className="flex flex-col flex-1 min-w-0">
             {error && (
-              <div className="mx-4 mt-4 bg-red-50 text-red-700 p-3 rounded-xl text-sm">
+              <div className="mx-4 mt-4 bg-red-50 text-red-700 p-3 rounded-xl text-xs md:text-sm">
                 {error}
               </div>
             )}
@@ -442,10 +439,10 @@ export function OpmeModal({
                     <IconEmptyOpme className="w-8 h-8 text-[#147471]" />
                   </div>
                   <div className="text-center space-y-2">
-                    <p className="text-base font-semibold text-[#111111]">
+                    <p className="text-sm md:text-base font-semibold text-[#111111]">
                       Nenhum OPME adicionado
                     </p>
-                    <p className="text-sm text-[#758195] leading-relaxed">
+                    <p className="text-xs md:text-sm text-[#758195] leading-relaxed">
                       Adicione os itens de OPME necessários para esta
                       solicitação cirúrgica
                     </p>
@@ -471,7 +468,7 @@ export function OpmeModal({
                           }
                         }}
                         placeholder="Nome da OPME..."
-                        className="w-full px-3 py-2.5 text-sm text-[#111111] placeholder:text-[#758195] bg-white border-2 border-[#147471] rounded-xl focus:outline-none shadow-sm"
+                        className="w-full px-3 py-2.5 text-xs md:text-sm text-[#111111] placeholder:text-[#758195] bg-white border-2 border-[#147471] rounded-xl focus:outline-none shadow-sm"
                       />
                       <p className="text-xs text-[#758195]">
                         Pressione{" "}
@@ -485,7 +482,7 @@ export function OpmeModal({
                     <button
                       type="button"
                       onClick={() => setIsAddingOpme(true)}
-                      className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors shadow-sm"
+                      className="flex items-center gap-2 px-5 py-2.5 text-xs md:text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors shadow-sm"
                     >
                       <IconPlus className="w-4 h-4" />
                       Adicionar OPME
@@ -523,10 +520,10 @@ export function OpmeModal({
                           }
                         }}
                         onClick={(e) => e.stopPropagation()}
-                        className="flex-1 px-2 py-1 text-sm text-[#111111] border border-[#DCDFE3] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#147471]"
+                        className="flex-1 px-2 py-1 text-xs md:text-sm text-[#111111] border border-[#DCDFE3] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#147471]"
                       />
                     ) : (
-                      <span className="flex-1 text-sm text-[#111111]">
+                      <span className="flex-1 text-xs md:text-sm text-[#111111]">
                         {item.name}
                       </span>
                     )}
@@ -593,13 +590,13 @@ export function OpmeModal({
                       }
                     }}
                     placeholder="Nome da OPME..."
-                    className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#147471]"
+                    className="w-full px-3 py-2 text-xs md:text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-xl focus:outline-none focus:ring-1 focus:ring-[#147471]"
                   />
                 ) : (
                   <button
                     type="button"
                     onClick={() => setIsAddingOpme(true)}
-                    className="flex items-center gap-2 text-sm font-semibold text-[#147471] hover:text-[#0f5c5a] transition-colors"
+                    className="flex items-center gap-2 text-xs md:text-sm font-semibold text-[#147471] hover:text-[#0f5c5a] transition-colors"
                   >
                     <IconPlus className="w-4 h-4" />
                     Adicionar OPME
@@ -623,7 +620,7 @@ export function OpmeModal({
                     {selectedItem.manufacturers.map(
                       (manufacturer, optIndex) => (
                         <div key={optIndex} className="space-y-1">
-                          <label className="text-sm font-semibold text-[#000000]">
+                          <label className="ds-label mb-0">
                             Opção {optIndex + 1}
                           </label>
                           <input
@@ -633,7 +630,7 @@ export function OpmeModal({
                               handleManufacturerChange(optIndex, e.target.value)
                             }
                             placeholder="Fabricante"
-                            className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-xl"
+                            className="ds-input"
                           />
                         </div>
                       ),
@@ -656,7 +653,7 @@ export function OpmeModal({
                   >
                     {selectedItem.suppliers.map((supplier, optIndex) => (
                       <div key={optIndex} className="space-y-1">
-                        <label className="text-sm font-semibold text-[#000000]">
+                        <label className="ds-label mb-0">
                           Opção {optIndex + 1}
                         </label>
                         <input
@@ -666,7 +663,7 @@ export function OpmeModal({
                             handleSupplierChange(optIndex, e.target.value)
                           }
                           placeholder="Fornecedor"
-                          className="w-full px-3 py-2 text-sm text-[#111111] placeholder:text-[#758195] bg-white border border-[#DCDFE3] rounded-xl"
+                          className="ds-input"
                         />
                       </div>
                     ))}
@@ -687,9 +684,7 @@ export function OpmeModal({
                     onToggle={() => setQuantityOpen(!quantityOpen)}
                   >
                     <div className="space-y-1">
-                      <label className="text-sm font-semibold text-[#000000]">
-                        Quantidade
-                      </label>
+                      <label className="ds-label mb-0">Quantidade</label>
                       <div className="flex items-center gap-0.5">
                         <button
                           type="button"
@@ -703,7 +698,7 @@ export function OpmeModal({
                           className="flex items-center justify-center px-3 py-2 border border-[#DCDFE3] rounded-xl bg-white"
                           style={{ width: "52px", height: "40px" }}
                         >
-                          <span className="text-sm font-semibold text-[#111111]">
+                          <span className="text-xs md:text-sm font-semibold text-[#111111]">
                             {selectedItem.quantity}
                           </span>
                         </div>
@@ -719,7 +714,7 @@ export function OpmeModal({
                   </Accordion>
                 </div>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-[#758195] text-sm">
+                <div className="flex-1 flex items-center justify-center text-[#758195] text-xs md:text-sm">
                   Selecione um OPME para configurar
                 </div>
               )}
@@ -731,14 +726,14 @@ export function OpmeModal({
         <div className="flex items-center justify-end gap-2 px-4 sm:px-3 py-4 bg-white border-t-2 border-[#DCDFE3] safe-area-bottom">
           <button
             onClick={handleCancel}
-            className="px-6 py-2.5 text-sm font-normal text-[#111111] bg-white border-2 border-[#DCDFE3] rounded-xl hover:bg-gray-50 transition-colors"
+            className="ds-btn-outline"
             disabled={isLoading}
           >
             Cancelar
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2.5 text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ds-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading || opmeItems.length === 0}
           >
             {isLoading ? (

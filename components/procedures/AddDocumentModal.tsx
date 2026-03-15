@@ -56,24 +56,20 @@ export function AddDocumentModal({
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200">
-          <h2 className="text-2xl font-semibold text-neutral-900 font-urbanist">
-            Adicionar documento ou exame
-          </h2>
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-neutral-200">
+          <h2 className="ds-modal-title">Adicionar documento ou exame</h2>
         </div>
 
         {/* Body */}
-        <div className="flex flex-col gap-4 p-6">
+        <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6">
           {/* Tipo do documento */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-black">
-              Tipo do documento
-            </label>
+            <label className="ds-label mb-0">Tipo do documento</label>
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-                className="flex items-center justify-between w-full px-3 py-2 text-sm border border-neutral-200 rounded-xl bg-white text-left focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="flex items-center justify-between w-full ds-input text-left"
               >
                 <span
                   className={
@@ -118,13 +114,13 @@ export function AddDocumentModal({
 
           {/* Nome */}
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-black">Nome</label>
+            <label className="ds-label mb-0">Nome</label>
             <input
               type="text"
               value={documentName}
               onChange={(e) => setDocumentName(e.target.value)}
               placeholder="Nome do documento"
-              className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-xl bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="ds-input"
             />
           </div>
         </div>
@@ -134,7 +130,7 @@ export function AddDocumentModal({
           <button
             type="button"
             onClick={handleCancel}
-            className="px-6 py-2.5 text-sm font-semibold text-neutral-900 border-2 border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
+            className="ds-btn-outline"
           >
             Cancelar
           </button>
@@ -142,10 +138,10 @@ export function AddDocumentModal({
             type="button"
             onClick={handleAdd}
             disabled={!isValid}
-            className={`px-6 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+            className={`${
               isValid
-                ? "bg-teal-700 text-white hover:bg-teal-800"
-                : "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                ? "ds-btn-primary"
+                : "ds-btn-primary opacity-50 cursor-not-allowed"
             }`}
           >
             Adicionar

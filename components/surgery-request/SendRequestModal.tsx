@@ -50,6 +50,7 @@ export function SendRequestModal({
   const { showToast } = useToast();
 
   const SEND_CHECKLIST_KEYS: Record<string, string> = {
+    hospital: "Informações Gerais",
     tuss_procedures: "Código TUSS",
     opme_items: "OPME",
     medical_report: "Laudo",
@@ -80,10 +81,16 @@ export function SendRequestModal({
         const items: ChecklistItem[] = Object.entries(SEND_CHECKLIST_KEYS).map(
           ([key, label]) => {
             const found = result.pendencies.find((p) => p.key === key);
+            let isComplete = found ? found.isComplete : false;
+            if (!found && key === "hospital") {
+              isComplete = !!(
+                solicitacao.hospital_id || solicitacao.hospital?.id
+              );
+            }
             return {
               key,
               label,
-              isComplete: found ? found.isComplete : false,
+              isComplete,
               isRequired: true,
             };
           },
@@ -91,6 +98,12 @@ export function SendRequestModal({
         setChecklist(items);
       } else {
         setChecklist([
+          {
+            key: "hospital",
+            label: "Informações Gerais",
+            isComplete: !!(solicitacao.hospital_id || solicitacao.hospital?.id),
+            isRequired: true,
+          },
           {
             key: "tuss_procedures",
             label: "Código TUSS",
@@ -264,13 +277,13 @@ export function SendRequestModal({
             {checklist.map((item) => (
               <div
                 key={item.key}
-                className="flex items-center justify-between px-5 py-4 rounded-xl border border-gray-200"
+                className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 rounded-xl border border-gray-200"
               >
-                <span className="flex-1 text-sm font-semibold text-gray-900">
+                <span className="flex-1 text-xs md:text-sm font-semibold text-gray-900">
                   {item.label}
                 </span>
                 <span
-                  className={`flex items-center gap-1 px-3 py-2 rounded-full text-sm font-medium shrink-0 ${
+                  className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs md:text-sm font-medium shrink-0 ${
                     item.isComplete
                       ? "bg-green-100 text-green-800"
                       : "bg-yellow-50 text-yellow-800"
@@ -289,7 +302,7 @@ export function SendRequestModal({
   const renderStep2 = () => (
     <div className="flex-1 overflow-y-auto min-h-0">
       <div className="flex flex-col gap-4 p-6">
-        <p className="text-sm text-gray-900">
+        <p className="text-xs md:text-sm text-gray-900">
           Como deseja enviar a solicitação?
         </p>
 
@@ -304,10 +317,10 @@ export function SendRequestModal({
         >
           <Download className="w-5 h-5 shrink-0 text-gray-700 mt-0.5" />
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold text-gray-900">
+            <span className="text-xs md:text-sm font-semibold text-gray-900">
               Download Manual
             </span>
-            <span className="text-sm text-gray-400">
+            <span className="text-xs md:text-sm text-gray-400">
               Baixe um arquivo PDF contendo: Laudo médico, documentos, OPME e
               códigos TUSS
             </span>
@@ -325,10 +338,10 @@ export function SendRequestModal({
         >
           <Mail className="w-5 h-5 shrink-0 text-gray-700 mt-0.5" />
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold text-gray-900">
+            <span className="text-xs md:text-sm font-semibold text-gray-900">
               Enviar por e-mail
             </span>
-            <span className="text-sm text-gray-400">
+            <span className="text-xs md:text-sm text-gray-400">
               Envie a solicitação diretamente para o convênio por e-mail
             </span>
           </div>
@@ -342,16 +355,16 @@ export function SendRequestModal({
       <div className="flex flex-col gap-4 p-6">
         {/* De */}
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-gray-900">De:</label>
-          <div className="flex items-center px-3 py-2 rounded-xl border border-gray-200 bg-white">
-            <span className="text-sm text-gray-900">inexci@mail.com</span>
+          <label className="ds-label mb-0">De:</label>
+          <div className="ds-field-readonly">
+            <span className="text-xs md:text-sm text-gray-900">inexci@mail.com</span>
           </div>
         </div>
 
         {/* Para */}
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-gray-900">Para:</label>
-          <p className="text-sm text-teal-600">
+          <label className="ds-label mb-0">Para:</label>
+          <p className="text-xs md:text-sm text-teal-600">
             Para incluir mais de um e-mail separe-os com ponto e vírgula (;)
           </p>
           <div
@@ -361,7 +374,7 @@ export function SendRequestModal({
             {emailTags.map((tag) => (
               <span
                 key={tag}
-                className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-sm text-gray-900"
+                className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
               >
                 {tag}
                 <button
@@ -385,41 +398,37 @@ export function SendRequestModal({
               placeholder={
                 emailTags.length === 0 ? "email@convenio.com" : undefined
               }
-              className="flex-1 min-w-24 text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
+              className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
             />
           </div>
         </div>
 
         {/* Assunto */}
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-gray-900">
-            Assunto:
-          </label>
+          <label className="ds-label mb-0">Assunto:</label>
           <input
             type="text"
             value={emailSubject}
             onChange={(e) => setEmailSubject(e.target.value)}
-            className="w-full px-3 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="ds-input"
           />
         </div>
 
         {/* Mensagem */}
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-semibold text-gray-900">
-            Mensagem:
-          </label>
+          <label className="ds-label mb-0">Mensagem:</label>
           <textarea
             value={emailMessage}
             onChange={(e) => setEmailMessage(e.target.value)}
             rows={4}
             placeholder="Digite sua mensagem..."
-            className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+            className="ds-input resize-none"
           />
         </div>
 
         {/* Anexos */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-gray-900">Anexos</label>
+          <label className="ds-label mb-0">Anexos</label>
           <div className="flex items-center justify-between px-4 py-4 rounded-xl border border-dashed border-gray-200 bg-gray-50">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 border border-gray-200">
@@ -437,14 +446,14 @@ export function SendRequestModal({
                   />
                 </svg>
               </div>
-              <span className="text-sm font-semibold text-gray-900">
+              <span className="text-xs md:text-sm font-semibold text-gray-900">
                 Anexos
               </span>
             </div>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-xs md:text-sm text-gray-900 bg-white border border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
             >
               Selecionar arquivo
             </button>
@@ -461,7 +470,7 @@ export function SendRequestModal({
               key={index}
               className="flex items-center justify-between px-4 py-2 rounded-xl border border-gray-200 bg-white"
             >
-              <span className="text-sm font-semibold text-gray-900">
+              <span className="text-xs md:text-sm font-semibold text-gray-900">
                 {file.name}{" "}
                 <span className="text-gray-400 font-normal">
                   ({(file.size / 1024 / 1024).toFixed(1)}MB)
@@ -490,22 +499,22 @@ export function SendRequestModal({
         <span className="text-lg font-semibold text-gray-900 text-center">
           Solicitação enviada com sucesso!
         </span>
-        <span className="text-sm text-gray-400 text-center">
+        <span className="text-xs md:text-sm text-gray-400 text-center">
           {sendMethod === "download"
             ? "Download iniciado automaticamente"
             : "E-mail enviado com sucesso"}
         </span>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-1 w-full px-4 py-4 rounded-xl bg-blue-50">
-        <span className="text-sm font-semibold text-purple-600">
+        <span className="text-xs md:text-sm font-semibold text-purple-600">
           Status atualizado:
         </span>
-        <span className="text-sm text-purple-500">
+        <span className="text-xs md:text-sm text-purple-500">
           {" "}
           A solicitação agora está com status &ldquo;
         </span>
-        <span className="text-sm font-semibold text-purple-600">Enviado</span>
-        <span className="text-sm text-purple-500">&rdquo;</span>
+        <span className="text-xs md:text-sm font-semibold text-purple-600">Enviado</span>
+        <span className="text-xs md:text-sm text-purple-500">&rdquo;</span>
       </div>
     </div>
   );
@@ -513,11 +522,8 @@ export function SendRequestModal({
   const renderFooter = () => {
     if (currentStep === 4) {
       return (
-        <div className="px-6 py-4 border-t-2 border-gray-200">
-          <button
-            onClick={handleClose}
-            className="w-full py-3 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors"
-          >
+        <div className="px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200">
+          <button onClick={handleClose} className="ds-btn-primary w-full">
             Fechar
           </button>
         </div>
@@ -525,24 +531,24 @@ export function SendRequestModal({
     }
 
     return (
-      <div className="flex items-center justify-between px-6 py-4 border-t-2 border-gray-200">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200">
         {currentStep === 2 ? (
           <button
             type="button"
             onClick={() => setIsDocumentPreviewOpen(true)}
-            className="flex items-center gap-1.5 h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+            className="ds-btn-outline flex items-center justify-center gap-1.5 w-full sm:w-auto order-2 sm:order-1"
           >
             Visualizar documento
             <ExternalLink className="w-3.5 h-3.5" />
           </button>
         ) : (
-          <div />
+          <div className="hidden sm:block" />
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 order-1 sm:order-2">
           <button
             onClick={currentStep === 1 ? handleClose : handleBack}
-            className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+            className="ds-btn-outline flex-1 sm:flex-none"
             disabled={isSending}
           >
             Cancelar
@@ -554,7 +560,7 @@ export function SendRequestModal({
               (currentStep === 2 && !sendMethod) ||
               isSending
             }
-            className="px-6 py-2.5 text-sm font-semibold text-white bg-teal-700 rounded-xl hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ds-btn-primary flex-1 sm:flex-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSending ? (
               <span className="flex items-center gap-2">
@@ -612,10 +618,8 @@ export function SendRequestModal({
       />
       <div className="relative bg-white rounded-2xl shadow-xl flex flex-col w-full max-w-[640px] h-[650px] max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 sm:px-6 py-4 border-b border-gray-200 shrink-0">
-          <h2 className="flex-1 text-base sm:text-lg font-semibold text-gray-900">
-            {getTitle()}
-          </h2>
+        <div className="flex items-center gap-2 px-4 sm:px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
+          <h2 className="flex-1 ds-modal-title">{getTitle()}</h2>
           {currentStep !== 4 && (
             <button
               onClick={handleClose}

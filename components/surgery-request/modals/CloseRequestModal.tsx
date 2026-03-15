@@ -61,7 +61,7 @@ export function CloseRequestModal({
       />
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between gap-2.5 px-6 py-4 border-b border-neutral-100">
+        <div className="flex items-center justify-between gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100">
           <h2 className="flex-1 text-2xl font-light tracking-tight text-neutral-900">
             Deseja encerrar a solicitação?
           </h2>
@@ -82,26 +82,26 @@ export function CloseRequestModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-6">
-          <p className="text-base text-neutral-900 leading-relaxed">
+        <div className="px-4 py-4 md:px-6 md:py-6">
+          <p className="text-sm md:text-base text-neutral-900 leading-relaxed">
             Essa solicitação será encerrada e movida para o status
             &ldquo;Encerrada&rdquo; como incompleta.
           </p>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-neutral-100">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
           <button
             onClick={handleClose}
             disabled={isClosing}
-            className="h-10 px-4 text-sm text-neutral-900 bg-white border border-neutral-100 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="ds-btn-outline disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleConfirm}
             disabled={isClosing}
-            className="h-10 px-6 text-sm font-semibold bg-priority-urgente-bg text-priority-urgente-text rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="ds-btn-danger disabled:opacity-50"
           >
             {isClosing ? "Encerrando..." : "Encerrar"}
           </button>

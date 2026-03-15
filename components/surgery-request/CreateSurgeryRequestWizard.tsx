@@ -278,7 +278,7 @@ export function CreateSurgeryRequestWizard({
               <p className="text-lg font-semibold text-gray-900">
                 Criando solicitação...
               </p>
-              <p className="text-sm text-gray-500">Por favor, aguarde</p>
+              <p className="text-xs md:text-sm text-gray-500">Por favor, aguarde</p>
             </div>
           </div>
         )}
@@ -291,7 +291,7 @@ export function CreateSurgeryRequestWizard({
               className={`w-full sm:w-3/5 flex flex-col bg-white sm:border-r border-gray-200 ${isSelectionOpen ? "hidden sm:flex" : "flex"}`}
             >
               {/* Header */}
-              <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+              <div className="px-4 py-3 md:px-5 md:py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Nova solicitação
                 </h2>
@@ -350,13 +350,13 @@ export function CreateSurgeryRequestWizard({
                   className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100 ${modalState === "procedure-select" ? "bg-gray-50" : ""}`}
                 >
                   <span
-                    className={`text-base font-semibold ${selectedProcedure ? "text-gray-900" : "text-gray-900"}`}
+                    className={`text-sm md:text-base font-semibold ${selectedProcedure ? "text-gray-900" : "text-gray-900"}`}
                   >
                     Procedimento
                   </span>
                   <span className="flex items-center gap-2 min-w-0 ml-3">
                     <span
-                      className={`text-sm truncate max-w-[140px] ${selectedProcedure ? "text-teal-700 font-medium" : "text-gray-400"}`}
+                      className={`text-xs md:text-sm truncate max-w-[140px] ${selectedProcedure ? "text-teal-700 font-medium" : "text-gray-400"}`}
                     >
                       {selectedProcedure
                         ? selectedProcedure.name
@@ -386,12 +386,12 @@ export function CreateSurgeryRequestWizard({
                   }
                   className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedProcedure ? "opacity-40 cursor-not-allowed" : modalState === "patient-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
-                  <span className="text-base font-semibold text-gray-900">
+                  <span className="text-sm md:text-base font-semibold text-gray-900">
                     Paciente
                   </span>
                   <span className="flex items-center gap-2 min-w-0 ml-3">
                     <span
-                      className={`text-sm truncate max-w-[140px] ${selectedPatient ? "text-teal-700 font-medium" : "text-gray-400"}`}
+                      className={`text-xs md:text-sm truncate max-w-[140px] ${selectedPatient ? "text-teal-700 font-medium" : "text-gray-400"}`}
                     >
                       {selectedPatient ? selectedPatient.name : "Selecionar"}
                     </span>
@@ -419,12 +419,12 @@ export function CreateSurgeryRequestWizard({
                   }
                   className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedPatient ? "opacity-40 cursor-not-allowed" : modalState === "manager-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
-                  <span className="text-base font-semibold text-gray-900">
+                  <span className="text-sm md:text-base font-semibold text-gray-900">
                     Gestor
                   </span>
                   <span className="flex items-center gap-2 min-w-0 ml-3">
                     <span
-                      className={`text-sm truncate max-w-[140px] ${selectedManager ? "text-teal-700 font-medium" : "text-gray-400"}`}
+                      className={`text-xs md:text-sm truncate max-w-[140px] ${selectedManager ? "text-teal-700 font-medium" : "text-gray-400"}`}
                     >
                       {selectedManager ? selectedManager.name : "Selecionar"}
                     </span>
@@ -452,15 +452,15 @@ export function CreateSurgeryRequestWizard({
                   }
                   className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedManager ? "opacity-40 cursor-not-allowed" : modalState === "healthplan-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
-                  <span className="text-base font-semibold text-gray-900">
+                  <span className="text-sm md:text-base font-semibold text-gray-900">
                     Convênio{" "}
-                    <span className="text-gray-400 text-sm font-normal">
+                    <span className="text-gray-400 text-xs md:text-sm font-normal">
                       (opcional)
                     </span>
                   </span>
                   <span className="flex items-center gap-2 min-w-0 ml-3">
                     <span
-                      className={`text-sm truncate max-w-[120px] ${selectedHealthPlan ? "text-teal-700 font-medium" : "text-gray-400"}`}
+                      className={`text-xs md:text-sm truncate max-w-[120px] ${selectedHealthPlan ? "text-teal-700 font-medium" : "text-gray-400"}`}
                     >
                       {selectedHealthPlan
                         ? selectedHealthPlan.name
@@ -514,15 +514,15 @@ export function CreateSurgeryRequestWizard({
                   }
                   className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedManager ? "opacity-40 cursor-not-allowed" : modalState === "hospital-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
-                  <span className="text-base font-semibold text-gray-900">
+                  <span className="text-sm md:text-base font-semibold text-gray-900">
                     Hospital{" "}
-                    <span className="text-gray-400 text-sm font-normal">
+                    <span className="text-gray-400 text-xs md:text-sm font-normal">
                       (opcional)
                     </span>
                   </span>
                   <span className="flex items-center gap-2 min-w-0 ml-3">
                     <span
-                      className={`text-sm truncate max-w-[120px] ${selectedHospital ? "text-teal-700 font-medium" : "text-gray-400"}`}
+                      className={`text-xs md:text-sm truncate max-w-[120px] ${selectedHospital ? "text-teal-700 font-medium" : "text-gray-400"}`}
                     >
                       {selectedHospital ? selectedHospital.name : "Selecionar"}
                     </span>
@@ -582,7 +582,7 @@ export function CreateSurgeryRequestWizard({
                       <button
                         key={p}
                         onClick={() => setPriority(p)}
-                        className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${priority === p ? "" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}
+                        className={`px-3 py-1.5 rounded-xl text-xs md:text-sm font-medium transition-all ${priority === p ? "" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}
                         style={
                           priority === p
                             ? {
@@ -605,7 +605,7 @@ export function CreateSurgeryRequestWizard({
                       !selectedManager ||
                       !selectedProcedure
                     }
-                    className="w-full px-6 py-3 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+                    className="w-full px-6 py-3 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs md:text-sm font-semibold"
                   >
                     {loading
                       ? "Criando..."
@@ -619,10 +619,10 @@ export function CreateSurgeryRequestWizard({
 
             {/* RIGHT PANEL — painel de seleção (no mobile, ocupa tela inteira quando ativo) */}
             <div
-              className={`w-full sm:w-2/5 bg-white flex flex-col sm:border-l border-gray-200 ${isSelectionOpen ? "flex" : "hidden sm:flex"}`}
+              className={`w-full sm:w-2/5 bg-white flex flex-col sm:border-l border-gray-200 min-h-0 flex-1 ${isSelectionOpen ? "flex" : "hidden sm:flex"}`}
             >
               {/* Header do painel de seleção */}
-              <div className="px-5 py-4 border-b border-gray-200 flex items-center gap-3 flex-shrink-0">
+              <div className="px-4 py-3 md:px-5 md:py-4 border-b border-gray-200 flex items-center gap-3 flex-shrink-0">
                 {/* Botão voltar — apenas mobile */}
                 <button
                   onClick={() => setModalState("none")}
@@ -642,7 +642,7 @@ export function CreateSurgeryRequestWizard({
                     />
                   </svg>
                 </button>
-                <h3 className="text-base font-semibold text-gray-900 flex-1">
+                <h3 className="text-sm md:text-base font-semibold text-gray-900 flex-1">
                   {selectionTitle[modalState] ?? ""}
                 </h3>
                 {/* Fechar — apenas desktop */}
@@ -847,7 +847,7 @@ function ProcedureSelectionContent({
         </div>
         <button
           onClick={onCreateNew}
-          className="h-10 px-4 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm shadow-sm"
+          className="h-10 px-4 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm shadow-sm"
         >
           Novo
         </button>
@@ -940,7 +940,7 @@ function PatientSelectionContent({
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="flex gap-3 mb-4">
         <div className="flex-1 relative">
           <Image
@@ -955,12 +955,12 @@ function PatientSelectionContent({
             placeholder="Paciente"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs md:text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <button
           onClick={onCreateNew}
-          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm"
+          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
         >
           Novo
         </button>
@@ -985,7 +985,7 @@ function PatientSelectionContent({
                 }}
                 className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
-                <span className="text-sm text-gray-900">{patient.name}</span>
+                <span className="text-xs md:text-sm text-gray-900">{patient.name}</span>
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     isSelected ? "border-teal-500" : "border-gray-300"
@@ -1053,7 +1053,7 @@ function HospitalSelectionContent({
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="flex gap-3 mb-4">
         <div className="flex-1 relative">
           <Image
@@ -1068,12 +1068,12 @@ function HospitalSelectionContent({
             placeholder="Hospital"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs md:text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <button
           onClick={onCreateNew}
-          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm"
+          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
         >
           Novo
         </button>
@@ -1102,7 +1102,7 @@ function HospitalSelectionContent({
                 }}
                 className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
-                <span className="text-sm text-gray-900">{hospital.name}</span>
+                <span className="text-xs md:text-sm text-gray-900">{hospital.name}</span>
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     isSelected ? "border-teal-500" : "border-gray-300"
@@ -1171,7 +1171,7 @@ function HealthPlanSelectionContent({
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="flex gap-3 mb-4">
         <div className="flex-1 relative">
           <Image
@@ -1186,12 +1186,12 @@ function HealthPlanSelectionContent({
             placeholder="Convênio"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs md:text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <button
           onClick={onCreateNew}
-          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm"
+          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
         >
           Novo
         </button>
@@ -1220,7 +1220,7 @@ function HealthPlanSelectionContent({
                 }}
                 className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
-                <span className="text-sm text-gray-900">{healthPlan.name}</span>
+                <span className="text-xs md:text-sm text-gray-900">{healthPlan.name}</span>
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     isSelected ? "border-teal-500" : "border-gray-300"
@@ -1282,7 +1282,7 @@ function ManagerSelectionContent({
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="flex gap-3 mb-4">
         <div className="flex-1 relative">
           <Image
@@ -1297,14 +1297,14 @@ function ManagerSelectionContent({
             placeholder="Gestor"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs md:text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
         {onCreateNew && (
           <button
             type="button"
             onClick={onCreateNew}
-            className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-sm"
+            className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
           >
             Novo
           </button>
@@ -1331,7 +1331,7 @@ function ManagerSelectionContent({
                 className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
                 <div className="flex flex-col">
-                  <span className="text-sm text-gray-900">{manager.name}</span>
+                  <span className="text-xs md:text-sm text-gray-900">{manager.name}</span>
                   <span className="text-xs text-gray-500">{manager.email}</span>
                 </div>
                 <div
@@ -1388,7 +1388,7 @@ function TemplateSelectionContent({
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="relative mb-4">
         <Image
           src="/icons/search.svg"
@@ -1402,7 +1402,7 @@ function TemplateSelectionContent({
           placeholder="Buscar modelo..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm text-gray-900 placeholder:text-gray-400"
+          className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs md:text-sm text-gray-900 placeholder:text-gray-400"
         />
       </div>
 
@@ -1413,7 +1413,7 @@ function TemplateSelectionContent({
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-sm text-gray-500">Nenhum modelo encontrado</p>
+            <p className="text-xs md:text-sm text-gray-500">Nenhum modelo encontrado</p>
             <p className="text-xs text-gray-400 mt-1">
               Salve uma solicitação como modelo ao enviá-la
             </p>
@@ -1434,7 +1434,7 @@ function TemplateSelectionContent({
                 className="w-full flex items-start justify-between px-4 py-4 text-left hover:bg-gray-50 transition-colors border-b border-gray-200 last:border-b-0"
               >
                 <div className="flex-1 min-w-0 pr-3">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">
                     {template.name}
                   </p>
                   {procedureName && (

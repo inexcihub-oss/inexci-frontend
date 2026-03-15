@@ -90,8 +90,7 @@ export function StartAnalysisModal({
     }
   };
 
-  const inputClass =
-    "w-full px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors disabled:opacity-50";
+  const inputClass = "ds-input disabled:opacity-50";
 
   if (!isOpen) return null;
 
@@ -106,7 +105,7 @@ export function StartAnalysisModal({
       {/* Modal — largura fiel ao Figma (~650px), altura fixa igual aos modais OPME/TUSS */}
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col h-[650px] max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center gap-2.5 px-6 py-4 border-b border-gray-200 shrink-0">
+        <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
             Solicitação em análise
           </h2>
@@ -127,10 +126,10 @@ export function StartAnalysisModal({
         </div>
 
         {/* Conteúdo com scroll */}
-        <div className="flex flex-col gap-4 p-6 overflow-y-auto">
+        <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
           {/* Alert informativo */}
-          <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
-            <p className="text-base text-blue-600 leading-normal">
+          <div className="flex items-center gap-3 p-3 md:p-4 bg-blue-50 rounded-xl">
+            <p className="text-sm md:text-base text-blue-600 leading-normal">
               Para indicar que sua solicitação está em análise, preencha o
               número da solicitação e a data de recebimento.
             </p>
@@ -139,15 +138,15 @@ export function StartAnalysisModal({
           {/* Seções com maior espaçamento entre si */}
           <div className="flex flex-col gap-8">
             {/* ── Dados da Solicitação ── */}
-            <div className="flex flex-col gap-4">
-              <p className="text-base font-semibold text-gray-500">
+            <div className="flex flex-col gap-3 md:gap-4">
+              <p className="text-sm md:text-base font-semibold text-gray-500">
                 Dados da Solicitação
               </p>
 
               <div className="flex gap-4">
                 {/* Nº da solicitação */}
                 <div className="flex flex-col gap-1 flex-1">
-                  <label className="text-sm font-semibold text-gray-900">
+                  <label className="ds-label mb-0">
                     <span className="text-red-900 mr-0.5">*</span>
                     Nº da solicitação
                   </label>
@@ -163,7 +162,7 @@ export function StartAnalysisModal({
 
                 {/* Data de recebimento */}
                 <div className="flex flex-col gap-1 flex-1">
-                  <label className="text-sm font-semibold text-gray-900">
+                  <label className="ds-label mb-0">
                     <span className="text-red-900 mr-0.5">*</span>
                     Data de recebimento
                   </label>
@@ -179,15 +178,15 @@ export function StartAnalysisModal({
             </div>
 
             {/* ── Dados da cotação ── */}
-            <div className="flex flex-col gap-4">
-              <p className="text-base font-semibold text-gray-500">
+            <div className="flex flex-col gap-3 md:gap-4">
+              <p className="text-sm md:text-base font-semibold text-gray-500">
                 Dados da cotação
               </p>
 
               {/* Cotação 1 */}
               <div className="flex gap-4">
                 <div className="flex flex-col gap-1 flex-1">
-                  <label className="text-sm font-semibold text-gray-900">
+                  <label className="ds-label mb-0">
                     Nº proposta de cotação 1
                   </label>
                   <input
@@ -200,9 +199,7 @@ export function StartAnalysisModal({
                   />
                 </div>
                 <div className="flex flex-col gap-1 flex-1">
-                  <label className="text-sm font-semibold text-gray-900">
-                    Data de recebimento
-                  </label>
+                  <label className="ds-label mb-0">Data de recebimento</label>
                   <input
                     type="date"
                     value={quotation1ReceivedAt}
@@ -216,7 +213,7 @@ export function StartAnalysisModal({
               {/* Cotação 2 */}
               <div className="flex gap-4">
                 <div className="flex flex-col gap-1 flex-1">
-                  <label className="text-sm font-semibold text-gray-900">
+                  <label className="ds-label mb-0">
                     Nº proposta de cotação 2
                   </label>
                   <input
@@ -229,9 +226,7 @@ export function StartAnalysisModal({
                   />
                 </div>
                 <div className="flex flex-col gap-1 flex-1">
-                  <label className="text-sm font-semibold text-gray-900">
-                    Data de recebimento
-                  </label>
+                  <label className="ds-label mb-0">Data de recebimento</label>
                   <input
                     type="date"
                     value={quotation2ReceivedAt}
@@ -245,7 +240,7 @@ export function StartAnalysisModal({
               {/* Cotação 3 */}
               <div className="flex gap-4">
                 <div className="flex flex-col gap-1 flex-1">
-                  <label className="text-sm font-semibold text-gray-900">
+                  <label className="ds-label mb-0">
                     Nº proposta de cotação 3
                   </label>
                   <input
@@ -258,9 +253,7 @@ export function StartAnalysisModal({
                   />
                 </div>
                 <div className="flex flex-col gap-1 flex-1">
-                  <label className="text-sm font-semibold text-gray-900">
-                    Data de recebimento
-                  </label>
+                  <label className="ds-label mb-0">Data de recebimento</label>
                   <input
                     type="date"
                     value={quotation3ReceivedAt}
@@ -273,15 +266,13 @@ export function StartAnalysisModal({
 
               {/* Observações */}
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-gray-900">
-                  Observações
-                </label>
+                <label className="ds-label mb-0">Observações</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Digite sua observação..."
                   disabled={isSaving}
-                  className="w-full h-40 px-3 py-2 text-sm text-gray-500 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 resize transition-colors disabled:opacity-50"
+                  className="ds-textarea h-40 resize transition-colors disabled:opacity-50"
                 />
               </div>
             </div>
@@ -289,22 +280,18 @@ export function StartAnalysisModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t-2 border-gray-200 shrink-0">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200 shrink-0">
           <button
             onClick={handleClose}
             disabled={isSaving}
-            className="h-10 px-4 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="ds-btn-outline disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || isSaving}
-            className={`h-10 px-6 text-sm font-semibold rounded-xl transition-colors ${
-              canSubmit && !isSaving
-                ? "bg-teal-700 text-white hover:bg-teal-800"
-                : "bg-gray-100 text-gray-800 opacity-50 cursor-not-allowed"
-            }`}
+            className="ds-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSaving ? (
               <span className="flex items-center gap-2">

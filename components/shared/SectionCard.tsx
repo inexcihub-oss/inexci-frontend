@@ -25,8 +25,8 @@ export function SectionCard({
     <div
       className={`border border-neutral-100 rounded-2xl overflow-hidden ${className}`}
     >
-      <div className="flex items-center justify-between px-4 h-11 border-b border-neutral-100">
-        <h3 className="text-sm font-semibold text-black">{title}</h3>
+      <div className="ds-section-header">
+        <h3 className="ds-section-title">{title}</h3>
         {headerAction}
       </div>
       {children}
@@ -44,5 +44,5 @@ export function SectionCardBody({
   children,
   className = "",
 }: SectionCardBodyProps) {
-  return <div className={`p-4 ${className}`}>{children}</div>;
+  return <div className={`ds-section-body ${className}`}>{children}</div>;
 }

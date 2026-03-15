@@ -40,7 +40,7 @@ export function SearchInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full h-12 md:h-10 pl-10 pr-10 py-2.5 border border-[#DCDFE3] rounded-xl text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200"
+        className="ds-input pl-10 pr-10"
       />
       {value && (
         <button
