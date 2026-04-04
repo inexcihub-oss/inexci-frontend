@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -24,84 +24,56 @@ import { useDebounce } from "@/hooks";
 import { ProcedureSideSheet } from "@/components/procedures/ProcedureSideSheet";
 import { NewProcedureModelModal } from "@/components/procedures/NewProcedureModelModal";
 import { ProcedureModel } from "@/components/procedures/types";
+import { surgeryRequestService } from "@/services/surgery-request.service";
+import { useToast } from "@/hooks/useToast";
 
-// Mock data baseado no Figma
-const mockProcedures: ProcedureModel[] = [
-  {
-    id: "1",
-    modelName: "Artroplastia padrão Unimed",
-    procedureName: "Artroplastia total de quadril",
-    createdAt: "15/10/2025",
-    createdBy: "Dr. Carlos Almeida",
-    usageCount: 12,
-  },
-  {
-    id: "2",
-    modelName: "Artroplastia padrão Amil",
-    procedureName: "Artroplastia parcial de joelho",
-    createdAt: "22/11/2025",
-    createdBy: "Dr. Ana Sousa",
-    usageCount: 8,
-  },
-  {
-    id: "3",
-    modelName: "Artroplastia padrão Bradesco",
-    procedureName: "Artroplastia total de joelho",
-    createdAt: "05/12/2025",
-    createdBy: "Dr. Marcos Silva",
-    usageCount: 10,
-  },
-  {
-    id: "4",
-    modelName: "Artroplastia padrão SulAmérica",
-    procedureName: "Artroplastia de ombro",
-    createdAt: "18/01/2026",
-    createdBy: "Dr. Fernanda Lima",
-    usageCount: 7,
-  },
-  {
-    id: "5",
-    modelName: "Artroplastia padrão Itausa",
-    procedureName: "Substituição total de quadril",
-    createdAt: "30/01/2026",
-    createdBy: "Dr. Roberto Dias",
-    usageCount: 15,
-  },
-  {
-    id: "6",
-    modelName: "Artroplastia padrão Allianz",
-    procedureName: "Revisão de artroplastia de joelho",
-    createdAt: "12/02/2026",
-    createdBy: "Dr. Patricia Gomes",
-    usageCount: 5,
-  },
-  {
-    id: "7",
-    modelName: "Artroplastia padrão Porto Seguro",
-    procedureName: "Artroplastia de tornozelo",
-    createdAt: "25/03/2026",
-    createdBy: "Dr. Leonardo Costa",
-    usageCount: 6,
-  },
-  {
-    id: "8",
-    modelName: "Artroplastia padrão Cassi",
-    procedureName: "Artroplastia de quadril com enxerto",
-    createdAt: "10/04/2026",
-    createdBy: "Dr. Juliana Freitas",
-    usageCount: 9,
-  },
-];
+/** Converte um template da API para o tipo ProcedureModel usado na UI */
+function templateToModel(t: any): ProcedureModel {
+  const data = t.template_data || {};
+  return {
+    id: t.id,
+    modelName: t.name,
+    procedureName: data.procedures?.[0]?.name || data.procedure_name || "—",
+    createdAt: t.created_at
+      ? new Date(t.created_at).toLocaleDateString("pt-BR")
+      : "—",
+    createdBy: t.doctor?.name || "Você",
+    usageCount: t.usage_count ?? 0,
+    documents: (data.required_documents || []).map((d: any, i: number) => ({
+      id: String(i),
+      type: d.type || d,
+      name: d.name || d.type || d,
+    })),
+    opmeItems: (data.opme_items || []).map((o: any, i: number) => ({
+      id: String(i),
+      name: o.name,
+      quantity: o.quantity || 1,
+      manufacturers: o.manufacturers || (o.brand ? [o.brand] : []),
+      suppliers: o.suppliers || (o.distributor ? [o.distributor] : []),
+    })),
+    tussItems: (data.procedures || []).map((p: any, i: number) => ({
+      id: String(i),
+      code: p.tuss_code || "",
+      name: p.name || "",
+      quantity: p.quantity || 1,
+    })),
+    // Guarda o template_data completo para reuso
+    _raw: t,
+  } as ProcedureModel & { _raw: any };
+}
 
 export default function ProcedimentosPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  const [procedures, setProcedures] = useState<ProcedureModel[]>([]);
+  const [isLoadingList, setIsLoadingList] = useState(true);
   const [selectedProcedure, setSelectedProcedure] =
     useState<ProcedureModel | null>(null);
   const [isSideSheetOpen, setIsSideSheetOpen] = useState(false);
   const [isNewModelModalOpen, setIsNewModelModalOpen] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState({});
+  const { showToast } = useToast();
 
   // Modal de exclusão individual
   const [deleteModal, setDeleteModal] = useState<{
@@ -116,17 +88,34 @@ export default function ProcedimentosPage() {
     loading: boolean;
   }>({ open: false, loading: false });
 
+  // ─── Carrega templates da API ─────────────────────────────────────────────
+  const loadTemplates = useCallback(async () => {
+    setIsLoadingList(true);
+    try {
+      const data = await surgeryRequestService.getTemplates();
+      setProcedures(Array.isArray(data) ? data.map(templateToModel) : []);
+    } catch {
+      showToast("Erro ao carregar modelos", "error");
+    } finally {
+      setIsLoadingList(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
+
   // Filtrar procedimentos baseado na busca
   const filteredProcedures = useMemo(() => {
-    if (!debouncedSearchTerm) return mockProcedures;
+    if (!debouncedSearchTerm) return procedures;
     const search = debouncedSearchTerm.toLowerCase();
-    return mockProcedures.filter(
+    return procedures.filter(
       (proc) =>
         proc.modelName.toLowerCase().includes(search) ||
         proc.procedureName.toLowerCase().includes(search) ||
         proc.createdBy.toLowerCase().includes(search),
     );
-  }, [debouncedSearchTerm]);
+  }, [debouncedSearchTerm, procedures]);
 
   const selectedItems = useMemo(() => {
     return Object.keys(rowSelection)
@@ -145,8 +134,19 @@ export default function ProcedimentosPage() {
   };
 
   const handleDeleteConfirm = async () => {
-    // TODO: Implementar exclusão via API
-    setDeleteModal({ open: false, procedure: null, loading: false });
+    if (!deleteModal.procedure) return;
+    setDeleteModal((prev) => ({ ...prev, loading: true }));
+    try {
+      await surgeryRequestService.deleteTemplate(deleteModal.procedure.id);
+      showToast("Modelo excluído com sucesso", "success");
+      setProcedures((prev) =>
+        prev.filter((p) => p.id !== deleteModal.procedure!.id),
+      );
+      setDeleteModal({ open: false, procedure: null, loading: false });
+    } catch {
+      showToast("Erro ao excluir modelo", "error");
+      setDeleteModal((prev) => ({ ...prev, loading: false }));
+    }
   };
 
   const handleDeleteCancel = () => {
@@ -161,9 +161,24 @@ export default function ProcedimentosPage() {
   };
 
   const handleBulkDeleteConfirm = async () => {
-    // TODO: Implementar exclusão em lote via API
-    setRowSelection({});
-    setBulkDeleteModal({ open: false, loading: false });
+    setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
+    try {
+      await Promise.all(
+        selectedItems.map((p) => surgeryRequestService.deleteTemplate(p.id)),
+      );
+      showToast(
+        `${selectedItems.length} modelo(s) excluído(s) com sucesso`,
+        "success",
+      );
+      setProcedures((prev) =>
+        prev.filter((p) => !selectedItems.some((s) => s.id === p.id)),
+      );
+      setRowSelection({});
+      setBulkDeleteModal({ open: false, loading: false });
+    } catch {
+      showToast("Erro ao excluir modelos", "error");
+      setBulkDeleteModal((prev) => ({ ...prev, loading: false }));
+    }
   };
 
   const handleBulkDeleteCancel = () => {
@@ -299,12 +314,22 @@ export default function ProcedimentosPage() {
     setSelectedProcedure(null);
   };
 
-  const handleNewModelSubmit = (data: {
+  const handleNewModelSubmit = async (data: {
     modelName: string;
     procedureName: string;
   }) => {
-    // TODO: Implementar criação do modelo via API
-    console.log("Novo modelo:", data);
+    try {
+      const created = await surgeryRequestService.createTemplate({
+        name: data.modelName,
+        template_data: {
+          procedure_name: data.procedureName,
+        },
+      });
+      setProcedures((prev) => [templateToModel(created), ...prev]);
+      showToast("Modelo criado com sucesso!", "success");
+    } catch {
+      showToast("Erro ao criar modelo", "error");
+    }
     setIsNewModelModalOpen(false);
   };
 
@@ -361,9 +386,23 @@ export default function ProcedimentosPage() {
 
       {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        {filteredProcedures.length === 0 ? (
+        {isLoadingList ? (
           <div className="flex items-center justify-center h-64">
-            <p className="text-gray-500">Nenhum procedimento encontrado</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-700" />
+          </div>
+        ) : filteredProcedures.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 gap-2">
+            <p className="text-gray-500 text-sm">
+              {debouncedSearchTerm
+                ? "Nenhum modelo encontrado para a busca"
+                : "Você ainda não tem modelos salvos"}
+            </p>
+            {!debouncedSearchTerm && (
+              <p className="text-gray-400 text-xs">
+                Salve uma solicitação como modelo ao enviá-la, ou clique em
+                &ldquo;Novo modelo&rdquo;
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex-1 overflow-auto">
@@ -459,5 +498,3 @@ export default function ProcedimentosPage() {
     </PageContainer>
   );
 }
-
-// Filtrar procedimentos baseado na busca

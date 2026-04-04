@@ -45,6 +45,14 @@ export interface RegisterData {
   crm?: string;
   crm_state?: string;
   specialty?: string;
+  subscription_plan_id?: string;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description: string;
+  max_doctors: number;
 }
 
 export interface AuthResponse {

@@ -36,6 +36,7 @@ export function SendRequestModal({
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [sendMethod, setSendMethod] = useState<SendMethod>(null);
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
@@ -64,6 +65,9 @@ export function SendRequestModal({
       setCurrentStep(1);
       setSendMethod(null);
       setSaveAsTemplate(false);
+      setTemplateName(
+        `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
+      );
       setEmailSubject(
         `Solicitação Cirúrgica - ${solicitacao.patient?.name || "Paciente"}`,
       );
@@ -142,13 +146,23 @@ export function SendRequestModal({
       if (saveAsTemplate) {
         try {
           await surgeryRequestService.createTemplate({
-            name: `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
+            name:
+              templateName.trim() ||
+              `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
             template_data: {
               procedures: solicitacao.tuss_items,
               opme_items: solicitacao.opme_items,
+              hospital: solicitacao.hospital,
               hospital_id: solicitacao.hospital_id,
+              health_plan: solicitacao.health_plan,
               health_plan_id: solicitacao.health_plan_id,
               medical_report: solicitacao.medical_report,
+              required_documents: (solicitacao.documents || []).map(
+                (d: any) => ({
+                  type: d.type || d.document_type || "",
+                  name: d.name || d.original_name || d.type || "",
+                }),
+              ),
             },
           });
           showToast("Modelo salvo com sucesso!", "success");
@@ -296,6 +310,35 @@ export function SendRequestModal({
                 </span>
               </div>
             ))}
+
+            {/* Salvar como modelo */}
+            <div className="flex flex-col gap-3 px-4 py-4 rounded-xl border border-gray-200 bg-gray-50">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={saveAsTemplate}
+                  onChange={(e) => setSaveAsTemplate(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-teal-600 accent-teal-600 cursor-pointer"
+                />
+                <span className="text-xs md:text-sm font-semibold text-gray-900">
+                  Salvar como modelo para reutilizar
+                </span>
+              </label>
+              {saveAsTemplate && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-500">
+                    Nome do modelo:
+                  </label>
+                  <input
+                    type="text"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    placeholder="Ex: Artroplastia padrão Unimed"
+                    className="ds-input text-xs md:text-sm"
+                  />
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

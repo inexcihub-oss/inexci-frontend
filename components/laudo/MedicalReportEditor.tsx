@@ -373,12 +373,13 @@ export function MedicalReportEditor({
       setSections((prev) => [...prev, created]);
       setNewSectionDraft({ title: "", description: "" });
       setIsAddingSection(false);
+      onUpdate();
     } catch {
       showToast("Erro ao criar seção", "error");
     } finally {
       setIsSavingSection(false);
     }
-  }, [newSectionDraft, solicitacao?.id, showToast]);
+  }, [newSectionDraft, solicitacao?.id, onUpdate, showToast]);
 
   const handleStartEditSection = useCallback((section: ReportSection) => {
     setEditingSection(section.id);
@@ -405,12 +406,13 @@ export function MedicalReportEditor({
         prev.map((s) => (s.id === editingSection ? updated : s)),
       );
       setEditingSection(null);
+      onUpdate();
     } catch {
       showToast("Erro ao salvar seção", "error");
     } finally {
       setIsSavingSection(false);
     }
-  }, [editingSection, sectionDraft, solicitacao?.id, showToast]);
+  }, [editingSection, sectionDraft, solicitacao?.id, onUpdate, showToast]);
 
   const handleCancelEditSection = useCallback(() => {
     setEditingSection(null);
@@ -422,13 +424,14 @@ export function MedicalReportEditor({
       try {
         await surgeryRequestService.deleteSection(solicitacao.id, sectionId);
         setSections((prev) => prev.filter((s) => s.id !== sectionId));
+        onUpdate();
       } catch {
         showToast("Erro ao remover seção", "error");
       } finally {
         setDeletingSection(null);
       }
     },
-    [solicitacao?.id, showToast],
+    [solicitacao?.id, onUpdate, showToast],
   );
 
   const handleMoveSection = useCallback(

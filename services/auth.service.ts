@@ -1,5 +1,11 @@
 import api from "@/lib/api";
-import { AuthResponse, LoginCredentials, RegisterData, User } from "@/types";
+import {
+  AuthResponse,
+  LoginCredentials,
+  RegisterData,
+  SubscriptionPlan,
+  User,
+} from "@/types";
 
 /**
  * Serviço de autenticação
@@ -36,6 +42,14 @@ export const authService = {
    */
   async register(userData: RegisterData): Promise<AuthResponse> {
     const { data } = await api.post<AuthResponse>("/auth/register", userData);
+    return data;
+  },
+
+  /**
+   * Busca planos de assinatura disponíveis (público)
+   */
+  async getPlans(): Promise<SubscriptionPlan[]> {
+    const { data } = await api.get<SubscriptionPlan[]>("/auth/plans");
     return data;
   },
 
