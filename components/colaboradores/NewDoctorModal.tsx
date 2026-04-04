@@ -109,23 +109,22 @@ export function NewDoctorModal({
     setError("");
 
     try {
-      // Passo 1: criar o usuário com role=doctor
+      // Criar o usuário como colaborador médico
       const newUser = await collaboratorService.create({
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone || undefined,
-        role: "doctor",
+        is_doctor: true,
+        crm: formData.crm || undefined,
+        crm_state: formData.crm_state || undefined,
+        specialty: formData.specialty || undefined,
       });
 
-      // Passo 2: se specialty/crm/crm_state foram preenchidos, atualizar via PATCH
-      const hasExtra = formData.specialty || formData.crm || formData.crm_state;
+      // Fallback: se dados extras precisarem de PATCH separado
+      const hasExtra = false;
       if (hasExtra && newUser?.id) {
-        const profilePayload: Record<string, string> = {};
-        if (formData.specialty) profilePayload.specialty = formData.specialty;
-        if (formData.crm) profilePayload.crm = formData.crm;
-        if (formData.crm_state) profilePayload.crm_state = formData.crm_state;
         try {
-          await api.patch(`/users/${newUser.id}`, profilePayload);
+          // no-op
         } catch {
           // Não bloquear criação se o update falhar
         }

@@ -17,8 +17,17 @@ const EMPTY_FORM = {
   name: "",
   email: "",
   phone: "",
-  role: "collaborator" as "admin" | "collaborator",
+  is_doctor: false,
+  crm: "",
+  crm_state: "",
+  specialty: "",
 };
+
+const BRAZILIAN_STATES = [
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+];
 
 function applyPhoneMask(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -83,7 +92,12 @@ export function NewCollaboratorModal({
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone || undefined,
-        role: formData.role,
+        is_doctor: formData.is_doctor,
+        ...(formData.is_doctor && {
+          crm: formData.crm.trim(),
+          crm_state: formData.crm_state,
+          specialty: formData.specialty.trim() || undefined,
+        }),
       };
 
       await collaboratorService.create(payload);
@@ -167,44 +181,103 @@ export function NewCollaboratorModal({
               </div>
             </div>
 
-            {/* Row 2: E-mail + Permissão */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>E-mail
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleEmailChange}
-                  onBlur={handleEmailBlur}
-                  placeholder="colaborador@mail.com"
-                  className={`${inputClass} ${emailError ? "border-red-400 focus:ring-red-400" : ""}`}
-                />
-                {emailError && (
-                  <span className="text-xs text-red-500">{emailError}</span>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>Permissão
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      role: e.target.value as "admin" | "collaborator",
-                    })
-                  }
-                  className={inputClass}
-                >
-                  <option value="collaborator">Colaborador</option>
-                  <option value="admin">Administrador</option>
-                </select>
-              </div>
+            {/* Row 2: E-mail */}
+            <div className="flex flex-col gap-1.5">
+              <label className={labelClass}>
+                <span className="text-red-500 mr-0.5">*</span>E-mail
+              </label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={handleEmailChange}
+                onBlur={handleEmailBlur}
+                placeholder="colaborador@mail.com"
+                className={`${inputClass} ${emailError ? "border-red-400 focus:ring-red-400" : ""}`}
+              />
+              {emailError && (
+                <span className="text-xs text-red-500">{emailError}</span>
+              )}
             </div>
+
+            {/* Is Doctor Toggle */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={formData.is_doctor}
+                onClick={() =>
+                  setFormData({ ...formData, is_doctor: !formData.is_doctor })
+                }
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
+                  formData.is_doctor ? "bg-teal-500" : "bg-gray-200"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    formData.is_doctor ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+              <span className="text-sm font-medium text-gray-700">
+                Este colaborador é médico(a)
+              </span>
+            </div>
+
+            {/* Doctor Fields (conditional) */}
+            {formData.is_doctor && (
+              <div className="space-y-3 p-4 bg-teal-50 rounded-xl border border-teal-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className={labelClass}>
+                      <span className="text-red-500 mr-0.5">*</span>CRM
+                    </label>
+                    <input
+                      type="text"
+                      required={formData.is_doctor}
+                      value={formData.crm}
+                      onChange={(e) =>
+                        setFormData({ ...formData, crm: e.target.value })
+                      }
+                      placeholder="123456"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className={labelClass}>
+                      <span className="text-red-500 mr-0.5">*</span>UF do CRM
+                    </label>
+                    <select
+                      required={formData.is_doctor}
+                      value={formData.crm_state}
+                      onChange={(e) =>
+                        setFormData({ ...formData, crm_state: e.target.value })
+                      }
+                      className={inputClass}
+                    >
+                      <option value="">Selecione</option>
+                      {BRAZILIAN_STATES.map((uf) => (
+                        <option key={uf} value={uf}>
+                          {uf}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className={labelClass}>Especialidade</label>
+                  <input
+                    type="text"
+                    value={formData.specialty}
+                    onChange={(e) =>
+                      setFormData({ ...formData, specialty: e.target.value })
+                    }
+                    placeholder="Ex: Ortopedia, Cardiologia..."
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            )}
 
             {error && (
               <p className="text-sm text-red-500 text-center">{error}</p>

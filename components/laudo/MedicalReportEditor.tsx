@@ -2,13 +2,24 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  X,
+  Plus,
+  Trash2,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
+import {
+  surgeryRequestService,
+  ReportSection,
+} from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { userService } from "@/services/user.service";
 import { uploadService } from "@/services/upload.service";
 import { useToast } from "@/hooks/useToast";
 import { MedicalReportPreviewModal } from "@/components/laudo/MedicalReportPreviewModal";
+import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import api from "@/lib/api";
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
@@ -230,13 +241,25 @@ export function MedicalReportEditor({
     zipCode: "",
     healthPlan: "",
   });
-  const [isEditingHistory, setIsEditingHistory] = useState(false);
-  const [isEditingConduct, setIsEditingConduct] = useState(false);
-  const [historyAndDiagnosis, setHistoryAndDiagnosis] = useState("");
-  const [conduct, setConduct] = useState("");
+
+  // ── Seções dinâmicas do laudo ────────────────────────────────────────────
+  const [sections, setSections] = useState<ReportSection[]>([]);
+  const [isLoadingSections, setIsLoadingSections] = useState(false);
+  // Estado local de edição: { [sectionId]: { title, description } }
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [sectionDraft, setSectionDraft] = useState<{
+    title: string;
+    description: string;
+  }>({ title: "", description: "" });
+  const [isSavingSection, setIsSavingSection] = useState(false);
+  const [isAddingSection, setIsAddingSection] = useState(false);
+  const [newSectionDraft, setNewSectionDraft] = useState({
+    title: "",
+    description: "",
+  });
+  const [deletingSection, setDeletingSection] = useState<string | null>(null);
 
   // ── Estado de UI ─────────────────────────────────────────────────────────
-  const [isSaving, setIsSaving] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isUploadingSignedReport, setIsUploadingSignedReport] = useState(false);
@@ -298,37 +321,6 @@ export function MedicalReportEditor({
     setShowImagesInfoTooltip(true);
   }
 
-  // ── Máscaras ──────────────────────────────────────────────────────────────
-  const maskCpf = (v: string) =>
-    v
-      .replace(/\D/g, "")
-      .slice(0, 11)
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-
-  const maskDate = (v: string) =>
-    v
-      .replace(/\D/g, "")
-      .slice(0, 8)
-      .replace(/(\d{2})(\d)/, "$1/$2")
-      .replace(/(\d{2})(\d)/, "$1/$2");
-
-  const maskPhone = (v: string) => {
-    const d = v.replace(/\D/g, "").slice(0, 11);
-    if (d.length <= 10)
-      return d
-        .replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3")
-        .replace(/-$/, "");
-    return d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-  };
-
-  const maskCep = (v: string) =>
-    v
-      .replace(/\D/g, "")
-      .slice(0, 8)
-      .replace(/(\d{5})(\d)/, "$1-$2");
-
   // ── Documentos por tipo ──────────────────────────────────────────────────
   const examImages =
     solicitacao?.documents?.filter((d: any) => d.key === "report_images") ?? [];
@@ -340,11 +332,18 @@ export function MedicalReportEditor({
     if (!solicitacao) return;
     const parsed = parseMedicalReport(solicitacao);
     setPatientData(buildPatientData(solicitacao, parsed));
-    setHistoryAndDiagnosis(
-      parsed.historyAndDiagnosis ?? parsed.surgicalIndication ?? "",
-    );
-    setConduct(parsed.conduct ?? parsed.technicalJustification ?? "");
   }, [solicitacao]);
+
+  // ── Carregar sections do servidor ────────────────────────────────────────
+  useEffect(() => {
+    if (!solicitacao?.id) return;
+    setIsLoadingSections(true);
+    surgeryRequestService
+      .getSections(solicitacao.id)
+      .then(setSections)
+      .catch(() => {})
+      .finally(() => setIsLoadingSections(false));
+  }, [solicitacao?.id]);
 
   // ── Carrega assinatura do médico ─────────────────────────────────────────
   // Usa exclusivamente a assinatura do médico vinculado à solicitação.
@@ -355,55 +354,105 @@ export function MedicalReportEditor({
     setSignatureUrl(url);
   }, [solicitacao]);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // ── Handlers de Seções ──────────────────────────────────────────────────
 
-  const handleSave = useCallback(async () => {
-    setIsSaving(true);
-    try {
-      const parsed = parseMedicalReport(solicitacao);
-      const p = solicitacao?.patient;
-      const updatedReport = {
-        ...parsed,
-        historyAndDiagnosis,
-        conduct,
-        // Identificação sempre vem dos dados reais do paciente
-        patientIdentification: [
-          p?.name && `Nome: ${p.name}`,
-          p?.birth_date && `Data de Nascimento: ${formatDateBR(p.birth_date)}`,
-          p?.rg && `RG: ${p.rg}`,
-          p?.cpf && `CPF: ${applyCpfMask(p.cpf)}`,
-          p?.phone && `Telefone: ${applyPhoneMask(p.phone)}`,
-          p?.address && `Endereço: ${p.address}`,
-          (p?.zip_code ?? p?.cep) &&
-            `CEP: ${applyCepMask(p?.zip_code ?? p?.cep ?? "")}`,
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      };
-      await surgeryRequestService.update(solicitacao.id, {
-        medical_report: JSON.stringify(updatedReport),
-      });
-      showToast("Laudo salvo com sucesso", "success");
-      setIsEditingHistory(false);
-      setIsEditingConduct(false);
-      onUpdate();
-    } catch {
-      showToast("Erro ao salvar laudo", "error");
-    } finally {
-      setIsSaving(false);
+  const handleAddSection = useCallback(async () => {
+    if (!newSectionDraft.title.trim()) {
+      showToast("O título da seção é obrigatório", "error");
+      return;
     }
-  }, [historyAndDiagnosis, conduct, solicitacao, onUpdate, showToast]);
+    setIsSavingSection(true);
+    try {
+      const created = await surgeryRequestService.createSection(
+        solicitacao.id,
+        {
+          title: newSectionDraft.title,
+          description: newSectionDraft.description,
+        },
+      );
+      setSections((prev) => [...prev, created]);
+      setNewSectionDraft({ title: "", description: "" });
+      setIsAddingSection(false);
+    } catch {
+      showToast("Erro ao criar seção", "error");
+    } finally {
+      setIsSavingSection(false);
+    }
+  }, [newSectionDraft, solicitacao?.id, showToast]);
 
-  const handleCancel = useCallback(() => {
-    if (!solicitacao) return;
-    const parsed = parseMedicalReport(solicitacao);
-    setHistoryAndDiagnosis(
-      parsed.historyAndDiagnosis ?? parsed.surgicalIndication ?? "",
-    );
-    setConduct(parsed.conduct ?? parsed.technicalJustification ?? "");
-    setIsEditingHistory(false);
-    setIsEditingConduct(false);
-  }, [solicitacao]);
+  const handleStartEditSection = useCallback((section: ReportSection) => {
+    setEditingSection(section.id);
+    setSectionDraft({
+      title: section.title,
+      description: section.description ?? "",
+    });
+  }, []);
+
+  const handleSaveSection = useCallback(async () => {
+    if (!editingSection) return;
+    if (!sectionDraft.title.trim()) {
+      showToast("O título da seção é obrigatório", "error");
+      return;
+    }
+    setIsSavingSection(true);
+    try {
+      const updated = await surgeryRequestService.updateSection(
+        solicitacao.id,
+        editingSection,
+        { title: sectionDraft.title, description: sectionDraft.description },
+      );
+      setSections((prev) =>
+        prev.map((s) => (s.id === editingSection ? updated : s)),
+      );
+      setEditingSection(null);
+    } catch {
+      showToast("Erro ao salvar seção", "error");
+    } finally {
+      setIsSavingSection(false);
+    }
+  }, [editingSection, sectionDraft, solicitacao?.id, showToast]);
+
+  const handleCancelEditSection = useCallback(() => {
+    setEditingSection(null);
+  }, []);
+
+  const handleDeleteSection = useCallback(
+    async (sectionId: string) => {
+      setDeletingSection(sectionId);
+      try {
+        await surgeryRequestService.deleteSection(solicitacao.id, sectionId);
+        setSections((prev) => prev.filter((s) => s.id !== sectionId));
+      } catch {
+        showToast("Erro ao remover seção", "error");
+      } finally {
+        setDeletingSection(null);
+      }
+    },
+    [solicitacao?.id, showToast],
+  );
+
+  const handleMoveSection = useCallback(
+    async (sectionId: string, direction: "up" | "down") => {
+      const idx = sections.findIndex((s) => s.id === sectionId);
+      if (idx === -1) return;
+      const newIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= sections.length) return;
+
+      const reordered = [...sections];
+      [reordered[idx], reordered[newIdx]] = [reordered[newIdx], reordered[idx]];
+      setSections(reordered);
+
+      try {
+        await surgeryRequestService.reorderSections(
+          solicitacao.id,
+          reordered.map((s) => s.id),
+        );
+      } catch {
+        showToast("Erro ao reordenar seções", "error");
+      }
+    },
+    [sections, solicitacao?.id, showToast],
+  );
 
   const handleUploadSignature = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -608,19 +657,8 @@ export function MedicalReportEditor({
 
   // ── Classes utilitárias ───────────────────────────────────────────────────
 
-  const inputClass = (editing: boolean) =>
-    `ds-input ${
-      editing
-        ? "border-teal-600 focus:ring-2 focus:ring-teal-700 focus:border-teal-600"
-        : "bg-gray-50 text-gray-400 border-gray-100 cursor-default select-none"
-    }`;
-
-  const textareaClass = (editing: boolean) =>
-    `ds-textarea h-40 ${
-      editing
-        ? "border-teal-600 focus:ring-2 focus:ring-teal-700 focus:border-teal-600"
-        : "bg-gray-50 text-gray-400 border-gray-100 cursor-default select-none"
-    }`;
+  const inputClass = (_editing: boolean) =>
+    `ds-input bg-gray-50 text-gray-400 border-gray-100 cursor-default select-none`;
 
   const editarBtnClass =
     "flex-shrink-0 flex items-center px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-xl text-xs md:text-sm font-semibold text-black hover:bg-gray-50 transition-colors";
@@ -644,9 +682,9 @@ export function MedicalReportEditor({
       optional: false,
     },
     {
-      key: "history",
-      label: "Histórico e Diagnóstico",
-      complete: !!historyAndDiagnosis.trim(),
+      key: "sections",
+      label: "Seções do Laudo",
+      complete: sections.length > 0,
       optional: false,
     },
     {
@@ -842,53 +880,248 @@ export function MedicalReportEditor({
             </div>
           </div>
 
-          {/* ── HISTÓRICO E DIAGNÓSTICO ───────────────────────────────────── */}
+          {/* ── SEÇÕES DO LAUDO ────────────────────────────────────────── */}
           <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-2xl p-4">
             <div className="flex items-center justify-between w-full gap-2">
               <h3 className="ds-section-title leading-tight flex-1 min-w-0">
-                HISTÓRICO E DIAGNÓSTICO
+                SEÇÕES DO LAUDO
               </h3>
-              {!isEditingHistory ? (
-                <button
-                  onClick={() => setIsEditingHistory(true)}
-                  className={editarBtnClass}
+              <button
+                type="button"
+                onClick={() => {
+                  setNewSectionDraft({ title: "", description: "" });
+                  setIsAddingSection(true);
+                }}
+                disabled={isAddingSection}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-700 rounded-xl text-xs md:text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Adicionar Seção
+              </button>
+            </div>
+
+            {/* Aviso: sem seções */}
+            {!isLoadingSections &&
+              sections.length === 0 &&
+              !isAddingSection && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+                  <svg
+                    className="w-4 h-4 flex-shrink-0"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  É necessário ao menos uma seção no laudo para enviar a
+                  solicitação.
+                </div>
+              )}
+
+            {/* Loading */}
+            {isLoadingSections && (
+              <div className="flex justify-center py-4">
+                <Spinner className="w-5 h-5 text-gray-400" />
+              </div>
+            )}
+
+            {/* Lista de seções */}
+            {!isLoadingSections &&
+              sections.map((section, idx) => (
+                <div
+                  key={section.id}
+                  className="flex flex-col gap-3 border border-gray-200 rounded-xl p-3"
                 >
-                  Editar
-                </button>
-              ) : (
-                <div className="flex items-center gap-2 flex-shrink-0">
+                  {editingSection === section.id ? (
+                    /* ── Modo edição ── */
+                    <>
+                      <input
+                        type="text"
+                        value={sectionDraft.title}
+                        onChange={(e) =>
+                          setSectionDraft((d) => ({
+                            ...d,
+                            title: e.target.value,
+                          }))
+                        }
+                        placeholder="Título da seção"
+                        className="ds-input"
+                      />
+                      <RichTextEditor
+                        value={sectionDraft.description}
+                        onChange={(html) =>
+                          setSectionDraft((d) => ({ ...d, description: html }))
+                        }
+                        placeholder="Descrição da seção..."
+                      />
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={handleCancelEditSection}
+                          disabled={isSavingSection}
+                          className="flex items-center justify-center h-8 px-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveSection}
+                          disabled={isSavingSection}
+                          className="flex items-center justify-center h-8 px-3 bg-teal-700 rounded-xl text-xs font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+                        >
+                          {isSavingSection ? (
+                            <span className="flex items-center gap-1.5">
+                              <Spinner className="w-3.5 h-3.5 text-white" />
+                              Salvando...
+                            </span>
+                          ) : (
+                            "Salvar"
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    /* ── Modo visualização ── */
+                    <div className="flex gap-2">
+                      {/* Controles de ordem */}
+                      <div className="flex flex-col items-center gap-0.5 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveSection(section.id, "up")}
+                          disabled={idx === 0}
+                          className="p-1 rounded hover:bg-gray-100 transition-colors disabled:opacity-30"
+                          title="Mover para cima"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
+                        </button>
+                        <GripVertical className="w-4 h-4 text-gray-300" />
+                        <button
+                          type="button"
+                          onClick={() => handleMoveSection(section.id, "down")}
+                          disabled={idx === sections.length - 1}
+                          className="p-1 rounded hover:bg-gray-100 transition-colors disabled:opacity-30"
+                          title="Mover para baixo"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                        </button>
+                      </div>
+
+                      {/* Conteúdo */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h4 className="text-sm font-semibold text-gray-900 truncate">
+                            {section.title}
+                          </h4>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditSection(section)}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
+                              title="Editar seção"
+                            >
+                              <svg
+                                className="w-3.5 h-3.5"
+                                viewBox="0 0 16 16"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                              >
+                                <path
+                                  d="M11 2l3 3-9 9H2v-3l9-9z"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSection(section.id)}
+                              disabled={deletingSection === section.id}
+                              className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-gray-400 hover:text-red-500 disabled:opacity-50"
+                              title="Remover seção"
+                            >
+                              {deletingSection === section.id ? (
+                                <Spinner className="w-3.5 h-3.5" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        {section.description ? (
+                          <div
+                            className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                            dangerouslySetInnerHTML={{
+                              __html: section.description,
+                            }}
+                          />
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">
+                            Sem descrição
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+            {/* Formulário para nova seção */}
+            {isAddingSection && (
+              <div className="flex flex-col gap-3 border border-teal-200 bg-teal-50/40 rounded-xl p-3">
+                <input
+                  type="text"
+                  value={newSectionDraft.title}
+                  onChange={(e) =>
+                    setNewSectionDraft((d) => ({ ...d, title: e.target.value }))
+                  }
+                  placeholder="Título da nova seção *"
+                  autoFocus
+                  className="ds-input"
+                />
+                <RichTextEditor
+                  value={newSectionDraft.description}
+                  onChange={(html) =>
+                    setNewSectionDraft((d) => ({ ...d, description: html }))
+                  }
+                  placeholder="Descrição da seção (opcional)..."
+                />
+                <div className="flex items-center gap-2 justify-end">
                   <button
-                    onClick={handleCancel}
-                    disabled={isSaving}
-                    className="flex items-center justify-center h-8 px-3 bg-white border border-gray-200 rounded-xl text-xs md:text-sm text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    type="button"
+                    onClick={() => {
+                      setIsAddingSection(false);
+                      setNewSectionDraft({ title: "", description: "" });
+                    }}
+                    disabled={isSavingSection}
+                    className="flex items-center justify-center h-8 px-3 bg-white border border-gray-200 rounded-xl text-xs text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     Cancelar
                   </button>
                   <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex items-center justify-center h-8 px-3 bg-teal-700 rounded-xl text-xs md:text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+                    type="button"
+                    onClick={handleAddSection}
+                    disabled={isSavingSection || !newSectionDraft.title.trim()}
+                    className="flex items-center justify-center gap-1.5 h-8 px-3 bg-teal-700 rounded-xl text-xs font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
                   >
-                    {isSaving ? (
+                    {isSavingSection ? (
                       <span className="flex items-center gap-1.5">
                         <Spinner className="w-3.5 h-3.5 text-white" />
                         Salvando...
                       </span>
                     ) : (
-                      "Salvar"
+                      <>
+                        <Plus className="w-3.5 h-3.5" />
+                        Adicionar
+                      </>
                     )}
                   </button>
                 </div>
-              )}
-            </div>
-
-            <textarea
-              value={historyAndDiagnosis}
-              readOnly={!isEditingHistory}
-              onChange={(e) => setHistoryAndDiagnosis(e.target.value)}
-              placeholder="Descreva o histórico clínico e diagnóstico..."
-              className={textareaClass(isEditingHistory)}
-            />
+              </div>
+            )}
           </div>
 
           {/* ── IMAGENS A SEREM ANEXADAS AO LAUDO ───────────────────────────────────────── */}
@@ -1242,8 +1475,7 @@ export function MedicalReportEditor({
         {/* ─── Botões de ação ───────────────────────────────────────────────── */}
         <div className="flex items-center justify-end gap-2 w-full flex-wrap">
           {(() => {
-            const canPreview =
-              !!patientData.name.trim() && !!historyAndDiagnosis.trim();
+            const canPreview = !!patientData.name.trim() && sections.length > 0;
             const canExport = canPreview;
             return (
               <>

@@ -11,13 +11,51 @@ export default function CadastroPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isDoctor, setIsDoctor] = useState(false);
+  const [crm, setCrm] = useState("");
+  const [crmState, setCrmState] = useState("");
+  const [specialty, setSpecialty] = useState("");
   const [error, setError] = useState("");
+  const [errorType, setErrorType] = useState<
+    "" | "email_active" | "email_pending" | "generic"
+  >("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  const brazilianStates = [
+    "AC",
+    "AL",
+    "AP",
+    "AM",
+    "BA",
+    "CE",
+    "DF",
+    "ES",
+    "GO",
+    "MA",
+    "MT",
+    "MS",
+    "MG",
+    "PA",
+    "PB",
+    "PR",
+    "PE",
+    "PI",
+    "RJ",
+    "RN",
+    "RS",
+    "RO",
+    "RR",
+    "SC",
+    "SP",
+    "SE",
+    "TO",
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setErrorType("");
 
     // Validações
     if (password !== confirmPassword) {
@@ -35,6 +73,16 @@ export default function CadastroPage() {
       return;
     }
 
+    if (isDoctor && !crm.trim()) {
+      setError("CRM é obrigatório para médicos.");
+      return;
+    }
+
+    if (isDoctor && !crmState) {
+      setError("Estado do CRM é obrigatório para médicos.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -42,14 +90,27 @@ export default function CadastroPage() {
         name,
         email,
         password,
+        is_doctor: isDoctor,
+        ...(isDoctor && {
+          crm,
+          crm_state: crmState,
+          specialty: specialty || undefined,
+        }),
       });
 
       // Redireciona para login após sucesso
       router.push("/login?registered=true");
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || "Erro ao criar conta. Tente novamente.",
-      );
+      const message: string =
+        err.response?.data?.message || "Erro ao criar conta. Tente novamente.";
+      setError(message);
+      if (message.includes("convite pendente")) {
+        setErrorType("email_pending");
+      } else if (message.includes("já está cadastrado")) {
+        setErrorType("email_active");
+      } else {
+        setErrorType("generic");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -171,12 +232,124 @@ export default function CadastroPage() {
                   placeholder="Digite a senha novamente"
                 />
               </div>
+
+              {/* Is Doctor Toggle */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isDoctor}
+                  onClick={() => setIsDoctor(!isDoctor)}
+                  disabled={isLoading}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 ${
+                    isDoctor ? "bg-teal-500" : "bg-gray-200"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isDoctor ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <label className="text-sm font-medium text-gray-700">
+                  Sou médico(a)
+                </label>
+              </div>
+
+              {/* Doctor Fields (conditional) */}
+              {isDoctor && (
+                <div className="space-y-4 p-4 bg-teal-50 rounded-xl border border-teal-100">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label
+                        htmlFor="crm"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        CRM *
+                      </label>
+                      <input
+                        id="crm"
+                        type="text"
+                        value={crm}
+                        onChange={(e) => setCrm(e.target.value)}
+                        disabled={isLoading}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors"
+                        placeholder="123456"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="crmState"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                      >
+                        UF do CRM *
+                      </label>
+                      <select
+                        id="crmState"
+                        value={crmState}
+                        onChange={(e) => setCrmState(e.target.value)}
+                        disabled={isLoading}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors bg-white"
+                      >
+                        <option value="">UF</option>
+                        {brazilianStates.map((uf) => (
+                          <option key={uf} value={uf}>
+                            {uf}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="specialty"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Especialidade
+                    </label>
+                    <input
+                      id="specialty"
+                      type="text"
+                      value={specialty}
+                      onChange={(e) => setSpecialty(e.target.value)}
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors"
+                      placeholder="Ex: Ortopedia, Cardiologia..."
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Error Message */}
             {error && (
               <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700">
-                {error}
+                <p>{error}</p>
+                {errorType === "email_active" && (
+                  <div className="mt-2 flex gap-3">
+                    <Link
+                      href="/login"
+                      className="font-semibold underline hover:text-red-900"
+                    >
+                      Fazer login
+                    </Link>
+                    <span className="text-red-400">·</span>
+                    <Link
+                      href="/login?tab=recovery"
+                      className="font-semibold underline hover:text-red-900"
+                    >
+                      Recuperar senha
+                    </Link>
+                  </div>
+                )}
+                {errorType === "email_pending" && (
+                  <p className="mt-1 text-red-600">
+                    Não recebeu o e-mail?{" "}
+                    <span className="font-medium">
+                      Verifique sua pasta de spam.
+                    </span>
+                  </p>
+                )}
               </div>
             )}
 

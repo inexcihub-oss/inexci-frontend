@@ -10,10 +10,23 @@ export interface ActivityUser {
 
 export interface Activity {
   id: string;
-  type: "comment" | "status_change" | "system";
+  type: "comment" | "status_change" | "system" | "pdf_generated";
   content: string;
+  pdf_url?: string;
   created_at: string;
   user: ActivityUser | null;
+}
+
+// ── Tipos de Seções do Laudo ─────────────────────────────────────────────────
+
+export interface ReportSection {
+  id: string;
+  title: string;
+  description: string | null;
+  order: number;
+  surgery_request_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Mapeamento de status string para número (conforme backend)
@@ -129,11 +142,13 @@ export interface SendPayload {
   to?: string;
   subject?: string;
   message?: string;
+  notify_patient?: boolean;
 }
 
 export interface StartAnalysisPayload {
   request_number: string;
   received_at: string;
+  notify_patient?: boolean;
   quotation_1_number?: string;
   quotation_1_received_at?: string;
   quotation_2_number?: string;
@@ -146,6 +161,7 @@ export interface StartAnalysisPayload {
 export interface AcceptAuthorizationPayload {
   /** Mínimo 1, máximo 3 datas ISO no formato YYYY-MM-DDTHH:mm:ss */
   date_options: string[];
+  notify_patient?: boolean;
 }
 
 export interface ContestAuthorizationPayload {
@@ -159,6 +175,7 @@ export interface ContestAuthorizationPayload {
 
 export interface ConfirmDatePayload {
   selected_date_index: 0 | 1 | 2;
+  notify_patient?: boolean;
 }
 
 export interface UpdateDateOptionsPayload {
@@ -171,6 +188,7 @@ export interface ReschedulePayload {
 
 export interface MarkPerformedPayload {
   surgery_performed_at: string;
+  notify_patient?: boolean;
 }
 
 export interface InvoicePayload {
@@ -494,6 +512,62 @@ export const surgeryRequestService = {
     const response = await api.post(
       `/surgery-requests/${requestId}/activities`,
       { content, type: "comment" },
+    );
+    return response.data;
+  },
+
+  // ── Seções do laudo ───────────────────────────────────────────────────────
+
+  /** Lista todas as seções do laudo ordenadas */
+  async getSections(requestId: string): Promise<ReportSection[]> {
+    const response = await api.get(`/surgery-requests/${requestId}/sections`);
+    return response.data;
+  },
+
+  /** Cria uma nova seção no laudo */
+  async createSection(
+    requestId: string,
+    data: { title: string; description?: string },
+  ): Promise<ReportSection> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/sections`,
+      data,
+    );
+    return response.data;
+  },
+
+  /** Atualiza título e/ou descrição de uma seção */
+  async updateSection(
+    requestId: string,
+    sectionId: string,
+    data: { title?: string; description?: string },
+  ): Promise<ReportSection> {
+    const response = await api.patch(
+      `/surgery-requests/${requestId}/sections/${sectionId}`,
+      data,
+    );
+    return response.data;
+  },
+
+  /** Remove uma seção do laudo */
+  async deleteSection(
+    requestId: string,
+    sectionId: string,
+  ): Promise<{ deleted: boolean }> {
+    const response = await api.delete(
+      `/surgery-requests/${requestId}/sections/${sectionId}`,
+    );
+    return response.data;
+  },
+
+  /** Reordena as seções do laudo */
+  async reorderSections(
+    requestId: string,
+    ids: string[],
+  ): Promise<ReportSection[]> {
+    const response = await api.patch(
+      `/surgery-requests/${requestId}/sections/reorder`,
+      { ids },
     );
     return response.data;
   },

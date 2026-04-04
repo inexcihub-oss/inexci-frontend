@@ -26,6 +26,7 @@ interface UpdateAuthorizationsModalProps {
   onClose2: () => void;
   solicitacao: any;
   onSuccess: () => void;
+  notifyPatient?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────────────
@@ -45,6 +46,7 @@ export function UpdateAuthorizationsModal({
   onClose2: _onClose2,
   solicitacao,
   onSuccess,
+  notifyPatient = false,
 }: UpdateAuthorizationsModalProps) {
   const [step, setStep] = useState<Step>(1);
   const [isSaving, setIsSaving] = useState(false);
@@ -181,6 +183,7 @@ export function UpdateAuthorizationsModal({
         });
       const payload: AcceptAuthorizationPayload = {
         date_options: validDates,
+        notify_patient: notifyPatient || undefined,
       };
       await surgeryRequestService.acceptAuthorization(solicitacao.id, payload);
       showToast("Autorização aceita! Status: Em Agendamento", "success");
@@ -320,7 +323,9 @@ export function UpdateAuthorizationsModal({
         {!showContest && step === 2 && (
           <>
             <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
-              <p className="text-sm md:text-base font-semibold text-gray-900">OPME</p>
+              <p className="text-sm md:text-base font-semibold text-gray-900">
+                OPME
+              </p>
               {opmeAuth.length > 0 ? (
                 <AuthorizationTable
                   items={opmeAuth}
@@ -392,7 +397,9 @@ export function UpdateAuthorizationsModal({
               )}
               {opmeAuth.length > 0 && (
                 <div className="flex flex-col gap-3 md:gap-4">
-                  <p className="text-sm md:text-base font-semibold text-gray-900">OPME</p>
+                  <p className="text-sm md:text-base font-semibold text-gray-900">
+                    OPME
+                  </p>
                   <SummaryTable
                     labelHeader="Descrição"
                     items={opmeAuth.map((e) => {

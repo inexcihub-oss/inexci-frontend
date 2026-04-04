@@ -9,6 +9,14 @@ export interface User {
   status: number;
   phone?: string;
   clinic_id?: number;
+  is_admin?: boolean;
+  is_doctor?: boolean;
+  crm?: string;
+  crm_state?: string;
+  specialty?: string;
+  signature_image_url?: string;
+  subscription_plan_id?: string;
+  admin_id?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -33,6 +41,10 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
+  is_doctor?: boolean;
+  crm?: string;
+  crm_state?: string;
+  specialty?: string;
 }
 
 export interface AuthResponse {

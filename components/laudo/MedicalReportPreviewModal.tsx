@@ -4,6 +4,10 @@ import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
+import {
+  surgeryRequestService,
+  ReportSection,
+} from "@/services/surgery-request.service";
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 
@@ -175,6 +179,17 @@ export function MedicalReportPreviewModal({
   const [isExporting, setIsExporting] = useState(false);
   const { showToast } = useToast();
 
+  // ── Seções dinâmicas do laudo ────────────────────────────────────────────
+  const [sections, setSections] = useState<ReportSection[]>([]);
+
+  useEffect(() => {
+    if (!isOpen || !solicitacao?.id) return;
+    surgeryRequestService
+      .getSections(solicitacao.id)
+      .then(setSections)
+      .catch(() => setSections([]));
+  }, [isOpen, solicitacao?.id]);
+
   // ── Dados da assinatura do médico ────────────────────────────────────────
   const [doctorSignatureUrl, setDoctorSignatureUrl] = useState<string | null>(
     null,
@@ -226,9 +241,15 @@ export function MedicalReportPreviewModal({
   const zipCode = pd?.zipCode || patient?.zip_code || patient?.cep || "";
   const healthPlan = pd?.healthPlan || solicitacao?.health_plan?.name || "";
 
-  const historyAndDiagnosis =
-    report?.historyAndDiagnosis || report?.surgicalIndication || "";
-  const conduct = report?.conduct || report?.technicalJustification || "";
+  // Seções dinâmicas têm prioridade; fallback para campos legados
+  const legacyHistoryAndDiagnosis =
+    sections.length === 0
+      ? report?.historyAndDiagnosis || report?.surgicalIndication || ""
+      : "";
+  const legacyConduct =
+    sections.length === 0
+      ? report?.conduct || report?.technicalJustification || ""
+      : "";
 
   const examImages: Array<{ id: string; name: string; uri: string }> =
     solicitacao?.documents?.filter((d: any) => d.key === "report_images") ?? [];
@@ -376,17 +397,54 @@ export function MedicalReportPreviewModal({
               </div>
             </div>
 
-            {/* ── HISTÓRICO E DIAGNÓSTICO ────────────────────────────── */}
-            <div className="flex flex-col gap-2.5 w-full">
-              <div className="pb-2 border-b border-gray-200">
-                <h3 className="text-sm md:text-base font-bold tracking-tight text-neutral-900">
-                  HISTÓRICO E DIAGNÓSTICO
-                </h3>
-              </div>
-              <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">
-                {historyAndDiagnosis || "—"}
-              </p>
-            </div>
+            {/* ── SEÇÕES DO LAUDO ──────────────────────────────── */}
+            {sections.length > 0 ? (
+              sections.map((section) => (
+                <div key={section.id} className="flex flex-col gap-2.5 w-full">
+                  <div className="pb-2 border-b border-gray-200">
+                    <h3 className="text-sm md:text-base font-bold tracking-tight text-neutral-900">
+                      {section.title.toUpperCase()}
+                    </h3>
+                  </div>
+                  {section.description ? (
+                    <div
+                      className="text-xs text-neutral-600 leading-relaxed prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: section.description }}
+                    />
+                  ) : (
+                    <p className="text-xs text-neutral-400 italic">—</p>
+                  )}
+                </div>
+              ))
+            ) : (
+              /* ── Fallback legado ─────────────────────────────── */
+              <>
+                {legacyHistoryAndDiagnosis && (
+                  <div className="flex flex-col gap-2.5 w-full">
+                    <div className="pb-2 border-b border-gray-200">
+                      <h3 className="text-sm md:text-base font-bold tracking-tight text-neutral-900">
+                        HISTÓRICO E DIAGNÓSTICO
+                      </h3>
+                    </div>
+                    <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">
+                      {legacyHistoryAndDiagnosis}
+                    </p>
+                  </div>
+                )}
+                {legacyConduct && (
+                  <div className="flex flex-col gap-2.5 w-full">
+                    <div className="pb-2 border-b border-gray-200">
+                      <h3 className="text-sm md:text-base font-bold tracking-tight text-neutral-900">
+                        CONDUTA
+                      </h3>
+                    </div>
+                    <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">
+                      {legacyConduct}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
 
             {/* ── IMAGENS A SEREM ANEXADAS AO LAUDO ───────────────────── */}
             {examImages.length > 0 && (
@@ -403,18 +461,6 @@ export function MedicalReportPreviewModal({
                 </div>
               </div>
             )}
-
-            {/* ── CONDUTA ───────────────────────────────────────────── */}
-            <div className="flex flex-col gap-2.5 w-full">
-              <div className="pb-2 border-b border-gray-200">
-                <h3 className="text-sm md:text-base font-bold tracking-tight text-neutral-900">
-                  CONDUTA
-                </h3>
-              </div>
-              <p className="text-xs text-neutral-600 leading-relaxed whitespace-pre-line">
-                {conduct || "—"}
-              </p>
-            </div>
 
             {/* ── ASSINATURA DO MÉDICO ───────────────────────────────── */}
             <div className="flex flex-col items-center gap-1 w-full pt-2">

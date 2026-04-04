@@ -42,8 +42,10 @@ interface UserProfile {
   specialty?: string;
   crm?: string;
   crmState?: string;
+  signatureImageUrl?: string;
   // Campo do perfil
   userType?: number;
+  isDoctor?: boolean;
 }
 
 interface NotificationSettings {
@@ -329,10 +331,12 @@ export default function ConfiguracoesPage() {
             ? new Date(profileData.birth_date).toISOString().split("T")[0]
             : "",
           gender: profileData.gender || "",
-          specialty: profileData.specialty || "",
-          crm: profileData.crm || "",
-          crmState: profileData.crm_state || "",
+          specialty: profileData.specialty || profileData.doctor_profile?.specialty || "",
+          crm: profileData.crm || profileData.doctor_profile?.crm || "",
+          crmState: profileData.crm_state || profileData.doctor_profile?.crm_state || "",
+          signatureImageUrl: profileData.signature_image_url || profileData.doctor_profile?.signature_url || "",
           userType: profileData.profile,
+          isDoctor: profileData.is_doctor || false,
         });
         if (profileData.avatar_url) {
           setAvatarPreview(profileData.avatar_url);
@@ -351,10 +355,11 @@ export default function ConfiguracoesPage() {
             document: "",
             birthDate: "",
             gender: "",
-            specialty: "",
-            crm: "",
-            crmState: "",
+            specialty: user.specialty || "",
+            crm: user.crm || "",
+            crmState: user.crm_state || "",
             userType: user.profile,
+            isDoctor: user.is_doctor || false,
           });
         }
       } finally {
@@ -658,7 +663,7 @@ export default function ConfiguracoesPage() {
         </Card>
 
         {/* Dados profissionais (apenas para médicos) */}
-        {profile.userType === UserProfiles.DOCTOR && (
+        {profile.isDoctor && (
           <Card className="border border-gray-200 rounded-2xl">
             <CardHeader className="p-6 pb-4">
               <h3 className="text-base font-semibold text-gray-900">
@@ -729,7 +734,7 @@ export default function ConfiguracoesPage() {
         )}
 
         {/* Assinatura digital (apenas para médicos) */}
-        {profile.userType === UserProfiles.DOCTOR && (
+        {profile.isDoctor && (
           <Card className="border border-gray-200 rounded-2xl">
             <CardHeader className="p-6 pb-4">
               <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">

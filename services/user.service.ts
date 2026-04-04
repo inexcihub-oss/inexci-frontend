@@ -22,9 +22,18 @@ export interface UserProfile {
   crm_state?: string;
   avatar_url?: string;
   signature_url?: string;
+  signature_image_url?: string;
+  is_admin?: boolean;
+  is_doctor?: boolean;
   profile: number;
   status: number;
   clinic_id?: number;
+  doctor_profile?: {
+    specialty?: string;
+    crm?: string;
+    crm_state?: string;
+    signature_url?: string;
+  };
   created_at: string;
   updated_at: string;
 }

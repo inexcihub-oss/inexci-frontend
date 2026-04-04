@@ -10,6 +10,9 @@ export interface Collaborator {
   gender?: string;
   birthDate?: string;
   document?: string;
+  is_doctor?: boolean;
+  crm?: string;
+  crmState?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -33,8 +36,10 @@ export interface CreateCollaboratorPayload {
   name: string;
   email: string;
   phone?: string;
+  is_doctor?: boolean;
+  crm?: string;
+  crm_state?: string;
   specialty?: string;
-  role?: "admin" | "doctor" | "collaborator";
 }
 
 export const collaboratorService = {
@@ -43,10 +48,9 @@ export const collaboratorService = {
    */
   async getAll(): Promise<Collaborator[]> {
     try {
-      const response = await api.get("/users?role=collaborator");
+      const response = await api.get("/users/collaborators");
       const data = response.data.records || response.data;
 
-      // Mapeia os campos do backend para o frontend
       return data.map((user: any) => ({
         id: user.id,
         name: user.name,
@@ -56,7 +60,9 @@ export const collaboratorService = {
         gender: user.gender,
         birthDate: user.birth_date,
         document: user.cpf,
-        // Como estamos buscando role=collaborator, todos são editors por padrão
+        is_doctor: user.is_doctor || false,
+        crm: user.crm || null,
+        crmState: user.crm_state || null,
         role: "editor",
         createdAt: user.created_at,
         updatedAt: user.updated_at,
@@ -99,7 +105,7 @@ export const collaboratorService = {
    */
   async create(payload: CreateCollaboratorPayload): Promise<Collaborator> {
     try {
-      const response = await api.post("/users", payload);
+      const response = await api.post("/users/collaborators", payload);
       return response.data;
     } catch (error) {
       throw error;
@@ -114,7 +120,10 @@ export const collaboratorService = {
     payload: Partial<CreateCollaboratorPayload>,
   ): Promise<Collaborator> {
     try {
-      const response = await api.patch(`/users/${collaboratorId}`, payload);
+      const response = await api.patch(
+        `/users/collaborators/${collaboratorId}`,
+        payload,
+      );
       return response.data;
     } catch (error) {
       throw error;
@@ -149,7 +158,7 @@ export const collaboratorService = {
    */
   async delete(collaboratorId: string): Promise<void> {
     try {
-      await api.delete(`/users/${collaboratorId}`);
+      await api.delete(`/users/collaborators/${collaboratorId}`);
     } catch (error) {
       throw error;
     }
@@ -200,9 +209,9 @@ export const collaboratorService = {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        specialty: user.doctor_profile?.specialty || user.specialty || null,
-        crm: user.doctor_profile?.crm || null,
-        crmState: user.doctor_profile?.crm_state || null,
+        specialty: user.specialty || user.doctor_profile?.specialty || null,
+        crm: user.crm || user.doctor_profile?.crm || null,
+        crmState: user.crm_state || user.doctor_profile?.crm_state || null,
         gender: user.gender,
         birthDate: user.birth_date,
         document: user.cpf,

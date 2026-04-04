@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   collaboratorService,
   Collaborator,
-  Doctor,
 } from "@/services/collaborator.service";
 import { hospitalService, Hospital } from "@/services/hospital.service";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
@@ -18,7 +17,7 @@ import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { NewCollaboratorModal } from "@/components/colaboradores/NewCollaboratorModal";
-import { NewDoctorModal } from "@/components/colaboradores/NewDoctorModal";
+
 import { NewHospitalModal } from "@/components/colaboradores/NewHospitalModal";
 import { NewHealthPlanModal } from "@/components/colaboradores/NewHealthPlanModal";
 import { NewSupplierModal } from "@/components/colaboradores/NewSupplierModal";
@@ -42,12 +41,9 @@ import {
 
 type TabType =
   | "assistentes"
-  | "medicos"
   | "hospitais"
   | "convenios"
   | "fornecedores";
-
-type CollaboratorRole = "admin" | "editor" | "viewer";
 
 export default function ColaboradoresPage() {
   const router = useRouter();
@@ -58,7 +54,6 @@ export default function ColaboradoresPage() {
 
   // Data states
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -114,12 +109,6 @@ export default function ColaboradoresPage() {
           const collabData = await collaboratorService.getAll();
           setCollaborators(collabData);
           break;
-        case "medicos":
-          const doctorsData = await collaboratorService.getDoctors(
-            currentUser?.id,
-          );
-          setDoctors(doctorsData);
-          break;
         case "hospitais":
           const hospitalData = await hospitalService.getAll();
           setHospitals(hospitalData);
@@ -150,16 +139,6 @@ export default function ColaboradoresPage() {
       return name.includes(search) || email.includes(search);
     });
   }, [collaborators, debouncedSearchTerm]);
-
-  const filteredDoctors = useMemo(() => {
-    if (!debouncedSearchTerm) return doctors;
-    const search = debouncedSearchTerm.toLowerCase();
-    return doctors.filter((item) => {
-      const name = item.name.toLowerCase();
-      const email = item.email?.toLowerCase() || "";
-      return name.includes(search) || email.includes(search);
-    });
-  }, [doctors, debouncedSearchTerm]);
 
   const filteredHospitals = useMemo(() => {
     if (!debouncedSearchTerm) return hospitals;
@@ -196,8 +175,6 @@ export default function ColaboradoresPage() {
     switch (activeTab) {
       case "assistentes":
         return filteredCollaborators;
-      case "medicos":
-        return filteredDoctors;
       case "hospitais":
         return filteredHospitals;
       case "convenios":
@@ -214,8 +191,6 @@ export default function ColaboradoresPage() {
       switch (activeTab) {
         case "assistentes":
           return filteredCollaborators;
-        case "medicos":
-          return filteredDoctors;
         case "hospitais":
           return filteredHospitals;
         case "convenios":
@@ -234,7 +209,6 @@ export default function ColaboradoresPage() {
     rowSelection,
     activeTab,
     filteredCollaborators,
-    filteredDoctors,
     filteredHospitals,
     filteredHealthPlans,
     filteredSuppliers,
@@ -262,45 +236,10 @@ export default function ColaboradoresPage() {
     return colors[index];
   };
 
-  const getRoleBadge = (role: CollaboratorRole | undefined) => {
-    if (!role) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-          N/A
-        </span>
-      );
-    }
-    const roleMap = {
-      admin: {
-        label: "Admin",
-        color: "bg-purple-100 text-purple-700 border border-purple-200",
-      },
-      editor: {
-        label: "Editor",
-        color: "bg-teal-100 text-teal-700 border border-teal-200",
-      },
-      viewer: {
-        label: "Visualizador",
-        color: "bg-gray-100 text-gray-700 border border-gray-200",
-      },
-    };
-    const roleInfo = roleMap[role];
-    return (
-      <span
-        className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold ${roleInfo.color}`}
-      >
-        {roleInfo.label}
-      </span>
-    );
-  };
-
   const handleRowClick = (id: string, type: TabType) => {
     switch (type) {
       case "assistentes":
         router.push(`/colaboradores/assistente/${id}`);
-        break;
-      case "medicos":
-        router.push(`/colaboradores/medico/${id}`);
         break;
       case "hospitais":
         router.push(`/colaboradores/hospital/${id}`);
@@ -334,10 +273,6 @@ export default function ColaboradoresPage() {
           setCollaborators((prev) =>
             prev.filter((c) => c.id !== deleteModal.id),
           );
-          break;
-        case "medicos":
-          await collaboratorService.delete(deleteModal.id);
-          setDoctors((prev) => prev.filter((d) => d.id !== deleteModal.id));
           break;
         case "hospitais":
           await hospitalService.delete(deleteModal.id);
@@ -391,10 +326,6 @@ export default function ColaboradoresPage() {
         case "assistentes":
           await Promise.all(ids.map((id) => collaboratorService.delete(id)));
           setCollaborators((prev) => prev.filter((c) => !ids.includes(c.id)));
-          break;
-        case "medicos":
-          await Promise.all(ids.map((id) => collaboratorService.delete(id)));
-          setDoctors((prev) => prev.filter((d) => !ids.includes(d.id)));
           break;
         case "hospitais":
           await Promise.all(ids.map((id) => hospitalService.delete(id)));
@@ -495,11 +426,33 @@ export default function ColaboradoresPage() {
       ),
     },
     {
-      accessorKey: "role",
-      header: "Permissão",
-      size: 150,
+      id: "type",
+      header: "Tipo",
+      size: 120,
       meta: { className: "hidden md:table-cell" },
-      cell: ({ row }) => getRoleBadge(row.original.role),
+      cell: ({ row }) =>
+        row.original.is_doctor ? (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+            Médico
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+            Colaborador
+          </span>
+        ),
+    },
+    {
+      accessorKey: "crm",
+      header: "CRM",
+      size: 120,
+      meta: { className: "hidden lg:table-cell" },
+      cell: ({ row }) => (
+        <span className="text-xs text-black">
+          {row.original.is_doctor && row.original.crm
+            ? `${row.original.crm}/${row.original.crmState || ""}`
+            : "-"}
+        </span>
+      ),
     },
     {
       id: "actions",
@@ -941,110 +894,6 @@ export default function ColaboradoresPage() {
     },
   ];
 
-  // Column definitions for Médicos
-  const doctorColumns: ColumnDef<Doctor>[] = [
-    {
-      id: "select",
-      size: 40,
-      enableSorting: false,
-      enableResizing: false,
-      header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          indeterminate={table.getIsSomePageRowsSelected()}
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-        />
-      ),
-    },
-    {
-      accessorKey: "name",
-      header: "Nome",
-      size: 250,
-      cell: ({ row }) => (
-        <div
-          className="flex items-center gap-2 cursor-pointer hover:opacity-80"
-          onClick={() => handleRowClick(row.original.id, "medicos")}
-        >
-          <div
-            className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
-              row.original.id,
-            )}`}
-          >
-            {getInitials(row.original.name)}
-          </div>
-          <span
-            className="text-xs font-semibold text-black hover:text-primary-600"
-            title={row.original.name}
-          >
-            {row.original.name}
-          </span>
-        </div>
-      ),
-    },
-    {
-      accessorKey: "email",
-      header: "E-mail",
-      size: 200,
-      meta: { className: "hidden md:table-cell" },
-      cell: ({ row }) => (
-        <span className="text-xs text-black" title={row.original.email || "-"}>
-          {row.original.email || "-"}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "phone",
-      header: "Telefone",
-      size: 150,
-      meta: { className: "hidden md:table-cell" },
-      cell: ({ row }) => (
-        <span
-          className="text-xs text-black"
-          title={formatPhone(row.original.phone)}
-        >
-          {formatPhone(row.original.phone)}
-        </span>
-      ),
-    },
-    {
-      id: "actions",
-      size: 50,
-      enableSorting: false,
-      enableResizing: false,
-      header: () => <div />,
-      cell: ({ row }) => (
-        <button
-          className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 active:scale-[0.95] transition-all group min-h-[44px]"
-          title="Excluir médico"
-          onClick={(e) =>
-            handleDeleteClick(row.original.id, row.original.name, "medicos", e)
-          }
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-4 h-4 text-red-400 group-hover:text-red-600 transition-colors"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-1V5a1 1 0 00-1-1h-4a1 1 0 00-1 1v1H7a1 1 0 000 2h10z"
-            />
-          </svg>
-        </button>
-      ),
-    },
-  ];
-
   // Create tables - Usando dados memoizados para cada tipo
   const collaboratorTable = useReactTable({
     data: filteredCollaborators,
@@ -1063,22 +912,6 @@ export default function ColaboradoresPage() {
     enableColumnResizing: true,
   });
 
-  const doctorTable = useReactTable({
-    data: filteredDoctors,
-    columns: doctorColumns,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
-    state: {
-      rowSelection,
-      sorting,
-    },
-    enableRowSelection: true,
-    enableSorting: true,
-    columnResizeMode,
-    enableColumnResizing: true,
-  });
 
   const hospitalTable = useReactTable({
     data: filteredHospitals,
@@ -1135,8 +968,6 @@ export default function ColaboradoresPage() {
     switch (activeTab) {
       case "assistentes":
         return collaboratorTable;
-      case "medicos":
-        return doctorTable;
       case "hospitais":
         return hospitalTable;
       case "convenios":
@@ -1169,16 +1000,6 @@ export default function ColaboradoresPage() {
             }`}
           >
             Colaboradores
-          </button>
-          <button
-            onClick={() => setActiveTab("medicos")}
-            className={`px-4 py-3 text-sm transition-all min-h-[44px] -mb-px ${
-              activeTab === "medicos"
-                ? "font-semibold text-black border-b-[3px] border-teal-500"
-                : "font-normal text-gray-500 hover:text-black"
-            }`}
-          >
-            Médicos
           </button>
           <button
             onClick={() => setActiveTab("hospitais")}
@@ -1274,7 +1095,6 @@ export default function ColaboradoresPage() {
             onClick={() => setCreateModalOpen(true)}
           >
             {activeTab === "assistentes" && "Novo colaborador"}
-            {activeTab === "medicos" && "Novo médico"}
             {activeTab === "hospitais" && "Novo hospital"}
             {activeTab === "convenios" && "Novo convênio"}
             {activeTab === "fornecedores" && "Novo fornecedor"}
@@ -1381,13 +1201,11 @@ export default function ColaboradoresPage() {
         title={
           deleteModal.tabType === "assistentes"
             ? "Excluir colaborador"
-            : deleteModal.tabType === "medicos"
-              ? "Excluir médico"
-              : deleteModal.tabType === "hospitais"
-                ? "Excluir hospital"
-                : deleteModal.tabType === "convenios"
-                  ? "Excluir convênio"
-                  : "Excluir fornecedor"
+            : deleteModal.tabType === "hospitais"
+              ? "Excluir hospital"
+              : deleteModal.tabType === "convenios"
+                ? "Excluir convênio"
+                : "Excluir fornecedor"
         }
         itemName={deleteModal.name ?? undefined}
         onConfirm={handleDeleteConfirm}
@@ -1397,14 +1215,6 @@ export default function ColaboradoresPage() {
       {/* Modais de criação */}
       <NewCollaboratorModal
         isOpen={createModalOpen && activeTab === "assistentes"}
-        onClose={() => setCreateModalOpen(false)}
-        onSuccess={() => {
-          loadData();
-          setCreateModalOpen(false);
-        }}
-      />
-      <NewDoctorModal
-        isOpen={createModalOpen && activeTab === "medicos"}
         onClose={() => setCreateModalOpen(false)}
         onSuccess={() => {
           loadData();
@@ -1440,24 +1250,20 @@ export default function ColaboradoresPage() {
         title={`Excluir ${selectedItems.length} ${
           activeTab === "assistentes"
             ? "colaborador"
-            : activeTab === "medicos"
-              ? "médico"
-              : activeTab === "hospitais"
-                ? "hospital"
-                : activeTab === "convenios"
-                  ? "convênio"
-                  : "fornecedor"
+            : activeTab === "hospitais"
+              ? "hospital"
+              : activeTab === "convenios"
+                ? "convênio"
+                : "fornecedor"
         }${selectedItems.length !== 1 ? "es" : ""}`}
         description={`Tem certeza que deseja excluir ${selectedItems.length} ${
           activeTab === "assistentes"
             ? "colaborador"
-            : activeTab === "medicos"
-              ? "médico"
-              : activeTab === "hospitais"
-                ? "hospital"
-                : activeTab === "convenios"
-                  ? "convênio"
-                  : "fornecedor"
+            : activeTab === "hospitais"
+              ? "hospital"
+              : activeTab === "convenios"
+                ? "convênio"
+                : "fornecedor"
         }${selectedItems.length !== 1 ? "es" : ""} selecionado${selectedItems.length !== 1 ? "s" : ""}? Esta ação não pode ser desfeita.`}
         onConfirm={handleBulkDeleteConfirm}
         onCancel={handleBulkDeleteCancel}

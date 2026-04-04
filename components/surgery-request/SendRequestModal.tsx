@@ -13,6 +13,7 @@ interface SendRequestModalProps {
   onClose: () => void;
   solicitacao: any;
   onSuccess: () => void;
+  notifyPatient?: boolean;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -30,6 +31,7 @@ export function SendRequestModal({
   onClose,
   solicitacao,
   onSuccess,
+  notifyPatient = false,
 }: SendRequestModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [sendMethod, setSendMethod] = useState<SendMethod>(null);
@@ -176,7 +178,7 @@ export function SendRequestModal({
     try {
       const response = await api.post(
         `/surgery-requests/${solicitacao.id}/send`,
-        { method: "download" },
+        { method: "download", notify_patient: notifyPatient },
       );
       const base64 = response.data?.pdf;
       if (!base64) throw new Error("PDF não gerado");
@@ -216,6 +218,7 @@ export function SendRequestModal({
         to: recipients,
         subject: emailSubject,
         message: emailMessage,
+        notify_patient: notifyPatient,
       });
       setCurrentStep(4);
     } catch {
@@ -357,7 +360,9 @@ export function SendRequestModal({
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">De:</label>
           <div className="ds-field-readonly">
-            <span className="text-xs md:text-sm text-gray-900">inexci@mail.com</span>
+            <span className="text-xs md:text-sm text-gray-900">
+              inexci@mail.com
+            </span>
           </div>
         </div>
 
@@ -513,7 +518,9 @@ export function SendRequestModal({
           {" "}
           A solicitação agora está com status &ldquo;
         </span>
-        <span className="text-xs md:text-sm font-semibold text-purple-600">Enviado</span>
+        <span className="text-xs md:text-sm font-semibold text-purple-600">
+          Enviado
+        </span>
         <span className="text-xs md:text-sm text-purple-500">&rdquo;</span>
       </div>
     </div>
