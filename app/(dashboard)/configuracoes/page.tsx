@@ -331,10 +331,19 @@ export default function ConfiguracoesPage() {
             ? new Date(profileData.birth_date).toISOString().split("T")[0]
             : "",
           gender: profileData.gender || "",
-          specialty: profileData.specialty || profileData.doctor_profile?.specialty || "",
+          specialty:
+            profileData.specialty ||
+            profileData.doctor_profile?.specialty ||
+            "",
           crm: profileData.crm || profileData.doctor_profile?.crm || "",
-          crmState: profileData.crm_state || profileData.doctor_profile?.crm_state || "",
-          signatureImageUrl: profileData.signature_image_url || profileData.doctor_profile?.signature_url || "",
+          crmState:
+            profileData.crm_state ||
+            profileData.doctor_profile?.crm_state ||
+            "",
+          signatureImageUrl:
+            profileData.signature_image_url ||
+            profileData.doctor_profile?.signature_url ||
+            "",
           userType: profileData.profile,
           isDoctor: profileData.is_doctor || false,
         });

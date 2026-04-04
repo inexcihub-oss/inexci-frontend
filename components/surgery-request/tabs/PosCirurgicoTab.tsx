@@ -210,7 +210,9 @@ export function PosCirurgicoTab({
               <div className="w-px bg-neutral-100 self-stretch" />
               {/* Horário */}
               <div className="flex-1 flex flex-col items-center gap-2 px-6 py-5 bg-neutral-50">
-                <span className="text-xs md:text-sm text-black/50">Horário</span>
+                <span className="text-xs md:text-sm text-black/50">
+                  Horário
+                </span>
                 <span className="text-2xl font-bold text-black">
                   {formatTime(performedAt)}
                 </span>

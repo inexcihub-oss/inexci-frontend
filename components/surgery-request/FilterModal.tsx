@@ -188,7 +188,9 @@ function CollapsibleSection({
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between mb-4"
       >
-        <span className="text-xs md:text-sm font-semibold text-neutral-900">{title}</span>
+        <span className="text-xs md:text-sm font-semibold text-neutral-900">
+          {title}
+        </span>
         <Image
           src="/icons/chevron-right.svg"
           alt={open ? "Fechar" : "Abrir"}
@@ -237,7 +239,9 @@ function CheckboxItem({ label, checked, onChange }: CheckboxItemProps) {
           </svg>
         )}
       </div>
-      <span className="text-xs md:text-sm text-neutral-700 leading-tight">{label}</span>
+      <span className="text-xs md:text-sm text-neutral-700 leading-tight">
+        {label}
+      </span>
     </button>
   );
 }
