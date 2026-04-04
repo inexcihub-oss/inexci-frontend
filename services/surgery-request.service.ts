@@ -499,6 +499,11 @@ export const surgeryRequestService = {
     return response.data;
   },
 
+  /** Deleta um template de solicitação */
+  async deleteTemplate(id: string): Promise<void> {
+    await api.delete(`/surgery-requests/templates/${id}`);
+  },
+
   // ── Atividades ────────────────────────────────────────────────────────────
 
   /** Busca o histórico de atividades e comentários de uma solicitação */
