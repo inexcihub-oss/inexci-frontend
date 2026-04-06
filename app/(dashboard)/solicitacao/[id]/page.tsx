@@ -415,10 +415,10 @@ export default function SolicitacaoDetalhePage() {
   // Status antes de REALIZADA (6) — exibem modal de notificação
   const isPreRealizadaStatus = (status: number) => status < 6;
 
-  // Intercepta ação para exibir modal de notificação (apenas pré-REALIZADA)
+  // Intercepta ação para exibir modal de notificação (apenas pré-REALIZADA, exceto surgeryStatus)
   const interceptWithNotification = (action: string) => {
     const statusNum = solicitacao?.status ?? 0;
-    if (isPreRealizadaStatus(statusNum)) {
+    if (isPreRealizadaStatus(statusNum) && action !== "surgeryStatus") {
       setPendingAction(action);
       setIsNotificationModalOpen(true);
     } else {

@@ -254,10 +254,17 @@ export function SurgeryStatusModal({
     setIsSaving(true);
     try {
       const allFiles = sections.flatMap((s) =>
-        s.files.map((f) => ({ ...f, sectionKey: s.key })),
+        s.files.map((f, idx) => {
+          const ext = f.file.name.match(/(\.[^.]+)$/)?.[1] ?? "";
+          const docName =
+            s.files.length > 1
+              ? `${s.label} ${idx + 1}${ext}`
+              : `${s.label}${ext}`;
+          return { ...f, sectionKey: s.key, docName };
+        }),
       );
 
-      for (const { id, file, sectionKey } of allFiles) {
+      for (const { id, file, sectionKey, docName } of allFiles) {
         setSections((prev) =>
           prev.map((s) =>
             s.key === sectionKey
@@ -274,7 +281,7 @@ export function SurgeryStatusModal({
         await documentService.upload({
           surgery_request_id: solicitacao.id,
           key: sectionKey,
-          name: file.name,
+          name: docName,
           file,
           folder: DOCUMENT_FOLDERS.POST_SURGERY,
           onUploadProgress: (pct) => {
