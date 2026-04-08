@@ -146,3 +146,79 @@ export function normalizeForSearch(text: string): string {
 export function includesIgnoreCase(text: string, search: string): boolean {
   return normalizeForSearch(text).includes(normalizeForSearch(search));
 }
+
+/**
+ * Processa um File de imagem, remove o fundo (amostrado nos 4 cantos) e
+ * retorna um novo File PNG com o fundo transparente.
+ */
+export function removeBackground(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        const { width, height } = canvas;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        function cornerColor(x: number, y: number): [number, number, number] {
+          const idx = (y * width + x) * 4;
+          return [data[idx], data[idx + 1], data[idx + 2]];
+        }
+        const corners = [
+          cornerColor(0, 0),
+          cornerColor(width - 1, 0),
+          cornerColor(0, height - 1),
+          cornerColor(width - 1, height - 1),
+        ];
+        const bgR = corners.reduce((s, c) => s + c[0], 0) / 4;
+        const bgG = corners.reduce((s, c) => s + c[1], 0) / 4;
+        const bgB = corners.reduce((s, c) => s + c[2], 0) / 4;
+
+        const tolerance = 40;
+        const softRange = 20;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const dr = data[i] - bgR;
+          const dg = data[i + 1] - bgG;
+          const db = data[i + 2] - bgB;
+          const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+          if (dist <= tolerance) {
+            data[i + 3] = 0;
+          } else if (dist <= tolerance + softRange) {
+            data[i + 3] = Math.round(
+              ((dist - tolerance) / softRange) * data[i + 3],
+            );
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const baseName = file.name.replace(/\.[^.]+$/, "");
+          resolve(new File([blob], `${baseName}.png`, { type: "image/png" }));
+        }, "image/png");
+      } catch {
+        resolve(file);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}

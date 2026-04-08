@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { userService } from "@/services/user.service";
 import { notificationService } from "@/services/notification.service";
+import { uploadService } from "@/services/upload.service";
+import { removeBackground } from "@/lib/utils";
 import { UserProfiles } from "@/types";
 import {
   User,
@@ -247,6 +249,7 @@ export default function ConfiguracoesPage() {
   });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
@@ -421,18 +424,43 @@ export default function ConfiguracoesPage() {
     }
   };
 
-  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        showToast("A assinatura deve ter no máximo 2MB", "error");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSignaturePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  const handleSignatureChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
+    if (rawFile.size > 2 * 1024 * 1024) {
+      showToast("A assinatura deve ter no máximo 2MB", "error");
+      return;
+    }
+    setIsUploadingSignature(true);
+    try {
+      const file = await removeBackground(rawFile);
+      const result = await uploadService.uploadSingle(file, "signatures");
+      const { url: signedUrl, path } = result.data;
+      await userService.updateProfile({ signature_url: path });
+      setSignaturePreview(signedUrl);
+      await updateUser();
+      showToast("Assinatura salva com sucesso", "success");
+    } catch {
+      showToast("Erro ao salvar assinatura", "error");
+    } finally {
+      setIsUploadingSignature(false);
+      if (signatureInputRef.current) signatureInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteSignature = async () => {
+    setIsUploadingSignature(true);
+    try {
+      await userService.updateProfile({ signature_url: undefined });
+      setSignaturePreview(null);
+      await updateUser();
+      showToast("Assinatura removida", "success");
+    } catch {
+      showToast("Erro ao remover assinatura", "error");
+    } finally {
+      setIsUploadingSignature(false);
     }
   };
 
@@ -450,7 +478,6 @@ export default function ConfiguracoesPage() {
         crm: profile.crm || undefined,
         crm_state: profile.crmState || undefined,
         avatar_url: avatarPreview || undefined,
-        signature_url: signaturePreview || undefined,
       });
       await updateUser();
       showToast("Perfil atualizado com sucesso!", "success");
@@ -755,46 +782,58 @@ export default function ConfiguracoesPage() {
               </p>
             </CardHeader>
             <CardContent className="p-6 pt-0">
-              <div
-                onClick={() => signatureInputRef.current?.click()}
-                className={cn(
-                  "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
-                  signaturePreview
-                    ? "border-primary-300 bg-primary-50"
-                    : "border-gray-300 hover:border-primary-400 hover:bg-gray-50",
-                )}
-              >
-                {signaturePreview ? (
-                  <div className="relative">
-                    <Image
-                      src={signaturePreview}
-                      alt="Assinatura"
-                      width={300}
-                      height={100}
-                      className="mx-auto object-contain"
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSignaturePreview(null);
-                      }}
-                      className="absolute top-0 right-0 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-gray-700">
-                      Clique para fazer upload da assinatura
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      PNG ou JPG com fundo transparente. Máximo 2MB.
-                    </p>
-                  </>
-                )}
-              </div>
+              {isUploadingSignature ? (
+                <div className="flex items-center justify-center gap-3 border-2 border-dashed border-gray-300 rounded-xl p-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+                  <p className="text-sm text-gray-500">
+                    Processando assinatura...
+                  </p>
+                </div>
+              ) : (
+                <div
+                  onClick={() =>
+                    !isUploadingSignature && signatureInputRef.current?.click()
+                  }
+                  className={cn(
+                    "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
+                    signaturePreview
+                      ? "border-primary-300 bg-primary-50"
+                      : "border-gray-300 hover:border-primary-400 hover:bg-gray-50",
+                  )}
+                >
+                  {signaturePreview ? (
+                    <div className="relative">
+                      <Image
+                        src={signaturePreview}
+                        alt="Assinatura"
+                        width={300}
+                        height={100}
+                        className="mx-auto object-contain"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSignature();
+                        }}
+                        className="absolute top-0 right-0 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm font-medium text-gray-700">
+                        Clique para fazer upload da assinatura
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        PNG ou JPG. O fundo será removido automaticamente.
+                        Máximo 2MB.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
               <input
                 ref={signatureInputRef}
                 type="file"

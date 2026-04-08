@@ -12,9 +12,9 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
   // Dados/Informações
   patient_data: {
     type: "scroll",
-    target: "patient-section",
+    target: "laudo-patient-identification",
     label: "Completar dados",
-    description: "Ir para seção do paciente",
+    description: "Ir para identificação do paciente no laudo",
   },
   hospital_data: {
     type: "scroll",

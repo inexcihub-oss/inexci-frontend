@@ -39,6 +39,7 @@ import { PosCirurgicoTab } from "@/components/surgery-request/tabs/PosCirurgicoT
 import { FaturamentoTab } from "@/components/surgery-request/tabs/FaturamentoTab";
 import { CloseRequestModal } from "@/components/surgery-request/modals/CloseRequestModal";
 import { NotificationConfirmModal } from "@/components/surgery-request/modals/NotificationConfirmModal";
+import { getPendencyAction } from "@/lib/pendency-navigation";
 
 type TabType =
   | "informacoes-gerais"
@@ -377,7 +378,7 @@ export default function SolicitacaoDetalhePage() {
 
   // Mapeamento: chave de pendência → aba
   const pendencyKeyToTab: Partial<Record<string, TabType>> = {
-    patient_data: "informacoes-gerais",
+    patient_data: "laudo",
     hospital_data: "informacoes-gerais",
     health_plan_data: "informacoes-gerais",
     diagnosis_data: "informacoes-gerais",
@@ -410,6 +411,21 @@ export default function SolicitacaoDetalhePage() {
     highlightTimerRef.current = setTimeout(() => {
       setHighlightedPendency(null);
     }, 5000);
+
+    // Rolar para o elemento após a aba ser renderizada
+    const action = getPendencyAction(key);
+    if (action?.type === "scroll" && action.target) {
+      setTimeout(() => {
+        const el = document.getElementById(action.target);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          el.classList.add("ring-2", "ring-primary-500", "ring-offset-2");
+          setTimeout(() => {
+            el.classList.remove("ring-2", "ring-primary-500", "ring-offset-2");
+          }, 2000);
+        }
+      }, 150);
+    }
   };
 
   // Status antes de REALIZADA (6) — exibem modal de notificação

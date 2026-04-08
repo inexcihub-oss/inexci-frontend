@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ["localhost"],
+    domains: ["localhost", "nuxgxpsofrcaumfvhqbh.supabase.co"],
   },
   // Necessário para builds standalone do Docker
   output: "standalone",
