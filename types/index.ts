@@ -23,6 +23,7 @@ export interface User {
   phone?: string;
   role: "admin" | "collaborator";
   account_id: string;
+  avatar_url?: string | null;
   is_doctor: boolean;
   doctor_profile?: DoctorProfile;
   subscription_plan_id?: string;

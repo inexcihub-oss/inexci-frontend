@@ -220,6 +220,7 @@ export default function ConfiguracoesPage() {
     crmState: "",
   });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [isUploadingSignature, setIsUploadingSignature] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -272,10 +273,30 @@ export default function ConfiguracoesPage() {
           isDoctor: profileData.is_doctor || false,
         });
         if (profileData.avatar_url) {
-          setAvatarPreview(profileData.avatar_url);
+          const url = profileData.avatar_url;
+          if (url.startsWith("http://") || url.startsWith("https://")) {
+            setAvatarPreview(url);
+          } else {
+            try {
+              const signedUrl = await uploadService.getSignedUrl(url);
+              setAvatarPreview(signedUrl);
+            } catch {
+              // ignora erro de URL assinada
+            }
+          }
         }
         if (dp?.signature_url) {
-          setSignaturePreview(dp.signature_url);
+          const sUrl = dp.signature_url;
+          if (sUrl.startsWith("http://") || sUrl.startsWith("https://")) {
+            setSignaturePreview(sUrl);
+          } else {
+            try {
+              const signedUrl = await uploadService.getSignedUrl(sUrl);
+              setSignaturePreview(signedUrl);
+            } catch {
+              // ignora erro de URL assinada
+            }
+          }
         }
       } catch (error) {
         console.error("Erro ao carregar perfil:", error);
@@ -355,6 +376,7 @@ export default function ConfiguracoesPage() {
         showToast("A imagem deve ter no máximo 5MB", "error");
         return;
       }
+      setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
@@ -407,14 +429,32 @@ export default function ConfiguracoesPage() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      // 1. Salvar dados básicos do perfil
+      // 1. Se há novo avatar, fazer upload primeiro
+      let avatarUrl: string | undefined = undefined;
+      if (avatarFile) {
+        try {
+          const result = await uploadService.uploadSingle(
+            avatarFile,
+            "avatars",
+          );
+          avatarUrl = result.data.path;
+        } catch {
+          showToast("Erro ao fazer upload do avatar", "error");
+          setSaving(false);
+          return;
+        }
+      }
+
+      // 2. Salvar dados básicos do perfil
       await userService.updateProfile({
         name: profile.name,
         phone: profile.phone || undefined,
         document: profile.document || undefined,
         birth_date: profile.birthDate || undefined,
         gender: profile.gender || undefined,
-        avatar_url: avatarPreview || undefined,
+        ...(avatarFile
+          ? { avatar_url: avatarUrl }
+          : { avatar_url: avatarPreview ? undefined : null }),
       });
 
       // 2. Se é médico e tem doctor_profile, salvar dados profissionais
@@ -427,6 +467,7 @@ export default function ConfiguracoesPage() {
       }
 
       await updateUser();
+      setAvatarFile(null);
       showToast("Perfil atualizado com sucesso!", "success");
     } catch (error: unknown) {
       showToast(getApiErrorMessage(error, "Erro ao atualizar perfil"), "error");
@@ -552,7 +593,10 @@ export default function ConfiguracoesPage() {
                     variant="ghost"
                     size="sm"
                     className="ml-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => setAvatarPreview(null)}
+                    onClick={() => {
+                      setAvatarPreview(null);
+                      setAvatarFile(null);
+                    }}
                   >
                     <X className="w-4 h-4 mr-2" />
                     Remover

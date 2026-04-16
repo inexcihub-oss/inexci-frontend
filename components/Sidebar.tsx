@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
 import { getInitials, getDisplayName, getAvatarColor } from "@/lib/utils";
+import { uploadService } from "@/services/upload.service";
 
 interface MenuItem {
   iconSrc: string;
@@ -56,6 +57,24 @@ export default function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, isAdmin } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // Resolve signed URL when user.avatar_url changes
+  useEffect(() => {
+    const raw = user?.avatar_url;
+    if (!raw) {
+      setAvatarUrl(null);
+      return;
+    }
+    if (raw.startsWith("http://") || raw.startsWith("https://")) {
+      setAvatarUrl(raw);
+    } else {
+      uploadService
+        .getSignedUrl(raw)
+        .then(setAvatarUrl)
+        .catch(() => setAvatarUrl(null));
+    }
+  }, [user?.avatar_url]);
 
   // Filtrar itens do menu com base nas permissões do usuário
   const menuItems = allMenuItems.filter((item) => {
@@ -248,12 +267,20 @@ export default function Sidebar({
           >
             {/* Avatar or Initials */}
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs md:text-sm font-semibold overflow-hidden shrink-0 ${getAvatarColor(
-                user?.name || "User",
-              )}`}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs md:text-sm font-semibold overflow-hidden shrink-0 ${!avatarUrl ? getAvatarColor(user?.name || "User") : ""}`}
               title={isCollapsed ? user?.name || "Usuário" : undefined}
             >
-              {getInitials(user?.name || "User")}
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt={user?.name || "Avatar"}
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                getInitials(user?.name || "User")
+              )}
             </div>
             <div
               className={`flex-1 flex flex-col min-w-0 ${

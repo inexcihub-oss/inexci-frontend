@@ -122,13 +122,12 @@ export function NewCollaboratorModal({
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone || undefined,
+        is_doctor: formData.is_doctor || undefined,
         ...(formData.is_doctor &&
           formData.crm.trim() && {
-            doctor_profile: {
-              crm: formData.crm.trim(),
-              crm_state: formData.crm_state,
-              specialty: formData.specialty.trim() || undefined,
-            },
+            crm: formData.crm.trim(),
+            crm_state: formData.crm_state,
+            specialty: formData.specialty.trim() || undefined,
           }),
       };
 

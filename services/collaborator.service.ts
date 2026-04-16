@@ -10,6 +10,13 @@ export interface Collaborator {
   gender?: string;
   birthDate?: string;
   document?: string;
+  cep?: string;
+  address?: string;
+  address_number?: string;
+  address_complement?: string;
+  city?: string;
+  state?: string;
+  status?: string;
   is_doctor?: boolean;
   doctor_profile?: DoctorProfile;
   createdAt: string;
@@ -20,6 +27,13 @@ export interface Doctor extends DoctorSummary {
   gender?: string;
   birthDate?: string;
   document?: string;
+  cep?: string;
+  address?: string;
+  address_number?: string;
+  address_complement?: string;
+  city?: string;
+  state?: string;
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,11 +42,10 @@ export interface CreateCollaboratorPayload {
   name: string;
   email: string;
   phone?: string;
-  doctor_profile?: {
-    crm: string;
-    crm_state: string;
-    specialty?: string;
-  };
+  is_doctor?: boolean;
+  crm?: string;
+  crm_state?: string;
+  specialty?: string;
 }
 
 interface BackendUserRecord {
@@ -43,6 +56,13 @@ interface BackendUserRecord {
   gender?: string;
   birth_date?: string;
   cpf?: string;
+  cep?: string;
+  address?: string;
+  address_number?: string;
+  address_complement?: string;
+  city?: string;
+  state?: string;
+  status?: string;
   is_doctor?: boolean;
   doctor_profile?: DoctorProfile;
   created_at: string;
@@ -58,6 +78,13 @@ function toCollaborator(user: BackendUserRecord): Collaborator {
     gender: user.gender,
     birthDate: user.birth_date,
     document: user.cpf,
+    cep: user.cep,
+    address: user.address,
+    address_number: user.address_number,
+    address_complement: user.address_complement,
+    city: user.city,
+    state: user.state,
+    status: user.status,
     is_doctor: user.is_doctor || false,
     doctor_profile: user.doctor_profile || undefined,
     createdAt: user.created_at,
@@ -74,6 +101,13 @@ function toDoctor(user: BackendUserRecord): Doctor {
     gender: user.gender,
     birthDate: user.birth_date,
     document: user.cpf,
+    cep: user.cep,
+    address: user.address,
+    address_number: user.address_number,
+    address_complement: user.address_complement,
+    city: user.city,
+    state: user.state,
+    status: user.status,
     doctor_profile: user.doctor_profile || undefined,
     createdAt: user.created_at,
     updatedAt: user.updated_at,
@@ -135,9 +169,39 @@ export const collaboratorService = {
       gender?: string;
       birth_date?: string;
       cpf?: string;
+      cep?: string;
+      address?: string;
+      address_number?: string;
+      address_complement?: string;
+      city?: string;
+      state?: string;
     },
   ): Promise<Collaborator> {
     const response = await api.patch(`/users/${userId}`, payload);
+    return response.data;
+  },
+
+  /**
+   * Alterna o status ativo/inativo de um colaborador
+   */
+  async toggleStatus(collaboratorId: string): Promise<{ status: string }> {
+    const response = await api.patch(
+      `/users/collaborators/${collaboratorId}/status`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Redefine a senha de um colaborador
+   */
+  async resetPassword(
+    collaboratorId: string,
+    password: string,
+  ): Promise<{ message: string }> {
+    const response = await api.patch(
+      `/users/collaborators/${collaboratorId}/reset-password`,
+      { password },
+    );
     return response.data;
   },
 

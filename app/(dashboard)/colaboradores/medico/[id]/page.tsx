@@ -17,6 +17,7 @@ import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { ChevronRight, Clock } from "lucide-react";
 import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
+import { CollaboratorActionsSection } from "@/components/colaboradores/CollaboratorActionsSection";
 
 export default function MedicoDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -24,6 +25,9 @@ export default function MedicoDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [doctor, setDoctor] = useState<Doctor | null>(null);
+  const [collaboratorStatus, setCollaboratorStatus] = useState<
+    string | undefined
+  >(undefined);
   const [recentRequests, setRecentRequests] = useState<
     Array<{ id: string; patientName: string; procedure: string; time: string }>
   >([]);
@@ -41,8 +45,12 @@ export default function MedicoDetalhePage() {
     gender: "",
     birth_date: "",
     cpf: "",
-    country: "Brasil",
+    cep: "",
+    address: "",
+    address_number: "",
+    address_complement: "",
     city: "",
+    state: "",
   });
   const [originalData, setOriginalData] = useState<typeof formData | null>(
     null,
@@ -68,10 +76,11 @@ export default function MedicoDetalhePage() {
       }
 
       setDoctor(doc);
+      setCollaboratorStatus(doc.status);
 
       const dp = doc.doctor_profile;
       // Preenche o formulário
-      setFormData({
+      const fd = {
         name: doc.name || "",
         email: doc.email || "",
         phone: doc.phone || "",
@@ -81,22 +90,15 @@ export default function MedicoDetalhePage() {
         gender: doc.gender || "",
         birth_date: doc.birthDate || "",
         cpf: doc.document || "",
-        country: "Brasil",
-        city: "",
-      });
-      setOriginalData({
-        name: doc.name || "",
-        email: doc.email || "",
-        phone: doc.phone || "",
-        specialty: dp?.specialty || "",
-        crm: dp?.crm || "",
-        crmState: dp?.crm_state || "",
-        gender: doc.gender || "",
-        birth_date: doc.birthDate || "",
-        cpf: doc.document || "",
-        country: "Brasil",
-        city: "",
-      });
+        cep: doc.cep || "",
+        address: doc.address || "",
+        address_number: doc.address_number || "",
+        address_complement: doc.address_complement || "",
+        city: doc.city || "",
+        state: doc.state || "",
+      };
+      setFormData(fd);
+      setOriginalData(fd);
     } catch (error) {
       console.error("Erro ao carregar médico:", error);
     } finally {
@@ -146,6 +148,12 @@ export default function MedicoDetalhePage() {
         gender: formData.gender,
         birth_date: formData.birth_date || undefined,
         cpf: formData.cpf || undefined,
+        cep: formData.cep || undefined,
+        address: formData.address || undefined,
+        address_number: formData.address_number || undefined,
+        address_complement: formData.address_complement || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
       });
 
       // 2. Salvar dados profissionais (CRM, specialty, crm_state)
@@ -330,11 +338,31 @@ export default function MedicoDetalhePage() {
       >
         {/* Seção: Informações pessoais */}
         <FormSection title="Informações pessoais">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
             <Input
               label="Nome completo"
               value={formData.name}
               onChange={(e) => handleInputChange("name", e.target.value)}
+            />
+            <Input
+              label="E-mail"
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleInputChange("email", e.target.value)}
+            />
+            <Input
+              label="Telefone"
+              value={formatPhone(formData.phone)}
+              onChange={(e) =>
+                handleInputChange("phone", e.target.value.replace(/\D/g, ""))
+              }
+              placeholder="(00) 00000-0000"
+            />
+            <Input
+              label="CPF"
+              value={formData.cpf}
+              onChange={(e) => handleInputChange("cpf", e.target.value)}
+              placeholder="000.000.000-00"
             />
             <Select
               label="Gênero"
@@ -348,18 +376,40 @@ export default function MedicoDetalhePage() {
               value={formData.birth_date}
               onChange={(e) => handleInputChange("birth_date", e.target.value)}
             />
+            <div className="sm:col-span-2">
+              <Select
+                label="Especialidade"
+                value={formData.specialty}
+                onChange={(e) => handleInputChange("specialty", e.target.value)}
+                options={specialtyOptions}
+              />
+            </div>
             <Input
-              label="Telefone"
-              value={formatPhone(formData.phone)}
-              onChange={(e) =>
-                handleInputChange("phone", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="(00) 00000-0000"
+              label="Endereço"
+              value={formData.address}
+              onChange={(e) => handleInputChange("address", e.target.value)}
+              placeholder="Rua, Avenida..."
             />
             <Input
-              label="País"
-              value={formData.country}
-              onChange={(e) => handleInputChange("country", e.target.value)}
+              label="CEP"
+              value={formData.cep}
+              onChange={(e) => handleInputChange("cep", e.target.value)}
+              placeholder="00000-000"
+            />
+            <Input
+              label="Número"
+              value={formData.address_number}
+              onChange={(e) =>
+                handleInputChange("address_number", e.target.value)
+              }
+            />
+            <Input
+              label="Complemento"
+              value={formData.address_complement}
+              onChange={(e) =>
+                handleInputChange("address_complement", e.target.value)
+              }
+              placeholder="Apto, sala..."
             />
             <Input
               label="Cidade"
@@ -367,16 +417,10 @@ export default function MedicoDetalhePage() {
               onChange={(e) => handleInputChange("city", e.target.value)}
             />
             <Input
-              label="E-mail"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-            />
-            <Select
-              label="Especialidade"
-              value={formData.specialty}
-              onChange={(e) => handleInputChange("specialty", e.target.value)}
-              options={specialtyOptions}
+              label="Estado"
+              value={formData.state}
+              onChange={(e) => handleInputChange("state", e.target.value)}
+              placeholder="UF"
             />
           </div>
         </FormSection>
@@ -397,6 +441,15 @@ export default function MedicoDetalhePage() {
               options={crmStateOptions}
             />
           </div>
+          {/* Botões dentro da seção */}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={handleCancel}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} isLoading={saving} disabled={!isDirty}>
+              Salvar alterações
+            </Button>
+          </div>
         </FormSection>
 
         {/* Seção: Horários de trabalho — Em breve */}
@@ -414,15 +467,12 @@ export default function MedicoDetalhePage() {
         {/* Seção: Acesso a Outros Médicos */}
         <DoctorAccessSection collaboratorId={params.id} />
 
-        {/* Botão de salvar */}
-        <div className="flex justify-end gap-3 pt-4">
-          <Button variant="outline" onClick={handleCancel}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} isLoading={saving} disabled={!isDirty}>
-            Salvar alterações
-          </Button>
-        </div>
+        {/* Seção: Acesso e Segurança */}
+        <CollaboratorActionsSection
+          collaboratorId={params.id}
+          currentStatus={collaboratorStatus}
+          onStatusChange={setCollaboratorStatus}
+        />
       </DetailPageLayout>
       {toast && (
         <Toast

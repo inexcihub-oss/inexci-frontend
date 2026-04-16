@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { FormSection } from "@/components/details";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
@@ -10,12 +10,192 @@ import { AvailableDoctor, UserDoctorAccess } from "@/types";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
-import { Check, Stethoscope } from "lucide-react";
+import { Stethoscope } from "lucide-react";
 
 interface DoctorAccessSectionProps {
   collaboratorId: string;
 }
 
+// ── SearchableMultiSelect ────────────────────────────────────────────────────
+interface SearchableMultiSelectProps {
+  options: AvailableDoctor[];
+  selected: string[];
+  onToggle: (id: string) => void;
+  placeholder?: string;
+}
+
+function SearchableMultiSelect({
+  options,
+  selected,
+  onToggle,
+  placeholder = "Buscar médico...",
+}: SearchableMultiSelectProps) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = useMemo(
+    () =>
+      options.filter(
+        (o) =>
+          !selected.includes(o.id) &&
+          o.name.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [options, query, selected],
+  );
+
+  const selectedOptions = useMemo(
+    () => options.filter((o) => selected.includes(o.id)),
+    [options, selected],
+  );
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Input trigger */}
+      <div
+        className={`flex items-center gap-2 min-h-10 px-3 py-2 border rounded-xl cursor-text transition-colors ${
+          open
+            ? "border-teal-600 ring-1 ring-teal-600/20"
+            : "border-neutral-200 hover:border-neutral-300"
+        }`}
+        onClick={() => setOpen(true)}
+      >
+        <svg
+          className="w-4 h-4 text-neutral-400 flex-shrink-0"
+          viewBox="0 0 16 16"
+          fill="none"
+        >
+          <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
+          <path
+            d="M11 11l3 3"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder={selected.length === 0 ? placeholder : ""}
+          className="flex-1 text-sm outline-none bg-transparent text-neutral-700 placeholder:text-neutral-400"
+        />
+        {selected.length > 0 && (
+          <span className="flex-shrink-0 text-xs font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
+            {selected.length} selecionado{selected.length > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      {/* Tags dos selecionados */}
+      {selectedOptions.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {selectedOptions.map((opt) => (
+            <span
+              key={opt.id}
+              className="inline-flex items-center gap-1 text-xs bg-teal-50 text-teal-700 border border-teal-200 rounded-full pl-2.5 pr-1.5 py-1"
+            >
+              {opt.name}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggle(opt.id);
+                }}
+                className="w-3.5 h-3.5 flex items-center justify-center rounded-full hover:bg-teal-200 transition-colors"
+              >
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <path
+                    d="M7 1L1 7M1 1l6 6"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="text-sm text-neutral-400 text-center py-4">
+              Nenhum resultado
+            </p>
+          ) : (
+            filtered.map((opt) => {
+              const isChecked = selected.includes(opt.id);
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => onToggle(opt.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-neutral-50 transition-colors text-left"
+                >
+                  <div
+                    className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center transition-colors ${
+                      isChecked
+                        ? "bg-teal-700 border-teal-700"
+                        : "border-neutral-300 bg-white"
+                    }`}
+                  >
+                    {isChecked && (
+                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                        <path
+                          d="M1 3.5L3.5 6L8 1"
+                          stroke="white"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-neutral-700 leading-tight truncate">
+                      {opt.name}
+                    </p>
+                    {(opt.crm || opt.specialty) && (
+                      <p className="text-xs text-neutral-400 truncate">
+                        {opt.crm
+                          ? `CRM ${opt.crm}${opt.crm_state ? `/${opt.crm_state}` : ""}`
+                          : ""}
+                        {opt.crm && opt.specialty ? " · " : ""}
+                        {opt.specialty ?? ""}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── DoctorAccessSection ──────────────────────────────────────────────────────
 export function DoctorAccessSection({
   collaboratorId,
 }: DoctorAccessSectionProps) {
@@ -23,17 +203,13 @@ export function DoctorAccessSection({
   const [saving, setSaving] = useState(false);
   const [accountDoctors, setAccountDoctors] = useState<AvailableDoctor[]>([]);
   const [_currentAccess, setCurrentAccess] = useState<UserDoctorAccess[]>([]);
-  const [selectedDoctorIds, setSelectedDoctorIds] = useState<Set<string>>(
-    new Set(),
-  );
-  const [originalSelectedIds, setOriginalSelectedIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
+  const [originalSelectedIds, setOriginalSelectedIds] = useState<string[]>([]);
   const { toast, showToast, hideToast } = useToast();
 
   const isDirty =
-    selectedDoctorIds.size !== originalSelectedIds.size ||
-    [...selectedDoctorIds].some((id) => !originalSelectedIds.has(id));
+    selectedDoctorIds.length !== originalSelectedIds.length ||
+    selectedDoctorIds.some((id) => !originalSelectedIds.includes(id));
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -46,13 +222,12 @@ export function DoctorAccessSection({
       setAccountDoctors(doctors);
       setCurrentAccess(access);
 
-      const activeIds = new Set(
-        access
-          .filter((a) => a.status === "active")
-          .map((a) => a.doctor_user_id),
-      );
+      const activeIds = access
+        .filter((a) => a.status === "active")
+        .map((a) => a.doctor_user_id);
+
       setSelectedDoctorIds(activeIds);
-      setOriginalSelectedIds(new Set(activeIds));
+      setOriginalSelectedIds(activeIds);
     } catch (error) {
       console.error("Erro ao carregar dados de acesso:", error);
       showToast("Erro ao carregar dados de acesso a médicos.", "error");
@@ -66,24 +241,21 @@ export function DoctorAccessSection({
   }, [loadData]);
 
   const toggleDoctor = (doctorId: string) => {
-    setSelectedDoctorIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(doctorId)) {
-        next.delete(doctorId);
-      } else {
-        next.add(doctorId);
-      }
-      return next;
-    });
+    setSelectedDoctorIds((prev) =>
+      prev.includes(doctorId)
+        ? prev.filter((id) => id !== doctorId)
+        : [...prev, doctorId],
+    );
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await userDoctorAccessService.setAccessForUser(collaboratorId, [
-        ...selectedDoctorIds,
-      ]);
-      setOriginalSelectedIds(new Set(selectedDoctorIds));
+      await userDoctorAccessService.setAccessForUser(
+        collaboratorId,
+        selectedDoctorIds,
+      );
+      setOriginalSelectedIds([...selectedDoctorIds]);
       showToast("Acessos atualizados com sucesso!", "success");
     } catch (error) {
       console.error("Erro ao salvar acessos:", error);
@@ -127,65 +299,13 @@ export function DoctorAccessSection({
           visualizar e gerenciar.
         </p>
 
-        <div className="space-y-2">
-          {accountDoctors.map((doctor) => {
-            const isSelected = selectedDoctorIds.has(doctor.id);
-            return (
-              <button
-                key={doctor.id}
-                type="button"
-                onClick={() => toggleDoctor(doctor.id)}
-                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left min-h-[56px] active:scale-[0.99] ${
-                  isSelected
-                    ? "border-primary-300 bg-primary-50"
-                    : "border-gray-200 bg-white hover:bg-gray-50"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-semibold ${
-                      isSelected
-                        ? "bg-primary-200 text-primary-800"
-                        : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    {doctor.name
-                      .split(" ")
-                      .slice(0, 2)
-                      .map((p) => p[0])
-                      .join("")
-                      .toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {doctor.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {doctor.crm
-                        ? `CRM ${doctor.crm}/${doctor.crm_state}`
-                        : ""}
-                      {doctor.specialty
-                        ? `${doctor.crm ? " · " : ""}${doctor.specialty}`
-                        : ""}
-                    </p>
-                  </div>
-                </div>
+        <SearchableMultiSelect
+          options={accountDoctors}
+          selected={selectedDoctorIds}
+          onToggle={toggleDoctor}
+          placeholder="Buscar médico..."
+        />
 
-                <div
-                  className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
-                    isSelected
-                      ? "bg-primary-600 border-primary-600"
-                      : "border-gray-300"
-                  }`}
-                >
-                  {isSelected && <Check className="w-3 h-3 text-white" />}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Botão salvar acessos */}
         <div className="flex justify-end pt-4">
           <Button onClick={handleSave} isLoading={saving} disabled={!isDirty}>
             Salvar acessos
