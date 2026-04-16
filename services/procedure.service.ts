@@ -12,6 +12,10 @@ export interface CreateProcedurePayload {
   name: string;
 }
 
+export interface UpdateProcedurePayload {
+  name?: string;
+}
+
 export const procedureService = {
   /**
    * Busca todos os procedimentos
@@ -29,10 +33,10 @@ export const procedureService = {
   },
 
   /**
-   * Busca um procedimento específico por ID
+   * Busca um procedimento por ID
    */
-  async getById(procedureId: string): Promise<Procedure> {
-    const response = await api.get(`/procedures/${procedureId}`);
+  async getById(id: string): Promise<Procedure> {
+    const response = await api.get(`/procedures/${id}`);
     return response.data;
   },
 
@@ -48,17 +52,17 @@ export const procedureService = {
    * Atualiza um procedimento
    */
   async update(
-    procedureId: string,
-    payload: Partial<CreateProcedurePayload>,
+    id: string,
+    payload: UpdateProcedurePayload,
   ): Promise<Procedure> {
-    const response = await api.patch(`/procedures/${procedureId}`, payload);
+    const response = await api.patch(`/procedures/${id}`, payload);
     return response.data;
   },
 
   /**
-   * Deleta um procedimento
+   * Exclui um procedimento
    */
-  async delete(procedureId: string): Promise<void> {
-    await api.delete(`/procedures/${procedureId}`);
+  async delete(id: string): Promise<void> {
+    await api.delete(`/procedures/${id}`);
   },
 };

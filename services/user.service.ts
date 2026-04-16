@@ -1,6 +1,7 @@
 import api from "@/lib/api";
 import { isUnauthorizedError } from "@/lib/http-error";
 import { DoctorProfile, User } from "@/types";
+import { uploadService } from "@/services/upload.service";
 
 /**
  * Resposta do endpoint /users/profile.
@@ -54,7 +55,7 @@ export const userService = {
    * Busca um usuário específico por ID
    */
   async getById(userId: string): Promise<User> {
-    const response = await api.get(`/users/${userId}`);
+    const response = await api.get("/users/one", { params: { id: userId } });
     return response.data;
   },
 
@@ -91,5 +92,16 @@ export const userService = {
       data,
     );
     return response.data;
+  },
+
+  /**
+   * Faz upload de foto de perfil e atualiza o avatar_url no perfil do usuário.
+   * @param file Arquivo de imagem selecionado pelo usuário
+   * @returns O perfil atualizado com a nova avatar_url
+   */
+  async uploadAvatar(file: File): Promise<UserProfileResponse> {
+    const uploadResponse = await uploadService.uploadSingle(file, "avatars");
+    const avatarUrl = uploadResponse.data.url;
+    return this.updateProfile({ avatar_url: avatarUrl });
   },
 };

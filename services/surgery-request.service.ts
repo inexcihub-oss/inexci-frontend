@@ -671,6 +671,26 @@ export const surgeryRequestService = {
     await api.delete(`/surgery-requests/templates/${id}`);
   },
 
+  // ── Downloads de PDF ────────────────────────────────────────────────────
+
+  async downloadReportPdf(requestId: string | number): Promise<Blob> {
+    const response = await api.get(
+      `/surgery-requests/${requestId}/report-pdf`,
+      { responseType: "arraybuffer" },
+    );
+    return new Blob([response.data], { type: "application/pdf" });
+  },
+
+  async downloadContestAuthorizationPdf(
+    requestId: string | number,
+  ): Promise<Blob> {
+    const response = await api.get(
+      `/surgery-requests/${requestId}/contest-authorization-pdf`,
+      { responseType: "arraybuffer" },
+    );
+    return new Blob([response.data], { type: "application/pdf" });
+  },
+
   // ── Atividades ────────────────────────────────────────────────────────────
 
   /** Busca o histórico de atividades e comentários de uma solicitação */

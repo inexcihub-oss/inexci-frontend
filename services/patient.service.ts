@@ -112,8 +112,42 @@ export const patientService = {
    * Como o backend não tem endpoint getById, buscamos todos e filtramos
    */
   async getById(patientId: string): Promise<Patient | null> {
-    const allPatients = await this.getAll();
-    return allPatients.find((p) => String(p.id) === String(patientId)) || null;
+    try {
+      const response = await api.get("/patients", {
+        params: { skip: 0, take: 1 },
+      });
+      const data = getApiRecords<BackendPatient>(response.data);
+      const patient = data.find((p) => String(p.id) === String(patientId));
+      if (!patient) return null;
+      return {
+        id: patient.id,
+        name: patient.name,
+        email: patient.email,
+        phone: patient.phone,
+        cpf: patient.cpf,
+        birth_date: patient.birth_date
+          ? typeof patient.birth_date === "string"
+            ? patient.birth_date.substring(0, 10)
+            : new Date(patient.birth_date).toISOString().substring(0, 10)
+          : undefined,
+        gender: patient.gender,
+        address: patient.address,
+        address_number: patient.address_number,
+        address_complement: patient.address_complement,
+        neighborhood: patient.neighborhood,
+        city: patient.city,
+        state: patient.state,
+        zip_code: patient.zip_code,
+        health_plan_id: patient.health_plan_id,
+        health_plan_number: patient.health_plan_number,
+        health_plan_type: patient.health_plan_type,
+        medical_notes: patient.medical_notes,
+        createdAt: patient.created_at,
+        updatedAt: patient.updated_at,
+      };
+    } catch {
+      return null;
+    }
   },
 
   /**

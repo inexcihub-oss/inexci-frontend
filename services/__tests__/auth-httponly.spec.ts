@@ -63,10 +63,14 @@ describe("Auth — refresh_token não deve estar no localStorage", () => {
     // Import fresh
     const { authService } = await import("@/services/auth.service");
 
+    // Mock api.post for logout call
+    const api = (await import("@/lib/api")).default;
+    (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
+
     localStorage.setItem("token", "test-token");
     localStorage.setItem("user", JSON.stringify({ id: "1", email: "a@b.com" }));
 
-    authService.logout();
+    await authService.logout();
 
     // Deve remover token e user
     expect(localStorage.removeItem).toHaveBeenCalledWith("token");

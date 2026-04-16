@@ -23,8 +23,8 @@ export interface CreateSurgeryRequestProcedureData {
   surgery_request_id: string | number;
   procedures: {
     procedure_id: string;
-    tuss_code?: string;
-    name?: string;
+    tuss_code: string;
+    name: string;
     quantity: number;
   }[];
 }
@@ -38,6 +38,14 @@ export interface UpdateSurgeryRequestProcedureData {
   }[];
 }
 
+/**
+ * Serviço de procedimentos TUSS associados a Solicitações Cirúrgicas.
+ *
+ * NOTA: Este serviço NÃO é o mesmo que procedure.service.ts.
+ * - tuss.service.ts: gerencia procedimentos vinculados a uma solicitação cirúrgica
+ *   (POST/DELETE em /surgery-requests/procedures) e busca códigos TUSS (GET /tuss).
+ * - procedure.service.ts: CRUD do catálogo de procedimentos persistidos (GET/POST/PATCH/DELETE em /procedures).
+ */
 export const tussService = {
   /**
    * Busca códigos TUSS do arquivo JSON (novo endpoint)

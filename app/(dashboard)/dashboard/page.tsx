@@ -636,7 +636,22 @@ export default function DashboardPage() {
         avgTimeData,
         notificationsData,
       ] = await Promise.all([
-        reportsService.getDashboard(),
+        reportsService.getDashboard().catch(
+          () =>
+            ({
+              surgery_request: {
+                total: 0,
+                total_scheduled: 0,
+                total_performed: 0,
+                total_invoiced_count: 0,
+                total_invoiced_value: 0,
+                total_received_value: 0,
+                total_by_health_plan: [],
+                total_by_status: [],
+                total_by_hospital: [],
+              },
+            }) as DashboardData,
+        ),
         reportsService
           .getTemporalEvolution(30)
           .catch(() => [] as TemporalEvolutionData[]),

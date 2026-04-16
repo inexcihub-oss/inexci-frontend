@@ -79,7 +79,12 @@ export const authService = {
   /**
    * Realiza logout do usuário
    */
-  logout(): void {
+  async logout(): Promise<void> {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Ignora erros — o logout local é suficiente
+    }
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("token_timestamp");
@@ -127,14 +132,17 @@ export const authService = {
    * Solicita código de recuperação de senha
    */
   async requestPasswordReset(email: string): Promise<void> {
-    await api.post("/auth/forgot-password", { email });
+    await api.post("/auth/sendRecoveryPasswordEmail", { email });
   },
 
   /**
    * Valida código de recuperação
    */
   async validateRecoveryCode(email: string, code: string): Promise<boolean> {
-    const { data } = await api.post("/auth/validate-code", { email, code });
+    const { data } = await api.post("/auth/validateRecoveryPasswordCode", {
+      email,
+      code,
+    });
     return data.valid;
   },
 
@@ -143,13 +151,12 @@ export const authService = {
    */
   async changePassword(
     email: string,
-    code: string,
+    _code: string,
     newPassword: string,
   ): Promise<void> {
-    await api.post("/auth/change-password", {
+    await api.post("/auth/changePassword", {
       email,
-      code,
-      newPassword,
+      password: newPassword,
     });
   },
 };

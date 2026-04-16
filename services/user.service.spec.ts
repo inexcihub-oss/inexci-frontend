@@ -5,6 +5,14 @@ vi.mock("@/lib/api", () => ({
   default: {
     get: vi.fn(),
     put: vi.fn(),
+    patch: vi.fn(),
+    post: vi.fn(),
+  },
+}));
+
+vi.mock("@/services/upload.service", () => ({
+  uploadService: {
+    uploadSingle: vi.fn(),
   },
 }));
 
@@ -100,7 +108,7 @@ describe("userService", () => {
   });
 
   describe("getById", () => {
-    it("deve chamar GET /users/:id", async () => {
+    it("deve chamar GET /users/one com query param id", async () => {
       const mockUser = { id: "u-1", name: "João" };
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: mockUser,
@@ -108,8 +116,43 @@ describe("userService", () => {
 
       const result = await userService.getById("u-1");
 
-      expect(api.get).toHaveBeenCalledWith("/users/u-1");
+      expect(api.get).toHaveBeenCalledWith("/users/one", {
+        params: { id: "u-1" },
+      });
       expect(result).toEqual(mockUser);
+    });
+  });
+
+  describe("uploadAvatar", () => {
+    it("deve fazer upload e atualizar perfil com avatar_url", async () => {
+      const { uploadService } = await import("@/services/upload.service");
+      (
+        uploadService.uploadSingle as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
+        message: "ok",
+        data: {
+          url: "https://storage.example.com/avatars/photo.jpg",
+          path: "avatars/photo.jpg",
+        },
+      });
+      (api.put as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: {
+          id: "u-1",
+          name: "Test",
+          avatar_url: "https://storage.example.com/avatars/photo.jpg",
+        },
+      });
+
+      const file = new File(["test"], "photo.jpg", { type: "image/jpeg" });
+      const result = await userService.uploadAvatar(file);
+
+      expect(uploadService.uploadSingle).toHaveBeenCalledWith(file, "avatars");
+      expect(api.put).toHaveBeenCalledWith("/users/profile", {
+        avatar_url: "https://storage.example.com/avatars/photo.jpg",
+      });
+      expect(result.avatar_url).toBe(
+        "https://storage.example.com/avatars/photo.jpg",
+      );
     });
   });
 });

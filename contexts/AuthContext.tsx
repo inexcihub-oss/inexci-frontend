@@ -59,28 +59,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [router],
   );
 
-  const logout = useCallback(() => {
-    // Revoga refresh tokens no backend via cookie httpOnly (fire-and-forget)
-    try {
-      const token =
-        typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (token) {
-        fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/auth/logout`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            credentials: "include",
-          },
-        ).catch(() => {});
-      }
-    } catch {
-      // Ignora erros — o logout local é suficiente
-    }
-    authService.logout();
+  const logout = useCallback(async () => {
+    await authService.logout();
     setUser(null);
     router.push("/login");
   }, [router]);
