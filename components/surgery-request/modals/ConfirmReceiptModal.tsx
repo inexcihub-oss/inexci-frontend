@@ -8,7 +8,10 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -18,7 +21,7 @@ type Step = 1 | 2;
 interface ConfirmReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
   /** Valor numérico para pré-preencher o campo de valor recebido (usado ao editar contestação) */
   initialReceivedValue?: number;

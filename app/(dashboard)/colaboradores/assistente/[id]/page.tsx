@@ -12,10 +12,13 @@ import {
   collaboratorService,
   Collaborator,
 } from "@/services/collaborator.service";
-import { formatPhone } from "@/lib/formatters";
+import { patientService, Patient } from "@/services/patient.service";
+import { formatPhone, formatTimeAgo } from "@/lib/formatters";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
+import { ToastType } from "@/types/toast.types";
 import { ChevronRight } from "lucide-react";
+import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 
 export default function AssistenteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -23,6 +26,8 @@ export default function AssistenteDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [collaborator, setCollaborator] = useState<Collaborator | null>(null);
+  const [recentPatients, setRecentPatients] = useState<Patient[]>([]);
+  const [loadingPatients, setLoadingPatients] = useState(true);
   const { toast, showToast, hideToast } = useToast();
 
   // Form state
@@ -30,13 +35,11 @@ export default function AssistenteDetalhePage() {
     name: "",
     email: "",
     phone: "",
-    specialty: "",
     gender: "",
     birth_date: "",
     cpf: "",
     country: "Brasil",
     city: "",
-    role: "editor" as "admin" | "editor" | "viewer",
   });
   const [originalData, setOriginalData] = useState<typeof formData | null>(
     null,
@@ -68,30 +71,44 @@ export default function AssistenteDetalhePage() {
         name: collab.name || "",
         email: collab.email || "",
         phone: collab.phone || "",
-        specialty: collab.specialty || "",
         gender: collab.gender || "",
         birth_date: collab.birthDate || "",
         cpf: collab.document || "",
         country: "Brasil",
         city: "",
-        role: collab.role || "editor",
       });
       setOriginalData({
         name: collab.name || "",
         email: collab.email || "",
         phone: collab.phone || "",
-        specialty: collab.specialty || "",
         gender: collab.gender || "",
         birth_date: collab.birthDate || "",
         cpf: collab.document || "",
         country: "Brasil",
         city: "",
-        role: collab.role || "editor",
       });
     } catch (error) {
       console.error("Erro ao carregar colaborador:", error);
     } finally {
       setLoading(false);
+    }
+
+    // Carregar últimos pacientes
+    setLoadingPatients(true);
+    try {
+      const patients = await patientService.getAll();
+      // Ordenar por mais recente e pegar os 5 primeiros
+      const sorted = [...patients]
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+        .slice(0, 5);
+      setRecentPatients(sorted);
+    } catch (error) {
+      console.error("Erro ao carregar pacientes:", error);
+    } finally {
+      setLoadingPatients(false);
     }
   };
 
@@ -108,7 +125,6 @@ export default function AssistenteDetalhePage() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        specialty: formData.specialty,
         gender: formData.gender,
         birth_date: formData.birth_date || undefined,
         cpf: formData.cpf || undefined,
@@ -158,46 +174,6 @@ export default function AssistenteDetalhePage() {
     { value: "O", label: "Outro" },
   ];
 
-  const roleOptions = [
-    { value: "admin", label: "Administrador" },
-    { value: "editor", label: "Editor" },
-    { value: "viewer", label: "Visualizador" },
-  ];
-
-  // Sidebar com últimos pacientes (mock)
-  const recentPatients = [
-    {
-      id: "1",
-      name: "Amanda Rodrigues",
-      procedure: "Artroscopia de Joelho",
-      time: "1 dia atrás",
-    },
-    {
-      id: "2",
-      name: "Clarissa Neves",
-      procedure: "Reconstrução do LCA",
-      time: "12 dias atrás",
-    },
-    {
-      id: "3",
-      name: "David Souza",
-      procedure: "Cirurgias de menisco",
-      time: "2 semanas atrás",
-    },
-    {
-      id: "4",
-      name: "Henrique Lopes",
-      procedure: "Artroscopia de Joelho",
-      time: "1 mês atrás",
-    },
-    {
-      id: "5",
-      name: "Suzane Oliveira",
-      procedure: "Cirurgias de menisco",
-      time: "2 meses atrás",
-    },
-  ];
-
   const getInitials = (name: string) => {
     const parts = name.split(" ");
     if (parts.length >= 2) {
@@ -230,32 +206,46 @@ export default function AssistenteDetalhePage() {
 
       {/* Lista de pacientes */}
       <div className="flex-1 overflow-y-auto">
-        {recentPatients.map((patient) => (
-          <div
-            key={patient.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(patient.id)}`}
-              >
-                {getInitials(patient.name)}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-gray-900">
-                  {patient.name}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {patient.procedure}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">{patient.time}</span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            </div>
+        {loadingPatients ? (
+          <div className="flex items-center justify-center py-8">
+            <Spinner size="sm" />
           </div>
-        ))}
+        ) : recentPatients.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <span className="text-xs text-gray-400">
+              Nenhum paciente encontrado
+            </span>
+          </div>
+        ) : (
+          recentPatients.map((patient) => (
+            <div
+              key={patient.id}
+              className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(patient.id)}`}
+                >
+                  {getInitials(patient.name)}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-gray-900">
+                    {patient.name}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {patient.email || patient.phone || ""}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">
+                  {formatTimeAgo(patient.createdAt)}
+                </span>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -266,7 +256,7 @@ export default function AssistenteDetalhePage() {
         sectionTitle="Colaboradores"
         backHref="/colaboradores"
         itemName={collaborator.name}
-        itemSubtitle={formData.specialty || "Assistente"}
+        itemSubtitle="Colaborador"
         sidebarContent={sidebarContent}
       >
         {/* Seção: Informações pessoais */}
@@ -313,14 +303,11 @@ export default function AssistenteDetalhePage() {
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
             />
-            <Select
-              label="Função"
-              value={formData.role}
-              onChange={(e) => handleInputChange("role", e.target.value as any)}
-              options={roleOptions}
-            />
           </div>
         </FormSection>
+
+        {/* Seção: Acesso a Médicos */}
+        <DoctorAccessSection collaboratorId={params.id} />
 
         {/* Botão de salvar */}
         <div className="flex justify-end gap-3 pt-4">
@@ -335,7 +322,7 @@ export default function AssistenteDetalhePage() {
       {toast && (
         <Toast
           message={toast.message}
-          type={toast.type as any}
+          type={toast.type as ToastType}
           onClose={hideToast}
         />
       )}

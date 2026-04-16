@@ -23,13 +23,15 @@ describe("userService", () => {
   describe("getProfile", () => {
     it("deve chamar GET /users/profile", async () => {
       const mockProfile = {
-        id: 1,
+        id: "user-1",
         name: "Dr. João",
         email: "joao@email.com",
-        is_admin: true,
+        role: "admin",
         is_doctor: true,
-        crm: "123456",
-        crm_state: "SP",
+        doctor_profile: {
+          crm: "123456",
+          crm_state: "SP",
+        },
       };
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: mockProfile,
@@ -43,12 +45,14 @@ describe("userService", () => {
 
     it("deve retornar campos de médico no perfil", async () => {
       const mockProfile = {
-        id: 1,
+        id: "user-2",
         name: "Dr. Carlos",
         is_doctor: true,
-        crm: "654321",
-        crm_state: "RJ",
-        signature_image_url: "https://example.com/sig.png",
+        doctor_profile: {
+          crm: "654321",
+          crm_state: "RJ",
+          signature_url: "https://example.com/sig.png",
+        },
       };
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: mockProfile,
@@ -57,26 +61,27 @@ describe("userService", () => {
       const result = await userService.getProfile();
 
       expect(result.is_doctor).toBe(true);
-      expect(result.crm).toBe("654321");
-      expect(result.signature_image_url).toBe("https://example.com/sig.png");
+      expect(result.doctor_profile?.crm).toBe("654321");
+      expect(result.doctor_profile?.signature_url).toBe(
+        "https://example.com/sig.png",
+      );
     });
   });
 
   describe("updateProfile", () => {
     it("deve chamar PUT /users/profile com dados", async () => {
       const updateData = {
-        crm: "999888",
-        crm_state: "MG",
-        specialty: "Cardiologia",
+        name: "Dr. Updated",
+        phone: "11999999999",
       };
       (api.put as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: { id: 1, ...updateData },
+        data: { id: "user-1", ...updateData },
       });
 
       const result = await userService.updateProfile(updateData);
 
       expect(api.put).toHaveBeenCalledWith("/users/profile", updateData);
-      expect(result.crm).toBe("999888");
+      expect(result.name).toBe("Dr. Updated");
     });
   });
 

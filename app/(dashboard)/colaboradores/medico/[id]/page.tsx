@@ -9,10 +9,14 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { collaboratorService, Doctor } from "@/services/collaborator.service";
-import { formatPhone } from "@/lib/formatters";
+import { userService } from "@/services/user.service";
+import { surgeryRequestService } from "@/services/surgery-request.service";
+import { formatPhone, formatTimeAgo } from "@/lib/formatters";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
-import { ChevronRight } from "lucide-react";
+import { ToastType } from "@/types/toast.types";
+import { ChevronRight, Clock } from "lucide-react";
+import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 
 export default function MedicoDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -20,6 +24,10 @@ export default function MedicoDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [doctor, setDoctor] = useState<Doctor | null>(null);
+  const [recentRequests, setRecentRequests] = useState<
+    Array<{ id: string; patientName: string; procedure: string; time: string }>
+  >([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
   const { toast, showToast, hideToast } = useToast();
 
   // Form state
@@ -61,14 +69,15 @@ export default function MedicoDetalhePage() {
 
       setDoctor(doc);
 
+      const dp = doc.doctor_profile;
       // Preenche o formulário
       setFormData({
         name: doc.name || "",
         email: doc.email || "",
         phone: doc.phone || "",
-        specialty: doc.specialty || "",
-        crm: doc.crm || "",
-        crmState: doc.crmState || "",
+        specialty: dp?.specialty || "",
+        crm: dp?.crm || "",
+        crmState: dp?.crm_state || "",
         gender: doc.gender || "",
         birth_date: doc.birthDate || "",
         cpf: doc.document || "",
@@ -79,9 +88,9 @@ export default function MedicoDetalhePage() {
         name: doc.name || "",
         email: doc.email || "",
         phone: doc.phone || "",
-        specialty: doc.specialty || "",
-        crm: doc.crm || "",
-        crmState: doc.crmState || "",
+        specialty: dp?.specialty || "",
+        crm: dp?.crm || "",
+        crmState: dp?.crm_state || "",
         gender: doc.gender || "",
         birth_date: doc.birthDate || "",
         cpf: doc.document || "",
@@ -92,6 +101,31 @@ export default function MedicoDetalhePage() {
       console.error("Erro ao carregar médico:", error);
     } finally {
       setLoading(false);
+    }
+
+    // Carregar últimas solicitações do médico
+    setLoadingRequests(true);
+    try {
+      const response = await surgeryRequestService.getAll();
+      if (response?.records && Array.isArray(response.records)) {
+        const doctorRequests = response.records
+          .filter((r: any) => String(r.doctor_id) === String(params.id))
+          .slice(0, 5)
+          .map((r: any) => ({
+            id: String(r.id),
+            patientName: r.patient?.name || "Paciente",
+            procedure:
+              r.is_indication && r.indication_name
+                ? r.indication_name
+                : r.procedure?.name || "Procedimento",
+            time: formatTimeAgo(r.created_at),
+          }));
+        setRecentRequests(doctorRequests);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar solicitações:", error);
+    } finally {
+      setLoadingRequests(false);
     }
   };
 
@@ -104,15 +138,25 @@ export default function MedicoDetalhePage() {
 
     setSaving(true);
     try {
+      // 1. Salvar dados básicos do perfil
       await collaboratorService.updateProfile(doctor.id, {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        specialty: formData.specialty,
         gender: formData.gender,
         birth_date: formData.birth_date || undefined,
         cpf: formData.cpf || undefined,
       });
+
+      // 2. Salvar dados profissionais (CRM, specialty, crm_state)
+      if (doctor.doctor_profile?.id) {
+        await userService.updateDoctorProfile(doctor.doctor_profile.id, {
+          crm: formData.crm || undefined,
+          crm_state: formData.crmState || undefined,
+          specialty: formData.specialty || undefined,
+        });
+      }
+
       setOriginalData(formData);
       showToast("Médico atualizado com sucesso!", "success");
     } catch (error) {
@@ -203,40 +247,6 @@ export default function MedicoDetalhePage() {
     { value: "TO", label: "TO" },
   ];
 
-  // Sidebar com últimas solicitações (mock)
-  const recentRequests = [
-    {
-      id: "1",
-      name: "Amanda Rodrigues",
-      procedure: "Artroscopia de Joelho",
-      time: "1 dia atrás",
-    },
-    {
-      id: "2",
-      name: "Clarissa Neves",
-      procedure: "Reconstrução do LCA",
-      time: "12 dias atrás",
-    },
-    {
-      id: "3",
-      name: "David Souza",
-      procedure: "Cirurgia de menisco",
-      time: "2 semanas atrás",
-    },
-    {
-      id: "4",
-      name: "Henrique Lopes",
-      procedure: "Artroscopia de Joelho",
-      time: "1 mês atrás",
-    },
-    {
-      id: "5",
-      name: "Suzane Oliveira",
-      procedure: "Cirurgia de menisco",
-      time: "2 meses atrás",
-    },
-  ];
-
   const getInitials = (name: string) => {
     const parts = name.split(" ");
     if (parts.length >= 2) {
@@ -269,30 +279,42 @@ export default function MedicoDetalhePage() {
 
       {/* Lista de solicitações */}
       <div className="flex-1 overflow-y-auto">
-        {recentRequests.map((req) => (
-          <div
-            key={req.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(req.id)}`}
-              >
-                {getInitials(req.name)}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-gray-900">
-                  {req.name}
-                </span>
-                <span className="text-xs text-gray-500">{req.procedure}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">{req.time}</span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            </div>
+        {loadingRequests ? (
+          <div className="flex items-center justify-center py-8">
+            <Spinner size="sm" />
           </div>
-        ))}
+        ) : recentRequests.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <span className="text-xs text-gray-400">
+              Nenhuma solicitação encontrada
+            </span>
+          </div>
+        ) : (
+          recentRequests.map((req) => (
+            <div
+              key={req.id}
+              className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(req.id)}`}
+                >
+                  {getInitials(req.patientName)}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-gray-900">
+                    {req.patientName}
+                  </span>
+                  <span className="text-xs text-gray-500">{req.procedure}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">{req.time}</span>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -377,65 +399,20 @@ export default function MedicoDetalhePage() {
           </div>
         </FormSection>
 
-        {/* Seção: Horários de trabalho */}
+        {/* Seção: Horários de trabalho — Em breve */}
         <FormSection title="Consultório/Ambulatório">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs text-gray-500">
-                  <th className="pb-3 font-normal">Dia da semana</th>
-                  <th className="pb-3 font-normal">Horário</th>
-                  <th className="pb-3 font-normal">Local</th>
-                  <th className="pb-3 font-normal w-10"></th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                <tr className="border-t border-gray-100">
-                  <td className="py-3">Segunda-feira</td>
-                  <td className="py-3">08:00 - 18:00</td>
-                  <td className="py-3">Hospital A</td>
-                  <td className="py-3">
-                    <button className="w-8 h-8 min-h-[44px] min-w-[44px] flex items-center justify-center border border-[#DCDFE3] rounded-lg shadow-sm hover:bg-gray-50 active:scale-[0.95] transition-all p-1.5">
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                        <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-                <tr className="border-t border-gray-100">
-                  <td className="py-3">Quarta-feira</td>
-                  <td className="py-3">08:00 - 15:00</td>
-                  <td className="py-3">Hospital B</td>
-                  <td className="py-3">
-                    <button className="w-8 h-8 min-h-[44px] min-w-[44px] flex items-center justify-center border border-[#DCDFE3] rounded-lg shadow-sm hover:bg-gray-50 active:scale-[0.95] transition-all p-1.5">
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                        <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-                <tr className="border-t border-gray-100">
-                  <td className="py-3">Sexta-feira</td>
-                  <td className="py-3">08:00 - 18:00</td>
-                  <td className="py-3">Clínica A</td>
-                  <td className="py-3">
-                    <button className="w-8 h-8 min-h-[44px] min-w-[44px] flex items-center justify-center border border-[#DCDFE3] rounded-lg shadow-sm hover:bg-gray-50 active:scale-[0.95] transition-all p-1.5">
-                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                        <circle cx="17.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="11.5" cy="11.5" r="1" fill="currentColor" />
-                        <circle cx="5.5" cy="11.5" r="1" fill="currentColor" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="flex flex-col items-center justify-center py-8 text-center opacity-60">
+            <Clock className="w-8 h-8 text-gray-400 mb-3" />
+            <p className="text-sm font-medium text-gray-500">Em breve</p>
+            <p className="text-xs text-gray-400 mt-1">
+              O gerenciamento de horários e locais de atendimento estará
+              disponível em uma próxima atualização.
+            </p>
           </div>
         </FormSection>
+
+        {/* Seção: Acesso a Outros Médicos */}
+        <DoctorAccessSection collaboratorId={params.id} />
 
         {/* Botão de salvar */}
         <div className="flex justify-end gap-3 pt-4">
@@ -450,7 +427,7 @@ export default function MedicoDetalhePage() {
       {toast && (
         <Toast
           message={toast.message}
-          type={toast.type as any}
+          type={toast.type as ToastType}
           onClose={hideToast}
         />
       )}

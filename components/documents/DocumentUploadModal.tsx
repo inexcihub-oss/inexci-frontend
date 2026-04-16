@@ -37,7 +37,7 @@ export type DocumentTypeEntry = { key: string; label: string };
 interface DocumentUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onSuccess: () => void;
   /** Lista de tipos disponíveis para seleção. Padrão: PRE_SURGERY_DOCUMENT_TYPES */
   documentTypes?: readonly DocumentTypeEntry[];

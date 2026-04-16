@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import { getApiRecords } from "@/lib/api-response";
 
 export interface Supplier {
   id: string;
@@ -35,36 +36,52 @@ export interface CreateSupplierPayload {
   state?: string;
 }
 
+interface BackendSupplier {
+  id: string;
+  name: string;
+  cnpj?: string;
+  phone?: string;
+  email?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  zip_code?: string;
+  address?: string;
+  address_number?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const supplierService = {
   /**
    * Busca todos os fornecedores
    */
   async getAll(): Promise<Supplier[]> {
-    try {
-      const response = await api.get("/suppliers");
-      const data = response.data.records || response.data;
-      // Mapeia os campos do backend para o frontend
-      return data.map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        cnpj: s.cnpj,
-        phone: s.phone,
-        email: s.email,
-        contact_name: s.contact_name,
-        contact_phone: s.contact_phone,
-        contact_email: s.contact_email,
-        zip_code: s.zip_code,
-        address: s.address,
-        address_number: s.address_number,
-        neighborhood: s.neighborhood,
-        city: s.city,
-        state: s.state,
-        createdAt: s.created_at,
-        updatedAt: s.updated_at,
-      }));
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.get("/suppliers");
+    const data = getApiRecords<BackendSupplier>(response.data);
+
+    // Mapeia os campos do backend para o frontend
+    return data.map((s) => ({
+      id: s.id,
+      name: s.name,
+      cnpj: s.cnpj,
+      phone: s.phone,
+      email: s.email,
+      contact_name: s.contact_name,
+      contact_phone: s.contact_phone,
+      contact_email: s.contact_email,
+      zip_code: s.zip_code,
+      address: s.address,
+      address_number: s.address_number,
+      neighborhood: s.neighborhood,
+      city: s.city,
+      state: s.state,
+      createdAt: s.created_at,
+      updatedAt: s.updated_at,
+    }));
   },
 
   /**
@@ -72,26 +89,18 @@ export const supplierService = {
    * Como o backend não tem endpoint getById, buscamos todos e filtramos
    */
   async getById(supplierId: string): Promise<Supplier | null> {
-    try {
-      const allSuppliers = await this.getAll();
-      return (
-        allSuppliers.find((s) => String(s.id) === String(supplierId)) || null
-      );
-    } catch (error) {
-      throw error;
-    }
+    const allSuppliers = await this.getAll();
+    return (
+      allSuppliers.find((s) => String(s.id) === String(supplierId)) || null
+    );
   },
 
   /**
    * Cria um novo fornecedor
    */
   async create(payload: CreateSupplierPayload): Promise<Supplier> {
-    try {
-      const response = await api.post("/suppliers", payload);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.post("/suppliers", payload);
+    return response.data;
   },
 
   /**
@@ -101,22 +110,14 @@ export const supplierService = {
     supplierId: string,
     payload: Partial<CreateSupplierPayload>,
   ): Promise<Supplier> {
-    try {
-      const response = await api.patch(`/suppliers/${supplierId}`, payload);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.patch(`/suppliers/${supplierId}`, payload);
+    return response.data;
   },
 
   /**
    * Deleta um fornecedor
    */
   async delete(supplierId: string): Promise<void> {
-    try {
-      await api.delete(`/suppliers/${supplierId}`);
-    } catch (error) {
-      throw error;
-    }
+    await api.delete(`/suppliers/${supplierId}`);
   },
 };

@@ -12,6 +12,7 @@ import { hospitalService, Hospital } from "@/services/hospital.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
+import { ToastType } from "@/types/toast.types";
 import { ChevronRight } from "lucide-react";
 
 export default function HospitalDetalhePage() {
@@ -375,7 +376,7 @@ export default function HospitalDetalhePage() {
       {toast && (
         <Toast
           message={toast.message}
-          type={toast.type as any}
+          type={toast.type as ToastType}
           onClose={hideToast}
         />
       )}

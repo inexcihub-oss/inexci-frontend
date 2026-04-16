@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 
@@ -12,7 +15,7 @@ type SurgeryOutcome = "realizada" | "cancelada" | "reagendada";
 interface SurgeryStatusModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
   notifyPatient?: boolean;
 }

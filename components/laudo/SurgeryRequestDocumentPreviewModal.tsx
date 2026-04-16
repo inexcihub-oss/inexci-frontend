@@ -2,28 +2,53 @@
 
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import {
+  SurgeryRequestDetail,
+  TussItemRef,
+  OpmeItemRef,
+} from "@/services/surgery-request.service";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
 interface SurgeryRequestDocumentPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function parseMedicalReport(sol: any): any {
+interface ParsedPatientData {
+  name?: string;
+  birthDate?: string;
+  rg?: string;
+  cpf?: string;
+  phone?: string;
+  address?: string;
+  zipCode?: string;
+  healthPlan?: string;
+}
+
+interface ParsedMedicalReport {
+  patientData?: ParsedPatientData;
+  historyAndDiagnosis?: string;
+  surgicalIndication?: string;
+  conduct?: string;
+  technicalJustification?: string;
+  [key: string]: unknown;
+}
+
+function parseMedicalReport(sol: SurgeryRequestDetail): ParsedMedicalReport {
   if (!sol?.medical_report) return {};
   try {
-    return JSON.parse(sol.medical_report);
+    return JSON.parse(sol.medical_report) as ParsedMedicalReport;
   } catch {
     return {};
   }
 }
 
-function unique(arr: string[]): string[] {
-  return Array.from(new Set(arr.filter(Boolean)));
+function unique(arr: (string | undefined)[]): string[] {
+  return Array.from(new Set(arr.filter((x): x is string => Boolean(x))));
 }
 
 /** Remove tudo que não for dígito */
@@ -140,7 +165,7 @@ function TableHeader({ children }: { children: React.ReactNode }) {
 
 // ─── Procedimentos Table ──────────────────────────────────────────────────────
 
-function ProceduresTable({ procedures }: { procedures: any[] }) {
+function ProceduresTable({ procedures }: { procedures: TussItemRef[] }) {
   if (!procedures || procedures.length === 0) return null;
 
   return (
@@ -158,7 +183,7 @@ function ProceduresTable({ procedures }: { procedures: any[] }) {
         </div>
       </div>
       {/* Data rows */}
-      {procedures.map((proc: any, idx: number) => {
+      {procedures.map((proc, idx: number) => {
         const isEven = idx % 2 === 0;
         const bg = isEven ? "bg-[#F2F2F2]" : "bg-white";
         return (
@@ -184,7 +209,7 @@ function ProceduresTable({ procedures }: { procedures: any[] }) {
 
 // ─── Materials Table ──────────────────────────────────────────────────────────
 
-function MaterialsTable({ opmeItems }: { opmeItems: any[] }) {
+function MaterialsTable({ opmeItems }: { opmeItems: OpmeItemRef[] }) {
   if (!opmeItems || opmeItems.length === 0) return null;
 
   return (
@@ -199,7 +224,7 @@ function MaterialsTable({ opmeItems }: { opmeItems: any[] }) {
         </div>
       </div>
       {/* Data rows */}
-      {opmeItems.map((item: any, idx: number) => {
+      {opmeItems.map((item, idx: number) => {
         const isEven = idx % 2 === 0;
         const bg = isEven ? "bg-[#F2F2F2]" : "bg-white";
         return (
@@ -264,7 +289,7 @@ export function SurgeryRequestDocumentPreviewModal({
   // O backend já converte signature_url para URL assinada em findOne().
   useEffect(() => {
     if (!isOpen) return;
-    const doctor = (solicitacao as any)?.doctor;
+    const doctor = solicitacao?.doctor;
     setSignatureUrl(doctor?.signature_url ?? "");
   }, [isOpen, solicitacao]);
 
@@ -291,8 +316,8 @@ export function SurgeryRequestDocumentPreviewModal({
   const conduct = report?.conduct || report?.technicalJustification || "";
 
   // ── Procedimentos e OPME ─────────────────────────────────────────────────
-  const procedures: any[] = solicitacao?.tuss_items ?? [];
-  const opmeItems: any[] = solicitacao?.opme_items ?? [];
+  const procedures: TussItemRef[] = solicitacao?.tuss_items ?? [];
+  const opmeItems: OpmeItemRef[] = solicitacao?.opme_items ?? [];
 
   // ── Fabricantes e Fornecedores ────────────────────────────────────────────
   const fabricantes = unique(opmeItems.map((i) => i.brand).filter(Boolean));
@@ -302,18 +327,18 @@ export function SurgeryRequestDocumentPreviewModal({
 
   // ── Imagens de exame ─────────────────────────────────────────────────────
   const examImages: Array<{ id: string; name: string; uri: string }> =
-    solicitacao?.documents?.filter((d: any) => d.key === "report_images") ?? [];
+    solicitacao?.documents?.filter((d) => d.key === "report_images") ?? [];
 
   // ── Hospital (Local) ─────────────────────────────────────────────────────
   const hospitalName = solicitacao?.hospital?.name || "";
   const hospitalAddress = solicitacao?.hospital?.address || "";
   const localText = [hospitalName, hospitalAddress].filter(Boolean).join(" – ");
 
-  // ── Dados do médico (doctor → DoctorProfile; doctor.user → User) ──────────
-  // solicitacao.doctor      = DoctorProfile  → crm, specialty, crm_state
-  // solicitacao.doctor.user = User           → name, email, phone
-  const doctorProfile = solicitacao?.doctor ?? null;
-  const doctorUser = doctorProfile?.user ?? null;
+  // ── Dados do médico (doctor → User; doctor.doctor_profile → DoctorProfile) ─
+  // solicitacao.doctor                = User          → name, email, phone
+  // solicitacao.doctor.doctor_profile = DoctorProfile → crm, specialty, crm_state
+  const doctorUser = solicitacao?.doctor ?? null;
+  const doctorProfile = doctorUser?.doctor_profile ?? null;
 
   const doctorName = doctorUser?.name ?? "";
   const doctorEmail = doctorUser?.email ?? "";

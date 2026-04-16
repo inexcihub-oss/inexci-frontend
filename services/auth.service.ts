@@ -22,6 +22,8 @@ export const authService = {
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("token_timestamp", Date.now().toString());
 
+      // refresh_token agora é enviado via cookie httpOnly pelo backend
+
       // Remove dados sensíveis antes de armazenar
       const { cpf, ...userWithoutSensitiveData } = data.user;
       localStorage.setItem(

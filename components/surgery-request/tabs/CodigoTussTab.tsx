@@ -2,12 +2,13 @@
 
 import React, { useState, useMemo } from "react";
 import { tussService } from "@/services/tuss.service";
+import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { useToast } from "@/hooks/useToast";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 
 interface CodigoTussTabProps {
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onUpdate: () => void;
   /** Número do status atual — habilita colunas de autorização a partir do status 3 */
   statusNum?: number;

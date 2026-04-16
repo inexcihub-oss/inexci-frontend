@@ -4,9 +4,11 @@ import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import {
   surgeryRequestService,
   ReportSection,
+  SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 
 // ─── Interface ────────────────────────────────────────────────────────────────
@@ -14,7 +16,7 @@ import {
 interface MedicalReportPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -206,13 +208,15 @@ export function MedicalReportPreviewModal({
   useEffect(() => {
     if (!isOpen) return;
     // Usa exclusivamente os dados do médico vinculado à solicitação.
+    // Nova estrutura: doctor = User, doctor.doctor_profile = DoctorProfile
     // O backend já converte signature_url para URL assinada em findOne().
-    const doctor = (solicitacao as any)?.doctor;
-    setDoctorSignatureUrl(doctor?.signature_url ?? null);
-    setDoctorName(doctor?.user?.name ?? "");
-    setDoctorSpecialty(doctor?.specialty ?? "");
-    setDoctorCrm(doctor?.crm ?? "");
-    setDoctorCrmState(doctor?.crm_state ?? "");
+    const doctor = solicitacao?.doctor;
+    const dp = doctor?.doctor_profile;
+    setDoctorSignatureUrl(dp?.signature_url ?? null);
+    setDoctorName(doctor?.name ?? "");
+    setDoctorSpecialty(dp?.specialty ?? "");
+    setDoctorCrm(dp?.crm ?? "");
+    setDoctorCrmState(dp?.crm_state ?? "");
   }, [isOpen, solicitacao]);
 
   useEffect(() => {
@@ -299,7 +303,7 @@ export function MedicalReportPreviewModal({
 
         {/* ─── Header ────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-5 py-3 md:px-6 md:py-4 border-b border-gray-200 flex-shrink-0">
-          <h2 className="text-sm md:text-base md:text-lg font-semibold text-gray-900">
+          <h2 className="text-sm md:text-lg font-semibold text-gray-900">
             Pré-visualização do Laudo Médico
           </h2>
           <button
@@ -409,7 +413,9 @@ export function MedicalReportPreviewModal({
                   {section.description ? (
                     <div
                       className="text-xs text-neutral-600 leading-relaxed prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: section.description }}
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(section.description),
+                      }}
                     />
                   ) : (
                     <p className="text-xs text-neutral-400 italic">—</p>

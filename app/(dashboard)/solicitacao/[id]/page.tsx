@@ -7,6 +7,7 @@ import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
   Activity,
+  SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import {
   pendencyService,
@@ -40,6 +41,7 @@ import { FaturamentoTab } from "@/components/surgery-request/tabs/FaturamentoTab
 import { CloseRequestModal } from "@/components/surgery-request/modals/CloseRequestModal";
 import { NotificationConfirmModal } from "@/components/surgery-request/modals/NotificationConfirmModal";
 import { getPendencyAction } from "@/lib/pendency-navigation";
+import { PriorityLevel } from "@/types/surgery-request.types";
 
 type TabType =
   | "informacoes-gerais"
@@ -198,7 +200,9 @@ export default function SolicitacaoDetalhePage() {
     return true;
   });
 
-  const [solicitacao, setSolicitacao] = useState<any>(null);
+  const [solicitacao, setSolicitacao] = useState<SurgeryRequestDetail | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
     new Set(),
@@ -834,7 +838,7 @@ export default function SolicitacaoDetalhePage() {
                   </div>
                   <div>
                     <EditablePriority
-                      initialValue={solicitacao.priority}
+                      initialValue={solicitacao.priority as PriorityLevel}
                       surgeryRequestId={solicitacao.id}
                       onUpdate={handleUpdateProcedure}
                     />

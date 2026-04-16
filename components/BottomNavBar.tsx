@@ -3,16 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavItem {
   iconSrc: string;
   iconActiveSrc?: string;
   label: string;
   href: string;
+  adminOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
+const allNavItems: NavItem[] = [
   {
     iconSrc: "/icons/dashboard.svg",
     label: "Dashboard",
@@ -32,6 +34,7 @@ const navItems: NavItem[] = [
     iconSrc: "/icons/user-profile.svg",
     label: "Equipe",
     href: "/colaboradores",
+    adminOnly: true,
   },
   {
     iconSrc: "/icons/settings.svg",
@@ -42,7 +45,13 @@ const navItems: NavItem[] = [
 
 export default function BottomNavBar() {
   const pathname = usePathname();
+  const { isAdmin } = useAuth();
   const [ripple, setRipple] = useState<string | null>(null);
+
+  const navItems = useMemo(
+    () => allNavItems.filter((item) => !item.adminOnly || isAdmin),
+    [isAdmin],
+  );
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === href || pathname === "/";

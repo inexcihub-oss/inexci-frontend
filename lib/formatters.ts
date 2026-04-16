@@ -44,3 +44,34 @@ export function formatPhone(phone: string | undefined): string {
   }
   return phone;
 }
+
+/**
+ * Formata uma data como tempo relativo (e.g. "2 dias atrás", "1 mês atrás").
+ * Recebe uma string ISO ou Date.
+ */
+export function formatTimeAgo(dateInput: string | Date): string {
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+
+  if (diffMs < 0) return "agora";
+
+  const seconds = Math.floor(diffMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const weeks = Math.floor(days / 7);
+  const months = Math.floor(days / 30);
+  const years = Math.floor(days / 365);
+
+  if (years >= 1) return years === 1 ? "1 ano atrás" : `${years} anos atrás`;
+  if (months >= 1)
+    return months === 1 ? "1 mês atrás" : `${months} meses atrás`;
+  if (weeks >= 1)
+    return weeks === 1 ? "1 semana atrás" : `${weeks} semanas atrás`;
+  if (days >= 1) return days === 1 ? "1 dia atrás" : `${days} dias atrás`;
+  if (hours >= 1) return hours === 1 ? "1 hora atrás" : `${hours} horas atrás`;
+  if (minutes >= 1)
+    return minutes === 1 ? "1 minuto atrás" : `${minutes} minutos atrás`;
+  return "agora";
+}

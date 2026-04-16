@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import { opmeService } from "@/services/opme.service";
+import { OpmeItem } from "@/services/opme.service";
+import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -15,7 +17,7 @@ import {
 } from "lucide-react";
 
 interface OpmeTabProps {
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onUpdate: () => void;
   /** Número do status atual — habilita coluna de autorização a partir do status 3 */
   statusNum?: number;
@@ -41,7 +43,7 @@ export function OpmeTab({
     {},
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingOpme, setEditingOpme] = useState<any>(null);
+  const [editingOpme, setEditingOpme] = useState<OpmeItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isSettingHasOpme, setIsSettingHasOpme] = useState(false);
@@ -51,7 +53,7 @@ export function OpmeTab({
   const hasOpme: boolean | null = solicitacao.has_opme ?? null;
   const isReadOnly = statusNum >= 2;
 
-  const handleEdit = (opme: any) => {
+  const handleEdit = (opme: OpmeItem) => {
     setEditingOpme(opme);
     setIsModalOpen(true);
   };

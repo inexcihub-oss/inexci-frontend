@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
+import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 
 interface SchedulingSectionProps {
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   statusNum: number;
   pendingSelectedIndex: number | null;
   onSelectDate: (index: number) => void;
@@ -61,8 +62,9 @@ export function SchedulingSection({
   onEditDateOptions,
   onReschedule,
 }: SchedulingSectionProps) {
-  const dateOptions: string[] =
-    solicitacao?.scheduling?.date_options ?? solicitacao?.date_options ?? [];
+  const dateOptions: string[] = (solicitacao?.scheduling?.date_options ??
+    solicitacao?.date_options ??
+    []) as string[];
 
   const surgeryDate: string | null =
     solicitacao?.surgery_date ??

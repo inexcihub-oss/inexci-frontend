@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
+import {
+  documentService,
+  DOCUMENT_FOLDERS,
+  Document,
+} from "@/services/document.service";
+import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 import { EditableProcedureData } from "@/components/surgery-request/EditableProcedureData";
 import {
   DocumentUploadModal,
@@ -36,12 +41,12 @@ function formatDocumentType(key: string): string {
 // ─── Interface de props ───────────────────────────────────────────────────────
 
 interface InformacoesGeraisTabProps {
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   selectedDocuments: Set<string>;
   handleSelectDocument: (docId: string) => void;
   handleSelectAllDocuments: () => void;
   onUpdateProcedure: () => void;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onDocumentsUploaded: () => void;
   statusNum: number;
   pendingDateIndex: number | null;
@@ -75,7 +80,9 @@ export function InformacoesGeraisTab({
 }: InformacoesGeraisTabProps) {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [documentToDelete, setDocumentToDelete] = useState<any>(null);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   const { showToast } = useToast();
 
@@ -85,7 +92,7 @@ export function InformacoesGeraisTab({
   const preSurgeryDocs = React.useMemo(
     () =>
       (solicitacao.documents ?? []).filter(
-        (d: any) =>
+        (d) =>
           !d.path?.startsWith("post-surgical/") &&
           !d.path?.startsWith("report/") &&
           d.key !== "report_images",
@@ -241,7 +248,7 @@ export function InformacoesGeraisTab({
       {/* Banner de contestação ativa (status 3 - Em Análise) */}
       {statusNum === 3 &&
         solicitacao.contestations?.some(
-          (c: any) => c.type === "authorization" && !c.resolved_at,
+          (c) => c.type === "authorization" && !c.resolved_at,
         ) && (
           <div className="px-4 py-3 bg-indigo-50 rounded-xl">
             <p className="text-xs md:text-sm font-semibold text-indigo-600">
@@ -290,7 +297,7 @@ export function InformacoesGeraisTab({
 
           {/* Linhas de documentos */}
           {preSurgeryDocs.length > 0 ? (
-            preSurgeryDocs.map((doc: any, index: number) => (
+            preSurgeryDocs.map((doc, index: number) => (
               <div
                 key={doc.id}
                 className={`flex items-center gap-4 px-4 py-2${isReadOnly ? " bg-gray-50" : " hover:bg-gray-50 transition-colors"}`}

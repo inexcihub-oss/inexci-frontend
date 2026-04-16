@@ -12,9 +12,10 @@ interface MenuItem {
   iconSrc: string;
   label: string;
   href: string;
+  adminOnly?: boolean;
 }
 
-const menuItems: MenuItem[] = [
+const allMenuItems: MenuItem[] = [
   {
     iconSrc: "/icons/dashboard.svg",
     label: "Dashboard",
@@ -34,6 +35,7 @@ const menuItems: MenuItem[] = [
     iconSrc: "/icons/user-profile.svg",
     label: "Colaboradores",
     href: "/colaboradores",
+    adminOnly: true,
   },
   {
     iconSrc: "/icons/status-surgeries.svg",
@@ -53,7 +55,13 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
+
+  // Filtrar itens do menu com base nas permissões do usuário
+  const menuItems = allMenuItems.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false;
+    return true;
+  });
 
   // Carregar estado do localStorage ou usar valor padrão
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -298,7 +306,9 @@ export default function Sidebar({
                     strokeLinejoin="round"
                   />
                 </svg>
-                <span className="text-xs md:text-sm text-neutral-900">Sair</span>
+                <span className="text-xs md:text-sm text-neutral-900">
+                  Sair
+                </span>
               </button>
             </div>
           )}

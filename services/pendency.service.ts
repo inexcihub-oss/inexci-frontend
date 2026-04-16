@@ -83,7 +83,7 @@ export const pendencyService = {
    * Validação dinâmica - calcula pendências baseadas nos dados atuais
    * Esta é a forma recomendada de obter pendências
    */
-  async validate(surgeryRequestId: string): Promise<ValidationResult> {
+  async validate(surgeryRequestId: string | number): Promise<ValidationResult> {
     const response = await api.get(
       `/surgery-requests/pendencies/validate/${surgeryRequestId}`,
     );
@@ -114,7 +114,7 @@ export const pendencyService = {
    * Resumo rápido para Kanban
    */
   async getQuickSummary(
-    surgeryRequestId: string,
+    surgeryRequestId: string | number,
   ): Promise<{ pending: number; total: number; canAdvance: boolean }> {
     const response = await api.get(
       `/surgery-requests/pendencies/quick-summary/${surgeryRequestId}`,
@@ -127,7 +127,7 @@ export const pendencyService = {
    * @deprecated Use validate() para obter pendências calculadas dinamicamente
    */
   async getAll(
-    surgeryRequestId: string,
+    surgeryRequestId: string | number,
   ): Promise<{ total: number; records: Pendency[] }> {
     const response = await api.get("/surgery-requests/pendencies", {
       params: { surgery_request_id: surgeryRequestId },
@@ -138,7 +138,7 @@ export const pendencyService = {
   /**
    * Busca pendências agrupadas por status (atuais vs concluídas)
    */
-  async getGrouped(surgeryRequestId: string): Promise<GroupedPendencies> {
+  async getGrouped(surgeryRequestId: string | number): Promise<GroupedPendencies> {
     const response = await api.get(
       `/surgery-requests/pendencies/grouped/${surgeryRequestId}`,
     );
@@ -148,7 +148,7 @@ export const pendencyService = {
   /**
    * Busca resumo das pendências
    */
-  async getSummary(surgeryRequestId: string): Promise<PendencySummaryFull> {
+  async getSummary(surgeryRequestId: string | number): Promise<PendencySummaryFull> {
     const response = await api.get(
       `/surgery-requests/pendencies/summary/${surgeryRequestId}`,
     );
@@ -158,7 +158,7 @@ export const pendencyService = {
   /**
    * Verifica se pode avançar de status
    */
-  async checkStatus(surgeryRequestId: string): Promise<PendencyCheckResult> {
+  async checkStatus(surgeryRequestId: string | number): Promise<PendencyCheckResult> {
     const response = await api.get(
       `/surgery-requests/pendencies/check/${surgeryRequestId}`,
     );
@@ -179,7 +179,7 @@ export const pendencyService = {
    * Conclui uma pendência por ID da solicitação e ID da pendência
    */
   async completeWithSurgeryRequest(
-    surgeryRequestId: string,
+    surgeryRequestId: string | number,
     pendencyId: number,
   ): Promise<{
     pendency: Pendency;

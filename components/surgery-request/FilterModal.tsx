@@ -21,6 +21,7 @@ export interface FilterState {
   pendencies: string[]; // "none" | "1" | "2" | "3+"
   healthPlanIds: string[];
   procedureNames: string[];
+  doctorIds: string[];
   createdAtFrom: Date | null;
   createdAtTo: Date | null;
 }
@@ -31,6 +32,7 @@ export const DEFAULT_FILTERS: FilterState = {
   pendencies: [],
   healthPlanIds: [],
   procedureNames: [],
+  doctorIds: [],
   createdAtFrom: null,
   createdAtTo: null,
 };
@@ -42,6 +44,7 @@ export function countActiveFilters(f: FilterState): number {
   if (f.pendencies.length) count++;
   if (f.healthPlanIds.length) count++;
   if (f.procedureNames.length) count++;
+  if (f.doctorIds.length) count++;
   if (f.createdAtFrom || f.createdAtTo) count++;
   return count;
 }
@@ -54,6 +57,7 @@ interface FilterModalProps {
   currentFilters: FilterState;
   availableHealthPlans: { id: string; name: string }[];
   availableProcedures: { id: string; name: string }[];
+  availableDoctors?: { id: string; name: string }[];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -585,6 +589,7 @@ export function FilterModal({
   currentFilters,
   availableHealthPlans,
   availableProcedures,
+  availableDoctors = [],
 }: FilterModalProps) {
   const [draft, setDraft] = useState<FilterState>(currentFilters);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -650,6 +655,15 @@ export function FilterModal({
       procedureNames: d.procedureNames.includes(name)
         ? d.procedureNames.filter((p) => p !== name)
         : [...d.procedureNames, name],
+    }));
+  }
+
+  function toggleDoctor(id: string) {
+    setDraft((d) => ({
+      ...d,
+      doctorIds: d.doctorIds.includes(id)
+        ? d.doctorIds.filter((dId) => dId !== id)
+        : [...d.doctorIds, id],
     }));
   }
 
@@ -748,6 +762,18 @@ export function FilterModal({
               ))}
             </div>
           </div>
+
+          {/* Médico */}
+          {availableDoctors.length > 0 && (
+            <CollapsibleSection title="Médico">
+              <SearchableMultiSelect
+                options={availableDoctors}
+                selected={draft.doctorIds}
+                onToggle={toggleDoctor}
+                placeholder="Pesquisar médico..."
+              />
+            </CollapsibleSection>
+          )}
 
           {/* Convênios */}
           {availableHealthPlans.length > 0 && (

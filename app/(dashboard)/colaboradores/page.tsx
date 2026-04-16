@@ -39,11 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type TabType =
-  | "assistentes"
-  | "hospitais"
-  | "convenios"
-  | "fornecedores";
+type TabType = "assistentes" | "hospitais" | "convenios" | "fornecedores";
 
 export default function ColaboradoresPage() {
   const router = useRouter();
@@ -442,17 +438,18 @@ export default function ColaboradoresPage() {
         ),
     },
     {
-      accessorKey: "crm",
+      id: "crm",
       header: "CRM",
       size: 120,
       meta: { className: "hidden lg:table-cell" },
-      cell: ({ row }) => (
-        <span className="text-xs text-black">
-          {row.original.is_doctor && row.original.crm
-            ? `${row.original.crm}/${row.original.crmState || ""}`
-            : "-"}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const dp = row.original.doctor_profile;
+        return (
+          <span className="text-xs text-black">
+            {dp?.crm ? `${dp.crm}/${dp.crm_state || ""}` : "-"}
+          </span>
+        );
+      },
     },
     {
       id: "actions",
@@ -912,7 +909,6 @@ export default function ColaboradoresPage() {
     enableColumnResizing: true,
   });
 
-
   const hospitalTable = useReactTable({
     data: filteredHospitals,
     columns: hospitalColumns,
@@ -1124,7 +1120,7 @@ export default function ColaboradoresPage() {
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
-                        className={`text-xs text-black opacity-70 font-normal h-12 relative ${(header.column.columnDef.meta as any)?.className ?? ""}`}
+                        className={`text-xs text-black opacity-70 font-normal h-12 relative ${header.column.columnDef.meta?.className ?? ""}`}
                         style={{
                           width: header.getSize(),
                         }}
@@ -1178,7 +1174,7 @@ export default function ColaboradoresPage() {
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className={`py-3 px-4 ${(cell.column.columnDef.meta as any)?.className ?? ""}`}
+                        className={`py-3 px-4 ${cell.column.columnDef.meta?.className ?? ""}`}
                         style={{
                           width: cell.column.getSize(),
                         }}

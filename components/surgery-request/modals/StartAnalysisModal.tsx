@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/useToast";
 interface StartAnalysisModalProps {
   isOpen: boolean;
   onClose: () => void;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onSuccess: () => void;
   notifyPatient?: boolean;
 }

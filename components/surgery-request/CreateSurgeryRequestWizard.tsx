@@ -6,7 +6,9 @@ import { CreatePatientModal } from "./CreatePatientModal";
 import { CreateHospitalModal } from "./CreateHospitalModal";
 import { CreateHealthPlanModal } from "./CreateHealthPlanModal";
 import { CreateManagerModal } from "./CreateManagerModal";
-import { Toast, ToastType } from "@/components/ui/Toast";
+import { Toast } from "@/components/ui/Toast";
+import { ToastType } from "@/types/toast.types";
+import { getApiErrorMessage } from "@/lib/http-error";
 import Image from "next/image";
 import {
   surgeryRequestService,
@@ -16,7 +18,9 @@ import { Procedure } from "@/services/procedure.service";
 import { Patient } from "@/services/patient.service";
 import { Hospital } from "@/services/hospital.service";
 import { HealthPlan } from "@/services/health-plan.service";
-import { User } from "@/services/user.service";
+import { User } from "@/types";
+import { AvailableDoctor } from "@/types";
+import { availableDoctorsService } from "@/services/available-doctors.service";
 import { priorityColors } from "@/lib/design-system";
 import {
   PriorityLevel,
@@ -71,6 +75,16 @@ export function CreateSurgeryRequestWizard({
     useState<HealthPlan | null>(null);
   const [selectedManager, setSelectedManager] = useState<User | null>(null);
 
+  // Available doctors
+  const [availableDoctors, setAvailableDoctors] = useState<AvailableDoctor[]>(
+    [],
+  );
+  const [selectedDoctor, setSelectedDoctor] = useState<AvailableDoctor | null>(
+    null,
+  );
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
+  const [noDoctorsAvailable, setNoDoctorsAvailable] = useState(false);
+
   const [priority, setPriority] = useState<PriorityLevel>(PRIORITY.LOW);
 
   // Callbacks para adicionar novos itens às listas
@@ -86,6 +100,29 @@ export function CreateSurgeryRequestWizard({
   const [addHealthPlanToList, setAddHealthPlanToList] = useState<
     ((item: HealthPlan) => void) | null
   >(null);
+
+  // Carregar médicos disponíveis ao abrir o wizard
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoadingDoctors(true);
+    setNoDoctorsAvailable(false);
+    availableDoctorsService
+      .getAvailableDoctors()
+      .then((doctors) => {
+        setAvailableDoctors(doctors);
+        if (doctors.length === 0) {
+          setNoDoctorsAvailable(true);
+          setSelectedDoctor(null);
+        } else if (doctors.length === 1) {
+          setSelectedDoctor(doctors[0]);
+        }
+      })
+      .catch(() => {
+        setAvailableDoctors([]);
+        setNoDoctorsAvailable(true);
+      })
+      .finally(() => setLoadingDoctors(false));
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -164,7 +201,7 @@ export function CreateSurgeryRequestWizard({
       setSelectedHospital({
         id: data.hospital_id,
         name: "Hospital do modelo",
-      } as any);
+      } as unknown as Hospital);
     }
     // Pré-preencher convênio (objeto completo salvo no template)
     if (data.health_plan) {
@@ -173,7 +210,7 @@ export function CreateSurgeryRequestWizard({
       setSelectedHealthPlan({
         id: data.health_plan_id,
         name: "Convênio do modelo",
-      } as any);
+      } as unknown as HealthPlan);
     }
     // Navegar para seleção de paciente (deve ser preenchido manualmente)
     setModalState("patient-select");
@@ -181,10 +218,15 @@ export function CreateSurgeryRequestWizard({
 
   const handleSubmit = async () => {
     // Validar todos os campos obrigatórios para criar a solicitação
-    if (!selectedPatient || !selectedManager || !selectedProcedure) {
+    if (
+      !selectedDoctor ||
+      !selectedPatient ||
+      !selectedManager ||
+      !selectedProcedure
+    ) {
       setToast({
         message:
-          "Por favor, preencha todos os campos obrigatórios: Paciente, Gestor e Procedimento.",
+          "Por favor, preencha todos os campos obrigatórios: Médico, Paciente, Gestor e Procedimento.",
         type: "error",
       });
       return;
@@ -198,6 +240,7 @@ export function CreateSurgeryRequestWizard({
         procedure_id: selectedProcedure.id,
         patient_id: selectedPatient.id,
         manager_id: selectedManager.id,
+        doctor_id: selectedDoctor.id,
         health_plan_id: selectedHealthPlan?.id,
         hospital_id: selectedHospital?.id,
         priority: priority,
@@ -219,14 +262,9 @@ export function CreateSurgeryRequestWizard({
         handleClose();
         onSuccess();
       }, 1500);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      const errorMessage =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Erro desconhecido ao criar solicitação cirúrgica";
+    } catch (error: unknown) {
       setToast({
-        message: `Erro ao criar solicitação: ${errorMessage}`,
+        message: `Erro ao criar solicitação: ${getApiErrorMessage(error, "Erro desconhecido ao criar solicitação cirúrgica")}`,
         type: "error",
       });
       setLoading(false);
@@ -240,6 +278,8 @@ export function CreateSurgeryRequestWizard({
     setSelectedHospital(null);
     setSelectedHealthPlan(null);
     setSelectedManager(null);
+    setSelectedDoctor(null);
+    setAvailableDoctors([]);
     setPriority(PRIORITY.LOW);
     onClose();
   };
@@ -278,7 +318,9 @@ export function CreateSurgeryRequestWizard({
               <p className="text-lg font-semibold text-gray-900">
                 Criando solicitação...
               </p>
-              <p className="text-xs md:text-sm text-gray-500">Por favor, aguarde</p>
+              <p className="text-xs md:text-sm text-gray-500">
+                Por favor, aguarde
+              </p>
             </div>
           </div>
         )}
@@ -344,10 +386,67 @@ export function CreateSurgeryRequestWizard({
 
               {/* Form Fields */}
               <div className="flex-1 overflow-y-auto">
+                {/* Médico */}
+                {loadingDoctors ? (
+                  <div className="w-full min-h-[72px] px-5 flex items-center justify-between border-b border-gray-100">
+                    <span className="text-sm md:text-base font-semibold text-gray-900">
+                      Médico
+                    </span>
+                    <span className="text-xs md:text-sm text-gray-400">
+                      Carregando...
+                    </span>
+                  </div>
+                ) : noDoctorsAvailable ? (
+                  <div className="w-full min-h-[72px] px-5 flex items-center justify-between border-b border-gray-100 bg-red-50">
+                    <span className="text-sm md:text-base font-semibold text-red-700">
+                      Médico
+                    </span>
+                    <span className="text-xs md:text-sm text-red-500">
+                      Nenhum médico disponível
+                    </span>
+                  </div>
+                ) : availableDoctors.length === 1 ? (
+                  <div className="w-full min-h-[72px] px-5 flex items-center justify-between border-b border-gray-100">
+                    <span className="text-sm md:text-base font-semibold text-gray-900">
+                      Médico
+                    </span>
+                    <span className="text-xs md:text-sm text-teal-700 font-medium truncate max-w-[180px] ml-3">
+                      {selectedDoctor?.name}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="w-full min-h-[72px] px-5 flex items-center justify-between border-b border-gray-100">
+                    <span className="text-sm md:text-base font-semibold text-gray-900">
+                      Médico
+                    </span>
+                    <select
+                      value={selectedDoctor?.id || ""}
+                      onChange={(e) => {
+                        const doc = availableDoctors.find(
+                          (d) => d.id === e.target.value,
+                        );
+                        setSelectedDoctor(doc || null);
+                      }}
+                      className="text-xs md:text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 max-w-[200px]"
+                    >
+                      <option value="">Selecionar médico</option>
+                      {availableDoctors.map((doc) => (
+                        <option key={doc.id} value={doc.id}>
+                          {doc.name}
+                          {doc.crm ? ` - CRM ${doc.crm}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Procedimento */}
                 <button
-                  onClick={() => setModalState("procedure-select")}
-                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100 ${modalState === "procedure-select" ? "bg-gray-50" : ""}`}
+                  disabled={!selectedDoctor}
+                  onClick={() =>
+                    selectedDoctor && setModalState("procedure-select")
+                  }
+                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedDoctor ? "opacity-40 cursor-not-allowed" : modalState === "procedure-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
                   <span
                     className={`text-sm md:text-base font-semibold ${selectedProcedure ? "text-gray-900" : "text-gray-900"}`}
@@ -601,6 +700,7 @@ export function CreateSurgeryRequestWizard({
                     disabled={
                       loading ||
                       isClosing ||
+                      !selectedDoctor ||
                       !selectedPatient ||
                       !selectedManager ||
                       !selectedProcedure
@@ -985,7 +1085,9 @@ function PatientSelectionContent({
                 }}
                 className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
-                <span className="text-xs md:text-sm text-gray-900">{patient.name}</span>
+                <span className="text-xs md:text-sm text-gray-900">
+                  {patient.name}
+                </span>
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     isSelected ? "border-teal-500" : "border-gray-300"
@@ -1102,7 +1204,9 @@ function HospitalSelectionContent({
                 }}
                 className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
-                <span className="text-xs md:text-sm text-gray-900">{hospital.name}</span>
+                <span className="text-xs md:text-sm text-gray-900">
+                  {hospital.name}
+                </span>
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     isSelected ? "border-teal-500" : "border-gray-300"
@@ -1220,7 +1324,9 @@ function HealthPlanSelectionContent({
                 }}
                 className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
-                <span className="text-xs md:text-sm text-gray-900">{healthPlan.name}</span>
+                <span className="text-xs md:text-sm text-gray-900">
+                  {healthPlan.name}
+                </span>
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     isSelected ? "border-teal-500" : "border-gray-300"
@@ -1331,7 +1437,9 @@ function ManagerSelectionContent({
                 className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
                 <div className="flex flex-col">
-                  <span className="text-xs md:text-sm text-gray-900">{manager.name}</span>
+                  <span className="text-xs md:text-sm text-gray-900">
+                    {manager.name}
+                  </span>
                   <span className="text-xs text-gray-500">{manager.email}</span>
                 </div>
                 <div
@@ -1413,7 +1521,9 @@ function TemplateSelectionContent({
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-xs md:text-sm text-gray-500">Nenhum modelo encontrado</p>
+            <p className="text-xs md:text-sm text-gray-500">
+              Nenhum modelo encontrado
+            </p>
             <p className="text-xs text-gray-400 mt-1">
               Salve uma solicitação como modelo ao enviá-la
             </p>

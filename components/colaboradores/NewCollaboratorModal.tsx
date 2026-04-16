@@ -11,6 +11,8 @@ interface NewCollaboratorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  /** Quando true, o toggle "É médico" é pré-ativado e o título/botão mudam para "Novo médico" */
+  defaultIsDoctor?: boolean;
 }
 
 const EMPTY_FORM = {
@@ -24,9 +26,33 @@ const EMPTY_FORM = {
 };
 
 const BRAZILIAN_STATES = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
-  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
-  "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ];
 
 function applyPhoneMask(value: string): string {
@@ -46,15 +72,19 @@ export function NewCollaboratorModal({
   isOpen,
   onClose,
   onSuccess,
+  defaultIsDoctor = false,
 }: NewCollaboratorModalProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [formData, setFormData] = useState({
+    ...EMPTY_FORM,
+    is_doctor: defaultIsDoctor,
+  });
   const [emailError, setEmailError] = useState("");
   const [error, setError] = useState("");
 
   const handleClose = () => {
     if (loading) return;
-    setFormData(EMPTY_FORM);
+    setFormData({ ...EMPTY_FORM, is_doctor: defaultIsDoctor });
     setEmailError("");
     setError("");
     onClose();
@@ -92,17 +122,19 @@ export function NewCollaboratorModal({
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone || undefined,
-        is_doctor: formData.is_doctor,
-        ...(formData.is_doctor && {
-          crm: formData.crm.trim(),
-          crm_state: formData.crm_state,
-          specialty: formData.specialty.trim() || undefined,
-        }),
+        ...(formData.is_doctor &&
+          formData.crm.trim() && {
+            doctor_profile: {
+              crm: formData.crm.trim(),
+              crm_state: formData.crm_state,
+              specialty: formData.specialty.trim() || undefined,
+            },
+          }),
       };
 
       await collaboratorService.create(payload);
       onSuccess();
-      setFormData(EMPTY_FORM);
+      setFormData({ ...EMPTY_FORM, is_doctor: defaultIsDoctor });
       setEmailError("");
       setError("");
       onClose();
@@ -114,7 +146,10 @@ export function NewCollaboratorModal({
       setError(
         Array.isArray(msg)
           ? msg.join(", ")
-          : msg || "Erro ao criar colaborador. Tente novamente.",
+          : msg ||
+              (defaultIsDoctor
+                ? "Erro ao criar médico. Tente novamente."
+                : "Erro ao criar colaborador. Tente novamente."),
       );
     } finally {
       setLoading(false);
@@ -135,7 +170,9 @@ export function NewCollaboratorModal({
       <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 flex-shrink-0">
-          <h2 className="ds-modal-title">Novo colaborador</h2>
+          <h2 className="ds-modal-title">
+            {defaultIsDoctor ? "Novo médico" : "Novo colaborador"}
+          </h2>
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -292,7 +329,11 @@ export function NewCollaboratorModal({
               disabled={loading || !!emailError}
               className="ds-btn-primary"
             >
-              {loading ? "Adicionando..." : "Adicionar colaborador"}
+              {loading
+                ? "Adicionando..."
+                : defaultIsDoctor
+                  ? "Adicionar médico"
+                  : "Adicionar colaborador"}
             </button>
           </div>
         </form>

@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
-
-export type ToastType = "success" | "error" | "info" | "warning";
+import { ToastType } from "@/types/toast.types";
 
 interface ToastState {
   message: string;

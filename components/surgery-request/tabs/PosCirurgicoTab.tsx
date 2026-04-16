@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
+import {
+  documentService,
+  DOCUMENT_FOLDERS,
+  Document,
+} from "@/services/document.service";
+import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 import {
   DocumentUploadModal,
   POST_SURGERY_DOCUMENT_TYPES,
@@ -12,7 +17,7 @@ import { useToast } from "@/hooks/useToast";
 import { mergeDocumentsAsPdf } from "@/lib/merge-pdf";
 
 interface PosCirurgicoTabProps {
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onUpdate: () => void;
 }
 
@@ -76,14 +81,16 @@ export function PosCirurgicoTab({
 }: PosCirurgicoTabProps) {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [documentToDelete, setDocumentToDelete] = useState<any>(null);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(
+    null,
+  );
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const { showToast } = useToast();
 
   const postSurgeryDocs = React.useMemo(
     () =>
-      (solicitacao.documents ?? []).filter((d: any) =>
+      (solicitacao.documents ?? []).filter((d) =>
         d.path?.startsWith("post-surgical/"),
       ),
     [solicitacao.documents],
@@ -114,7 +121,7 @@ export function PosCirurgicoTab({
     setIsExporting(true);
     try {
       const blob = await mergeDocumentsAsPdf(
-        postSurgeryDocs.map((d: any) => ({ uri: d.uri, name: d.name })),
+        postSurgeryDocs.map((d) => ({ uri: d.uri, name: d.name })),
       );
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -245,7 +252,7 @@ export function PosCirurgicoTab({
 
         {/* Linhas de documentos */}
         {postSurgeryDocs.length > 0 ? (
-          postSurgeryDocs.map((doc: any) => (
+          postSurgeryDocs.map((doc) => (
             <div
               key={doc.id}
               className="flex items-center gap-4 px-4 py-3 border-b border-neutral-100 hover:bg-gray-50 last:border-b-0"

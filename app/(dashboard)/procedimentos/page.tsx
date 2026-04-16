@@ -416,7 +416,7 @@ export default function ProcedimentosPage() {
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
-                        className={`text-xs text-black opacity-70 font-normal h-12 ${(header.column.columnDef.meta as any)?.className ?? ""}`}
+                        className={`text-xs text-black opacity-70 font-normal h-12 ${header.column.columnDef.meta?.className ?? ""}`}
                         style={{ width: header.getSize() }}
                       >
                         {header.isPlaceholder
@@ -440,7 +440,7 @@ export default function ProcedimentosPage() {
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className={`py-3 px-4 ${(cell.column.columnDef.meta as any)?.className ?? ""}`}
+                        className={`py-3 px-4 ${cell.column.columnDef.meta?.className ?? ""}`}
                         style={{ width: cell.column.getSize() }}
                         onClick={
                           cell.column.id === "select" ||

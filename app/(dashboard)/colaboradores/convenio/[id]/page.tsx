@@ -12,6 +12,7 @@ import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
+import { ToastType } from "@/types/toast.types";
 import { ChevronRight } from "lucide-react";
 
 export default function ConvenioDetalhePage() {
@@ -421,7 +422,7 @@ export default function ConvenioDetalhePage() {
       {toast && (
         <Toast
           message={toast.message}
-          type={toast.type as any}
+          type={toast.type as ToastType}
           onClose={hideToast}
         />
       )}

@@ -10,12 +10,18 @@ import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
+import { getApiErrorMessage } from "@/lib/http-error";
+import {
+  profileSchema,
+  changePasswordSchema,
+} from "@/lib/schemas/configuracoes.schema";
 import api from "@/lib/api";
 import { userService } from "@/services/user.service";
 import { notificationService } from "@/services/notification.service";
 import { uploadService } from "@/services/upload.service";
+import { authService } from "@/services/auth.service";
+import type { SubscriptionPlan } from "@/types";
 import { removeBackground } from "@/lib/utils";
-import { UserProfiles } from "@/types";
 import {
   User,
   Camera,
@@ -23,7 +29,6 @@ import {
   CreditCard,
   Shield,
   FileSignature,
-  Check,
   Upload,
   X,
   Mail,
@@ -40,13 +45,12 @@ interface UserProfile {
   document: string;
   birthDate: string;
   gender: string;
-  // Campos específicos do médico
+  // Campos específicos do médico (lidos de doctor_profile)
   specialty?: string;
   crm?: string;
   crmState?: string;
   signatureImageUrl?: string;
-  // Campo do perfil
-  userType?: number;
+  // Flags
   isDoctor?: boolean;
 }
 
@@ -59,15 +63,6 @@ interface NotificationSettings {
   pendencies: boolean;
   expiringDocuments: boolean;
   weeklyReport: boolean;
-}
-
-interface Plan {
-  id: string;
-  name: string;
-  price: number;
-  features: string[];
-  popular?: boolean;
-  current?: boolean;
 }
 
 // Tabs da página
@@ -168,67 +163,45 @@ function NotificationItem({
 // Componente de Plan Card
 function PlanCard({
   plan,
-  onSelect,
   isCurrentPlan,
 }: {
-  plan: Plan;
-  onSelect: () => void;
+  plan: SubscriptionPlan;
   isCurrentPlan: boolean;
 }) {
   return (
     <div
       className={cn(
         "relative border rounded-2xl p-6 transition-all",
-        plan.popular
-          ? "border-primary-500 shadow-lg shadow-primary-100"
+        isCurrentPlan
+          ? "bg-primary-50 border-primary-500 shadow-lg shadow-primary-100"
           : "border-gray-200",
-        isCurrentPlan && "bg-primary-50 border-primary-500",
       )}
     >
-      {plan.popular && !isCurrentPlan && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-xs font-medium px-3 py-1 rounded-full">
-          Mais Popular
-        </span>
-      )}
       {isCurrentPlan && (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs font-medium px-3 py-1 rounded-full">
           Plano Atual
         </span>
       )}
       <h3 className="text-base font-semibold text-gray-900">{plan.name}</h3>
-      <div className="mt-2 mb-4">
-        <span className="text-3xl font-bold text-gray-900">
-          R$ {plan.price.toFixed(2).replace(".", ",")}
+      <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
+      <div className="mt-4 mb-4">
+        <span className="text-sm text-gray-700 font-medium">
+          Até {plan.max_doctors} {plan.max_doctors === 1 ? "médico" : "médicos"}
         </span>
-        <span className="text-gray-500 text-sm">/mês</span>
       </div>
-      <ul className="space-y-3 mb-6">
-        {plan.features.map((feature, index) => (
-          <li
-            key={index}
-            className="flex items-start gap-2 text-sm text-gray-600"
-          >
-            <Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-            {feature}
-          </li>
-        ))}
-      </ul>
       <Button
-        variant={
-          isCurrentPlan ? "outline" : plan.popular ? "primary" : "outline"
-        }
+        variant={isCurrentPlan ? "outline" : "primary"}
         className="w-full"
-        onClick={onSelect}
         disabled={isCurrentPlan}
       >
-        {isCurrentPlan ? "Plano Atual" : "Selecionar Plano"}
+        {isCurrentPlan ? "Plano Atual" : "Fale Conosco"}
       </Button>
     </div>
   );
 }
 
 export default function ConfiguracoesPage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, isAdmin } = useAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [saving, setSaving] = useState(false);
@@ -245,7 +218,6 @@ export default function ConfiguracoesPage() {
     specialty: "",
     crm: "",
     crmState: "",
-    userType: undefined,
   });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
@@ -267,50 +239,8 @@ export default function ConfiguracoesPage() {
   });
 
   // Estados do plano
-  const [currentPlan, setCurrentPlan] = useState<string | null>("professional");
-
-  // Planos disponíveis
-  const plans: Plan[] = [
-    {
-      id: "starter",
-      name: "Starter",
-      price: 99.9,
-      features: [
-        "Até 50 solicitações/mês",
-        "1 usuário",
-        "Suporte por e-mail",
-        "Relatórios básicos",
-      ],
-    },
-    {
-      id: "professional",
-      name: "Professional",
-      price: 199.9,
-      popular: true,
-      features: [
-        "Até 200 solicitações/mês",
-        "5 usuários",
-        "Suporte prioritário",
-        "Relatórios avançados",
-        "Integrações",
-        "API de acesso",
-      ],
-    },
-    {
-      id: "enterprise",
-      name: "Enterprise",
-      price: 499.9,
-      features: [
-        "Solicitações ilimitadas",
-        "Usuários ilimitados",
-        "Suporte 24/7",
-        "Relatórios personalizados",
-        "Integrações avançadas",
-        "API dedicada",
-        "Gestor de conta",
-      ],
-    },
-  ];
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
 
   // Estados de segurança
   const [passwordData, setPasswordData] = useState({
@@ -325,6 +255,7 @@ export default function ConfiguracoesPage() {
       setLoadingProfile(true);
       try {
         const profileData = await userService.getProfile();
+        const dp = profileData.doctor_profile;
         setProfile({
           name: profileData.name || "",
           email: profileData.email || "",
@@ -334,32 +265,23 @@ export default function ConfiguracoesPage() {
             ? new Date(profileData.birth_date).toISOString().split("T")[0]
             : "",
           gender: profileData.gender || "",
-          specialty:
-            profileData.specialty ||
-            profileData.doctor_profile?.specialty ||
-            "",
-          crm: profileData.crm || profileData.doctor_profile?.crm || "",
-          crmState:
-            profileData.crm_state ||
-            profileData.doctor_profile?.crm_state ||
-            "",
-          signatureImageUrl:
-            profileData.signature_image_url ||
-            profileData.doctor_profile?.signature_url ||
-            "",
-          userType: profileData.profile,
+          specialty: dp?.specialty || "",
+          crm: dp?.crm || "",
+          crmState: dp?.crm_state || "",
+          signatureImageUrl: dp?.signature_url || "",
           isDoctor: profileData.is_doctor || false,
         });
         if (profileData.avatar_url) {
           setAvatarPreview(profileData.avatar_url);
         }
-        if (profileData.signature_url) {
-          setSignaturePreview(profileData.signature_url);
+        if (dp?.signature_url) {
+          setSignaturePreview(dp.signature_url);
         }
       } catch (error) {
         console.error("Erro ao carregar perfil:", error);
         // Fallback para dados do contexto
         if (user) {
+          const dp = user.doctor_profile;
           setProfile({
             name: user.name || "",
             email: user.email || "",
@@ -367,10 +289,9 @@ export default function ConfiguracoesPage() {
             document: "",
             birthDate: "",
             gender: "",
-            specialty: user.specialty || "",
-            crm: user.crm || "",
-            crmState: user.crm_state || "",
-            userType: user.profile,
+            specialty: dp?.specialty || "",
+            crm: dp?.crm || "",
+            crmState: dp?.crm_state || "",
             isDoctor: user.is_doctor || false,
           });
         }
@@ -407,6 +328,24 @@ export default function ConfiguracoesPage() {
 
     loadNotificationSettings();
   }, []);
+
+  // Carregar planos de assinatura
+  useEffect(() => {
+    const loadPlans = async () => {
+      if (!isAdmin) return;
+      setLoadingPlans(true);
+      try {
+        const data = await authService.getPlans();
+        setPlans(data);
+      } catch (error) {
+        console.error("Erro ao carregar planos:", error);
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
+
+    loadPlans();
+  }, [isAdmin]);
 
   // Handlers de upload
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -468,23 +407,29 @@ export default function ConfiguracoesPage() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
+      // 1. Salvar dados básicos do perfil
       await userService.updateProfile({
         name: profile.name,
         phone: profile.phone || undefined,
         document: profile.document || undefined,
         birth_date: profile.birthDate || undefined,
         gender: profile.gender || undefined,
-        specialty: profile.specialty || undefined,
-        crm: profile.crm || undefined,
-        crm_state: profile.crmState || undefined,
         avatar_url: avatarPreview || undefined,
       });
+
+      // 2. Se é médico e tem doctor_profile, salvar dados profissionais
+      if (profile.isDoctor && user?.doctor_profile?.id) {
+        await userService.updateDoctorProfile(user.doctor_profile.id, {
+          crm: profile.crm || undefined,
+          crm_state: profile.crmState || undefined,
+          specialty: profile.specialty || undefined,
+        });
+      }
+
       await updateUser();
       showToast("Perfil atualizado com sucesso!", "success");
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || "Erro ao atualizar perfil";
-      showToast(message, "error");
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, "Erro ao atualizar perfil"), "error");
     } finally {
       setSaving(false);
     }
@@ -505,10 +450,11 @@ export default function ConfiguracoesPage() {
         weekly_report: notifications.weeklyReport,
       });
       showToast("Configurações de notificação atualizadas!", "success");
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || "Erro ao atualizar configurações";
-      showToast(message, "error");
+    } catch (error: unknown) {
+      showToast(
+        getApiErrorMessage(error, "Erro ao atualizar configurações"),
+        "error",
+      );
     } finally {
       setSaving(false);
     }
@@ -516,16 +462,9 @@ export default function ConfiguracoesPage() {
 
   // Alterar senha
   const handleChangePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      showToast("As senhas não coincidem", "error");
-      return;
-    }
-    if (passwordData.newPassword.length < 6) {
-      showToast("A senha deve ter pelo menos 6 caracteres", "error");
-      return;
-    }
-    if (!passwordData.currentPassword) {
-      showToast("Digite sua senha atual", "error");
+    const result = changePasswordSchema.safeParse(passwordData);
+    if (!result.success) {
+      showToast(result.error.issues[0].message, "error");
       return;
     }
     setSaving(true);
@@ -540,9 +479,8 @@ export default function ConfiguracoesPage() {
         newPassword: "",
         confirmPassword: "",
       });
-    } catch (error: any) {
-      const message = error.response?.data?.message || "Erro ao alterar senha";
-      showToast(message, "error");
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, "Erro ao alterar senha"), "error");
     } finally {
       setSaving(false);
     }
@@ -1001,6 +939,8 @@ export default function ConfiguracoesPage() {
   };
 
   // Render da aba de Plano
+  const currentPlan = plans.find((p) => p.id === user?.subscription_plan_id);
+
   const renderPlanTab = () => (
     <div className="space-y-6">
       {/* Plano atual */}
@@ -1013,21 +953,17 @@ export default function ConfiguracoesPage() {
                   Seu plano atual
                 </p>
                 <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                  {plans.find((p) => p.id === currentPlan)?.name}
+                  {currentPlan.name}
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Próxima cobrança em 15/02/2026
+                  {currentPlan.description}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-bold text-gray-900">
-                  R${" "}
-                  {plans
-                    .find((p) => p.id === currentPlan)
-                    ?.price.toFixed(2)
-                    .replace(".", ",")}
+                <p className="text-sm font-medium text-gray-700">
+                  Até {currentPlan.max_doctors}{" "}
+                  {currentPlan.max_doctors === 1 ? "médico" : "médicos"}
                 </p>
-                <p className="text-sm text-gray-500">por mês</p>
               </div>
             </div>
           </CardContent>
@@ -1037,59 +973,48 @@ export default function ConfiguracoesPage() {
       {/* Lista de planos */}
       <div>
         <h3 className="text-base font-semibold text-gray-900 mb-4">
-          {currentPlan ? "Alterar Plano" : "Escolha seu Plano"}
+          {currentPlan ? "Planos Disponíveis" : "Escolha seu Plano"}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              isCurrentPlan={currentPlan === plan.id}
-              onSelect={() => {
-                if (currentPlan !== plan.id) {
-                  setCurrentPlan(plan.id);
-                  showToast(`Plano ${plan.name} selecionado!`, "success");
-                }
-              }}
-            />
-          ))}
-        </div>
+        {loadingPlans ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+            <span className="ml-2 text-sm text-gray-500">
+              Carregando planos...
+            </span>
+          </div>
+        ) : plans.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">
+            Nenhum plano disponível no momento.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {plans.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                isCurrentPlan={user?.subscription_plan_id === plan.id}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Histórico de pagamentos */}
+      {/* Informação de contato para alteração de plano */}
       <Card className="border border-gray-200 rounded-2xl">
-        <CardHeader className="p-6 pb-4">
-          <h3 className="text-base font-semibold text-gray-900">
-            Histórico de Pagamentos
-          </h3>
-        </CardHeader>
-        <CardContent className="p-6 pt-0">
-          <div className="space-y-3">
-            {[
-              { date: "15/01/2026", value: "R$ 199,90", status: "Pago" },
-              { date: "15/12/2025", value: "R$ 199,90", status: "Pago" },
-              { date: "15/11/2025", value: "R$ 199,90", status: "Pago" },
-            ].map((payment, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <CreditCard className="w-4 h-4 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {payment.value}
-                    </p>
-                    <p className="text-xs text-gray-500">{payment.date}</p>
-                  </div>
-                </div>
-                <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-lg">
-                  {payment.status}
-                </span>
-              </div>
-            ))}
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-100 rounded-lg">
+              <CreditCard className="w-4 h-4 text-primary-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">
+                Precisa alterar seu plano?
+              </p>
+              <p className="text-xs text-gray-500">
+                Entre em contato com nosso time comercial para alterações no seu
+                plano de assinatura.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1188,12 +1113,14 @@ export default function ConfiguracoesPage() {
                 icon={Bell}
                 label="Notificações"
               />
-              <TabButton
-                active={activeTab === "plan"}
-                onClick={() => setActiveTab("plan")}
-                icon={CreditCard}
-                label="Plano e Faturamento"
-              />
+              {isAdmin && (
+                <TabButton
+                  active={activeTab === "plan"}
+                  onClick={() => setActiveTab("plan")}
+                  icon={CreditCard}
+                  label="Plano e Faturamento"
+                />
+              )}
               <TabButton
                 active={activeTab === "security"}
                 onClick={() => setActiveTab("security")}
@@ -1207,7 +1134,7 @@ export default function ConfiguracoesPage() {
           <div className="flex-1 min-w-0">
             {activeTab === "profile" && renderProfileTab()}
             {activeTab === "notifications" && renderNotificationsTab()}
-            {activeTab === "plan" && renderPlanTab()}
+            {activeTab === "plan" && isAdmin && renderPlanTab()}
             {activeTab === "security" && renderSecurityTab()}
           </div>
         </div>

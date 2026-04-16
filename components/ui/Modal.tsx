@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useId, useRef } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -18,6 +18,9 @@ export function Modal({
   children,
   size = "md",
 }: ModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
   // Previne scroll do body quando modal está aberto
   useEffect(() => {
     if (isOpen) {
@@ -27,6 +30,52 @@ export function Modal({
       document.body.style.overflow = "";
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const focusableSelector =
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    const focusableElements = Array.from(
+      modal.querySelectorAll<HTMLElement>(focusableSelector),
+    );
+
+    focusableElements[0]?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      if (focusableElements.length === 0) return;
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      const activeElement = document.activeElement as HTMLElement | null;
+
+      if (event.shiftKey) {
+        if (activeElement === first || !modal.contains(activeElement)) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -47,6 +96,10 @@ export function Modal({
 
       {/* Modal - Bottom sheet no mobile, centered no desktop */}
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className={`relative bg-white w-full ${sizeClasses[size]} flex flex-col
           rounded-t-3xl md:rounded-2xl
           max-h-[92vh] md:max-h-[85vh]
@@ -61,7 +114,9 @@ export function Modal({
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 md:p-6 border-b border-neutral-100">
-          <h2 className="ds-modal-title">{title}</h2>
+          <h2 id={titleId} className="ds-modal-title">
+            {title}
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"

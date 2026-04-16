@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-
-export type ToastType = "success" | "error" | "info";
+import { ToastType } from "@/types/toast.types";
 
 interface ToastProps {
   message: string;
@@ -29,6 +28,7 @@ export function Toast({ message, type, onClose, duration = 5000 }: ToastProps) {
     success: "bg-green-500",
     error: "bg-red-500",
     info: "bg-blue-500",
+    warning: "bg-amber-500",
   }[type];
 
   const icon = {
@@ -74,6 +74,21 @@ export function Toast({ message, type, onClose, duration = 5000 }: ToastProps) {
           strokeLinejoin="round"
           strokeWidth={2}
           d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+    warning: (
+      <svg
+        className="w-6 h-6 text-white"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 9v4m0 4h.01M10.29 3.86l-7.4 12.8A1 1 0 003.76 18h16.48a1 1 0 00.87-1.34l-7.4-12.8a1 1 0 00-1.74 0z"
         />
       </svg>
     ),

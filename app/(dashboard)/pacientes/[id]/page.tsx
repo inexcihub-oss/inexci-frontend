@@ -9,6 +9,7 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { Toast } from "@/components/ui/Toast";
+import { ToastType } from "@/types/toast.types";
 import { patientService, Patient } from "@/services/patient.service";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { formatCPF, formatPhone } from "@/lib/formatters";
@@ -442,7 +443,7 @@ export default function PacienteDetalhePage() {
       {toast && (
         <Toast
           message={toast.message}
-          type={toast.type as any}
+          type={toast.type as ToastType}
           onClose={hideToast}
         />
       )}

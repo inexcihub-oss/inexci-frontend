@@ -5,12 +5,16 @@ import { Combobox } from "@/components/ui";
 import { SelectSearch } from "@/components/ui/SelectSearch";
 import { hospitalService } from "@/services/hospital.service";
 import { healthPlanService } from "@/services/health-plan.service";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { cidService, CidItem } from "@/services/cid.service";
+import { getApiErrorMessage } from "@/lib/http-error";
 import { useToast } from "@/hooks/useToast";
 
 interface EditableProcedureDataProps {
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onUpdate?: () => void;
   readOnly?: boolean;
 }
@@ -63,11 +67,11 @@ export function EditableProcedureData({
               cidDescription: found.description,
             }));
           } else {
-            setCidDisplayLabel(solicitacao.cid_id);
+            setCidDisplayLabel(solicitacao.cid_id ?? "");
           }
         })
         .catch(() => {
-          setCidDisplayLabel(solicitacao.cid_id);
+          setCidDisplayLabel(solicitacao.cid_id ?? "");
         });
     } else if (solicitacao.cid_id) {
       setCidDisplayLabel(
@@ -161,7 +165,7 @@ export function EditableProcedureData({
       }
 
       // Preparar dados para envio conforme DTO do backend
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         id: solicitacao.id,
         diagnosis: solicitacao.diagnosis || "",
         medical_report: solicitacao.medical_report || "",
@@ -208,12 +212,8 @@ export function EditableProcedureData({
       showToast("Dados atualizados com sucesso!", "success");
       setIsEditing(false);
       onUpdate?.();
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Erro ao salvar dados";
-      showToast(errorMessage, "error");
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, "Erro ao salvar dados"), "error");
     } finally {
       setLoading(false);
     }

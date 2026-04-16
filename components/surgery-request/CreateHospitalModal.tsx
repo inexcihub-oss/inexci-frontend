@@ -7,6 +7,7 @@ import {
   CreateHospitalPayload,
   Hospital,
 } from "@/services/hospital.service";
+import { getApiErrorMessage } from "@/lib/http-error";
 
 interface CreateHospitalModalProps {
   isOpen: boolean;
@@ -152,12 +153,9 @@ export function CreateHospitalModal({
       setFormData(EMPTY_FORM);
       setEmailError("");
       onClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message;
+    } catch (err: unknown) {
       setError(
-        Array.isArray(msg)
-          ? msg.join(", ")
-          : msg || "Erro ao criar hospital. Tente novamente.",
+        getApiErrorMessage(err, "Erro ao criar hospital. Tente novamente."),
       );
     } finally {
       setLoading(false);

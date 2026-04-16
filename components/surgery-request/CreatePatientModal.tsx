@@ -6,6 +6,7 @@ import {
   patientService,
   CreatePatientPayload,
 } from "@/services/patient.service";
+import { getApiErrorMessage } from "@/lib/http-error";
 
 interface CreatePatientModalProps {
   isOpen: boolean;
@@ -80,10 +81,9 @@ export function CreatePatientModal({
       setFormData({ name: "", phone: "", email: "" });
       setEmailError("");
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(
-        err?.response?.data?.message ||
-          "Erro ao criar paciente. Tente novamente.",
+        getApiErrorMessage(err, "Erro ao criar paciente. Tente novamente."),
       );
     } finally {
       setLoading(false);

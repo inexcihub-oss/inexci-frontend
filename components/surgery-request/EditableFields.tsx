@@ -147,7 +147,7 @@ const priorityStyles: Record<
 
 interface EditablePriorityProps {
   initialValue: PriorityLevel;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onUpdate?: () => void;
 }
 
@@ -266,8 +266,8 @@ export function EditablePriority({
 }
 
 interface EditableManagerProps {
-  initialValue: { id: number; name: string } | null;
-  surgeryRequestId: string;
+  initialValue: { id: string | number; name: string } | null;
+  surgeryRequestId: string | number;
   onUpdate?: () => void;
 }
 
@@ -431,7 +431,7 @@ export function EditableManager({
 
 interface EditableDeadlineProps {
   initialValue: string | null;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onUpdate?: () => void;
 }
 

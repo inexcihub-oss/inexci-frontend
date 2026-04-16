@@ -5,6 +5,7 @@ import {
   surgeryRequestService,
   AcceptAuthorizationPayload,
   ContestAuthorizationPayload,
+  SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
 
@@ -15,7 +16,7 @@ type ContestStep = 1 | 2 | 3;
 type ContestMethod = "email" | "document";
 
 interface AuthorizationEntry {
-  id: string;
+  id: string | number;
   quantity: number;
   authorized_quantity: string;
 }
@@ -24,7 +25,7 @@ interface UpdateAuthorizationsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onClose2: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
   notifyPatient?: boolean;
 }
@@ -52,7 +53,7 @@ export function UpdateAuthorizationsModal({
   const [isSaving, setIsSaving] = useState(false);
 
   const [tussAuth, setTussAuth] = useState<AuthorizationEntry[]>(() =>
-    (solicitacao?.tuss_items ?? []).map((p: any) => ({
+    (solicitacao?.tuss_items ?? []).map((p) => ({
       id: p.id,
       quantity: p.quantity ?? 1,
       authorized_quantity:
@@ -63,7 +64,7 @@ export function UpdateAuthorizationsModal({
   );
 
   const [opmeAuth, setOpmeAuth] = useState<AuthorizationEntry[]>(() =>
-    (solicitacao?.opme_items ?? []).map((o: any) => ({
+    (solicitacao?.opme_items ?? []).map((o) => ({
       id: o.id,
       quantity: o.quantity ?? 1,
       authorized_quantity:
@@ -105,7 +106,7 @@ export function UpdateAuthorizationsModal({
       { date: "", time: "00:00" },
     ]);
     setTussAuth(
-      (solicitacao?.tuss_items ?? []).map((p: any) => ({
+      (solicitacao?.tuss_items ?? []).map((p) => ({
         id: p.id,
         quantity: p.quantity ?? 1,
         authorized_quantity:
@@ -115,7 +116,7 @@ export function UpdateAuthorizationsModal({
       })),
     );
     setOpmeAuth(
-      (solicitacao?.opme_items ?? []).map((o: any) => ({
+      (solicitacao?.opme_items ?? []).map((o) => ({
         id: o.id,
         quantity: o.quantity ?? 1,
         authorized_quantity:
@@ -295,7 +296,7 @@ export function UpdateAuthorizationsModal({
                 labelHeader="Procedimento"
                 renderLabel={(item) => {
                   const proc = solicitacao.tuss_items?.find(
-                    (p: any) => p.id === item.id,
+                    (p) => p.id === item.id,
                   );
                   return `${proc?.tuss_code ?? ""} — ${proc?.name ?? ""}`;
                 }}
@@ -332,9 +333,9 @@ export function UpdateAuthorizationsModal({
                   labelHeader="Descrição"
                   renderLabel={(item) => {
                     const opme = solicitacao.opme_items?.find(
-                      (o: any) => o.id === item.id,
+                      (o) => o.id === item.id,
                     );
-                    return opme?.name ?? item.id;
+                    return opme?.name ?? String(item.id);
                   }}
                   onChange={(id, val) =>
                     setOpmeAuth((prev) =>
@@ -381,7 +382,7 @@ export function UpdateAuthorizationsModal({
                     labelHeader="Procedimento"
                     items={tussAuth.map((e) => {
                       const proc = solicitacao.tuss_items?.find(
-                        (p: any) => p.id === e.id,
+                        (p) => p.id === e.id,
                       );
                       return {
                         label: `${proc?.tuss_code ?? ""} — ${proc?.name ?? ""}`,
@@ -404,10 +405,10 @@ export function UpdateAuthorizationsModal({
                     labelHeader="Descrição"
                     items={opmeAuth.map((e) => {
                       const opme = solicitacao.opme_items?.find(
-                        (o: any) => o.id === e.id,
+                        (o) => o.id === e.id,
                       );
                       return {
-                        label: opme?.name ?? e.id,
+                        label: opme?.name ?? String(e.id),
                         requested: e.quantity,
                         authorized:
                           e.authorized_quantity !== ""
@@ -606,7 +607,7 @@ interface AuthorizationTableProps {
   items: AuthorizationEntry[];
   labelHeader: string;
   renderLabel: (item: AuthorizationEntry) => string;
-  onChange: (id: string, value: string) => void;
+  onChange: (id: string | number, value: string) => void;
 }
 
 function AuthorizationTable({

@@ -3,7 +3,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { X, Download, Mail, ExternalLink, CheckCircle } from "lucide-react";
 import api from "@/lib/api";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { pendencyService } from "@/services/pendency.service";
 import { useToast } from "@/hooks/useToast";
 import { SurgeryRequestDocumentPreviewModal } from "@/components/laudo/SurgeryRequestDocumentPreviewModal";
@@ -11,7 +14,7 @@ import { SurgeryRequestDocumentPreviewModal } from "@/components/laudo/SurgeryRe
 interface SendRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
   notifyPatient?: boolean;
 }

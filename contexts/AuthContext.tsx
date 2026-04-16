@@ -15,6 +15,9 @@ import { useRouter } from "next/navigation";
 interface AuthContextData {
   user: User | null;
   loading: boolean;
+  isDoctor: boolean;
+  isAdmin: boolean;
+  accountId: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUser: () => Promise<void>;
@@ -57,6 +60,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    // Revoga refresh tokens no backend via cookie httpOnly (fire-and-forget)
+    try {
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/auth/logout`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+          },
+        ).catch(() => {});
+      }
+    } catch {
+      // Ignora erros — o logout local é suficiente
+    }
     authService.logout();
     setUser(null);
     router.push("/login");
@@ -71,15 +94,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const isDoctor = useMemo(() => user?.is_doctor ?? false, [user]);
+  const isAdmin = useMemo(() => user?.role === "admin", [user]);
+  const accountId = useMemo(() => user?.account_id ?? null, [user]);
+
   const value = useMemo(
     () => ({
       user,
       loading,
+      isDoctor,
+      isAdmin,
+      accountId,
       login,
       logout,
       updateUser,
     }),
-    [user, loading, login, logout, updateUser],
+    [user, loading, isDoctor, isAdmin, accountId, login, logout, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

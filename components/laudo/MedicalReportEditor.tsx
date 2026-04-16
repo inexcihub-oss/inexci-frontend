@@ -13,17 +13,19 @@ import {
 import {
   surgeryRequestService,
   ReportSection,
+  SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import { MedicalReportPreviewModal } from "@/components/laudo/MedicalReportPreviewModal";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import api from "@/lib/api";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
 interface MedicalReportEditorProps {
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onUpdate: () => void;
 }
 
@@ -259,7 +261,7 @@ export function MedicalReportEditor({
   // Usa exclusivamente a assinatura do médico vinculado à solicitação.
   // O backend já converte o path para URL assinada em findOne().
   useEffect(() => {
-    const doctor = (solicitacao as any)?.doctor;
+    const doctor = solicitacao?.doctor;
     const url: string | null = doctor?.signature_url ?? null;
     setSignatureUrl(url);
   }, [solicitacao]);
@@ -878,7 +880,7 @@ export function MedicalReportEditor({
                           <div
                             className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
                             dangerouslySetInnerHTML={{
-                              __html: section.description,
+                              __html: sanitizeHtml(section.description),
                             }}
                           />
                         ) : (

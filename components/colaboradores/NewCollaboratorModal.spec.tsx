@@ -135,10 +135,14 @@ describe("NewCollaboratorModal", () => {
         expect.objectContaining({
           name: "Maria Silva",
           email: "maria@email.com",
-          is_doctor: false,
         }),
       );
     });
+
+    // Não deve enviar is_doctor no payload (campo gerenciado pelo backend)
+    const callArgs = (collaboratorService.create as ReturnType<typeof vi.fn>)
+      .mock.calls[0][0];
+    expect(callArgs).not.toHaveProperty("is_doctor");
 
     expect(defaultProps.onSuccess).toHaveBeenCalled();
     expect(defaultProps.onClose).toHaveBeenCalled();
@@ -183,7 +187,7 @@ describe("NewCollaboratorModal", () => {
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
-  it("deve enviar dados de médico quando toggle is_doctor ativado", async () => {
+  it("deve enviar doctor_profile quando toggle de médico ativado", async () => {
     (collaboratorService.create as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "new-2",
     });
@@ -216,11 +220,142 @@ describe("NewCollaboratorModal", () => {
         expect.objectContaining({
           name: "Dr. Carlos",
           email: "carlos@email.com",
-          is_doctor: true,
-          crm: "654321",
-          crm_state: "SP",
+          doctor_profile: expect.objectContaining({
+            crm: "654321",
+            crm_state: "SP",
+          }),
         }),
       );
     });
+
+    // Não deve enviar is_doctor no payload (campo gerenciado pelo backend)
+    const callArgs = (collaboratorService.create as ReturnType<typeof vi.fn>)
+      .mock.calls[0][0];
+    expect(callArgs).not.toHaveProperty("is_doctor");
+  });
+});
+
+/**
+ * TASK-FE-Q01: Testes para a prop defaultIsDoctor
+ * Garante que o NewCollaboratorModal funciona como substituto do NewDoctorModal.
+ */
+describe("NewCollaboratorModal — defaultIsDoctor", () => {
+  const defaultProps = {
+    isOpen: true,
+    onClose: vi.fn(),
+    onSuccess: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('deve exibir título "Novo médico" quando defaultIsDoctor=true', () => {
+    render(<NewCollaboratorModal {...defaultProps} defaultIsDoctor={true} />);
+    expect(screen.getByText("Novo médico")).toBeInTheDocument();
+    expect(screen.queryByText("Novo colaborador")).not.toBeInTheDocument();
+  });
+
+  it("deve mostrar campos de CRM inicialmente quando defaultIsDoctor=true", () => {
+    render(<NewCollaboratorModal {...defaultProps} defaultIsDoctor={true} />);
+    expect(screen.getByPlaceholderText("123456")).toBeInTheDocument();
+  });
+
+  it("deve ter toggle pré-ativado quando defaultIsDoctor=true", () => {
+    render(<NewCollaboratorModal {...defaultProps} defaultIsDoctor={true} />);
+    const toggle = screen.getByRole("switch");
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+  });
+
+  it('deve exibir botão "Adicionar médico" quando defaultIsDoctor=true', () => {
+    render(<NewCollaboratorModal {...defaultProps} defaultIsDoctor={true} />);
+    expect(screen.getByText("Adicionar médico")).toBeInTheDocument();
+    expect(screen.queryByText("Adicionar colaborador")).not.toBeInTheDocument();
+  });
+
+  it("deve enviar doctor_profile ao submeter com defaultIsDoctor=true", async () => {
+    (collaboratorService.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "doc-1",
+    });
+
+    render(<NewCollaboratorModal {...defaultProps} defaultIsDoctor={true} />);
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Nome completo"),
+      "Dr. João Silva",
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("colaborador@mail.com"),
+      "joao@email.com",
+    );
+    await userEvent.type(screen.getByPlaceholderText("123456"), "999888");
+
+    const select = screen.getByDisplayValue("Selecione");
+    await userEvent.selectOptions(select, "RJ");
+
+    await userEvent.click(screen.getByText("Adicionar médico"));
+
+    await waitFor(() => {
+      expect(collaboratorService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Dr. João Silva",
+          email: "joao@email.com",
+          doctor_profile: expect.objectContaining({
+            crm: "999888",
+            crm_state: "RJ",
+          }),
+        }),
+      );
+    });
+
+    expect(defaultProps.onSuccess).toHaveBeenCalled();
+    expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
+  it("deve exibir mensagem de erro de médico ao falhar com defaultIsDoctor=true", async () => {
+    (collaboratorService.create as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("Network error"),
+    );
+
+    render(<NewCollaboratorModal {...defaultProps} defaultIsDoctor={true} />);
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Nome completo"),
+      "Dr. Teste",
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("colaborador@mail.com"),
+      "teste@email.com",
+    );
+
+    // Preencher campos obrigatórios de médico
+    await userEvent.type(screen.getByPlaceholderText("123456"), "111222");
+    const select = screen.getByDisplayValue("Selecione");
+    await userEvent.selectOptions(select, "SP");
+
+    await userEvent.click(screen.getByText("Adicionar médico"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Erro ao criar médico. Tente novamente."),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("deve manter is_doctor ativo após fechar e reabrir com defaultIsDoctor=true", async () => {
+    const { rerender } = render(
+      <NewCollaboratorModal {...defaultProps} defaultIsDoctor={true} />,
+    );
+
+    // Fechar
+    await userEvent.click(screen.getByLabelText("Fechar"));
+    expect(defaultProps.onClose).toHaveBeenCalled();
+
+    // Reabrir
+    rerender(<NewCollaboratorModal {...defaultProps} defaultIsDoctor={true} />);
+
+    // Toggle deve estar ativado novamente
+    const toggle = screen.getByRole("switch");
+    expect(toggle).toHaveAttribute("aria-checked", "true");
   });
 });

@@ -6,7 +6,7 @@ import { opmeService, OpmeItem, CreateOpmeData } from "@/services/opme.service";
 interface OpmeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onSuccess: () => void;
   editingOpme?: OpmeItem | null;
 }

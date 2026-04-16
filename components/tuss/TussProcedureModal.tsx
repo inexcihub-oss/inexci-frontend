@@ -32,9 +32,9 @@ function debounce<T extends (...args: any[]) => any>(
 interface TussProcedureModalProps {
   isOpen: boolean;
   onClose: () => void;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onSuccess: () => void;
-  existingProcedures?: { procedure?: { id?: string; tuss_code?: string } }[];
+  existingProcedures?: Record<string, unknown>[];
   editingProcedure?: {
     id: string;
     procedure_id: string;

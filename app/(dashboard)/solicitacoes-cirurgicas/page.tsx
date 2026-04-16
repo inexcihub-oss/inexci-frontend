@@ -11,12 +11,18 @@ import {
   DEFAULT_FILTERS,
   countActiveFilters,
 } from "@/components/surgery-request/FilterModal";
-import { KanbanColumn, SurgeryRequest } from "@/types/surgery-request.types";
+import {
+  KanbanColumn,
+  SurgeryRequest,
+  PriorityLevel,
+  PRIORITY,
+} from "@/types/surgery-request.types";
 import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
 } from "@/services/surgery-request.service";
 import { pendencyService } from "@/services/pendency.service";
+import { availableDoctorsService } from "@/services/available-doctors.service";
 import { useDebounce } from "@/hooks";
 import { SearchInput } from "@/components/ui";
 import Image from "next/image";
@@ -50,13 +56,26 @@ export default function ProcedimentosCirurgicos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [, setLoading] = useState(true);
   const [columns, setColumns] = useState<KanbanColumn[]>(INITIAL_COLUMNS);
+  const [availableDoctors, setAvailableDoctors] = useState<
+    { id: string; name: string }[]
+  >([]);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Carregar dados do backend
   useEffect(() => {
     loadSurgeryRequests();
+    loadAvailableDoctors();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadAvailableDoctors = useCallback(async () => {
+    try {
+      const doctors = await availableDoctorsService.getAvailableDoctors();
+      setAvailableDoctors(doctors.map((d) => ({ id: d.id, name: d.name })));
+    } catch {
+      // silently ignore — filtro por médico não aparece se falhar
+    }
   }, []);
 
   const loadSurgeryRequests = useCallback(async () => {
@@ -108,7 +127,7 @@ export default function ProcedimentosCirurgicos() {
               },
               procedureName: getProcedureName(),
               doctor: getManager(),
-              priority: (record.priority || "Média") as any,
+              priority: (record.priority as PriorityLevel) || PRIORITY.MEDIUM,
               pendenciesCount: record.pendenciesCount || 0,
               pendenciesCompleted: 0,
               pendenciesWaiting: 0,
@@ -234,7 +253,7 @@ export default function ProcedimentosCirurgicos() {
         // Prioridade
         if (
           filters.priorities.length > 0 &&
-          !filters.priorities.includes(card.priority as any)
+          !filters.priorities.includes(card.priority)
         ) {
           return false;
         }
@@ -264,6 +283,14 @@ export default function ProcedimentosCirurgicos() {
         if (filters.procedureNames.length > 0) {
           const base = card.procedureName.replace(/ \+\d+$/, "");
           if (!filters.procedureNames.includes(base)) return false;
+        }
+
+        // Médico
+        if (
+          filters.doctorIds.length > 0 &&
+          !filters.doctorIds.includes(card.doctor.id)
+        ) {
+          return false;
         }
 
         // Data de criação
@@ -312,6 +339,7 @@ export default function ProcedimentosCirurgicos() {
       filters.pendencies.length > 0 ||
       filters.healthPlanIds.length > 0 ||
       filters.procedureNames.length > 0 ||
+      filters.doctorIds.length > 0 ||
       filters.createdAtFrom ||
       filters.createdAtTo;
 
@@ -518,6 +546,7 @@ export default function ProcedimentosCirurgicos() {
         currentFilters={filters}
         availableHealthPlans={availableHealthPlans}
         availableProcedures={availableProcedures}
+        availableDoctors={availableDoctors}
       />
     </PageContainer>
   );
