@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { ModalFooter } from "@/components/shared/ModalFooter";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -55,10 +55,41 @@ export function ContestFlow({
   onBack,
   onSubmit,
 }: ContestFlowProps) {
+  const [toTags, setToTags] = useState<string[]>([]);
+  const [toInput, setToInput] = useState("");
+  const [formTouched, setFormTouched] = useState(false);
+
+  const addToTag = (email: string) => {
+    const trimmed = email.trim().replace(/[;,]$/, "");
+    if (trimmed && !toTags.includes(trimmed)) {
+      const newTags = [...toTags, trimmed];
+      setToTags(newTags);
+      onEmailChange("to", newTags.join(";"));
+    }
+    setToInput("");
+  };
+
+  const removeToTag = (tag: string) => {
+    const newTags = toTags.filter((t) => t !== tag);
+    setToTags(newTags);
+    onEmailChange("to", newTags.join(";"));
+  };
+
+  const handleToKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ";" || e.key === ",") {
+      e.preventDefault();
+      if (toInput.trim()) addToTag(toInput);
+    } else if (e.key === "Backspace" && !toInput && toTags.length > 0) {
+      const newTags = toTags.slice(0, -1);
+      setToTags(newTags);
+      onEmailChange("to", newTags.join(";"));
+    }
+  };
+
   const canProceedStep1 = reason.trim().length > 0;
   const canSubmit =
     method === "email"
-      ? emailForm.to.trim() !== "" &&
+      ? toTags.length > 0 &&
         emailForm.subject.trim() !== "" &&
         emailForm.message.trim() !== ""
       : true;
@@ -156,16 +187,84 @@ export function ContestFlow({
         {step === 3 && method === "email" && (
           <div className="space-y-3 md:space-y-4">
             <div className="space-y-1.5">
+              <label className="block ds-label mb-0">De:</label>
+              <input
+                type="text"
+                value={
+                  process.env.NEXT_PUBLIC_MAIL_FROM_ADDRESS ||
+                  "noreply@inexci.com.br"
+                }
+                disabled
+                readOnly
+                className="ds-input disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-100 cursor-not-allowed"
+              />
+            </div>
+            <div className="space-y-1.5">
               <label className="block ds-label mb-0">
                 Para <span className="text-red-500">*</span>
               </label>
-              <input
-                type="email"
-                value={emailForm.to}
-                onChange={(e) => onEmailChange("to", e.target.value)}
-                placeholder="email@convenio.com.br"
-                className="ds-input"
-              />
+              <p className="text-xs text-gray-400">
+                Digite um e-mail e pressione Enter para adicionar
+              </p>
+              <div
+                className={`flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border bg-white min-h-10 cursor-text ${
+                  formTouched && toTags.length === 0
+                    ? "border-red-400"
+                    : "border-neutral-100"
+                }`}
+                onClick={() =>
+                  document
+                    .getElementById("contest-email-input-contest")
+                    ?.focus()
+                }
+              >
+                {toTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeToTag(tag)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <svg
+                        className="w-3 h-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+                <input
+                  id="contest-email-input-contest"
+                  type="text"
+                  value={toInput}
+                  onChange={(e) => setToInput(e.target.value)}
+                  onKeyDown={handleToKeyDown}
+                  onBlur={() => {
+                    if (toInput.trim()) addToTag(toInput);
+                  }}
+                  placeholder={
+                    toTags.length === 0 ? "exemplo@mail.com" : undefined
+                  }
+                  className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
+                />
+              </div>
+              {formTouched && toTags.length === 0 && (
+                <p className="text-xs text-red-500">
+                  Informe pelo menos um destinatário
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="block ds-label mb-0">
@@ -176,8 +275,11 @@ export function ContestFlow({
                 value={emailForm.subject}
                 onChange={(e) => onEmailChange("subject", e.target.value)}
                 placeholder="Contestação de autorização"
-                className="ds-input"
+                className={`ds-input ${formTouched && !emailForm.subject.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
               />
+              {formTouched && !emailForm.subject.trim() && (
+                <p className="text-xs text-red-500">Preencha o assunto</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="block ds-label mb-0">
@@ -226,8 +328,14 @@ export function ContestFlow({
           </button>
         ) : (
           <button
-            onClick={onSubmit}
-            disabled={!canSubmit || isSaving}
+            onClick={() => {
+              if (!canSubmit) {
+                setFormTouched(true);
+                return;
+              }
+              onSubmit();
+            }}
+            disabled={isSaving}
             className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving

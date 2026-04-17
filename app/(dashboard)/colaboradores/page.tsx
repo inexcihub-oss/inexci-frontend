@@ -438,20 +438,6 @@ export default function ColaboradoresPage() {
         ),
     },
     {
-      id: "crm",
-      header: "CRM",
-      size: 120,
-      meta: { className: "hidden lg:table-cell" },
-      cell: ({ row }) => {
-        const dp = row.original.doctor_profile;
-        return (
-          <span className="text-xs text-black">
-            {dp?.crm ? `${dp.crm}/${dp.crm_state || ""}` : "-"}
-          </span>
-        );
-      },
-    },
-    {
       id: "actions",
       size: 50,
       enableSorting: false,

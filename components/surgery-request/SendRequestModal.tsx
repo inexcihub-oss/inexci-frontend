@@ -50,6 +50,7 @@ export function SendRequestModal({
   const [emailMessage, setEmailMessage] = useState("");
   const [emailTags, setEmailTags] = useState<string[]>([]);
   const [emailInput, setEmailInput] = useState("");
+  const [emailFormTouched, setEmailFormTouched] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,6 +78,7 @@ export function SendRequestModal({
       setEmailMessage("");
       setEmailTags([]);
       setEmailInput("");
+      setEmailFormTouched(false);
       setAttachments([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -224,8 +226,8 @@ export function SendRequestModal({
 
   const handleSendEmail = async () => {
     const recipients = emailTags.join(";");
-    if (!recipients.trim()) {
-      showToast("Informe pelo menos um destinatário", "error");
+    if (!recipients.trim() || !emailSubject.trim()) {
+      setEmailFormTouched(true);
       return;
     }
     setIsSending(true);
@@ -405,21 +407,30 @@ export function SendRequestModal({
         {/* De */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">De:</label>
-          <div className="ds-field-readonly">
-            <span className="text-xs md:text-sm text-gray-900">
-              inexci@mail.com
-            </span>
-          </div>
+          <input
+            type="text"
+            value={
+              process.env.NEXT_PUBLIC_MAIL_FROM_ADDRESS ||
+              "noreply@inexci.com.br"
+            }
+            disabled
+            readOnly
+            className="ds-input disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-100 cursor-not-allowed"
+          />
         </div>
 
         {/* Para */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">Para:</label>
-          <p className="text-xs md:text-sm text-teal-600">
-            Para incluir mais de um e-mail separe-os com ponto e vírgula (;)
+          <p className="text-xs text-gray-400">
+            Digite um e-mail e pressione Enter para adicionar
           </p>
           <div
-            className="flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white min-h-10 cursor-text"
+            className={`flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border bg-white min-h-10 cursor-text ${
+              emailFormTouched && emailTags.length === 0
+                ? "border-red-400"
+                : "border-gray-200"
+            }`}
             onClick={() => document.getElementById("send-email-input")?.focus()}
           >
             {emailTags.map((tag) => (
@@ -447,11 +458,16 @@ export function SendRequestModal({
                 if (emailInput.trim()) addEmailTag(emailInput);
               }}
               placeholder={
-                emailTags.length === 0 ? "email@convenio.com" : undefined
+                emailTags.length === 0 ? "exemplo@mail.com" : undefined
               }
               className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
             />
           </div>
+          {emailFormTouched && emailTags.length === 0 && (
+            <p className="text-xs text-red-500">
+              Informe pelo menos um destinatário
+            </p>
+          )}
         </div>
 
         {/* Assunto */}
@@ -460,9 +476,14 @@ export function SendRequestModal({
           <input
             type="text"
             value={emailSubject}
-            onChange={(e) => setEmailSubject(e.target.value)}
-            className="ds-input"
+            onChange={(e) => {
+              setEmailSubject(e.target.value);
+            }}
+            className={`ds-input ${emailFormTouched && !emailSubject.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
           />
+          {emailFormTouched && !emailSubject.trim() && (
+            <p className="text-xs text-red-500">Preencha o assunto</p>
+          )}
         </div>
 
         {/* Mensagem */}
@@ -611,7 +632,8 @@ export function SendRequestModal({
             disabled={
               (currentStep === 1 && (!canProceed() || isLoading)) ||
               (currentStep === 2 && !sendMethod) ||
-              isSending
+              (currentStep === 3 && isSending) ||
+              (currentStep !== 3 && isSending)
             }
             className="ds-btn-primary flex-1 sm:flex-none disabled:opacity-50 disabled:cursor-not-allowed"
           >

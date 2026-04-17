@@ -85,7 +85,7 @@ function toCollaborator(user: BackendUserRecord): Collaborator {
     city: user.city,
     state: user.state,
     status: user.status,
-    is_doctor: user.is_doctor || false,
+    is_doctor: user.is_doctor || !!user.doctor_profile,
     doctor_profile: user.doctor_profile || undefined,
     createdAt: user.created_at,
     updatedAt: user.updated_at,

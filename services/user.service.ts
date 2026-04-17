@@ -32,7 +32,7 @@ export interface UpdateProfileData {
   birth_date?: string;
   gender?: string;
   avatar_url?: string;
-  signature_url?: string;
+  signature_url?: string | null;
 }
 
 export const userService = {

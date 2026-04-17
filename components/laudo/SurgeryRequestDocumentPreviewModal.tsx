@@ -6,7 +6,10 @@ import {
   SurgeryRequestDetail,
   TussItemRef,
   OpmeItemRef,
+  ReportSection,
+  surgeryRequestService,
 } from "@/services/surgery-request.service";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -284,6 +287,7 @@ export function SurgeryRequestDocumentPreviewModal({
 }: SurgeryRequestDocumentPreviewModalProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string>("");
+  const [sections, setSections] = useState<ReportSection[]>([]);
 
   // Usa exclusivamente a assinatura do médico vinculado à solicitação.
   // O backend já converte signature_url para URL assinada em findOne().
@@ -292,6 +296,15 @@ export function SurgeryRequestDocumentPreviewModal({
     const doctor = solicitacao?.doctor;
     setSignatureUrl(doctor?.signature_url ?? "");
   }, [isOpen, solicitacao]);
+
+  // Carrega seções dinâmicas do laudo
+  useEffect(() => {
+    if (!isOpen || !solicitacao?.id) return;
+    surgeryRequestService
+      .getSections(solicitacao.id)
+      .then(setSections)
+      .catch(() => setSections([]));
+  }, [isOpen, solicitacao?.id]);
 
   if (!isOpen) return null;
 
@@ -310,10 +323,6 @@ export function SurgeryRequestDocumentPreviewModal({
     pd?.zipCode || patient?.zip_code || patient?.cep || "",
   );
   const healthPlan = pd?.healthPlan || solicitacao?.health_plan?.name || "";
-
-  const historyAndDiagnosis =
-    report?.historyAndDiagnosis || report?.surgicalIndication || "";
-  const conduct = report?.conduct || report?.technicalJustification || "";
 
   // ── Procedimentos e OPME ─────────────────────────────────────────────────
   const procedures: TussItemRef[] = solicitacao?.tuss_items ?? [];
@@ -509,77 +518,37 @@ export function SurgeryRequestDocumentPreviewModal({
                   </div>
                 </div>
 
-                {/* Histórico e diagnóstico */}
-                <div className="flex flex-col gap-2 w-full">
-                  <SectionHeading>Histórico e diagnóstico</SectionHeading>
-                  <p className="text-[12px] text-[#111111] leading-[1.333] whitespace-pre-line">
-                    {historyAndDiagnosis || "—"}
-                  </p>
-                </div>
+                {/* Seções dinâmicas do laudo */}
+                {sections.length > 0 ? (
+                  sections.map((section) => (
+                    <div
+                      key={section.id}
+                      className="flex flex-col gap-2 w-full"
+                    >
+                      <SectionHeading>{section.title}</SectionHeading>
+                      {section.description ? (
+                        <div
+                          className="text-[12px] text-[#111111] leading-[1.333] prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: sanitizeHtml(section.description),
+                          }}
+                        />
+                      ) : (
+                        <p className="text-[12px] text-[#111111] leading-[1.333]">
+                          —
+                        </p>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col gap-2 w-full">
+                    <SectionHeading>Histórico e diagnóstico</SectionHeading>
+                    <p className="text-[12px] text-[#111111] leading-[1.333]">
+                      —
+                    </p>
+                  </div>
+                )}
               </div>
-              {/* Rodapé de assinatura — canto inferior direito */}
-              {signatureUrl && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "32px",
-                    right: "32px",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "2px",
-                    textAlign: "center",
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={signatureUrl}
-                    alt="Assinatura"
-                    style={{
-                      maxWidth: "80px",
-                      maxHeight: "40px",
-                      objectFit: "contain",
-                      display: "block",
-                      marginBottom: "2px",
-                    }}
-                  />
-                  {doctorName && (
-                    <span
-                      style={{
-                        fontSize: "9px",
-                        fontWeight: 600,
-                        color: "#111111",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {doctorName}
-                    </span>
-                  )}
-                  {doctorSpecialty && (
-                    <span
-                      style={{
-                        fontSize: "8px",
-                        color: "#111111",
-                        lineHeight: 1.2,
-                        maxWidth: "130px",
-                      }}
-                    >
-                      {doctorSpecialty}
-                    </span>
-                  )}
-                  {doctorCRM && (
-                    <span
-                      style={{
-                        fontSize: "8px",
-                        color: "#111111",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {doctorCRM}
-                    </span>
-                  )}
-                </div>
-              )}
             </A4Page>
 
             {/* ════════════════ PÁGINA 2 ════════════════ */}
@@ -638,14 +607,6 @@ export function SurgeryRequestDocumentPreviewModal({
                   </div>
                 )}
 
-                {/* Conduta */}
-                <div className="flex flex-col gap-2 w-full">
-                  <SectionHeading>Conduta</SectionHeading>
-                  <p className="text-[12px] text-[#111111] leading-[1.333] whitespace-pre-line">
-                    {conduct || "—"}
-                  </p>
-                </div>
-
                 {/* Procedimento solicitado */}
                 {procedures.length > 0 && (
                   <div className="flex flex-col gap-2 w-full">
@@ -662,69 +623,6 @@ export function SurgeryRequestDocumentPreviewModal({
                   </div>
                 )}
               </div>
-              {/* Rodapé de assinatura — canto inferior direito */}
-              {signatureUrl && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "32px",
-                    right: "32px",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "2px",
-                    textAlign: "center",
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={signatureUrl}
-                    alt="Assinatura"
-                    style={{
-                      maxWidth: "80px",
-                      maxHeight: "40px",
-                      objectFit: "contain",
-                      display: "block",
-                      marginBottom: "2px",
-                    }}
-                  />
-                  {doctorName && (
-                    <span
-                      style={{
-                        fontSize: "9px",
-                        fontWeight: 600,
-                        color: "#111111",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {doctorName}
-                    </span>
-                  )}
-                  {doctorSpecialty && (
-                    <span
-                      style={{
-                        fontSize: "8px",
-                        color: "#111111",
-                        lineHeight: 1.2,
-                        maxWidth: "130px",
-                      }}
-                    >
-                      {doctorSpecialty}
-                    </span>
-                  )}
-                  {doctorCRM && (
-                    <span
-                      style={{
-                        fontSize: "8px",
-                        color: "#111111",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {doctorCRM}
-                    </span>
-                  )}
-                </div>
-              )}
             </A4Page>
 
             {/* ════════════════ PÁGINA 3 ════════════════ */}
@@ -757,6 +655,16 @@ export function SurgeryRequestDocumentPreviewModal({
                     <span className="font-semibold">Local:</span> {localText}
                   </p>
                 )}
+                {doctorEmail && (
+                  <p className="text-[12px] text-black leading-[1.333]">
+                    <span className="font-semibold">E-mail:</span> {doctorEmail}
+                  </p>
+                )}
+                {doctorPhone && (
+                  <p className="text-[12px] text-black leading-[1.333]">
+                    <span className="font-semibold">Tel:</span> {doctorPhone}
+                  </p>
+                )}
 
                 {/* Texto de encerramento */}
                 <p className="text-[12px] text-black leading-[1.333]">
@@ -764,72 +672,37 @@ export function SurgeryRequestDocumentPreviewModal({
                 </p>
 
                 {/* Assinatura */}
-                <div className="flex items-end gap-8 mt-4">
-                  {/* Imagem + Linha de assinatura + nome */}
-                  <div
-                    className="flex flex-col items-center gap-2"
-                    style={{ minWidth: "225px" }}
-                  >
-                    {signatureUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={signatureUrl}
-                        alt="Assinatura"
-                        style={{
-                          maxWidth: "120px",
-                          maxHeight: "60px",
-                          objectFit: "contain",
-                          display: "block",
-                          marginBottom: "4px",
-                        }}
-                      />
-                    )}
-                    <div className="w-full border-t border-[#DCDFE3]" />
-                    <span className="text-[12px] text-[#000000] leading-[1.333] text-center">
-                      {doctorName || "___________________"}
-                    </span>
-                  </div>
-
-                  {/* Email e telefone */}
-                  {(doctorEmail || doctorPhone) && (
-                    <div className="flex flex-col gap-0.5 pb-0.5">
-                      {doctorEmail && (
-                        <span className="text-[10px] text-[#111111] leading-[1.2]">
-                          <span className="font-semibold">E-mail:</span>{" "}
-                          {doctorEmail}
-                        </span>
-                      )}
-                      {doctorPhone && (
-                        <span className="text-[10px] text-[#111111] leading-[1.2]">
-                          <span className="font-semibold">Tel:</span>{" "}
-                          {doctorPhone}
-                        </span>
-                      )}
-                    </div>
+                <div
+                  className="flex flex-col items-center gap-1 mt-4 mx-auto text-center"
+                  style={{ maxWidth: "260px" }}
+                >
+                  {signatureUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={signatureUrl}
+                      alt="Assinatura"
+                      style={{
+                        maxWidth: "120px",
+                        maxHeight: "60px",
+                        objectFit: "contain",
+                        display: "block",
+                        marginBottom: "4px",
+                      }}
+                    />
                   )}
-
-                  {/* Dados do médico */}
-                  {(doctorName || doctorSpecialty || doctorCRM) && (
-                    <div className="flex flex-col items-center gap-0.5">
-                      {doctorName && (
-                        <span className="text-[12px] font-semibold text-[#111111] leading-[1]">
-                          {doctorName}
-                        </span>
-                      )}
-                      {doctorSpecialty && (
-                        <span
-                          className="text-[10px] text-[#111111] leading-[1.2] text-center"
-                          style={{ maxWidth: "150px" }}
-                        >
-                          {doctorSpecialty}
-                        </span>
-                      )}
-                      {doctorCRM && (
-                        <span className="text-[10px] text-[#111111] leading-[1.2]">
-                          {doctorCRM}
-                        </span>
-                      )}
-                    </div>
+                  <div className="w-full border-t border-[#DCDFE3] mb-1" />
+                  <span className="text-[12px] font-semibold text-[#111111] leading-[1.333]">
+                    {doctorName || "___________________"}
+                  </span>
+                  {doctorSpecialty && (
+                    <span className="text-[10px] text-[#111111] leading-[1.4]">
+                      {doctorSpecialty}
+                    </span>
+                  )}
+                  {doctorCRM && (
+                    <span className="text-[10px] text-[#111111] leading-[1.4]">
+                      {doctorCRM}
+                    </span>
                   )}
                 </div>
               </div>

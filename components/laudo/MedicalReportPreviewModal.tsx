@@ -212,7 +212,7 @@ export function MedicalReportPreviewModal({
     // O backend já converte signature_url para URL assinada em findOne().
     const doctor = solicitacao?.doctor;
     const dp = doctor?.doctor_profile;
-    setDoctorSignatureUrl(dp?.signature_url ?? null);
+    setDoctorSignatureUrl(doctor?.signature_url ?? dp?.signature_url ?? null);
     setDoctorName(doctor?.name ?? "");
     setDoctorSpecialty(dp?.specialty ?? "");
     setDoctorCrm(dp?.crm ?? "");
@@ -455,11 +455,6 @@ export function MedicalReportPreviewModal({
             {/* ── IMAGENS A SEREM ANEXADAS AO LAUDO ───────────────────── */}
             {examImages.length > 0 && (
               <div className="flex flex-col gap-2.5 w-full">
-                <div className="pb-2 border-b border-gray-200">
-                  <h3 className="text-sm md:text-base font-bold tracking-tight text-neutral-900">
-                    IMAGENS A SEREM ANEXADAS AO LAUDO
-                  </h3>
-                </div>
                 <div className="grid grid-cols-3 gap-3">
                   {examImages.map((doc) => (
                     <ExamImageItem key={doc.id} doc={doc} />

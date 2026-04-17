@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Mail, MessageSquare, AlertTriangle } from "lucide-react";
 
 interface NotificationConfirmModalProps {
   isOpen: boolean;
@@ -9,6 +10,10 @@ interface NotificationConfirmModalProps {
   newStatus: string;
   onConfirm: (notifyPatient: boolean) => void;
   isLoading?: boolean;
+  /** E-mail do paciente (para mostrar canal disponível) */
+  patientEmail?: string | null;
+  /** Telefone do paciente (para mostrar canal WhatsApp disponível) */
+  patientPhone?: string | null;
 }
 
 /**
@@ -23,8 +28,14 @@ export function NotificationConfirmModal({
   newStatus,
   onConfirm,
   isLoading = false,
+  patientEmail,
+  patientPhone,
 }: NotificationConfirmModalProps) {
   if (!isOpen) return null;
+
+  const hasEmail = !!patientEmail;
+  const hasPhone = !!patientPhone;
+  const hasNoContact = !hasEmail && !hasPhone;
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
@@ -102,6 +113,57 @@ export function NotificationConfirmModal({
               {newStatus}
             </span>
           </div>
+
+          {/* Canais disponíveis */}
+          <div className="space-y-2 mb-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Canais de notificação
+            </p>
+            <div className="flex gap-3">
+              <div
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                  hasEmail
+                    ? "bg-green-50 text-green-700"
+                    : "bg-gray-100 text-gray-400 line-through"
+                }`}
+              >
+                <Mail className="w-4 h-4" />
+                E-mail {hasEmail ? "✓" : "✗"}
+              </div>
+              <div
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                  hasPhone
+                    ? "bg-green-50 text-green-700"
+                    : "bg-gray-100 text-gray-400 line-through"
+                }`}
+              >
+                <MessageSquare className="w-4 h-4" />
+                WhatsApp {hasPhone ? "✓" : "✗"}
+              </div>
+            </div>
+          </div>
+
+          {/* Aviso de dados faltantes */}
+          {hasNoContact && (
+            <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl mb-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-700 leading-relaxed">
+                O paciente não possui e-mail nem telefone cadastrado. A
+                notificação não será enviada. Atualize o cadastro do paciente
+                para habilitar o envio.
+              </p>
+            </div>
+          )}
+          {!hasNoContact && (!hasEmail || !hasPhone) && (
+            <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl mb-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-700 leading-relaxed">
+                {!hasEmail
+                  ? "Paciente sem e-mail cadastrado — notificação será enviada apenas por WhatsApp."
+                  : "Paciente sem telefone cadastrado — notificação será enviada apenas por e-mail."}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

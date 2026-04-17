@@ -61,6 +61,15 @@ function getInitialsFromName(name: string): string {
     .toUpperCase();
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+
+/** Converte um caminho relativo da API em URL absoluta */
+function getApiFileUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${API_BASE_URL}/${path.replace(/^\//, "")}`;
+}
+
 function formatActivityDate(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
@@ -76,6 +85,60 @@ function formatActivityDate(dateStr: string): string {
   return date.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
 }
 
+// ── Avatar com fallback para iniciais ────────────────────────────────────────
+function AvatarOrInitials({
+  user,
+  size = 28,
+}: {
+  user: { name: string; avatar_url?: string | null };
+  size?: number;
+}) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (!user.avatar_url) return;
+    // Se já for URL absoluta, usa direto; senão busca signed URL
+    if (
+      user.avatar_url.startsWith("http://") ||
+      user.avatar_url.startsWith("https://")
+    ) {
+      setResolvedUrl(user.avatar_url);
+      return;
+    }
+    import("@/services/upload.service")
+      .then(({ uploadService }) =>
+        uploadService.getSignedUrl(user.avatar_url as string),
+      )
+      .then((url) => setResolvedUrl(url))
+      .catch(() => setImgError(true));
+  }, [user.avatar_url]);
+
+  if (resolvedUrl && !imgError) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={resolvedUrl}
+        alt={user.name}
+        width={size}
+        height={size}
+        className="rounded-full object-cover"
+        style={{ width: size, height: size }}
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-semibold"
+      style={{ width: size, height: size, fontSize: size * 0.4 }}
+    >
+      {getInitialsFromName(user.name)}
+    </div>
+  );
+}
+
 // ── Componente de Item de Atividade ───────────────────────────────────────────
 function ActivityItem({ activity }: { activity: Activity }) {
   const isComment = activity.type === "comment";
@@ -87,19 +150,7 @@ function ActivityItem({ activity }: { activity: Activity }) {
       {/* Avatar / Ícone */}
       <div className="flex-shrink-0 mt-0.5">
         {isComment && activity.user ? (
-          <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-semibold">
-            {activity.user.avatar_url ? (
-              <Image
-                src={activity.user.avatar_url}
-                alt={activity.user.name}
-                width={28}
-                height={28}
-                className="rounded-full object-cover"
-              />
-            ) : (
-              getInitialsFromName(activity.user.name)
-            )}
-          </div>
+          <AvatarOrInitials user={activity.user} size={28} />
         ) : (
           <div
             className={`w-7 h-7 rounded-full flex items-center justify-center ${isPdfGenerated ? "bg-red-50" : "bg-gray-100"}`}
@@ -159,7 +210,7 @@ function ActivityItem({ activity }: { activity: Activity }) {
               {activity.content}
             </p>
             <a
-              href={activity.pdf_url}
+              href={getApiFileUrl(activity.pdf_url) ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium underline underline-offset-2 flex-shrink-0"
@@ -1226,6 +1277,8 @@ export default function SolicitacaoDetalhePage() {
             }
             newStatus={ACTION_NEXT_STATUS[pendingAction ?? ""] ?? ""}
             onConfirm={handleNotificationConfirm}
+            patientEmail={solicitacao.patient?.email}
+            patientPhone={solicitacao.patient?.phone}
           />
         );
       })()}

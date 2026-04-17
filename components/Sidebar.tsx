@@ -8,6 +8,7 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
 import { getInitials, getDisplayName, getAvatarColor } from "@/lib/utils";
 import { uploadService } from "@/services/upload.service";
+import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
 
 interface MenuItem {
   iconSrc: string;
@@ -230,30 +231,28 @@ export default function Sidebar({
 
         {/* Bottom Section */}
         <div className="flex flex-col gap-1 px-1 pb-1">
-          {/* Notifications - Oculto temporariamente */}
-          {/* <NotificationsDropdown isCollapsed={isCollapsed} /> */}
+          {/* Notifications */}
+          <NotificationsDropdown isCollapsed={isCollapsed} />
 
           {/* Settings */}
           <Link
             href="/configuracoes"
-            className={`flex items-center gap-3 px-3 py-3 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all duration-200 min-h-[44px] ${isCollapsed ? "lg:justify-center" : ""}`}
+            className={`relative flex items-center gap-2 px-2 py-2 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px] ${isCollapsed ? "lg:justify-center" : ""}`}
             title={isCollapsed ? "Configurações" : undefined}
             onClick={onMobileClose}
           >
             <Image
               src="/icons/settings.svg"
               alt="Configurações"
-              width={24}
-              height={24}
+              width={20}
+              height={20}
               className="text-neutral-900 shrink-0"
             />
-            <span
-              className={`text-xs md:text-sm font-semibold text-neutral-900 ${
-                isCollapsed ? "lg:hidden" : ""
-              }`}
-            >
-              Configurações
-            </span>
+            {!isCollapsed && (
+              <span className="text-xs md:text-sm font-semibold text-neutral-900">
+                Configurações
+              </span>
+            )}
           </Link>
         </div>
 

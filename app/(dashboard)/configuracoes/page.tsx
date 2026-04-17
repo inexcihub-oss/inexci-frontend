@@ -58,6 +58,7 @@ interface NotificationSettings {
   emailNotifications: boolean;
   smsNotifications: boolean;
   pushNotifications: boolean;
+  whatsappNotifications: boolean;
   newSurgeryRequest: boolean;
   statusUpdate: boolean;
   pendencies: boolean;
@@ -222,7 +223,9 @@ export default function ConfiguracoesPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
-  const [isUploadingSignature, setIsUploadingSignature] = useState(false);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signatureDeleted, setSignatureDeleted] = useState(false);
+  const [isProcessingSignature, setIsProcessingSignature] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
@@ -232,6 +235,7 @@ export default function ConfiguracoesPage() {
     emailNotifications: true,
     smsNotifications: false,
     pushNotifications: true,
+    whatsappNotifications: true,
     newSurgeryRequest: true,
     statusUpdate: true,
     pendencies: true,
@@ -334,6 +338,7 @@ export default function ConfiguracoesPage() {
           emailNotifications: settings.email_notifications,
           smsNotifications: settings.sms_notifications,
           pushNotifications: settings.push_notifications,
+          whatsappNotifications: settings.whatsapp_notifications,
           newSurgeryRequest: settings.new_surgery_request,
           statusUpdate: settings.status_update,
           pendencies: settings.pendencies,
@@ -394,35 +399,31 @@ export default function ConfiguracoesPage() {
       showToast("A assinatura deve ter no máximo 2MB", "error");
       return;
     }
-    setIsUploadingSignature(true);
+    setIsProcessingSignature(true);
     try {
-      const file = await removeBackground(rawFile);
-      const result = await uploadService.uploadSingle(file, "signatures");
-      const { url: signedUrl, path } = result.data;
-      await userService.updateProfile({ signature_url: path });
-      setSignaturePreview(signedUrl);
-      await updateUser();
-      showToast("Assinatura salva com sucesso", "success");
+      // Remove o fundo localmente e guarda o arquivo processado.
+      // O upload e o save só acontecem ao clicar em "Salvar Alterações".
+      const processed = await removeBackground(rawFile);
+      setSignatureFile(processed);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSignaturePreview(reader.result as string);
+      };
+      reader.readAsDataURL(processed);
     } catch {
-      showToast("Erro ao salvar assinatura", "error");
+      showToast("Erro ao processar imagem da assinatura", "error");
     } finally {
-      setIsUploadingSignature(false);
+      setIsProcessingSignature(false);
       if (signatureInputRef.current) signatureInputRef.current.value = "";
     }
   };
 
-  const handleDeleteSignature = async () => {
-    setIsUploadingSignature(true);
-    try {
-      await userService.updateProfile({ signature_url: undefined });
-      setSignaturePreview(null);
-      await updateUser();
-      showToast("Assinatura removida", "success");
-    } catch {
-      showToast("Erro ao remover assinatura", "error");
-    } finally {
-      setIsUploadingSignature(false);
-    }
+  const handleDeleteSignature = () => {
+    // Apenas marca como deletada localmente.
+    // A remoção real no backend/Storage ocorre ao clicar em "Salvar Alterações".
+    setSignatureFile(null);
+    setSignaturePreview(null);
+    setSignatureDeleted(true);
   };
 
   // Salvar perfil
@@ -445,7 +446,23 @@ export default function ConfiguracoesPage() {
         }
       }
 
-      // 2. Salvar dados básicos do perfil
+      // 2. Se há nova assinatura pendente, fazer upload
+      let signaturePath: string | undefined = undefined;
+      if (signatureFile) {
+        try {
+          const sigResult = await uploadService.uploadSingle(
+            signatureFile,
+            "signatures",
+          );
+          signaturePath = sigResult.data.path;
+        } catch {
+          showToast("Erro ao fazer upload da assinatura", "error");
+          setSaving(false);
+          return;
+        }
+      }
+
+      // 3. Salvar dados básicos do perfil
       await userService.updateProfile({
         name: profile.name,
         phone: profile.phone || undefined,
@@ -455,11 +472,16 @@ export default function ConfiguracoesPage() {
         ...(avatarFile
           ? { avatar_url: avatarUrl }
           : { avatar_url: avatarPreview ? undefined : null }),
+        ...(signatureFile
+          ? { signature_url: signaturePath }
+          : signatureDeleted
+            ? { signature_url: null }
+            : {}),
       });
 
-      // 2. Se é médico e tem doctor_profile, salvar dados profissionais
-      if (profile.isDoctor && user?.doctor_profile?.id) {
-        await userService.updateDoctorProfile(user.doctor_profile.id, {
+      // 4. Se é médico, salvar dados profissionais (usa user.id, não doctor_profile.id)
+      if (profile.isDoctor && user?.id) {
+        await userService.updateDoctorProfile(user.id, {
           crm: profile.crm || undefined,
           crm_state: profile.crmState || undefined,
           specialty: profile.specialty || undefined,
@@ -468,6 +490,8 @@ export default function ConfiguracoesPage() {
 
       await updateUser();
       setAvatarFile(null);
+      setSignatureFile(null);
+      setSignatureDeleted(false);
       showToast("Perfil atualizado com sucesso!", "success");
     } catch (error: unknown) {
       showToast(getApiErrorMessage(error, "Erro ao atualizar perfil"), "error");
@@ -484,6 +508,7 @@ export default function ConfiguracoesPage() {
         email_notifications: notifications.emailNotifications,
         sms_notifications: notifications.smsNotifications,
         push_notifications: notifications.pushNotifications,
+        whatsapp_notifications: notifications.whatsappNotifications,
         new_surgery_request: notifications.newSurgeryRequest,
         status_update: notifications.statusUpdate,
         pendencies: notifications.pendencies,
@@ -642,9 +667,19 @@ export default function ConfiguracoesPage() {
               <Input
                 label="Telefone"
                 value={profile.phone}
-                onChange={(e) =>
-                  setProfile({ ...profile, phone: e.target.value })
-                }
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                  let masked = "";
+                  if (digits.length <= 2)
+                    masked = digits.length ? `(${digits}` : "";
+                  else if (digits.length <= 6)
+                    masked = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+                  else if (digits.length <= 10)
+                    masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+                  else
+                    masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+                  setProfile({ ...profile, phone: masked });
+                }}
                 placeholder="(00) 00000-0000"
               />
               <Input
@@ -764,7 +799,7 @@ export default function ConfiguracoesPage() {
               </p>
             </CardHeader>
             <CardContent className="p-6 pt-0">
-              {isUploadingSignature ? (
+              {isProcessingSignature ? (
                 <div className="flex items-center justify-center gap-3 border-2 border-dashed border-gray-300 rounded-xl p-8">
                   <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
                   <p className="text-sm text-gray-500">
@@ -774,7 +809,7 @@ export default function ConfiguracoesPage() {
               ) : (
                 <div
                   onClick={() =>
-                    !isUploadingSignature && signatureInputRef.current?.click()
+                    !isProcessingSignature && signatureInputRef.current?.click()
                   }
                   className={cn(
                     "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
@@ -816,6 +851,15 @@ export default function ConfiguracoesPage() {
                   )}
                 </div>
               )}
+              {(signatureFile || signatureDeleted) &&
+                !isProcessingSignature && (
+                  <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                    <span>⚠</span>{" "}
+                    {signatureDeleted
+                      ? 'Remoção pendente — clique em "Salvar Alterações" para confirmar.'
+                      : 'Assinatura ainda não salva — clique em "Salvar Alterações" para confirmar.'}
+                  </p>
+                )}
               <input
                 ref={signatureInputRef}
                 type="file"
@@ -897,6 +941,18 @@ export default function ConfiguracoesPage() {
                 setNotifications({
                   ...notifications,
                   pushNotifications: checked,
+                })
+              }
+            />
+            <NotificationItem
+              icon={MessageSquare}
+              title="Notificações por WhatsApp"
+              description="Receba alertas importantes via WhatsApp"
+              checked={notifications.whatsappNotifications}
+              onChange={(checked) =>
+                setNotifications({
+                  ...notifications,
+                  whatsappNotifications: checked,
                 })
               }
             />

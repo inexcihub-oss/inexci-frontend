@@ -129,6 +129,10 @@ export default function NotificationsDropdown({
         return "⚠️";
       case "expiring_document":
         return "📄";
+      case "action_by_user":
+        return "👤";
+      case "stale":
+        return "⏰";
       default:
         return "ℹ️";
     }
@@ -266,13 +270,20 @@ export default function NotificationsDropdown({
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="px-4 py-2 border-t border-gray-100">
+            <div className="px-4 py-2 border-t border-gray-100 flex justify-between">
               <Link
-                href="/configuracoes"
+                href="/notificacoes"
                 onClick={() => setIsOpen(false)}
                 className="text-xs text-primary-600 hover:text-primary-700 font-medium"
               >
-                Ver configurações de notificações
+                Ver todas as notificações
+              </Link>
+              <Link
+                href="/configuracoes"
+                onClick={() => setIsOpen(false)}
+                className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+              >
+                Configurações
               </Link>
             </div>
           )}

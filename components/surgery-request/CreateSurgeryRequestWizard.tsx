@@ -46,7 +46,8 @@ type ModalState =
   | "healthplan-select"
   | "healthplan-create"
   | "manager-select"
-  | "manager-create";
+  | "manager-create"
+  | "doctor-select";
 
 export function CreateSurgeryRequestWizard({
   isOpen,
@@ -183,6 +184,11 @@ export function CreateSurgeryRequestWizard({
     setModalState("none");
   };
 
+  const handleDoctorSelected = (doctor: AvailableDoctor) => {
+    setSelectedDoctor(doctor);
+    setModalState("none");
+  };
+
   const handleManagerCreated = (manager: User) => {
     setSelectedManager(manager);
     setModalState("none");
@@ -291,6 +297,7 @@ export function CreateSurgeryRequestWizard({
     "procedure-select": "Procedimento",
     "patient-select": "Paciente",
     "manager-select": "Gestor",
+    "doctor-select": "Médico",
     "healthplan-select": "Convênio",
     "hospital-select": "Hospital",
   };
@@ -386,67 +393,10 @@ export function CreateSurgeryRequestWizard({
 
               {/* Form Fields */}
               <div className="flex-1 overflow-y-auto">
-                {/* Médico */}
-                {loadingDoctors ? (
-                  <div className="w-full min-h-[72px] px-5 flex items-center justify-between border-b border-gray-100">
-                    <span className="text-sm md:text-base font-semibold text-gray-900">
-                      Médico
-                    </span>
-                    <span className="text-xs md:text-sm text-gray-400">
-                      Carregando...
-                    </span>
-                  </div>
-                ) : noDoctorsAvailable ? (
-                  <div className="w-full min-h-[72px] px-5 flex items-center justify-between border-b border-gray-100 bg-red-50">
-                    <span className="text-sm md:text-base font-semibold text-red-700">
-                      Médico
-                    </span>
-                    <span className="text-xs md:text-sm text-red-500">
-                      Nenhum médico disponível
-                    </span>
-                  </div>
-                ) : availableDoctors.length === 1 ? (
-                  <div className="w-full min-h-[72px] px-5 flex items-center justify-between border-b border-gray-100">
-                    <span className="text-sm md:text-base font-semibold text-gray-900">
-                      Médico
-                    </span>
-                    <span className="text-xs md:text-sm text-teal-700 font-medium truncate max-w-[180px] ml-3">
-                      {selectedDoctor?.name}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="w-full min-h-[72px] px-5 flex items-center justify-between border-b border-gray-100">
-                    <span className="text-sm md:text-base font-semibold text-gray-900">
-                      Médico
-                    </span>
-                    <select
-                      value={selectedDoctor?.id || ""}
-                      onChange={(e) => {
-                        const doc = availableDoctors.find(
-                          (d) => d.id === e.target.value,
-                        );
-                        setSelectedDoctor(doc || null);
-                      }}
-                      className="text-xs md:text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500 max-w-[200px]"
-                    >
-                      <option value="">Selecionar médico</option>
-                      {availableDoctors.map((doc) => (
-                        <option key={doc.id} value={doc.id}>
-                          {doc.name}
-                          {doc.crm ? ` - CRM ${doc.crm}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
                 {/* Procedimento */}
                 <button
-                  disabled={!selectedDoctor}
-                  onClick={() =>
-                    selectedDoctor && setModalState("procedure-select")
-                  }
-                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedDoctor ? "opacity-40 cursor-not-allowed" : modalState === "procedure-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
+                  onClick={() => setModalState("procedure-select")}
+                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${modalState === "procedure-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
                   <span
                     className={`text-sm md:text-base font-semibold ${selectedProcedure ? "text-gray-900" : "text-gray-900"}`}
@@ -543,13 +493,46 @@ export function CreateSurgeryRequestWizard({
                   </span>
                 </button>
 
-                {/* Convênio - OPCIONAL */}
+                {/* Médico */}
                 <button
                   disabled={!selectedManager}
                   onClick={() =>
-                    selectedManager && setModalState("healthplan-select")
+                    selectedManager && setModalState("doctor-select")
                   }
-                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedManager ? "opacity-40 cursor-not-allowed" : modalState === "healthplan-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
+                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedManager ? "opacity-40 cursor-not-allowed" : modalState === "doctor-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
+                >
+                  <span className="text-sm md:text-base font-semibold text-gray-900">
+                    Médico
+                  </span>
+                  <span className="flex items-center gap-2 min-w-0 ml-3">
+                    <span
+                      className={`text-xs md:text-sm truncate max-w-[140px] ${selectedDoctor ? "text-teal-700 font-medium" : "text-gray-400"}`}
+                    >
+                      {selectedDoctor ? selectedDoctor.name : "Selecionar"}
+                    </span>
+                    <svg
+                      className="w-4 h-4 text-gray-400 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </span>
+                </button>
+
+                {/* Convênio - OPCIONAL */}
+                <button
+                  disabled={!selectedDoctor}
+                  onClick={() =>
+                    selectedDoctor && setModalState("healthplan-select")
+                  }
+                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedDoctor ? "opacity-40 cursor-not-allowed" : modalState === "healthplan-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
                   <span className="text-sm md:text-base font-semibold text-gray-900">
                     Convênio{" "}
@@ -607,11 +590,11 @@ export function CreateSurgeryRequestWizard({
 
                 {/* Hospital - OPCIONAL */}
                 <button
-                  disabled={!selectedManager}
+                  disabled={!selectedDoctor}
                   onClick={() =>
-                    selectedManager && setModalState("hospital-select")
+                    selectedDoctor && setModalState("hospital-select")
                   }
-                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedManager ? "opacity-40 cursor-not-allowed" : modalState === "hospital-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
+                  className={`w-full min-h-[72px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedDoctor ? "opacity-40 cursor-not-allowed" : modalState === "hospital-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
                   <span className="text-sm md:text-base font-semibold text-gray-900">
                     Hospital{" "}
@@ -828,6 +811,14 @@ export function CreateSurgeryRequestWizard({
                     onCreateNew={() => setModalState("manager-create")}
                     selectedItemId={selectedManager?.id}
                     isActive={modalState === "manager-select"}
+                  />
+                )}
+                {modalState === "doctor-select" && (
+                  <DoctorSelectionContent
+                    onSelect={handleDoctorSelected}
+                    availableDoctors={availableDoctors}
+                    loadingDoctors={loadingDoctors}
+                    selectedItemId={selectedDoctor?.id}
                   />
                 )}
               </div>
@@ -1327,6 +1318,92 @@ function HealthPlanSelectionContent({
                 <span className="text-xs md:text-sm text-gray-900">
                   {healthPlan.name}
                 </span>
+                <div
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    isSelected ? "border-teal-500" : "border-gray-300"
+                  }`}
+                >
+                  {isSelected && (
+                    <div className="w-3 h-3 rounded-full bg-teal-500" />
+                  )}
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DoctorSelectionContent({
+  onSelect,
+  availableDoctors,
+  loadingDoctors,
+  selectedItemId,
+}: {
+  onSelect: (doctor: AvailableDoctor) => void;
+  availableDoctors: AvailableDoctor[];
+  loadingDoctors: boolean;
+  selectedItemId?: string | null;
+}) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredDoctors = availableDoctors.filter(
+    (d) =>
+      d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (d.crm && d.crm.toLowerCase().includes(searchTerm.toLowerCase())),
+  );
+
+  return (
+    <div className="p-4 md:p-6">
+      <div className="flex gap-3 mb-4">
+        <div className="flex-1 relative">
+          <Image
+            src="/icons/search.svg"
+            alt="Buscar"
+            width={20}
+            height={20}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
+          />
+          <input
+            type="text"
+            placeholder="Médico"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs md:text-sm text-gray-900 placeholder:text-gray-400"
+          />
+        </div>
+      </div>
+
+      <div className="border-t border-gray-200">
+        {loadingDoctors ? (
+          <div className="text-center py-8 text-gray-500">Carregando...</div>
+        ) : filteredDoctors.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            Nenhum médico encontrado
+          </div>
+        ) : (
+          filteredDoctors.map((doctor) => {
+            const isSelected = selectedItemId === doctor.id;
+            return (
+              <button
+                type="button"
+                key={doctor.id}
+                onClick={() => onSelect(doctor)}
+                className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
+              >
+                <div className="flex flex-col">
+                  <span className="text-xs md:text-sm text-gray-900">
+                    {doctor.name}
+                  </span>
+                  {doctor.crm && (
+                    <span className="text-xs text-gray-500">
+                      CRM {doctor.crm}
+                      {doctor.crm_state ? `/${doctor.crm_state}` : ""}
+                    </span>
+                  )}
+                </div>
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                     isSelected ? "border-teal-500" : "border-gray-300"

@@ -18,6 +18,63 @@ import {
 } from "@/types/surgery-request.types";
 import { useToggle, useClickOutside } from "@/hooks";
 import { priorityColors, getPriorityLabel } from "@/lib/design-system";
+import { differenceInDays, parse } from "date-fns";
+
+// Stale tier configuration
+type StaleTier = {
+  minDays: number;
+  label: string;
+  bg: string;
+  text: string;
+  dot: string;
+};
+const STALE_TIERS: StaleTier[] = [
+  {
+    minDays: 15,
+    label: "15d+ parada",
+    bg: "bg-red-50",
+    text: "text-red-700",
+    dot: "bg-red-500",
+  },
+  {
+    minDays: 7,
+    label: "7d parada",
+    bg: "bg-orange-50",
+    text: "text-orange-700",
+    dot: "bg-orange-500",
+  },
+  {
+    minDays: 3,
+    label: "3d parada",
+    bg: "bg-yellow-50",
+    text: "text-yellow-700",
+    dot: "bg-yellow-500",
+  },
+];
+
+const TERMINAL_STATUSES: SurgeryRequestStatus[] = [
+  "Realizada",
+  "Faturada",
+  "Finalizada",
+  "Encerrada",
+];
+
+function getStaleTier(
+  createdAt: string,
+  status: SurgeryRequestStatus,
+): (StaleTier & { days: number }) | null {
+  if (TERMINAL_STATUSES.includes(status)) return null;
+  try {
+    const date = createdAt.includes("/")
+      ? parse(createdAt, "dd/MM/yyyy", new Date())
+      : new Date(createdAt);
+    const days = differenceInDays(new Date(), date);
+    const tier = STALE_TIERS.find((t) => days >= t.minDays);
+    return tier ? { ...tier, days } : null;
+  } catch {
+    return null;
+  }
+}
 
 interface ProcedureCardProps {
   procedure: SurgeryRequest;
@@ -391,6 +448,21 @@ export const ProcedureCard = memo<ProcedureCardProps>(
             )
           )}
         </div>
+
+        {/* Stale Badge */}
+        {(() => {
+          const tier = getStaleTier(procedure.createdAt, procedure.status);
+          if (!tier) return null;
+          return (
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${tier.bg} ${tier.text} mb-2`}
+              title={`Parada há ${tier.days} dia${tier.days !== 1 ? "s" : ""}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${tier.dot}`} />⏰{" "}
+              {tier.label}
+            </div>
+          );
+        })()}
 
         {/* Rodapé - Data, Chat e Anexos */}
         <div className="flex items-center justify-between">
