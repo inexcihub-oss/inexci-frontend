@@ -228,6 +228,257 @@ function ActivityItem({ activity }: { activity: Activity }) {
   );
 }
 
+// ── Status Timeline Component ─────────────────────────────────────────────
+const ALL_STATUSES: { num: number; label: string }[] = [
+  { num: 1, label: "Pendente" },
+  { num: 2, label: "Enviada" },
+  { num: 3, label: "Em Análise" },
+  { num: 4, label: "Em Agendamento" },
+  { num: 5, label: "Agendada" },
+  { num: 6, label: "Realizada" },
+  { num: 7, label: "Faturada" },
+  { num: 8, label: "Finalizada" },
+  { num: 9, label: "Encerrada" },
+];
+
+function StatusTimeline({
+  currentStatus,
+  createdAt,
+  activities,
+}: {
+  currentStatus: number;
+  createdAt: string;
+  activities: Activity[];
+}) {
+  // Build a map of status transitions from activities
+  const statusDates = new Map<number, string>();
+  statusDates.set(1, createdAt); // Status 1 = created_at
+
+  activities
+    .filter((a) => a.type === "status_change")
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    )
+    .forEach((a) => {
+      // Try to extract status from content like "Status alterado para Enviada"
+      const match = a.content.match(/para\s+"?([^"]+)"?\s*$/i);
+      if (match) {
+        const label = match[1].trim();
+        const found = ALL_STATUSES.find((s) => s.label === label);
+        if (found && !statusDates.has(found.num)) {
+          statusDates.set(found.num, a.created_at);
+        }
+      }
+    });
+
+  const now = new Date();
+  const createdDate = new Date(createdAt);
+  const totalDays = Math.max(
+    1,
+    Math.ceil((now.getTime() - createdDate.getTime()) / 86400000),
+  );
+
+  const isEncerrada = currentStatus === 9;
+  const isFinalizada = currentStatus === 8;
+
+  // For Encerrada: only show statuses actually visited (in statusDates) + Encerrada itself
+  // For others: show all statuses up to and including current (excluding Encerrada)
+  const visibleStatuses = isEncerrada
+    ? ALL_STATUSES.filter((s) => statusDates.has(s.num) || s.num === 9)
+    : ALL_STATUSES.filter((s) => s.num !== 9);
+
+  // Calculate days in each completed stage
+  function getDaysInStage(statusNum: number): number | null {
+    const enteredAt = statusDates.get(statusNum);
+    if (!enteredAt) return null;
+    const nextStatus = ALL_STATUSES.find(
+      (s) => s.num > statusNum && statusDates.has(s.num),
+    );
+    const exitDate = nextStatus
+      ? new Date(statusDates.get(nextStatus.num)!)
+      : statusNum === currentStatus
+        ? now
+        : null;
+    if (!exitDate) return null;
+    return Math.max(
+      0,
+      Math.floor(
+        (exitDate.getTime() - new Date(enteredAt).getTime()) / 86400000,
+      ),
+    );
+  }
+
+  return (
+    <div className="p-4">
+      {/* Total time card */}
+      <div
+        className={`mb-5 rounded-xl px-4 py-3 flex items-center gap-3 ${
+          isEncerrada ? "bg-red-50" : "bg-teal-50"
+        }`}
+      >
+        <div
+          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+            isEncerrada ? "bg-red-100" : "bg-teal-100"
+          }`}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              stroke={isEncerrada ? "#dc2626" : "#0d9488"}
+              strokeWidth="1.5"
+            />
+            <path
+              d="M12 7V12L15 15"
+              stroke={isEncerrada ? "#dc2626" : "#0d9488"}
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+        <div>
+          <p
+            className={`text-xs font-semibold ${isEncerrada ? "text-red-700" : "text-teal-700"}`}
+          >
+            Tempo total
+          </p>
+          <p
+            className={`text-sm font-bold ${isEncerrada ? "text-red-900" : "text-teal-900"}`}
+          >
+            {totalDays === 1 ? "1 dia" : `${totalDays} dias`}
+          </p>
+        </div>
+      </div>
+
+      {/* Timeline */}
+      <div className="relative">
+        {visibleStatuses.map((s, idx) => {
+          const isThisEncerrada = s.num === 9;
+          // A status is "completed" (green) if it was visited and is not Encerrada
+          const isCompleted =
+            !isThisEncerrada && statusDates.has(s.num) && s.num < currentStatus;
+          const isCurrent =
+            !isEncerrada && !isFinalizada && s.num === currentStatus;
+          const isFinalizedLast = isFinalizada && s.num === 8;
+          const isFuture =
+            !isEncerrada && !statusDates.has(s.num) && s.num > currentStatus;
+          const isLast = idx === visibleStatuses.length - 1;
+          const daysInStage = getDaysInStage(s.num);
+          const enteredAt = statusDates.get(s.num);
+
+          return (
+            <div key={s.num} className="flex items-start gap-3 relative">
+              {/* Vertical line */}
+              {!isLast && (
+                <div
+                  className={`absolute left-[13px] top-[26px] w-0.5 h-[calc(100%-2px)] ${
+                    isCompleted || isFinalizedLast
+                      ? "bg-teal-500"
+                      : isThisEncerrada
+                        ? "bg-gray-200"
+                        : "bg-gray-200"
+                  }`}
+                />
+              )}
+
+              {/* Circle indicator */}
+              <div className="flex-shrink-0 z-10 mt-0.5">
+                {isThisEncerrada ? (
+                  <div className="w-[26px] h-[26px] rounded-full bg-red-500 flex items-center justify-center">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M18 6L6 18M6 6L18 18"
+                        stroke="white"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
+                ) : isCompleted || isFinalizedLast ? (
+                  <div className="w-[26px] h-[26px] rounded-full bg-teal-500 flex items-center justify-center">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M5 13L9 17L19 7"
+                        stroke="white"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                ) : isCurrent ? (
+                  <div className="w-[26px] h-[26px] rounded-full bg-white border-[3px] border-teal-500 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-teal-500" />
+                  </div>
+                ) : (
+                  <div className="w-[26px] h-[26px] rounded-full bg-white border-2 border-gray-200" />
+                )}
+              </div>
+
+              {/* Content */}
+              <div
+                className={`pb-6 flex-1 min-w-0 ${isFuture ? "opacity-40" : ""}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={`text-sm font-medium ${
+                      isThisEncerrada
+                        ? "text-red-600"
+                        : isCurrent
+                          ? "text-teal-700"
+                          : isCompleted || isFinalizedLast
+                            ? "text-gray-900"
+                            : "text-gray-400"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                  {isCurrent && (
+                    <span className="text-[10px] font-semibold text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full">
+                      Atual
+                    </span>
+                  )}
+                  {isFinalizedLast && (
+                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                      ✓ Concluída
+                    </span>
+                  )}
+                  {isThisEncerrada && (
+                    <span className="text-[10px] font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
+                      Encerrada
+                    </span>
+                  )}
+                </div>
+                {enteredAt && (
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {new Date(enteredAt).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                    {daysInStage !== null && (
+                      <span className="ml-1.5 text-gray-500">
+                        ·{" "}
+                        {daysInStage === 0
+                          ? "< 1 dia"
+                          : daysInStage === 1
+                            ? "1 dia"
+                            : `${daysInStage} dias`}
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function SolicitacaoDetalhePage() {
   const params = useParams();
   const router = useRouter();
@@ -250,6 +501,10 @@ export default function SolicitacaoDetalhePage() {
     }
     return true;
   });
+
+  const [sidebarTab, setSidebarTab] = useState<"pendencias" | "timeline">(
+    "pendencias",
+  );
 
   const [solicitacao, setSolicitacao] = useState<SurgeryRequestDetail | null>(
     null,
@@ -365,18 +620,6 @@ export default function SolicitacaoDetalhePage() {
     }
   }, [params.id, fetchPendencies]);
 
-  const handleUpdateProcedure = useCallback(async () => {
-    // Recarregar os dados da solicitação após a atualização
-    try {
-      const data = await surgeryRequestService.getById(params.id as string);
-      setSolicitacao(data);
-      // Também recarregar pendências, pois podem ter mudado
-      fetchPendencies();
-    } catch {
-      // silently ignore
-    }
-  }, [params.id, fetchPendencies]);
-
   // ── Atividades ──────────────────────────────────────────────────────────────
   const fetchActivities = useCallback(async () => {
     if (!params.id) return;
@@ -392,6 +635,19 @@ export default function SolicitacaoDetalhePage() {
       setLoadingActivities(false);
     }
   }, [params.id]);
+
+  const handleUpdateProcedure = useCallback(async () => {
+    // Recarregar os dados da solicitação após a atualização
+    try {
+      const data = await surgeryRequestService.getById(params.id as string);
+      setSolicitacao(data);
+      // Também recarregar pendências e atividades, pois podem ter mudado
+      fetchPendencies();
+      fetchActivities();
+    } catch {
+      // silently ignore
+    }
+  }, [params.id, fetchPendencies, fetchActivities]);
 
   useEffect(() => {
     if (params.id) {
@@ -853,7 +1109,7 @@ export default function SolicitacaoDetalhePage() {
               </div>
 
               {/* Status Grid */}
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-6">
                 {/* Status */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-1.5 h-5">
@@ -893,6 +1149,46 @@ export default function SolicitacaoDetalhePage() {
                       surgeryRequestId={solicitacao.id}
                       onUpdate={handleUpdateProcedure}
                     />
+                  </div>
+                </div>
+
+                {/* Médico */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 h-5">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="#111111"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="flex-shrink-0"
+                    >
+                      <path d="M9 21q-1.65 0-2.825-1.175T5 17q0-1.425.838-2.475T8 13.2V9.8q-1.325-.4-2.163-1.45T5 6q0-1.65 1.175-2.825T9 2q1.65 0 2.825 1.175T13 6q0 1.4-.838 2.45T10 9.8v3.4q1.325.4 2.163 1.45T13 17q0 1.65-1.175 2.825T9 21Zm0-2q.825 0 1.413-.588T11 17q0-.825-.588-1.413T9 15q-.825 0-1.413.588T7 17q0 .825.588 1.413T9 19Zm0-11q.825 0 1.413-.588T11 6q0-.825-.588-1.413T9 3q-.825 0-1.413.588T7 6q0 .825.588 1.413T9 7Zm0 3q.4 0 .7-.3T10 9q0-.4-.3-.7T9 8q-.4 0-.7.3T8 9q0 .4.3.7T9 10Zm3-4h1q.825 0 1.413.588T15 8v5.075q1.325.375 2.163 1.425T18 17q0 1.65-1.175 2.825T14 21q-1.65 0-2.825-1.175T10 17q0-1.425.838-2.475T13 13.075V8h-1V6Zm2 11q.825 0 1.413-.588T16 17q0-.825-.588-1.413T14 15q-.825 0-1.413.588T12 17q0 .825.588 1.413T14 19Z" />
+                    </svg>
+                    <span className="font-semibold text-gray-900 text-xs">
+                      Médico
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 h-7 px-3 rounded-md border border-gray-200 bg-white text-xs">
+                    {solicitacao.doctor ? (
+                      <>
+                        <span className="w-5 h-5 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600">
+                          {solicitacao.doctor.name
+                            .split(" ")
+                            .slice(0, 2)
+                            .map((n: string) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </span>
+                        <span className="flex-1 min-w-0 truncate text-left text-gray-700">
+                          {solicitacao.doctor.name}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="flex-1 min-w-0 truncate text-left text-gray-400">
+                        —
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1124,132 +1420,165 @@ export default function SolicitacaoDetalhePage() {
                   </svg>
                 </button>
               </div>
-              {/* Sidebar Header */}
-              <div className="flex items-center justify-center border-b border-neutral-100 h-13">
-                <h3 className="text-sm font-semibold text-gray-900">
+              {/* Sidebar Header - Tabs */}
+              <div className="flex items-center border-b border-neutral-100 h-13">
+                <button
+                  onClick={() => setSidebarTab("pendencias")}
+                  className={`flex-1 h-full text-sm font-semibold transition-colors relative ${
+                    sidebarTab === "pendencias"
+                      ? "text-teal-700"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
                   Pendências
-                </h3>
+                  {sidebarTab === "pendencias" && (
+                    <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-teal-600 rounded-full" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setSidebarTab("timeline")}
+                  className={`flex-1 h-full text-sm font-semibold transition-colors relative ${
+                    sidebarTab === "timeline"
+                      ? "text-teal-700"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  Timeline
+                  {sidebarTab === "timeline" && (
+                    <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-teal-600 rounded-full" />
+                  )}
+                </button>
               </div>
 
-              {/* Sidebar Content - Pendências */}
-              <>
-                {/* Pendências Content */}
-                <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
-                  {/* Lista de Pendências - Validação Dinâmica */}
-                  <div className="flex-1 overflow-auto p-3">
-                    {loadingPendencies ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-700"></div>
-                      </div>
-                    ) : validation ? (
-                      <DynamicPendencyList
-                        pendencies={validation.pendencies}
-                        statusLabel={validation.statusLabel}
-                        canAdvance={validation.canAdvance}
-                        completedCount={validation.completedCount}
-                        pendingCount={validation.pendingCount}
-                        totalCount={validation.totalCount}
-                        currentStatus={validation.currentStatus}
-                        compact
-                        onPendencyClick={handlePendencyClick}
-                      />
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        Nenhuma pendência encontrada
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Seção Atividades - Collapsible com fundo que cobre o input */}
-                  <div
-                    className={`bg-white transition-all duration-200 flex flex-col ${isActivitiesExpanded ? "flex-1 min-h-0" : ""}`}
-                  >
-                    <button
-                      onClick={() =>
-                        setIsActivitiesExpanded(!isActivitiesExpanded)
-                      }
-                      className="w-full flex items-center justify-between px-4 py-4 border-t border-b border-neutral-100 hover:bg-gray-50 transition-colors bg-white flex-shrink-0"
-                    >
-                      <h3 className="font-semibold text-sm text-black leading-normal">
-                        Atividades
-                      </h3>
-                      <svg
-                        className={`w-4 h-4 transition-transform ${isActivitiesExpanded ? "" : "rotate-180"}`}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                      >
-                        <path
-                          d="M6 15L12 9L18 15"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-
-                    {/* Timeline de Atividades */}
-                    {isActivitiesExpanded && (
-                      <div className="flex-1 overflow-y-auto min-h-0">
-                        {loadingActivities ? (
-                          <div className="flex items-center justify-center py-8">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-700" />
-                          </div>
-                        ) : activities.length === 0 ? (
-                          <div className="px-4 py-8 text-center text-xs text-gray-400">
-                            Nenhuma atividade registrada.
-                            <br />
-                            Adicione um comentário abaixo.
-                          </div>
-                        ) : (
-                          <div className="flex flex-col">
-                            {activities.map((activity) => (
-                              <ActivityItem
-                                key={activity.id}
-                                activity={activity}
-                              />
-                            ))}
-                            <div ref={activitiesEndRef} />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Campo de Comentário */}
-                  {isActivitiesExpanded && (
-                    <div className="bg-white py-2 px-4 border-t border-neutral-100 flex-shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
-                      <div className="flex items-center bg-white border border-neutral-100 gap-2 py-2.5 px-3.5 rounded-xl">
-                        <input
-                          type="text"
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          onKeyDown={handleCommentKeyDown}
-                          placeholder="Escreva um comentário"
-                          disabled={sendingComment}
-                          className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug disabled:opacity-50"
-                        />
-                        <button
-                          onClick={handleSendComment}
-                          disabled={!newComment.trim() || sendingComment}
-                          className="w-6 h-6 flex-shrink-0 hover:opacity-70 transition-opacity disabled:opacity-30"
-                        >
-                          {sendingComment ? (
-                            <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <Image
-                              src="/icons/send.svg"
-                              alt="Enviar"
-                              width={24}
-                              height={24}
-                            />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+              {/* Sidebar Content */}
+              {sidebarTab === "timeline" ? (
+                <div className="flex-1 overflow-auto">
+                  <StatusTimeline
+                    currentStatus={solicitacao.status}
+                    createdAt={solicitacao.created_at}
+                    activities={activities}
+                  />
                 </div>
-              </>
+              ) : (
+                <>
+                  {/* Pendências Content */}
+                  <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
+                    {/* Lista de Pendências - Validação Dinâmica */}
+                    <div className="flex-1 overflow-auto p-3">
+                      {loadingPendencies ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-700"></div>
+                        </div>
+                      ) : validation ? (
+                        <DynamicPendencyList
+                          pendencies={validation.pendencies}
+                          statusLabel={validation.statusLabel}
+                          canAdvance={validation.canAdvance}
+                          completedCount={validation.completedCount}
+                          pendingCount={validation.pendingCount}
+                          totalCount={validation.totalCount}
+                          currentStatus={validation.currentStatus}
+                          compact
+                          onPendencyClick={handlePendencyClick}
+                        />
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          Nenhuma pendência encontrada
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Seção Atividades - Collapsible com fundo que cobre o input */}
+                    <div
+                      className={`bg-white transition-all duration-200 flex flex-col ${isActivitiesExpanded ? "flex-1 min-h-0" : ""}`}
+                    >
+                      <button
+                        onClick={() =>
+                          setIsActivitiesExpanded(!isActivitiesExpanded)
+                        }
+                        className="w-full flex items-center justify-between px-4 py-4 border-t border-b border-neutral-100 hover:bg-gray-50 transition-colors bg-white flex-shrink-0"
+                      >
+                        <h3 className="font-semibold text-sm text-black leading-normal">
+                          Atividades
+                        </h3>
+                        <svg
+                          className={`w-4 h-4 transition-transform ${isActivitiesExpanded ? "" : "rotate-180"}`}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M6 15L12 9L18 15"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+
+                      {/* Timeline de Atividades */}
+                      {isActivitiesExpanded && (
+                        <div className="flex-1 overflow-y-auto min-h-0">
+                          {loadingActivities ? (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-700" />
+                            </div>
+                          ) : activities.length === 0 ? (
+                            <div className="px-4 py-8 text-center text-xs text-gray-400">
+                              Nenhuma atividade registrada.
+                              <br />
+                              Adicione um comentário abaixo.
+                            </div>
+                          ) : (
+                            <div className="flex flex-col">
+                              {activities.map((activity) => (
+                                <ActivityItem
+                                  key={activity.id}
+                                  activity={activity}
+                                />
+                              ))}
+                              <div ref={activitiesEndRef} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Campo de Comentário */}
+                    {isActivitiesExpanded && (
+                      <div className="bg-white py-2 px-4 border-t border-neutral-100 flex-shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
+                        <div className="flex items-center bg-white border border-neutral-100 gap-2 py-2.5 px-3.5 rounded-xl">
+                          <input
+                            type="text"
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            onKeyDown={handleCommentKeyDown}
+                            placeholder="Escreva um comentário"
+                            disabled={sendingComment}
+                            className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug disabled:opacity-50"
+                          />
+                          <button
+                            onClick={handleSendComment}
+                            disabled={!newComment.trim() || sendingComment}
+                            className="w-6 h-6 flex-shrink-0 hover:opacity-70 transition-opacity disabled:opacity-30"
+                          >
+                            {sendingComment ? (
+                              <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Image
+                                src="/icons/send.svg"
+                                alt="Enviar"
+                                width={24}
+                                height={24}
+                              />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </>
         )}

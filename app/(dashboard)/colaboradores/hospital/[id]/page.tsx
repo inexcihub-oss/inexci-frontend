@@ -9,7 +9,14 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { hospitalService, Hospital } from "@/services/hospital.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestListItem,
+  STATUS_NUMBER_TO_STRING,
+  STATUS_COLORS,
+} from "@/services/surgery-request.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
+import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
@@ -21,6 +28,10 @@ export default function HospitalDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hospital, setHospital] = useState<Hospital | null>(null);
+  const [surgeryRequests, setSurgeryRequests] = useState<
+    SurgeryRequestListItem[]
+  >([]);
+  const [loadingSurgeries, setLoadingSurgeries] = useState(true);
   const { toast, showToast, hideToast } = useToast();
 
   // Form state
@@ -92,6 +103,21 @@ export default function HospitalDetalhePage() {
         contact: hospitalData.contact_name || "",
         contactPhone: hospitalData.contact_phone || "",
       });
+      // Buscar solicitações cirúrgicas deste hospital
+      setLoadingSurgeries(true);
+      try {
+        const surgeryData = await surgeryRequestService.getAll();
+        const filtered = (surgeryData.records ?? []).filter(
+          (r: any) =>
+            String(r.hospital_id) === String(hospitalData.id) ||
+            String(r.hospital?.id) === String(hospitalData.id),
+        );
+        setSurgeryRequests(filtered);
+      } catch {
+        setSurgeryRequests([]);
+      } finally {
+        setLoadingSurgeries(false);
+      }
     } catch (error) {
       console.error("Erro ao carregar hospital:", error);
     } finally {
@@ -196,62 +222,72 @@ export default function HospitalDetalhePage() {
     { value: "TO", label: "Tocantins" },
   ];
 
-  // Sidebar com cirurgias recentes (mock)
-  const recentSurgeries = [
-    {
-      id: "1",
-      procedure: "Artroscopia de Joelho",
-      date: "15/01/2026",
-      doctor: "Dr. Carlos Silva",
-    },
-    {
-      id: "2",
-      procedure: "Cirurgia de Menisco",
-      date: "14/01/2026",
-      doctor: "Dra. Ana Costa",
-    },
-    {
-      id: "3",
-      procedure: "Prótese de Quadril",
-      date: "12/01/2026",
-      doctor: "Dr. Carlos Silva",
-    },
-    {
-      id: "4",
-      procedure: "Artrodese Lombar",
-      date: "10/01/2026",
-      doctor: "Dr. João Santos",
-    },
-  ];
-
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
         <h3 className="text-sm font-semibold text-gray-900">
           Cirurgias recentes
         </h3>
+        {!loadingSurgeries && (
+          <span className="text-xs text-gray-400">
+            {surgeryRequests.length}
+          </span>
+        )}
       </div>
 
       {/* Lista de cirurgias */}
       <div className="flex-1 overflow-y-auto">
-        {recentSurgeries.map((surgery) => (
-          <div
-            key={surgery.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-          >
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-gray-900">
-                {surgery.procedure}
-              </span>
-              <span className="text-xs text-gray-500">{surgery.doctor}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">{surgery.date}</span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            </div>
+        {loadingSurgeries ? (
+          <div className="flex items-center justify-center py-8">
+            <Spinner size="sm" />
           </div>
-        ))}
+        ) : surgeryRequests.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-xs text-gray-400">
+              Nenhuma solicitação encontrada.
+            </p>
+          </div>
+        ) : (
+          surgeryRequests.map((surgery) => {
+            const statusLabel =
+              STATUS_NUMBER_TO_STRING[surgery.status] ?? "Pendente";
+            const colors = STATUS_COLORS[statusLabel] ?? {
+              bg: "bg-gray-50",
+              text: "text-gray-600",
+            };
+            const procedureName =
+              (surgery as any).procedure_name ||
+              surgery.procedure?.name ||
+              surgery.tuss_procedure?.description ||
+              "Procedimento não especificado";
+            const doctorName = surgery.doctor?.name || "Médico não informado";
+            return (
+              <div
+                key={surgery.id}
+                onClick={() => router.push(`/solicitacao/${surgery.id}`)}
+                className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
+              >
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
+                  <span className="text-xs font-semibold text-gray-900 truncate">
+                    {procedureName}
+                  </span>
+                  <span className="text-xs text-gray-500 truncate">
+                    {doctorName}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`text-xs px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}
+                  >
+                    {statusLabel}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -259,9 +295,9 @@ export default function HospitalDetalhePage() {
   return (
     <PageContainer>
       <DetailPageLayout
-        sectionTitle="Colaboradores"
-        backHref="/colaboradores"
-        itemName={hospital.name}
+        sectionTitle="Hospitais"
+        backHref="/hospitais"
+        itemName={formData.name}
         itemSubtitle="Hospital"
         sidebarContent={sidebarContent}
       >

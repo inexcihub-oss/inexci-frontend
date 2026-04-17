@@ -1,16 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
-import { X } from "lucide-react";
-import { ProcedureModel, ProcedureDocument } from "./types";
+import React, { useState, useEffect, useRef } from "react";
+import { X, Pencil, Check } from "lucide-react";
+import {
+  ProcedureModel,
+  ProcedureDocument,
+  ProcedureOpmeItem,
+  ProcedureTussItem,
+} from "./types";
 import { AddDocumentModal } from "./AddDocumentModal";
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
+import { surgeryRequestService } from "@/services/surgery-request.service";
 
 interface ProcedureSideSheetProps {
   isOpen: boolean;
   onClose: () => void;
   procedure: ProcedureModel | null;
+  onUseTemplate?: (template: any) => void;
+  onTemplateUpdated?: () => void;
 }
 
 // ─── Ícones SVG ───────────────────────────────────────────────────────────────
@@ -108,95 +116,139 @@ const IconTrash = ({ className = "" }: { className?: string }) => (
   </svg>
 );
 
-// ─── Mock data for filled state ───────────────────────────────────────────────
-
-const MOCK_DOCUMENTS: ProcedureDocument[] = [
-  { id: "1", type: "Identidade", name: "Identidade (RG/CNH/CPF)" },
-  { id: "2", type: "Convênio", name: "Carteira do convênio" },
-  { id: "3", type: "Pedido", name: "Pedido médico" },
-  { id: "4", type: "Exame", name: "Raio-X de bacia (AP e perfil)" },
-  { id: "5", type: "Exame", name: "Ressonância magnética do quadril" },
-  {
-    id: "6",
-    type: "Exame",
-    name: "Exames laboratoriais pré-operatórios",
-  },
-  { id: "7", type: "Exame", name: "Eletrocardiograma" },
-];
-
-const MOCK_OPME_ITEMS = [
-  {
-    id: "1",
-    name: "Âncora absorvível (2,7 mm)",
-    quantity: 1,
-    manufacturers: ["Smith & Newphew", "Arthrex", "Johnson & Johnson"],
-    suppliers: ["OrthoSupplies", "MedOrto Comercial", "HospMed Produtos"],
-  },
-  {
-    id: "2",
-    name: "Parafuso interferencial bioabsorvível 7x25mm",
-    quantity: 2,
-    manufacturers: ["Smith & Newphew", "Arthrex", "Johnson & Johnson"],
-    suppliers: ["OrthoSupplies", "MedOrto Comercial", "HospMed Produtos"],
-  },
-  {
-    id: "3",
-    name: "Âncora metálica com fio não absorvível 5,5 mm",
-    quantity: 2,
-    manufacturers: [],
-    suppliers: [],
-  },
-];
-
-const MOCK_TUSS_ITEMS = [
-  {
-    id: "1",
-    code: "04.08.03.009-6",
-    name: "Artroplastia total de quadril",
-    quantity: 1,
-  },
-  {
-    id: "2",
-    code: "04.01.01.001-2",
-    name: "Anestesia regional e/ou geral",
-    quantity: 1,
-  },
-];
-
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export function ProcedureSideSheet({
   isOpen,
   onClose,
   procedure,
+  onUseTemplate,
+  onTemplateUpdated,
 }: ProcedureSideSheetProps) {
-  const [documents, setDocuments] = useState<ProcedureDocument[]>(
-    procedure?.documents || MOCK_DOCUMENTS,
-  );
+  const [documents, setDocuments] = useState<ProcedureDocument[]>([]);
+  const [opmeItems, setOpmeItems] = useState<ProcedureOpmeItem[]>([]);
+  const [tussItems, setTussItems] = useState<ProcedureTussItem[]>([]);
+  const [modelName, setModelName] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [isAddDocModalOpen, setIsAddDocModalOpen] = useState(false);
   const [isOpmeModalOpen, setIsOpmeModalOpen] = useState(false);
   const [isTussModalOpen, setIsTussModalOpen] = useState(false);
   const [expandedOpme, setExpandedOpme] = useState<Record<string, boolean>>({});
 
+  // Sync local state when procedure changes
+  useEffect(() => {
+    if (procedure) {
+      setDocuments(procedure.documents || []);
+      setOpmeItems(procedure.opmeItems || []);
+      setTussItems(procedure.tussItems || []);
+      setModelName(procedure.modelName);
+    }
+  }, [procedure]);
+
+  // Focus input when editing name
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+
   if (!isOpen || !procedure) return null;
 
   const hasDocuments = documents.length > 0;
-  const hasOpme = MOCK_OPME_ITEMS.length > 0;
-  const hasTuss = MOCK_TUSS_ITEMS.length > 0;
+  const hasOpme = opmeItems.length > 0;
+  const hasTuss = tussItems.length > 0;
+
+  // Persiste alterações no template_data via API
+  const persistTemplateData = async (updates: {
+    name?: string;
+    opme_items?: any[];
+    tuss_items?: any[];
+    required_documents?: any[];
+  }) => {
+    try {
+      const raw = (procedure as any)._raw;
+      if (!raw) return;
+      const currentData = raw.template_data || {};
+      const newData = { ...currentData };
+      if (updates.opme_items !== undefined)
+        newData.opme_items = updates.opme_items;
+      if (updates.tuss_items !== undefined)
+        newData.tuss_items = updates.tuss_items;
+      if (updates.required_documents !== undefined)
+        newData.required_documents = updates.required_documents;
+
+      const payload: { name?: string; template_data?: object } = {
+        template_data: newData,
+      };
+      if (updates.name !== undefined) payload.name = updates.name;
+
+      await surgeryRequestService.updateTemplate(procedure.id, payload);
+      onTemplateUpdated?.();
+    } catch (err) {
+      console.error("Erro ao atualizar template:", err);
+    }
+  };
 
   const toggleOpmeExpand = (id: string) => {
     setExpandedOpme((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleAddDocument = (doc: { type: string; name: string }) => {
-    setDocuments((prev) => [
-      ...prev,
-      { id: String(Date.now()), type: doc.type, name: doc.name },
-    ]);
+    const newDoc = { id: String(Date.now()), type: doc.type, name: doc.name };
+    const newDocs = [...documents, newDoc];
+    setDocuments(newDocs);
+    persistTemplateData({
+      required_documents: newDocs.map((d) => ({ type: d.type, name: d.name })),
+    });
   };
 
   const handleRemoveDocument = (id: string) => {
-    setDocuments((prev) => prev.filter((d) => d.id !== id));
+    const newDocs = documents.filter((d) => d.id !== id);
+    setDocuments(newDocs);
+    persistTemplateData({
+      required_documents: newDocs.map((d) => ({ type: d.type, name: d.name })),
+    });
+  };
+
+  const handleSaveName = () => {
+    setIsEditingName(false);
+    if (modelName.trim() && modelName !== procedure.modelName) {
+      persistTemplateData({ name: modelName.trim() });
+    }
+  };
+
+  const handleOpmeLocalSave = (
+    items: {
+      name: string;
+      manufacturers: string[];
+      suppliers: string[];
+      quantity: number;
+    }[],
+  ) => {
+    const mapped: ProcedureOpmeItem[] = items.map((item, i) => ({
+      id: String(i),
+      name: item.name,
+      manufacturers: item.manufacturers,
+      suppliers: item.suppliers,
+      quantity: item.quantity,
+    }));
+    setOpmeItems(mapped);
+    persistTemplateData({ opme_items: items });
+  };
+
+  const handleTussLocalSave = (
+    items: { tuss_code: string; name: string; quantity: number }[],
+  ) => {
+    const mapped: ProcedureTussItem[] = items.map((item, i) => ({
+      id: String(i),
+      code: item.tuss_code,
+      name: item.name,
+      quantity: item.quantity,
+    }));
+    setTussItems(mapped);
+    persistTemplateData({ tuss_items: items });
   };
 
   return (
@@ -209,9 +261,42 @@ export function ProcedureSideSheet({
         <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] mx-4">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {procedure.modelName}
-            </h2>
+            {isEditingName ? (
+              <div className="flex items-center gap-2 flex-1 mr-4">
+                <input
+                  ref={nameInputRef}
+                  value={modelName}
+                  onChange={(e) => setModelName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveName();
+                    if (e.key === "Escape") {
+                      setModelName(procedure.modelName);
+                      setIsEditingName(false);
+                    }
+                  }}
+                  onBlur={handleSaveName}
+                  className="text-lg font-semibold text-gray-900 border-b-2 border-blue-500 outline-none bg-transparent flex-1"
+                />
+                <button
+                  onClick={handleSaveName}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  <Check className="w-5 h-5" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {modelName}
+                </h2>
+                <button
+                  onClick={() => setIsEditingName(true)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -364,7 +449,7 @@ export function ProcedureSideSheet({
                   </div>
 
                   {/* OPME Items */}
-                  {MOCK_OPME_ITEMS.map((item) => {
+                  {opmeItems.map((item) => {
                     const isExpanded = expandedOpme[item.id] ?? true;
                     return (
                       <div key={item.id}>
@@ -495,11 +580,11 @@ export function ProcedureSideSheet({
                   </div>
 
                   {/* TUSS Items */}
-                  {MOCK_TUSS_ITEMS.map((item, index) => (
+                  {tussItems.map((item, index) => (
                     <div
                       key={item.id}
                       className={`flex items-center gap-6 px-4 py-3 ${
-                        index < MOCK_TUSS_ITEMS.length - 1
+                        index < tussItems.length - 1
                           ? "border-b border-gray-200"
                           : ""
                       }`}
@@ -543,7 +628,25 @@ export function ProcedureSideSheet({
             <button onClick={onClose} className="ds-btn-outline">
               Fechar
             </button>
-            <button className="ds-btn-primary">Usar modelo</button>
+            <button
+              onClick={() => {
+                const raw = (procedure as any)._raw;
+                if (raw) {
+                  onClose();
+                  // Incrementa uso e notifica
+                  surgeryRequestService
+                    .incrementTemplateUsage(procedure.id)
+                    .then(() => {
+                      onTemplateUpdated?.();
+                    })
+                    .catch(() => {});
+                  onUseTemplate?.(raw);
+                }
+              }}
+              className="ds-btn-primary"
+            >
+              Usar modelo
+            </button>
           </div>
         </div>
       </div>
@@ -560,6 +663,13 @@ export function ProcedureSideSheet({
         onClose={() => setIsOpmeModalOpen(false)}
         surgeryRequestId={procedure.id}
         onSuccess={() => setIsOpmeModalOpen(false)}
+        onLocalSave={handleOpmeLocalSave}
+        initialItems={opmeItems.map((item) => ({
+          name: item.name,
+          manufacturers: item.manufacturers,
+          suppliers: item.suppliers,
+          quantity: item.quantity,
+        }))}
       />
 
       <TussProcedureModal
@@ -567,6 +677,7 @@ export function ProcedureSideSheet({
         onClose={() => setIsTussModalOpen(false)}
         surgeryRequestId={procedure.id}
         onSuccess={() => setIsTussModalOpen(false)}
+        onLocalSave={handleTussLocalSave}
       />
     </>
   );

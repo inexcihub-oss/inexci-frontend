@@ -209,10 +209,13 @@ export default function AssistenteDetalhePage() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center px-6 py-0 border-b border-neutral-100 h-13">
+      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
         <h3 className="text-sm font-semibold text-gray-900">
           Últimos pacientes
         </h3>
+        {!loadingPatients && (
+          <span className="text-xs text-gray-400">{recentPatients.length}</span>
+        )}
       </div>
 
       {/* Lista de pacientes */}
@@ -231,7 +234,8 @@ export default function AssistenteDetalhePage() {
           recentPatients.map((patient) => (
             <div
               key={patient.id}
-              className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+              onClick={() => router.push(`/pacientes/${patient.id}`)}
+              className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
             >
               <div className="flex items-center gap-2">
                 <div
@@ -266,7 +270,7 @@ export default function AssistenteDetalhePage() {
       <DetailPageLayout
         sectionTitle="Colaboradores"
         backHref="/colaboradores"
-        itemName={collaborator.name}
+        itemName={formData.name}
         itemSubtitle="Colaborador"
         sidebarContent={sidebarContent}
       >

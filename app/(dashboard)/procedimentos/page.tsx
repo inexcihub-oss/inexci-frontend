@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   ColumnDef,
   flexRender,
@@ -24,6 +25,7 @@ import { useDebounce } from "@/hooks";
 import { ProcedureSideSheet } from "@/components/procedures/ProcedureSideSheet";
 import { NewProcedureModelModal } from "@/components/procedures/NewProcedureModelModal";
 import { ProcedureModel } from "@/components/procedures/types";
+import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
 
@@ -33,7 +35,11 @@ function templateToModel(t: any): ProcedureModel {
   return {
     id: t.id,
     modelName: t.name,
-    procedureName: data.procedures?.[0]?.name || data.procedure_name || "—",
+    procedureName:
+      data.procedure?.name ||
+      data.procedures?.[0]?.name ||
+      data.procedure_name ||
+      "—",
     createdAt: t.created_at
       ? new Date(t.created_at).toLocaleDateString("pt-BR")
       : "—",
@@ -51,18 +57,21 @@ function templateToModel(t: any): ProcedureModel {
       manufacturers: o.manufacturers || (o.brand ? [o.brand] : []),
       suppliers: o.suppliers || (o.distributor ? [o.distributor] : []),
     })),
-    tussItems: (data.procedures || []).map((p: any, i: number) => ({
-      id: String(i),
-      code: p.tuss_code || "",
-      name: p.name || "",
-      quantity: p.quantity || 1,
-    })),
+    tussItems: (data.tuss_items || data.procedures || []).map(
+      (p: any, i: number) => ({
+        id: String(i),
+        code: p.tuss_code || "",
+        name: p.name || "",
+        quantity: p.quantity || 1,
+      }),
+    ),
     // Guarda o template_data completo para reuso
     _raw: t,
   } as ProcedureModel & { _raw: any };
 }
 
 export default function ProcedimentosPage() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [procedures, setProcedures] = useState<ProcedureModel[]>([]);
@@ -71,6 +80,8 @@ export default function ProcedimentosPage() {
     useState<ProcedureModel | null>(null);
   const [isSideSheetOpen, setIsSideSheetOpen] = useState(false);
   const [isNewModelModalOpen, setIsNewModelModalOpen] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [wizardTemplate, setWizardTemplate] = useState<any>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState({});
   const { showToast } = useToast();
@@ -93,7 +104,14 @@ export default function ProcedimentosPage() {
     setIsLoadingList(true);
     try {
       const data = await surgeryRequestService.getTemplates();
-      setProcedures(Array.isArray(data) ? data.map(templateToModel) : []);
+      const models = Array.isArray(data) ? data.map(templateToModel) : [];
+      setProcedures(models);
+      // Atualiza selectedProcedure se estiver aberto
+      setSelectedProcedure((prev) => {
+        if (!prev) return prev;
+        const updated = models.find((m) => m.id === prev.id);
+        return updated || prev;
+      });
     } catch {
       showToast("Erro ao carregar modelos", "error");
     } finally {
@@ -317,11 +335,13 @@ export default function ProcedimentosPage() {
   const handleNewModelSubmit = async (data: {
     modelName: string;
     procedureName: string;
+    procedure?: any;
   }) => {
     try {
       const created = await surgeryRequestService.createTemplate({
         name: data.modelName,
         template_data: {
+          procedure: data.procedure || null,
           procedure_name: data.procedureName,
         },
       });
@@ -468,6 +488,26 @@ export default function ProcedimentosPage() {
         isOpen={isSideSheetOpen}
         onClose={handleCloseSideSheet}
         procedure={selectedProcedure}
+        onUseTemplate={(template) => {
+          setWizardTemplate(template);
+          setIsWizardOpen(true);
+        }}
+        onTemplateUpdated={loadTemplates}
+      />
+
+      {/* Create Surgery Request Wizard (from template) */}
+      <CreateSurgeryRequestWizard
+        isOpen={isWizardOpen}
+        onClose={() => {
+          setIsWizardOpen(false);
+          setWizardTemplate(null);
+        }}
+        onSuccess={() => {
+          setIsWizardOpen(false);
+          setWizardTemplate(null);
+          router.push("/solicitacoes-cirurgicas");
+        }}
+        initialTemplate={wizardTemplate}
       />
 
       {/* New Model Modal */}

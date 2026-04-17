@@ -10,6 +10,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   surgeryRequestService,
   ReportSection,
@@ -152,6 +153,7 @@ export function MedicalReportEditor({
   solicitacao,
   onUpdate,
 }: MedicalReportEditorProps) {
+  const { user: currentUser } = useAuth();
   const router = useRouter();
 
   // ── Estado do formulário ─────────────────────────────────────────────────
@@ -1144,12 +1146,27 @@ export function MedicalReportEditor({
             ) : (
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full py-3 px-4 sm:pl-4 sm:pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-xl">
                 <p className="text-xs md:text-sm text-gray-500 leading-snug flex-1">
-                  Nenhuma assinatura configurada. Adicione sua assinatura nas
-                  configurações para incluí-la no laudo.
+                  {solicitacao?.doctor &&
+                  currentUser &&
+                  solicitacao.doctor.id !== currentUser.id
+                    ? `O médico ${solicitacao.doctor.name} ainda não possui assinatura cadastrada. Acesse o perfil dele para adicionar.`
+                    : "Nenhuma assinatura configurada. Adicione sua assinatura nas configurações para incluí-la no laudo."}
                 </p>
                 <button
                   type="button"
-                  onClick={() => router.push("/configuracoes")}
+                  onClick={() => {
+                    if (
+                      solicitacao?.doctor &&
+                      currentUser &&
+                      solicitacao.doctor.id !== currentUser.id
+                    ) {
+                      router.push(
+                        `/colaboradores/medico/${solicitacao.doctor.id}`,
+                      );
+                    } else {
+                      router.push("/configuracoes");
+                    }
+                  }}
                   className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-xl text-xs md:text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
                 >
                   Adicionar assinatura

@@ -41,6 +41,10 @@ interface TussProcedureModalProps {
     quantity: number;
     procedure: TussCode;
   } | null;
+  /** When provided, saves locally instead of calling the API */
+  onLocalSave?: (
+    items: { tuss_code: string; name: string; quantity: number }[],
+  ) => void;
 }
 
 interface ProcedureItem {
@@ -150,6 +154,7 @@ export function TussProcedureModal({
   onSuccess,
   existingProcedures = [],
   editingProcedure: _editingProcedure,
+  onLocalSave,
 }: TussProcedureModalProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<TussCode[]>([]);
@@ -296,6 +301,20 @@ export function TussProcedureModal({
     setError(null);
 
     try {
+      if (onLocalSave) {
+        // Modo local: retorna os dados sem chamar a API
+        onLocalSave(
+          procedures.map((item) => ({
+            tuss_code: item.procedure.tuss_code,
+            name: item.procedure.name,
+            quantity: item.quantity,
+          })),
+        );
+        onSuccess();
+        handleCancel();
+        return;
+      }
+
       await tussService.addProcedures({
         surgery_request_id: surgeryRequestId,
         procedures: procedures.map((item) => ({

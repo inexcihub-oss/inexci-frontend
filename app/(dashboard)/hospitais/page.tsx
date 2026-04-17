@@ -2,18 +2,14 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  collaboratorService,
-  Collaborator,
-} from "@/services/collaborator.service";
-import { useAuth } from "@/contexts/AuthContext";
-import { formatPhone } from "@/lib/formatters";
+import { hospitalService, Hospital } from "@/services/hospital.service";
+import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
-import { NewCollaboratorModal } from "@/components/colaboradores/NewCollaboratorModal";
+import { NewHospitalModal } from "@/components/colaboradores/NewHospitalModal";
 import {
   useReactTable,
   getCoreRowModel,
@@ -32,12 +28,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export default function ColaboradoresPage() {
+export default function HospitaisPage() {
   const router = useRouter();
-  const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
@@ -62,31 +57,31 @@ export default function ColaboradoresPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await collaboratorService.getAll();
-      setCollaborators(data);
+      const data = await hospitalService.getAll();
+      setHospitals(data);
     } catch (error) {
-      console.error("Error loading collaborators:", error);
+      console.error("Error loading hospitals:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredCollaborators = useMemo(() => {
-    if (!debouncedSearchTerm) return collaborators;
+  const filteredHospitals = useMemo(() => {
+    if (!debouncedSearchTerm) return hospitals;
     const search = debouncedSearchTerm.toLowerCase();
-    return collaborators.filter((item) => {
+    return hospitals.filter((item) => {
       const name = item.name.toLowerCase();
       const email = item.email?.toLowerCase() || "";
       return name.includes(search) || email.includes(search);
     });
-  }, [collaborators, debouncedSearchTerm]);
+  }, [hospitals, debouncedSearchTerm]);
 
   const selectedItems = useMemo(() => {
     return Object.keys(rowSelection)
       .filter((key) => (rowSelection as Record<string, boolean>)[key])
-      .map((key) => filteredCollaborators[parseInt(key)])
+      .map((key) => filteredHospitals[parseInt(key)])
       .filter(Boolean);
-  }, [rowSelection, filteredCollaborators]);
+  }, [rowSelection, filteredHospitals]);
 
   const getInitials = (name: string) => {
     const parts = name.split(" ");
@@ -116,8 +111,8 @@ export default function ColaboradoresPage() {
     if (!deleteModal.id) return;
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
-      await collaboratorService.delete(deleteModal.id);
-      setCollaborators((prev) => prev.filter((c) => c.id !== deleteModal.id));
+      await hospitalService.delete(deleteModal.id);
+      setHospitals((prev) => prev.filter((h) => h.id !== deleteModal.id));
       setDeleteModal({ open: false, id: null, name: null, loading: false });
     } catch (error) {
       console.error("Erro ao excluir:", error);
@@ -134,8 +129,8 @@ export default function ColaboradoresPage() {
     const ids = selectedItems.map((item) => item.id);
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
-      await Promise.all(ids.map((id) => collaboratorService.delete(id)));
-      setCollaborators((prev) => prev.filter((c) => !ids.includes(c.id)));
+      await Promise.all(ids.map((id) => hospitalService.delete(id)));
+      setHospitals((prev) => prev.filter((h) => !ids.includes(h.id)));
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
     } catch (error) {
@@ -144,7 +139,7 @@ export default function ColaboradoresPage() {
     }
   };
 
-  const columns: ColumnDef<Collaborator>[] = [
+  const columns: ColumnDef<Hospital>[] = [
     {
       id: "select",
       size: 40,
@@ -172,7 +167,7 @@ export default function ColaboradoresPage() {
         <div
           className="flex items-center gap-2 cursor-pointer hover:opacity-80"
           onClick={() =>
-            router.push(`/colaboradores/assistente/${row.original.id}`)
+            router.push(`/colaboradores/hospital/${row.original.id}`)
           }
         >
           <div
@@ -187,6 +182,20 @@ export default function ColaboradoresPage() {
             {row.original.name}
           </span>
         </div>
+      ),
+    },
+    {
+      accessorKey: "cnpj",
+      header: "CNPJ",
+      size: 150,
+      meta: { className: "hidden md:table-cell" },
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatCNPJ(row.original.cnpj)}
+        >
+          {formatCNPJ(row.original.cnpj)}
+        </span>
       ),
     },
     {
@@ -215,20 +224,23 @@ export default function ColaboradoresPage() {
       ),
     },
     {
-      id: "type",
-      header: "Tipo",
-      size: 120,
+      accessorKey: "address",
+      header: "Endereço",
+      size: 200,
       meta: { className: "hidden md:table-cell" },
-      cell: ({ row }) =>
-        row.original.is_doctor ? (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-            Médico
+      cell: ({ row }) => {
+        const h = row.original;
+        const parts = [
+          h.address,
+          h.city && h.state ? `${h.city}/${h.state}` : h.city || h.state,
+        ].filter(Boolean);
+        const display = parts.length > 0 ? parts.join(" — ") : "-";
+        return (
+          <span className="text-xs text-black" title={display}>
+            {display}
           </span>
-        ) : (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-            Colaborador
-          </span>
-        ),
+        );
+      },
     },
     {
       id: "actions",
@@ -239,7 +251,7 @@ export default function ColaboradoresPage() {
       cell: ({ row }) => (
         <button
           className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 active:scale-[0.95] transition-all group min-h-[44px]"
-          title="Excluir colaborador"
+          title="Excluir hospital"
           onClick={(e) =>
             handleDeleteClick(row.original.id, row.original.name, e)
           }
@@ -264,7 +276,7 @@ export default function ColaboradoresPage() {
   ];
 
   const table = useReactTable({
-    data: filteredCollaborators,
+    data: filteredHospitals,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -279,12 +291,10 @@ export default function ColaboradoresPage() {
 
   return (
     <PageContainer className="border-gray-200">
-      {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3 border-b border-gray-200">
-        <h1 className="ds-page-title">Colaboradores</h1>
+        <h1 className="ds-page-title">Hospitais</h1>
       </div>
 
-      {/* Search and Actions */}
       <div className="flex-none flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200">
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <SearchInput
@@ -309,7 +319,6 @@ export default function ColaboradoresPage() {
             Filtro
           </Button>
         </div>
-
         <div className="flex items-center gap-2">
           {selectedItems.length > 0 && (
             <button
@@ -338,18 +347,17 @@ export default function ColaboradoresPage() {
             size="md"
             onClick={() => setCreateModalOpen(true)}
           >
-            Novo colaborador
+            Novo hospital
           </Button>
         </div>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-500">Carregando...</p>
           </div>
-        ) : filteredCollaborators.length === 0 ? (
+        ) : filteredHospitals.length === 0 ? (
           <div className="flex items-center justify-center h-64">
             <p className="text-gray-500">Nenhum registro encontrado</p>
           </div>
@@ -427,13 +435,13 @@ export default function ColaboradoresPage() {
 
       <ConfirmDeleteModal
         isOpen={deleteModal.open}
-        title="Excluir colaborador"
+        title="Excluir hospital"
         itemName={deleteModal.name ?? undefined}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
         loading={deleteModal.loading}
       />
-      <NewCollaboratorModal
+      <NewHospitalModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onSuccess={() => {
@@ -443,8 +451,8 @@ export default function ColaboradoresPage() {
       />
       <ConfirmDeleteModal
         isOpen={bulkDeleteModal.open}
-        title={`Excluir ${selectedItems.length} colaborador${selectedItems.length !== 1 ? "es" : ""}`}
-        description={`Tem certeza que deseja excluir ${selectedItems.length} colaborador${selectedItems.length !== 1 ? "es" : ""} selecionado${selectedItems.length !== 1 ? "s" : ""}? Esta ação não pode ser desfeita.`}
+        title={`Excluir ${selectedItems.length} hospita${selectedItems.length !== 1 ? "is" : "l"}`}
+        description={`Tem certeza que deseja excluir ${selectedItems.length} hospita${selectedItems.length !== 1 ? "is" : "l"} selecionado${selectedItems.length !== 1 ? "s" : ""}? Esta ação não pode ser desfeita.`}
         onConfirm={handleBulkDeleteConfirm}
         onCancel={() => {
           if (!bulkDeleteModal.loading)

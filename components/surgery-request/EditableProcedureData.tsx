@@ -48,24 +48,27 @@ export function EditableProcedureData({
 
   // Label de exibição do CID (inclui a descrição buscada da API quando necessário)
   const [cidDisplayLabel, setCidDisplayLabel] = useState(
-    solicitacao.cid_id
-      ? `${solicitacao.cid_id}${solicitacao.cid_description ? ` - ${solicitacao.cid_description}` : ""}`
-      : "",
+    solicitacao.cid
+      ? `${solicitacao.cid.code} - ${solicitacao.cid.description}`
+      : solicitacao.cid_id
+        ? solicitacao.cid_id
+        : "",
   );
 
-  // Busca a descrição do CID quando cid_description não está disponível
+  // Sincroniza o label do CID quando a solicitação é atualizada
   useEffect(() => {
-    if (solicitacao.cid_id && !solicitacao.cid_description) {
+    if (solicitacao.cid) {
+      setCidDisplayLabel(
+        `${solicitacao.cid.code} - ${solicitacao.cid.description}`,
+      );
+    } else if (solicitacao.cid_id) {
+      // Fallback: busca na API pelo UUID
       cidService
         .search(solicitacao.cid_id, 10)
         .then((res) => {
           const found = res.records.find((r) => r.id === solicitacao.cid_id);
           if (found) {
-            setCidDisplayLabel(`${found.id} - ${found.description}`);
-            setFormData((prev) => ({
-              ...prev,
-              cidDescription: found.description,
-            }));
+            setCidDisplayLabel(`${found.code} - ${found.description}`);
           } else {
             setCidDisplayLabel(solicitacao.cid_id ?? "");
           }
@@ -73,21 +76,17 @@ export function EditableProcedureData({
         .catch(() => {
           setCidDisplayLabel(solicitacao.cid_id ?? "");
         });
-    } else if (solicitacao.cid_id) {
-      setCidDisplayLabel(
-        `${solicitacao.cid_id} - ${solicitacao.cid_description}`,
-      );
     } else {
       setCidDisplayLabel("");
     }
-  }, [solicitacao.cid_id, solicitacao.cid_description]);
+  }, [solicitacao.cid, solicitacao.cid_id]);
 
   // Função para buscar CIDs
   const searchCid = useCallback(async (search: string) => {
     const response = await cidService.search(search, 50);
     return response.records.map((item: CidItem) => ({
       value: item.id,
-      label: `${item.id} - ${item.description}`,
+      label: `${item.code} - ${item.description}`,
     }));
   }, []);
 

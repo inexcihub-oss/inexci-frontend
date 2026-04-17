@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import PageContainer from "@/components/PageContainer";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { reportsService } from "@/services/reports.service";
 import type {
+  ReportFilters,
   TemporalEvolutionData,
   MonthlyEvolutionData,
   AverageCompletionTimeData,
@@ -14,6 +15,13 @@ import type {
 } from "@/services/reports.service";
 import { STATUS_NUMBER_TO_STRING } from "@/services/surgery-request.service";
 import { formatCurrency } from "@/lib/utils";
+import {
+  DashboardFilterModal,
+  DashboardFilters,
+  DEFAULT_DASHBOARD_FILTERS,
+  countActiveDashboardFilters,
+  buildReportFilters,
+} from "@/components/dashboard/DashboardFilterModal";
 
 // ─── Constantes ─────────────────────────────────────────────────────────────
 
@@ -620,11 +628,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
+  // ─── Filter state ────────────────────────────────────────────────────
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>(
+    DEFAULT_DASHBOARD_FILTERS,
+  );
 
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async (filters?: ReportFilters) => {
     try {
       setLoading(true);
       setError(null);
@@ -636,7 +646,7 @@ export default function DashboardPage() {
         avgTimeData,
         notificationsData,
       ] = await Promise.all([
-        reportsService.getDashboard().catch(
+        reportsService.getDashboard(filters).catch(
           () =>
             ({
               surgery_request: {
@@ -653,15 +663,15 @@ export default function DashboardPage() {
             }) as DashboardData,
         ),
         reportsService
-          .getTemporalEvolution(30)
+          .getTemporalEvolution(30, filters)
           .catch(() => [] as TemporalEvolutionData[]),
         reportsService
-          .getMonthlyEvolution(6)
+          .getMonthlyEvolution(6, filters)
           .catch(() => [] as MonthlyEvolutionData[]),
         reportsService
-          .getAverageCompletionTime()
+          .getAverageCompletionTime(filters)
           .catch(() => ({ average_days: 0 }) as AverageCompletionTimeData),
-        reportsService.getPendingNotifications().catch(
+        reportsService.getPendingNotifications(filters).catch(
           () =>
             ({
               total: 0,
@@ -748,7 +758,17 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Load on mount and when filters change
+  useEffect(() => {
+    loadDashboard(buildReportFilters(dashboardFilters));
+  }, [dashboardFilters, loadDashboard]);
+
+  const activeFilterCount = useMemo(
+    () => countActiveDashboardFilters(dashboardFilters),
+    [dashboardFilters],
+  );
 
   // ─── Dados derivados ───────────────────────────────────────────────────
 
@@ -832,7 +852,9 @@ export default function DashboardPage() {
               {error || "Dados não disponíveis"}
             </p>
             <button
-              onClick={loadDashboard}
+              onClick={() =>
+                loadDashboard(buildReportFilters(dashboardFilters))
+              }
               className="px-5 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
             >
               Tentar novamente
@@ -855,26 +877,50 @@ export default function DashboardPage() {
             Visão geral das solicitações cirúrgicas
           </p>
         </div>
-        <Link
-          href="/solicitacoes-cirurgicas"
-          className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors min-h-[44px] active:scale-[0.98]"
-        >
-          <Image
-            src="/icons/grid-layout.svg"
-            alt=""
-            width={16}
-            height={16}
-            className="brightness-0 invert"
-          />
-          Ver Kanban
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className={`relative flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl border transition-colors min-h-[44px] active:scale-[0.98] ${
+              activeFilterCount > 0
+                ? "bg-teal-50 border-teal-300 text-teal-700"
+                : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <Image
+              src="/icons/filter.svg"
+              alt=""
+              width={16}
+              height={16}
+              className={activeFilterCount > 0 ? "opacity-100" : "opacity-60"}
+            />
+            <span className="hidden sm:inline">Filtros</span>
+            {activeFilterCount > 0 && (
+              <span className="flex items-center justify-center w-5 h-5 bg-teal-600 text-white text-[10px] font-bold rounded-full">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <Link
+            href="/solicitacoes-cirurgicas"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors min-h-[44px] active:scale-[0.98]"
+          >
+            <Image
+              src="/icons/grid-layout.svg"
+              alt="Ver Kanban"
+              width={16}
+              height={16}
+              className="brightness-0 invert"
+            />
+            <span className="hidden sm:inline">Ver Kanban</span>
+          </Link>
+        </div>
       </div>
 
       {/* Conteúdo scrollável */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
           {/* ── KPI Cards ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
             <KPICard
               title="Total de Solicitações"
               value={dashboard.total}
@@ -944,7 +990,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* ── Resumo Financeiro ──────────────────────────────────── */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <FinancialKPICard
               title="Total Faturado"
               value={dashboard.totalInvoiced}
@@ -1147,6 +1193,15 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Filter Modal */}
+      <DashboardFilterModal
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        onApply={(filters) => setDashboardFilters(filters)}
+        onClear={() => setDashboardFilters(DEFAULT_DASHBOARD_FILTERS)}
+        currentFilters={dashboardFilters}
+      />
     </PageContainer>
   );
 }

@@ -16,7 +16,7 @@ interface StartAnalysisModalProps {
 }
 
 /**
- * Modal "Solicitação em análise" — transição SENT (2) → IN_ANALYSIS (3).
+ * Modal "Indicar análise" — transição SENT (2) → IN_ANALYSIS (3).
  * Registra o número da solicitação na operadora e as datas de cotação.
  *
  * Referência visual: figma.com/design/OXxoQQfGpMYtBNGEMeWGUn — node 7:2273
@@ -110,7 +110,7 @@ export function StartAnalysisModal({
         {/* Header */}
         <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
-            Solicitação em análise
+            Indicar análise
           </h2>
           <button
             onClick={handleClose}

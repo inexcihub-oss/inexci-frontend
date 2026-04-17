@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { exportToCsv, exportToPdf } from "@/lib/export-surgery-requests";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { SurgeryRequestList } from "@/components/procedures/SurgeryRequestList";
 import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
@@ -56,6 +57,8 @@ export default function ProcedimentosCirurgicos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [, setLoading] = useState(true);
   const [columns, setColumns] = useState<KanbanColumn[]>(INITIAL_COLUMNS);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
   const [availableDoctors, setAvailableDoctors] = useState<
     { id: string; name: string }[]
   >([]);
@@ -68,6 +71,17 @@ export default function ProcedimentosCirurgicos() {
     loadAvailableDoctors();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fechar dropdown de exportação ao clicar fora
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setIsExportOpen(false);
+      }
+    };
+    if (isExportOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isExportOpen]);
 
   const loadAvailableDoctors = useCallback(async () => {
     try {
@@ -459,15 +473,87 @@ export default function ProcedimentosCirurgicos() {
           <div className="hidden lg:block w-px h-8 bg-neutral-100" />
 
           {/* Export Button */}
-          <button className="hidden lg:flex items-center gap-1 h-11 px-3.5 py-2 border border-neutral-100 rounded-xl bg-white hover:bg-neutral-50 transition-colors">
-            <Image
-              src="/icons/download.svg"
-              alt="Exportar"
-              width={24}
-              height={24}
-            />
-            <span className="text-sm text-black">Exportar</span>
-          </button>
+          <div className="relative hidden lg:block" ref={exportRef}>
+            <button
+              onClick={() => setIsExportOpen((v) => !v)}
+              className="flex items-center gap-1 h-11 px-3.5 py-2 border border-neutral-100 rounded-xl bg-white hover:bg-neutral-50 transition-colors"
+            >
+              <Image
+                src="/icons/download.svg"
+                alt="Exportar"
+                width={24}
+                height={24}
+              />
+              <span className="text-sm text-black">Exportar</span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                className={`ml-1 transition-transform ${isExportOpen ? "rotate-180" : ""}`}
+              >
+                <path
+                  d="M4 6l4 4 4-4"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            {isExportOpen && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-neutral-100 rounded-xl shadow-lg z-50 overflow-hidden">
+                <button
+                  onClick={() => {
+                    exportToPdf(filteredProcedures);
+                    setIsExportOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-gray-700 hover:bg-neutral-50 transition-colors"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#ef4444"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                  Exportar PDF
+                </button>
+                <button
+                  onClick={() => {
+                    exportToCsv(filteredProcedures);
+                    setIsExportOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-gray-700 hover:bg-neutral-50 transition-colors"
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#0f766e"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                  Exportar CSV
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* New Request Button */}
           <Button onClick={() => setIsNewRequestOpen(true)} variant="primary">

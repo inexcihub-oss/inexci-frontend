@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const response = await authService.login({ email, password });
         setUser(response.user);
-        router.push("/dashboard");
+        router.push("/solicitacoes-cirurgicas");
       } catch (error) {
         throw error;
       }

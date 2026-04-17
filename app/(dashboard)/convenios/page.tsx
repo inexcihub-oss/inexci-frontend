@@ -2,18 +2,14 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  collaboratorService,
-  Collaborator,
-} from "@/services/collaborator.service";
-import { useAuth } from "@/contexts/AuthContext";
-import { formatPhone } from "@/lib/formatters";
+import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
+import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
-import { NewCollaboratorModal } from "@/components/colaboradores/NewCollaboratorModal";
+import { NewHealthPlanModal } from "@/components/colaboradores/NewHealthPlanModal";
 import {
   useReactTable,
   getCoreRowModel,
@@ -32,12 +28,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export default function ColaboradoresPage() {
+export default function ConveniosPage() {
   const router = useRouter();
-  const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
@@ -62,31 +57,31 @@ export default function ColaboradoresPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await collaboratorService.getAll();
-      setCollaborators(data);
+      const data = await healthPlanService.getAll();
+      setHealthPlans(data);
     } catch (error) {
-      console.error("Error loading collaborators:", error);
+      console.error("Error loading health plans:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredCollaborators = useMemo(() => {
-    if (!debouncedSearchTerm) return collaborators;
+  const filteredHealthPlans = useMemo(() => {
+    if (!debouncedSearchTerm) return healthPlans;
     const search = debouncedSearchTerm.toLowerCase();
-    return collaborators.filter((item) => {
+    return healthPlans.filter((item) => {
       const name = item.name.toLowerCase();
       const email = item.email?.toLowerCase() || "";
       return name.includes(search) || email.includes(search);
     });
-  }, [collaborators, debouncedSearchTerm]);
+  }, [healthPlans, debouncedSearchTerm]);
 
   const selectedItems = useMemo(() => {
     return Object.keys(rowSelection)
       .filter((key) => (rowSelection as Record<string, boolean>)[key])
-      .map((key) => filteredCollaborators[parseInt(key)])
+      .map((key) => filteredHealthPlans[parseInt(key)])
       .filter(Boolean);
-  }, [rowSelection, filteredCollaborators]);
+  }, [rowSelection, filteredHealthPlans]);
 
   const getInitials = (name: string) => {
     const parts = name.split(" ");
@@ -116,8 +111,8 @@ export default function ColaboradoresPage() {
     if (!deleteModal.id) return;
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
-      await collaboratorService.delete(deleteModal.id);
-      setCollaborators((prev) => prev.filter((c) => c.id !== deleteModal.id));
+      await healthPlanService.delete(deleteModal.id);
+      setHealthPlans((prev) => prev.filter((hp) => hp.id !== deleteModal.id));
       setDeleteModal({ open: false, id: null, name: null, loading: false });
     } catch (error) {
       console.error("Erro ao excluir:", error);
@@ -134,8 +129,8 @@ export default function ColaboradoresPage() {
     const ids = selectedItems.map((item) => item.id);
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
-      await Promise.all(ids.map((id) => collaboratorService.delete(id)));
-      setCollaborators((prev) => prev.filter((c) => !ids.includes(c.id)));
+      await Promise.all(ids.map((id) => healthPlanService.delete(id)));
+      setHealthPlans((prev) => prev.filter((hp) => !ids.includes(hp.id)));
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
     } catch (error) {
@@ -144,7 +139,7 @@ export default function ColaboradoresPage() {
     }
   };
 
-  const columns: ColumnDef<Collaborator>[] = [
+  const columns: ColumnDef<HealthPlan>[] = [
     {
       id: "select",
       size: 40,
@@ -167,12 +162,12 @@ export default function ColaboradoresPage() {
     {
       accessorKey: "name",
       header: "Nome",
-      size: 250,
+      size: 300,
       cell: ({ row }) => (
         <div
           className="flex items-center gap-2 cursor-pointer hover:opacity-80"
           onClick={() =>
-            router.push(`/colaboradores/assistente/${row.original.id}`)
+            router.push(`/colaboradores/convenio/${row.original.id}`)
           }
         >
           <div
@@ -187,6 +182,20 @@ export default function ColaboradoresPage() {
             {row.original.name}
           </span>
         </div>
+      ),
+    },
+    {
+      accessorKey: "cnpj",
+      header: "CNPJ",
+      size: 150,
+      meta: { className: "hidden md:table-cell" },
+      cell: ({ row }) => (
+        <span
+          className="text-xs text-black"
+          title={formatCNPJ(row.original.cnpj)}
+        >
+          {formatCNPJ(row.original.cnpj)}
+        </span>
       ),
     },
     {
@@ -215,22 +224,6 @@ export default function ColaboradoresPage() {
       ),
     },
     {
-      id: "type",
-      header: "Tipo",
-      size: 120,
-      meta: { className: "hidden md:table-cell" },
-      cell: ({ row }) =>
-        row.original.is_doctor ? (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-            Médico
-          </span>
-        ) : (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-            Colaborador
-          </span>
-        ),
-    },
-    {
       id: "actions",
       size: 50,
       enableSorting: false,
@@ -239,7 +232,7 @@ export default function ColaboradoresPage() {
       cell: ({ row }) => (
         <button
           className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-red-50 active:scale-[0.95] transition-all group min-h-[44px]"
-          title="Excluir colaborador"
+          title="Excluir convênio"
           onClick={(e) =>
             handleDeleteClick(row.original.id, row.original.name, e)
           }
@@ -264,7 +257,7 @@ export default function ColaboradoresPage() {
   ];
 
   const table = useReactTable({
-    data: filteredCollaborators,
+    data: filteredHealthPlans,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -279,12 +272,10 @@ export default function ColaboradoresPage() {
 
   return (
     <PageContainer className="border-gray-200">
-      {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3 border-b border-gray-200">
-        <h1 className="ds-page-title">Colaboradores</h1>
+        <h1 className="ds-page-title">Convênios</h1>
       </div>
 
-      {/* Search and Actions */}
       <div className="flex-none flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200">
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <SearchInput
@@ -309,7 +300,6 @@ export default function ColaboradoresPage() {
             Filtro
           </Button>
         </div>
-
         <div className="flex items-center gap-2">
           {selectedItems.length > 0 && (
             <button
@@ -338,18 +328,17 @@ export default function ColaboradoresPage() {
             size="md"
             onClick={() => setCreateModalOpen(true)}
           >
-            Novo colaborador
+            Novo convênio
           </Button>
         </div>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-500">Carregando...</p>
           </div>
-        ) : filteredCollaborators.length === 0 ? (
+        ) : filteredHealthPlans.length === 0 ? (
           <div className="flex items-center justify-center h-64">
             <p className="text-gray-500">Nenhum registro encontrado</p>
           </div>
@@ -427,13 +416,13 @@ export default function ColaboradoresPage() {
 
       <ConfirmDeleteModal
         isOpen={deleteModal.open}
-        title="Excluir colaborador"
+        title="Excluir convênio"
         itemName={deleteModal.name ?? undefined}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
         loading={deleteModal.loading}
       />
-      <NewCollaboratorModal
+      <NewHealthPlanModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onSuccess={() => {
@@ -443,8 +432,8 @@ export default function ColaboradoresPage() {
       />
       <ConfirmDeleteModal
         isOpen={bulkDeleteModal.open}
-        title={`Excluir ${selectedItems.length} colaborador${selectedItems.length !== 1 ? "es" : ""}`}
-        description={`Tem certeza que deseja excluir ${selectedItems.length} colaborador${selectedItems.length !== 1 ? "es" : ""} selecionado${selectedItems.length !== 1 ? "s" : ""}? Esta ação não pode ser desfeita.`}
+        title={`Excluir ${selectedItems.length} convênio${selectedItems.length !== 1 ? "s" : ""}`}
+        description={`Tem certeza que deseja excluir ${selectedItems.length} convênio${selectedItems.length !== 1 ? "s" : ""} selecionado${selectedItems.length !== 1 ? "s" : ""}? Esta ação não pode ser desfeita.`}
         onConfirm={handleBulkDeleteConfirm}
         onCancel={() => {
           if (!bulkDeleteModal.loading)

@@ -12,7 +12,14 @@ import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { patientService, Patient } from "@/services/patient.service";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestListItem,
+  STATUS_NUMBER_TO_STRING,
+  STATUS_COLORS,
+} from "@/services/surgery-request.service";
 import { formatCPF, formatPhone } from "@/lib/formatters";
+import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import { ChevronRight } from "lucide-react";
 
@@ -25,6 +32,10 @@ export default function PacienteDetalhePage() {
   const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
+  const [surgeryRequests, setSurgeryRequests] = useState<
+    SurgeryRequestListItem[]
+  >([]);
+  const [loadingSurgeries, setLoadingSurgeries] = useState(true);
   const { toast, showToast, hideToast } = useToast();
 
   // Form state
@@ -61,6 +72,7 @@ export default function PacienteDetalhePage() {
 
   const loadData = async () => {
     setLoading(true);
+    setLoadingSurgeries(true);
     try {
       const [patientData, healthPlansData] = await Promise.all([
         patientService.getById(params.id),
@@ -75,6 +87,19 @@ export default function PacienteDetalhePage() {
 
       setPatient(patientData);
       setHealthPlans(healthPlansData);
+
+      // Busca solicitações cirúrgicas deste paciente
+      try {
+        const surgeryData = await surgeryRequestService.getAll();
+        const filtered = (surgeryData.records ?? []).filter(
+          (r) => r.patient?.id === patientData.id,
+        );
+        setSurgeryRequests(filtered);
+      } catch {
+        setSurgeryRequests([]);
+      } finally {
+        setLoadingSurgeries(false);
+      }
 
       // Preenche o formulário
       setFormData({
@@ -234,58 +259,73 @@ export default function PacienteDetalhePage() {
     ...healthPlans.map((plan) => ({ value: plan.id, label: plan.name })),
   ];
 
-  // Sidebar com histórico de cirurgias (mock)
-  const surgeryHistory = [
-    {
-      id: "1",
-      procedure: "Artroscopia de Joelho",
-      date: "15/01/2026",
-      status: "Realizada",
-    },
-    {
-      id: "2",
-      procedure: "Cirurgia de Menisco",
-      date: "20/11/2025",
-      status: "Realizada",
-    },
-    {
-      id: "3",
-      procedure: "Consulta Pré-operatória",
-      date: "10/11/2025",
-      status: "Realizada",
-    },
-  ];
-
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
         <h3 className="text-sm font-semibold text-gray-900">
           Histórico de cirurgias
         </h3>
+        {!loadingSurgeries && (
+          <span className="text-xs text-gray-400">
+            {surgeryRequests.length}
+          </span>
+        )}
       </div>
 
       {/* Lista de cirurgias */}
       <div className="flex-1 overflow-y-auto">
-        {surgeryHistory.map((surgery) => (
-          <div
-            key={surgery.id}
-            className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
-          >
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-gray-900">
-                {surgery.procedure}
-              </span>
-              <span className="text-xs text-gray-500">{surgery.date}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-green-600 bg-green-50 px-2.5 py-1 rounded-lg">
-                {surgery.status}
-              </span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            </div>
+        {loadingSurgeries ? (
+          <div className="flex items-center justify-center py-8">
+            <Spinner size="sm" />
           </div>
-        ))}
+        ) : surgeryRequests.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-xs text-gray-400">
+              Nenhuma solicitação encontrada.
+            </p>
+          </div>
+        ) : (
+          surgeryRequests.map((surgery) => {
+            const statusLabel =
+              STATUS_NUMBER_TO_STRING[surgery.status] ?? "Pendente";
+            const colors = STATUS_COLORS[statusLabel] ?? {
+              bg: "bg-gray-50",
+              text: "text-gray-600",
+              border: "border-gray-200",
+            };
+            const procedureName =
+              (surgery as any).procedure_name ||
+              surgery.procedure?.name ||
+              surgery.tuss_procedure?.description ||
+              "Procedimento não especificado";
+            const date = surgery.created_at
+              ? formatDate(surgery.created_at)
+              : "—";
+            return (
+              <div
+                key={surgery.id}
+                onClick={() => router.push(`/solicitacao/${surgery.id}`)}
+                className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
+              >
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
+                  <span className="text-xs font-semibold text-gray-900 truncate">
+                    {procedureName}
+                  </span>
+                  <span className="text-xs text-gray-500">{date}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`text-xs px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}
+                  >
+                    {statusLabel}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { FormSection } from "@/components/details";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
@@ -33,13 +34,53 @@ function SearchableMultiSelect({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputWrapperRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+
+  const openDropdown = () => {
+    if (inputWrapperRef.current) {
+      const rect = inputWrapperRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+    setOpen(true);
+  };
+
+  // Atualiza posição do dropdown ao rolar a tela
+  useEffect(() => {
+    if (!open) return;
+    function updatePosition() {
+      if (inputWrapperRef.current) {
+        const rect = inputWrapperRef.current.getBoundingClientRect();
+        setDropdownStyle({
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width,
+        });
+      }
+    }
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node;
+      const inContainer = containerRef.current?.contains(target);
+      const inDropdown = dropdownRef.current?.contains(target);
+      if (!inContainer && !inDropdown) {
         setOpen(false);
       }
     }
@@ -66,12 +107,13 @@ function SearchableMultiSelect({
     <div ref={containerRef} className="relative">
       {/* Input trigger */}
       <div
+        ref={inputWrapperRef}
         className={`flex items-center gap-2 min-h-10 px-3 py-2 border rounded-xl cursor-text transition-colors ${
           open
             ? "border-teal-600 ring-1 ring-teal-600/20"
             : "border-neutral-200 hover:border-neutral-300"
         }`}
-        onClick={() => setOpen(true)}
+        onClick={openDropdown}
       >
         <svg
           className="w-4 h-4 text-neutral-400 flex-shrink-0"
@@ -91,9 +133,9 @@ function SearchableMultiSelect({
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            setOpen(true);
+            openDropdown();
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={openDropdown}
           placeholder={selected.length === 0 ? placeholder : ""}
           className="flex-1 text-sm outline-none bg-transparent text-neutral-700 placeholder:text-neutral-400"
         />
@@ -135,62 +177,76 @@ function SearchableMultiSelect({
         </div>
       )}
 
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
-          {filtered.length === 0 ? (
-            <p className="text-sm text-neutral-400 text-center py-4">
-              Nenhum resultado
-            </p>
-          ) : (
-            filtered.map((opt) => {
-              const isChecked = selected.includes(opt.id);
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => onToggle(opt.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-neutral-50 transition-colors text-left"
-                >
-                  <div
-                    className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center transition-colors ${
-                      isChecked
-                        ? "bg-teal-700 border-teal-700"
-                        : "border-neutral-300 bg-white"
-                    }`}
+      {/* Dropdown via portal para escapar de overflow:hidden */}
+      {open &&
+        dropdownStyle &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={{
+              position: "fixed",
+              top: dropdownStyle.top,
+              left: dropdownStyle.left,
+              width: dropdownStyle.width,
+              zIndex: 9999,
+            }}
+            className="bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-y-auto"
+          >
+            {filtered.length === 0 ? (
+              <p className="text-sm text-neutral-400 text-center py-4">
+                Nenhum resultado
+              </p>
+            ) : (
+              filtered.map((opt) => {
+                const isChecked = selected.includes(opt.id);
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => onToggle(opt.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-neutral-50 transition-colors text-left"
                   >
-                    {isChecked && (
-                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-                        <path
-                          d="M1 3.5L3.5 6L8 1"
-                          stroke="white"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm text-neutral-700 leading-tight truncate">
-                      {opt.name}
-                    </p>
-                    {(opt.crm || opt.specialty) && (
-                      <p className="text-xs text-neutral-400 truncate">
-                        {opt.crm
-                          ? `CRM ${opt.crm}${opt.crm_state ? `/${opt.crm_state}` : ""}`
-                          : ""}
-                        {opt.crm && opt.specialty ? " · " : ""}
-                        {opt.specialty ?? ""}
+                    <div
+                      className={`w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center transition-colors ${
+                        isChecked
+                          ? "bg-teal-700 border-teal-700"
+                          : "border-neutral-300 bg-white"
+                      }`}
+                    >
+                      {isChecked && (
+                        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                          <path
+                            d="M1 3.5L3.5 6L8 1"
+                            stroke="white"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm text-neutral-700 leading-tight truncate">
+                        {opt.name}
                       </p>
-                    )}
-                  </div>
-                </button>
-              );
-            })
-          )}
-        </div>
-      )}
+                      {(opt.crm || opt.specialty) && (
+                        <p className="text-xs text-neutral-400 truncate">
+                          {opt.crm
+                            ? `CRM ${opt.crm}${opt.crm_state ? `/${opt.crm_state}` : ""}`
+                            : ""}
+                          {opt.crm && opt.specialty ? " · " : ""}
+                          {opt.specialty ?? ""}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -9,7 +9,14 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestListItem,
+  STATUS_NUMBER_TO_STRING,
+  STATUS_COLORS,
+} from "@/services/surgery-request.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
+import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
@@ -21,6 +28,10 @@ export default function ConvenioDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [healthPlan, setHealthPlan] = useState<HealthPlan | null>(null);
+  const [surgeryRequests, setSurgeryRequests] = useState<
+    SurgeryRequestListItem[]
+  >([]);
+  const [loadingSurgeries, setLoadingSurgeries] = useState(true);
   const { toast, showToast, hideToast } = useToast();
 
   // Form state
@@ -98,6 +109,21 @@ export default function ConvenioDetalhePage() {
         contactPhone: "",
         contactEmail: "",
       });
+      // Buscar solicitações cirúrgicas deste convênio
+      setLoadingSurgeries(true);
+      try {
+        const surgeryData = await surgeryRequestService.getAll();
+        const filtered = (surgeryData.records ?? []).filter(
+          (r: any) =>
+            String(r.health_plan_id) === String(healthPlanData.id) ||
+            String(r.health_plan?.id) === String(healthPlanData.id),
+        );
+        setSurgeryRequests(filtered);
+      } catch {
+        setSurgeryRequests([]);
+      } finally {
+        setLoadingSurgeries(false);
+      }
     } catch (error) {
       console.error("Erro ao carregar convênio:", error);
     } finally {
@@ -197,92 +223,73 @@ export default function ConvenioDetalhePage() {
     { value: "TO", label: "Tocantins" },
   ];
 
-  // Sidebar com pacientes do convênio (mock)
-  const recentPatients = [
-    {
-      id: "1",
-      name: "Amanda Rodrigues",
-      procedure: "Artroscopia de Joelho",
-      date: "15/01/2026",
-    },
-    {
-      id: "2",
-      name: "Carlos Mendes",
-      procedure: "Prótese de Quadril",
-      date: "12/01/2026",
-    },
-    {
-      id: "3",
-      name: "Fernanda Lima",
-      procedure: "Cirurgia de Menisco",
-      date: "10/01/2026",
-    },
-    {
-      id: "4",
-      name: "João Santos",
-      procedure: "Artrodese Lombar",
-      date: "08/01/2026",
-    },
-  ];
-
-  const getInitials = (name: string) => {
-    const parts = name.split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
-
-  const getRandomColor = (id: string) => {
-    const colors = [
-      "bg-blue-200",
-      "bg-green-200",
-      "bg-yellow-200",
-      "bg-purple-200",
-      "bg-pink-200",
-      "bg-indigo-200",
-    ];
-    const index = id.charCodeAt(0) % colors.length;
-    return colors[index];
-  };
-
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
         <h3 className="text-sm font-semibold text-gray-900">
-          Pacientes recentes
+          Solicitações recentes
         </h3>
+        {!loadingSurgeries && (
+          <span className="text-xs text-gray-400">
+            {surgeryRequests.length}
+          </span>
+        )}
       </div>
 
-      {/* Lista de pacientes */}
+      {/* Lista de solicitações */}
       <div className="flex-1 overflow-y-auto">
-        {recentPatients.map((patient) => (
-          <div
-            key={patient.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(patient.id)}`}
-              >
-                {getInitials(patient.name)}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-gray-900">
-                  {patient.name}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {patient.procedure}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">{patient.date}</span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            </div>
+        {loadingSurgeries ? (
+          <div className="flex items-center justify-center py-8">
+            <Spinner size="sm" />
           </div>
-        ))}
+        ) : surgeryRequests.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-xs text-gray-400">
+              Nenhuma solicitação encontrada.
+            </p>
+          </div>
+        ) : (
+          surgeryRequests.map((surgery) => {
+            const statusLabel =
+              STATUS_NUMBER_TO_STRING[surgery.status] ?? "Pendente";
+            const colors = STATUS_COLORS[statusLabel] ?? {
+              bg: "bg-gray-50",
+              text: "text-gray-600",
+            };
+            const patientName =
+              surgery.patient?.name || "Paciente não informado";
+            const procedureName =
+              (surgery as any).procedure_name ||
+              surgery.procedure?.name ||
+              surgery.tuss_procedure?.description ||
+              "Procedimento não especificado";
+            return (
+              <div
+                key={surgery.id}
+                onClick={() => router.push(`/solicitacao/${surgery.id}`)}
+                className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
+              >
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
+                  <span className="text-xs font-semibold text-gray-900 truncate">
+                    {patientName}
+                  </span>
+                  <span className="text-xs text-gray-500 truncate">
+                    {procedureName}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`text-xs px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}
+                  >
+                    {statusLabel}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -290,9 +297,9 @@ export default function ConvenioDetalhePage() {
   return (
     <PageContainer>
       <DetailPageLayout
-        sectionTitle="Colaboradores"
-        backHref="/colaboradores"
-        itemName={healthPlan.name}
+        sectionTitle="Convênios"
+        backHref="/convenios"
+        itemName={formData.name}
         itemSubtitle="Convênio"
         sidebarContent={sidebarContent}
       >

@@ -155,7 +155,8 @@ export function SendRequestModal({
               templateName.trim() ||
               `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
             template_data: {
-              procedures: solicitacao.tuss_items,
+              procedure: solicitacao.procedure,
+              tuss_items: solicitacao.tuss_items,
               opme_items: solicitacao.opme_items,
               hospital: solicitacao.hospital,
               hospital_id: solicitacao.hospital_id,
@@ -170,6 +171,7 @@ export function SendRequestModal({
               ),
             },
           });
+          setSaveAsTemplate(false);
           showToast("Modelo salvo com sucesso!", "success");
         } catch {
           showToast("Erro ao salvar modelo", "error");

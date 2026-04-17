@@ -443,7 +443,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
                     strokeLinejoin="round"
                   />
                 </svg>
-                Pode avançar
+                Pronto para avançar
               </span>
             )
           )}

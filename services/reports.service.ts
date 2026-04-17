@@ -46,12 +46,36 @@ export interface MonthlyEvolutionData {
   count: number;
 }
 
+export interface ReportFilters {
+  hospitalId?: string;
+  healthPlanId?: string;
+  startDate?: string; // ISO date string
+  endDate?: string; // ISO date string
+}
+
+function buildParams(
+  base: Record<string, string | number | undefined>,
+  filters?: ReportFilters,
+): string {
+  const params = new URLSearchParams();
+  const merged = { ...base, ...filters };
+  for (const [key, value] of Object.entries(merged)) {
+    if (value !== undefined && value !== "") {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
 export const reportsService = {
   /**
    * Busca os dados do dashboard
    */
-  async getDashboard(): Promise<DashboardData> {
-    const response = await api.get<DashboardData>("/reports/dashboard");
+  async getDashboard(filters?: ReportFilters): Promise<DashboardData> {
+    const response = await api.get<DashboardData>(
+      `/reports/dashboard${buildParams({}, filters)}`,
+    );
     return response.data;
   },
 
@@ -60,9 +84,10 @@ export const reportsService = {
    */
   async getTemporalEvolution(
     days: number = 30,
+    filters?: ReportFilters,
   ): Promise<TemporalEvolutionData[]> {
     const response = await api.get<TemporalEvolutionData[]>(
-      `/reports/temporal-evolution?days=${days}`,
+      `/reports/temporal-evolution${buildParams({ days }, filters)}`,
     );
     return response.data;
   },
@@ -70,9 +95,11 @@ export const reportsService = {
   /**
    * Busca o tempo médio de conclusão
    */
-  async getAverageCompletionTime(): Promise<AverageCompletionTimeData> {
+  async getAverageCompletionTime(
+    filters?: ReportFilters,
+  ): Promise<AverageCompletionTimeData> {
     const response = await api.get<AverageCompletionTimeData>(
-      "/reports/average-completion-time",
+      `/reports/average-completion-time${buildParams({}, filters)}`,
     );
     return response.data;
   },
@@ -80,9 +107,11 @@ export const reportsService = {
   /**
    * Busca as notificações pendentes
    */
-  async getPendingNotifications(): Promise<PendingNotificationsData> {
+  async getPendingNotifications(
+    filters?: ReportFilters,
+  ): Promise<PendingNotificationsData> {
     const response = await api.get<PendingNotificationsData>(
-      "/reports/pending-notifications",
+      `/reports/pending-notifications${buildParams({}, filters)}`,
     );
     return response.data;
   },
@@ -92,9 +121,10 @@ export const reportsService = {
    */
   async getMonthlyEvolution(
     months: number = 6,
+    filters?: ReportFilters,
   ): Promise<MonthlyEvolutionData[]> {
     const response = await api.get<MonthlyEvolutionData[]>(
-      `/reports/monthly-evolution?months=${months}`,
+      `/reports/monthly-evolution${buildParams({ months }, filters)}`,
     );
     return response.data;
   },

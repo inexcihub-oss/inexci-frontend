@@ -113,9 +113,7 @@ export const patientService = {
    */
   async getById(patientId: string): Promise<Patient | null> {
     try {
-      const response = await api.get("/patients", {
-        params: { skip: 0, take: 1 },
-      });
+      const response = await api.get("/patients");
       const data = getApiRecords<BackendPatient>(response.data);
       const patient = data.find((p) => String(p.id) === String(patientId));
       if (!patient) return null;

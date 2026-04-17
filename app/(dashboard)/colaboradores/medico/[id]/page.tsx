@@ -11,6 +11,11 @@ import { Spinner } from "@/components/ui";
 import { collaboratorService, Doctor } from "@/services/collaborator.service";
 import { userService } from "@/services/user.service";
 import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  SurgeryRequestListItem,
+  STATUS_NUMBER_TO_STRING,
+  STATUS_COLORS,
+} from "@/services/surgery-request.service";
 import { formatPhone, formatTimeAgo } from "@/lib/formatters";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
@@ -29,7 +34,7 @@ export default function MedicoDetalhePage() {
     string | undefined
   >(undefined);
   const [recentRequests, setRecentRequests] = useState<
-    Array<{ id: string; patientName: string; procedure: string; time: string }>
+    SurgeryRequestListItem[]
   >([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const { toast, showToast, hideToast } = useToast();
@@ -112,16 +117,7 @@ export default function MedicoDetalhePage() {
       if (response?.records && Array.isArray(response.records)) {
         const doctorRequests = response.records
           .filter((r: any) => String(r.doctor_id) === String(params.id))
-          .slice(0, 5)
-          .map((r: any) => ({
-            id: String(r.id),
-            patientName: r.patient?.name || "Paciente",
-            procedure:
-              r.is_indication && r.indication_name
-                ? r.indication_name
-                : r.procedure?.name || "Procedimento",
-            time: formatTimeAgo(r.created_at),
-          }));
+          .slice(0, 10);
         setRecentRequests(doctorRequests);
       }
     } catch (error) {
@@ -279,10 +275,13 @@ export default function MedicoDetalhePage() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center px-6 py-0 border-b border-neutral-100 h-13">
+      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
         <h3 className="text-sm font-semibold text-gray-900">
           Últimas solicitações
         </h3>
+        {!loadingRequests && (
+          <span className="text-xs text-gray-400">{recentRequests.length}</span>
+        )}
       </div>
 
       {/* Lista de solicitações */}
@@ -298,30 +297,45 @@ export default function MedicoDetalhePage() {
             </span>
           </div>
         ) : (
-          recentRequests.map((req) => (
-            <div
-              key={req.id}
-              className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(req.id)}`}
-                >
-                  {getInitials(req.patientName)}
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-gray-900">
-                    {req.patientName}
+          recentRequests.map((req) => {
+            const statusLabel =
+              STATUS_NUMBER_TO_STRING[req.status] ?? "Pendente";
+            const colors = STATUS_COLORS[statusLabel] ?? {
+              bg: "bg-gray-50",
+              text: "text-gray-600",
+            };
+            const patientName = req.patient?.name || "Paciente";
+            const procedureName =
+              (req as any).procedure_name ||
+              (req as any).indication_name ||
+              req.procedure?.name ||
+              req.tuss_procedure?.description ||
+              "Procedimento";
+            return (
+              <div
+                key={req.id}
+                onClick={() => router.push(`/solicitacao/${req.id}`)}
+                className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
+              >
+                <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
+                  <span className="text-xs font-semibold text-gray-900 truncate">
+                    {patientName}
                   </span>
-                  <span className="text-xs text-gray-500">{req.procedure}</span>
+                  <span className="text-xs text-gray-500 truncate">
+                    {procedureName}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`text-xs px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}
+                  >
+                    {statusLabel}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">{req.time}</span>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
@@ -332,7 +346,7 @@ export default function MedicoDetalhePage() {
       <DetailPageLayout
         sectionTitle="Colaboradores"
         backHref="/colaboradores"
-        itemName={doctor.name}
+        itemName={formData.name}
         itemSubtitle={formData.specialty || "Médico"}
         sidebarContent={sidebarContent}
       >

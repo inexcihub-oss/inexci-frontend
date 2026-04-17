@@ -18,6 +18,8 @@ import { Procedure } from "@/services/procedure.service";
 import { Patient } from "@/services/patient.service";
 import { Hospital } from "@/services/hospital.service";
 import { HealthPlan } from "@/services/health-plan.service";
+import { opmeService } from "@/services/opme.service";
+import { tussService } from "@/services/tuss.service";
 import { User } from "@/types";
 import { AvailableDoctor } from "@/types";
 import { availableDoctorsService } from "@/services/available-doctors.service";
@@ -32,6 +34,7 @@ interface CreateSurgeryRequestWizardProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialTemplate?: any;
 }
 
 type ModalState =
@@ -53,8 +56,9 @@ export function CreateSurgeryRequestWizard({
   isOpen,
   onClose,
   onSuccess,
+  initialTemplate,
 }: CreateSurgeryRequestWizardProps) {
-  const [modalState, setModalState] = useState<ModalState>("none");
+  const [modalState, setModalState] = useState<ModalState>("procedure-select");
   const [loading, setLoading] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
@@ -87,6 +91,9 @@ export function CreateSurgeryRequestWizard({
   const [noDoctorsAvailable, setNoDoctorsAvailable] = useState(false);
 
   const [priority, setPriority] = useState<PriorityLevel>(PRIORITY.LOW);
+
+  // Template selecionado para pré-popular OPME/TUSS após criação
+  const [activeTemplate, setActiveTemplate] = useState<any>(null);
 
   // Callbacks para adicionar novos itens às listas
   const [addProcedureToList, setAddProcedureToList] = useState<
@@ -125,11 +132,19 @@ export function CreateSurgeryRequestWizard({
       .finally(() => setLoadingDoctors(false));
   }, [isOpen]);
 
+  // Aplicar template inicial quando o wizard abre com um template pré-selecionado
+  useEffect(() => {
+    if (isOpen && initialTemplate) {
+      handleTemplateSelected(initialTemplate);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialTemplate]);
+
   if (!isOpen) return null;
 
   const handleProcedureSelected = (procedure: Procedure) => {
     setSelectedProcedure(procedure);
-    setModalState("none");
+    setModalState("patient-select");
   };
 
   const handleProcedureCreated = (procedure: Procedure) => {
@@ -137,12 +152,12 @@ export function CreateSurgeryRequestWizard({
       addProcedureToList(procedure);
     }
     setSelectedProcedure(procedure);
-    setModalState("none");
+    setModalState("patient-select");
   };
 
   const handlePatientSelected = (patient: Patient) => {
     setSelectedPatient(patient);
-    setModalState("none");
+    setModalState("manager-select");
   };
 
   const handlePatientCreated = (patient: Patient) => {
@@ -150,7 +165,7 @@ export function CreateSurgeryRequestWizard({
       addPatientToList(patient);
     }
     setSelectedPatient(patient);
-    setModalState("none");
+    setModalState("manager-select");
   };
 
   const handleHospitalSelected = (hospital: Hospital) => {
@@ -168,7 +183,7 @@ export function CreateSurgeryRequestWizard({
 
   const handleHealthPlanSelected = (healthPlan: HealthPlan) => {
     setSelectedHealthPlan(healthPlan);
-    setModalState("none");
+    setModalState("hospital-select");
   };
 
   const handleHealthPlanCreated = (healthPlan: HealthPlan) => {
@@ -176,29 +191,30 @@ export function CreateSurgeryRequestWizard({
       addHealthPlanToList(healthPlan);
     }
     setSelectedHealthPlan(healthPlan);
-    setModalState("none");
+    setModalState("hospital-select");
   };
 
   const handleManagerSelected = (manager: User) => {
     setSelectedManager(manager);
-    setModalState("none");
+    setModalState("doctor-select");
   };
 
   const handleDoctorSelected = (doctor: AvailableDoctor) => {
     setSelectedDoctor(doctor);
-    setModalState("none");
+    setModalState("healthplan-select");
   };
 
   const handleManagerCreated = (manager: User) => {
     setSelectedManager(manager);
-    setModalState("none");
+    setModalState("doctor-select");
   };
 
   const handleTemplateSelected = (template: any) => {
     const data = template.template_data || {};
-    // Pré-preencher procedimento (primeiro da lista)
-    if (data.procedures?.length > 0) {
-      setSelectedProcedure(data.procedures[0]);
+    setActiveTemplate(template);
+    // Pré-preencher procedimento (da tabela procedure)
+    if (data.procedure?.id) {
+      setSelectedProcedure(data.procedure);
     }
     // Pré-preencher hospital (objeto completo salvo no template)
     if (data.hospital) {
@@ -242,6 +258,7 @@ export function CreateSurgeryRequestWizard({
 
     try {
       // Criar payload simplificado com apenas IDs
+      const templateData = activeTemplate?.template_data;
       const payload: SimpleSurgeryRequestPayload = {
         procedure_id: selectedProcedure.id,
         patient_id: selectedPatient.id,
@@ -250,9 +267,70 @@ export function CreateSurgeryRequestWizard({
         health_plan_id: selectedHealthPlan?.id,
         hospital_id: selectedHospital?.id,
         priority: priority,
+        required_documents: templateData?.required_documents?.length
+          ? templateData.required_documents
+          : undefined,
       };
 
-      await surgeryRequestService.createSimple(payload);
+      const newRequest = await surgeryRequestService.createSimple(payload);
+
+      // Pré-popular OPME e TUSS do template, se existirem
+      if (templateData) {
+        const requestId = (newRequest as any).id;
+
+        if (requestId) {
+          // Adicionar OPME
+          const opmeItems: any[] = templateData.opme_items || [];
+          let opmeCreated = 0;
+          for (const item of opmeItems) {
+            try {
+              await opmeService.create({
+                surgery_request_id: requestId,
+                name: item.name,
+                brand:
+                  (item.manufacturers || [])
+                    .filter((m: string) => m?.trim())
+                    .join(", ") || undefined,
+                distributor:
+                  (item.suppliers || [])
+                    .filter((s: string) => s?.trim())
+                    .join(", ") || undefined,
+                quantity: item.quantity || 1,
+              });
+              opmeCreated++;
+            } catch (e) {
+              console.warn("Erro ao adicionar OPME do template:", e);
+            }
+          }
+
+          // Se OPME foi adicionado, marcar has_opme = true para resolver a pendência
+          if (opmeCreated > 0) {
+            try {
+              await surgeryRequestService.setHasOpme(requestId, true);
+            } catch (e) {
+              console.warn("Erro ao marcar has_opme:", e);
+            }
+          }
+
+          // Adicionar TUSS
+          const tussItems: any[] = templateData.tuss_items || [];
+          if (tussItems.length > 0) {
+            try {
+              await tussService.addProcedures({
+                surgery_request_id: requestId,
+                procedures: tussItems.map((item: any) => ({
+                  procedure_id: item.procedure_id || item.tuss_code,
+                  tuss_code: item.tuss_code,
+                  name: item.name,
+                  quantity: item.quantity || 1,
+                })),
+              });
+            } catch (e) {
+              console.warn("Erro ao adicionar TUSS do template:", e);
+            }
+          }
+        }
+      }
 
       setToast({
         message: "Solicitação cirúrgica criada com sucesso!",
@@ -278,7 +356,7 @@ export function CreateSurgeryRequestWizard({
   };
 
   const handleClose = () => {
-    setModalState("none");
+    setModalState("procedure-select");
     setSelectedProcedure(null);
     setSelectedPatient(null);
     setSelectedHospital(null);
@@ -287,6 +365,7 @@ export function CreateSurgeryRequestWizard({
     setSelectedDoctor(null);
     setAvailableDoctors([]);
     setPriority(PRIORITY.LOW);
+    setActiveTemplate(null);
     onClose();
   };
 
@@ -332,7 +411,7 @@ export function CreateSurgeryRequestWizard({
           </div>
         )}
 
-        <div className="relative bg-white w-full rounded-2xl shadow-xl max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="relative bg-white w-full rounded-2xl shadow-xl max-w-4xl overflow-hidden flex flex-col h-[80vh] max-h-[700px]">
           {/* ── LAYOUT PRINCIPAL ── */}
           <div className="flex flex-col sm:flex-row flex-1 overflow-hidden min-h-0">
             {/* LEFT PANEL — formulário (no mobile, fica oculto quando um painel de seleção está aberto) */}
@@ -340,7 +419,7 @@ export function CreateSurgeryRequestWizard({
               className={`w-full sm:w-3/5 flex flex-col bg-white sm:border-r border-gray-200 ${isSelectionOpen ? "hidden sm:flex" : "flex"}`}
             >
               {/* Header */}
-              <div className="px-4 py-3 md:px-5 md:py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+              <div className="px-4 py-3 md:px-5 md:py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0 min-h-[57px]">
                 <h2 className="text-lg font-semibold text-gray-900">
                   Nova solicitação
                 </h2>
@@ -368,25 +447,6 @@ export function CreateSurgeryRequestWizard({
                       />
                     </svg>
                     Usar modelo
-                  </button>
-                  {/* Fechar — apenas desktop */}
-                  <button
-                    onClick={handleClose}
-                    className="hidden sm:flex p-1 hover:bg-gray-100 rounded transition-colors"
-                  >
-                    <svg
-                      className="w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
                   </button>
                 </div>
               </div>
@@ -702,10 +762,10 @@ export function CreateSurgeryRequestWizard({
 
             {/* RIGHT PANEL — painel de seleção (no mobile, ocupa tela inteira quando ativo) */}
             <div
-              className={`w-full sm:w-2/5 bg-white flex flex-col sm:border-l border-gray-200 min-h-0 flex-1 ${isSelectionOpen ? "flex" : "hidden sm:flex"}`}
+              className={`w-full sm:w-2/5 bg-white flex flex-col min-h-0 flex-1 ${isSelectionOpen ? "flex" : "hidden sm:flex"}`}
             >
               {/* Header do painel de seleção */}
-              <div className="px-4 py-3 md:px-5 md:py-4 border-b border-gray-200 flex items-center gap-3 flex-shrink-0">
+              <div className="px-4 py-3 md:px-5 md:py-4 border-b border-gray-200 flex items-center gap-3 flex-shrink-0 min-h-[57px]">
                 {/* Botão voltar — apenas mobile */}
                 <button
                   onClick={() => setModalState("none")}
@@ -751,6 +811,11 @@ export function CreateSurgeryRequestWizard({
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto min-h-0">
+                {modalState === "none" && (
+                  <div className="flex items-center justify-center h-full text-gray-300">
+                    <p className="text-sm">Selecione um campo ao lado</p>
+                  </div>
+                )}
                 {modalState === "template-select" && (
                   <TemplateSelectionContent
                     onSelect={handleTemplateSelected}
@@ -911,41 +976,35 @@ function ProcedureSelectionContent({
   );
 
   return (
-    <div className="p-2">
+    <div className="p-4 md:p-6">
       {/* Search and New Button */}
-      <div className="flex gap-2 mb-0">
+      <div className="flex gap-3 mb-4">
         <div className="flex-1 relative">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
+          <Image
+            src="/icons/search.svg"
+            alt="Buscar"
+            width={20}
+            height={20}
+            className="absolute left-3 top-1/2 -translate-y-1/2"
+          />
           <input
             type="text"
             placeholder="Procedimento"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 pl-11 pr-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs text-gray-400 placeholder:text-gray-400"
+            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs md:text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <button
           onClick={onCreateNew}
-          className="h-10 px-4 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm shadow-sm"
+          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
         >
           Novo
         </button>
       </div>
 
       {/* List */}
-      <div className="mt-2">
+      <div className="border-t border-gray-200">
         {loading ? (
           <div className="text-center py-8 text-gray-500">Carregando...</div>
         ) : filteredProcedures.length === 0 ? (
@@ -962,16 +1021,18 @@ function ProcedureSelectionContent({
                 onClick={() => {
                   onSelect(procedure);
                 }}
-                className="w-full flex items-center justify-between px-2 py-3 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200 last:border-b-0"
+                className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
               >
-                <span className="text-xs text-gray-900">{procedure.name}</span>
+                <span className="text-xs md:text-sm text-gray-900">
+                  {procedure.name}
+                </span>
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                     isSelected ? "border-teal-500" : "border-gray-300"
                   }`}
                 >
                   {isSelected && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-teal-500" />
+                    <div className="w-3 h-3 rounded-full bg-teal-500" />
                   )}
                 </div>
               </button>
@@ -1607,7 +1668,9 @@ function TemplateSelectionContent({
           </div>
         ) : (
           filtered.map((template) => {
-            const procedureName = template.template_data?.procedures?.[0]?.name;
+            const procedureName =
+              template.template_data?.procedure?.name ||
+              template.template_data?.procedures?.[0]?.name;
             const hospitalName = template.template_data?.hospital?.name;
             const healthPlanName = template.template_data?.health_plan?.name;
             const meta = [hospitalName, healthPlanName]

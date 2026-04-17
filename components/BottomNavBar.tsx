@@ -32,14 +32,32 @@ const allNavItems: NavItem[] = [
   },
   {
     iconSrc: "/icons/user-profile.svg",
-    label: "Equipe",
+    label: "Colaboradores",
     href: "/colaboradores",
     adminOnly: true,
   },
   {
-    iconSrc: "/icons/settings.svg",
-    label: "Mais",
-    href: "/configuracoes",
+    iconSrc: "/icons/users.svg",
+    label: "Hospitais",
+    href: "/hospitais",
+    adminOnly: true,
+  },
+  {
+    iconSrc: "/icons/document.svg",
+    label: "Convênios",
+    href: "/convenios",
+    adminOnly: true,
+  },
+  {
+    iconSrc: "/icons/dollar-cash-circle.svg",
+    label: "Fornecedores",
+    href: "/fornecedores",
+    adminOnly: true,
+  },
+  {
+    iconSrc: "/icons/status-surgeries.svg",
+    label: "Procedimentos",
+    href: "/procedimentos",
   },
 ];
 
@@ -55,7 +73,7 @@ export default function BottomNavBar() {
 
   const isActive = (href: string) => {
     if (href === "/dashboard") return pathname === href || pathname === "/";
-    return pathname.startsWith(href);
+    return pathname === href;
   };
 
   const handleTap = (href: string) => {
@@ -68,7 +86,7 @@ export default function BottomNavBar() {
       className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 backdrop-blur-lg border-t border-neutral-100"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="flex items-center justify-around px-1 h-16">
+      <div className="flex items-center justify-around px-1 h-16 overflow-x-auto scrollbar-hide">
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (

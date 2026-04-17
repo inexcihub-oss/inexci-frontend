@@ -50,7 +50,8 @@ export function DetailPageLayout({
     }
   }, []);
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return "?";
     const parts = name.split(" ");
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
@@ -142,7 +143,9 @@ export function DetailPageLayout({
             {/* Breadcrumb */}
             <div className="flex items-center min-w-0">
               <div className="hidden md:flex items-center justify-center px-2 py-4">
-                <span className="text-xs md:text-sm text-gray-900">{sectionTitle}</span>
+                <span className="text-xs md:text-sm text-gray-900">
+                  {sectionTitle}
+                </span>
               </div>
               <svg
                 className="hidden md:block w-6 h-6 text-gray-400 shrink-0"

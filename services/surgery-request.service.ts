@@ -154,7 +154,9 @@ export interface SimpleSurgeryRequestPayload {
   doctor_id: string;
   health_plan_id?: string;
   hospital_id?: string;
-  priority: number;
+  priority: number | string;
+  template_id?: string;
+  required_documents?: Array<{ type: string; name: string }>;
 }
 
 export interface UpdateBasicDataPayload {
@@ -273,6 +275,9 @@ export interface SurgeryRequestListItem {
   manager: { id: string; name: string } | null;
   doctor: { id: string; name: string } | null;
   health_plan: { id: string; name: string } | null;
+  health_plan_id?: string | null;
+  hospital: { id: string; name: string } | null;
+  hospital_id?: string | null;
   procedure: { id: string; name: string } | null;
   tuss_procedure: { id: string; description: string } | null;
   procedure_name?: string;
@@ -329,6 +334,7 @@ export interface SurgeryRequestDetail {
   // Campos primitivos adicionais usados por componentes
   cid_id: string | null;
   cid_description: string | null;
+  cid?: { id: string; code: string; description: string } | null;
   health_plan_registration: string | null;
   health_plan_type: string | null;
   hospital_id: string | number | null;
@@ -398,6 +404,21 @@ export const surgeryRequestService = {
   ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post("/surgery-requests", data);
     return response.data;
+  },
+
+  /** Cria uma nova solicitação a partir de um template */
+  async createFromTemplate(
+    data: SimpleSurgeryRequestPayload,
+  ): Promise<SurgeryRequestMutationResponse> {
+    const response = await api.post("/surgery-requests/from-template", data);
+    return response.data;
+  },
+
+  /** Define se a solicitação possui OPME */
+  async setHasOpme(requestId: string, hasOpme: boolean): Promise<void> {
+    await api.patch(`/surgery-requests/${requestId}/has-opme`, {
+      has_opme: hasOpme,
+    });
   },
 
   /** Atualiza dados básicos (prioridade, prazo, gestor) */
@@ -669,6 +690,26 @@ export const surgeryRequestService = {
   /** Deleta um template de solicitação */
   async deleteTemplate(id: string): Promise<void> {
     await api.delete(`/surgery-requests/templates/${id}`);
+  },
+
+  /** Atualiza um template de solicitação */
+  async updateTemplate(
+    id: string,
+    data: { name?: string; template_data?: object },
+  ): Promise<SurgeryRequestTemplate> {
+    const response = await api.patch<SurgeryRequestTemplate>(
+      `/surgery-requests/templates/${id}`,
+      data,
+    );
+    return response.data;
+  },
+
+  /** Incrementa o contador de uso de um template */
+  async incrementTemplateUsage(id: string): Promise<SurgeryRequestTemplate> {
+    const response = await api.post<SurgeryRequestTemplate>(
+      `/surgery-requests/templates/${id}/increment-usage`,
+    );
+    return response.data;
   },
 
   // ── Downloads de PDF ────────────────────────────────────────────────────

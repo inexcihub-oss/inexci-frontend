@@ -9,6 +9,22 @@ interface OpmeModalProps {
   surgeryRequestId: string | number;
   onSuccess: () => void;
   editingOpme?: OpmeItem | null;
+  /** When provided, saves locally instead of calling the API */
+  onLocalSave?: (
+    items: {
+      name: string;
+      manufacturers: string[];
+      suppliers: string[];
+      quantity: number;
+    }[],
+  ) => void;
+  /** Pre-populate items when opening in local mode */
+  initialItems?: {
+    name: string;
+    manufacturers: string[];
+    suppliers: string[];
+    quantity: number;
+  }[];
 }
 
 interface OpmeItemForm {
@@ -181,7 +197,9 @@ function Accordion({ title, isOpen, onToggle, children }: AccordionProps) {
         onClick={onToggle}
         className={`flex items-center justify-between w-full px-4 py-2 ${isOpen ? "border-b border-[#DCDFE3]" : ""}`}
       >
-        <span className="text-sm md:text-base font-semibold text-[#000000]">{title}</span>
+        <span className="text-sm md:text-base font-semibold text-[#000000]">
+          {title}
+        </span>
         <div
           className={`transform transition-transform ${isOpen ? "rotate-180" : ""}`}
         >
@@ -199,6 +217,8 @@ export function OpmeModal({
   surgeryRequestId,
   onSuccess,
   editingOpme,
+  onLocalSave,
+  initialItems,
 }: OpmeModalProps) {
   const [opmeItems, setOpmeItems] = useState<OpmeItemForm[]>([]);
   const [selectedOpmeIndex, setSelectedOpmeIndex] = useState<number | null>(
@@ -241,6 +261,28 @@ export function OpmeModal({
             quantity: editingOpme.quantity,
           },
         ]);
+        setSelectedOpmeIndex(0);
+      } else if (initialItems && initialItems.length > 0) {
+        setOpmeItems(
+          initialItems.map((item) => ({
+            name: item.name,
+            manufacturers:
+              item.manufacturers.length >= 3
+                ? [...item.manufacturers]
+                : [
+                    ...item.manufacturers,
+                    ...Array(3 - item.manufacturers.length).fill(""),
+                  ],
+            suppliers:
+              item.suppliers.length >= 3
+                ? [...item.suppliers]
+                : [
+                    ...item.suppliers,
+                    ...Array(3 - item.suppliers.length).fill(""),
+                  ],
+            quantity: item.quantity,
+          })),
+        );
         setSelectedOpmeIndex(0);
       } else {
         setOpmeItems([]);
@@ -359,7 +401,22 @@ export function OpmeModal({
     setError(null);
 
     try {
-      // Salvar cada item OPME
+      if (onLocalSave) {
+        // Modo local: retorna os dados sem chamar a API
+        onLocalSave(
+          opmeItems.map((item) => ({
+            name: item.name,
+            manufacturers: item.manufacturers.filter((m) => m.trim()),
+            suppliers: item.suppliers.filter((s) => s.trim()),
+            quantity: item.quantity,
+          })),
+        );
+        onSuccess();
+        handleCancel();
+        return;
+      }
+
+      // Salvar cada item OPME via API
       for (const item of opmeItems) {
         const data: CreateOpmeData = {
           surgery_request_id: surgeryRequestId,

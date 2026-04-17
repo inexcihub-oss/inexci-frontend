@@ -316,8 +316,8 @@ export default function FornecedorDetalhePage() {
   return (
     <PageContainer>
       <DetailPageLayout
-        sectionTitle="Colaboradores"
-        backHref="/colaboradores"
+        sectionTitle="Fornecedores"
+        backHref="/fornecedores"
         itemName={supplier.name}
         itemSubtitle="Fornecedor"
         sidebarContent={sidebarContent}
