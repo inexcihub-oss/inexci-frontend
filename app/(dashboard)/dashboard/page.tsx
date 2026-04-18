@@ -12,6 +12,7 @@ import type {
   MonthlyEvolutionData,
   AverageCompletionTimeData,
   PendingNotificationsData,
+  DashboardData,
 } from "@/services/reports.service";
 import { STATUS_NUMBER_TO_STRING } from "@/services/surgery-request.service";
 import { formatCurrency } from "@/lib/utils";

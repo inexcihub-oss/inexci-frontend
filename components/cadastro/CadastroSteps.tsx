@@ -3,6 +3,7 @@
 import { SubscriptionPlan } from "@/types";
 import { Button, Input, Select } from "@/components/ui";
 import { PasswordInput } from "@/components/ui";
+import { BRAZILIAN_STATES } from "@/lib/options";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 

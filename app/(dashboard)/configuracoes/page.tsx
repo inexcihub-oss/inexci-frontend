@@ -475,11 +475,11 @@ export default function ConfiguracoesPage() {
         gender: profile.gender || undefined,
         ...(avatarFile
           ? { avatar_url: avatarUrl }
-          : { avatar_url: avatarPreview ? undefined : null }),
+          : { avatar_url: avatarPreview ? undefined : undefined }),
         ...(signatureFile
           ? { signature_url: signaturePath }
           : signatureDeleted
-            ? { signature_url: null }
+            ? { signature_url: undefined }
             : {}),
       });
 

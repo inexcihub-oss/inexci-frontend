@@ -129,9 +129,9 @@ export default function ProcedimentosCirurgicos() {
               id: String(record.id),
               protocol: record.protocol || "",
               patient: {
-                id: String(record.patient.id),
-                name: record.patient.name,
-                initials: getInitials(record.patient.name),
+                id: String(record.patient?.id ?? ""),
+                name: record.patient?.name ?? "Não informado",
+                initials: getInitials(record.patient?.name ?? ""),
               },
               procedureName: getProcedureName(),
               doctor: getManager(),

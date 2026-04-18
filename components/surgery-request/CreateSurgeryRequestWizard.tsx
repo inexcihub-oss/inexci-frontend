@@ -219,15 +219,21 @@ export function CreateSurgeryRequestWizard({
   };
 
   const handleTemplateSelected = (template: SurgeryRequestTemplate) => {
-    const data = template.template_data || {};
+    const data = (template.template_data || {}) as Record<string, unknown> & {
+      procedure?: { id?: string } & Record<string, unknown>;
+      hospital?: unknown;
+      hospital_id?: string;
+      health_plan?: unknown;
+      health_plan_id?: string;
+    };
     setActiveTemplate(template);
     // Pré-preencher procedimento (da tabela procedure)
     if (data.procedure?.id) {
-      setSelectedProcedure(data.procedure);
+      setSelectedProcedure(data.procedure as unknown as Procedure);
     }
     // Pré-preencher hospital (objeto completo salvo no template)
     if (data.hospital) {
-      setSelectedHospital(data.hospital);
+      setSelectedHospital(data.hospital as unknown as Hospital);
     } else if (data.hospital_id) {
       setSelectedHospital({
         id: data.hospital_id,
@@ -236,7 +242,7 @@ export function CreateSurgeryRequestWizard({
     }
     // Pré-preencher convênio (objeto completo salvo no template)
     if (data.health_plan) {
-      setSelectedHealthPlan(data.health_plan);
+      setSelectedHealthPlan(data.health_plan as unknown as HealthPlan);
     } else if (data.health_plan_id) {
       setSelectedHealthPlan({
         id: data.health_plan_id,
@@ -276,9 +282,14 @@ export function CreateSurgeryRequestWizard({
         health_plan_id: selectedHealthPlan?.id,
         hospital_id: selectedHospital?.id,
         priority: priority,
-        required_documents: templateData?.required_documents?.length
-          ? templateData.required_documents
-          : undefined,
+        required_documents:
+          Array.isArray(templateData?.required_documents) &&
+          templateData.required_documents.length
+            ? (templateData.required_documents as {
+                type: string;
+                name: string;
+              }[])
+            : undefined,
       };
 
       const newRequest = await surgeryRequestService.createSimple(payload);
@@ -296,7 +307,7 @@ export function CreateSurgeryRequestWizard({
             try {
               await opmeService.create({
                 surgery_request_id: requestId,
-                name: item.name,
+                name: item.name ?? "",
                 brand:
                   (item.manufacturers || [])
                     .filter((m: string) => m?.trim())
@@ -316,7 +327,7 @@ export function CreateSurgeryRequestWizard({
           // Se OPME foi adicionado, marcar has_opme = true para resolver a pendência
           if (opmeCreated > 0) {
             try {
-              await surgeryRequestService.setHasOpme(requestId, true);
+              await surgeryRequestService.setHasOpme(String(requestId), true);
             } catch (e) {
               console.warn("Erro ao marcar has_opme:", e);
             }
@@ -330,9 +341,11 @@ export function CreateSurgeryRequestWizard({
               await tussService.addProcedures({
                 surgery_request_id: requestId,
                 procedures: tussItems.map((item) => ({
-                  procedure_id: item.procedure_id || item.tuss_code,
-                  tuss_code: item.tuss_code,
-                  name: item.name,
+                  procedure_id: String(
+                    item.procedure_id || item.tuss_code || "",
+                  ),
+                  tuss_code: item.tuss_code ?? "",
+                  name: item.name ?? "",
                   quantity: item.quantity || 1,
                 })),
               });

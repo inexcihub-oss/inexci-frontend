@@ -155,12 +155,12 @@ export function CodigoTussTab() {
                 {!showAuthorizationColumn && statusNum < 2 && (
                   /* Botão Delete — posicionado absolutamente à direita */
                   <button
-                    onClick={() => handleDelete(proc.id)}
-                    disabled={isDeleting === proc.id}
+                    onClick={() => handleDelete(String(proc.id))}
+                    disabled={isDeleting === String(proc.id)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
                     aria-label="Remover procedimento"
                   >
-                    {isDeleting === proc.id ? (
+                    {isDeleting === String(proc.id) ? (
                       <svg
                         className="animate-spin h-4 w-4 text-red-500"
                         viewBox="0 0 24 24"
