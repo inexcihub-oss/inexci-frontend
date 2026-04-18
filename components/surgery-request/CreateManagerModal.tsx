@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import api from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/http-error";
 
 interface CreateManagerModalProps {
   isOpen: boolean;
@@ -77,12 +78,9 @@ export function CreateManagerModal({
       setFormData({ name: "", phone: "", email: "" });
       setEmailError("");
       onClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message;
+    } catch (err: unknown) {
       setError(
-        Array.isArray(msg)
-          ? msg.join(", ")
-          : msg || "Erro ao criar gestor. Tente novamente.",
+        getApiErrorMessage(err, "Erro ao criar gestor. Tente novamente."),
       );
     } finally {
       setLoading(false);

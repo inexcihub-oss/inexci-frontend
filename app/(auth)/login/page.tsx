@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Button, Input } from "@/components/ui";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -29,10 +30,19 @@ function LoginForm() {
 
     try {
       await login(email, password);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: { message?: string } } }).response
+          ?.data?.message === "string"
+          ? (err as { response?: { data?: { message?: string } } }).response
+              ?.data?.message
+          : undefined;
+
       setError(
-        err.response?.data?.message ||
-          "Erro ao fazer login. Verifique suas credenciais.",
+        errorMessage || "Erro ao fazer login. Verifique suas credenciais.",
       );
     } finally {
       setIsLoading(false);
@@ -69,48 +79,34 @@ function LoginForm() {
           <form onSubmit={handleSubmit} className="mt-8 space-y-6">
             <div className="space-y-4">
               {/* Email */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  E-mail
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors"
-                  placeholder="seu@email.com"
-                />
-              </div>
+              <Input
+                id="email"
+                name="email"
+                label="E-mail"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                placeholder="seu@email.com"
+                className="min-h-[48px]"
+              />
 
               {/* Password */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Senha
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base md:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px] transition-colors"
-                  placeholder="••••••••"
-                />
-              </div>
+              <Input
+                id="password"
+                name="password"
+                label="Senha"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                placeholder="••••••••"
+                className="min-h-[48px]"
+              />
             </div>
 
             {/* Success Message */}
@@ -128,13 +124,13 @@ function LoginForm() {
             )}
 
             {/* Submit Button */}
-            <button
+            <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-teal-500 hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 min-h-[48px] active:scale-[0.98]"
+              isLoading={isLoading}
+              className="w-full text-sm font-semibold min-h-[48px]"
             >
-              {isLoading ? "Entrando..." : "Entrar"}
-            </button>
+              Entrar
+            </Button>
 
             {/* Links */}
             <div className="flex flex-col gap-3 text-center text-sm">

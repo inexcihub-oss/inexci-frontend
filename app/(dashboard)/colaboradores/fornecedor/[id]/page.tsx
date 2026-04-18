@@ -10,8 +10,10 @@ import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { supplierService, Supplier } from "@/services/supplier.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
+import { STATE_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
+import { ToastType } from "@/types/toast.types";
 import { ChevronRight } from "lucide-react";
 
 export default function FornecedorDetalhePage() {
@@ -195,37 +197,6 @@ export default function FornecedorDetalhePage() {
     { value: "60dias", label: "60 dias" },
   ];
 
-  const stateOptions = [
-    { value: "", label: "Selecione" },
-    { value: "AC", label: "Acre" },
-    { value: "AL", label: "Alagoas" },
-    { value: "AP", label: "Amapá" },
-    { value: "AM", label: "Amazonas" },
-    { value: "BA", label: "Bahia" },
-    { value: "CE", label: "Ceará" },
-    { value: "DF", label: "Distrito Federal" },
-    { value: "ES", label: "Espírito Santo" },
-    { value: "GO", label: "Goiás" },
-    { value: "MA", label: "Maranhão" },
-    { value: "MT", label: "Mato Grosso" },
-    { value: "MS", label: "Mato Grosso do Sul" },
-    { value: "MG", label: "Minas Gerais" },
-    { value: "PA", label: "Pará" },
-    { value: "PB", label: "Paraíba" },
-    { value: "PR", label: "Paraná" },
-    { value: "PE", label: "Pernambuco" },
-    { value: "PI", label: "Piauí" },
-    { value: "RJ", label: "Rio de Janeiro" },
-    { value: "RN", label: "Rio Grande do Norte" },
-    { value: "RS", label: "Rio Grande do Sul" },
-    { value: "RO", label: "Rondônia" },
-    { value: "RR", label: "Roraima" },
-    { value: "SC", label: "Santa Catarina" },
-    { value: "SP", label: "São Paulo" },
-    { value: "SE", label: "Sergipe" },
-    { value: "TO", label: "Tocantins" },
-  ];
-
   // Sidebar com cotações recentes (mock)
   const recentQuotes = [
     {
@@ -315,8 +286,8 @@ export default function FornecedorDetalhePage() {
   return (
     <PageContainer>
       <DetailPageLayout
-        sectionTitle="Colaboradores"
-        backHref="/colaboradores"
+        sectionTitle="Fornecedores"
+        backHref="/fornecedores"
         itemName={supplier.name}
         itemSubtitle="Fornecedor"
         sidebarContent={sidebarContent}
@@ -394,7 +365,7 @@ export default function FornecedorDetalhePage() {
               label="Estado"
               value={formData.state}
               onChange={(e) => handleInputChange("state", e.target.value)}
-              options={stateOptions}
+              options={STATE_OPTIONS}
             />
             <Input
               label="CEP"
@@ -475,7 +446,7 @@ export default function FornecedorDetalhePage() {
       {toast && (
         <Toast
           message={toast.message}
-          type={toast.type as any}
+          type={toast.type as ToastType}
           onClose={hideToast}
         />
       )}

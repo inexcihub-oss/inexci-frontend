@@ -6,6 +6,7 @@ import {
   SubscriptionPlan,
   User,
 } from "@/types";
+import { clearAvatarCache } from "@/lib/avatar-cache";
 
 /**
  * Serviço de autenticação
@@ -21,6 +22,8 @@ export const authService = {
     if (typeof window !== "undefined" && data.access_token && data.user) {
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("token_timestamp", Date.now().toString());
+
+      // refresh_token agora é enviado via cookie httpOnly pelo backend
 
       // Remove dados sensíveis antes de armazenar
       const { cpf, ...userWithoutSensitiveData } = data.user;
@@ -77,8 +80,17 @@ export const authService = {
   /**
    * Realiza logout do usuário
    */
-  logout(): void {
+  async logout(): Promise<void> {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Ignora erros — o logout local é suficiente
+    }
     if (typeof window !== "undefined") {
+      const currentUser = this.getCurrentUser?.();
+      if (currentUser?.id) {
+        clearAvatarCache(currentUser.id);
+      }
       localStorage.removeItem("token");
       localStorage.removeItem("token_timestamp");
       localStorage.removeItem("user");
@@ -125,14 +137,17 @@ export const authService = {
    * Solicita código de recuperação de senha
    */
   async requestPasswordReset(email: string): Promise<void> {
-    await api.post("/auth/forgot-password", { email });
+    await api.post("/auth/sendRecoveryPasswordEmail", { email });
   },
 
   /**
    * Valida código de recuperação
    */
   async validateRecoveryCode(email: string, code: string): Promise<boolean> {
-    const { data } = await api.post("/auth/validate-code", { email, code });
+    const { data } = await api.post("/auth/validateRecoveryPasswordCode", {
+      email,
+      code,
+    });
     return data.valid;
   },
 
@@ -141,13 +156,12 @@ export const authService = {
    */
   async changePassword(
     email: string,
-    code: string,
+    _code: string,
     newPassword: string,
   ): Promise<void> {
-    await api.post("/auth/change-password", {
+    await api.post("/auth/changePassword", {
       email,
-      code,
-      newPassword,
+      password: newPassword,
     });
   },
 };

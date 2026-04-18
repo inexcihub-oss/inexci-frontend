@@ -360,34 +360,28 @@ export default function PacientesPage() {
       </div>
 
       {/* Search and Actions */}
-      <div className="flex-none flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200">
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {/* Search */}
-          <SearchInput
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Buscar por nome, e-mail ou CPF"
-            className="w-full sm:w-85"
+      <div className="flex-none flex flex-wrap items-center gap-2.5 px-4 py-3 border-b border-gray-200">
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Buscar por nome, e-mail ou CPF"
+          className="w-full sm:flex-1 lg:w-85 lg:flex-none"
+        />
+
+        <Button variant="outline" size="md" className="min-h-[44px] rounded-xl">
+          <Image
+            src="/icons/filter.svg"
+            alt="Filtro"
+            width={20}
+            height={20}
+            className="mr-1.5"
           />
+          Filtro
+        </Button>
 
-          {/* Divider - hidden on mobile */}
-          <div className="hidden sm:block w-px h-8 bg-neutral-100" />
+        <div className="hidden sm:block w-px h-8 bg-neutral-100" />
 
-          {/* Filter Button */}
-          <Button variant="outline" size="md" className="hidden sm:flex">
-            <Image
-              src="/icons/filter.svg"
-              alt="Filtro"
-              width={20}
-              height={20}
-              className="mr-2"
-            />
-            Filtro
-          </Button>
-        </div>
-
-        {/* Bulk delete + New Button */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 sm:flex-none">
           {selectedPatients.length > 0 && (
             <button
               onClick={handleBulkDeleteClick}
@@ -413,6 +407,7 @@ export default function PacientesPage() {
           <Button
             variant="primary"
             size="md"
+            className="flex-1 sm:flex-none min-h-[44px]"
             onClick={() => setNewPatientModalOpen(true)}
           >
             Novo paciente
@@ -442,7 +437,7 @@ export default function PacientesPage() {
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
-                        className={`text-xs text-black opacity-70 font-normal h-12 relative ${(header.column.columnDef.meta as any)?.className ?? ""}`}
+                        className={`text-xs text-black opacity-70 font-normal h-12 relative ${header.column.columnDef.meta?.className ?? ""}`}
                         style={{
                           width: header.getSize(),
                         }}
@@ -496,7 +491,7 @@ export default function PacientesPage() {
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className={`py-3 px-4 ${(cell.column.columnDef.meta as any)?.className ?? ""}`}
+                        className={`py-3 px-4 ${cell.column.columnDef.meta?.className ?? ""}`}
                         style={{
                           width: cell.column.getSize(),
                         }}

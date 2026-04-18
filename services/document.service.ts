@@ -8,6 +8,7 @@ export interface Document {
   /** Caminho raw no bucket (ex: documents/uuid.pdf ou post-surgical/uuid.pdf) */
   path: string;
   uri: string;
+  size?: number;
   created_at: string;
   created_by: string;
 }
@@ -22,7 +23,7 @@ export type DocumentFolder =
   (typeof DOCUMENT_FOLDERS)[keyof typeof DOCUMENT_FOLDERS];
 
 export interface CreateDocumentData {
-  surgery_request_id: string;
+  surgery_request_id: string | number;
   key: string;
   name: string;
   file: File;
@@ -59,7 +60,7 @@ export const documentService = {
   async delete(data: {
     id: string;
     key: string;
-    surgery_request_id: string;
+    surgery_request_id: string | number;
   }): Promise<void> {
     await api.delete("/surgery-requests/documents", {
       data,

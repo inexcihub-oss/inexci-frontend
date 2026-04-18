@@ -47,7 +47,6 @@ describe("collaboratorService", () => {
       const payload = {
         name: "Maria",
         email: "maria@email.com",
-        is_doctor: false,
       };
       const mockResponse = { id: "new-1", ...payload };
       (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -60,14 +59,15 @@ describe("collaboratorService", () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it("deve enviar dados de médico quando is_doctor=true", async () => {
+    it("deve enviar doctor_profile quando colaborador é médico", async () => {
       const payload = {
         name: "Dr. João",
         email: "joao@email.com",
-        is_doctor: true,
-        crm: "123456",
-        crm_state: "SP",
-        specialty: "Ortopedia",
+        doctor_profile: {
+          crm: "123456",
+          crm_state: "SP",
+          specialty: "Ortopedia",
+        },
       };
       (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { id: "doc-1", ...payload },
@@ -78,9 +78,10 @@ describe("collaboratorService", () => {
       expect(api.post).toHaveBeenCalledWith(
         "/users/collaborators",
         expect.objectContaining({
-          is_doctor: true,
-          crm: "123456",
-          crm_state: "SP",
+          doctor_profile: expect.objectContaining({
+            crm: "123456",
+            crm_state: "SP",
+          }),
         }),
       );
     });
@@ -113,7 +114,7 @@ describe("collaboratorService", () => {
   });
 
   describe("getDoctors", () => {
-    it("deve chamar GET /users com role=doctor", async () => {
+    it("deve chamar GET /users/doctors", async () => {
       const mockDoctors = [{ id: "1", name: "Dr. Silva" }];
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: mockDoctors,
@@ -121,7 +122,7 @@ describe("collaboratorService", () => {
 
       const result = await collaboratorService.getDoctors();
 
-      expect(api.get).toHaveBeenCalledWith(expect.stringContaining("/users"));
+      expect(api.get).toHaveBeenCalledWith("/users/doctors");
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });

@@ -5,6 +5,7 @@ import {
   surgeryRequestService,
   AcceptAuthorizationPayload,
   ContestAuthorizationPayload,
+  SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
 
@@ -15,7 +16,7 @@ type ContestStep = 1 | 2 | 3;
 type ContestMethod = "email" | "document";
 
 interface AuthorizationEntry {
-  id: string;
+  id: string | number;
   quantity: number;
   authorized_quantity: string;
 }
@@ -24,9 +25,8 @@ interface UpdateAuthorizationsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onClose2: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
-  notifyPatient?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────────────
@@ -46,13 +46,12 @@ export function UpdateAuthorizationsModal({
   onClose2: _onClose2,
   solicitacao,
   onSuccess,
-  notifyPatient = false,
 }: UpdateAuthorizationsModalProps) {
   const [step, setStep] = useState<Step>(1);
   const [isSaving, setIsSaving] = useState(false);
 
   const [tussAuth, setTussAuth] = useState<AuthorizationEntry[]>(() =>
-    (solicitacao?.tuss_items ?? []).map((p: any) => ({
+    (solicitacao?.tuss_items ?? []).map((p) => ({
       id: p.id,
       quantity: p.quantity ?? 1,
       authorized_quantity:
@@ -63,7 +62,7 @@ export function UpdateAuthorizationsModal({
   );
 
   const [opmeAuth, setOpmeAuth] = useState<AuthorizationEntry[]>(() =>
-    (solicitacao?.opme_items ?? []).map((o: any) => ({
+    (solicitacao?.opme_items ?? []).map((o) => ({
       id: o.id,
       quantity: o.quantity ?? 1,
       authorized_quantity:
@@ -105,7 +104,7 @@ export function UpdateAuthorizationsModal({
       { date: "", time: "00:00" },
     ]);
     setTussAuth(
-      (solicitacao?.tuss_items ?? []).map((p: any) => ({
+      (solicitacao?.tuss_items ?? []).map((p) => ({
         id: p.id,
         quantity: p.quantity ?? 1,
         authorized_quantity:
@@ -115,7 +114,7 @@ export function UpdateAuthorizationsModal({
       })),
     );
     setOpmeAuth(
-      (solicitacao?.opme_items ?? []).map((o: any) => ({
+      (solicitacao?.opme_items ?? []).map((o) => ({
         id: o.id,
         quantity: o.quantity ?? 1,
         authorized_quantity:
@@ -183,7 +182,6 @@ export function UpdateAuthorizationsModal({
         });
       const payload: AcceptAuthorizationPayload = {
         date_options: validDates,
-        notify_patient: notifyPatient || undefined,
       };
       await surgeryRequestService.acceptAuthorization(solicitacao.id, payload);
       showToast("Autorização aceita! Status: Em Agendamento", "success");
@@ -295,7 +293,7 @@ export function UpdateAuthorizationsModal({
                 labelHeader="Procedimento"
                 renderLabel={(item) => {
                   const proc = solicitacao.tuss_items?.find(
-                    (p: any) => p.id === item.id,
+                    (p) => p.id === item.id,
                   );
                   return `${proc?.tuss_code ?? ""} — ${proc?.name ?? ""}`;
                 }}
@@ -332,9 +330,9 @@ export function UpdateAuthorizationsModal({
                   labelHeader="Descrição"
                   renderLabel={(item) => {
                     const opme = solicitacao.opme_items?.find(
-                      (o: any) => o.id === item.id,
+                      (o) => o.id === item.id,
                     );
-                    return opme?.name ?? item.id;
+                    return opme?.name ?? String(item.id);
                   }}
                   onChange={(id, val) =>
                     setOpmeAuth((prev) =>
@@ -381,7 +379,7 @@ export function UpdateAuthorizationsModal({
                     labelHeader="Procedimento"
                     items={tussAuth.map((e) => {
                       const proc = solicitacao.tuss_items?.find(
-                        (p: any) => p.id === e.id,
+                        (p) => p.id === e.id,
                       );
                       return {
                         label: `${proc?.tuss_code ?? ""} — ${proc?.name ?? ""}`,
@@ -404,10 +402,10 @@ export function UpdateAuthorizationsModal({
                     labelHeader="Descrição"
                     items={opmeAuth.map((e) => {
                       const opme = solicitacao.opme_items?.find(
-                        (o: any) => o.id === e.id,
+                        (o) => o.id === e.id,
                       );
                       return {
-                        label: opme?.name ?? e.id,
+                        label: opme?.name ?? String(e.id),
                         requested: e.quantity,
                         authorized:
                           e.authorized_quantity !== ""
@@ -606,7 +604,7 @@ interface AuthorizationTableProps {
   items: AuthorizationEntry[];
   labelHeader: string;
   renderLabel: (item: AuthorizationEntry) => string;
-  onChange: (id: string, value: string) => void;
+  onChange: (id: string | number, value: string) => void;
 }
 
 function AuthorizationTable({
@@ -739,10 +737,42 @@ function ContestFlow({
   const [attachedFile, setAttachedFile] = React.useState<File | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Tag input para campo Para
+  const [toTags, setToTags] = React.useState<string[]>([]);
+  const [toInput, setToInput] = React.useState("");
+  const [formTouched, setFormTouched] = React.useState(false);
+
+  const addToTag = (email: string) => {
+    const trimmed = email.trim().replace(/[;,]$/, "");
+    if (trimmed && !toTags.includes(trimmed)) {
+      const newTags = [...toTags, trimmed];
+      setToTags(newTags);
+      onEmailChange("to", newTags.join(";"));
+    }
+    setToInput("");
+  };
+
+  const removeToTag = (tag: string) => {
+    const newTags = toTags.filter((t) => t !== tag);
+    setToTags(newTags);
+    onEmailChange("to", newTags.join(";"));
+  };
+
+  const handleToKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ";" || e.key === ",") {
+      e.preventDefault();
+      if (toInput.trim()) addToTag(toInput);
+    } else if (e.key === "Backspace" && !toInput && toTags.length > 0) {
+      const newTags = toTags.slice(0, -1);
+      setToTags(newTags);
+      onEmailChange("to", newTags.join(";"));
+    }
+  };
+
   const canProceedStep1 = reason.trim().length > 0;
   const canSubmit =
     method === "email"
-      ? emailForm.to.trim() !== "" && emailForm.subject.trim() !== ""
+      ? toTags.length > 0 && emailForm.subject.trim() !== ""
       : true;
 
   return (
@@ -846,23 +876,77 @@ function ContestFlow({
               <label className="ds-label mb-0">De:</label>
               <input
                 type="text"
-                defaultValue="inexci@mail.com"
+                value={
+                  process.env.NEXT_PUBLIC_MAIL_FROM_ADDRESS ||
+                  "noreply@inexci.com.br"
+                }
                 disabled
-                className="ds-input disabled:opacity-70 cursor-not-allowed"
+                readOnly
+                className="ds-input disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-100 cursor-not-allowed"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="ds-label mb-0">Para:</label>
-              <p className="text-xs md:text-sm text-neutral-200 leading-tight">
-                Para incluir mais de um e-mail separe-os com ponto e vírgula (;)
+              <p className="text-xs text-gray-400">
+                Digite um e-mail e pressione Enter para adicionar
               </p>
-              <input
-                type="email"
-                value={emailForm.to}
-                onChange={(e) => onEmailChange("to", e.target.value)}
-                placeholder="autorizacoes@unimed.com.br"
-                className="ds-input"
-              />
+              <div
+                className={`flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border bg-white min-h-10 cursor-text ${
+                  formTouched && toTags.length === 0
+                    ? "border-red-400"
+                    : "border-neutral-100"
+                }`}
+                onClick={() =>
+                  document.getElementById("contest-email-input-update")?.focus()
+                }
+              >
+                {toTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeToTag(tag)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <svg
+                        className="w-3 h-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+                <input
+                  id="contest-email-input-update"
+                  type="text"
+                  value={toInput}
+                  onChange={(e) => setToInput(e.target.value)}
+                  onKeyDown={handleToKeyDown}
+                  onBlur={() => {
+                    if (toInput.trim()) addToTag(toInput);
+                  }}
+                  placeholder={
+                    toTags.length === 0 ? "exemplo@mail.com" : undefined
+                  }
+                  className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
+                />
+              </div>
+              {formTouched && toTags.length === 0 && (
+                <p className="text-xs text-red-500">
+                  Informe pelo menos um destinatário
+                </p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="ds-label mb-0">Assunto:</label>
@@ -871,8 +955,11 @@ function ContestFlow({
                 value={emailForm.subject}
                 onChange={(e) => onEmailChange("subject", e.target.value)}
                 placeholder="Contestação de autorizações - Maria Silva Santos"
-                className="ds-input"
+                className={`ds-input ${formTouched && !emailForm.subject.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
               />
+              {formTouched && !emailForm.subject.trim() && (
+                <p className="text-xs text-red-500">Preencha o assunto</p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="ds-label mb-0">Mensagem de contestação:</label>
@@ -995,8 +1082,14 @@ function ContestFlow({
           </button>
         ) : (
           <button
-            onClick={onSubmit}
-            disabled={!canSubmit || isSaving}
+            onClick={() => {
+              if (!canSubmit) {
+                setFormTouched(true);
+                return;
+              }
+              onSubmit();
+            }}
+            disabled={isSaving}
             className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving

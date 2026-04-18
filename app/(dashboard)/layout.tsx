@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import Loading from "@/components/ui/Loading";
 import Sidebar from "@/components/Sidebar";
 import BottomNavBar from "@/components/BottomNavBar";
+import MobileHeaderActions from "@/components/shared/MobileHeaderActions";
 import Image from "next/image";
 
 export default function DashboardLayout({
@@ -63,6 +65,7 @@ export default function DashboardLayout({
               Inexci
             </span>
           </div>
+          <MobileHeaderActions />
         </header>
 
         {/* Conteúdo principal com padding para bottom nav no mobile */}

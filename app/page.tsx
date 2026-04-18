@@ -11,7 +11,7 @@ export default function Home() {
   useEffect(() => {
     // Redireciona para dashboard se estiver autenticado, senão para login
     if (authService.isAuthenticated()) {
-      router.push("/dashboard");
+      router.push("/solicitacoes-cirurgicas");
     } else {
       router.push("/login");
     }

@@ -1,33 +1,39 @@
 import api from "@/lib/api";
+import { getApiRecords } from "@/lib/api-response";
+import { DoctorProfile, DoctorSummary } from "@/types";
 
 export interface Collaborator {
   id: string;
   name: string;
   email?: string;
   phone?: string;
-  specialty?: string;
-  role?: "admin" | "editor" | "viewer";
   gender?: string;
   birthDate?: string;
   document?: string;
+  cep?: string;
+  address?: string;
+  address_number?: string;
+  address_complement?: string;
+  city?: string;
+  state?: string;
+  status?: string;
   is_doctor?: boolean;
-  crm?: string;
-  crmState?: string;
+  doctor_profile?: DoctorProfile;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface Doctor {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  specialty?: string;
-  crm?: string;
-  crmState?: string;
+export interface Doctor extends DoctorSummary {
   gender?: string;
   birthDate?: string;
   document?: string;
+  cep?: string;
+  address?: string;
+  address_number?: string;
+  address_complement?: string;
+  city?: string;
+  state?: string;
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,74 +48,98 @@ export interface CreateCollaboratorPayload {
   specialty?: string;
 }
 
+interface BackendUserRecord {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  gender?: string;
+  birth_date?: string;
+  cpf?: string;
+  cep?: string;
+  address?: string;
+  address_number?: string;
+  address_complement?: string;
+  city?: string;
+  state?: string;
+  status?: string;
+  is_doctor?: boolean;
+  doctor_profile?: DoctorProfile;
+  created_at: string;
+  updated_at: string;
+}
+
+function toCollaborator(user: BackendUserRecord): Collaborator {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    gender: user.gender,
+    birthDate: user.birth_date,
+    document: user.cpf,
+    cep: user.cep,
+    address: user.address,
+    address_number: user.address_number,
+    address_complement: user.address_complement,
+    city: user.city,
+    state: user.state,
+    status: user.status,
+    is_doctor: user.is_doctor || !!user.doctor_profile,
+    doctor_profile: user.doctor_profile || undefined,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at,
+  };
+}
+
+function toDoctor(user: BackendUserRecord): Doctor {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    gender: user.gender,
+    birthDate: user.birth_date,
+    document: user.cpf,
+    cep: user.cep,
+    address: user.address,
+    address_number: user.address_number,
+    address_complement: user.address_complement,
+    city: user.city,
+    state: user.state,
+    status: user.status,
+    doctor_profile: user.doctor_profile || undefined,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at,
+  };
+}
+
 export const collaboratorService = {
   /**
    * Busca todos os colaboradores/assistentes
    */
   async getAll(): Promise<Collaborator[]> {
-    try {
-      const response = await api.get("/users/collaborators");
-      const data = response.data.records || response.data;
-
-      return data.map((user: any) => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        specialty: user.specialty || null,
-        gender: user.gender,
-        birthDate: user.birth_date,
-        document: user.cpf,
-        is_doctor: user.is_doctor || false,
-        crm: user.crm || null,
-        crmState: user.crm_state || null,
-        role: "editor",
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
-      }));
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.get("/users/collaborators");
+    const data = getApiRecords<BackendUserRecord>(response.data);
+    return data.map(toCollaborator);
   },
 
   /**
    * Busca um colaborador específico por ID
    */
   async getById(collaboratorId: string): Promise<Collaborator | null> {
-    try {
-      const response = await api.get(`/users/one`, {
-        params: { id: collaboratorId },
-      });
-      const user = response.data;
-
-      return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        specialty: user.specialty || null,
-        gender: user.gender,
-        birthDate: user.birth_date,
-        document: user.cpf,
-        role: "editor",
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
-      };
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.get<BackendUserRecord>(`/users/one`, {
+      params: { id: collaboratorId },
+    });
+    return toCollaborator(response.data);
   },
 
   /**
    * Cria um novo colaborador
    */
   async create(payload: CreateCollaboratorPayload): Promise<Collaborator> {
-    try {
-      const response = await api.post("/users/collaborators", payload);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.post("/users/collaborators", payload);
+    return response.data;
   },
 
   /**
@@ -119,15 +149,11 @@ export const collaboratorService = {
     collaboratorId: string,
     payload: Partial<CreateCollaboratorPayload>,
   ): Promise<Collaborator> {
-    try {
-      const response = await api.patch(
-        `/users/collaborators/${collaboratorId}`,
-        payload,
-      );
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.patch(
+      `/users/collaborators/${collaboratorId}`,
+      payload,
+    );
+    return response.data;
   },
 
   /**
@@ -143,25 +169,47 @@ export const collaboratorService = {
       gender?: string;
       birth_date?: string;
       cpf?: string;
+      cep?: string;
+      address?: string;
+      address_number?: string;
+      address_complement?: string;
+      city?: string;
+      state?: string;
     },
   ): Promise<Collaborator> {
-    try {
-      const response = await api.patch(`/users/${userId}`, payload);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.patch(`/users/${userId}`, payload);
+    return response.data;
+  },
+
+  /**
+   * Alterna o status ativo/inativo de um colaborador
+   */
+  async toggleStatus(collaboratorId: string): Promise<{ status: string }> {
+    const response = await api.patch(
+      `/users/collaborators/${collaboratorId}/status`,
+    );
+    return response.data;
+  },
+
+  /**
+   * Redefine a senha de um colaborador
+   */
+  async resetPassword(
+    collaboratorId: string,
+    password: string,
+  ): Promise<{ message: string }> {
+    const response = await api.patch(
+      `/users/collaborators/${collaboratorId}/reset-password`,
+      { password },
+    );
+    return response.data;
   },
 
   /**
    * Deleta um colaborador
    */
   async delete(collaboratorId: string): Promise<void> {
-    try {
-      await api.delete(`/users/collaborators/${collaboratorId}`);
-    } catch (error) {
-      throw error;
-    }
+    await api.delete(`/users/collaborators/${collaboratorId}`);
   },
 
   /**
@@ -169,57 +217,19 @@ export const collaboratorService = {
    * O próprio administrador é excluído da lista (currentUserId).
    */
   async getDoctors(currentUserId?: string): Promise<Doctor[]> {
-    try {
-      const response = await api.get("/users?role=doctor");
-      const data = response.data.records || response.data;
+    const response = await api.get("/users/doctors");
+    const data = getApiRecords<BackendUserRecord>(response.data);
 
-      return data
-        .filter((user: any) => user.id !== currentUserId)
-        .map((user: any) => ({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          specialty: user.specialty || null,
-          crm: user.crm || null,
-          crmState: user.crm_state || null,
-          gender: user.gender,
-          birthDate: user.birth_date,
-          document: user.cpf,
-          createdAt: user.created_at,
-          updatedAt: user.updated_at,
-        }));
-    } catch (error) {
-      throw error;
-    }
+    return data.filter((user) => user.id !== currentUserId).map(toDoctor);
   },
 
   /**
    * Busca um médico específico por ID
    */
   async getDoctorById(doctorId: string): Promise<Doctor | null> {
-    try {
-      const response = await api.get(`/users/one`, {
-        params: { id: doctorId },
-      });
-      const user = response.data;
-
-      return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        specialty: user.specialty || user.doctor_profile?.specialty || null,
-        crm: user.crm || user.doctor_profile?.crm || null,
-        crmState: user.crm_state || user.doctor_profile?.crm_state || null,
-        gender: user.gender,
-        birthDate: user.birth_date,
-        document: user.cpf,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
-      };
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.get<BackendUserRecord>(`/users/one`, {
+      params: { id: doctorId },
+    });
+    return toDoctor(response.data);
   },
 };

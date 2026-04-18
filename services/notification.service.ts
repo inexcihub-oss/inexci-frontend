@@ -6,6 +6,7 @@ export interface NotificationSettings {
   email_notifications: boolean;
   sms_notifications: boolean;
   push_notifications: boolean;
+  whatsapp_notifications: boolean;
   new_surgery_request: boolean;
   status_update: boolean;
   pendencies: boolean;
@@ -17,6 +18,7 @@ export interface UpdateNotificationSettingsData {
   email_notifications?: boolean;
   sms_notifications?: boolean;
   push_notifications?: boolean;
+  whatsapp_notifications?: boolean;
   new_surgery_request?: boolean;
   status_update?: boolean;
   pendencies?: boolean;

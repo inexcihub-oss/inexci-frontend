@@ -1,35 +1,68 @@
-// User types
+// ─── Doctor Profile ───────────────────────────────────────────────────────────
+
+export interface DoctorProfile {
+  id: string;
+  user_id: string;
+  crm: string;
+  crm_state: string;
+  specialty?: string;
+  signature_url?: string;
+  clinic_name?: string;
+  clinic_cnpj?: string;
+  clinic_address?: string;
+}
+
+// ─── User types ───────────────────────────────────────────────────────────────
+
 export interface User {
   id: string;
   name: string;
   email: string;
   cpf: string;
-  accessLevel: number;
-  profile?: number;
   status: number;
   phone?: string;
-  clinic_id?: number;
-  is_admin?: boolean;
-  is_doctor?: boolean;
-  crm?: string;
-  crm_state?: string;
-  specialty?: string;
-  signature_image_url?: string;
+  role: "admin" | "collaborator";
+  account_id: string;
+  avatar_url?: string | null;
+  is_doctor: boolean;
+  doctor_profile?: DoctorProfile;
   subscription_plan_id?: string;
   admin_id?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-// Perfis de usuário
-export const UserProfiles = {
-  DOCTOR: 1,
-  COLLABORATOR: 2,
-  HOSPITAL: 3,
-  PATIENT: 4,
-  SUPPLIER: 5,
-  HEALTH_PLAN: 6,
-} as const;
+// ─── User Doctor Access ───────────────────────────────────────────────────────
+
+export interface UserDoctorAccess {
+  id: string;
+  user_id: string;
+  doctor_user_id: string;
+  status: "active" | "inactive";
+  doctor: { id: string; name: string; crm: string; specialty?: string };
+}
+
+// ─── Available Doctor ─────────────────────────────────────────────────────────
+
+export interface AvailableDoctor {
+  id: string;
+  name: string;
+  crm: string;
+  crm_state: string;
+  specialty?: string;
+}
+
+// ─── Doctor Summary (tipo canônico para médicos) ─────────────────────────────
+
+export interface DoctorSummary {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  avatarUrl?: string;
+  avatarColor?: string;
+  doctor_profile?: DoctorProfile;
+}
 
 // Auth types
 export interface LoginCredentials {
@@ -41,10 +74,11 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
-  is_doctor?: boolean;
-  crm?: string;
-  crm_state?: string;
-  specialty?: string;
+  doctor_profile?: {
+    crm: string;
+    crm_state: string;
+    specialty?: string;
+  };
   subscription_plan_id?: string;
 }
 
@@ -57,6 +91,7 @@ export interface SubscriptionPlan {
 
 export interface AuthResponse {
   access_token: string;
+  refresh_token: string;
   user: User;
 }
 

@@ -2,11 +2,7 @@
 
 import React, { useState } from "react";
 import { ConfirmReceiptModal } from "@/components/surgery-request/modals/ConfirmReceiptModal";
-
-interface FaturamentoTabProps {
-  solicitacao: any;
-  onUpdate: () => void;
-}
+import { useSolicitacao } from "@/contexts/SolicitacaoContext";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-BR", {
@@ -59,7 +55,8 @@ function safeDate(dateStr: string | null | undefined): string | null {
  *
  * Design: Figma node 1-1800
  */
-export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
+export function FaturamentoTab() {
+  const { solicitacao, onUpdate } = useSolicitacao();
   const [isConfirmReceiptOpen, setIsConfirmReceiptOpen] = useState(false);
 
   const billing = solicitacao?.billing;
@@ -124,7 +121,9 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-l border-gray-200">
-                <span className="text-xs md:text-sm text-gray-500">Valor recebido</span>
+                <span className="text-xs md:text-sm text-gray-500">
+                  Valor recebido
+                </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatCurrency(receipt.contested_received_value ?? 0)}
                 </span>
@@ -138,7 +137,9 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-l border-gray-200">
-                <span className="text-xs md:text-sm text-gray-500">Valor recebido</span>
+                <span className="text-xs md:text-sm text-gray-500">
+                  Valor recebido
+                </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatCurrency(receipt.received_value)}
                 </span>
@@ -155,7 +156,9 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-t sm:border-t-0 sm:border-l border-gray-200">
-                <span className="text-xs md:text-sm text-gray-500">Valor recebido</span>
+                <span className="text-xs md:text-sm text-gray-500">
+                  Valor recebido
+                </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatCurrency(receipt.received_value)}
                 </span>
@@ -183,7 +186,9 @@ export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
         {/* Data prevista + Valor */}
         <div className="grid grid-cols-1 sm:grid-cols-2">
           <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100">
-            <span className="text-xs md:text-sm text-gray-500">Data prevista</span>
+            <span className="text-xs md:text-sm text-gray-500">
+              Data prevista
+            </span>
             <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
               {expectedDateStr ? formatDateDisplay(expectedDateStr) : "—"}
             </span>

@@ -83,7 +83,7 @@
 
   /** Label de campo de formulário */
   .ds-label {
-    @apply block text-xs md:text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-medium text-gray-700 mb-1;
   }
 
   /** Texto de corpo padrão */
@@ -130,7 +130,7 @@
   /** Botão primário (ação principal de formulário) */
   .ds-btn-primary {
     @apply h-9 md:h-11 px-3 md:px-5 text-xs md:text-sm font-semibold rounded-xl
-           bg-teal-700 text-white hover:bg-teal-800
+           bg-primary-700 text-white hover:bg-primary-800
            transition-all duration-200
            disabled:opacity-50 disabled:cursor-not-allowed
            min-h-[36px] md:min-h-[44px] active:scale-[0.98];
@@ -158,7 +158,7 @@
   /** Botão danger */
   .ds-btn-danger {
     @apply h-9 md:h-11 px-3 md:px-5 text-xs md:text-sm font-semibold rounded-xl
-           bg-red-500 text-white hover:bg-red-600
+           bg-red-600 text-white hover:bg-red-700
            transition-all duration-200
            disabled:opacity-50 disabled:cursor-not-allowed
            min-h-[36px] md:min-h-[44px] active:scale-[0.98];
@@ -247,21 +247,6 @@
 }
 
 @layer utilities {
-  @keyframes slide-in-right {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-
-  .animate-slide-in-right {
-    animation: slide-in-right 0.3s ease-out;
-  }
-
   /* Custom scrollbar styling */
   ::-webkit-scrollbar {
     width: 8px;
@@ -333,5 +318,44 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* Bottom sheet: empurra acima da barra de navegação inferior no mobile */
+  .mobile-sheet-offset {
+    padding-bottom: calc(
+      var(--bottom-nav-height, 4rem) + env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  @media (min-width: 640px) {
+    .mobile-sheet-offset {
+      padding-bottom: 0;
+    }
+  }
+
+  /* Padding interno para conteúdo de modais não ficar coberto pela nav bar */
+  .modal-content-mobile {
+    padding-bottom: calc(
+      var(--bottom-nav-height, 4rem) + env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  @media (min-width: 640px) {
+    .modal-content-mobile {
+      padding-bottom: 0;
+    }
+  }
+
+  /* Detail sheet: posicionado com bottom-0, empurra conteúdo acima da nav */
+  .detail-sheet-mobile {
+    bottom: calc(
+      var(--bottom-nav-height, 4rem) + env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  @media (min-width: 1024px) {
+    .detail-sheet-mobile {
+      bottom: auto;
+    }
   }
 }

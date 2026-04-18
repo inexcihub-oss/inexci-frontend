@@ -9,7 +9,7 @@ export interface TussCode {
 
 export interface SurgeryRequestTussItem {
   id: string;
-  surgery_request_id: string;
+  surgery_request_id: string | number;
   tuss_code: string;
   name: string;
   quantity: number;
@@ -20,17 +20,17 @@ export interface SurgeryRequestTussItem {
 export interface SurgeryRequestProcedure extends SurgeryRequestTussItem {}
 
 export interface CreateSurgeryRequestProcedureData {
-  surgery_request_id: string;
+  surgery_request_id: string | number;
   procedures: {
     procedure_id: string;
-    tuss_code?: string;
-    name?: string;
+    tuss_code: string;
+    name: string;
     quantity: number;
   }[];
 }
 
 export interface UpdateSurgeryRequestProcedureData {
-  surgery_request_id: string;
+  surgery_request_id: string | number;
   procedures: {
     id?: string;
     procedure_id: string;
@@ -38,6 +38,14 @@ export interface UpdateSurgeryRequestProcedureData {
   }[];
 }
 
+/**
+ * Serviço de procedimentos TUSS associados a Solicitações Cirúrgicas.
+ *
+ * NOTA: Este serviço NÃO é o mesmo que procedure.service.ts.
+ * - tuss.service.ts: gerencia procedimentos vinculados a uma solicitação cirúrgica
+ *   (POST/DELETE em /surgery-requests/procedures) e busca códigos TUSS (GET /tuss).
+ * - procedure.service.ts: CRUD do catálogo de procedimentos persistidos (GET/POST/PATCH/DELETE em /procedures).
+ */
 export const tussService = {
   /**
    * Busca códigos TUSS do arquivo JSON (novo endpoint)
@@ -53,7 +61,7 @@ export const tussService = {
       }
       const response = await api.get("/tuss", { params });
       return response.data || [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao buscar códigos TUSS:", error);
       throw error;
     }
@@ -67,7 +75,7 @@ export const tussService = {
       const params = search ? { search } : {};
       const response = await api.get("/procedures", { params });
       return response.data.records || response.data || [];
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao buscar códigos TUSS:", error);
       throw error;
     }
@@ -79,7 +87,7 @@ export const tussService = {
   async addProcedures(data: CreateSurgeryRequestProcedureData): Promise<void> {
     try {
       await api.post("/surgery-requests/procedures", data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao adicionar procedimentos:", error);
       throw error;
     }
@@ -93,7 +101,7 @@ export const tussService = {
   ): Promise<void> {
     try {
       await api.post("/surgery-requests/procedures", data);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao atualizar procedimentos:", error);
       throw error;
     }
@@ -103,14 +111,14 @@ export const tussService = {
    * Remove um procedimento TUSS de uma solicitação
    */
   async removeProcedure(
-    surgeryRequestId: string,
+    surgeryRequestId: string | number,
     procedureId: string,
   ): Promise<void> {
     try {
       await api.delete(`/surgery-requests/procedures/${procedureId}`, {
         data: { surgery_request_id: surgeryRequestId },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao remover procedimento:", error);
       throw error;
     }

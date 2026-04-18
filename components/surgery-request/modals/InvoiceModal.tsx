@@ -2,13 +2,16 @@
 
 import React, { useState } from "react";
 import { X, Calendar, Loader2 } from "lucide-react";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
 
 interface InvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
 }
 
@@ -98,7 +101,7 @@ export function InvoiceModal({
         invoice_sent_at: sentAtDate.toISOString(),
         payment_deadline: paymentDeadlineISO,
         set_as_default_for_health_plan: setAsDefault || undefined,
-      } as any);
+      });
       showToast(
         "Faturamento registrado! Status alterado para Faturada.",
         "success",

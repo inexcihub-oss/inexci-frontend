@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 
@@ -12,9 +15,8 @@ type SurgeryOutcome = "realizada" | "cancelada" | "reagendada";
 interface SurgeryStatusModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
-  notifyPatient?: boolean;
 }
 
 interface UploadFile {
@@ -183,7 +185,6 @@ export function SurgeryStatusModal({
   onClose,
   solicitacao,
   onSuccess,
-  notifyPatient = false,
 }: SurgeryStatusModalProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [outcome, setOutcome] = useState<SurgeryOutcome | null>(null);
@@ -303,7 +304,6 @@ export function SurgeryStatusModal({
 
       await surgeryRequestService.markPerformed(solicitacao.id, {
         surgery_performed_at: new Date().toISOString(),
-        notify_patient: notifyPatient || undefined,
       });
 
       showToast("Cirurgia marcada como Realizada!", "success");

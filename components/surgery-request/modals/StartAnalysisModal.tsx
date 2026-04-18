@@ -10,13 +10,12 @@ import { useToast } from "@/hooks/useToast";
 interface StartAnalysisModalProps {
   isOpen: boolean;
   onClose: () => void;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onSuccess: () => void;
-  notifyPatient?: boolean;
 }
 
 /**
- * Modal "Solicitação em análise" — transição SENT (2) → IN_ANALYSIS (3).
+ * Modal "Indicar análise" — transição SENT (2) → IN_ANALYSIS (3).
  * Registra o número da solicitação na operadora e as datas de cotação.
  *
  * Referência visual: figma.com/design/OXxoQQfGpMYtBNGEMeWGUn — node 7:2273
@@ -26,7 +25,6 @@ export function StartAnalysisModal({
   onClose,
   surgeryRequestId,
   onSuccess,
-  notifyPatient = false,
 }: StartAnalysisModalProps) {
   const [requestNumber, setRequestNumber] = useState("");
   const [receivedAt, setReceivedAt] = useState("");
@@ -63,7 +61,6 @@ export function StartAnalysisModal({
       const payload: StartAnalysisPayload = {
         request_number: requestNumber.trim(),
         received_at: receivedAt,
-        notify_patient: notifyPatient || undefined,
         notes: notes.trim() || undefined,
       };
 
@@ -110,7 +107,7 @@ export function StartAnalysisModal({
         {/* Header */}
         <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
-            Solicitação em análise
+            Indicar análise
           </h2>
           <button
             onClick={handleClose}

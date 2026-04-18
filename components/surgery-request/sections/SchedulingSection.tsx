@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
+import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 
 interface SchedulingSectionProps {
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   statusNum: number;
   pendingSelectedIndex: number | null;
   onSelectDate: (index: number) => void;
@@ -61,8 +62,9 @@ export function SchedulingSection({
   onEditDateOptions,
   onReschedule,
 }: SchedulingSectionProps) {
-  const dateOptions: string[] =
-    solicitacao?.scheduling?.date_options ?? solicitacao?.date_options ?? [];
+  const dateOptions: string[] = (solicitacao?.scheduling?.date_options ??
+    solicitacao?.date_options ??
+    []) as string[];
 
   const surgeryDate: string | null =
     solicitacao?.surgery_date ??
@@ -82,7 +84,7 @@ export function SchedulingSection({
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 py-3 sm:py-4">
             <h3 className="ds-section-title">Agendamento</h3>
             {dateOptions.length > 0 && (
-              <span className="bg-[#EBF3FF] text-[#1D7AFC] text-xs font-semibold px-2 py-1 rounded-sm leading-none">
+              <span className="bg-priority-media-bg text-priority-media-text text-xs font-semibold px-2 py-1 rounded-sm leading-none">
                 Aguardando paciente escolher a melhor opção.
               </span>
             )}

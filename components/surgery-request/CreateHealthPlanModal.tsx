@@ -7,6 +7,7 @@ import {
   CreateHealthPlanPayload,
   HealthPlan,
 } from "@/services/health-plan.service";
+import { getApiErrorMessage } from "@/lib/http-error";
 
 interface CreateHealthPlanModalProps {
   isOpen: boolean;
@@ -83,12 +84,9 @@ export function CreateHealthPlanModal({
       setFormData(EMPTY_FORM);
       setEmailError("");
       onClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message;
+    } catch (err: unknown) {
       setError(
-        Array.isArray(msg)
-          ? msg.join(", ")
-          : msg || "Erro ao criar convênio. Tente novamente.",
+        getApiErrorMessage(err, "Erro ao criar convênio. Tente novamente."),
       );
     } finally {
       setLoading(false);

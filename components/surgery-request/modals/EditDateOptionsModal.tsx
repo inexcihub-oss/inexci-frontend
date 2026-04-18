@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
 
 interface EditDateOptionsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
 }
 
@@ -24,8 +27,9 @@ export function EditDateOptionsModal({
   onSuccess,
 }: EditDateOptionsModalProps) {
   const initialDates: string[] = React.useMemo(() => {
-    const opts: string[] =
-      solicitacao?.scheduling?.date_options ?? solicitacao?.date_options ?? [];
+    const opts: string[] = (solicitacao?.scheduling?.date_options ??
+      solicitacao?.date_options ??
+      []) as string[];
     // Converter ISO para datetime-local format (YYYY-MM-DDTHH:mm)
     const toLocal = (iso: string) => {
       try {

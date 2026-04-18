@@ -5,6 +5,7 @@ export { Card } from "./Card";
 export { Combobox } from "./Combobox";
 export { default as Input } from "./Input";
 export { default as Loading } from "./Loading";
+export { default as PasswordInput } from "./PasswordInput";
 export { Modal } from "./Modal";
 export { default as Select } from "./Select";
 export { default as Textarea } from "./Textarea";

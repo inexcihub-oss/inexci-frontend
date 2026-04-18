@@ -19,7 +19,7 @@ const ACTION_CONFIG: Record<
   { label: string; action: keyof PrimaryActionButtonProps } | null
 > = {
   1: { label: "Enviar Solicitação", action: "onSendRequest" },
-  2: { label: "Solicitação em Análise", action: "onStartAnalysis" },
+  2: { label: "Indicar análise", action: "onStartAnalysis" },
   3: { label: "Atualizar Autorizações", action: "onUpdateAuthorizations" },
   4: { label: "Confirmar Data", action: "onConfirmDate" },
   5: { label: "Status da Cirurgia", action: "onSurgeryStatus" },

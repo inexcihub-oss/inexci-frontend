@@ -7,14 +7,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
 import { getInitials, getDisplayName, getAvatarColor } from "@/lib/utils";
+import { uploadService } from "@/services/upload.service";
+import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
+import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
 
 interface MenuItem {
   iconSrc: string;
   label: string;
   href: string;
+  adminOnly?: boolean;
 }
 
-const menuItems: MenuItem[] = [
+const allMenuItems: MenuItem[] = [
   {
     iconSrc: "/icons/dashboard.svg",
     label: "Dashboard",
@@ -34,6 +38,25 @@ const menuItems: MenuItem[] = [
     iconSrc: "/icons/user-profile.svg",
     label: "Colaboradores",
     href: "/colaboradores",
+    adminOnly: true,
+  },
+  {
+    iconSrc: "/icons/users.svg",
+    label: "Hospitais",
+    href: "/hospitais",
+    adminOnly: true,
+  },
+  {
+    iconSrc: "/icons/document.svg",
+    label: "Convênios",
+    href: "/convenios",
+    adminOnly: true,
+  },
+  {
+    iconSrc: "/icons/dollar-cash-circle.svg",
+    label: "Fornecedores",
+    href: "/fornecedores",
+    adminOnly: true,
   },
   {
     iconSrc: "/icons/status-surgeries.svg",
@@ -53,7 +76,48 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // Resolve signed URL when user.avatar_url changes
+  useEffect(() => {
+    const raw = user?.avatar_url;
+    const userId = user?.id;
+
+    if (!raw || !userId) {
+      setAvatarUrl(null);
+      return;
+    }
+
+    // Se já é URL absoluta, usa direto e armazena no cache
+    if (raw.startsWith("http://") || raw.startsWith("https://")) {
+      setAvatarUrl(raw);
+      setAvatarCache(userId, raw, raw);
+      return;
+    }
+
+    // Verifica cache antes de chamar o backend
+    const cached = getAvatarCache(userId, raw);
+    if (cached) {
+      setAvatarUrl(cached);
+      return;
+    }
+
+    // Sem cache: busca signed URL e armazena resultado
+    uploadService
+      .getSignedUrl(raw)
+      .then((url) => {
+        setAvatarUrl(url);
+        setAvatarCache(userId, raw, url);
+      })
+      .catch(() => setAvatarUrl(null));
+  }, [user?.avatar_url, user?.id]);
+
+  // Filtrar itens do menu com base nas permissões do usuário
+  const menuItems = allMenuItems.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false;
+    return true;
+  });
 
   // Carregar estado do localStorage ou usar valor padrão
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -203,30 +267,28 @@ export default function Sidebar({
 
         {/* Bottom Section */}
         <div className="flex flex-col gap-1 px-1 pb-1">
-          {/* Notifications - Oculto temporariamente */}
-          {/* <NotificationsDropdown isCollapsed={isCollapsed} /> */}
+          {/* Notifications */}
+          <NotificationsDropdown isCollapsed={isCollapsed} />
 
           {/* Settings */}
           <Link
             href="/configuracoes"
-            className={`flex items-center gap-3 px-3 py-3 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all duration-200 min-h-[44px] ${isCollapsed ? "lg:justify-center" : ""}`}
+            className={`relative flex items-center gap-2 px-2 py-2 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px] ${isCollapsed ? "lg:justify-center" : ""}`}
             title={isCollapsed ? "Configurações" : undefined}
             onClick={onMobileClose}
           >
             <Image
               src="/icons/settings.svg"
               alt="Configurações"
-              width={24}
-              height={24}
+              width={20}
+              height={20}
               className="text-neutral-900 shrink-0"
             />
-            <span
-              className={`text-xs md:text-sm font-semibold text-neutral-900 ${
-                isCollapsed ? "lg:hidden" : ""
-              }`}
-            >
-              Configurações
-            </span>
+            {!isCollapsed && (
+              <span className="text-xs md:text-sm font-semibold text-neutral-900">
+                Configurações
+              </span>
+            )}
           </Link>
         </div>
 
@@ -240,12 +302,20 @@ export default function Sidebar({
           >
             {/* Avatar or Initials */}
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs md:text-sm font-semibold overflow-hidden shrink-0 ${getAvatarColor(
-                user?.name || "User",
-              )}`}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs md:text-sm font-semibold overflow-hidden shrink-0 ${!avatarUrl ? getAvatarColor(user?.name || "User") : ""}`}
               title={isCollapsed ? user?.name || "Usuário" : undefined}
             >
-              {getInitials(user?.name || "User")}
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt={user?.name || "Avatar"}
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                getInitials(user?.name || "User")
+              )}
             </div>
             <div
               className={`flex-1 flex flex-col min-w-0 ${
@@ -298,7 +368,9 @@ export default function Sidebar({
                     strokeLinejoin="round"
                   />
                 </svg>
-                <span className="text-xs md:text-sm text-neutral-900">Sair</span>
+                <span className="text-xs md:text-sm text-neutral-900">
+                  Sair
+                </span>
               </button>
             </div>
           )}

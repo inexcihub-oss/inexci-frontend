@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { opmeService } from "@/services/opme.service";
+import { OpmeItem } from "@/services/opme.service";
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -13,13 +14,7 @@ import {
   PackageX,
   Package,
 } from "lucide-react";
-
-interface OpmeTabProps {
-  solicitacao: any;
-  onUpdate: () => void;
-  /** Número do status atual — habilita coluna de autorização a partir do status 3 */
-  statusNum?: number;
-}
+import { useSolicitacao } from "@/contexts/SolicitacaoContext";
 
 /** Divide uma string separada por vírgula em array de itens não-vazios */
 function splitList(value?: string | null): string[] {
@@ -30,18 +25,15 @@ function splitList(value?: string | null): string[] {
     .filter(Boolean);
 }
 
-export function OpmeTab({
-  solicitacao,
-  onUpdate,
-  statusNum = 0,
-}: OpmeTabProps) {
+export function OpmeTab() {
+  const { solicitacao, statusNum, onUpdate } = useSolicitacao();
   const showAuthorizationColumn = statusNum >= 3;
   const showColorCoding = statusNum >= 4;
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
     {},
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingOpme, setEditingOpme] = useState<any>(null);
+  const [editingOpme, setEditingOpme] = useState<OpmeItem | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isSettingHasOpme, setIsSettingHasOpme] = useState(false);
@@ -51,7 +43,7 @@ export function OpmeTab({
   const hasOpme: boolean | null = solicitacao.has_opme ?? null;
   const isReadOnly = statusNum >= 2;
 
-  const handleEdit = (opme: any) => {
+  const handleEdit = (opme: OpmeItem) => {
     setEditingOpme(opme);
     setIsModalOpen(true);
   };
@@ -277,7 +269,7 @@ export function OpmeTab({
                       ))}
 
                     {/* Ações — ocultar no modo somente-leitura */}
-                    {!showAuthorizationColumn && (
+                    {!showAuthorizationColumn && !isReadOnly && (
                       <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                         <button
                           onClick={(e) => {

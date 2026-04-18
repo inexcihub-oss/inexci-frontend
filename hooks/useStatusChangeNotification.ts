@@ -3,7 +3,7 @@ import { useToast } from "./useToast";
 
 interface StatusChangeNotificationOptions {
   currentStatus: number;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onStatusChange?: (newStatus: number) => void;
 }
 

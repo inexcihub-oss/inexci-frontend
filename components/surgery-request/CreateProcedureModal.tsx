@@ -6,6 +6,7 @@ import {
   procedureService,
   CreateProcedurePayload,
 } from "@/services/procedure.service";
+import { getApiErrorMessage } from "@/lib/http-error";
 
 interface CreateProcedureModalProps {
   isOpen: boolean;
@@ -34,11 +35,13 @@ export function CreateProcedureModal({
       onSuccess(newProcedure);
       onClose();
       setName("");
-    } catch (error: any) {
-      const errorMessage =
-        error?.response?.data?.message ||
-        "Erro ao criar procedimento. Tente novamente.";
-      alert(errorMessage);
+    } catch (error: unknown) {
+      alert(
+        getApiErrorMessage(
+          error,
+          "Erro ao criar procedimento. Tente novamente.",
+        ),
+      );
     } finally {
       setLoading(false);
     }

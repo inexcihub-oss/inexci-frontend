@@ -10,12 +10,20 @@ import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
+import { GENDER_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
+import { getApiErrorMessage } from "@/lib/http-error";
+import {
+  profileSchema,
+  changePasswordSchema,
+} from "@/lib/schemas/configuracoes.schema";
 import api from "@/lib/api";
 import { userService } from "@/services/user.service";
 import { notificationService } from "@/services/notification.service";
 import { uploadService } from "@/services/upload.service";
+import { authService } from "@/services/auth.service";
+import { clearAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
+import type { SubscriptionPlan } from "@/types";
 import { removeBackground } from "@/lib/utils";
-import { UserProfiles } from "@/types";
 import {
   User,
   Camera,
@@ -23,7 +31,6 @@ import {
   CreditCard,
   Shield,
   FileSignature,
-  Check,
   Upload,
   X,
   Mail,
@@ -40,13 +47,12 @@ interface UserProfile {
   document: string;
   birthDate: string;
   gender: string;
-  // Campos específicos do médico
+  // Campos específicos do médico (lidos de doctor_profile)
   specialty?: string;
   crm?: string;
   crmState?: string;
   signatureImageUrl?: string;
-  // Campo do perfil
-  userType?: number;
+  // Flags
   isDoctor?: boolean;
 }
 
@@ -54,20 +60,12 @@ interface NotificationSettings {
   emailNotifications: boolean;
   smsNotifications: boolean;
   pushNotifications: boolean;
+  whatsappNotifications: boolean;
   newSurgeryRequest: boolean;
   statusUpdate: boolean;
   pendencies: boolean;
   expiringDocuments: boolean;
   weeklyReport: boolean;
-}
-
-interface Plan {
-  id: string;
-  name: string;
-  price: number;
-  features: string[];
-  popular?: boolean;
-  current?: boolean;
 }
 
 // Tabs da página
@@ -168,67 +166,45 @@ function NotificationItem({
 // Componente de Plan Card
 function PlanCard({
   plan,
-  onSelect,
   isCurrentPlan,
 }: {
-  plan: Plan;
-  onSelect: () => void;
+  plan: SubscriptionPlan;
   isCurrentPlan: boolean;
 }) {
   return (
     <div
       className={cn(
         "relative border rounded-2xl p-6 transition-all",
-        plan.popular
-          ? "border-primary-500 shadow-lg shadow-primary-100"
+        isCurrentPlan
+          ? "bg-primary-50 border-primary-500 shadow-lg shadow-primary-100"
           : "border-gray-200",
-        isCurrentPlan && "bg-primary-50 border-primary-500",
       )}
     >
-      {plan.popular && !isCurrentPlan && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-xs font-medium px-3 py-1 rounded-full">
-          Mais Popular
-        </span>
-      )}
       {isCurrentPlan && (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs font-medium px-3 py-1 rounded-full">
           Plano Atual
         </span>
       )}
       <h3 className="text-base font-semibold text-gray-900">{plan.name}</h3>
-      <div className="mt-2 mb-4">
-        <span className="text-3xl font-bold text-gray-900">
-          R$ {plan.price.toFixed(2).replace(".", ",")}
+      <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
+      <div className="mt-4 mb-4">
+        <span className="text-sm text-gray-700 font-medium">
+          Até {plan.max_doctors} {plan.max_doctors === 1 ? "médico" : "médicos"}
         </span>
-        <span className="text-gray-500 text-sm">/mês</span>
       </div>
-      <ul className="space-y-3 mb-6">
-        {plan.features.map((feature, index) => (
-          <li
-            key={index}
-            className="flex items-start gap-2 text-sm text-gray-600"
-          >
-            <Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-            {feature}
-          </li>
-        ))}
-      </ul>
       <Button
-        variant={
-          isCurrentPlan ? "outline" : plan.popular ? "primary" : "outline"
-        }
+        variant={isCurrentPlan ? "outline" : "primary"}
         className="w-full"
-        onClick={onSelect}
         disabled={isCurrentPlan}
       >
-        {isCurrentPlan ? "Plano Atual" : "Selecionar Plano"}
+        {isCurrentPlan ? "Plano Atual" : "Fale Conosco"}
       </Button>
     </div>
   );
 }
 
 export default function ConfiguracoesPage() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, isAdmin } = useAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const [saving, setSaving] = useState(false);
@@ -245,11 +221,13 @@ export default function ConfiguracoesPage() {
     specialty: "",
     crm: "",
     crmState: "",
-    userType: undefined,
   });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
-  const [isUploadingSignature, setIsUploadingSignature] = useState(false);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signatureDeleted, setSignatureDeleted] = useState(false);
+  const [isProcessingSignature, setIsProcessingSignature] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
@@ -259,6 +237,7 @@ export default function ConfiguracoesPage() {
     emailNotifications: true,
     smsNotifications: false,
     pushNotifications: true,
+    whatsappNotifications: true,
     newSurgeryRequest: true,
     statusUpdate: true,
     pendencies: true,
@@ -267,50 +246,8 @@ export default function ConfiguracoesPage() {
   });
 
   // Estados do plano
-  const [currentPlan, setCurrentPlan] = useState<string | null>("professional");
-
-  // Planos disponíveis
-  const plans: Plan[] = [
-    {
-      id: "starter",
-      name: "Starter",
-      price: 99.9,
-      features: [
-        "Até 50 solicitações/mês",
-        "1 usuário",
-        "Suporte por e-mail",
-        "Relatórios básicos",
-      ],
-    },
-    {
-      id: "professional",
-      name: "Professional",
-      price: 199.9,
-      popular: true,
-      features: [
-        "Até 200 solicitações/mês",
-        "5 usuários",
-        "Suporte prioritário",
-        "Relatórios avançados",
-        "Integrações",
-        "API de acesso",
-      ],
-    },
-    {
-      id: "enterprise",
-      name: "Enterprise",
-      price: 499.9,
-      features: [
-        "Solicitações ilimitadas",
-        "Usuários ilimitados",
-        "Suporte 24/7",
-        "Relatórios personalizados",
-        "Integrações avançadas",
-        "API dedicada",
-        "Gestor de conta",
-      ],
-    },
-  ];
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
 
   // Estados de segurança
   const [passwordData, setPasswordData] = useState({
@@ -325,6 +262,7 @@ export default function ConfiguracoesPage() {
       setLoadingProfile(true);
       try {
         const profileData = await userService.getProfile();
+        const dp = profileData.doctor_profile;
         setProfile({
           name: profileData.name || "",
           email: profileData.email || "",
@@ -334,32 +272,43 @@ export default function ConfiguracoesPage() {
             ? new Date(profileData.birth_date).toISOString().split("T")[0]
             : "",
           gender: profileData.gender || "",
-          specialty:
-            profileData.specialty ||
-            profileData.doctor_profile?.specialty ||
-            "",
-          crm: profileData.crm || profileData.doctor_profile?.crm || "",
-          crmState:
-            profileData.crm_state ||
-            profileData.doctor_profile?.crm_state ||
-            "",
-          signatureImageUrl:
-            profileData.signature_image_url ||
-            profileData.doctor_profile?.signature_url ||
-            "",
-          userType: profileData.profile,
+          specialty: dp?.specialty || "",
+          crm: dp?.crm || "",
+          crmState: dp?.crm_state || "",
+          signatureImageUrl: dp?.signature_url || "",
           isDoctor: profileData.is_doctor || false,
         });
         if (profileData.avatar_url) {
-          setAvatarPreview(profileData.avatar_url);
+          const url = profileData.avatar_url;
+          if (url.startsWith("http://") || url.startsWith("https://")) {
+            setAvatarPreview(url);
+          } else {
+            try {
+              const signedUrl = await uploadService.getSignedUrl(url);
+              setAvatarPreview(signedUrl);
+            } catch {
+              // ignora erro de URL assinada
+            }
+          }
         }
-        if (profileData.signature_url) {
-          setSignaturePreview(profileData.signature_url);
+        if (dp?.signature_url) {
+          const sUrl = dp.signature_url;
+          if (sUrl.startsWith("http://") || sUrl.startsWith("https://")) {
+            setSignaturePreview(sUrl);
+          } else {
+            try {
+              const signedUrl = await uploadService.getSignedUrl(sUrl);
+              setSignaturePreview(signedUrl);
+            } catch {
+              // ignora erro de URL assinada
+            }
+          }
         }
       } catch (error) {
         console.error("Erro ao carregar perfil:", error);
         // Fallback para dados do contexto
         if (user) {
+          const dp = user.doctor_profile;
           setProfile({
             name: user.name || "",
             email: user.email || "",
@@ -367,10 +316,9 @@ export default function ConfiguracoesPage() {
             document: "",
             birthDate: "",
             gender: "",
-            specialty: user.specialty || "",
-            crm: user.crm || "",
-            crmState: user.crm_state || "",
-            userType: user.profile,
+            specialty: dp?.specialty || "",
+            crm: dp?.crm || "",
+            crmState: dp?.crm_state || "",
             isDoctor: user.is_doctor || false,
           });
         }
@@ -392,6 +340,7 @@ export default function ConfiguracoesPage() {
           emailNotifications: settings.email_notifications,
           smsNotifications: settings.sms_notifications,
           pushNotifications: settings.push_notifications,
+          whatsappNotifications: settings.whatsapp_notifications,
           newSurgeryRequest: settings.new_surgery_request,
           statusUpdate: settings.status_update,
           pendencies: settings.pendencies,
@@ -408,6 +357,24 @@ export default function ConfiguracoesPage() {
     loadNotificationSettings();
   }, []);
 
+  // Carregar planos de assinatura
+  useEffect(() => {
+    const loadPlans = async () => {
+      if (!isAdmin) return;
+      setLoadingPlans(true);
+      try {
+        const data = await authService.getPlans();
+        setPlans(data);
+      } catch (error) {
+        console.error("Erro ao carregar planos:", error);
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
+
+    loadPlans();
+  }, [isAdmin]);
+
   // Handlers de upload
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -416,6 +383,7 @@ export default function ConfiguracoesPage() {
         showToast("A imagem deve ter no máximo 5MB", "error");
         return;
       }
+      setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
@@ -433,58 +401,116 @@ export default function ConfiguracoesPage() {
       showToast("A assinatura deve ter no máximo 2MB", "error");
       return;
     }
-    setIsUploadingSignature(true);
+    setIsProcessingSignature(true);
     try {
-      const file = await removeBackground(rawFile);
-      const result = await uploadService.uploadSingle(file, "signatures");
-      const { url: signedUrl, path } = result.data;
-      await userService.updateProfile({ signature_url: path });
-      setSignaturePreview(signedUrl);
-      await updateUser();
-      showToast("Assinatura salva com sucesso", "success");
+      // Remove o fundo localmente e guarda o arquivo processado.
+      // O upload e o save só acontecem ao clicar em "Salvar Alterações".
+      const processed = await removeBackground(rawFile);
+      setSignatureFile(processed);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSignaturePreview(reader.result as string);
+      };
+      reader.readAsDataURL(processed);
     } catch {
-      showToast("Erro ao salvar assinatura", "error");
+      showToast("Erro ao processar imagem da assinatura", "error");
     } finally {
-      setIsUploadingSignature(false);
+      setIsProcessingSignature(false);
       if (signatureInputRef.current) signatureInputRef.current.value = "";
     }
   };
 
-  const handleDeleteSignature = async () => {
-    setIsUploadingSignature(true);
-    try {
-      await userService.updateProfile({ signature_url: undefined });
-      setSignaturePreview(null);
-      await updateUser();
-      showToast("Assinatura removida", "success");
-    } catch {
-      showToast("Erro ao remover assinatura", "error");
-    } finally {
-      setIsUploadingSignature(false);
-    }
+  const handleDeleteSignature = () => {
+    // Apenas marca como deletada localmente.
+    // A remoção real no backend/Storage ocorre ao clicar em "Salvar Alterações".
+    setSignatureFile(null);
+    setSignaturePreview(null);
+    setSignatureDeleted(true);
   };
 
   // Salvar perfil
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
+      // 1. Se há novo avatar, fazer upload primeiro
+      let avatarUrl: string | undefined = undefined;
+      let avatarResolvedUrl: string | undefined = undefined;
+      if (avatarFile) {
+        try {
+          const result = await uploadService.uploadSingle(
+            avatarFile,
+            "avatars",
+          );
+          avatarUrl = result.data.path;
+          avatarResolvedUrl = result.data.url;
+        } catch {
+          showToast("Erro ao fazer upload do avatar", "error");
+          setSaving(false);
+          return;
+        }
+      }
+
+      // 2. Se há nova assinatura pendente, fazer upload
+      let signaturePath: string | undefined = undefined;
+      if (signatureFile) {
+        try {
+          const sigResult = await uploadService.uploadSingle(
+            signatureFile,
+            "signatures",
+          );
+          signaturePath = sigResult.data.path;
+        } catch {
+          showToast("Erro ao fazer upload da assinatura", "error");
+          setSaving(false);
+          return;
+        }
+      }
+
+      // 3. Salvar dados básicos do perfil
       await userService.updateProfile({
         name: profile.name,
         phone: profile.phone || undefined,
         document: profile.document || undefined,
         birth_date: profile.birthDate || undefined,
         gender: profile.gender || undefined,
-        specialty: profile.specialty || undefined,
-        crm: profile.crm || undefined,
-        crm_state: profile.crmState || undefined,
-        avatar_url: avatarPreview || undefined,
+        ...(avatarFile
+          ? { avatar_url: avatarUrl }
+          : { avatar_url: avatarPreview ? undefined : undefined }),
+        ...(signatureFile
+          ? { signature_url: signaturePath }
+          : signatureDeleted
+            ? { signature_url: undefined }
+            : {}),
       });
+
+      // 4. Se é médico, salvar dados profissionais (usa user.id, não doctor_profile.id)
+      if (profile.isDoctor && user?.id) {
+        await userService.updateDoctorProfile(user.id, {
+          crm: profile.crm || undefined,
+          crm_state: profile.crmState || undefined,
+          specialty: profile.specialty || undefined,
+        });
+      }
+
       await updateUser();
+      setAvatarFile(null);
+      setSignatureFile(null);
+      setSignatureDeleted(false);
+
+      // Atualiza cache do avatar após salvar
+      if (user?.id) {
+        if (!avatarPreview) {
+          // Avatar removido — limpa o cache
+          clearAvatarCache(user.id);
+        } else if (avatarUrl && avatarResolvedUrl) {
+          // Novo avatar enviado — armazena path → URL resolvida no cache
+          setAvatarCache(user.id, avatarUrl, avatarResolvedUrl);
+        }
+      }
+
       showToast("Perfil atualizado com sucesso!", "success");
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || "Erro ao atualizar perfil";
-      showToast(message, "error");
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, "Erro ao atualizar perfil"), "error");
     } finally {
       setSaving(false);
     }
@@ -498,6 +524,7 @@ export default function ConfiguracoesPage() {
         email_notifications: notifications.emailNotifications,
         sms_notifications: notifications.smsNotifications,
         push_notifications: notifications.pushNotifications,
+        whatsapp_notifications: notifications.whatsappNotifications,
         new_surgery_request: notifications.newSurgeryRequest,
         status_update: notifications.statusUpdate,
         pendencies: notifications.pendencies,
@@ -505,10 +532,11 @@ export default function ConfiguracoesPage() {
         weekly_report: notifications.weeklyReport,
       });
       showToast("Configurações de notificação atualizadas!", "success");
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || "Erro ao atualizar configurações";
-      showToast(message, "error");
+    } catch (error: unknown) {
+      showToast(
+        getApiErrorMessage(error, "Erro ao atualizar configurações"),
+        "error",
+      );
     } finally {
       setSaving(false);
     }
@@ -516,16 +544,9 @@ export default function ConfiguracoesPage() {
 
   // Alterar senha
   const handleChangePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      showToast("As senhas não coincidem", "error");
-      return;
-    }
-    if (passwordData.newPassword.length < 6) {
-      showToast("A senha deve ter pelo menos 6 caracteres", "error");
-      return;
-    }
-    if (!passwordData.currentPassword) {
-      showToast("Digite sua senha atual", "error");
+    const result = changePasswordSchema.safeParse(passwordData);
+    if (!result.success) {
+      showToast(result.error.issues[0].message, "error");
       return;
     }
     setSaving(true);
@@ -540,9 +561,8 @@ export default function ConfiguracoesPage() {
         newPassword: "",
         confirmPassword: "",
       });
-    } catch (error: any) {
-      const message = error.response?.data?.message || "Erro ao alterar senha";
-      showToast(message, "error");
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, "Erro ao alterar senha"), "error");
     } finally {
       setSaving(false);
     }
@@ -614,7 +634,10 @@ export default function ConfiguracoesPage() {
                     variant="ghost"
                     size="sm"
                     className="ml-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => setAvatarPreview(null)}
+                    onClick={() => {
+                      setAvatarPreview(null);
+                      setAvatarFile(null);
+                    }}
                   >
                     <X className="w-4 h-4 mr-2" />
                     Remover
@@ -660,9 +683,19 @@ export default function ConfiguracoesPage() {
               <Input
                 label="Telefone"
                 value={profile.phone}
-                onChange={(e) =>
-                  setProfile({ ...profile, phone: e.target.value })
-                }
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                  let masked = "";
+                  if (digits.length <= 2)
+                    masked = digits.length ? `(${digits}` : "";
+                  else if (digits.length <= 6)
+                    masked = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+                  else if (digits.length <= 10)
+                    masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+                  else
+                    masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+                  setProfile({ ...profile, phone: masked });
+                }}
                 placeholder="(00) 00000-0000"
               />
               <Input
@@ -687,12 +720,7 @@ export default function ConfiguracoesPage() {
                 onChange={(e) =>
                   setProfile({ ...profile, gender: e.target.value })
                 }
-                options={[
-                  { value: "", label: "Selecione" },
-                  { value: "M", label: "Masculino" },
-                  { value: "F", label: "Feminino" },
-                  { value: "O", label: "Outro" },
-                ]}
+                options={GENDER_OPTIONS}
               />
             </div>
           </CardContent>
@@ -733,36 +761,7 @@ export default function ConfiguracoesPage() {
                   onChange={(e) =>
                     setProfile({ ...profile, crmState: e.target.value })
                   }
-                  options={[
-                    { value: "", label: "Selecione" },
-                    { value: "AC", label: "AC" },
-                    { value: "AL", label: "AL" },
-                    { value: "AP", label: "AP" },
-                    { value: "AM", label: "AM" },
-                    { value: "BA", label: "BA" },
-                    { value: "CE", label: "CE" },
-                    { value: "DF", label: "DF" },
-                    { value: "ES", label: "ES" },
-                    { value: "GO", label: "GO" },
-                    { value: "MA", label: "MA" },
-                    { value: "MT", label: "MT" },
-                    { value: "MS", label: "MS" },
-                    { value: "MG", label: "MG" },
-                    { value: "PA", label: "PA" },
-                    { value: "PB", label: "PB" },
-                    { value: "PR", label: "PR" },
-                    { value: "PE", label: "PE" },
-                    { value: "PI", label: "PI" },
-                    { value: "RJ", label: "RJ" },
-                    { value: "RN", label: "RN" },
-                    { value: "RS", label: "RS" },
-                    { value: "RO", label: "RO" },
-                    { value: "RR", label: "RR" },
-                    { value: "SC", label: "SC" },
-                    { value: "SP", label: "SP" },
-                    { value: "SE", label: "SE" },
-                    { value: "TO", label: "TO" },
-                  ]}
+                  options={STATE_UF_OPTIONS}
                 />
               </div>
             </CardContent>
@@ -782,7 +781,7 @@ export default function ConfiguracoesPage() {
               </p>
             </CardHeader>
             <CardContent className="p-6 pt-0">
-              {isUploadingSignature ? (
+              {isProcessingSignature ? (
                 <div className="flex items-center justify-center gap-3 border-2 border-dashed border-gray-300 rounded-xl p-8">
                   <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
                   <p className="text-sm text-gray-500">
@@ -792,7 +791,7 @@ export default function ConfiguracoesPage() {
               ) : (
                 <div
                   onClick={() =>
-                    !isUploadingSignature && signatureInputRef.current?.click()
+                    !isProcessingSignature && signatureInputRef.current?.click()
                   }
                   className={cn(
                     "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
@@ -834,6 +833,15 @@ export default function ConfiguracoesPage() {
                   )}
                 </div>
               )}
+              {(signatureFile || signatureDeleted) &&
+                !isProcessingSignature && (
+                  <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                    <span>⚠</span>{" "}
+                    {signatureDeleted
+                      ? 'Remoção pendente — clique em "Salvar Alterações" para confirmar.'
+                      : 'Assinatura ainda não salva — clique em "Salvar Alterações" para confirmar.'}
+                  </p>
+                )}
               <input
                 ref={signatureInputRef}
                 type="file"
@@ -915,6 +923,18 @@ export default function ConfiguracoesPage() {
                 setNotifications({
                   ...notifications,
                   pushNotifications: checked,
+                })
+              }
+            />
+            <NotificationItem
+              icon={MessageSquare}
+              title="Notificações por WhatsApp"
+              description="Receba alertas importantes via WhatsApp"
+              checked={notifications.whatsappNotifications}
+              onChange={(checked) =>
+                setNotifications({
+                  ...notifications,
+                  whatsappNotifications: checked,
                 })
               }
             />
@@ -1001,6 +1021,8 @@ export default function ConfiguracoesPage() {
   };
 
   // Render da aba de Plano
+  const currentPlan = plans.find((p) => p.id === user?.subscription_plan_id);
+
   const renderPlanTab = () => (
     <div className="space-y-6">
       {/* Plano atual */}
@@ -1013,21 +1035,17 @@ export default function ConfiguracoesPage() {
                   Seu plano atual
                 </p>
                 <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                  {plans.find((p) => p.id === currentPlan)?.name}
+                  {currentPlan.name}
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Próxima cobrança em 15/02/2026
+                  {currentPlan.description}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-bold text-gray-900">
-                  R${" "}
-                  {plans
-                    .find((p) => p.id === currentPlan)
-                    ?.price.toFixed(2)
-                    .replace(".", ",")}
+                <p className="text-sm font-medium text-gray-700">
+                  Até {currentPlan.max_doctors}{" "}
+                  {currentPlan.max_doctors === 1 ? "médico" : "médicos"}
                 </p>
-                <p className="text-sm text-gray-500">por mês</p>
               </div>
             </div>
           </CardContent>
@@ -1037,59 +1055,48 @@ export default function ConfiguracoesPage() {
       {/* Lista de planos */}
       <div>
         <h3 className="text-base font-semibold text-gray-900 mb-4">
-          {currentPlan ? "Alterar Plano" : "Escolha seu Plano"}
+          {currentPlan ? "Planos Disponíveis" : "Escolha seu Plano"}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              isCurrentPlan={currentPlan === plan.id}
-              onSelect={() => {
-                if (currentPlan !== plan.id) {
-                  setCurrentPlan(plan.id);
-                  showToast(`Plano ${plan.name} selecionado!`, "success");
-                }
-              }}
-            />
-          ))}
-        </div>
+        {loadingPlans ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+            <span className="ml-2 text-sm text-gray-500">
+              Carregando planos...
+            </span>
+          </div>
+        ) : plans.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">
+            Nenhum plano disponível no momento.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {plans.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                isCurrentPlan={user?.subscription_plan_id === plan.id}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Histórico de pagamentos */}
+      {/* Informação de contato para alteração de plano */}
       <Card className="border border-gray-200 rounded-2xl">
-        <CardHeader className="p-6 pb-4">
-          <h3 className="text-base font-semibold text-gray-900">
-            Histórico de Pagamentos
-          </h3>
-        </CardHeader>
-        <CardContent className="p-6 pt-0">
-          <div className="space-y-3">
-            {[
-              { date: "15/01/2026", value: "R$ 199,90", status: "Pago" },
-              { date: "15/12/2025", value: "R$ 199,90", status: "Pago" },
-              { date: "15/11/2025", value: "R$ 199,90", status: "Pago" },
-            ].map((payment, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <CreditCard className="w-4 h-4 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {payment.value}
-                    </p>
-                    <p className="text-xs text-gray-500">{payment.date}</p>
-                  </div>
-                </div>
-                <span className="text-xs font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-lg">
-                  {payment.status}
-                </span>
-              </div>
-            ))}
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-100 rounded-lg">
+              <CreditCard className="w-4 h-4 text-primary-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">
+                Precisa alterar seu plano?
+              </p>
+              <p className="text-xs text-gray-500">
+                Entre em contato com nosso time comercial para alterações no seu
+                plano de assinatura.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1188,12 +1195,14 @@ export default function ConfiguracoesPage() {
                 icon={Bell}
                 label="Notificações"
               />
-              <TabButton
-                active={activeTab === "plan"}
-                onClick={() => setActiveTab("plan")}
-                icon={CreditCard}
-                label="Plano e Faturamento"
-              />
+              {isAdmin && (
+                <TabButton
+                  active={activeTab === "plan"}
+                  onClick={() => setActiveTab("plan")}
+                  icon={CreditCard}
+                  label="Plano e Faturamento"
+                />
+              )}
               <TabButton
                 active={activeTab === "security"}
                 onClick={() => setActiveTab("security")}
@@ -1207,7 +1216,7 @@ export default function ConfiguracoesPage() {
           <div className="flex-1 min-w-0">
             {activeTab === "profile" && renderProfileTab()}
             {activeTab === "notifications" && renderNotificationsTab()}
-            {activeTab === "plan" && renderPlanTab()}
+            {activeTab === "plan" && isAdmin && renderPlanTab()}
             {activeTab === "security" && renderSecurityTab()}
           </div>
         </div>

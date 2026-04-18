@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   ColumnDef,
   flexRender,
@@ -24,6 +26,7 @@ import { useDebounce } from "@/hooks";
 import { ProcedureSideSheet } from "@/components/procedures/ProcedureSideSheet";
 import { NewProcedureModelModal } from "@/components/procedures/NewProcedureModelModal";
 import { ProcedureModel } from "@/components/procedures/types";
+import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
 
@@ -33,7 +36,11 @@ function templateToModel(t: any): ProcedureModel {
   return {
     id: t.id,
     modelName: t.name,
-    procedureName: data.procedures?.[0]?.name || data.procedure_name || "—",
+    procedureName:
+      data.procedure?.name ||
+      data.procedures?.[0]?.name ||
+      data.procedure_name ||
+      "—",
     createdAt: t.created_at
       ? new Date(t.created_at).toLocaleDateString("pt-BR")
       : "—",
@@ -51,18 +58,21 @@ function templateToModel(t: any): ProcedureModel {
       manufacturers: o.manufacturers || (o.brand ? [o.brand] : []),
       suppliers: o.suppliers || (o.distributor ? [o.distributor] : []),
     })),
-    tussItems: (data.procedures || []).map((p: any, i: number) => ({
-      id: String(i),
-      code: p.tuss_code || "",
-      name: p.name || "",
-      quantity: p.quantity || 1,
-    })),
+    tussItems: (data.tuss_items || data.procedures || []).map(
+      (p: any, i: number) => ({
+        id: String(i),
+        code: p.tuss_code || "",
+        name: p.name || "",
+        quantity: p.quantity || 1,
+      }),
+    ),
     // Guarda o template_data completo para reuso
     _raw: t,
   } as ProcedureModel & { _raw: any };
 }
 
 export default function ProcedimentosPage() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [procedures, setProcedures] = useState<ProcedureModel[]>([]);
@@ -71,6 +81,8 @@ export default function ProcedimentosPage() {
     useState<ProcedureModel | null>(null);
   const [isSideSheetOpen, setIsSideSheetOpen] = useState(false);
   const [isNewModelModalOpen, setIsNewModelModalOpen] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [wizardTemplate, setWizardTemplate] = useState<any>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState({});
   const { showToast } = useToast();
@@ -93,7 +105,14 @@ export default function ProcedimentosPage() {
     setIsLoadingList(true);
     try {
       const data = await surgeryRequestService.getTemplates();
-      setProcedures(Array.isArray(data) ? data.map(templateToModel) : []);
+      const models = Array.isArray(data) ? data.map(templateToModel) : [];
+      setProcedures(models);
+      // Atualiza selectedProcedure se estiver aberto
+      setSelectedProcedure((prev) => {
+        if (!prev) return prev;
+        const updated = models.find((m) => m.id === prev.id);
+        return updated || prev;
+      });
     } catch {
       showToast("Erro ao carregar modelos", "error");
     } finally {
@@ -317,11 +336,13 @@ export default function ProcedimentosPage() {
   const handleNewModelSubmit = async (data: {
     modelName: string;
     procedureName: string;
+    procedure?: any;
   }) => {
     try {
       const created = await surgeryRequestService.createTemplate({
         name: data.modelName,
         template_data: {
+          procedure: data.procedure || null,
           procedure_name: data.procedureName,
         },
       });
@@ -337,25 +358,36 @@ export default function ProcedimentosPage() {
     <PageContainer className="border-gray-200">
       {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3 border-b border-gray-200">
-        <h1 className="text-2xl lg:text-3xl font-semibold text-black font-urbanist">
-          Procedimentos
-        </h1>
+        <h1 className="ds-page-title">Procedimentos</h1>
       </div>
 
       {/* Search + Button Bar */}
-      <div className="flex-none flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-200">
+      <div className="flex-none flex flex-wrap items-center gap-2.5 px-4 py-3 border-b border-gray-200">
         <SearchInput
           value={searchTerm}
           onChange={setSearchTerm}
           placeholder="Nome do procedimento"
-          className="w-full sm:w-80"
+          className="w-full sm:flex-1 lg:w-85 lg:flex-none"
         />
 
-        <div className="flex items-center gap-2">
+        <Button variant="outline" size="md" className="min-h-[44px] rounded-xl">
+          <Image
+            src="/icons/filter.svg"
+            alt="Filtro"
+            width={20}
+            height={20}
+            className="mr-1.5"
+          />
+          Filtro
+        </Button>
+
+        <div className="hidden sm:block w-px h-8 bg-neutral-100" />
+
+        <div className="flex items-center gap-2 flex-1 sm:flex-none">
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteClick}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 active:scale-[0.98] transition-all min-h-[44px]"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -377,6 +409,7 @@ export default function ProcedimentosPage() {
           <Button
             variant="primary"
             size="md"
+            className="flex-1 sm:flex-none min-h-[44px]"
             onClick={() => setIsNewModelModalOpen(true)}
           >
             Novo modelo
@@ -416,7 +449,7 @@ export default function ProcedimentosPage() {
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
-                        className={`text-xs text-black opacity-70 font-normal h-12 ${(header.column.columnDef.meta as any)?.className ?? ""}`}
+                        className={`text-xs text-black opacity-70 font-normal h-12 ${header.column.columnDef.meta?.className ?? ""}`}
                         style={{ width: header.getSize() }}
                       >
                         {header.isPlaceholder
@@ -440,7 +473,7 @@ export default function ProcedimentosPage() {
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className={`py-3 px-4 ${(cell.column.columnDef.meta as any)?.className ?? ""}`}
+                        className={`py-3 px-4 ${cell.column.columnDef.meta?.className ?? ""}`}
                         style={{ width: cell.column.getSize() }}
                         onClick={
                           cell.column.id === "select" ||
@@ -468,6 +501,26 @@ export default function ProcedimentosPage() {
         isOpen={isSideSheetOpen}
         onClose={handleCloseSideSheet}
         procedure={selectedProcedure}
+        onUseTemplate={(template) => {
+          setWizardTemplate(template);
+          setIsWizardOpen(true);
+        }}
+        onTemplateUpdated={loadTemplates}
+      />
+
+      {/* Create Surgery Request Wizard (from template) */}
+      <CreateSurgeryRequestWizard
+        isOpen={isWizardOpen}
+        onClose={() => {
+          setIsWizardOpen(false);
+          setWizardTemplate(null);
+        }}
+        onSuccess={() => {
+          setIsWizardOpen(false);
+          setWizardTemplate(null);
+          router.push("/solicitacoes-cirurgicas");
+        }}
+        initialTemplate={wizardTemplate}
       />
 
       {/* New Model Modal */}

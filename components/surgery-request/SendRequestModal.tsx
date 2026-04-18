@@ -3,7 +3,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { X, Download, Mail, ExternalLink, CheckCircle } from "lucide-react";
 import api from "@/lib/api";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { pendencyService } from "@/services/pendency.service";
 import { useToast } from "@/hooks/useToast";
 import { SurgeryRequestDocumentPreviewModal } from "@/components/laudo/SurgeryRequestDocumentPreviewModal";
@@ -11,9 +14,9 @@ import { SurgeryRequestDocumentPreviewModal } from "@/components/laudo/SurgeryRe
 interface SendRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
-  notifyPatient?: boolean;
+  initialValidation?: Awaited<ReturnType<typeof pendencyService.validate>>;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -31,7 +34,7 @@ export function SendRequestModal({
   onClose,
   solicitacao,
   onSuccess,
-  notifyPatient = false,
+  initialValidation,
 }: SendRequestModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [sendMethod, setSendMethod] = useState<SendMethod>(null);
@@ -47,6 +50,7 @@ export function SendRequestModal({
   const [emailMessage, setEmailMessage] = useState("");
   const [emailTags, setEmailTags] = useState<string[]>([]);
   const [emailInput, setEmailInput] = useState("");
+  const [emailFormTouched, setEmailFormTouched] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,7 +65,11 @@ export function SendRequestModal({
 
   useEffect(() => {
     if (isOpen && solicitacao?.id) {
-      loadValidation();
+      if (initialValidation) {
+        applyValidation(initialValidation);
+      } else {
+        loadValidation();
+      }
       setCurrentStep(1);
       setSendMethod(null);
       setSaveAsTemplate(false);
@@ -74,62 +82,64 @@ export function SendRequestModal({
       setEmailMessage("");
       setEmailTags([]);
       setEmailInput("");
+      setEmailFormTouched(false);
       setAttachments([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, solicitacao?.id]);
 
+  type ValidationResult = Awaited<ReturnType<typeof pendencyService.validate>>;
+
+  const applyValidation = (result: ValidationResult) => {
+    if (result.pendencies && result.pendencies.length > 0) {
+      const items: ChecklistItem[] = Object.entries(SEND_CHECKLIST_KEYS).map(
+        ([key, label]) => {
+          const found = result.pendencies.find((p) => p.key === key);
+          let isComplete = found ? found.isComplete : false;
+          if (!found && key === "hospital") {
+            isComplete = !!(
+              solicitacao.hospital_id || solicitacao.hospital?.id
+            );
+          }
+          return { key, label, isComplete, isRequired: true };
+        },
+      );
+      setChecklist(items);
+    } else {
+      setChecklist([
+        {
+          key: "hospital",
+          label: "Informações Gerais",
+          isComplete: !!(solicitacao.hospital_id || solicitacao.hospital?.id),
+          isRequired: true,
+        },
+        {
+          key: "tuss_procedures",
+          label: "Código TUSS",
+          isComplete: !!(solicitacao.tuss_items?.length > 0),
+          isRequired: true,
+        },
+        {
+          key: "opme_items",
+          label: "OPME",
+          isComplete: !!(solicitacao.opme_items?.length > 0),
+          isRequired: true,
+        },
+        {
+          key: "medical_report",
+          label: "Laudo",
+          isComplete: !!solicitacao.medical_report,
+          isRequired: true,
+        },
+      ]);
+    }
+  };
+
   const loadValidation = async () => {
     setIsLoading(true);
     try {
       const result = await pendencyService.validate(solicitacao.id);
-      if (result.pendencies && result.pendencies.length > 0) {
-        const items: ChecklistItem[] = Object.entries(SEND_CHECKLIST_KEYS).map(
-          ([key, label]) => {
-            const found = result.pendencies.find((p) => p.key === key);
-            let isComplete = found ? found.isComplete : false;
-            if (!found && key === "hospital") {
-              isComplete = !!(
-                solicitacao.hospital_id || solicitacao.hospital?.id
-              );
-            }
-            return {
-              key,
-              label,
-              isComplete,
-              isRequired: true,
-            };
-          },
-        );
-        setChecklist(items);
-      } else {
-        setChecklist([
-          {
-            key: "hospital",
-            label: "Informações Gerais",
-            isComplete: !!(solicitacao.hospital_id || solicitacao.hospital?.id),
-            isRequired: true,
-          },
-          {
-            key: "tuss_procedures",
-            label: "Código TUSS",
-            isComplete: !!(solicitacao.tuss_items?.length > 0),
-            isRequired: true,
-          },
-          {
-            key: "opme_items",
-            label: "OPME",
-            isComplete: !!(solicitacao.opme_items?.length > 0),
-            isRequired: true,
-          },
-          {
-            key: "medical_report",
-            label: "Laudo",
-            isComplete: !!solicitacao.medical_report,
-            isRequired: true,
-          },
-        ]);
-      }
+      applyValidation(result);
     } catch {
     } finally {
       setIsLoading(false);
@@ -150,21 +160,21 @@ export function SendRequestModal({
               templateName.trim() ||
               `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
             template_data: {
-              procedures: solicitacao.tuss_items,
+              procedure: solicitacao.procedure,
+              tuss_items: solicitacao.tuss_items,
               opme_items: solicitacao.opme_items,
               hospital: solicitacao.hospital,
               hospital_id: solicitacao.hospital_id,
               health_plan: solicitacao.health_plan,
               health_plan_id: solicitacao.health_plan_id,
               medical_report: solicitacao.medical_report,
-              required_documents: (solicitacao.documents || []).map(
-                (d: any) => ({
-                  type: d.type || d.document_type || "",
-                  name: d.name || d.original_name || d.type || "",
-                }),
-              ),
+              required_documents: (solicitacao.documents || []).map((d) => ({
+                type: d.key || "",
+                name: d.name || d.key || "",
+              })),
             },
           });
+          setSaveAsTemplate(false);
           showToast("Modelo salvo com sucesso!", "success");
         } catch {
           showToast("Erro ao salvar modelo", "error");
@@ -190,19 +200,11 @@ export function SendRequestModal({
   const handleDownload = async () => {
     setIsSending(true);
     try {
-      const response = await api.post(
-        `/surgery-requests/${solicitacao.id}/send`,
-        { method: "download", notify_patient: notifyPatient },
+      const response = await api.get(
+        `/surgery-requests/${solicitacao.id}/report-pdf`,
+        { responseType: "arraybuffer" },
       );
-      const base64 = response.data?.pdf;
-      if (!base64) throw new Error("PDF não gerado");
-      // Decodifica base64 → Uint8Array → Blob
-      const byteChars = atob(base64);
-      const byteNums = new Uint8Array(byteChars.length);
-      for (let i = 0; i < byteChars.length; i++) {
-        byteNums[i] = byteChars.charCodeAt(i);
-      }
-      const blob = new Blob([byteNums], { type: "application/pdf" });
+      const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -221,8 +223,8 @@ export function SendRequestModal({
 
   const handleSendEmail = async () => {
     const recipients = emailTags.join(";");
-    if (!recipients.trim()) {
-      showToast("Informe pelo menos um destinatário", "error");
+    if (!recipients.trim() || !emailSubject.trim()) {
+      setEmailFormTouched(true);
       return;
     }
     setIsSending(true);
@@ -232,7 +234,6 @@ export function SendRequestModal({
         to: recipients,
         subject: emailSubject,
         message: emailMessage,
-        notify_patient: notifyPatient,
       });
       setCurrentStep(4);
     } catch {
@@ -402,21 +403,30 @@ export function SendRequestModal({
         {/* De */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">De:</label>
-          <div className="ds-field-readonly">
-            <span className="text-xs md:text-sm text-gray-900">
-              inexci@mail.com
-            </span>
-          </div>
+          <input
+            type="text"
+            value={
+              process.env.NEXT_PUBLIC_MAIL_FROM_ADDRESS ||
+              "noreply@inexci.com.br"
+            }
+            disabled
+            readOnly
+            className="ds-input disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-100 cursor-not-allowed"
+          />
         </div>
 
         {/* Para */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">Para:</label>
-          <p className="text-xs md:text-sm text-teal-600">
-            Para incluir mais de um e-mail separe-os com ponto e vírgula (;)
+          <p className="text-xs text-gray-400">
+            Digite um e-mail e pressione Enter para adicionar
           </p>
           <div
-            className="flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white min-h-10 cursor-text"
+            className={`flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border bg-white min-h-10 cursor-text ${
+              emailFormTouched && emailTags.length === 0
+                ? "border-red-400"
+                : "border-gray-200"
+            }`}
             onClick={() => document.getElementById("send-email-input")?.focus()}
           >
             {emailTags.map((tag) => (
@@ -444,11 +454,16 @@ export function SendRequestModal({
                 if (emailInput.trim()) addEmailTag(emailInput);
               }}
               placeholder={
-                emailTags.length === 0 ? "email@convenio.com" : undefined
+                emailTags.length === 0 ? "exemplo@mail.com" : undefined
               }
               className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
             />
           </div>
+          {emailFormTouched && emailTags.length === 0 && (
+            <p className="text-xs text-red-500">
+              Informe pelo menos um destinatário
+            </p>
+          )}
         </div>
 
         {/* Assunto */}
@@ -457,9 +472,14 @@ export function SendRequestModal({
           <input
             type="text"
             value={emailSubject}
-            onChange={(e) => setEmailSubject(e.target.value)}
-            className="ds-input"
+            onChange={(e) => {
+              setEmailSubject(e.target.value);
+            }}
+            className={`ds-input ${emailFormTouched && !emailSubject.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
           />
+          {emailFormTouched && !emailSubject.trim() && (
+            <p className="text-xs text-red-500">Preencha o assunto</p>
+          )}
         </div>
 
         {/* Mensagem */}
@@ -608,7 +628,8 @@ export function SendRequestModal({
             disabled={
               (currentStep === 1 && (!canProceed() || isLoading)) ||
               (currentStep === 2 && !sendMethod) ||
-              isSending
+              (currentStep === 3 && isSending) ||
+              (currentStep !== 3 && isSending)
             }
             className="ds-btn-primary flex-1 sm:flex-none disabled:opacity-50 disabled:cursor-not-allowed"
           >

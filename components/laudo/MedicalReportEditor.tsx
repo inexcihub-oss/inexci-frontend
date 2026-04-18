@@ -10,6 +10,8 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSolicitacao } from "@/contexts/SolicitacaoContext";
 import {
   surgeryRequestService,
   ReportSection,
@@ -19,13 +21,9 @@ import { useToast } from "@/hooks/useToast";
 import { MedicalReportPreviewModal } from "@/components/laudo/MedicalReportPreviewModal";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import api from "@/lib/api";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
-
-interface MedicalReportEditorProps {
-  solicitacao: any;
-  onUpdate: () => void;
-}
 
 interface PatientFormData {
   name: string;
@@ -74,6 +72,10 @@ function buildPatientData(sol: any, parsed: any): PatientFormData {
     healthPlan:
       pd?.healthPlan ?? sol?.health_plan?.name ?? sol?.health_plan_name ?? "",
   };
+}
+
+function stripHtmlTags(html: string): string {
+  return html.replace(/<[^>]*>/g, "").trim();
 }
 
 // Máscaras de exibição (somente formatam para mostrar ao usuário)
@@ -146,10 +148,12 @@ function Spinner({
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export function MedicalReportEditor({
-  solicitacao,
-  onUpdate,
-}: MedicalReportEditorProps) {
+export function MedicalReportEditor() {
+  const { solicitacao, statusNum, onUpdate } = useSolicitacao();
+  const { user: currentUser } = useAuth();
+
+  // Laudo é editável apenas no status Pendente (1)
+  const isReadOnly = statusNum > 1;
   const router = useRouter();
 
   // ── Estado do formulário ─────────────────────────────────────────────────
@@ -180,6 +184,12 @@ export function MedicalReportEditor({
     description: "",
   });
   const [deletingSection, setDeletingSection] = useState<string | null>(null);
+  const [draggingSectionId, setDraggingSectionId] = useState<string | null>(
+    null,
+  );
+  const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(
+    null,
+  );
 
   // ── Estado de UI ─────────────────────────────────────────────────────────
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -259,7 +269,7 @@ export function MedicalReportEditor({
   // Usa exclusivamente a assinatura do médico vinculado à solicitação.
   // O backend já converte o path para URL assinada em findOne().
   useEffect(() => {
-    const doctor = (solicitacao as any)?.doctor;
+    const doctor = solicitacao?.doctor;
     const url: string | null = doctor?.signature_url ?? null;
     setSignatureUrl(url);
   }, [solicitacao]);
@@ -267,7 +277,7 @@ export function MedicalReportEditor({
   // ── Handlers de Seções ──────────────────────────────────────────────────
 
   const handleAddSection = useCallback(async () => {
-    if (!newSectionDraft.title.trim()) {
+    if (!stripHtmlTags(newSectionDraft.title)) {
       showToast("O título da seção é obrigatório", "error");
       return;
     }
@@ -301,7 +311,7 @@ export function MedicalReportEditor({
 
   const handleSaveSection = useCallback(async () => {
     if (!editingSection) return;
-    if (!sectionDraft.title.trim()) {
+    if (!stripHtmlTags(sectionDraft.title)) {
       showToast("O título da seção é obrigatório", "error");
       return;
     }
@@ -353,6 +363,30 @@ export function MedicalReportEditor({
 
       const reordered = [...sections];
       [reordered[idx], reordered[newIdx]] = [reordered[newIdx], reordered[idx]];
+      setSections(reordered);
+
+      try {
+        await surgeryRequestService.reorderSections(
+          solicitacao.id,
+          reordered.map((s) => s.id),
+        );
+      } catch {
+        showToast("Erro ao reordenar seções", "error");
+      }
+    },
+    [sections, solicitacao?.id, showToast],
+  );
+
+  const handleDragDrop = useCallback(
+    async (dragId: string, dropId: string) => {
+      if (dragId === dropId) return;
+      const dragIdx = sections.findIndex((s) => s.id === dragId);
+      const dropIdx = sections.findIndex((s) => s.id === dropId);
+      if (dragIdx === -1 || dropIdx === -1) return;
+
+      const reordered = [...sections];
+      const [moved] = reordered.splice(dragIdx, 1);
+      reordered.splice(dropIdx, 0, moved);
       setSections(reordered);
 
       try {
@@ -594,7 +628,11 @@ export function MedicalReportEditor({
         </div>
 
         {/* ─── Cards do laudo ───────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-3 w-full">
+        <div
+          className={`flex flex-col gap-3 w-full ${isReadOnly ? "opacity-70 pointer-events-none" : ""}`}
+          style={isReadOnly ? { pointerEvents: "none" } : undefined}
+        >
+          {/* Nota: pointer-events é re-habilitado abaixo nos botões de ação */}
           {/* ── IDENTIFICAÇÃO DO PACIENTE ─────────────────────────────────── */}
           <div
             id="laudo-patient-identification"
@@ -605,19 +643,21 @@ export function MedicalReportEditor({
                 IDENTIFICAÇÃO DO PACIENTE
               </h3>
               {/* Botão navega para a tela de detalhes do paciente */}
-              <button
-                onClick={() =>
-                  router.push(
-                    `/pacientes/${solicitacao?.patient?.id}?returnUrl=${encodeURIComponent(`/solicitacao/${solicitacao?.id}?tab=laudo`)}`,
-                  )
-                }
-                className={editarBtnClass}
-              >
-                Editar
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={() =>
+                    router.push(
+                      `/pacientes/${solicitacao?.patient?.id}?returnUrl=${encodeURIComponent(`/solicitacao/${solicitacao?.id}?tab=laudo`)}`,
+                    )
+                  }
+                  className={editarBtnClass}
+                >
+                  Editar
+                </button>
+              )}
             </div>
 
-            {!patientComplete && (
+            {!patientComplete && !isReadOnly && (
               <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
                 <svg
                   className="w-4 h-4 flex-shrink-0"
@@ -709,24 +749,27 @@ export function MedicalReportEditor({
               <h3 className="ds-section-title leading-tight flex-1 min-w-0">
                 SEÇÕES DO LAUDO
               </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setNewSectionDraft({ title: "", description: "" });
-                  setIsAddingSection(true);
-                }}
-                disabled={isAddingSection}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-700 rounded-xl text-xs md:text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Adicionar Seção
-              </button>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewSectionDraft({ title: "", description: "" });
+                    setIsAddingSection(true);
+                  }}
+                  disabled={isAddingSection}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-700 rounded-xl text-xs md:text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Adicionar Seção
+                </button>
+              )}
             </div>
 
             {/* Aviso: sem seções */}
             {!isLoadingSections &&
               sections.length === 0 &&
-              !isAddingSection && (
+              !isAddingSection &&
+              !isReadOnly && (
                 <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
                   <svg
                     className="w-4 h-4 flex-shrink-0"
@@ -761,25 +804,37 @@ export function MedicalReportEditor({
                   {editingSection === section.id ? (
                     /* ── Modo edição ── */
                     <>
-                      <input
-                        type="text"
-                        value={sectionDraft.title}
-                        onChange={(e) =>
-                          setSectionDraft((d) => ({
-                            ...d,
-                            title: e.target.value,
-                          }))
-                        }
-                        placeholder="Título da seção"
-                        className="ds-input"
-                      />
-                      <RichTextEditor
-                        value={sectionDraft.description}
-                        onChange={(html) =>
-                          setSectionDraft((d) => ({ ...d, description: html }))
-                        }
-                        placeholder="Descrição da seção..."
-                      />
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          Título
+                        </label>
+                        <RichTextEditor
+                          value={sectionDraft.title}
+                          onChange={(html) =>
+                            setSectionDraft((d) => ({
+                              ...d,
+                              title: html,
+                            }))
+                          }
+                          placeholder="Título da seção"
+                          minHeight="36px"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          Corpo
+                        </label>
+                        <RichTextEditor
+                          value={sectionDraft.description}
+                          onChange={(html) =>
+                            setSectionDraft((d) => ({
+                              ...d,
+                              description: html,
+                            }))
+                          }
+                          placeholder="Descrição da seção..."
+                        />
+                      </div>
                       <div className="flex items-center gap-2 justify-end">
                         <button
                           type="button"
@@ -808,77 +863,118 @@ export function MedicalReportEditor({
                     </>
                   ) : (
                     /* ── Modo visualização ── */
-                    <div className="flex gap-2">
+                    <div
+                      className={`flex gap-2 transition-colors ${
+                        dragOverSectionId === section.id &&
+                        draggingSectionId !== section.id
+                          ? "bg-teal-50 rounded-lg"
+                          : ""
+                      }`}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggingSectionId(section.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        setDragOverSectionId(section.id);
+                      }}
+                      onDragLeave={() => setDragOverSectionId(null)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragOverSectionId(null);
+                        if (draggingSectionId) {
+                          handleDragDrop(draggingSectionId, section.id);
+                        }
+                        setDraggingSectionId(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggingSectionId(null);
+                        setDragOverSectionId(null);
+                      }}
+                    >
                       {/* Controles de ordem */}
-                      <div className="flex flex-col items-center gap-0.5 pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleMoveSection(section.id, "up")}
-                          disabled={idx === 0}
-                          className="p-1 rounded hover:bg-gray-100 transition-colors disabled:opacity-30"
-                          title="Mover para cima"
-                        >
-                          <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
-                        </button>
-                        <GripVertical className="w-4 h-4 text-gray-300" />
-                        <button
-                          type="button"
-                          onClick={() => handleMoveSection(section.id, "down")}
-                          disabled={idx === sections.length - 1}
-                          className="p-1 rounded hover:bg-gray-100 transition-colors disabled:opacity-30"
-                          title="Mover para baixo"
-                        >
-                          <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                        </button>
-                      </div>
+                      {!isReadOnly && (
+                        <div className="flex flex-col items-center gap-0.5 pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveSection(section.id, "up")}
+                            disabled={idx === 0}
+                            className="p-1 rounded hover:bg-gray-100 transition-colors disabled:opacity-30"
+                            title="Mover para cima"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
+                          </button>
+                          <div className="cursor-grab active:cursor-grabbing p-0.5">
+                            <GripVertical className="w-4 h-4 text-gray-300" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleMoveSection(section.id, "down")
+                            }
+                            disabled={idx === sections.length - 1}
+                            className="p-1 rounded hover:bg-gray-100 transition-colors disabled:opacity-30"
+                            title="Mover para baixo"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                          </button>
+                        </div>
+                      )}
 
                       {/* Conteúdo */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1">
-                          <h4 className="text-sm font-semibold text-gray-900 truncate">
-                            {section.title}
-                          </h4>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleStartEditSection(section)}
-                              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
-                              title="Editar seção"
-                            >
-                              <svg
-                                className="w-3.5 h-3.5"
-                                viewBox="0 0 16 16"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
+                          <div
+                            className="font-semibold text-gray-900 break-words prose prose-sm max-w-none min-w-0"
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizeHtml(section.title),
+                            }}
+                          />
+                          {!isReadOnly && (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditSection(section)}
+                                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
+                                title="Editar seção"
                               >
-                                <path
-                                  d="M11 2l3 3-9 9H2v-3l9-9z"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSection(section.id)}
-                              disabled={deletingSection === section.id}
-                              className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-gray-400 hover:text-red-500 disabled:opacity-50"
-                              title="Remover seção"
-                            >
-                              {deletingSection === section.id ? (
-                                <Spinner className="w-3.5 h-3.5" />
-                              ) : (
-                                <Trash2 className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                          </div>
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  viewBox="0 0 16 16"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.5"
+                                >
+                                  <path
+                                    d="M11 2l3 3-9 9H2v-3l9-9z"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSection(section.id)}
+                                disabled={deletingSection === section.id}
+                                className="p-1.5 rounded-lg hover:bg-red-50 transition-colors text-gray-400 hover:text-red-500 disabled:opacity-50"
+                                title="Remover seção"
+                              >
+                                {deletingSection === section.id ? (
+                                  <Spinner className="w-3.5 h-3.5" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
+                          )}
                         </div>
                         {section.description ? (
                           <div
                             className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
                             dangerouslySetInnerHTML={{
-                              __html: section.description,
+                              __html: sanitizeHtml(section.description),
                             }}
                           />
                         ) : (
@@ -893,25 +989,33 @@ export function MedicalReportEditor({
               ))}
 
             {/* Formulário para nova seção */}
-            {isAddingSection && (
+            {isAddingSection && !isReadOnly && (
               <div className="flex flex-col gap-3 border border-teal-200 bg-teal-50/40 rounded-xl p-3">
-                <input
-                  type="text"
-                  value={newSectionDraft.title}
-                  onChange={(e) =>
-                    setNewSectionDraft((d) => ({ ...d, title: e.target.value }))
-                  }
-                  placeholder="Título da nova seção *"
-                  autoFocus
-                  className="ds-input"
-                />
-                <RichTextEditor
-                  value={newSectionDraft.description}
-                  onChange={(html) =>
-                    setNewSectionDraft((d) => ({ ...d, description: html }))
-                  }
-                  placeholder="Descrição da seção (opcional)..."
-                />
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Título *
+                  </label>
+                  <RichTextEditor
+                    value={newSectionDraft.title}
+                    onChange={(html) =>
+                      setNewSectionDraft((d) => ({ ...d, title: html }))
+                    }
+                    placeholder="Título da nova seção"
+                    minHeight="36px"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Corpo
+                  </label>
+                  <RichTextEditor
+                    value={newSectionDraft.description}
+                    onChange={(html) =>
+                      setNewSectionDraft((d) => ({ ...d, description: html }))
+                    }
+                    placeholder="Descrição da seção (opcional)..."
+                  />
+                </div>
                 <div className="flex items-center gap-2 justify-end">
                   <button
                     type="button"
@@ -927,7 +1031,9 @@ export function MedicalReportEditor({
                   <button
                     type="button"
                     onClick={handleAddSection}
-                    disabled={isSavingSection || !newSectionDraft.title.trim()}
+                    disabled={
+                      isSavingSection || !stripHtmlTags(newSectionDraft.title)
+                    }
                     className="flex items-center justify-center gap-1.5 h-8 px-3 bg-teal-700 rounded-xl text-xs font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-50"
                   >
                     {isSavingSection ? (
@@ -1013,50 +1119,54 @@ export function MedicalReportEditor({
             </h3>
 
             {/* Dropzone */}
-            <input
-              ref={imagesInputRef}
-              type="file"
-              className="hidden"
-              multiple
-              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-              onChange={handleUploadImages}
-            />
-            <button
-              type="button"
-              onClick={() => imagesInputRef.current?.click()}
-              className="flex flex-col items-center justify-center gap-2 w-full py-2 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-200 transition-colors"
-            >
-              {isUploadingImages ? (
-                <Spinner className="w-8 h-8 text-gray-400" />
-              ) : (
-                <svg
-                  className="w-8 h-8 text-gray-400"
-                  viewBox="0 0 32 32"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+            {!isReadOnly && (
+              <>
+                <input
+                  ref={imagesInputRef}
+                  type="file"
+                  className="hidden"
+                  multiple
+                  accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                  onChange={handleUploadImages}
+                />
+                <button
+                  type="button"
+                  onClick={() => imagesInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center gap-2 w-full py-2 pl-4 pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-xl cursor-pointer hover:bg-gray-200 transition-colors"
                 >
-                  <path
-                    d="M10.667 8H7.334C6.228 8 5.334 8.895 5.334 10v16c0 1.105.894 2 2 2h17.333c1.105 0 2-.895 2-2V10c0-1.105-.895-2-2-2h-3.333"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M16 4v16M12 8l4-4 4 4"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
-              <span className="text-xs md:text-sm text-gray-500 text-center">
-                {isUploadingImages
-                  ? "Enviando..."
-                  : "Clique para anexar imagens do exame (Raio-X, Ressonâncias, etc)"}
-              </span>
-            </button>
+                  {isUploadingImages ? (
+                    <Spinner className="w-8 h-8 text-gray-400" />
+                  ) : (
+                    <svg
+                      className="w-8 h-8 text-gray-400"
+                      viewBox="0 0 32 32"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M10.667 8H7.334C6.228 8 5.334 8.895 5.334 10v16c0 1.105.894 2 2 2h17.333c1.105 0 2-.895 2-2V10c0-1.105-.895-2-2-2h-3.333"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M16 4v16M12 8l4-4 4 4"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                  <span className="text-xs md:text-sm text-gray-500 text-center">
+                    {isUploadingImages
+                      ? "Enviando..."
+                      : "Clique para anexar imagens do exame (Raio-X, Ressonâncias, etc)"}
+                  </span>
+                </button>
+              </>
+            )}
 
             {/* Arquivos enviados + em envio */}
             {(imageUploadItems.length > 0 || examImages.length > 0) && (
@@ -1099,19 +1209,21 @@ export function MedicalReportEditor({
                     <div className="w-20 sm:w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
                       <div className="h-full w-full bg-teal-600 rounded-full" />
                     </div>
-                    <button
-                      onClick={() =>
-                        handleDeleteDocument(doc.id, "report_images")
-                      }
-                      disabled={isDeletingDocId === doc.id}
-                      className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
-                    >
-                      {isDeletingDocId === doc.id ? (
-                        <Spinner />
-                      ) : (
-                        <X className="w-4 h-4 text-gray-400" />
-                      )}
-                    </button>
+                    {!isReadOnly && (
+                      <button
+                        onClick={() =>
+                          handleDeleteDocument(doc.id, "report_images")
+                        }
+                        disabled={isDeletingDocId === doc.id}
+                        className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                      >
+                        {isDeletingDocId === doc.id ? (
+                          <Spinner />
+                        ) : (
+                          <X className="w-4 h-4 text-gray-400" />
+                        )}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1142,16 +1254,35 @@ export function MedicalReportEditor({
             ) : (
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full py-3 px-4 sm:pl-4 sm:pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-xl">
                 <p className="text-xs md:text-sm text-gray-500 leading-snug flex-1">
-                  Nenhuma assinatura configurada. Adicione sua assinatura nas
-                  configurações para incluí-la no laudo.
+                  {isReadOnly
+                    ? "Nenhuma assinatura registrada no momento da criação do laudo."
+                    : solicitacao?.doctor &&
+                        currentUser &&
+                        solicitacao.doctor.id !== currentUser.id
+                      ? `O médico ${solicitacao.doctor.name} ainda não possui assinatura cadastrada. Acesse o perfil dele para adicionar.`
+                      : "Nenhuma assinatura configurada. Adicione sua assinatura nas configurações para incluí-la no laudo."}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => router.push("/configuracoes")}
-                  className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-xl text-xs md:text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
-                >
-                  Adicionar assinatura
-                </button>
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        solicitacao?.doctor &&
+                        currentUser &&
+                        solicitacao.doctor.id !== currentUser.id
+                      ) {
+                        router.push(
+                          `/colaboradores/assistente/${solicitacao.doctor.id}`,
+                        );
+                      } else {
+                        router.push("/configuracoes");
+                      }
+                    }}
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-xl text-xs md:text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
+                  >
+                    Adicionar assinatura
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1161,7 +1292,10 @@ export function MedicalReportEditor({
         <hr className="border-gray-200" />
 
         {/* ─── Botões de ação ───────────────────────────────────────────────── */}
-        <div className="flex items-center justify-end gap-2 w-full flex-wrap">
+        <div
+          className="flex items-center justify-end gap-2 w-full flex-wrap"
+          style={{ opacity: 1, pointerEvents: "auto" }}
+        >
           {(() => {
             const canPreview = !!patientData.name.trim() && sections.length > 0;
             const canExport = canPreview;

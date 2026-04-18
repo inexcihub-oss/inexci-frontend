@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
 
 interface ConfirmDateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
 }
 
@@ -27,8 +30,9 @@ export function ConfirmDateModal({
   const [isSaving, setIsSaving] = useState(false);
   const { showToast } = useToast();
 
-  const dateOptions: string[] =
-    solicitacao?.scheduling?.date_options ?? solicitacao?.date_options ?? [];
+  const dateOptions: string[] = (solicitacao?.scheduling?.date_options ??
+    solicitacao?.date_options ??
+    []) as string[];
 
   const handleClose = () => {
     if (isSaving) return;

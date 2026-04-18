@@ -1,19 +1,28 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import PageContainer from "@/components/PageContainer";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { reportsService } from "@/services/reports.service";
 import type {
+  ReportFilters,
   TemporalEvolutionData,
   MonthlyEvolutionData,
   AverageCompletionTimeData,
   PendingNotificationsData,
+  DashboardData,
 } from "@/services/reports.service";
 import { STATUS_NUMBER_TO_STRING } from "@/services/surgery-request.service";
 import { formatCurrency } from "@/lib/utils";
+import {
+  DashboardFilterModal,
+  DashboardFilters,
+  DEFAULT_DASHBOARD_FILTERS,
+  countActiveDashboardFilters,
+  buildReportFilters,
+} from "@/components/dashboard/DashboardFilterModal";
 
 // ─── Constantes ─────────────────────────────────────────────────────────────
 
@@ -75,6 +84,7 @@ function KPICard({
   icon,
   trend,
   trendLabel,
+  color = "teal",
 }: {
   title: string;
   value: string | number;
@@ -82,6 +92,7 @@ function KPICard({
   icon: string;
   trend?: "up" | "down" | "neutral";
   trendLabel?: string;
+  color?: "teal" | "amber" | "green" | "blue" | "red" | "violet";
 }) {
   const trendColors = {
     up: "text-emerald-600 bg-emerald-50",
@@ -89,17 +100,35 @@ function KPICard({
     neutral: "text-gray-500 bg-gray-50",
   };
 
+  const iconBgMap = {
+    teal: "bg-teal-50",
+    amber: "bg-amber-50",
+    green: "bg-emerald-50",
+    blue: "bg-blue-50",
+    red: "bg-red-50",
+    violet: "bg-violet-50",
+  };
+
+  const iconFilterMap = {
+    teal: "[filter:invert(35%)_sepia(80%)_saturate(400%)_hue-rotate(140deg)]",
+    amber: "[filter:invert(55%)_sepia(90%)_saturate(500%)_hue-rotate(5deg)]",
+    green: "[filter:invert(45%)_sepia(70%)_saturate(500%)_hue-rotate(100deg)]",
+    blue: "[filter:invert(40%)_sepia(80%)_saturate(500%)_hue-rotate(200deg)]",
+    red: "[filter:invert(35%)_sepia(80%)_saturate(600%)_hue-rotate(330deg)]",
+    violet: "[filter:invert(40%)_sepia(60%)_saturate(500%)_hue-rotate(250deg)]",
+  };
+
   return (
     <Card className="border border-gray-200 rounded-2xl hover:shadow-md transition-shadow">
       <CardContent className="p-3.5 sm:p-4">
         <div className="flex items-start justify-between mb-3">
-          <div className="p-2 bg-gray-50 rounded-xl">
+          <div className={`p-2 rounded-xl ${iconBgMap[color]}`}>
             <Image
               src={icon}
               alt=""
               width={20}
               height={20}
-              className="opacity-70"
+              className={iconFilterMap[color]}
             />
           </div>
           {trend && trendLabel && (
@@ -620,11 +649,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
+  // ─── Filter state ────────────────────────────────────────────────────
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>(
+    DEFAULT_DASHBOARD_FILTERS,
+  );
 
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async (filters?: ReportFilters) => {
     try {
       setLoading(true);
       setError(null);
@@ -636,17 +667,32 @@ export default function DashboardPage() {
         avgTimeData,
         notificationsData,
       ] = await Promise.all([
-        reportsService.getDashboard(),
+        reportsService.getDashboard(filters).catch(
+          () =>
+            ({
+              surgery_request: {
+                total: 0,
+                total_scheduled: 0,
+                total_performed: 0,
+                total_invoiced_count: 0,
+                total_invoiced_value: 0,
+                total_received_value: 0,
+                total_by_health_plan: [],
+                total_by_status: [],
+                total_by_hospital: [],
+              },
+            }) as DashboardData,
+        ),
         reportsService
-          .getTemporalEvolution(30)
+          .getTemporalEvolution(30, filters)
           .catch(() => [] as TemporalEvolutionData[]),
         reportsService
-          .getMonthlyEvolution(6)
+          .getMonthlyEvolution(6, filters)
           .catch(() => [] as MonthlyEvolutionData[]),
         reportsService
-          .getAverageCompletionTime()
+          .getAverageCompletionTime(filters)
           .catch(() => ({ average_days: 0 }) as AverageCompletionTimeData),
-        reportsService.getPendingNotifications().catch(
+        reportsService.getPendingNotifications(filters).catch(
           () =>
             ({
               total: 0,
@@ -733,7 +779,17 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Load on mount and when filters change
+  useEffect(() => {
+    loadDashboard(buildReportFilters(dashboardFilters));
+  }, [dashboardFilters, loadDashboard]);
+
+  const activeFilterCount = useMemo(
+    () => countActiveDashboardFilters(dashboardFilters),
+    [dashboardFilters],
+  );
 
   // ─── Dados derivados ───────────────────────────────────────────────────
 
@@ -817,7 +873,9 @@ export default function DashboardPage() {
               {error || "Dados não disponíveis"}
             </p>
             <button
-              onClick={loadDashboard}
+              onClick={() =>
+                loadDashboard(buildReportFilters(dashboardFilters))
+              }
               className="px-5 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
             >
               Tentar novamente
@@ -840,37 +898,63 @@ export default function DashboardPage() {
             Visão geral das solicitações cirúrgicas
           </p>
         </div>
-        <Link
-          href="/solicitacoes-cirurgicas"
-          className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors min-h-[44px] active:scale-[0.98]"
-        >
-          <Image
-            src="/icons/grid-layout.svg"
-            alt=""
-            width={16}
-            height={16}
-            className="brightness-0 invert"
-          />
-          Ver Kanban
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className={`relative flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl border transition-colors min-h-[44px] active:scale-[0.98] ${
+              activeFilterCount > 0
+                ? "bg-teal-50 border-teal-300 text-teal-700"
+                : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <Image
+              src="/icons/filter.svg"
+              alt=""
+              width={16}
+              height={16}
+              className={activeFilterCount > 0 ? "opacity-100" : "opacity-60"}
+            />
+            <span className="hidden sm:inline">Filtros</span>
+            {activeFilterCount > 0 && (
+              <span className="flex items-center justify-center w-5 h-5 bg-teal-600 text-white text-[10px] font-bold rounded-full">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <Link
+            href="/solicitacoes-cirurgicas"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors min-h-[44px] active:scale-[0.98]"
+          >
+            <Image
+              src="/icons/grid-layout.svg"
+              alt="Ver Kanban"
+              width={16}
+              height={16}
+              className="brightness-0 invert"
+            />
+            <span className="hidden sm:inline">Ver Kanban</span>
+          </Link>
+        </div>
       </div>
 
       {/* Conteúdo scrollável */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
           {/* ── KPI Cards ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
             <KPICard
               title="Total de Solicitações"
               value={dashboard.total}
               icon="/icons/status-surgeries.svg"
               subtitle={`${activeRequests} ativas`}
+              color="teal"
             />
             <KPICard
               title="Pendentes"
               value={pendingCount}
               icon="/icons/clock.svg"
               subtitle="Aguardando envio"
+              color="amber"
             />
             <KPICard
               title="Autorizadas"
@@ -885,18 +969,21 @@ export default function DashboardPage() {
                     : "down"
               }
               trendLabel={`${dashboard.approvalRate.toFixed(0)}%`}
+              color="green"
             />
             <KPICard
               title="Realizadas"
               value={dashboard.totalDone}
               icon="/icons/checkbox.svg"
               subtitle="Cirurgias concluídas"
+              color="blue"
             />
             <KPICard
               title="Tempo Médio"
               value={`${dashboard.avgCompletionDays.toFixed(0)}d`}
               icon="/icons/alarm-clock-time.svg"
               subtitle="Envio → Finalização"
+              color="violet"
             />
             <KPICard
               title="Alertas"
@@ -907,6 +994,7 @@ export default function DashboardPage() {
               trendLabel={
                 dashboard.pendingNotifications.total > 0 ? "Atenção" : "OK"
               }
+              color="red"
             />
           </div>
 
@@ -929,7 +1017,7 @@ export default function DashboardPage() {
           </Card>
 
           {/* ── Resumo Financeiro ──────────────────────────────────── */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <FinancialKPICard
               title="Total Faturado"
               value={dashboard.totalInvoiced}
@@ -1132,6 +1220,15 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Filter Modal */}
+      <DashboardFilterModal
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        onApply={(filters) => setDashboardFilters(filters)}
+        onClear={() => setDashboardFilters(DEFAULT_DASHBOARD_FILTERS)}
+        currentFilters={dashboardFilters}
+      />
     </PageContainer>
   );
 }

@@ -1,5 +1,32 @@
 import api from "@/lib/api";
-import { SurgeryRequestStatus } from "@/types/surgery-request.types";
+import { Document } from "@/services/document.service";
+import {
+  SurgeryRequestStatus,
+  EntityRef,
+  DoctorRef,
+  PatientRef,
+  HospitalRef,
+  HealthPlanRef,
+  TussItemRef,
+  OpmeItemRef,
+  BillingInfo,
+  ReceiptInfo,
+  SchedulingInfo,
+} from "@/types/surgery-request.types";
+
+// Re-exporta sub-tipos para uso nos componentes
+export type {
+  EntityRef,
+  DoctorRef,
+  PatientRef,
+  HospitalRef,
+  HealthPlanRef,
+  TussItemRef,
+  OpmeItemRef,
+  BillingInfo,
+  ReceiptInfo,
+  SchedulingInfo,
+} from "@/types/surgery-request.types";
 
 // ── Tipos de Atividades ───────────────────────────────────────────────────────
 export interface ActivityUser {
@@ -124,9 +151,12 @@ export interface SimpleSurgeryRequestPayload {
   procedure_id: string;
   patient_id: string;
   manager_id: string;
+  doctor_id: string;
   health_plan_id?: string;
   hospital_id?: string;
-  priority: number;
+  priority: number | string;
+  template_id?: string;
+  required_documents?: Array<{ type: string; name: string }>;
 }
 
 export interface UpdateBasicDataPayload {
@@ -195,6 +225,7 @@ export interface InvoicePayload {
   invoice_protocol: string;
   invoice_value: number;
   invoice_sent_at: string;
+  payment_deadline?: string;
   set_as_default_for_health_plan?: boolean;
 }
 
@@ -223,11 +254,121 @@ export interface ClosePayload {
 export interface NotifyPayload {
   template: string;
   to?: string;
+  /** Canais a enviar (quando não informado, o backend decide) */
+  channels?: { email?: boolean; whatsapp?: boolean };
 }
 
 export interface CreateTemplatePayload {
   name: string;
   template_data: object;
+}
+
+// ─── Tipos de resposta ────────────────────────────────────────────────────────
+
+/** Registro resumido retornado na listagem (getAll) */
+export interface SurgeryRequestListItem {
+  id: number;
+  status: number;
+  protocol: string | null;
+  priority: number;
+  created_at: string;
+  deadline: string | null;
+  patient: { id: string; name: string } | null;
+  manager: { id: string; name: string } | null;
+  doctor: { id: string; name: string } | null;
+  health_plan: { id: string; name: string } | null;
+  health_plan_id?: string | null;
+  hospital: { id: string; name: string } | null;
+  hospital_id?: string | null;
+  procedure: { id: string; name: string } | null;
+  tuss_procedure: { id: string; description: string } | null;
+  procedure_name?: string;
+  pendencies_count?: number;
+  [key: string]: unknown;
+}
+
+/** Resposta paginada da listagem */
+export interface SurgeryRequestListResponse {
+  total: number;
+  records: SurgeryRequestListItem[];
+}
+
+/** Registro completo retornado pelo getById — inclui todas as relações */
+export interface SurgeryRequestDetail {
+  id: number;
+  status: number;
+  protocol: string | null;
+  priority: number;
+  created_at: string;
+  updated_at: string;
+  deadline: string | null;
+  observations: string | null;
+  procedure_name?: string;
+  // Relações tipadas
+  patient: PatientRef | null;
+  doctor: DoctorRef | null;
+  manager: EntityRef | null;
+  hospital: HospitalRef | null;
+  health_plan: HealthPlanRef | null;
+  procedure: EntityRef | null;
+  tuss_procedure: TussItemRef | null;
+  // Arrays
+  tuss_items: TussItemRef[];
+  opme_items: OpmeItemRef[];
+  documents: Document[];
+  sections: ReportSection[];
+  activities: Activity[];
+  contestations: Record<string, unknown>[];
+  pendencies: Record<string, unknown>[];
+  // Objetos complexos
+  analysis: Record<string, unknown> | null;
+  billing: BillingInfo | null;
+  receipt: ReceiptInfo | null;
+  scheduling: SchedulingInfo | null;
+  pendencies_summary: {
+    total: number;
+    completed: number;
+    pending: number;
+    waiting: number;
+    optional: number;
+    canTransition: boolean;
+  } | null;
+  // Campos primitivos adicionais usados por componentes
+  cid_id: string | null;
+  cid_description: string | null;
+  cid?: { id: string; code: string; description: string } | null;
+  health_plan_registration: string | null;
+  health_plan_type: string | null;
+  hospital_id: string | number | null;
+  health_plan_id: string | number | null;
+  has_opme: boolean | null;
+  surgery_date: string | null;
+  surgery_performed_at: string | null;
+  diagnosis: string | null;
+  medical_report: string | null;
+  patient_history: string | null;
+  [key: string]: unknown;
+}
+
+/** Resposta genérica de mutação (create/update/transition) cujo retorno geralmente não é consumido */
+export interface SurgeryRequestMutationResponse {
+  id?: string | number;
+  [key: string]: unknown;
+}
+
+/** Resposta do envio com download de PDF */
+export interface SendResponse extends SurgeryRequestMutationResponse {
+  pdf_base64?: string;
+}
+
+/** Template de solicitação salvo */
+export interface SurgeryRequestTemplate {
+  id: string;
+  name: string;
+  template_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  [key: string]: unknown;
 }
 
 // ─── Serviço ──────────────────────────────────────────────────────────────────
@@ -236,36 +377,58 @@ export const surgeryRequestService = {
   // ── Consultas ──────────────────────────────────────────────────────────────
 
   /** Busca todos os procedimentos cirúrgicos */
-  async getAll(): Promise<any> {
-    const response = await api.get("/surgery-requests");
+  async getAll(): Promise<SurgeryRequestListResponse> {
+    const response =
+      await api.get<SurgeryRequestListResponse>("/surgery-requests");
     return response.data;
   },
 
   /** Busca uma solicitação específica por ID */
-  async getById(requestId: string): Promise<any> {
-    const response = await api.get(`/surgery-requests/one?id=${requestId}`);
+  async getById(requestId: string | number): Promise<SurgeryRequestDetail> {
+    const response = await api.get<SurgeryRequestDetail>(
+      `/surgery-requests/one?id=${requestId}`,
+    );
     return response.data;
   },
 
   // ── Criação e edição básica ────────────────────────────────────────────────
 
   /** Cria uma nova solicitação cirúrgica (payload completo) */
-  async create(data: CreateSurgeryRequestPayload): Promise<any> {
+  async create(
+    data: CreateSurgeryRequestPayload,
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post("/surgery-requests", data);
     return response.data;
   },
 
   /** Cria uma nova solicitação cirúrgica simplificada */
-  async createSimple(data: SimpleSurgeryRequestPayload): Promise<any> {
+  async createSimple(
+    data: SimpleSurgeryRequestPayload,
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post("/surgery-requests", data);
     return response.data;
   },
 
+  /** Cria uma nova solicitação a partir de um template */
+  async createFromTemplate(
+    data: SimpleSurgeryRequestPayload,
+  ): Promise<SurgeryRequestMutationResponse> {
+    const response = await api.post("/surgery-requests/from-template", data);
+    return response.data;
+  },
+
+  /** Define se a solicitação possui OPME */
+  async setHasOpme(requestId: string, hasOpme: boolean): Promise<void> {
+    await api.patch(`/surgery-requests/${requestId}/has-opme`, {
+      has_opme: hasOpme,
+    });
+  },
+
   /** Atualiza dados básicos (prioridade, prazo, gestor) */
   async updateBasicData(
-    requestId: string,
+    requestId: string | number,
     data: UpdateBasicDataPayload,
-  ): Promise<any> {
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.patch(
       `/surgery-requests/${requestId}/basic`,
       data,
@@ -274,7 +437,10 @@ export const surgeryRequestService = {
   },
 
   /** Atualiza dados genéricos do procedimento (laudo, etc.) */
-  async update(requestId: string, data: any): Promise<any> {
+  async update(
+    requestId: string | number,
+    data: Record<string, unknown>,
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.put("/surgery-requests", {
       id: requestId,
       ...data,
@@ -288,7 +454,10 @@ export const surgeryRequestService = {
    * PENDING (1) → SENT (2)
    * Envia a solicitação ao convênio via e-mail ou download de PDF.
    */
-  async send(requestId: string, data: SendPayload): Promise<any> {
+  async send(
+    requestId: string | number,
+    data: SendPayload,
+  ): Promise<SendResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/send`,
       data,
@@ -297,13 +466,25 @@ export const surgeryRequestService = {
   },
 
   /**
+   * Exporta o PDF da solicitação cirúrgica sem alterar o status.
+   * Disponível para solicitações já enviadas (status ≥ 2).
+   */
+  async exportPdf(requestId: string | number): Promise<Blob> {
+    const response = await api.get(
+      `/surgery-requests/${requestId}/export-pdf`,
+      { responseType: "arraybuffer" },
+    );
+    return new Blob([response.data], { type: "application/pdf" });
+  },
+
+  /**
    * SENT (2) → IN_ANALYSIS (3)
    * Registra o início da análise pela operadora, com número e datas de cotação.
    */
   async startAnalysis(
-    requestId: string,
+    requestId: string | number,
     data: StartAnalysisPayload,
-  ): Promise<any> {
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/start-analysis`,
       data,
@@ -316,10 +497,10 @@ export const surgeryRequestService = {
    * Deve ser chamado antes de acceptAuthorization.
    */
   async authorizeQuantities(
-    surgeryRequestId: string,
-    procedures: { id: string; authorized_quantity: number }[],
-    opmeItems: { id: string; authorized_quantity: number }[],
-  ): Promise<any> {
+    surgeryRequestId: string | number,
+    procedures: { id: string | number; authorized_quantity: number }[],
+    opmeItems: { id: string | number; authorized_quantity: number }[],
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post("/surgery-requests/procedures/authorize", {
       surgery_request_id: surgeryRequestId,
       surgery_request_procedures: procedures,
@@ -333,9 +514,9 @@ export const surgeryRequestService = {
    * Aceita a autorização e propõe datas disponíveis para a cirurgia.
    */
   async acceptAuthorization(
-    requestId: string,
+    requestId: string | number,
     data: AcceptAuthorizationPayload,
-  ): Promise<any> {
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/accept-authorization`,
       data,
@@ -347,9 +528,9 @@ export const surgeryRequestService = {
    * IN_ANALYSIS (3) — mantém status, cria contestação de autorização.
    */
   async contestAuthorization(
-    requestId: string,
+    requestId: string | number,
     data: ContestAuthorizationPayload,
-  ): Promise<any> {
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/contest-authorization`,
       data,
@@ -361,7 +542,10 @@ export const surgeryRequestService = {
    * IN_SCHEDULING (4) → SCHEDULED (5)
    * Confirma a data escolhida pelo convênio.
    */
-  async confirmDate(requestId: string, data: ConfirmDatePayload): Promise<any> {
+  async confirmDate(
+    requestId: string | number,
+    data: ConfirmDatePayload,
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/confirm-date`,
       data,
@@ -373,9 +557,9 @@ export const surgeryRequestService = {
    * IN_SCHEDULING (4) — sem mudança de status, atualiza as opções de datas.
    */
   async updateDateOptions(
-    requestId: string,
+    requestId: string | number,
     data: UpdateDateOptionsPayload,
-  ): Promise<any> {
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.patch(
       `/surgery-requests/${requestId}/date-options`,
       data,
@@ -386,7 +570,10 @@ export const surgeryRequestService = {
   /**
    * SCHEDULED (5) — sem mudança de status, reagenda a cirurgia.
    */
-  async reschedule(requestId: string, data: ReschedulePayload): Promise<any> {
+  async reschedule(
+    requestId: string | number,
+    data: ReschedulePayload,
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.patch(
       `/surgery-requests/${requestId}/reschedule`,
       data,
@@ -399,9 +586,9 @@ export const surgeryRequestService = {
    * Marca a cirurgia como realizada, com data/hora da realização.
    */
   async markPerformed(
-    requestId: string,
+    requestId: string | number,
     data: MarkPerformedPayload,
-  ): Promise<any> {
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/mark-performed`,
       data,
@@ -413,7 +600,10 @@ export const surgeryRequestService = {
    * PERFORMED (6) → INVOICED (7)
    * Registra o faturamento enviado ao convênio.
    */
-  async invoice(requestId: string, data: InvoicePayload): Promise<any> {
+  async invoice(
+    requestId: string | number,
+    data: InvoicePayload,
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/invoice`,
       data,
@@ -426,9 +616,9 @@ export const surgeryRequestService = {
    * Confirma o recebimento do pagamento.
    */
   async confirmReceipt(
-    requestId: string,
+    requestId: string | number,
     data: ConfirmReceiptPayload,
-  ): Promise<any> {
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/confirm-receipt`,
       data,
@@ -440,9 +630,9 @@ export const surgeryRequestService = {
    * FINALIZED (8) — sem mudança de status, contesta o pagamento recebido.
    */
   async contestPayment(
-    requestId: string,
+    requestId: string | number,
     data: ContestPaymentPayload,
-  ): Promise<any> {
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/contest-payment`,
       data,
@@ -454,9 +644,9 @@ export const surgeryRequestService = {
    * FINALIZED (8) — edita os dados do recebimento após contestação.
    */
   async updateReceipt(
-    requestId: string,
+    requestId: string | number,
     data: UpdateReceiptPayload,
-  ): Promise<any> {
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.patch(
       `/surgery-requests/${requestId}/billing/receipt`,
       data,
@@ -468,7 +658,10 @@ export const surgeryRequestService = {
    * Qualquer status (exceto 8 - Finalizada e 9 - Encerrada) → CLOSED (9)
    * Encerra a solicitação com motivo opcional.
    */
-  async close(requestId: string, data?: ClosePayload): Promise<any> {
+  async close(
+    requestId: string | number,
+    data?: ClosePayload,
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/close`,
       data ?? {},
@@ -479,7 +672,10 @@ export const surgeryRequestService = {
   // ── Notificações e templates ───────────────────────────────────────────────
 
   /** Envia notificação por e-mail manualmente */
-  async notify(requestId: string, data: NotifyPayload): Promise<any> {
+  async notify(
+    requestId: string | number,
+    data: NotifyPayload,
+  ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post(
       `/surgery-requests/${requestId}/notify`,
       data,
@@ -488,14 +684,21 @@ export const surgeryRequestService = {
   },
 
   /** Cria um template de solicitação */
-  async createTemplate(data: CreateTemplatePayload): Promise<any> {
-    const response = await api.post("/surgery-requests/templates", data);
+  async createTemplate(
+    data: CreateTemplatePayload,
+  ): Promise<SurgeryRequestTemplate> {
+    const response = await api.post<SurgeryRequestTemplate>(
+      "/surgery-requests/templates",
+      data,
+    );
     return response.data;
   },
 
   /** Lista todos os templates salvos */
-  async getTemplates(): Promise<any> {
-    const response = await api.get("/surgery-requests/templates");
+  async getTemplates(): Promise<SurgeryRequestTemplate[]> {
+    const response = await api.get<SurgeryRequestTemplate[]>(
+      "/surgery-requests/templates",
+    );
     return response.data;
   },
 
@@ -504,16 +707,59 @@ export const surgeryRequestService = {
     await api.delete(`/surgery-requests/templates/${id}`);
   },
 
+  /** Atualiza um template de solicitação */
+  async updateTemplate(
+    id: string,
+    data: { name?: string; template_data?: object },
+  ): Promise<SurgeryRequestTemplate> {
+    const response = await api.patch<SurgeryRequestTemplate>(
+      `/surgery-requests/templates/${id}`,
+      data,
+    );
+    return response.data;
+  },
+
+  /** Incrementa o contador de uso de um template */
+  async incrementTemplateUsage(id: string): Promise<SurgeryRequestTemplate> {
+    const response = await api.post<SurgeryRequestTemplate>(
+      `/surgery-requests/templates/${id}/increment-usage`,
+    );
+    return response.data;
+  },
+
+  // ── Downloads de PDF ────────────────────────────────────────────────────
+
+  async downloadReportPdf(requestId: string | number): Promise<Blob> {
+    const response = await api.get(
+      `/surgery-requests/${requestId}/report-pdf`,
+      { responseType: "arraybuffer" },
+    );
+    return new Blob([response.data], { type: "application/pdf" });
+  },
+
+  async downloadContestAuthorizationPdf(
+    requestId: string | number,
+  ): Promise<Blob> {
+    const response = await api.get(
+      `/surgery-requests/${requestId}/contest-authorization-pdf`,
+      { responseType: "arraybuffer" },
+    );
+    return new Blob([response.data], { type: "application/pdf" });
+  },
+
   // ── Atividades ────────────────────────────────────────────────────────────
 
   /** Busca o histórico de atividades e comentários de uma solicitação */
-  async getActivities(requestId: string): Promise<Activity[]> {
+  async getActivities(requestId: string | number): Promise<Activity[]> {
     const response = await api.get(`/surgery-requests/${requestId}/activities`);
     return response.data;
   },
 
   /** Adiciona um comentário/anotação à solicitação */
-  async createActivity(requestId: string, content: string): Promise<Activity> {
+  async createActivity(
+    requestId: string | number,
+    content: string,
+  ): Promise<Activity> {
     const response = await api.post(
       `/surgery-requests/${requestId}/activities`,
       { content, type: "comment" },
@@ -524,14 +770,14 @@ export const surgeryRequestService = {
   // ── Seções do laudo ───────────────────────────────────────────────────────
 
   /** Lista todas as seções do laudo ordenadas */
-  async getSections(requestId: string): Promise<ReportSection[]> {
+  async getSections(requestId: string | number): Promise<ReportSection[]> {
     const response = await api.get(`/surgery-requests/${requestId}/sections`);
     return response.data;
   },
 
   /** Cria uma nova seção no laudo */
   async createSection(
-    requestId: string,
+    requestId: string | number,
     data: { title: string; description?: string },
   ): Promise<ReportSection> {
     const response = await api.post(
@@ -543,7 +789,7 @@ export const surgeryRequestService = {
 
   /** Atualiza título e/ou descrição de uma seção */
   async updateSection(
-    requestId: string,
+    requestId: string | number,
     sectionId: string,
     data: { title?: string; description?: string },
   ): Promise<ReportSection> {
@@ -556,7 +802,7 @@ export const surgeryRequestService = {
 
   /** Remove uma seção do laudo */
   async deleteSection(
-    requestId: string,
+    requestId: string | number,
     sectionId: string,
   ): Promise<{ deleted: boolean }> {
     const response = await api.delete(
@@ -567,7 +813,7 @@ export const surgeryRequestService = {
 
   /** Reordena as seções do laudo */
   async reorderSections(
-    requestId: string,
+    requestId: string | number,
     ids: string[],
   ): Promise<ReportSection[]> {
     const response = await api.patch(

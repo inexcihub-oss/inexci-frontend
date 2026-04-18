@@ -117,37 +117,37 @@ const priorityStyles: Record<
 > = {
   1: {
     // Baixa - Verde
-    bg: "bg-[#D4EFE0]",
-    text: "text-[#1E6F47]",
-    border: "border-[#D4EFE0]",
-    hoverBg: "hover:bg-[#C0E5D1]",
+    bg: "bg-chip-baixa-bg",
+    text: "text-chip-baixa-text",
+    border: "border-chip-baixa-bg",
+    hoverBg: "hover:bg-chip-baixa-hover",
   },
   2: {
     // Média - Azul
-    bg: "bg-[#D8E8F7]",
-    text: "text-[#1859A3]",
-    border: "border-[#D8E8F7]",
-    hoverBg: "hover:bg-[#C4DCF0]",
+    bg: "bg-chip-media-bg",
+    text: "text-chip-media-text",
+    border: "border-chip-media-bg",
+    hoverBg: "hover:bg-chip-media-hover",
   },
   3: {
     // Alta - Amarelo
-    bg: "bg-[#FFF3D6]",
-    text: "text-[#996600]",
-    border: "border-[#FFF3D6]",
-    hoverBg: "hover:bg-[#FFEEC2]",
+    bg: "bg-chip-alta-bg",
+    text: "text-chip-alta-text",
+    border: "border-chip-alta-bg",
+    hoverBg: "hover:bg-chip-alta-hover",
   },
   4: {
     // Urgente - Vermelho
-    bg: "bg-[#F4E1E3]",
-    text: "text-[#7A3B3F]",
-    border: "border-[#F4E1E3]",
-    hoverBg: "hover:bg-[#EDD4D7]",
+    bg: "bg-chip-urgente-bg",
+    text: "text-chip-urgente-text",
+    border: "border-chip-urgente-bg",
+    hoverBg: "hover:bg-chip-urgente-hover",
   },
 };
 
 interface EditablePriorityProps {
   initialValue: PriorityLevel;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onUpdate?: () => void;
 }
 
@@ -266,8 +266,8 @@ export function EditablePriority({
 }
 
 interface EditableManagerProps {
-  initialValue: { id: number; name: string } | null;
-  surgeryRequestId: string;
+  initialValue: { id: string | number; name: string } | null;
+  surgeryRequestId: string | number;
   onUpdate?: () => void;
 }
 
@@ -431,7 +431,7 @@ export function EditableManager({
 
 interface EditableDeadlineProps {
   initialValue: string | null;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onUpdate?: () => void;
 }
 

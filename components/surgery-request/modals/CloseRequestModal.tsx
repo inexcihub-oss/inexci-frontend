@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/useToast";
 interface CloseRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
-  surgeryRequestId: string;
+  surgeryRequestId: string | number;
   onSuccess: () => void;
 }
 

@@ -2,6 +2,7 @@ import api from "@/lib/api";
 
 export interface CidItem {
   id: string;
+  code: string;
   description: string;
 }
 

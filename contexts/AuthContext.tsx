@@ -15,6 +15,9 @@ import { useRouter } from "next/navigation";
 interface AuthContextData {
   user: User | null;
   loading: boolean;
+  isDoctor: boolean;
+  isAdmin: boolean;
+  accountId: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUser: () => Promise<void>;
@@ -48,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const response = await authService.login({ email, password });
         setUser(response.user);
-        router.push("/dashboard");
+        router.push("/solicitacoes-cirurgicas");
       } catch (error) {
         throw error;
       }
@@ -56,8 +59,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [router],
   );
 
-  const logout = useCallback(() => {
-    authService.logout();
+  const logout = useCallback(async () => {
+    await authService.logout();
     setUser(null);
     router.push("/login");
   }, [router]);
@@ -71,15 +74,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const isDoctor = useMemo(() => user?.is_doctor ?? false, [user]);
+  const isAdmin = useMemo(() => user?.role === "admin", [user]);
+  const accountId = useMemo(() => user?.account_id ?? null, [user]);
+
   const value = useMemo(
     () => ({
       user,
       loading,
+      isDoctor,
+      isAdmin,
+      accountId,
       login,
       logout,
       updateUser,
     }),
-    [user, loading, login, logout, updateUser],
+    [user, loading, isDoctor, isAdmin, accountId, login, logout, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

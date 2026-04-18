@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
 
 interface RescheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
 }
 

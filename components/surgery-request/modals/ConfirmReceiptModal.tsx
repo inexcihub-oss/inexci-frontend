@@ -8,7 +8,10 @@ import {
   AlertTriangle,
   Loader2,
 } from "lucide-react";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestDetail,
+} from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -18,7 +21,7 @@ type Step = 1 | 2;
 interface ConfirmReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
-  solicitacao: any;
+  solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
   /** Valor numérico para pré-preencher o campo de valor recebido (usado ao editar contestação) */
   initialReceivedValue?: number;
@@ -114,10 +117,36 @@ export function ConfirmReceiptModal({
   const [receiptNotes, setReceiptNotes] = useState("");
 
   // Etapa 2
-  const [contestFrom, setContestFrom] = useState("");
-  const [contestTo, setContestTo] = useState("");
+  const [contestToTags, setContestToTags] = useState<string[]>([]);
+  const [contestToInput, setContestToInput] = useState("");
+  const [contestFormTouched, setContestFormTouched] = useState(false);
   const [contestSubject, setContestSubject] = useState("");
   const [contestMessage, setContestMessage] = useState("");
+
+  const addContestToTag = (email: string) => {
+    const trimmed = email.trim().replace(/[;,]$/, "");
+    if (trimmed && !contestToTags.includes(trimmed)) {
+      setContestToTags((prev) => [...prev, trimmed]);
+    }
+    setContestToInput("");
+  };
+
+  const removeContestToTag = (tag: string) => {
+    setContestToTags((prev) => prev.filter((t) => t !== tag));
+  };
+
+  const handleContestToKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ";" || e.key === ",") {
+      e.preventDefault();
+      if (contestToInput.trim()) addContestToTag(contestToInput);
+    } else if (
+      e.key === "Backspace" &&
+      !contestToInput &&
+      contestToTags.length > 0
+    ) {
+      setContestToTags((prev) => prev.slice(0, -1));
+    }
+  };
 
   const [isSaving, setIsSaving] = useState(false);
   const { showToast } = useToast();
@@ -136,7 +165,7 @@ export function ConfirmReceiptModal({
 
   const canProceedStep1 = valueIsValid && receivedAt !== "";
   const canSubmitContest =
-    contestTo.trim() !== "" &&
+    contestToTags.length > 0 &&
     contestSubject.trim() !== "" &&
     contestMessage.trim() !== "";
 
@@ -154,8 +183,9 @@ export function ConfirmReceiptModal({
     setReceivedValue("");
     setReceivedAt(todayStr);
     setReceiptNotes("");
-    setContestFrom("");
-    setContestTo("");
+    setContestToTags([]);
+    setContestToInput("");
+    setContestFormTouched(false);
     setContestSubject("");
     setContestMessage("");
     onClose();
@@ -219,7 +249,7 @@ export function ConfirmReceiptModal({
       // 2. Tenta enviar o e-mail de contestação (falha não bloqueia o fluxo)
       try {
         await surgeryRequestService.contestPayment(solicitacao.id, {
-          to: contestTo.trim(),
+          to: contestToTags.join(";"),
           subject: contestSubject.trim(),
           message: contestMessage.trim(),
         });
@@ -427,30 +457,73 @@ export function ConfirmReceiptModal({
               <div className="flex flex-col gap-1">
                 <label className="ds-label mb-0">De:</label>
                 <input
-                  type="email"
-                  value={contestFrom}
-                  onChange={(e) => setContestFrom(e.target.value)}
-                  placeholder="inexci@mail.com"
-                  disabled={isSaving}
-                  className="ds-input disabled:opacity-50"
+                  type="text"
+                  value={
+                    process.env.NEXT_PUBLIC_MAIL_FROM_ADDRESS ||
+                    "noreply@inexci.com.br"
+                  }
+                  disabled
+                  readOnly
+                  className="ds-input disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-100 cursor-not-allowed"
                 />
               </div>
 
               {/* Para */}
               <div className="flex flex-col gap-1">
                 <label className="ds-label mb-0">Para:</label>
-                <p className="text-xs md:text-sm text-gray-400">
-                  Para incluir mais de um e-mail separe-os com ponto e vírgula
-                  (;)
+                <p className="text-xs text-gray-400">
+                  Digite um e-mail e pressione Enter para adicionar
                 </p>
-                <input
-                  type="text"
-                  value={contestTo}
-                  onChange={(e) => setContestTo(e.target.value)}
-                  placeholder="autorizacoes@convenio.com.br"
-                  disabled={isSaving}
-                  className="ds-input disabled:opacity-50"
-                />
+                <div
+                  className={`flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border bg-white min-h-10 cursor-text ${
+                    contestFormTouched && contestToTags.length === 0
+                      ? "border-red-400"
+                      : "border-neutral-100"
+                  }`}
+                  onClick={() =>
+                    document.getElementById("confirm-receipt-to-input")?.focus()
+                  }
+                >
+                  {contestToTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeContestToTag(tag)}
+                        disabled={isSaving}
+                        className="text-gray-500 hover:text-gray-700 disabled:cursor-not-allowed"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    id="confirm-receipt-to-input"
+                    type="text"
+                    value={contestToInput}
+                    onChange={(e) => setContestToInput(e.target.value)}
+                    onKeyDown={handleContestToKeyDown}
+                    onBlur={() => {
+                      if (contestToInput.trim())
+                        addContestToTag(contestToInput);
+                    }}
+                    placeholder={
+                      contestToTags.length === 0
+                        ? "exemplo@mail.com"
+                        : undefined
+                    }
+                    disabled={isSaving}
+                    className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400 disabled:cursor-not-allowed"
+                  />
+                </div>
+                {contestFormTouched && contestToTags.length === 0 && (
+                  <p className="text-xs text-red-500">
+                    Informe pelo menos um destinatário
+                  </p>
+                )}
               </div>
 
               {/* Assunto */}
@@ -461,8 +534,11 @@ export function ConfirmReceiptModal({
                   value={contestSubject}
                   onChange={(e) => setContestSubject(e.target.value)}
                   disabled={isSaving}
-                  className="ds-input disabled:opacity-50"
+                  className={`ds-input disabled:opacity-50 ${contestFormTouched && !contestSubject.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
                 />
+                {contestFormTouched && !contestSubject.trim() && (
+                  <p className="text-xs text-red-500">Preencha o assunto</p>
+                )}
               </div>
 
               {/* Mensagem */}
@@ -508,8 +584,14 @@ export function ConfirmReceiptModal({
                 Voltar
               </button>
               <button
-                onClick={handleSubmitContest}
-                disabled={!canSubmitContest || isSaving}
+                onClick={() => {
+                  if (!canSubmitContest) {
+                    setContestFormTouched(true);
+                    return;
+                  }
+                  handleSubmitContest();
+                }}
+                disabled={isSaving}
                 className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}

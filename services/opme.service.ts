@@ -2,7 +2,7 @@ import api from "@/lib/api";
 
 export interface OpmeItem {
   id: string;
-  surgery_request_id: string;
+  surgery_request_id: string | number;
   name: string;
   brand?: string;
   distributor?: string;
@@ -12,7 +12,7 @@ export interface OpmeItem {
 }
 
 export interface CreateOpmeData {
-  surgery_request_id: string;
+  surgery_request_id: string | number;
   name: string;
   brand?: string;
   distributor?: string;
@@ -35,7 +35,7 @@ export const opmeService = {
     try {
       const response = await api.post("/surgery-requests/opme", data);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao adicionar OPME:", error);
       throw error;
     }
@@ -48,7 +48,7 @@ export const opmeService = {
     try {
       const response = await api.put("/surgery-requests/opme", data);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao atualizar OPME:", error);
       throw error;
     }
@@ -57,12 +57,12 @@ export const opmeService = {
   /**
    * Remove um item OPME
    */
-  async delete(id: string, surgeryRequestId: string): Promise<void> {
+  async delete(id: string, surgeryRequestId: string | number): Promise<void> {
     try {
       await api.delete(`/surgery-requests/opme/${id}`, {
         data: { surgery_request_id: surgeryRequestId },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao remover OPME:", error);
       throw error;
     }
@@ -73,12 +73,12 @@ export const opmeService = {
    * true  = utiliza OPME (itens devem ser cadastrados)
    * false = não utiliza OPME (pendência dispensada)
    */
-  async setHasOpme(surgeryRequestId: string, hasOpme: boolean): Promise<void> {
+  async setHasOpme(surgeryRequestId: string | number, hasOpme: boolean): Promise<void> {
     try {
       await api.patch(`/surgery-requests/${surgeryRequestId}/has-opme`, {
         has_opme: hasOpme,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao definir status de OPME:", error);
       throw error;
     }

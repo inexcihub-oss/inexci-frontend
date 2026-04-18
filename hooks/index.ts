@@ -6,3 +6,4 @@ export {
   useStatusChangeNotification,
   getStatusLabel,
 } from "./useStatusChangeNotification";
+export { useSwipeToClose } from "./useSwipeToClose";

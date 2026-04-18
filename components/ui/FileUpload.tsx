@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Upload, X, File, Loader2 } from "lucide-react";
 import { uploadService } from "@/services/upload.service";
+import { getApiErrorMessage } from "@/lib/http-error";
 import { useToast } from "@/hooks/useToast";
 
 interface FileUploadProps {
@@ -99,12 +100,8 @@ export function FileUpload({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Erro ao fazer upload";
-      showToast(errorMessage, "error");
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, "Erro ao fazer upload"), "error");
     } finally {
       setUploading(false);
     }

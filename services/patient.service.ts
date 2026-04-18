@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import { getApiRecords } from "@/lib/api-response";
 
 export interface Patient {
   id: string;
@@ -47,43 +48,63 @@ export interface CreatePatientPayload extends UpdatePatientPayload {
   name: string;
 }
 
+interface BackendPatient {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  cpf?: string;
+  birth_date?: string | Date;
+  gender?: string;
+  address?: string;
+  address_number?: string;
+  address_complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  health_plan_id?: string;
+  health_plan_number?: string;
+  health_plan_type?: string;
+  medical_notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const patientService = {
   /**
    * Busca todos os pacientes
    */
   async getAll(): Promise<Patient[]> {
-    try {
-      const response = await api.get("/patients");
-      const data = response.data.records || response.data;
-      return data.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        email: p.email,
-        phone: p.phone,
-        cpf: p.cpf,
-        birth_date: p.birth_date
-          ? typeof p.birth_date === "string"
-            ? p.birth_date.substring(0, 10)
-            : new Date(p.birth_date).toISOString().substring(0, 10)
-          : undefined,
-        gender: p.gender,
-        address: p.address,
-        address_number: p.address_number,
-        address_complement: p.address_complement,
-        neighborhood: p.neighborhood,
-        city: p.city,
-        state: p.state,
-        zip_code: p.zip_code,
-        health_plan_id: p.health_plan_id,
-        health_plan_number: p.health_plan_number,
-        health_plan_type: p.health_plan_type,
-        medical_notes: p.medical_notes,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      }));
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.get("/patients");
+    const data = getApiRecords<BackendPatient>(response.data);
+
+    return data.map((p) => ({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      phone: p.phone,
+      cpf: p.cpf,
+      birth_date: p.birth_date
+        ? typeof p.birth_date === "string"
+          ? p.birth_date.substring(0, 10)
+          : new Date(p.birth_date).toISOString().substring(0, 10)
+        : undefined,
+      gender: p.gender,
+      address: p.address,
+      address_number: p.address_number,
+      address_complement: p.address_complement,
+      neighborhood: p.neighborhood,
+      city: p.city,
+      state: p.state,
+      zip_code: p.zip_code,
+      health_plan_id: p.health_plan_id,
+      health_plan_number: p.health_plan_number,
+      health_plan_type: p.health_plan_type,
+      medical_notes: p.medical_notes,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+    }));
   },
 
   /**
@@ -92,12 +113,38 @@ export const patientService = {
    */
   async getById(patientId: string): Promise<Patient | null> {
     try {
-      const allPatients = await this.getAll();
-      return (
-        allPatients.find((p) => String(p.id) === String(patientId)) || null
-      );
-    } catch (error) {
-      throw error;
+      const response = await api.get("/patients");
+      const data = getApiRecords<BackendPatient>(response.data);
+      const patient = data.find((p) => String(p.id) === String(patientId));
+      if (!patient) return null;
+      return {
+        id: patient.id,
+        name: patient.name,
+        email: patient.email,
+        phone: patient.phone,
+        cpf: patient.cpf,
+        birth_date: patient.birth_date
+          ? typeof patient.birth_date === "string"
+            ? patient.birth_date.substring(0, 10)
+            : new Date(patient.birth_date).toISOString().substring(0, 10)
+          : undefined,
+        gender: patient.gender,
+        address: patient.address,
+        address_number: patient.address_number,
+        address_complement: patient.address_complement,
+        neighborhood: patient.neighborhood,
+        city: patient.city,
+        state: patient.state,
+        zip_code: patient.zip_code,
+        health_plan_id: patient.health_plan_id,
+        health_plan_number: patient.health_plan_number,
+        health_plan_type: patient.health_plan_type,
+        medical_notes: patient.medical_notes,
+        createdAt: patient.created_at,
+        updatedAt: patient.updated_at,
+      };
+    } catch {
+      return null;
     }
   },
 
@@ -105,12 +152,8 @@ export const patientService = {
    * Cria um novo paciente
    */
   async create(payload: CreatePatientPayload): Promise<Patient> {
-    try {
-      const response = await api.post("/patients", payload);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.post("/patients", payload);
+    return response.data;
   },
 
   /**
@@ -120,22 +163,14 @@ export const patientService = {
     patientId: string,
     payload: UpdatePatientPayload,
   ): Promise<Patient> {
-    try {
-      const response = await api.patch(`/patients/${patientId}`, payload);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.patch(`/patients/${patientId}`, payload);
+    return response.data;
   },
 
   /**
    * Deleta um paciente
    */
   async delete(patientId: string): Promise<void> {
-    try {
-      await api.delete(`/patients/${patientId}`);
-    } catch (error) {
-      throw error;
-    }
+    await api.delete(`/patients/${patientId}`);
   },
 };
