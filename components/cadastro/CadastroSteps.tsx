@@ -6,35 +6,8 @@ import { PasswordInput } from "@/components/ui";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
-export const brazilianStates = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
-];
+/** @deprecated Use BRAZILIAN_STATES from @/lib/options */
+export { BRAZILIAN_STATES as brazilianStates } from "@/lib/options";
 
 export const PLAN_META: Record<
   string,
@@ -292,7 +265,7 @@ export function Step2Profile({ data, onChange }: Step2Props) {
               onChange={(e) => onChange("crmState", e.target.value)}
               options={[
                 { value: "", label: "UF" },
-                ...brazilianStates.map((uf) => ({ value: uf, label: uf })),
+                ...BRAZILIAN_STATES.map((uf) => ({ value: uf, label: uf })),
               ]}
               className="min-h-[42px] bg-white"
             />

@@ -83,6 +83,7 @@ function KPICard({
   icon,
   trend,
   trendLabel,
+  color = "teal",
 }: {
   title: string;
   value: string | number;
@@ -90,6 +91,7 @@ function KPICard({
   icon: string;
   trend?: "up" | "down" | "neutral";
   trendLabel?: string;
+  color?: "teal" | "amber" | "green" | "blue" | "red" | "violet";
 }) {
   const trendColors = {
     up: "text-emerald-600 bg-emerald-50",
@@ -97,17 +99,35 @@ function KPICard({
     neutral: "text-gray-500 bg-gray-50",
   };
 
+  const iconBgMap = {
+    teal: "bg-teal-50",
+    amber: "bg-amber-50",
+    green: "bg-emerald-50",
+    blue: "bg-blue-50",
+    red: "bg-red-50",
+    violet: "bg-violet-50",
+  };
+
+  const iconFilterMap = {
+    teal: "[filter:invert(35%)_sepia(80%)_saturate(400%)_hue-rotate(140deg)]",
+    amber: "[filter:invert(55%)_sepia(90%)_saturate(500%)_hue-rotate(5deg)]",
+    green: "[filter:invert(45%)_sepia(70%)_saturate(500%)_hue-rotate(100deg)]",
+    blue: "[filter:invert(40%)_sepia(80%)_saturate(500%)_hue-rotate(200deg)]",
+    red: "[filter:invert(35%)_sepia(80%)_saturate(600%)_hue-rotate(330deg)]",
+    violet: "[filter:invert(40%)_sepia(60%)_saturate(500%)_hue-rotate(250deg)]",
+  };
+
   return (
     <Card className="border border-gray-200 rounded-2xl hover:shadow-md transition-shadow">
       <CardContent className="p-3.5 sm:p-4">
         <div className="flex items-start justify-between mb-3">
-          <div className="p-2 bg-gray-50 rounded-xl">
+          <div className={`p-2 rounded-xl ${iconBgMap[color]}`}>
             <Image
               src={icon}
               alt=""
               width={20}
               height={20}
-              className="opacity-70"
+              className={iconFilterMap[color]}
             />
           </div>
           {trend && trendLabel && (
@@ -926,12 +946,14 @@ export default function DashboardPage() {
               value={dashboard.total}
               icon="/icons/status-surgeries.svg"
               subtitle={`${activeRequests} ativas`}
+              color="teal"
             />
             <KPICard
               title="Pendentes"
               value={pendingCount}
               icon="/icons/clock.svg"
               subtitle="Aguardando envio"
+              color="amber"
             />
             <KPICard
               title="Autorizadas"
@@ -946,18 +968,21 @@ export default function DashboardPage() {
                     : "down"
               }
               trendLabel={`${dashboard.approvalRate.toFixed(0)}%`}
+              color="green"
             />
             <KPICard
               title="Realizadas"
               value={dashboard.totalDone}
               icon="/icons/checkbox.svg"
               subtitle="Cirurgias concluídas"
+              color="blue"
             />
             <KPICard
               title="Tempo Médio"
               value={`${dashboard.avgCompletionDays.toFixed(0)}d`}
               icon="/icons/alarm-clock-time.svg"
               subtitle="Envio → Finalização"
+              color="violet"
             />
             <KPICard
               title="Alertas"
@@ -968,6 +993,7 @@ export default function DashboardPage() {
               trendLabel={
                 dashboard.pendingNotifications.total > 0 ? "Atenção" : "OK"
               }
+              color="red"
             />
           </div>
 

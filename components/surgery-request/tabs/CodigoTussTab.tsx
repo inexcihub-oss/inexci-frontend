@@ -2,32 +2,13 @@
 
 import React, { useState, useMemo } from "react";
 import { tussService } from "@/services/tuss.service";
-import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { useToast } from "@/hooks/useToast";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { useSolicitacao } from "@/contexts/SolicitacaoContext";
 
-interface CodigoTussTabProps {
-  solicitacao: SurgeryRequestDetail;
-  onUpdate: () => void;
-  /** Número do status atual — habilita colunas de autorização a partir do status 3 */
-  statusNum?: number;
-}
-
-/**
- * Aba de Código TUSS na tela de detalhes da solicitação cirúrgica.
- * - Status < 3: permite adicionar/remover procedimentos.
- * - Status ≥ 3: somente-leitura, exibe coluna "Qtde Autorizada".
- *
- * Referências:
- *   - telas-inexci/status/em-analise/tela-detalhes-status-analise-contestacao-abas-tuss-e-opme.png
- *   - telas-inexci/status/em-agendamento/tela-detalhes-em-agendamento-aba-tuss-e-opme.png
- */
-export function CodigoTussTab({
-  solicitacao,
-  onUpdate,
-  statusNum = 0,
-}: CodigoTussTabProps) {
+export function CodigoTussTab() {
+  const { solicitacao, statusNum, onUpdate } = useSolicitacao();
   const showAuthorizationColumn = statusNum >= 3;
   const showColorCoding = statusNum >= 4;
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,9 +21,9 @@ export function CodigoTussTab({
     if (!searchTerm.trim()) return solicitacao.tuss_items;
     const term = searchTerm.toLowerCase();
     return solicitacao.tuss_items.filter(
-      (proc: any) =>
-        proc.name?.toLowerCase().includes(term) ||
-        proc.tuss_code?.toLowerCase().includes(term),
+      (proc) =>
+        (proc.name as string | undefined)?.toLowerCase().includes(term) ||
+        (proc.tuss_code as string | undefined)?.toLowerCase().includes(term),
     );
   }, [solicitacao.tuss_items, searchTerm]);
 
@@ -120,7 +101,7 @@ export function CodigoTussTab({
       {/* Linhas de Procedimentos */}
       <div className="flex-1 overflow-auto">
         {filteredProcedures.length > 0 ? (
-          filteredProcedures.map((proc: any) => {
+          filteredProcedures.map((proc) => {
             const isFullyAuthorized =
               proc.authorized_quantity != null &&
               proc.authorized_quantity >= (proc.quantity ?? 1);
@@ -171,7 +152,7 @@ export function CodigoTussTab({
                   </span>
                 )}
 
-                {!showAuthorizationColumn && (
+                {!showAuthorizationColumn && statusNum < 2 && (
                   /* Botão Delete — posicionado absolutamente à direita */
                   <button
                     onClick={() => handleDelete(proc.id)}

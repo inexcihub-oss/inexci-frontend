@@ -39,9 +39,16 @@ import { OpmeTab } from "@/components/surgery-request/tabs/OpmeTab";
 import { PosCirurgicoTab } from "@/components/surgery-request/tabs/PosCirurgicoTab";
 import { FaturamentoTab } from "@/components/surgery-request/tabs/FaturamentoTab";
 import { CloseRequestModal } from "@/components/surgery-request/modals/CloseRequestModal";
-import { NotificationConfirmModal } from "@/components/surgery-request/modals/NotificationConfirmModal";
+import {
+  NotificationConfirmModal,
+  NotificationChannels,
+} from "@/components/surgery-request/modals/NotificationConfirmModal";
 import { getPendencyAction } from "@/lib/pendency-navigation";
 import { PriorityLevel } from "@/types/surgery-request.types";
+import { SolicitacaoProvider } from "@/contexts/SolicitacaoContext";
+import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
+import { uploadService } from "@/services/upload.service";
 
 type TabType =
   | "informacoes-gerais"
@@ -90,7 +97,7 @@ function AvatarOrInitials({
   user,
   size = 28,
 }: {
-  user: { name: string; avatar_url?: string | null };
+  user: { id?: string; name: string; avatar_url?: string | null };
   size?: number;
 }) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
@@ -98,7 +105,7 @@ function AvatarOrInitials({
 
   useEffect(() => {
     if (!user.avatar_url) return;
-    // Se já for URL absoluta, usa direto; senão busca signed URL
+    // Se já for URL absoluta, usa direto
     if (
       user.avatar_url.startsWith("http://") ||
       user.avatar_url.startsWith("https://")
@@ -106,13 +113,22 @@ function AvatarOrInitials({
       setResolvedUrl(user.avatar_url);
       return;
     }
-    import("@/services/upload.service")
-      .then(({ uploadService }) =>
-        uploadService.getSignedUrl(user.avatar_url as string),
-      )
-      .then((url) => setResolvedUrl(url))
+    // Verificar cache do localStorage antes de buscar signed URL
+    if (user.id) {
+      const cached = getAvatarCache(user.id, user.avatar_url);
+      if (cached) {
+        setResolvedUrl(cached);
+        return;
+      }
+    }
+    uploadService
+      .getSignedUrl(user.avatar_url)
+      .then((url) => {
+        if (user.id) setAvatarCache(user.id, user.avatar_url!, url);
+        setResolvedUrl(url);
+      })
       .catch(() => setImgError(true));
-  }, [user.avatar_url]);
+  }, [user.avatar_url, user.id]);
 
   if (resolvedUrl && !imgError) {
     return (
@@ -483,7 +499,20 @@ export default function SolicitacaoDetalhePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabType>("informacoes-gerais");
+  const validTabs: TabType[] = [
+    "informacoes-gerais",
+    "codigo-tuss",
+    "opme",
+    "laudo",
+    "pos-cirurgico",
+    "faturamento",
+  ];
+  const tabFromUrl = searchParams.get("tab") as TabType | null;
+  const [activeTab, setActiveTab] = useState<TabType>(
+    tabFromUrl && validTabs.includes(tabFromUrl)
+      ? tabFromUrl
+      : "informacoes-gerais",
+  );
 
   // Carregar estado do localStorage ou usar valores padrão
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -501,6 +530,14 @@ export default function SolicitacaoDetalhePage() {
     }
     return true;
   });
+
+  const closeSidebar = () => setIsSidebarOpen(false);
+  const {
+    dragY: sidebarDragY,
+    onTouchStart: sidebarTouchStart,
+    onTouchMove: sidebarTouchMove,
+    onTouchEnd: sidebarTouchEnd,
+  } = useSwipeToClose(closeSidebar);
 
   const [sidebarTab, setSidebarTab] = useState<"pendencias" | "timeline">(
     "pendencias",
@@ -536,10 +573,35 @@ export default function SolicitacaoDetalhePage() {
     useState(false);
   const [isCloseRequestModalOpen, setIsCloseRequestModalOpen] = useState(false);
 
-  // Estados do modal de confirmação de notificação ao paciente
+  // Estado de exportação de PDF da solicitação
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleExportPdf = async () => {
+    if (isExportingPdf || !solicitacao) return;
+    setIsExportingPdf(true);
+    try {
+      const blob = await surgeryRequestService.exportPdf(solicitacao.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `solicitacao-${solicitacao.protocol ?? solicitacao.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // silencia o erro, sem toast nesta página
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  // Estados do modal de confirmação de notificação ao paciente (pós-transição)
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [notifyPatient, setNotifyPatient] = useState(false);
+  const [completedActionStatus, setCompletedActionStatus] = useState<{
+    previous: string;
+    next: string;
+  } | null>(null);
 
   // Estados de atividades
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -595,31 +657,6 @@ export default function SolicitacaoDetalhePage() {
     }
   }, [params.id]);
 
-  useEffect(() => {
-    const fetchSolicitacao = async () => {
-      try {
-        setLoading(true);
-        const data = await surgeryRequestService.getById(params.id as string);
-        setSolicitacao(data);
-      } catch {
-        // silently ignore
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (params.id) {
-      fetchSolicitacao();
-    }
-  }, [params.id]);
-
-  // Carregar pendências quando a solicitação mudar
-  useEffect(() => {
-    if (params.id) {
-      fetchPendencies();
-    }
-  }, [params.id, fetchPendencies]);
-
   // ── Atividades ──────────────────────────────────────────────────────────────
   const fetchActivities = useCallback(async () => {
     if (!params.id) return;
@@ -636,6 +673,34 @@ export default function SolicitacaoDetalhePage() {
     }
   }, [params.id]);
 
+  // Carregamento inicial paralelo com renderização progressiva:
+  // solicitacao desbloqueia a página imediatamente; pendências e atividades carregam independentemente
+  useEffect(() => {
+    if (!params.id) return;
+    const id = params.id as string;
+    setLoading(true);
+    setLoadingPendencies(true);
+    setLoadingActivities(true);
+
+    surgeryRequestService
+      .getById(id)
+      .then((data) => setSolicitacao(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+
+    pendencyService
+      .validate(id)
+      .then((data) => setValidation(data))
+      .catch(() => {})
+      .finally(() => setLoadingPendencies(false));
+
+    surgeryRequestService
+      .getActivities(id)
+      .then((data) => setActivities(data))
+      .catch(() => {})
+      .finally(() => setLoadingActivities(false));
+  }, [params.id]);
+
   const handleUpdateProcedure = useCallback(async () => {
     // Recarregar os dados da solicitação após a atualização
     try {
@@ -648,12 +713,6 @@ export default function SolicitacaoDetalhePage() {
       // silently ignore
     }
   }, [params.id, fetchPendencies, fetchActivities]);
-
-  useEffect(() => {
-    if (params.id) {
-      fetchActivities();
-    }
-  }, [params.id, fetchActivities]);
 
   // Rolar para o fim quando novas atividades chegam
   useEffect(() => {
@@ -740,71 +799,66 @@ export default function SolicitacaoDetalhePage() {
   };
 
   // Status antes de REALIZADA (6) — exibem modal de notificação
-  const isPreRealizadaStatus = (status: number) => status < 6;
+  // Modal de notificação ao paciente aparece apenas até a confirmação de data de cirurgia
+  // (status anterior < 5 = "Agendada"). A partir de "Agendada" em diante, não exibe mais.
+  const isPreRealizadaStatus = (status: number) => status < 5;
 
-  // Intercepta ação para exibir modal de notificação (apenas pré-REALIZADA, exceto surgeryStatus)
-  const interceptWithNotification = (action: string) => {
-    const statusNum = solicitacao?.status ?? 0;
-    if (isPreRealizadaStatus(statusNum) && action !== "surgeryStatus") {
-      setPendingAction(action);
+  // Mapa de ação → status resultante (para exibir no modal de notificação)
+  const ACTION_NEXT_STATUS_MAP: Record<string, string> = {
+    send: "Enviada",
+    startAnalysis: "Em Análise",
+    updateAuthorizations: "Em Agendamento",
+    confirmDate: "Agendada",
+    surgeryStatus: "Realizada",
+  };
+
+  // Abre o modal de notificação APÓS a transição de status ter sido concluída
+  const showPostTransitionNotification = (
+    action: string,
+    previousStatusNum: number,
+  ) => {
+    if (isPreRealizadaStatus(previousStatusNum) && action !== "surgeryStatus") {
+      setCompletedActionStatus({
+        previous:
+          STATUS_NUMBER_TO_STRING[previousStatusNum] ??
+          String(previousStatusNum),
+        next: ACTION_NEXT_STATUS_MAP[action] ?? "",
+      });
       setIsNotificationModalOpen(true);
-    } else {
-      openActionModal(action);
     }
   };
 
-  // Abre o modal da ação correspondente
-  const openActionModal = (action: string, shouldNotify?: boolean) => {
-    switch (action) {
-      case "send":
-        setIsSendModalOpen(true);
-        break;
-      case "startAnalysis":
-        setIsStartAnalysisModalOpen(true);
-        break;
-      case "updateAuthorizations":
-        setIsUpdateAuthorizationsModalOpen(true);
-        break;
-      case "confirmDate":
-        handleConfirmDate(shouldNotify);
-        break;
-      case "surgeryStatus":
-        setIsSurgeryStatusModalOpen(true);
-        break;
-      case "invoice":
-        setIsInvoiceModalOpen(true);
-        break;
-      case "confirmReceipt":
-        setIsConfirmReceiptModalOpen(true);
-        break;
-    }
-  };
-
-  // Callback do modal de notificação
-  const handleNotificationConfirm = (shouldNotify: boolean) => {
-    setNotifyPatient(shouldNotify);
+  // Callback do modal de notificação (pós-transição)
+  const handleNotificationConfirm = async (
+    channels: NotificationChannels | null,
+  ) => {
     setIsNotificationModalOpen(false);
-    if (pendingAction) {
-      openActionModal(pendingAction, shouldNotify);
-      setPendingAction(null);
+    if (channels) {
+      try {
+        await surgeryRequestService.notify(solicitacao!.id, {
+          template: "status_change",
+          channels,
+        });
+      } catch {
+        // silently ignore
+      }
     }
+    setCompletedActionStatus(null);
   };
 
-  const handleConfirmDate = async (notifyPatientValue?: boolean) => {
+  const handleConfirmDate = async () => {
     if (pendingDateIndex === null) {
       return;
     }
     setIsSavingDate(true);
-    const notify =
-      notifyPatientValue !== undefined ? notifyPatientValue : notifyPatient;
+    const previousStatusNum = solicitacao?.status ?? 0;
     try {
       await surgeryRequestService.confirmDate(solicitacao!.id, {
         selected_date_index: pendingDateIndex as 0 | 1 | 2,
-        notify_patient: notify,
       });
       setPendingDateIndex(null);
-      setNotifyPatient(false);
       handleUpdateProcedure();
+      showPostTransitionNotification("confirmDate", previousStatusNum);
     } catch {
       // silently ignore
     } finally {
@@ -865,7 +919,7 @@ export default function SolicitacaoDetalhePage() {
         setSelectedDocuments(new Set());
       } else {
         setSelectedDocuments(
-          new Set(solicitacao.documents.map((doc: any) => doc.id)),
+          new Set(solicitacao.documents.map((doc) => doc.id)),
         );
       }
     }
@@ -1085,23 +1139,59 @@ export default function SolicitacaoDetalhePage() {
                 </div>
 
                 {/* Ações contextuais — dependem do status */}
-                <div className="w-full sm:w-auto flex-shrink-0">
+                <div className="w-full sm:w-auto flex-shrink-0 flex items-center gap-2">
+                  {/* Botão Exportar PDF — visível a partir do status Enviada (≥ 2) */}
+                  {statusNum >= 2 && statusNum !== 9 && (
+                    <button
+                      type="button"
+                      onClick={handleExportPdf}
+                      disabled={isExportingPdf}
+                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[36px] md:min-h-[44px] rounded-xl border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all text-xs md:text-sm font-semibold text-gray-700 shadow-sm whitespace-nowrap"
+                    >
+                      {isExportingPdf ? (
+                        <svg
+                          className="w-4 h-4 animate-spin flex-shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="9"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeDasharray="28"
+                            strokeDashoffset="9"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="w-4 h-4 flex-shrink-0 text-gray-500"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M12 3v13M8 12l4 4 4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                      {isExportingPdf ? "Gerando…" : "Exportar PDF"}
+                    </button>
+                  )}
                   {/* Botão primário dinâmico */}
                   <PrimaryActionButton
                     status={statusNum}
-                    onSendRequest={() => interceptWithNotification("send")}
-                    onStartAnalysis={() =>
-                      interceptWithNotification("startAnalysis")
-                    }
+                    onSendRequest={() => setIsSendModalOpen(true)}
+                    onStartAnalysis={() => setIsStartAnalysisModalOpen(true)}
                     onUpdateAuthorizations={() =>
-                      interceptWithNotification("updateAuthorizations")
+                      setIsUpdateAuthorizationsModalOpen(true)
                     }
-                    onConfirmDate={() =>
-                      interceptWithNotification("confirmDate")
-                    }
-                    onSurgeryStatus={() =>
-                      interceptWithNotification("surgeryStatus")
-                    }
+                    onConfirmDate={() => handleConfirmDate()}
+                    onSurgeryStatus={() => setIsSurgeryStatusModalOpen(true)}
                     onInvoice={() => setIsInvoiceModalOpen(true)}
                     onConfirmReceipt={() => setIsConfirmReceiptModalOpen(true)}
                   />
@@ -1253,7 +1343,16 @@ export default function SolicitacaoDetalhePage() {
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      const params = new URLSearchParams(
+                        searchParams.toString(),
+                      );
+                      params.set("tab", tab.id);
+                      router.replace(`?${params.toString()}`, {
+                        scroll: false,
+                      });
+                    }}
                     className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-all whitespace-nowrap min-h-[44px] -mb-px ${
                       activeTab === tab.id
                         ? "text-black border-b-[3px] border-teal-700"
@@ -1331,56 +1430,35 @@ export default function SolicitacaoDetalhePage() {
                   </div>
                 )}
 
-                {activeTab === "informacoes-gerais" && (
-                  <InformacoesGeraisTab
-                    solicitacao={solicitacao}
-                    selectedDocuments={selectedDocuments}
-                    handleSelectDocument={handleSelectDocument}
-                    handleSelectAllDocuments={handleSelectAllDocuments}
-                    onUpdateProcedure={handleUpdateProcedure}
-                    surgeryRequestId={solicitacao.id}
-                    onDocumentsUploaded={handleUpdateProcedure}
-                    statusNum={statusNum}
-                    pendingDateIndex={pendingDateIndex}
-                    onSelectDate={setPendingDateIndex}
-                    onEditDateOptions={() =>
-                      setIsEditDateOptionsModalOpen(true)
-                    }
-                    onReschedule={() => setIsRescheduleModalOpen(true)}
-                  />
-                )}
-                {activeTab === "codigo-tuss" && (
-                  <CodigoTussTab
-                    solicitacao={solicitacao}
-                    onUpdate={handleUpdateProcedure}
-                    statusNum={statusNum}
-                  />
-                )}
-                {activeTab === "opme" && (
-                  <OpmeTab
-                    solicitacao={solicitacao}
-                    onUpdate={handleUpdateProcedure}
-                    statusNum={statusNum}
-                  />
-                )}
-                {activeTab === "laudo" && (
-                  <MedicalReportEditor
-                    solicitacao={solicitacao}
-                    onUpdate={handleUpdateProcedure}
-                  />
-                )}
-                {activeTab === "pos-cirurgico" && (
-                  <PosCirurgicoTab
-                    solicitacao={solicitacao}
-                    onUpdate={handleUpdateProcedure}
-                  />
-                )}
-                {activeTab === "faturamento" && (
-                  <FaturamentoTab
-                    solicitacao={solicitacao}
-                    onUpdate={handleUpdateProcedure}
-                  />
-                )}
+                <SolicitacaoProvider
+                  solicitacao={solicitacao}
+                  statusNum={statusNum}
+                  onUpdate={handleUpdateProcedure}
+                >
+                  {activeTab === "informacoes-gerais" && (
+                    <InformacoesGeraisTab
+                      solicitacao={solicitacao}
+                      selectedDocuments={selectedDocuments}
+                      handleSelectDocument={handleSelectDocument}
+                      handleSelectAllDocuments={handleSelectAllDocuments}
+                      onUpdateProcedure={handleUpdateProcedure}
+                      surgeryRequestId={solicitacao.id}
+                      onDocumentsUploaded={handleUpdateProcedure}
+                      statusNum={statusNum}
+                      pendingDateIndex={pendingDateIndex}
+                      onSelectDate={setPendingDateIndex}
+                      onEditDateOptions={() =>
+                        setIsEditDateOptionsModalOpen(true)
+                      }
+                      onReschedule={() => setIsRescheduleModalOpen(true)}
+                    />
+                  )}
+                  {activeTab === "codigo-tuss" && <CodigoTussTab />}
+                  {activeTab === "opme" && <OpmeTab />}
+                  {activeTab === "laudo" && <MedicalReportEditor />}
+                  {activeTab === "pos-cirurgico" && <PosCirurgicoTab />}
+                  {activeTab === "faturamento" && <FaturamentoTab />}
+                </SolicitacaoProvider>
               </div>
             </div>
           </div>
@@ -1394,9 +1472,24 @@ export default function SolicitacaoDetalhePage() {
               className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[55] lg:hidden animate-fade-in"
               onClick={() => setIsSidebarOpen(false)}
             />
-            <div className="fixed inset-x-0 bottom-0 z-[60] max-h-[92vh] bg-white rounded-t-3xl flex flex-col lg:relative lg:inset-auto lg:z-auto lg:rounded-none lg:max-h-none lg:w-88 lg:border-l lg:border-neutral-100 animate-slide-up lg:animate-none">
+            <div
+              className="fixed inset-x-0 bottom-16 z-[60] max-h-[calc(92vh-64px)] bg-white rounded-t-3xl flex flex-col lg:relative lg:inset-auto lg:bottom-auto lg:z-auto lg:rounded-none lg:max-h-none lg:w-88 lg:border-l lg:border-neutral-100 animate-slide-up lg:animate-none"
+              style={
+                sidebarDragY > 0
+                  ? {
+                      transform: `translateY(${sidebarDragY}px)`,
+                      transition: "none",
+                    }
+                  : undefined
+              }
+            >
               {/* Mobile drag handle */}
-              <div className="flex justify-center pt-3 pb-1 lg:hidden">
+              <div
+                className="flex justify-center pt-3 pb-1 lg:hidden cursor-grab active:cursor-grabbing touch-none"
+                onTouchStart={sidebarTouchStart}
+                onTouchMove={sidebarTouchMove}
+                onTouchEnd={sidebarTouchEnd}
+              >
                 <div className="w-10 h-1 bg-gray-300 rounded-full" />
               </div>
               {/* Mobile close header */}
@@ -1452,7 +1545,13 @@ export default function SolicitacaoDetalhePage() {
 
               {/* Sidebar Content */}
               {sidebarTab === "timeline" ? (
-                <div className="flex-1 overflow-auto">
+                <div
+                  className="flex-1 overflow-auto pb-16 lg:pb-0"
+                  style={{
+                    paddingBottom:
+                      "calc(64px + env(safe-area-inset-bottom, 0px))",
+                  }}
+                >
                   <StatusTimeline
                     currentStatus={solicitacao.status}
                     createdAt={solicitacao.created_at}
@@ -1584,44 +1683,31 @@ export default function SolicitacaoDetalhePage() {
         )}
       </div>
 
-      {/* Modal de confirmação de notificação ao paciente (pré-REALIZADA) */}
-      {(() => {
-        const ACTION_NEXT_STATUS: Record<string, string> = {
-          send: "Enviada",
-          startAnalysis: "Em Análise",
-          updateAuthorizations: "Em Agendamento",
-          confirmDate: "Agendada",
-          surgeryStatus: "Realizada",
-        };
-        return (
-          <NotificationConfirmModal
-            isOpen={isNotificationModalOpen}
-            onClose={() => {
-              setIsNotificationModalOpen(false);
-              setPendingAction(null);
-            }}
-            currentStatus={
-              STATUS_NUMBER_TO_STRING[solicitacao.status] ??
-              String(solicitacao.status)
-            }
-            newStatus={ACTION_NEXT_STATUS[pendingAction ?? ""] ?? ""}
-            onConfirm={handleNotificationConfirm}
-            patientEmail={solicitacao.patient?.email}
-            patientPhone={solicitacao.patient?.phone}
-          />
-        );
-      })()}
+      {/* Modal de confirmação de notificação ao paciente (pós-transição) */}
+      <NotificationConfirmModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => {
+          setIsNotificationModalOpen(false);
+          setCompletedActionStatus(null);
+        }}
+        currentStatus={completedActionStatus?.previous ?? ""}
+        newStatus={completedActionStatus?.next ?? ""}
+        onConfirm={handleNotificationConfirm}
+        patientEmail={solicitacao.patient?.email}
+        patientPhone={solicitacao.patient?.phone}
+      />
 
       {/* Modal de Envio de Solicitação */}
       <SendRequestModal
         isOpen={isSendModalOpen}
         onClose={() => setIsSendModalOpen(false)}
         solicitacao={solicitacao}
-        notifyPatient={notifyPatient}
+        initialValidation={validation ?? undefined}
         onSuccess={() => {
-          setNotifyPatient(false);
+          const prevStatus = solicitacao.status;
           handleUpdateProcedure();
           setIsSendModalOpen(false);
+          showPostTransitionNotification("send", prevStatus);
         }}
       />
 
@@ -1630,11 +1716,11 @@ export default function SolicitacaoDetalhePage() {
         isOpen={isStartAnalysisModalOpen}
         onClose={() => setIsStartAnalysisModalOpen(false)}
         surgeryRequestId={solicitacao.id}
-        notifyPatient={notifyPatient}
         onSuccess={() => {
-          setNotifyPatient(false);
+          const prevStatus = solicitacao.status;
           handleUpdateProcedure();
           setIsStartAnalysisModalOpen(false);
+          showPostTransitionNotification("startAnalysis", prevStatus);
         }}
       />
 
@@ -1643,11 +1729,11 @@ export default function SolicitacaoDetalhePage() {
         isOpen={isUpdateAuthorizationsModalOpen}
         onClose={() => setIsUpdateAuthorizationsModalOpen(false)}
         solicitacao={solicitacao}
-        notifyPatient={notifyPatient}
         onSuccess={() => {
-          setNotifyPatient(false);
+          const prevStatus = solicitacao.status;
           handleUpdateProcedure();
           setIsUpdateAuthorizationsModalOpen(false);
+          showPostTransitionNotification("updateAuthorizations", prevStatus);
         }}
         onClose2={() => setIsUpdateAuthorizationsModalOpen(false)}
       />
@@ -1679,9 +1765,7 @@ export default function SolicitacaoDetalhePage() {
         isOpen={isSurgeryStatusModalOpen}
         onClose={() => setIsSurgeryStatusModalOpen(false)}
         solicitacao={solicitacao}
-        notifyPatient={notifyPatient}
         onSuccess={() => {
-          setNotifyPatient(false);
           handleUpdateProcedure();
           setIsSurgeryStatusModalOpen(false);
         }}

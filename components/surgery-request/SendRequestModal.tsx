@@ -16,7 +16,7 @@ interface SendRequestModalProps {
   onClose: () => void;
   solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
-  notifyPatient?: boolean;
+  initialValidation?: Awaited<ReturnType<typeof pendencyService.validate>>;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -34,7 +34,7 @@ export function SendRequestModal({
   onClose,
   solicitacao,
   onSuccess,
-  notifyPatient = false,
+  initialValidation,
 }: SendRequestModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [sendMethod, setSendMethod] = useState<SendMethod>(null);
@@ -65,7 +65,11 @@ export function SendRequestModal({
 
   useEffect(() => {
     if (isOpen && solicitacao?.id) {
-      loadValidation();
+      if (initialValidation) {
+        applyValidation(initialValidation);
+      } else {
+        loadValidation();
+      }
       setCurrentStep(1);
       setSendMethod(null);
       setSaveAsTemplate(false);
@@ -84,57 +88,58 @@ export function SendRequestModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, solicitacao?.id]);
 
+  type ValidationResult = Awaited<ReturnType<typeof pendencyService.validate>>;
+
+  const applyValidation = (result: ValidationResult) => {
+    if (result.pendencies && result.pendencies.length > 0) {
+      const items: ChecklistItem[] = Object.entries(SEND_CHECKLIST_KEYS).map(
+        ([key, label]) => {
+          const found = result.pendencies.find((p) => p.key === key);
+          let isComplete = found ? found.isComplete : false;
+          if (!found && key === "hospital") {
+            isComplete = !!(
+              solicitacao.hospital_id || solicitacao.hospital?.id
+            );
+          }
+          return { key, label, isComplete, isRequired: true };
+        },
+      );
+      setChecklist(items);
+    } else {
+      setChecklist([
+        {
+          key: "hospital",
+          label: "Informações Gerais",
+          isComplete: !!(solicitacao.hospital_id || solicitacao.hospital?.id),
+          isRequired: true,
+        },
+        {
+          key: "tuss_procedures",
+          label: "Código TUSS",
+          isComplete: !!(solicitacao.tuss_items?.length > 0),
+          isRequired: true,
+        },
+        {
+          key: "opme_items",
+          label: "OPME",
+          isComplete: !!(solicitacao.opme_items?.length > 0),
+          isRequired: true,
+        },
+        {
+          key: "medical_report",
+          label: "Laudo",
+          isComplete: !!solicitacao.medical_report,
+          isRequired: true,
+        },
+      ]);
+    }
+  };
+
   const loadValidation = async () => {
     setIsLoading(true);
     try {
       const result = await pendencyService.validate(solicitacao.id);
-      if (result.pendencies && result.pendencies.length > 0) {
-        const items: ChecklistItem[] = Object.entries(SEND_CHECKLIST_KEYS).map(
-          ([key, label]) => {
-            const found = result.pendencies.find((p) => p.key === key);
-            let isComplete = found ? found.isComplete : false;
-            if (!found && key === "hospital") {
-              isComplete = !!(
-                solicitacao.hospital_id || solicitacao.hospital?.id
-              );
-            }
-            return {
-              key,
-              label,
-              isComplete,
-              isRequired: true,
-            };
-          },
-        );
-        setChecklist(items);
-      } else {
-        setChecklist([
-          {
-            key: "hospital",
-            label: "Informações Gerais",
-            isComplete: !!(solicitacao.hospital_id || solicitacao.hospital?.id),
-            isRequired: true,
-          },
-          {
-            key: "tuss_procedures",
-            label: "Código TUSS",
-            isComplete: !!(solicitacao.tuss_items?.length > 0),
-            isRequired: true,
-          },
-          {
-            key: "opme_items",
-            label: "OPME",
-            isComplete: !!(solicitacao.opme_items?.length > 0),
-            isRequired: true,
-          },
-          {
-            key: "medical_report",
-            label: "Laudo",
-            isComplete: !!solicitacao.medical_report,
-            isRequired: true,
-          },
-        ]);
-      }
+      applyValidation(result);
     } catch {
     } finally {
       setIsLoading(false);
@@ -163,12 +168,10 @@ export function SendRequestModal({
               health_plan: solicitacao.health_plan,
               health_plan_id: solicitacao.health_plan_id,
               medical_report: solicitacao.medical_report,
-              required_documents: (solicitacao.documents || []).map(
-                (d: any) => ({
-                  type: d.type || d.document_type || "",
-                  name: d.name || d.original_name || d.type || "",
-                }),
-              ),
+              required_documents: (solicitacao.documents || []).map((d) => ({
+                type: d.key || "",
+                name: d.name || d.key || "",
+              })),
             },
           });
           setSaveAsTemplate(false);
@@ -197,19 +200,11 @@ export function SendRequestModal({
   const handleDownload = async () => {
     setIsSending(true);
     try {
-      const response = await api.post(
-        `/surgery-requests/${solicitacao.id}/send`,
-        { method: "download", notify_patient: notifyPatient },
+      const response = await api.get(
+        `/surgery-requests/${solicitacao.id}/report-pdf`,
+        { responseType: "arraybuffer" },
       );
-      const base64 = response.data?.pdf;
-      if (!base64) throw new Error("PDF não gerado");
-      // Decodifica base64 → Uint8Array → Blob
-      const byteChars = atob(base64);
-      const byteNums = new Uint8Array(byteChars.length);
-      for (let i = 0; i < byteChars.length; i++) {
-        byteNums[i] = byteChars.charCodeAt(i);
-      }
-      const blob = new Blob([byteNums], { type: "application/pdf" });
+      const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -239,7 +234,6 @@ export function SendRequestModal({
         to: recipients,
         subject: emailSubject,
         message: emailMessage,
-        notify_patient: notifyPatient,
       });
       setCurrentStep(4);
     } catch {

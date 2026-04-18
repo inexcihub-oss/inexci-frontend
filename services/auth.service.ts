@@ -6,6 +6,7 @@ import {
   SubscriptionPlan,
   User,
 } from "@/types";
+import { clearAvatarCache } from "@/lib/avatar-cache";
 
 /**
  * Serviço de autenticação
@@ -86,6 +87,10 @@ export const authService = {
       // Ignora erros — o logout local é suficiente
     }
     if (typeof window !== "undefined") {
+      const currentUser = this.getCurrentUser?.();
+      if (currentUser?.id) {
+        clearAvatarCache(currentUser.id);
+      }
       localStorage.removeItem("token");
       localStorage.removeItem("token_timestamp");
       localStorage.removeItem("user");

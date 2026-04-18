@@ -2,12 +2,7 @@
 
 import React, { useState } from "react";
 import { ConfirmReceiptModal } from "@/components/surgery-request/modals/ConfirmReceiptModal";
-import { SurgeryRequestDetail } from "@/services/surgery-request.service";
-
-interface FaturamentoTabProps {
-  solicitacao: SurgeryRequestDetail;
-  onUpdate: () => void;
-}
+import { useSolicitacao } from "@/contexts/SolicitacaoContext";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-BR", {
@@ -60,7 +55,8 @@ function safeDate(dateStr: string | null | undefined): string | null {
  *
  * Design: Figma node 1-1800
  */
-export function FaturamentoTab({ solicitacao, onUpdate }: FaturamentoTabProps) {
+export function FaturamentoTab() {
+  const { solicitacao, onUpdate } = useSolicitacao();
   const [isConfirmReceiptOpen, setIsConfirmReceiptOpen] = useState(false);
 
   const billing = solicitacao?.billing;

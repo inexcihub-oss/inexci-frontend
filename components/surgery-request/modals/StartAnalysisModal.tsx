@@ -12,7 +12,6 @@ interface StartAnalysisModalProps {
   onClose: () => void;
   surgeryRequestId: string | number;
   onSuccess: () => void;
-  notifyPatient?: boolean;
 }
 
 /**
@@ -26,7 +25,6 @@ export function StartAnalysisModal({
   onClose,
   surgeryRequestId,
   onSuccess,
-  notifyPatient = false,
 }: StartAnalysisModalProps) {
   const [requestNumber, setRequestNumber] = useState("");
   const [receivedAt, setReceivedAt] = useState("");
@@ -63,7 +61,6 @@ export function StartAnalysisModal({
       const payload: StartAnalysisPayload = {
         request_number: requestNumber.trim(),
         received_at: receivedAt,
-        notify_patient: notifyPatient || undefined,
         notes: notes.trim() || undefined,
       };
 

@@ -97,7 +97,7 @@ export function AddDocumentModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-white w-full md:max-w-md flex flex-col rounded-t-3xl md:rounded-2xl max-h-[92vh] md:max-h-[85vh] animate-slide-up md:animate-scale-in md:mx-4 shadow-xl">
+      <div className="relative bg-white w-full md:max-w-md flex flex-col rounded-t-3xl md:rounded-2xl max-h-[92vh] md:max-h-[85vh] animate-slide-up md:animate-scale-in md:mx-4 shadow-xl mobile-sheet-offset">
         {/* Drag handle (mobile) */}
         <div className="flex md:hidden justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />

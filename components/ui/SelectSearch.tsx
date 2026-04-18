@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { Search, ChevronDown, X, Loader2 } from "lucide-react";
 
@@ -74,38 +74,33 @@ export function SelectSearch({
     width: 0,
   });
 
-  // Debounced search function
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedSearch = useCallback(
+  // Mantém referência estável para onSearch para não recriar a fn debounced a cada render
+  const onSearchRef = useRef(onSearch);
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+  }, [onSearch]);
+
+  const debouncedSearchRef = useRef(
     debounce(async (term: string) => {
       setIsLoading(true);
       try {
-        const results = await onSearch(term);
+        const results = await onSearchRef.current(term);
         setOptions(results);
-      } catch (error) {
-        console.error("Erro na busca:", error);
+      } catch {
         setOptions([]);
       } finally {
         setIsLoading(false);
       }
     }, 300),
-    [onSearch],
   );
 
-  // Effect to search when term changes
+  // Dispara busca ao alterar searchTerm ou ao abrir o dropdown
   useEffect(() => {
-    if (isOpen) {
-      debouncedSearch(searchTerm);
-    }
-    return () => debouncedSearch.cancel();
-  }, [searchTerm, isOpen, debouncedSearch]);
-
-  // Effect to load initial options when opening
-  useEffect(() => {
-    if (isOpen && options.length === 0 && !searchTerm) {
-      debouncedSearch("");
-    }
-  }, [isOpen, options.length, searchTerm, debouncedSearch]);
+    if (!isOpen) return;
+    const fn = debouncedSearchRef.current;
+    fn(searchTerm);
+    return () => fn.cancel();
+  }, [searchTerm, isOpen]);
 
   // Effect to set selected label when value changes
   useEffect(() => {

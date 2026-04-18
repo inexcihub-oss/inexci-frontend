@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from "react";
 import { opmeService } from "@/services/opme.service";
 import { OpmeItem } from "@/services/opme.service";
-import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -15,13 +14,7 @@ import {
   PackageX,
   Package,
 } from "lucide-react";
-
-interface OpmeTabProps {
-  solicitacao: SurgeryRequestDetail;
-  onUpdate: () => void;
-  /** Número do status atual — habilita coluna de autorização a partir do status 3 */
-  statusNum?: number;
-}
+import { useSolicitacao } from "@/contexts/SolicitacaoContext";
 
 /** Divide uma string separada por vírgula em array de itens não-vazios */
 function splitList(value?: string | null): string[] {
@@ -32,11 +25,8 @@ function splitList(value?: string | null): string[] {
     .filter(Boolean);
 }
 
-export function OpmeTab({
-  solicitacao,
-  onUpdate,
-  statusNum = 0,
-}: OpmeTabProps) {
+export function OpmeTab() {
+  const { solicitacao, statusNum, onUpdate } = useSolicitacao();
   const showAuthorizationColumn = statusNum >= 3;
   const showColorCoding = statusNum >= 4;
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
@@ -279,7 +269,7 @@ export function OpmeTab({
                       ))}
 
                     {/* Ações — ocultar no modo somente-leitura */}
-                    {!showAuthorizationColumn && (
+                    {!showAuthorizationColumn && !isReadOnly && (
                       <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                         <button
                           onClick={(e) => {

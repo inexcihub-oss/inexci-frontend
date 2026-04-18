@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
+import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
 interface ModalProps {
   isOpen: boolean;
@@ -20,8 +21,9 @@ export function Modal({
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
+    useSwipeToClose(onClose);
 
-  // Previne scroll do body quando modal está aberto
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -86,11 +88,15 @@ export function Modal({
     xl: "md:max-w-6xl",
   };
 
+  const isDragging = dragY > 0;
+  const opacity = isDragging ? Math.max(0.2, 1 - dragY / 300) : 1;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+    <div className="fixed inset-0 z-60 flex items-end md:items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+        style={{ opacity }}
         onClick={onClose}
       />
 
@@ -105,10 +111,20 @@ export function Modal({
           max-h-[92vh] md:max-h-[85vh]
           animate-slide-up md:animate-scale-in
           md:mx-4
-          shadow-xl`}
+          shadow-xl mobile-sheet-offset`}
+        style={
+          isDragging
+            ? { transform: `translateY(${dragY}px)`, transition: "none" }
+            : undefined
+        }
       >
-        {/* Drag handle (apenas mobile) */}
-        <div className="flex md:hidden justify-center pt-3 pb-1">
+        {/* Drag handle — apenas mobile, captura eventos de swipe */}
+        <div
+          className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 

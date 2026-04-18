@@ -295,31 +295,28 @@ export default function HospitaisPage() {
         <h1 className="ds-page-title">Hospitais</h1>
       </div>
 
-      <div className="flex-none flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-200">
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <SearchInput
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Buscar por nome ou e-mail"
-            className="w-full sm:w-85"
+      <div className="flex-none flex flex-wrap items-center gap-2.5 px-4 py-3 border-b border-gray-200">
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Buscar por nome ou e-mail"
+          className="w-full sm:flex-1 lg:w-85 lg:flex-none"
+        />
+
+        <Button variant="outline" size="md" className="min-h-[44px] rounded-xl">
+          <Image
+            src="/icons/filter.svg"
+            alt="Filtro"
+            width={20}
+            height={20}
+            className="mr-1.5"
           />
-          <div className="hidden sm:block w-px h-8 bg-neutral-100" />
-          <Button
-            variant="outline"
-            size="md"
-            className="hidden sm:flex min-h-[44px] rounded-xl"
-          >
-            <Image
-              src="/icons/filter.svg"
-              alt="Filtro"
-              width={20}
-              height={20}
-              className="mr-2"
-            />
-            Filtro
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
+          Filtro
+        </Button>
+
+        <div className="hidden sm:block w-px h-8 bg-neutral-100" />
+
+        <div className="flex items-center gap-2 flex-1 sm:flex-none">
           {selectedItems.length > 0 && (
             <button
               onClick={() => setBulkDeleteModal({ open: true, loading: false })}
@@ -345,6 +342,7 @@ export default function HospitaisPage() {
           <Button
             variant="primary"
             size="md"
+            className="flex-1 sm:flex-none min-h-[44px]"
             onClick={() => setCreateModalOpen(true)}
           >
             Novo hospital

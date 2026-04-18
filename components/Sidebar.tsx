@@ -8,6 +8,7 @@ import { useRef, useCallback, useState, useEffect } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
 import { getInitials, getDisplayName, getAvatarColor } from "@/lib/utils";
 import { uploadService } from "@/services/upload.service";
+import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
 
 interface MenuItem {
@@ -81,19 +82,36 @@ export default function Sidebar({
   // Resolve signed URL when user.avatar_url changes
   useEffect(() => {
     const raw = user?.avatar_url;
-    if (!raw) {
+    const userId = user?.id;
+
+    if (!raw || !userId) {
       setAvatarUrl(null);
       return;
     }
+
+    // Se já é URL absoluta, usa direto e armazena no cache
     if (raw.startsWith("http://") || raw.startsWith("https://")) {
       setAvatarUrl(raw);
-    } else {
-      uploadService
-        .getSignedUrl(raw)
-        .then(setAvatarUrl)
-        .catch(() => setAvatarUrl(null));
+      setAvatarCache(userId, raw, raw);
+      return;
     }
-  }, [user?.avatar_url]);
+
+    // Verifica cache antes de chamar o backend
+    const cached = getAvatarCache(userId, raw);
+    if (cached) {
+      setAvatarUrl(cached);
+      return;
+    }
+
+    // Sem cache: busca signed URL e armazena resultado
+    uploadService
+      .getSignedUrl(raw)
+      .then((url) => {
+        setAvatarUrl(url);
+        setAvatarCache(userId, raw, url);
+      })
+      .catch(() => setAvatarUrl(null));
+  }, [user?.avatar_url, user?.id]);
 
   // Filtrar itens do menu com base nas permissões do usuário
   const menuItems = allMenuItems.filter((item) => {

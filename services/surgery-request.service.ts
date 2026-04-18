@@ -254,6 +254,8 @@ export interface ClosePayload {
 export interface NotifyPayload {
   template: string;
   to?: string;
+  /** Canais a enviar (quando não informado, o backend decide) */
+  channels?: { email?: boolean; whatsapp?: boolean };
 }
 
 export interface CreateTemplatePayload {
@@ -350,6 +352,7 @@ export interface SurgeryRequestDetail {
 
 /** Resposta genérica de mutação (create/update/transition) cujo retorno geralmente não é consumido */
 export interface SurgeryRequestMutationResponse {
+  id?: string | number;
   [key: string]: unknown;
 }
 
@@ -460,6 +463,18 @@ export const surgeryRequestService = {
       data,
     );
     return response.data;
+  },
+
+  /**
+   * Exporta o PDF da solicitação cirúrgica sem alterar o status.
+   * Disponível para solicitações já enviadas (status ≥ 2).
+   */
+  async exportPdf(requestId: string | number): Promise<Blob> {
+    const response = await api.get(
+      `/surgery-requests/${requestId}/export-pdf`,
+      { responseType: "arraybuffer" },
+    );
+    return new Blob([response.data], { type: "application/pdf" });
   },
 
   /**

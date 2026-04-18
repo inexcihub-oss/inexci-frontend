@@ -163,7 +163,7 @@ export function NewSupplierModal({
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
         onClick={handleClose}
       />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh]">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 flex-shrink-0">
           <h2 className="ds-modal-title">Novo fornecedor</h2>

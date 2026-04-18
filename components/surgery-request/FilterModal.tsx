@@ -12,6 +12,7 @@ import {
   SurgeryRequestStatus,
   PriorityLevel,
 } from "@/types/surgery-request.types";
+import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -593,6 +594,8 @@ export function FilterModal({
 }: FilterModalProps) {
   const [draft, setDraft] = useState<FilterState>(currentFilters);
   const panelRef = useRef<HTMLDivElement>(null);
+  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
+    useSwipeToClose(onClose);
 
   // Sync draft when modal opens
   useEffect(() => {
@@ -679,16 +682,37 @@ export function FilterModal({
 
   if (!isOpen) return null;
 
+  const isDragging = dragY > 0;
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-60 flex flex-col justify-end sm:flex-row sm:justify-end">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/30"
+        style={{ opacity: isDragging ? Math.max(0.2, 1 - dragY / 300) : 1 }}
+        onClick={onClose}
+      />
 
       {/* Panel */}
       <div
         ref={panelRef}
-        className="relative z-10 w-[420px] max-w-full h-full bg-white flex flex-col shadow-2xl animate-slide-in-right"
+        className="relative z-10 w-full max-h-[92dvh] sm:max-h-full sm:w-[420px] sm:max-w-full sm:h-full bg-white flex flex-col shadow-2xl rounded-t-2xl sm:rounded-none animate-slide-up sm:animate-slide-in-right mobile-sheet-offset"
+        style={
+          isDragging
+            ? { transform: `translateY(${dragY}px)`, transition: "none" }
+            : undefined
+        }
       >
+        {/* Drag handle (mobile only) — captura swipe para baixo */}
+        <div
+          className="flex-none flex justify-center pt-3 sm:hidden cursor-grab active:cursor-grabbing touch-none"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+        </div>
+
         {/* Header */}
         <div className="flex-none flex items-center justify-between px-4 py-3 md:px-6 md:py-5 border-b border-neutral-100">
           <h2 className="ds-modal-title">Filtros</h2>

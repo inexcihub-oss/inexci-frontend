@@ -21,9 +21,10 @@ import {
 import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
+  SurgeryRequestListItem,
 } from "@/services/surgery-request.service";
 import { pendencyService } from "@/services/pendency.service";
-import { availableDoctorsService } from "@/services/available-doctors.service";
+import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useDebounce } from "@/hooks";
 import { SearchInput } from "@/components/ui";
 import Image from "next/image";
@@ -57,20 +58,17 @@ export default function ProcedimentosCirurgicos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [, setLoading] = useState(true);
   const [columns, setColumns] = useState<KanbanColumn[]>(INITIAL_COLUMNS);
+  // Estado separado para dados estáticos — não é atualizado quando apenas pendenciesCount muda
+  const [rawCards, setRawCards] = useState<KanbanColumn[]>(INITIAL_COLUMNS);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
-  const [availableDoctors, setAvailableDoctors] = useState<
-    { id: string; name: string }[]
-  >([]);
+  const { data: availableDoctorsData = [] } = useAvailableDoctors();
+  const availableDoctors = availableDoctorsData.map((d) => ({
+    id: d.id,
+    name: d.name,
+  }));
 
   const debouncedSearch = useDebounce(searchTerm, 300);
-
-  // Carregar dados do backend
-  useEffect(() => {
-    loadSurgeryRequests();
-    loadAvailableDoctors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Fechar dropdown de exportação ao clicar fora
   useEffect(() => {
@@ -83,15 +81,6 @@ export default function ProcedimentosCirurgicos() {
     return () => document.removeEventListener("mousedown", handler);
   }, [isExportOpen]);
 
-  const loadAvailableDoctors = useCallback(async () => {
-    try {
-      const doctors = await availableDoctorsService.getAvailableDoctors();
-      setAvailableDoctors(doctors.map((d) => ({ id: d.id, name: d.name })));
-    } catch {
-      // silently ignore — filtro por médico não aparece se falhar
-    }
-  }, []);
-
   const loadSurgeryRequests = useCallback(async () => {
     try {
       setLoading(true);
@@ -100,13 +89,19 @@ export default function ProcedimentosCirurgicos() {
       // Mapear os dados do backend para o formato do Kanban
       if (response && response.records && Array.isArray(response.records)) {
         const mappedRequests: SurgeryRequest[] = response.records.map(
-          (record: any) => {
+          (record: SurgeryRequestListItem) => {
             const status = STATUS_NUMBER_TO_STRING[record.status] || "Pendente";
 
             // Obter nome do procedimento
             const getProcedureName = () => {
-              if (record.is_indication && record.indication_name) {
-                return record.indication_name;
+              const isIndication = record["is_indication"] as
+                | boolean
+                | undefined;
+              const indicationName = record["indication_name"] as
+                | string
+                | undefined;
+              if (isIndication && indicationName) {
+                return indicationName;
               }
 
               if (record.procedure?.name) {
@@ -124,10 +119,9 @@ export default function ProcedimentosCirurgicos() {
                   name: record.manager.name,
                 };
               }
-              // Fallback para created_by se não houver gestor
               return {
-                id: String(record.created_by?.id || 0),
-                name: record.created_by?.name || "Não informado",
+                id: "0",
+                name: "Não informado",
               };
             };
 
@@ -142,7 +136,7 @@ export default function ProcedimentosCirurgicos() {
               procedureName: getProcedureName(),
               doctor: getManager(),
               priority: (record.priority as PriorityLevel) || PRIORITY.MEDIUM,
-              pendenciesCount: record.pendenciesCount || 0,
+              pendenciesCount: record.pendencies_count || 0,
               pendenciesCompleted: 0,
               pendenciesWaiting: 0,
               createdAt: (() => {
@@ -180,6 +174,7 @@ export default function ProcedimentosCirurgicos() {
         }));
 
         setColumns(newColumns);
+        setRawCards(newColumns);
 
         // Atualizar pendenciesCount com o validador real (async, sem bloquear o render)
         const allIds = mappedRequests.map((r) => r.id);
@@ -205,29 +200,32 @@ export default function ProcedimentosCirurgicos() {
       }
 
       setLoading(false);
-    } catch (error) {
-      console.error("Erro ao carregar solicitações:", error);
+    } catch {
       setLoading(false);
     }
   }, []);
 
-  // Dados derivados para o modal de filtros (convênios e procedimentos únicos)
+  // Carregar dados do backend
+  useEffect(() => {
+    loadSurgeryRequests();
+  }, [loadSurgeryRequests]);
+
+  // Dados derivados para o modal de filtros — dependem de rawCards (não muda com pendenciesCount)
   const availableHealthPlans = useMemo(() => {
     const map = new Map<string, string>();
-    columns.forEach((col) =>
+    rawCards.forEach((col) =>
       col.cards.forEach((card) => {
         if (card.healthPlan) map.set(card.healthPlan, card.healthPlan);
       }),
     );
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [columns]);
+  }, [rawCards]);
 
   const availableProcedures = useMemo(() => {
     const seen = new Set<string>();
     const result: { id: string; name: string }[] = [];
-    columns.forEach((col) =>
+    rawCards.forEach((col) =>
       col.cards.forEach((card) => {
-        // Split composite procedure names (e.g. "Proc A +2")
         const base = card.procedureName.replace(/ \+\d+$/, "");
         if (base && !seen.has(base)) {
           seen.add(base);
@@ -236,7 +234,7 @@ export default function ProcedimentosCirurgicos() {
       }),
     );
     return result;
-  }, [columns]);
+  }, [rawCards]);
 
   // Filtrar colunas com base na busca E nos filtros
   const filteredColumns = useMemo(() => {
@@ -384,7 +382,7 @@ export default function ProcedimentosCirurgicos() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex-none border-b border-neutral-100 px-4 py-0 flex flex-wrap items-center justify-between gap-y-2">
+      <div className="flex-none border-b border-neutral-100 px-4 py-0 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center sm:justify-between gap-y-0">
         {/* View Toggle */}
         <div className="flex items-center shrink-0">
           <button
@@ -420,13 +418,13 @@ export default function ProcedimentosCirurgicos() {
         </div>
 
         {/* Search and Actions */}
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto pb-3 lg:pb-0">
+        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto pb-4 lg:pb-0 pt-3 sm:pt-0">
           {/* Search */}
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Buscar por paciente, gestor, procedimento, ID..."
-            className="w-full lg:w-85"
+            className="w-full sm:flex-1 lg:w-85 lg:flex-none"
           />
 
           {/* Filter Button */}
@@ -473,10 +471,10 @@ export default function ProcedimentosCirurgicos() {
           <div className="hidden lg:block w-px h-8 bg-neutral-100" />
 
           {/* Export Button */}
-          <div className="relative hidden lg:block" ref={exportRef}>
+          <div className="relative" ref={exportRef}>
             <button
               onClick={() => setIsExportOpen((v) => !v)}
-              className="flex items-center gap-1 h-11 px-3.5 py-2 border border-neutral-100 rounded-xl bg-white hover:bg-neutral-50 transition-colors"
+              className="flex items-center gap-1.5 h-11 min-h-[44px] px-3.5 py-2 border border-neutral-100 rounded-xl bg-white hover:bg-neutral-50 transition-colors"
             >
               <Image
                 src="/icons/download.svg"
@@ -556,15 +554,18 @@ export default function ProcedimentosCirurgicos() {
           </div>
 
           {/* New Request Button */}
-          <Button onClick={() => setIsNewRequestOpen(true)} variant="primary">
-            <span className="hidden sm:inline">Nova solicitação</span>
-            <span className="sm:hidden">+ Nova</span>
+          <Button
+            onClick={() => setIsNewRequestOpen(true)}
+            variant="primary"
+            className="flex-1 sm:flex-none h-11 min-h-[44px]"
+          >
+            Nova solicitação
           </Button>
         </div>
       </div>
 
       {/* Kanban Board ou Lista */}
-      <div className="flex-1 overflow-hidden px-2 lg:px-4 py-4 flex flex-col">
+      <div className="flex-1 overflow-hidden px-3 sm:px-4 lg:px-4 py-4 flex flex-col">
         {view === "kanban" ? (
           filteredColumns.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3">

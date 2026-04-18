@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   ColumnDef,
   flexRender,
@@ -357,25 +358,36 @@ export default function ProcedimentosPage() {
     <PageContainer className="border-gray-200">
       {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3 border-b border-gray-200">
-        <h1 className="text-2xl lg:text-3xl font-semibold text-black font-urbanist">
-          Procedimentos
-        </h1>
+        <h1 className="ds-page-title">Procedimentos</h1>
       </div>
 
       {/* Search + Button Bar */}
-      <div className="flex-none flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-200">
+      <div className="flex-none flex flex-wrap items-center gap-2.5 px-4 py-3 border-b border-gray-200">
         <SearchInput
           value={searchTerm}
           onChange={setSearchTerm}
           placeholder="Nome do procedimento"
-          className="w-full sm:w-80"
+          className="w-full sm:flex-1 lg:w-85 lg:flex-none"
         />
 
-        <div className="flex items-center gap-2">
+        <Button variant="outline" size="md" className="min-h-[44px] rounded-xl">
+          <Image
+            src="/icons/filter.svg"
+            alt="Filtro"
+            width={20}
+            height={20}
+            className="mr-1.5"
+          />
+          Filtro
+        </Button>
+
+        <div className="hidden sm:block w-px h-8 bg-neutral-100" />
+
+        <div className="flex items-center gap-2 flex-1 sm:flex-none">
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteClick}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 active:scale-[0.98] transition-all min-h-[44px]"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -397,6 +409,7 @@ export default function ProcedimentosPage() {
           <Button
             variant="primary"
             size="md"
+            className="flex-1 sm:flex-none min-h-[44px]"
             onClick={() => setIsNewModelModalOpen(true)}
           >
             Novo modelo

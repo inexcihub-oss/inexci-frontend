@@ -27,7 +27,6 @@ interface UpdateAuthorizationsModalProps {
   onClose2: () => void;
   solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
-  notifyPatient?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────────────
@@ -47,7 +46,6 @@ export function UpdateAuthorizationsModal({
   onClose2: _onClose2,
   solicitacao,
   onSuccess,
-  notifyPatient = false,
 }: UpdateAuthorizationsModalProps) {
   const [step, setStep] = useState<Step>(1);
   const [isSaving, setIsSaving] = useState(false);
@@ -184,7 +182,6 @@ export function UpdateAuthorizationsModal({
         });
       const payload: AcceptAuthorizationPayload = {
         date_options: validDates,
-        notify_patient: notifyPatient || undefined,
       };
       await surgeryRequestService.acceptAuthorization(solicitacao.id, payload);
       showToast("Autorização aceita! Status: Em Agendamento", "success");

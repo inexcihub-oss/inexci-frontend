@@ -33,11 +33,11 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         disabled={props.disabled}
         className={cn(
           "peer h-6 w-6 md:h-5 md:w-5 shrink-0 rounded-md border-[1.5px] transition-all duration-200 ease-in-out",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25b4b0] focus-visible:ring-offset-2",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2",
           "disabled:cursor-not-allowed disabled:opacity-50",
           checked || indeterminate
-            ? "border-[#25b4b0] bg-[#25b4b0]"
-            : "border-gray-400 bg-white hover:border-[#25b4b0]",
+            ? "border-primary-500 bg-primary-500"
+            : "border-gray-400 bg-white hover:border-primary-500",
           className,
         )}
       >

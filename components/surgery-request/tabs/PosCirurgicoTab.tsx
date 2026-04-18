@@ -6,7 +6,6 @@ import {
   DOCUMENT_FOLDERS,
   Document,
 } from "@/services/document.service";
-import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 import {
   DocumentUploadModal,
   POST_SURGERY_DOCUMENT_TYPES,
@@ -15,11 +14,7 @@ import { DeleteDocumentModal } from "@/components/documents/DeleteDocumentModal"
 import { SectionCard } from "@/components/shared/SectionCard";
 import { useToast } from "@/hooks/useToast";
 import { mergeDocumentsAsPdf } from "@/lib/merge-pdf";
-
-interface PosCirurgicoTabProps {
-  solicitacao: SurgeryRequestDetail;
-  onUpdate: () => void;
-}
+import { useSolicitacao } from "@/contexts/SolicitacaoContext";
 
 const POST_DOC_TYPE_LABELS: Record<string, string> = {
   surgery_room: "Descrição cirúrgica",
@@ -75,10 +70,8 @@ function formatTime(dateStr: string): string {
  *   - telas-inexci/status/realizada/tela-detalhes-status-realizada-aba-pos-cirurgico.png
  *   - telas-inexci/status/realizada/modal-add-documento-aba-pos-cirurgico.png
  */
-export function PosCirurgicoTab({
-  solicitacao,
-  onUpdate,
-}: PosCirurgicoTabProps) {
+export function PosCirurgicoTab() {
+  const { solicitacao, onUpdate } = useSolicitacao();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(

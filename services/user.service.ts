@@ -84,7 +84,7 @@ export const userService = {
       crm?: string;
       crm_state?: string;
       specialty?: string;
-      signature_url?: string;
+      signature_image_url?: string | null;
     },
   ): Promise<DoctorProfile> {
     const response = await api.patch<DoctorProfile>(

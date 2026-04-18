@@ -10,6 +10,7 @@ import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
+import { GENDER_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
 import { getApiErrorMessage } from "@/lib/http-error";
 import {
   profileSchema,
@@ -20,6 +21,7 @@ import { userService } from "@/services/user.service";
 import { notificationService } from "@/services/notification.service";
 import { uploadService } from "@/services/upload.service";
 import { authService } from "@/services/auth.service";
+import { clearAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import type { SubscriptionPlan } from "@/types";
 import { removeBackground } from "@/lib/utils";
 import {
@@ -432,6 +434,7 @@ export default function ConfiguracoesPage() {
     try {
       // 1. Se há novo avatar, fazer upload primeiro
       let avatarUrl: string | undefined = undefined;
+      let avatarResolvedUrl: string | undefined = undefined;
       if (avatarFile) {
         try {
           const result = await uploadService.uploadSingle(
@@ -439,6 +442,7 @@ export default function ConfiguracoesPage() {
             "avatars",
           );
           avatarUrl = result.data.path;
+          avatarResolvedUrl = result.data.url;
         } catch {
           showToast("Erro ao fazer upload do avatar", "error");
           setSaving(false);
@@ -492,6 +496,18 @@ export default function ConfiguracoesPage() {
       setAvatarFile(null);
       setSignatureFile(null);
       setSignatureDeleted(false);
+
+      // Atualiza cache do avatar após salvar
+      if (user?.id) {
+        if (!avatarPreview) {
+          // Avatar removido — limpa o cache
+          clearAvatarCache(user.id);
+        } else if (avatarUrl && avatarResolvedUrl) {
+          // Novo avatar enviado — armazena path → URL resolvida no cache
+          setAvatarCache(user.id, avatarUrl, avatarResolvedUrl);
+        }
+      }
+
       showToast("Perfil atualizado com sucesso!", "success");
     } catch (error: unknown) {
       showToast(getApiErrorMessage(error, "Erro ao atualizar perfil"), "error");
@@ -704,12 +720,7 @@ export default function ConfiguracoesPage() {
                 onChange={(e) =>
                   setProfile({ ...profile, gender: e.target.value })
                 }
-                options={[
-                  { value: "", label: "Selecione" },
-                  { value: "M", label: "Masculino" },
-                  { value: "F", label: "Feminino" },
-                  { value: "O", label: "Outro" },
-                ]}
+                options={GENDER_OPTIONS}
               />
             </div>
           </CardContent>
@@ -750,36 +761,7 @@ export default function ConfiguracoesPage() {
                   onChange={(e) =>
                     setProfile({ ...profile, crmState: e.target.value })
                   }
-                  options={[
-                    { value: "", label: "Selecione" },
-                    { value: "AC", label: "AC" },
-                    { value: "AL", label: "AL" },
-                    { value: "AP", label: "AP" },
-                    { value: "AM", label: "AM" },
-                    { value: "BA", label: "BA" },
-                    { value: "CE", label: "CE" },
-                    { value: "DF", label: "DF" },
-                    { value: "ES", label: "ES" },
-                    { value: "GO", label: "GO" },
-                    { value: "MA", label: "MA" },
-                    { value: "MT", label: "MT" },
-                    { value: "MS", label: "MS" },
-                    { value: "MG", label: "MG" },
-                    { value: "PA", label: "PA" },
-                    { value: "PB", label: "PB" },
-                    { value: "PR", label: "PR" },
-                    { value: "PE", label: "PE" },
-                    { value: "PI", label: "PI" },
-                    { value: "RJ", label: "RJ" },
-                    { value: "RN", label: "RN" },
-                    { value: "RS", label: "RS" },
-                    { value: "RO", label: "RO" },
-                    { value: "RR", label: "RR" },
-                    { value: "SC", label: "SC" },
-                    { value: "SP", label: "SP" },
-                    { value: "SE", label: "SE" },
-                    { value: "TO", label: "TO" },
-                  ]}
+                  options={STATE_UF_OPTIONS}
                 />
               </div>
             </CardContent>

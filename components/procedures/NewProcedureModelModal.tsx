@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import Button from "@/components/ui/button";
+import Button from "@/components/ui/Button";
 import { X, Search, Plus, Check, Loader2 } from "lucide-react";
 import { procedureService, Procedure } from "@/services/procedure.service";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
 interface NewProcedureModelModalProps {
   isOpen: boolean;
@@ -33,6 +34,8 @@ export function NewProcedureModelModal({
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const modelNameInputRef = useRef<HTMLInputElement>(null);
+  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
+    useSwipeToClose(onClose);
 
   const debouncedSearch = useDebounce(procedureSearch, 300);
 
@@ -170,10 +173,20 @@ export function NewProcedureModelModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative bg-white w-full md:max-w-md flex flex-col rounded-t-3xl md:rounded-2xl max-h-[92vh] md:max-h-[85vh] animate-slide-up md:animate-scale-in md:mx-4 shadow-xl"
+        className="relative bg-white w-full md:max-w-md flex flex-col rounded-t-3xl md:rounded-2xl max-h-[92vh] md:max-h-[85vh] animate-slide-up md:animate-scale-in md:mx-4 shadow-xl mobile-sheet-offset"
+        style={
+          dragY > 0
+            ? { transform: `translateY(${dragY}px)`, transition: "none" }
+            : undefined
+        }
       >
         {/* Drag handle (mobile) */}
-        <div className="flex md:hidden justify-center pt-3 pb-1">
+        <div
+          className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 

@@ -344,9 +344,9 @@ export function TussProcedureModal({
       />
 
       {/* Modal - fullscreen mobile, centered desktop */}
-      <div className="relative bg-white sm:rounded-xl shadow-xl flex flex-col w-full h-full sm:w-[800px] sm:h-[650px] sm:max-h-[90vh]">
+      <div className="relative bg-white sm:rounded-xl shadow-xl flex flex-col w-full h-full sm:w-[800px] sm:h-[650px] sm:max-h-[90vh] mobile-sheet-offset">
         {/* Header */}
-        <div className="flex items-center px-4 sm:px-4 py-3 md:px-6 md:py-4 border-b border-[#DCDFE3]">
+        <div className="flex items-center px-4 sm:px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100">
           <h2 className="flex-1 ds-modal-title">Novo Procedimento</h2>
           <button
             onClick={!isLoading ? handleCancel : undefined}
@@ -380,12 +380,12 @@ export function TussProcedureModal({
           )}
 
           {/* Header da Tabela — 5 colunas idênticas às linhas */}
-          <div className="hidden sm:flex items-center gap-2 px-6 py-2 border-b border-[#DCDFE3]">
-            <span className="flex-1 text-xs text-[#111111] opacity-50">
+          <div className="hidden sm:flex items-center gap-2 px-6 py-2 border-b border-neutral-100">
+            <span className="flex-1 text-xs text-neutral-900 opacity-50">
               Procedimento
             </span>
             <div className="w-8" />
-            <span className="w-12 text-xs text-[#111111] opacity-50 text-center">
+            <span className="w-12 text-xs text-neutral-900 opacity-50 text-center">
               Qtd.
             </span>
             <div className="w-8" />
@@ -398,13 +398,13 @@ export function TussProcedureModal({
             {procedures.map((item, index) => (
               <div
                 key={index}
-                className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 sm:px-6 py-3 border-b border-[#DCDFE3] min-h-16"
+                className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 sm:px-6 py-3 border-b border-neutral-100 min-h-16"
               >
-                <span className="w-full sm:w-auto sm:flex-1 text-xs md:text-sm text-[#111111]">
+                <span className="w-full sm:w-auto sm:flex-1 text-xs md:text-sm text-neutral-900">
                   {item.procedure.tuss_code} - {item.procedure.name}
                 </span>
                 <div className="hidden sm:block w-8" />
-                <span className="w-12 text-xs text-[#111111] text-center">
+                <span className="w-12 text-xs text-neutral-900 text-center">
                   {item.quantity}
                 </span>
                 <div className="hidden sm:block w-8" />
@@ -414,24 +414,24 @@ export function TussProcedureModal({
                     className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded transition-colors"
                     title="Editar"
                   >
-                    <IconEdit className="w-5 h-5 text-[#111111]" />
+                    <IconEdit className="w-5 h-5 text-neutral-900" />
                   </button>
                   <button
                     onClick={() => handleRemoveProcedure(index)}
                     className="w-6 h-6 flex items-center justify-center hover:bg-gray-100 rounded transition-colors"
                     title="Remover"
                   >
-                    <IconTrash className="w-5 h-5 text-[#E34935]" />
+                    <IconTrash className="w-5 h-5 text-error" />
                   </button>
                 </div>
               </div>
             ))}
 
             {/* Linha de Adição de Novo Procedimento */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 sm:px-6 py-3 border-b border-[#DCDFE3] min-h-16">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-4 sm:px-6 py-3 border-b border-neutral-100 min-h-16">
               {/* Dropdown de Busca */}
               <div className="w-full sm:w-auto sm:flex-1 relative">
-                <div className="flex items-center gap-2 px-3 py-2 border border-[#DCDFE3] rounded-xl bg-white shadow-sm">
+                <div className="flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded-xl bg-white shadow-sm">
                   <input
                     type="text"
                     value={searchTerm}
@@ -441,9 +441,9 @@ export function TussProcedureModal({
                       setTimeout(() => setIsDropdownOpen(false), 150)
                     }
                     placeholder="Código ou nome do procedimento"
-                    className="flex-1 bg-transparent border-none outline-none text-xs md:text-sm text-[#111111] placeholder:text-[#111111] placeholder:opacity-50"
+                    className="flex-1 bg-transparent border-none outline-none text-xs md:text-sm text-neutral-900 placeholder:text-neutral-900 placeholder:opacity-50"
                   />
-                  <IconArrowDown className="w-4 h-4 text-[#111111] opacity-50" />
+                  <IconArrowDown className="w-4 h-4 text-neutral-900 opacity-50" />
                 </div>
 
                 {/* Dropdown de Resultados */}
@@ -461,15 +461,15 @@ export function TussProcedureModal({
                     );
                     if (filteredResults.length === 0) return null;
                     return (
-                      <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                      <div className="absolute z-20 w-full mt-1 bg-white border border-neutral-100 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                         {filteredResults.map((procedure) => (
                           <button
                             key={procedure.id}
                             type="button"
                             onClick={() => handleSelectProcedure(procedure)}
-                            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-[#DCDFE3] last:border-b-0"
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-neutral-100 last:border-b-0"
                           >
-                            <p className="text-xs md:text-sm font-medium text-[#111111]">
+                            <p className="text-xs md:text-sm font-medium text-neutral-900">
                               {procedure.tuss_code} - {procedure.name}
                             </p>
                           </button>
@@ -480,8 +480,8 @@ export function TussProcedureModal({
 
                 {/* Loading */}
                 {isSearching && (
-                  <div className="absolute z-20 w-full mt-1 bg-white border border-[#DCDFE3] rounded-xl shadow-lg p-4 text-center">
-                    <span className="text-xs md:text-sm text-[#111111] opacity-50">
+                  <div className="absolute z-20 w-full mt-1 bg-white border border-neutral-100 rounded-xl shadow-lg p-4 text-center">
+                    <span className="text-xs md:text-sm text-neutral-900 opacity-50">
                       Buscando...
                     </span>
                   </div>
@@ -497,12 +497,12 @@ export function TussProcedureModal({
                 disabled={newItemQuantity <= 1}
                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <IconMinus className="w-4 h-4 text-[#111111] opacity-50" />
+                <IconMinus className="w-4 h-4 text-neutral-900 opacity-50" />
               </button>
 
               {/* Número */}
-              <div className="w-12 h-10 flex items-center justify-center border border-[#DCDFE3] rounded-xl bg-white">
-                <span className="text-xs md:text-sm font-semibold text-[#111111]">
+              <div className="w-12 h-10 flex items-center justify-center border border-neutral-100 rounded-xl bg-white">
+                <span className="text-xs md:text-sm font-semibold text-neutral-900">
                   {newItemQuantity}
                 </span>
               </div>
@@ -513,7 +513,7 @@ export function TussProcedureModal({
                 onClick={() => setNewItemQuantity((prev) => prev + 1)}
                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
               >
-                <IconPlus className="w-4 h-4 text-[#111111]" />
+                <IconPlus className="w-4 h-4 text-neutral-900" />
               </button>
 
               <div className="hidden sm:block w-16" />
@@ -522,7 +522,7 @@ export function TussProcedureModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-4 sm:px-3 py-4 border-t-2 border-[#DCDFE3] safe-area-bottom">
+        <div className="flex items-center justify-end gap-2 px-4 sm:px-3 py-4 border-t-2 border-neutral-100 safe-area-bottom">
           <button
             onClick={handleCancel}
             className="ds-btn-outline"
@@ -579,10 +579,10 @@ export function TussProcedureModal({
               disabled={tempQuantity <= 1}
               className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50 transition-colors"
             >
-              <IconMinus className="w-5 h-5 text-[#111111]" />
+              <IconMinus className="w-5 h-5 text-neutral-900" />
             </button>
             <div
-              className="px-3 py-2 text-center text-xs md:text-sm font-semibold text-[#111111] border border-[#DCDFE3] rounded-xl bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
+              className="px-3 py-2 text-center text-xs md:text-sm font-semibold text-neutral-900 border border-neutral-100 rounded-xl bg-white shadow-[0px_1px_2px_rgba(0,0,0,0.05)]"
               style={{ width: "52px" }}
             >
               {tempQuantity}
@@ -591,11 +591,11 @@ export function TussProcedureModal({
               onClick={() => setTempQuantity((prev) => prev + 1)}
               className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
             >
-              <IconPlus className="w-5 h-5 text-[#111111]" />
+              <IconPlus className="w-5 h-5 text-neutral-900" />
             </button>
             <button
               onClick={() => handleSaveEdit(editingIndex)}
-              className="ml-2 px-4 py-2 text-xs md:text-sm font-semibold text-white bg-[#147471] rounded-xl hover:bg-[#0f5c5a] transition-colors"
+              className="ml-2 px-4 py-2 text-xs md:text-sm font-semibold text-white bg-primary-700 rounded-xl hover:bg-primary-800 transition-colors"
             >
               <IconCheck className="w-4 h-4" />
             </button>

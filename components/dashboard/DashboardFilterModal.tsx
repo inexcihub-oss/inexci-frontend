@@ -11,6 +11,7 @@ import Image from "next/image";
 import { hospitalService } from "@/services/hospital.service";
 import { healthPlanService } from "@/services/health-plan.service";
 import type { ReportFilters } from "@/services/reports.service";
+import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -536,6 +537,8 @@ export function DashboardFilterModal({
     { id: string; name: string }[]
   >([]);
   const panelRef = useRef<HTMLDivElement>(null);
+  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
+    useSwipeToClose(onClose);
 
   // Sync draft when modal opens
   useEffect(() => {
@@ -579,18 +582,34 @@ export function DashboardFilterModal({
 
   if (!isOpen) return null;
 
+  const isDragging = dragY > 0;
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:flex-row sm:justify-end">
+    <div className="fixed inset-0 z-60 flex flex-col justify-end sm:flex-row sm:justify-end">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/30"
+        style={{ opacity: isDragging ? Math.max(0.2, 1 - dragY / 300) : 1 }}
+        onClick={onClose}
+      />
 
       {/* Panel */}
       <div
         ref={panelRef}
-        className="relative z-10 w-full max-h-[92dvh] sm:max-h-full sm:w-[420px] sm:max-w-full sm:h-full bg-white flex flex-col shadow-2xl rounded-t-2xl sm:rounded-none animate-slide-in-right"
+        className="relative z-10 w-full max-h-[92dvh] sm:max-h-full sm:w-[420px] sm:max-w-full sm:h-full bg-white flex flex-col shadow-2xl rounded-t-2xl sm:rounded-none animate-slide-up sm:animate-slide-in-right mobile-sheet-offset"
+        style={
+          isDragging
+            ? { transform: `translateY(${dragY}px)`, transition: "none" }
+            : undefined
+        }
       >
-        {/* Drag handle (mobile only) */}
-        <div className="flex-none flex justify-center pt-3 sm:hidden">
+        {/* Drag handle (mobile only) — captura swipe para baixo */}
+        <div
+          className="flex-none flex justify-center pt-3 sm:hidden cursor-grab active:cursor-grabbing touch-none"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 

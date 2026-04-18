@@ -46,10 +46,10 @@ const STATUS_ORDER: SurgeryRequestStatus[] = [
 
 // Estilos de prioridade conforme Figma
 const PRIORITY_STYLES: Record<PriorityLevel, { bg: string; text: string }> = {
-  1: { bg: "bg-[#D4EFE0]", text: "text-[#1E6F47]" },
-  2: { bg: "bg-[#EBF3FF]", text: "text-[#1D7AFC]" },
-  3: { bg: "bg-[#FFF7D7]", text: "text-[#805F10]" },
-  4: { bg: "bg-[#F0E6E4]", text: "text-[#601E17]" },
+  1: { bg: "bg-priority-baixa-bg", text: "text-priority-baixa-text" },
+  2: { bg: "bg-priority-media-bg", text: "text-priority-media-text" },
+  3: { bg: "bg-priority-alta-bg", text: "text-priority-alta-text" },
+  4: { bg: "bg-priority-urgente-bg", text: "text-priority-urgente-text" },
 };
 
 interface SurgeryRequestRowProps {
@@ -144,9 +144,9 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
         {/* Col 6: Badge Pendências - padding 0 4px */}
         <div className="hidden lg:flex items-center justify-center px-1 shrink-0">
           {request.pendenciesCount > 0 ? (
-            <div className="flex items-center gap-1 px-3 py-1 border border-[#E34935] rounded-full bg-white">
-              <AlertTriangle className="w-5 h-5 text-[#E34935]" />
-              <span className="text-xs md:text-sm text-[#E34935]">
+            <div className="flex items-center gap-1 px-3 py-1 border border-error rounded-full bg-white">
+              <AlertTriangle className="w-5 h-5 text-error" />
+              <span className="text-xs md:text-sm text-error">
                 {request.pendenciesCount}
               </span>
             </div>

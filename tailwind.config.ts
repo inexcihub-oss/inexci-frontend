@@ -51,8 +51,8 @@ const config: Config = {
           400: "#33cfc7",
           500: "#25b4b0", // Cor principal
           600: "#1e908d",
-          700: "#166c6a",
-          800: "#0f4847",
+          700: "#147471",
+          800: "#0f5c5a",
           900: "#072424",
           950: "#041212",
         },
@@ -70,7 +70,7 @@ const config: Config = {
           900: "#162514",
           950: "#0b120a",
         },
-        // Teal (mesma paleta da primary, mantida por compatibilidade)
+        // Teal (alias de primary, mantida por compatibilidade)
         teal: {
           50: "#e6f9f8",
           100: "#ccf3f1",
@@ -80,7 +80,7 @@ const config: Config = {
           500: "#25b4b0",
           600: "#1e908d",
           700: "#147471",
-          800: "#0f4847",
+          800: "#0f5c5a",
           900: "#072424",
           950: "#041212",
         },
@@ -98,7 +98,7 @@ const config: Config = {
             text: "#805F10",
           },
         },
-        // Cores de Prioridade (conforme Figma)
+        // Cores de Prioridade — badges de listagem/kanban
         priority: {
           baixa: {
             bg: "#D4EFE0",
@@ -115,6 +115,29 @@ const config: Config = {
           urgente: {
             bg: "#F0E6E4",
             text: "#601E17",
+          },
+        },
+        // Cores de Prioridade — chips editáveis inline (EditableFields)
+        chip: {
+          baixa: {
+            bg: "#D4EFE0",
+            text: "#1E6F47",
+            hover: "#C0E5D1",
+          },
+          media: {
+            bg: "#D8E8F7",
+            text: "#1859A3",
+            hover: "#C4DCF0",
+          },
+          alta: {
+            bg: "#FFF3D6",
+            text: "#996600",
+            hover: "#FFEEC2",
+          },
+          urgente: {
+            bg: "#F4E1E3",
+            text: "#7A3B3F",
+            hover: "#EDD4D7",
           },
         },
         // Cores de Erro/Warning
@@ -218,12 +241,17 @@ const config: Config = {
           from: { transform: "scale(0.95)", opacity: "0" },
           to: { transform: "scale(1)", opacity: "1" },
         },
+        "slide-in-right": {
+          from: { transform: "translateX(100%)", opacity: "0" },
+          to: { transform: "translateX(0)", opacity: "1" },
+        },
       },
       animation: {
         "slide-up": "slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
         "slide-down": "slide-down 0.2s cubic-bezier(0.32, 0.72, 0, 1)",
         "fade-in": "fade-in 0.2s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
+        "slide-in-right": "slide-in-right 0.3s ease-out",
       },
     },
   },

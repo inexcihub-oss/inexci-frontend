@@ -11,6 +11,7 @@ import { Spinner } from "@/components/ui";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { patientService, Patient } from "@/services/patient.service";
+import { GENDER_OPTIONS, STATE_OPTIONS } from "@/lib/options";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import {
   surgeryRequestService,
@@ -216,44 +217,6 @@ export default function PacienteDetalhePage() {
     );
   }
 
-  const genderOptions = [
-    { value: "", label: "Selecione" },
-    { value: "M", label: "Masculino" },
-    { value: "F", label: "Feminino" },
-    { value: "O", label: "Outro" },
-  ];
-
-  const stateOptions = [
-    { value: "", label: "Selecione" },
-    { value: "AC", label: "Acre" },
-    { value: "AL", label: "Alagoas" },
-    { value: "AP", label: "Amapá" },
-    { value: "AM", label: "Amazonas" },
-    { value: "BA", label: "Bahia" },
-    { value: "CE", label: "Ceará" },
-    { value: "DF", label: "Distrito Federal" },
-    { value: "ES", label: "Espírito Santo" },
-    { value: "GO", label: "Goiás" },
-    { value: "MA", label: "Maranhão" },
-    { value: "MT", label: "Mato Grosso" },
-    { value: "MS", label: "Mato Grosso do Sul" },
-    { value: "MG", label: "Minas Gerais" },
-    { value: "PA", label: "Pará" },
-    { value: "PB", label: "Paraíba" },
-    { value: "PR", label: "Paraná" },
-    { value: "PE", label: "Pernambuco" },
-    { value: "PI", label: "Piauí" },
-    { value: "RJ", label: "Rio de Janeiro" },
-    { value: "RN", label: "Rio Grande do Norte" },
-    { value: "RS", label: "Rio Grande do Sul" },
-    { value: "RO", label: "Rondônia" },
-    { value: "RR", label: "Roraima" },
-    { value: "SC", label: "Santa Catarina" },
-    { value: "SP", label: "São Paulo" },
-    { value: "SE", label: "Sergipe" },
-    { value: "TO", label: "Tocantins" },
-  ];
-
   const healthPlanOptions = [
     { value: "", label: "Selecione um convênio" },
     ...healthPlans.map((plan) => ({ value: plan.id, label: plan.name })),
@@ -366,7 +329,7 @@ export default function PacienteDetalhePage() {
               label="Gênero"
               value={formData.gender}
               onChange={(e) => handleInputChange("gender", e.target.value)}
-              options={genderOptions}
+              options={GENDER_OPTIONS}
             />
             <Input
               label="Telefone"
@@ -426,7 +389,7 @@ export default function PacienteDetalhePage() {
               label="Estado"
               value={formData.state}
               onChange={(e) => handleInputChange("state", e.target.value)}
-              options={stateOptions}
+              options={STATE_OPTIONS}
             />
             <Input
               label="CEP"

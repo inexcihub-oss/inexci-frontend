@@ -7,6 +7,7 @@ import {
   CreatePatientPayload,
 } from "@/services/patient.service";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
+import { GENDER_OPTIONS } from "@/lib/options";
 
 interface NewPatientModalProps {
   isOpen: boolean;
@@ -159,7 +160,7 @@ export function NewPatientModal({
       />
 
       {/* Modal — proporções similares ao modal OPME/TUSS */}
-      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh]">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5 flex-shrink-0">
           <h2 className="ds-modal-title">Novo paciente</h2>
@@ -264,9 +265,11 @@ export function NewPatientModal({
                   }
                   className={inputClass}
                 >
-                  <option value="">Selecione</option>
-                  <option value="M">Masculino</option>
-                  <option value="F">Feminino</option>
+                  {GENDER_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
