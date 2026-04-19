@@ -45,6 +45,22 @@ export const authService = {
    */
   async register(userData: RegisterData): Promise<AuthResponse> {
     const { data } = await api.post<AuthResponse>("/auth/register", userData);
+
+    // Armazena token e usuário (sanitizado), igual ao login
+    if (typeof window !== "undefined" && data.access_token && data.user) {
+      localStorage.setItem("token", data.access_token);
+      localStorage.setItem("token_timestamp", Date.now().toString());
+
+      const { cpf, ...userWithoutSensitiveData } = data.user;
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...userWithoutSensitiveData,
+          cpfMask: cpf ? `***.***.***-${cpf.slice(-2)}` : undefined,
+        }),
+      );
+    }
+
     return data;
   },
 
