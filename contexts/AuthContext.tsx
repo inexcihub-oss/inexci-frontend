@@ -19,6 +19,7 @@ interface AuthContextData {
   isAdmin: boolean;
   accountId: string | null;
   login: (email: string, password: string) => Promise<void>;
+  register: (userData: import("@/types").RegisterData) => Promise<void>;
   logout: () => void;
   updateUser: () => Promise<void>;
 }
@@ -59,6 +60,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [router],
   );
 
+  const register = useCallback(
+    async (userData: import("@/types").RegisterData) => {
+      try {
+        const response = await authService.register(userData);
+        setUser(response.user);
+        router.push("/solicitacoes-cirurgicas");
+      } catch (error) {
+        throw error;
+      }
+    },
+    [router],
+  );
+
   const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);
@@ -86,10 +100,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAdmin,
       accountId,
       login,
+      register,
       logout,
       updateUser,
     }),
-    [user, loading, isDoctor, isAdmin, accountId, login, logout, updateUser],
+    [
+      user,
+      loading,
+      isDoctor,
+      isAdmin,
+      accountId,
+      login,
+      register,
+      logout,
+      updateUser,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

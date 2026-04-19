@@ -40,14 +40,14 @@ export const step2Schema = z
       if (!data.crm.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "CRM é obrigatório para médicos.",
+          message: "Informe o número do CRM para continuar.",
           path: ["crm"],
         });
       }
       if (!data.crmState) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Estado do CRM é obrigatório para médicos.",
+          message: "Selecione o estado (UF) do seu CRM.",
           path: ["crmState"],
         });
       }
