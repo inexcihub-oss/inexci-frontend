@@ -210,7 +210,7 @@ export default function CadastroPage() {
         subscription_plan_id: selectedPlanId || undefined,
       });
 
-      router.push("/login?registered=true");
+      router.push("/solicitacoes-cirurgicas");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const message =
