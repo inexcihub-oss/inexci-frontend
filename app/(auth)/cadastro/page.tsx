@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { authService } from "@/services/auth.service";
 import { SubscriptionPlan } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   StepIndicator,
   Step1PersonalData,
@@ -77,7 +77,7 @@ const STEP_BENEFITS: Record<number, { icon: string; text: string }[]> = {
 // ─── Página Principal ─────────────────────────────────────────────────────────
 
 export default function CadastroPage() {
-  const router = useRouter();
+  const { register } = useAuth();
 
   // Controle de etapas
   const [currentStep, setCurrentStep] = useState(1);
@@ -102,6 +102,11 @@ export default function CadastroPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [plansLoading, setPlansLoading] = useState(false);
+
+  // Erros de campo (etapa 2)
+  const [step2FieldErrors, setStep2FieldErrors] = useState<
+    Partial<Record<keyof Step2Data, string>>
+  >({});
 
   // Submissão
   const [error, setError] = useState("");
@@ -141,6 +146,9 @@ export default function CadastroPage() {
     value: string | boolean,
   ) => {
     setStep2((prev) => ({ ...prev, [field]: value }));
+    if (step2FieldErrors[field]) {
+      setStep2FieldErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
   };
 
   // ── Validações por etapa ───────────────────────────────────────────────────
@@ -153,7 +161,16 @@ export default function CadastroPage() {
 
   const validateStep2 = (): string | null => {
     const result = step2Schema.safeParse(step2);
-    if (!result.success) return result.error.issues[0].message;
+    if (!result.success) {
+      const fieldErrs: Partial<Record<keyof Step2Data, string>> = {};
+      for (const issue of result.error.issues) {
+        const field = issue.path[0] as keyof Step2Data;
+        if (field && !fieldErrs[field]) fieldErrs[field] = issue.message;
+      }
+      setStep2FieldErrors(fieldErrs);
+      return result.error.issues[0].message;
+    }
+    setStep2FieldErrors({});
     return null;
   };
 
@@ -184,6 +201,7 @@ export default function CadastroPage() {
   const handleBack = () => {
     setError("");
     setErrorType("");
+    setStep2FieldErrors({});
     setCurrentStep((s) => Math.max(s - 1, 1));
   };
 
@@ -196,21 +214,18 @@ export default function CadastroPage() {
     setIsLoading(true);
 
     try {
-      await authService.register({
+      await register({
         name: step1.name,
         email: step1.email,
         password: step1.password,
+        is_doctor: step2.isDoctor,
         ...(step2.isDoctor && {
-          doctor_profile: {
-            crm: step2.crm,
-            crm_state: step2.crmState,
-            specialty: step2.specialty || undefined,
-          },
+          crm: step2.crm,
+          crm_state: step2.crmState,
+          specialty: step2.specialty || undefined,
         }),
         subscription_plan_id: selectedPlanId || undefined,
       });
-
-      router.push("/solicitacoes-cirurgicas");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const message =
@@ -269,7 +284,11 @@ export default function CadastroPage() {
           )}
 
           {currentStep === 2 && (
-            <Step2Profile data={step2} onChange={handleStep2Change} />
+            <Step2Profile
+              data={step2}
+              onChange={handleStep2Change}
+              fieldErrors={step2FieldErrors}
+            />
           )}
 
           {currentStep === 3 && (

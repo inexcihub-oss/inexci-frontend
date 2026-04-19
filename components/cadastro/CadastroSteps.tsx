@@ -212,9 +212,10 @@ export interface Step2Data {
 interface Step2Props {
   data: Step2Data;
   onChange: (field: keyof Step2Data, value: string | boolean) => void;
+  fieldErrors?: Partial<Record<keyof Step2Data, string>>;
 }
 
-export function Step2Profile({ data, onChange }: Step2Props) {
+export function Step2Profile({ data, onChange, fieldErrors }: Step2Props) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-600 mb-2">
@@ -256,6 +257,7 @@ export function Step2Profile({ data, onChange }: Step2Props) {
               onChange={(e) => onChange("crm", e.target.value)}
               placeholder="123456"
               className="min-h-[42px] bg-white"
+              error={fieldErrors?.crm}
             />
             <Select
               id="crm-state"
@@ -269,6 +271,7 @@ export function Step2Profile({ data, onChange }: Step2Props) {
                 ...BRAZILIAN_STATES.map((uf) => ({ value: uf, label: uf })),
               ]}
               className="min-h-[42px] bg-white"
+              error={fieldErrors?.crmState}
             />
           </div>
           <Input

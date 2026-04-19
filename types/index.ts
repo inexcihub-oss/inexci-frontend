@@ -74,11 +74,10 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
-  doctor_profile?: {
-    crm: string;
-    crm_state: string;
-    specialty?: string;
-  };
+  is_doctor?: boolean;
+  crm?: string;
+  crm_state?: string;
+  specialty?: string;
   subscription_plan_id?: string;
 }
 
