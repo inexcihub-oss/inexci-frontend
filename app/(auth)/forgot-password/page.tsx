@@ -94,7 +94,7 @@ function ForgotPasswordForm() {
     <div className="flex min-h-screen bg-gray-50">
       {/* ── Lado esquerdo: formulário ── */}
       <div className="flex-1 flex items-center justify-center px-5 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-8">
+        <div className="w-full max-w-md space-y-6 sm:space-y-8">
           {/* Logo */}
           <div className="flex justify-center">
             <Image
@@ -110,12 +110,12 @@ function ForgotPasswordForm() {
           {step === "success" && (
             <div className="text-center space-y-6">
               <div className="flex justify-center">
-                <div className="w-20 h-20 rounded-full bg-teal-50 flex items-center justify-center">
-                  <CheckCircle2 className="w-10 h-10 text-teal-500" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-teal-50 flex items-center justify-center">
+                  <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-teal-500" />
                 </div>
               </div>
               <div>
-                <h2 className="text-2xl font-semibold text-black font-urbanist">
+                <h2 className="text-xl sm:text-2xl font-semibold text-black font-urbanist">
                   Senha redefinida!
                 </h2>
                 <p className="mt-2 text-sm text-gray-500">
@@ -176,7 +176,7 @@ function ForgotPasswordForm() {
                         <Mail className="w-6 h-6 text-teal-500" />
                       </div>
                     </div>
-                    <h2 className="text-2xl font-semibold text-black font-urbanist">
+                    <h2 className="text-xl sm:text-2xl font-semibold text-black font-urbanist">
                       Esqueceu sua senha?
                     </h2>
                     <p className="mt-2 text-sm text-gray-500">
@@ -191,7 +191,7 @@ function ForgotPasswordForm() {
                         <KeyRound className="w-6 h-6 text-teal-500" />
                       </div>
                     </div>
-                    <h2 className="text-2xl font-semibold text-black font-urbanist">
+                    <h2 className="text-xl sm:text-2xl font-semibold text-black font-urbanist">
                       Verifique seu e-mail
                     </h2>
                     <p className="mt-2 text-sm text-gray-500">
@@ -208,7 +208,7 @@ function ForgotPasswordForm() {
                         <Lock className="w-6 h-6 text-teal-500" />
                       </div>
                     </div>
-                    <h2 className="text-2xl font-semibold text-black font-urbanist">
+                    <h2 className="text-xl sm:text-2xl font-semibold text-black font-urbanist">
                       Nova senha
                     </h2>
                     <p className="mt-2 text-sm text-gray-500">
