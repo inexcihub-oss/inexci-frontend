@@ -143,13 +143,13 @@ function LoginForm() {
                   Criar conta
                 </Link>
               </div>
-              <div>
-                <a
+              <div className="text-gray-600">
+                <Link
                   href="/forgot-password"
-                  className="text-gray-600 hover:text-gray-900"
+                  className="font-semibold text-teal-500 hover:text-teal-600"
                 >
                   Esqueceu sua senha?
-                </a>
+                </Link>
               </div>
             </div>
           </form>
