@@ -18,6 +18,7 @@ export { EmptyState } from "./EmptyState";
 export { FileUpload } from "./FileUpload";
 export { ProgressBar, StatusProgressBar } from "./ProgressBar";
 export { SearchInput } from "./SearchInput";
+export { DateInput } from "./DateInput";
 export { Spinner } from "./Spinner";
 export { Tooltip } from "./Tooltip";
 export {

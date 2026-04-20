@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
 import Input from "@/components/ui/Input";
+import { DateInput } from "@/components/ui/DateInput";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
@@ -319,11 +320,10 @@ export default function PacienteDetalhePage() {
               }
               placeholder="000.000.000-00"
             />
-            <Input
+            <DateInput
               label="Data de nascimento"
-              type="date"
               value={formData.birth_date}
-              onChange={(e) => handleInputChange("birth_date", e.target.value)}
+              onChange={(v) => handleInputChange("birth_date", v)}
             />
             <Select
               label="Gênero"

@@ -370,17 +370,6 @@ export default function ProcedimentosPage() {
           className="w-full sm:flex-1 lg:w-85 lg:flex-none"
         />
 
-        <Button variant="outline" size="md" className="min-h-[44px] rounded-xl">
-          <Image
-            src="/icons/filter.svg"
-            alt="Filtro"
-            width={20}
-            height={20}
-            className="mr-1.5"
-          />
-          Filtro
-        </Button>
-
         <div className="hidden sm:block w-px h-8 bg-neutral-100" />
 
         <div className="flex items-center gap-2 flex-1 sm:flex-none">
@@ -424,14 +413,14 @@ export default function ProcedimentosPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-700" />
           </div>
         ) : filteredProcedures.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 gap-2">
+          <div className="flex flex-col items-center justify-center flex-1 gap-2 px-6 py-12 text-center">
             <p className="text-gray-500 text-sm">
               {debouncedSearchTerm
                 ? "Nenhum modelo encontrado para a busca"
                 : "Você ainda não tem modelos salvos"}
             </p>
             {!debouncedSearchTerm && (
-              <p className="text-gray-400 text-xs">
+              <p className="text-gray-400 text-xs max-w-xs">
                 Salve uma solicitação como modelo ao enviá-la, ou clique em
                 &ldquo;Novo modelo&rdquo;
               </p>
