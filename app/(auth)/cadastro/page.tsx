@@ -248,9 +248,9 @@ export default function CadastroPage() {
   const benefits = STEP_BENEFITS[currentStep];
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
       {/* ── Lado esquerdo — formulário ─────────────────────────────────────── */}
-      <div className="flex-1 flex items-start justify-center px-5 sm:px-8 py-10 overflow-y-auto">
+      <div className="flex-1 flex items-start justify-center px-5 sm:px-8 py-10 overflow-y-auto min-h-0">
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="flex justify-center mb-6">

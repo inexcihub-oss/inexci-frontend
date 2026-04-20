@@ -6,6 +6,7 @@ import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
 import Input from "@/components/ui/Input";
+import { DateInput } from "@/components/ui/DateInput";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
@@ -494,11 +495,10 @@ export default function AssistenteDetalhePage() {
               onChange={(e) => handleInputChange("gender", e.target.value)}
               options={GENDER_OPTIONS}
             />
-            <Input
+            <DateInput
               label="Data de nascimento"
-              type="date"
               value={formData.birth_date}
-              onChange={(e) => handleInputChange("birth_date", e.target.value)}
+              onChange={(v) => handleInputChange("birth_date", v)}
             />
             <Input
               label="Endereço"

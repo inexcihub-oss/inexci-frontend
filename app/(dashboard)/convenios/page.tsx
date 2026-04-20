@@ -284,17 +284,6 @@ export default function ConveniosPage() {
           className="w-full sm:flex-1 lg:w-85 lg:flex-none"
         />
 
-        <Button variant="outline" size="md" className="min-h-[44px] rounded-xl">
-          <Image
-            src="/icons/filter.svg"
-            alt="Filtro"
-            width={20}
-            height={20}
-            className="mr-1.5"
-          />
-          Filtro
-        </Button>
-
         <div className="hidden sm:block w-px h-8 bg-neutral-100" />
 
         <div className="flex items-center gap-2 flex-1 sm:flex-none">

@@ -6,6 +6,7 @@ import PageContainer from "@/components/PageContainer";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import { DateInput } from "@/components/ui/DateInput";
 import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
@@ -706,13 +707,10 @@ export default function ConfiguracoesPage() {
                 }
                 placeholder="000.000.000-00"
               />
-              <Input
+              <DateInput
                 label="Data de nascimento"
-                type="date"
                 value={profile.birthDate}
-                onChange={(e) =>
-                  setProfile({ ...profile, birthDate: e.target.value })
-                }
+                onChange={(v) => setProfile({ ...profile, birthDate: v })}
               />
               <Select
                 label="Gênero"

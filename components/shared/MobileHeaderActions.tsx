@@ -181,7 +181,7 @@ export default function MobileHeaderActions() {
             "relative flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200",
             isNotificationsOpen
               ? "bg-primary-50 text-primary-600"
-              : "text-neutral-400 hover:bg-neutral-50 hover:text-neutral-900 active:bg-neutral-100",
+              : "text-neutral-900 hover:bg-neutral-50 active:bg-neutral-100",
           )}
           aria-label="Notificações"
         >
@@ -203,7 +203,7 @@ export default function MobileHeaderActions() {
             />
 
             {/* Dropdown card */}
-            <div className="absolute right-0 top-full mt-2 w-[calc(100vw-32px)] max-w-sm z-[90] bg-white rounded-2xl shadow-2xl border border-neutral-100 overflow-hidden animate-scale-in origin-top-right">
+            <div className="fixed top-14 right-4 left-4 max-w-sm ml-auto z-[90] bg-white rounded-2xl shadow-2xl border border-neutral-100 overflow-hidden animate-scale-in origin-top-right">
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
                 <h2 className="text-sm font-semibold text-neutral-900">
@@ -313,7 +313,7 @@ export default function MobileHeaderActions() {
           "relative flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200",
           isSettingsActive
             ? "bg-primary-50 text-primary-600"
-            : "text-neutral-400 hover:bg-neutral-50 hover:text-neutral-900 active:bg-neutral-100",
+            : "text-neutral-900 hover:bg-neutral-50 active:bg-neutral-100",
         )}
         aria-label="Configurações"
       >
@@ -354,7 +354,7 @@ export default function MobileHeaderActions() {
               className="fixed inset-0 z-[80]"
               onClick={() => setIsUserMenuOpen(false)}
             />
-            <div className="absolute right-0 top-full mt-2 w-48 z-[90] bg-white rounded-2xl shadow-2xl border border-neutral-100 overflow-hidden animate-scale-in origin-top-right">
+            <div className="fixed top-14 right-4 w-48 z-[90] bg-white rounded-2xl shadow-2xl border border-neutral-100 overflow-hidden animate-scale-in origin-top-right">
               {/* User info */}
               <div className="px-4 py-3 border-b border-neutral-100">
                 <p className="text-sm font-semibold text-neutral-900 truncate">

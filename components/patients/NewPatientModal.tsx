@@ -8,6 +8,7 @@ import {
 } from "@/services/patient.service";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { GENDER_OPTIONS } from "@/lib/options";
+import { DateInput } from "@/components/ui/DateInput";
 
 interface NewPatientModalProps {
   isOpen: boolean;
@@ -245,17 +246,12 @@ export function NewPatientModal({
 
             {/* Row 3: Data de nascimento + Gênero */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Data de nascimento</label>
-                <input
-                  type="date"
-                  value={formData.birth_date}
-                  onChange={(e) =>
-                    setFormData({ ...formData, birth_date: e.target.value })
-                  }
-                  className={inputClass}
-                />
-              </div>
+              <DateInput
+                label="Data de nascimento"
+                value={formData.birth_date}
+                onChange={(v) => setFormData({ ...formData, birth_date: v })}
+                className={inputClass}
+              />
               <div className="flex flex-col gap-1.5">
                 <label className={labelClass}>Gênero</label>
                 <select
