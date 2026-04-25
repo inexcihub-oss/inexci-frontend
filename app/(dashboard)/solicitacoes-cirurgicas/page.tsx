@@ -111,12 +111,12 @@ export default function ProcedimentosCirurgicos() {
               return "Procedimento não especificado";
             };
 
-            // Obter o gestor da solicitação
-            const getManager = () => {
-              if (record.manager) {
+            // Obter o médico da solicitação
+            const getDoctor = () => {
+              if (record.doctor) {
                 return {
-                  id: String(record.manager.id),
-                  name: record.manager.name,
+                  id: String(record.doctor.id),
+                  name: record.doctor.name,
                 };
               }
               return {
@@ -134,7 +134,7 @@ export default function ProcedimentosCirurgicos() {
                 initials: getInitials(record.patient?.name ?? ""),
               },
               procedureName: getProcedureName(),
-              doctor: getManager(),
+              doctor: getDoctor(),
               priority: (record.priority as PriorityLevel) || PRIORITY.MEDIUM,
               pendenciesCount: record.pendencies_count || 0,
               pendenciesCompleted: 0,

@@ -11,6 +11,8 @@ import {
   FileText,
   CheckCircle,
   MoreHorizontal,
+  Stethoscope,
+  ShieldCheck,
 } from "lucide-react";
 import {
   SurgeryRequest,
@@ -358,18 +360,24 @@ export const ProcedureCard = memo<ProcedureCardProps>(
           {procedure.procedureName}
         </p>
 
-        {/* Nome do Médico/Gestor */}
-        <p
-          className={`text-sm md:text-base text-gray-500 leading-normal line-clamp-1 ${procedure.healthPlan ? "mb-1" : "mb-3"}`}
+        {/* Nome do Médico */}
+        <div
+          className={`flex items-center gap-1.5 ${procedure.healthPlan ? "mb-1" : "mb-3"}`}
         >
-          {procedure.doctor.name}
-        </p>
-
-        {/* Convênio - sempre abaixo do gestor se existir */}
-        {procedure.healthPlan && (
-          <p className="text-sm md:text-base text-gray-500 leading-normal line-clamp-1 mb-3">
-            {procedure.healthPlan}
+          <Stethoscope className="flex-shrink-0 text-teal-600" size={14} />
+          <p className="text-sm md:text-base text-gray-700 font-medium leading-normal line-clamp-1">
+            {procedure.doctor.name}
           </p>
+        </div>
+
+        {/* Convênio - sempre abaixo do médico se existir */}
+        {procedure.healthPlan && (
+          <div className="flex items-center gap-1.5 mb-3">
+            <ShieldCheck className="flex-shrink-0 text-gray-400" size={14} />
+            <p className="text-sm md:text-base text-gray-500 leading-normal line-clamp-1">
+              {procedure.healthPlan}
+            </p>
+          </div>
         )}
 
         {/* Tags: Prioridade + Pendências */}
