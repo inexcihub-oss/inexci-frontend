@@ -86,7 +86,7 @@ export function UpdateAuthorizationsModal({
   const [contestMethod, setContestMethod] = useState<ContestMethod>("email");
   const [contestEmail, setContestEmail] = useState({
     to: "",
-    subject: "",
+    subject: `Contestação de autorizações - ${solicitacao?.patient?.name ?? ""}`,
     message: "",
   });
 
@@ -97,7 +97,11 @@ export function UpdateAuthorizationsModal({
     setShowContest(false);
     setContestStep(1);
     setContestReason("");
-    setContestEmail({ to: "", subject: "", message: "" });
+    setContestEmail({
+      to: "",
+      subject: `Contestação de autorizações - ${solicitacao?.patient?.name ?? ""}`,
+      message: "",
+    });
     setScheduleDates([
       { date: "", time: "00:00" },
       { date: "", time: "00:00" },
@@ -184,11 +188,11 @@ export function UpdateAuthorizationsModal({
         date_options: validDates,
       };
       await surgeryRequestService.acceptAuthorization(solicitacao.id, payload);
-      showToast("Autorização aceita! Status: Em Agendamento", "success");
+      showToast("Autorização aceita! Status: Em Agendamento", "success");
       reset();
       onSuccess();
     } catch {
-      showToast("Erro ao aceitar autorização. Tente novamente.", "error");
+      showToast("Erro ao aceitar autorização. Tente novamente.", "error");
     } finally {
       setIsSaving(false);
     }
@@ -198,6 +202,19 @@ export function UpdateAuthorizationsModal({
     if (!contestReason.trim()) return;
     setIsSaving(true);
     try {
+      // Salvar quantidades autorizadas no banco antes de contestar
+      await surgeryRequestService.authorizeQuantities(
+        solicitacao.id,
+        tussAuth.map((e) => ({
+          id: e.id,
+          authorized_quantity: Number(e.authorized_quantity) || 0,
+        })),
+        opmeAuth.map((e) => ({
+          id: e.id,
+          authorized_quantity: Number(e.authorized_quantity) || 0,
+        })),
+      );
+
       const payload: ContestAuthorizationPayload = {
         reason: contestReason.trim(),
         method: contestMethod,
@@ -208,11 +225,34 @@ export function UpdateAuthorizationsModal({
         }),
       };
       await surgeryRequestService.contestAuthorization(solicitacao.id, payload);
-      showToast("Contestação enviada com sucesso", "success");
+
+      if (contestMethod === "document") {
+        try {
+          const blob =
+            await surgeryRequestService.downloadContestAuthorizationPdf(
+              solicitacao.id,
+            );
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `contestacao-${solicitacao.protocol ?? solicitacao.id}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 10_000);
+        } catch {
+          showToast(
+            "Contestação registrada, mas houve um erro ao gerar o PDF.",
+            "error",
+          );
+        }
+      }
+
+      showToast("Contestação enviada com sucesso", "success");
       reset();
       onSuccess();
     } catch {
-      showToast("Erro ao enviar contestação. Tente novamente.", "error");
+      showToast("Erro ao enviar contestação. Tente novamente.", "error");
     } finally {
       setIsSaving(false);
     }
@@ -254,7 +294,7 @@ export function UpdateAuthorizationsModal({
           </button>
         </div>
 
-        {/* Contestação */}
+        {/* Contestação */}
         {showContest && (
           <ContestFlow
             step={contestStep}
@@ -286,7 +326,7 @@ export function UpdateAuthorizationsModal({
           <>
             <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
               <p className="text-sm md:text-base font-semibold text-gray-900">
-                Código TUSS
+                Código TUSS
               </p>
               <AuthorizationTable
                 items={tussAuth}
@@ -311,7 +351,7 @@ export function UpdateAuthorizationsModal({
                 Cancelar
               </button>
               <button onClick={() => setStep(2)} className="ds-btn-primary">
-                Próximo
+                Próximo
               </button>
             </ModalFooter>
           </>
@@ -327,7 +367,7 @@ export function UpdateAuthorizationsModal({
               {opmeAuth.length > 0 ? (
                 <AuthorizationTable
                   items={opmeAuth}
-                  labelHeader="Descrição"
+                  labelHeader="Descrição"
                   renderLabel={(item) => {
                     const opme = solicitacao.opme_items?.find(
                       (o) => o.id === item.id,
@@ -344,7 +384,7 @@ export function UpdateAuthorizationsModal({
                 />
               ) : (
                 <p className="text-xs md:text-sm text-gray-400 text-center py-6">
-                  Nenhum item OPME nesta solicitação.
+                  Nenhum item OPME nesta solicitação.
                 </p>
               )}
             </div>
@@ -353,7 +393,7 @@ export function UpdateAuthorizationsModal({
                 Voltar
               </button>
               <button onClick={() => setStep(3)} className="ds-btn-primary">
-                Próximo
+                Próximo
               </button>
             </ModalFooter>
           </>
@@ -365,15 +405,15 @@ export function UpdateAuthorizationsModal({
             <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
               <div className="flex items-center gap-3 p-3 md:p-4 bg-blue-50 rounded-xl">
                 <p className="text-sm md:text-base text-blue-600 leading-normal">
-                  O médico responsável pela solicitação deve selecionar como
-                  deseja prosseguir com a solicitação com base nos itens
+                  O médico responsável pela solicitação deve selecionar como
+                  deseja prosseguir com a solicitação com base nos itens
                   autorizados.
                 </p>
               </div>
               {tussAuth.length > 0 && (
                 <div className="flex flex-col gap-3 md:gap-4">
                   <p className="text-sm md:text-base font-semibold text-gray-900">
-                    Código TUSS
+                    Código TUSS
                   </p>
                   <SummaryTable
                     labelHeader="Procedimento"
@@ -399,7 +439,7 @@ export function UpdateAuthorizationsModal({
                     OPME
                   </p>
                   <SummaryTable
-                    labelHeader="Descrição"
+                    labelHeader="Descrição"
                     items={opmeAuth.map((e) => {
                       const opme = solicitacao.opme_items?.find(
                         (o) => o.id === e.id,
@@ -427,7 +467,7 @@ export function UpdateAuthorizationsModal({
                 }
                 className="flex-1 ds-btn-outline"
               >
-                Encerrar solicitação
+                Encerrar solicitação
               </button>
               {hasPartialOrRejected && (
                 <button
@@ -705,7 +745,7 @@ function SummaryTable({ labelHeader, items }: SummaryTableProps) {
   );
 }
 
-// ─── Fluxo de contestação ─────────────────────────────────────────────────────
+// ─── Fluxo de contestação ─────────────────────────────────────────────────────
 
 interface ContestFlowProps {
   step: ContestStep;
@@ -796,21 +836,21 @@ function ContestFlow({
         {/* Etapa 2: Método de envio */}
         {step === 2 && (
           <div className="flex flex-col gap-3 md:gap-4">
-            <p className="text-sm md:text-base text-neutral-900">
+            <p className="ds-body text-gray-600">
               Como deseja enviar a solicitação?
             </p>
             <div className="flex flex-col gap-3 md:gap-4">
               <button
                 onClick={() => onMethodChange("document")}
-                className={`flex items-center gap-3 p-4 md:p-6 border rounded-xl text-left transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${
                   method === "document"
-                    ? "border-teal-600 bg-teal-50"
-                    : "border-neutral-100 hover:border-neutral-200"
+                    ? "border-teal-500 bg-teal-50"
+                    : "border-neutral-100 bg-white hover:border-neutral-200"
                 }`}
               >
-                <div className="flex items-center justify-center w-7 h-7 shrink-0">
+                <div className="shrink-0">
                   <svg
-                    className="w-6 h-6 text-neutral-900"
+                    className="w-6 h-6 text-gray-700"
                     viewBox="0 0 24 24"
                     fill="none"
                   >
@@ -823,11 +863,9 @@ function ContestFlow({
                     />
                   </svg>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xl font-light tracking-tight text-neutral-900">
-                    Criar documento
-                  </span>
-                  <span className="text-xs md:text-sm text-neutral-200">
+                <div className="flex flex-col">
+                  <span className="ds-section-title">Criar documento</span>
+                  <span className="ds-caption mt-0.5">
                     Crie um arquivo PDF com contestação + anexos
                   </span>
                 </div>
@@ -835,15 +873,15 @@ function ContestFlow({
 
               <button
                 onClick={() => onMethodChange("email")}
-                className={`flex items-center gap-3 p-4 md:p-6 border rounded-xl text-left transition-colors ${
+                className={`flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${
                   method === "email"
-                    ? "border-teal-600 bg-teal-50"
-                    : "border-neutral-100 hover:border-neutral-200"
+                    ? "border-teal-500 bg-teal-50"
+                    : "border-neutral-100 bg-white hover:border-neutral-200"
                 }`}
               >
-                <div className="flex items-center justify-center w-7 h-7 shrink-0">
+                <div className="shrink-0">
                   <svg
-                    className="w-6 h-6 text-neutral-900"
+                    className="w-6 h-6 text-gray-700"
                     viewBox="0 0 24 24"
                     fill="none"
                   >
@@ -856,11 +894,9 @@ function ContestFlow({
                     />
                   </svg>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xl font-light tracking-tight text-neutral-900">
-                    Enviar por e-mail
-                  </span>
-                  <span className="text-xs md:text-sm text-neutral-200">
+                <div className="flex flex-col">
+                  <span className="ds-section-title">Enviar por e-mail</span>
+                  <span className="ds-caption mt-0.5">
                     Envie a contestação diretamente por e-mail
                   </span>
                 </div>

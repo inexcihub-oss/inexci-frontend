@@ -128,57 +128,73 @@ export function ContestFlow({
         {/* Parte 2: Método */}
         {step === 2 && (
           <div className="space-y-3 md:space-y-4">
-            <p className="text-xs md:text-sm text-gray-600">
-              Como deseja enviar a contestação?
+            <p className="ds-body text-gray-600">
+              Como deseja enviar a solicitação?
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              {(["email", "document"] as ContestMethod[]).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => onMethodChange(m)}
-                  className={`flex flex-col items-center justify-center gap-2 p-6 border-2 rounded-xl transition-colors ${
-                    method === m
-                      ? "border-teal-600 bg-teal-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  {m === "email" ? (
-                    <svg
-                      className="w-8 h-8 text-teal-600"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                    >
-                      <path
-                        d="M3 8L12 13L21 8M5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19Z"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="w-8 h-8 text-teal-600"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                    >
-                      <path
-                        d="M5 3V21H19V7.828L14.172 3H5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      />
-                      <path
-                        d="M8 9H11M8 13H16M8 17H13"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                      />
-                    </svg>
-                  )}
-                  <span className="text-xs md:text-sm font-semibold text-gray-900">
-                    {m === "email" ? "Enviar E-mail" : "Criar Documento"}
+            <div className="flex flex-col gap-3">
+              {/* Criar documento */}
+              <button
+                onClick={() => onMethodChange("document")}
+                className={`flex items-center gap-4 w-full px-4 py-4 border rounded-xl text-left transition-colors ${
+                  method === "document"
+                    ? "border-teal-500 bg-teal-50"
+                    : "border-neutral-100 bg-white hover:border-neutral-200"
+                }`}
+              >
+                <div className="shrink-0">
+                  <svg
+                    className="w-6 h-6 text-gray-700"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <path
+                      d="M12 3v9m0 0l-3-3m3 3l3-3M5 17v2a1 1 0 001 1h12a1 1 0 001-1v-2"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <div className="flex flex-col">
+                  <span className="ds-section-title">Criar documento</span>
+                  <span className="ds-caption mt-0.5">
+                    Crie um arquivo PDF com contestação + anexos
                   </span>
-                </button>
-              ))}
+                </div>
+              </button>
+
+              {/* Enviar por e-mail */}
+              <button
+                onClick={() => onMethodChange("email")}
+                className={`flex items-center gap-4 w-full px-4 py-4 border rounded-xl text-left transition-colors ${
+                  method === "email"
+                    ? "border-teal-500 bg-teal-50"
+                    : "border-neutral-100 bg-white hover:border-neutral-200"
+                }`}
+              >
+                <div className="shrink-0">
+                  <svg
+                    className="w-6 h-6 text-gray-700"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <path
+                      d="M3 8L12 13L21 8M5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V17C3 18.1046 3.89543 19 5 19Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <div className="flex flex-col">
+                  <span className="ds-section-title">Enviar por e-mail</span>
+                  <span className="ds-caption mt-0.5">
+                    Envie a contestação diretamente por e-mail
+                  </span>
+                </div>
+              </button>
             </div>
           </div>
         )}
