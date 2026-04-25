@@ -143,7 +143,7 @@ export default function NotificationsDropdown({
       <button
         onClick={handleOpen}
         className={cn(
-          "relative flex items-center gap-2 px-2 py-2 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px]",
+          "relative flex items-center gap-3 px-3 py-3 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px]",
           isCollapsed ? "justify-center" : "",
         )}
         title={isCollapsed ? "Notificações" : undefined}
@@ -162,7 +162,7 @@ export default function NotificationsDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 bottom-full mb-2 w-[calc(100vw-2rem)] sm:w-80 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden z-50">
+        <div className="absolute left-0 bottom-full mb-2 w-[calc(100vw-2rem)] sm:w-80 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden z-[200]">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900">Notificações</h3>

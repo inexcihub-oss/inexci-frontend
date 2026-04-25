@@ -378,7 +378,7 @@ export default function ProcedimentosCirurgicos() {
     <PageContainer>
       {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 py-4 lg:py-6 border-b border-neutral-100">
-        <h1 className="ds-page-title">Solicitações Cirúrgicos</h1>
+        <h1 className="ds-page-title">Solicitações Cirúrgicas</h1>
       </div>
 
       {/* Toolbar */}

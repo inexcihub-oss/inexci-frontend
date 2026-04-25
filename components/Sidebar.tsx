@@ -164,7 +164,7 @@ export default function Sidebar({
       )}
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-60 lg:relative lg:inset-auto lg:z-auto flex flex-col h-full bg-white px-2 transition-all duration-300 ${
+        className={`fixed inset-y-0 left-0 z-50 w-60 lg:relative lg:inset-auto lg:z-10 flex flex-col h-full bg-white px-2 transition-all duration-300 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0 ${isCollapsed ? "lg:w-16" : "lg:w-60"}`}
       >
@@ -273,7 +273,7 @@ export default function Sidebar({
           {/* Settings */}
           <Link
             href="/configuracoes"
-            className={`relative flex items-center gap-2 px-2 py-2 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px] ${isCollapsed ? "lg:justify-center" : ""}`}
+            className={`relative flex items-center gap-3 px-3 py-3 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px] ${isCollapsed ? "lg:justify-center" : ""}`}
             title={isCollapsed ? "Configurações" : undefined}
             onClick={onMobileClose}
           >

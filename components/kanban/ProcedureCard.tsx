@@ -31,21 +31,21 @@ type StaleTier = {
 const STALE_TIERS: StaleTier[] = [
   {
     minDays: 15,
-    label: "15d+ parada",
+    label: "Há 15d+ parada",
     bg: "bg-red-50",
     text: "text-red-700",
     dot: "bg-red-500",
   },
   {
     minDays: 7,
-    label: "7d parada",
+    label: "Há 7d parada",
     bg: "bg-orange-50",
     text: "text-orange-700",
     dot: "bg-orange-500",
   },
   {
     minDays: 3,
-    label: "3d parada",
+    label: "Há 3d parada",
     bg: "bg-yellow-50",
     text: "text-yellow-700",
     dot: "bg-yellow-500",

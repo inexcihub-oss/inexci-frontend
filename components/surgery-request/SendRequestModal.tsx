@@ -200,6 +200,10 @@ export function SendRequestModal({
   const handleDownload = async () => {
     setIsSending(true);
     try {
+      // Primeiro chama o endpoint de envio para mudar o status para "Enviada"
+      await surgeryRequestService.send(solicitacao.id, { method: "download" });
+
+      // Em seguida baixa o PDF da solicitação
       const response = await api.get(
         `/surgery-requests/${solicitacao.id}/report-pdf`,
         { responseType: "arraybuffer" },
