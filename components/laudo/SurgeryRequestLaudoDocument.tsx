@@ -427,6 +427,12 @@ export interface SurgeryRequestLaudoDocumentProps {
   doctorCrm?: string;
   /** URL da imagem de assinatura (já processada, se necessário) */
   doctorSignatureUrl?: string;
+  /** Cabeçalho customizado do médico (substitui o cabeçalho padrão "LAUDO MÉDICO" quando presente) */
+  customHeader?: {
+    logoUrl?: string | null;
+    logoPosition?: "left" | "right";
+    contentHtml?: string | null;
+  } | null;
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -459,6 +465,7 @@ export function SurgeryRequestLaudoDocument({
   doctorSpecialty = "",
   doctorCrm = "",
   doctorSignatureUrl,
+  customHeader,
 }: SurgeryRequestLaudoDocumentProps) {
   return (
     <div
@@ -475,38 +482,95 @@ export function SurgeryRequestLaudoDocument({
       }}
     >
       {/* ── Cabeçalho ── */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          paddingBottom: "1px",
-          marginBottom: "16px",
-        }}
-      >
-        <h1
+      {customHeader ? (
+        <div
           style={{
-            fontSize: "20px",
-            fontWeight: 300,
-            letterSpacing: "-0.02em",
-            color: "#000000",
-            lineHeight: "1.3",
-            margin: 0,
+            position: "relative",
+            display: "flex",
+            flexDirection:
+              customHeader.logoPosition === "right" ? "row-reverse" : "row",
+            alignItems: "center",
+            marginBottom: "20px",
+            minHeight: customHeader.logoUrl ? "80px" : undefined,
           }}
         >
-          LAUDO MÉDICO
-        </h1>
-        <span
+          {customHeader.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={customHeader.logoUrl}
+              alt="Logo"
+              style={{
+                maxHeight: "80px",
+                maxWidth: "200px",
+                objectFit: "contain",
+                flexShrink: 0,
+                position: "relative",
+                zIndex: 1,
+              }}
+            />
+          )}
+          {customHeader.contentHtml && (
+            <div
+              style={
+                customHeader.logoUrl
+                  ? {
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      textAlign: "center",
+                      fontSize: "11px",
+                      lineHeight: "1.4",
+                      color: "#111",
+                      pointerEvents: "none",
+                    }
+                  : {
+                      flex: 1,
+                      textAlign: "center",
+                      fontSize: "11px",
+                      lineHeight: "1.4",
+                      color: "#111",
+                    }
+              }
+              dangerouslySetInnerHTML={{
+                __html: sanitizeHtml(customHeader.contentHtml),
+              }}
+            />
+          )}
+        </div>
+      ) : (
+        <div
           style={{
-            fontSize: "12px",
-            color: "#737373",
-            lineHeight: "1.17",
-            whiteSpace: "nowrap",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-end",
+            paddingBottom: "1px",
+            marginBottom: "16px",
           }}
         >
-          Data: {today}
-        </span>
-      </div>
+          <h1
+            style={{
+              fontSize: "20px",
+              fontWeight: 300,
+              letterSpacing: "-0.02em",
+              color: "#000000",
+              lineHeight: "1.3",
+              margin: 0,
+            }}
+          >
+            LAUDO MÉDICO
+          </h1>
+          <span
+            style={{
+              fontSize: "12px",
+              color: "#737373",
+              lineHeight: "1.17",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Data: {today}
+          </span>
+        </div>
+      )}
 
       {/* ── Dados do Paciente ── */}
       <div style={{ marginBottom: "16px" }}>

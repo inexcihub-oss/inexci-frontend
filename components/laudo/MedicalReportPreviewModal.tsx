@@ -138,6 +138,11 @@ export function MedicalReportPreviewModal({
   const [doctorSpecialty, setDoctorSpecialty] = useState<string>("");
   const [doctorCrm, setDoctorCrm] = useState<string>("");
   const [doctorCrmState, setDoctorCrmState] = useState<string>("");
+  const [customHeader, setCustomHeader] = useState<{
+    logoUrl?: string | null;
+    logoPosition?: "left" | "right";
+    contentHtml?: string | null;
+  } | null>(null);
 
   const [processedSignatureUrl, setProcessedSignatureUrl] = useState<
     string | null
@@ -155,6 +160,19 @@ export function MedicalReportPreviewModal({
     setDoctorSpecialty(dp?.specialty ?? "");
     setDoctorCrm(dp?.crm ?? "");
     setDoctorCrmState(dp?.crm_state ?? "");
+
+    const rawHeader = dp?.header;
+    setCustomHeader(
+      rawHeader
+        ? {
+            logoUrl: rawHeader.logo_url ?? null,
+            logoPosition: (rawHeader.logo_position ?? "left") as
+              | "left"
+              | "right",
+            contentHtml: rawHeader.content_html ?? null,
+          }
+        : null,
+    );
   }, [isOpen, solicitacao]);
 
   useEffect(() => {
@@ -283,6 +301,7 @@ export function MedicalReportPreviewModal({
             doctorSignatureUrl={
               processedSignatureUrl ?? doctorSignatureUrl ?? undefined
             }
+            customHeader={customHeader}
           />
         </div>
 

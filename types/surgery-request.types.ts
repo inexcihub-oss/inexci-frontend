@@ -98,6 +98,12 @@ export interface DoctorRef extends EntityRef {
     specialty?: string;
     crm_state?: string;
     signature_url?: string | null;
+    header?: {
+      id?: string;
+      logo_url?: string | null;
+      logo_position?: "left" | "right";
+      content_html?: string | null;
+    } | null;
     [key: string]: unknown;
   } | null;
   signature_url?: string | null;

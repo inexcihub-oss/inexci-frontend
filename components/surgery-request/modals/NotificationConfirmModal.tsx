@@ -294,7 +294,7 @@ export function NotificationConfirmModal({
             disabled={isLoading}
             className="ds-btn-outline disabled:opacity-50"
           >
-            Pular
+            Não quero notificar
           </button>
           {!hasNoContact && (
             <button

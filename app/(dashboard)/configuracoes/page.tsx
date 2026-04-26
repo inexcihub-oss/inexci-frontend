@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
+import { useSearchParams, useRouter } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -10,6 +11,8 @@ import { DateInput } from "@/components/ui/DateInput";
 import Select from "@/components/ui/Select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
+import { ToastType } from "@/types/toast.types";
 import { cn } from "@/lib/utils";
 import { GENDER_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
 import { getApiErrorMessage } from "@/lib/http-error";
@@ -22,9 +25,12 @@ import { userService } from "@/services/user.service";
 import { notificationService } from "@/services/notification.service";
 import { uploadService } from "@/services/upload.service";
 import { authService } from "@/services/auth.service";
+import { doctorHeaderService } from "@/services/doctor-header.service";
 import { clearAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import type { SubscriptionPlan } from "@/types";
+import type { DoctorHeader } from "@/types/doctor-header.types";
 import { removeBackground } from "@/lib/utils";
+import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import {
   User,
   Camera,
@@ -38,6 +44,7 @@ import {
   Smartphone,
   MessageSquare,
   Loader2,
+  LayoutTemplate,
 } from "lucide-react";
 
 // Tipos
@@ -70,7 +77,7 @@ interface NotificationSettings {
 }
 
 // Tabs da página
-type SettingsTab = "profile" | "notifications" | "plan" | "security";
+type SettingsTab = "profile" | "notifications" | "plan" | "security" | "header";
 
 // Componente de Tab
 function TabButton({
@@ -204,10 +211,27 @@ function PlanCard({
   );
 }
 
-export default function ConfiguracoesPage() {
+function ConfiguracoesPageInner() {
   const { user, updateUser, isAdmin } = useAuth();
-  const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const { toast, showToast, hideToast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const initialTab = (): SettingsTab => {
+    const tab = searchParams.get("tab");
+    if (
+      tab === "header" ||
+      tab === "profile" ||
+      tab === "notifications" ||
+      tab === "plan" ||
+      tab === "security"
+    ) {
+      return tab as SettingsTab;
+    }
+    return "profile";
+  };
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
@@ -256,6 +280,21 @@ export default function ConfiguracoesPage() {
     newPassword: "",
     confirmPassword: "",
   });
+
+  // Estados do cabeçalho customizado
+  const [loadingHeader, setLoadingHeader] = useState(false);
+  const [currentHeader, setCurrentHeader] = useState<DoctorHeader | null>(null);
+  const [headerLogoPreview, setHeaderLogoPreview] = useState<string | null>(
+    null,
+  );
+  const [headerLogoFile, setHeaderLogoFile] = useState<File | null>(null);
+  const [headerLogoDeleted, setHeaderLogoDeleted] = useState(false);
+  const [headerLogoPosition, setHeaderLogoPosition] = useState<
+    "left" | "right"
+  >("left");
+  const [headerContentHtml, setHeaderContentHtml] = useState<string>("");
+  const [savingHeader, setSavingHeader] = useState(false);
+  const headerLogoInputRef = useRef<HTMLInputElement>(null);
 
   // Carregar dados do usuário
   useEffect(() => {
@@ -357,6 +396,43 @@ export default function ConfiguracoesPage() {
 
     loadNotificationSettings();
   }, []);
+
+  // Carregar cabeçalho customizado
+  useEffect(() => {
+    if (!profile.isDoctor) return;
+    const loadHeader = async () => {
+      setLoadingHeader(true);
+      try {
+        const header = await doctorHeaderService.get();
+        setCurrentHeader(header);
+        if (header) {
+          setHeaderLogoPosition(header.logo_position);
+          setHeaderContentHtml(header.content_html || "");
+          if (header.logo_url) {
+            const logoUrl = header.logo_url;
+            if (
+              logoUrl.startsWith("http://") ||
+              logoUrl.startsWith("https://")
+            ) {
+              setHeaderLogoPreview(logoUrl);
+            } else {
+              try {
+                const signed = await uploadService.getSignedUrl(logoUrl);
+                setHeaderLogoPreview(signed);
+              } catch {
+                setHeaderLogoPreview(null);
+              }
+            }
+          }
+        }
+      } catch {
+        // silencia erro
+      } finally {
+        setLoadingHeader(false);
+      }
+    };
+    loadHeader();
+  }, [profile.isDoctor]);
 
   // Carregar planos de assinatura
   useEffect(() => {
@@ -567,6 +643,273 @@ export default function ConfiguracoesPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Handlers do cabeçalho
+  const handleHeaderLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("A logo deve ter no máximo 2MB", "error");
+      return;
+    }
+    setHeaderLogoFile(file);
+    setHeaderLogoDeleted(false);
+    const reader = new FileReader();
+    reader.onloadend = () => setHeaderLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDeleteHeaderLogo = () => {
+    setHeaderLogoFile(null);
+    setHeaderLogoPreview(null);
+    setHeaderLogoDeleted(true);
+    if (headerLogoInputRef.current) headerLogoInputRef.current.value = "";
+  };
+
+  const handleSaveHeader = async () => {
+    setSavingHeader(true);
+    try {
+      let logoPath: string | null = currentHeader?.logo_url ?? null;
+
+      if (headerLogoFile) {
+        const result = await uploadService.uploadSingle(
+          headerLogoFile,
+          "headers",
+        );
+        logoPath = result.data.path;
+      } else if (headerLogoDeleted) {
+        logoPath = null;
+      }
+
+      const saved = await doctorHeaderService.upsert({
+        logo_url: logoPath,
+        logo_position: headerLogoPosition,
+        content_html: headerContentHtml || null,
+      });
+      setCurrentHeader(saved);
+      setHeaderLogoDeleted(false);
+      setHeaderLogoFile(null);
+      showToast("Cabeçalho salvo com sucesso!", "success");
+    } catch (error) {
+      showToast(getApiErrorMessage(error, "Erro ao salvar cabeçalho"), "error");
+    } finally {
+      setSavingHeader(false);
+    }
+  };
+
+  const handleDeleteHeader = async () => {
+    setSavingHeader(true);
+    try {
+      await doctorHeaderService.remove();
+      setCurrentHeader(null);
+      setHeaderLogoPreview(null);
+      setHeaderLogoFile(null);
+      setHeaderLogoDeleted(false);
+      setHeaderLogoPosition("left");
+      setHeaderContentHtml("");
+      showToast("Cabeçalho removido com sucesso!", "success");
+    } catch (error) {
+      showToast(
+        getApiErrorMessage(error, "Erro ao remover cabeçalho"),
+        "error",
+      );
+    } finally {
+      setSavingHeader(false);
+    }
+  };
+
+  // Render da aba de Cabeçalho
+  const renderHeaderTab = () => {
+    if (loadingHeader) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Pré-visualização */}
+        {(headerLogoPreview || headerContentHtml) && (
+          <Card className="border border-gray-200 rounded-2xl">
+            <CardHeader className="p-6 pb-4">
+              <h3 className="text-base font-semibold text-gray-900">
+                Pré-visualização
+              </h3>
+              <p className="text-sm text-gray-500">
+                Como o cabeçalho aparecerá nos documentos
+              </p>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              <div
+                className={cn(
+                  "relative flex items-center",
+                  headerLogoPosition === "right"
+                    ? "flex-row-reverse"
+                    : "flex-row",
+                  headerLogoPreview ? "min-h-20" : "",
+                )}
+              >
+                {headerLogoPreview && (
+                  <img
+                    src={headerLogoPreview}
+                    alt="Logo"
+                    className="max-h-20 max-w-48 object-contain relative z-10 flex-shrink-0"
+                  />
+                )}
+                {headerContentHtml && (
+                  <div
+                    className={cn(
+                      "text-xs text-gray-700 leading-relaxed text-center",
+                      headerLogoPreview
+                        ? "absolute inset-x-0 pointer-events-none"
+                        : "flex-1",
+                    )}
+                    dangerouslySetInnerHTML={{ __html: headerContentHtml }}
+                  />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Upload da logo */}
+        <Card className="border border-gray-200 rounded-2xl">
+          <CardHeader className="p-6 pb-4">
+            <h3 className="text-base font-semibold text-gray-900">
+              Logo do Cabeçalho
+            </h3>
+            <p className="text-sm text-gray-500">
+              Imagem exibida no topo dos documentos (PNG, JPG). Máximo 2MB.
+            </p>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <div className="flex items-center gap-6">
+              <div className="w-32 h-16 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden">
+                {headerLogoPreview ? (
+                  <img
+                    src={headerLogoPreview}
+                    alt="Logo"
+                    className="max-h-14 max-w-28 object-contain"
+                  />
+                ) : (
+                  <LayoutTemplate className="w-8 h-8 text-gray-300" />
+                )}
+              </div>
+              <div className="flex-1 space-y-2">
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => headerLogoInputRef.current?.click()}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Fazer upload
+                  </Button>
+                  {headerLogoPreview && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={handleDeleteHeaderLogo}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Remover logo
+                    </Button>
+                  )}
+                </div>
+                <input
+                  ref={headerLogoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={handleHeaderLogoChange}
+                  className="hidden"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Posição da logo */}
+        <Card className="border border-gray-200 rounded-2xl">
+          <CardHeader className="p-6 pb-4">
+            <h3 className="text-base font-semibold text-gray-900">
+              Posição da Logo
+            </h3>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <div className="flex gap-3">
+              <button
+                onClick={() => setHeaderLogoPosition("left")}
+                className={cn(
+                  "flex-1 py-3 px-4 rounded-xl border text-sm font-medium transition-all",
+                  headerLogoPosition === "left"
+                    ? "bg-primary-50 border-primary-500 text-primary-700"
+                    : "border-gray-200 text-gray-600 hover:border-gray-300",
+                )}
+              >
+                ← Esquerda
+              </button>
+              <button
+                onClick={() => setHeaderLogoPosition("right")}
+                className={cn(
+                  "flex-1 py-3 px-4 rounded-xl border text-sm font-medium transition-all",
+                  headerLogoPosition === "right"
+                    ? "bg-primary-50 border-primary-500 text-primary-700"
+                    : "border-gray-200 text-gray-600 hover:border-gray-300",
+                )}
+              >
+                Direita →
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Conteúdo texto livre */}
+        <Card className="border border-gray-200 rounded-2xl">
+          <CardHeader className="p-6 pb-4">
+            <h3 className="text-base font-semibold text-gray-900">
+              Texto do Cabeçalho
+            </h3>
+            <p className="text-sm text-gray-500">
+              Nome da clínica, endereço, telefone, especialidade, registros,
+              etc.
+            </p>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <RichTextEditor
+              value={headerContentHtml}
+              onChange={setHeaderContentHtml}
+              placeholder="Digite o texto do cabeçalho..."
+            />
+          </CardContent>
+        </Card>
+
+        {/* Botões de ação */}
+        <div className="flex gap-3 flex-wrap">
+          <Button
+            onClick={handleSaveHeader}
+            isLoading={savingHeader}
+            className="min-h-[44px] rounded-xl"
+          >
+            Salvar Alterações
+          </Button>
+          {currentHeader && (
+            <Button
+              variant="outline"
+              onClick={handleDeleteHeader}
+              isLoading={savingHeader}
+              className="min-h-[44px] rounded-xl text-red-600 border-red-200 hover:bg-red-50"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Remover cabeçalho
+            </Button>
+          )}
+        </div>
+      </div>
+    );
   };
 
   // Render da aba de Perfil
@@ -1201,6 +1544,14 @@ export default function ConfiguracoesPage() {
                   label="Plano e Faturamento"
                 />
               )}
+              {profile.isDoctor && (
+                <TabButton
+                  active={activeTab === "header"}
+                  onClick={() => setActiveTab("header")}
+                  icon={LayoutTemplate}
+                  label="Cabeçalho de Documentos"
+                />
+              )}
               <TabButton
                 active={activeTab === "security"}
                 onClick={() => setActiveTab("security")}
@@ -1216,9 +1567,25 @@ export default function ConfiguracoesPage() {
             {activeTab === "notifications" && renderNotificationsTab()}
             {activeTab === "plan" && isAdmin && renderPlanTab()}
             {activeTab === "security" && renderSecurityTab()}
+            {activeTab === "header" && profile.isDoctor && renderHeaderTab()}
           </div>
         </div>
       </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type as ToastType}
+          onClose={hideToast}
+        />
+      )}
     </PageContainer>
+  );
+}
+
+export default function ConfiguracoesPage() {
+  return (
+    <Suspense>
+      <ConfiguracoesPageInner />
+    </Suspense>
   );
 }

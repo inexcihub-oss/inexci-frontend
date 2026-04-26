@@ -69,13 +69,18 @@ export function SurgeryRequestDocumentPreviewModal({
   const opmeItems: OpmeItemRef[] = solicitacao?.opme_items ?? [];
 
   const fabricantesText =
-    unique(opmeItems.map((i) => i.brand).filter(Boolean) as string[]).join(", ") || "";
+    unique(opmeItems.map((i) => i.brand).filter(Boolean) as string[]).join(
+      ", ",
+    ) || "";
   const fornecedoresText =
-    unique(opmeItems.map((i) => i.distributor).filter(Boolean) as string[]).join(", ") || "";
+    unique(
+      opmeItems.map((i) => i.distributor).filter(Boolean) as string[],
+    ).join(", ") || "";
 
   const hospitalName = solicitacao?.hospital?.name || "";
   const hospitalAddress = solicitacao?.hospital?.address || "";
-  const localText = [hospitalName, hospitalAddress].filter(Boolean).join(" – ") || "";
+  const localText =
+    [hospitalName, hospitalAddress].filter(Boolean).join(" – ") || "";
   const hasSeparator = !!(fabricantesText || fornecedoresText || localText);
 
   const doctorUser = solicitacao?.doctor ?? null;
@@ -87,6 +92,16 @@ export function SurgeryRequestDocumentPreviewModal({
   const doctorCrm = doctorProfile?.crm
     ? `CRM ${doctorProfile.crm}${doctorProfile.crm_state ? `/${doctorProfile.crm_state}` : ""}`
     : "";
+
+  const customHeader = doctorProfile?.header
+    ? {
+        logoUrl: doctorProfile.header.logo_url ?? null,
+        logoPosition: (doctorProfile.header.logo_position ?? "left") as
+          | "left"
+          | "right",
+        contentHtml: doctorProfile.header.content_html ?? null,
+      }
+    : null;
 
   const today = new Date().toLocaleDateString("pt-BR");
 
@@ -165,6 +180,7 @@ export function SurgeryRequestDocumentPreviewModal({
             doctorSpecialty={doctorSpecialty}
             doctorCrm={doctorCrm}
             doctorSignatureUrl={signatureUrl || undefined}
+            customHeader={customHeader}
           />
         </div>
 
