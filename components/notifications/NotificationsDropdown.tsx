@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Bell, X, Check, Loader2 } from "lucide-react";
-import {
-  notificationService,
-  Notification,
-} from "@/services/notification.service";
+import { notificationService, Notification } from "@/services/notification.service";
 import { useClickOutside } from "@/hooks";
+import { useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -21,47 +19,12 @@ export default function NotificationsDropdown({
 }: NotificationsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const { unreadCount, setUnreadCount } = useNotifications();
+
   useClickOutside(dropdownRef, () => setIsOpen(false), isOpen);
-
-  // Carregar contagem de não lidas periodicamente
-  useEffect(() => {
-    const loadUnreadCount = async () => {
-      try {
-        const count = await notificationService.getUnreadCount();
-        setUnreadCount(count);
-      } catch (error) {
-        console.error("Erro ao carregar contagem de notificações:", error);
-      }
-    };
-
-    // Carregar apenas uma vez ao montar
-    loadUnreadCount();
-
-    // Atualizar a contagem apenas quando a aba estiver visível e a cada 2 minutos
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        loadUnreadCount();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    // Polling a cada 2 minutos (ao invés de 30 segundos)
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        loadUnreadCount();
-      }
-    }, 120000);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
 
   // Carregar notificações quando abrir o dropdown
   const handleOpen = async () => {
