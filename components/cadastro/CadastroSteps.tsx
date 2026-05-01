@@ -128,6 +128,7 @@ export function Benefit({ icon, text }: { icon: string; text: string }) {
 export interface Step1Data {
   name: string;
   email: string;
+  phone: string;
   password: string;
   confirmPassword: string;
 }
@@ -135,6 +136,18 @@ export interface Step1Data {
 interface Step1Props {
   data: Step1Data;
   onChange: (field: keyof Step1Data, value: string) => void;
+}
+
+function applyPhoneMask(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 10) {
+    return digits
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  }
+  return digits
+    .replace(/(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{5})(\d)/, "$1-$2");
 }
 
 export function Step1PersonalData({ data, onChange }: Step1Props) {
@@ -164,6 +177,18 @@ export function Step1PersonalData({ data, onChange }: Step1Props) {
         value={data.email}
         onChange={(e) => onChange("email", e.target.value)}
         placeholder="seu@email.com"
+        className="min-h-[48px]"
+      />
+
+      <Input
+        id="phone"
+        name="phone"
+        label="Telefone"
+        type="tel"
+        autoComplete="tel"
+        value={applyPhoneMask(data.phone)}
+        onChange={(e) => onChange("phone", e.target.value.replace(/\D/g, ""))}
+        placeholder="(00) 00000-0000"
         className="min-h-[48px]"
       />
 

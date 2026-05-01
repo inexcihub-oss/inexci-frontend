@@ -9,9 +9,9 @@ import {
   notificationService,
   Notification,
 } from "@/services/notification.service";
+import { useNotifications, useClickOutside } from "@/hooks";
 import { uploadService } from "@/services/upload.service";
 import { useAuth } from "@/contexts/AuthContext";
-import { useClickOutside } from "@/hooks";
 import { cn, getInitials, getAvatarColor } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,8 +23,8 @@ export default function MobileHeaderActions() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const { unreadCount, setUnreadCount } = useNotifications();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -68,33 +68,6 @@ export default function MobileHeaderActions() {
     logout();
     router.push("/login");
   }, [logout, router]);
-
-  // Load unread count
-  useEffect(() => {
-    const loadUnreadCount = async () => {
-      try {
-        const count = await notificationService.getUnreadCount();
-        setUnreadCount(count);
-      } catch (error) {
-        console.error("Erro ao carregar contagem de notificações:", error);
-      }
-    };
-
-    loadUnreadCount();
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") loadUnreadCount();
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") loadUnreadCount();
-    }, 120000);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
 
   const handleOpenNotifications = async () => {
     const opening = !isNotificationsOpen;

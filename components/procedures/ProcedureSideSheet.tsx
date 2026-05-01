@@ -12,6 +12,7 @@ import { AddDocumentModal } from "./AddDocumentModal";
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { surgeryRequestService } from "@/services/surgery-request.service";
+import { supplierService } from "@/services/supplier.service";
 
 interface ProcedureSideSheetProps {
   isOpen: boolean;
@@ -219,7 +220,7 @@ export function ProcedureSideSheet({
     }
   };
 
-  const handleOpmeLocalSave = (
+  const handleOpmeLocalSave = async (
     items: {
       name: string;
       manufacturers: string[];
@@ -227,6 +228,32 @@ export function ProcedureSideSheet({
       quantity: number;
     }[],
   ) => {
+    // Coleta todos os nomes de fornecedores únicos informados
+    const allSupplierNames = [
+      ...new Set(items.flatMap((item) => item.suppliers).filter(Boolean)),
+    ];
+
+    if (allSupplierNames.length > 0) {
+      try {
+        // Busca fornecedores já existentes para evitar duplicatas
+        const existingSuppliers = await supplierService.getAll();
+        const existingNames = new Set(
+          existingSuppliers.map((s) => s.name.toLowerCase().trim()),
+        );
+
+        // Cria apenas os fornecedores que ainda não existem
+        const toCreate = allSupplierNames.filter(
+          (name) => !existingNames.has(name.toLowerCase().trim()),
+        );
+
+        await Promise.all(
+          toCreate.map((name) => supplierService.create({ name })),
+        );
+      } catch (err) {
+        console.error("Erro ao criar fornecedores:", err);
+      }
+    }
+
     const mapped: ProcedureOpmeItem[] = items.map((item, i) => ({
       id: String(i),
       name: item.name,

@@ -25,6 +25,7 @@ export interface User {
   account_id: string;
   avatar_url?: string | null;
   is_doctor: boolean;
+  email_verified?: boolean;
   doctor_profile?: DoctorProfile;
   subscription_plan_id?: string;
   admin_id?: string;
@@ -73,6 +74,7 @@ export interface LoginCredentials {
 export interface RegisterData {
   name: string;
   email: string;
+  phone?: string;
   password: string;
   is_doctor?: boolean;
   crm?: string;

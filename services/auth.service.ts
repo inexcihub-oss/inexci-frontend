@@ -160,11 +160,11 @@ export const authService = {
    * Valida código de recuperação
    */
   async validateRecoveryCode(email: string, code: string): Promise<boolean> {
-    const { data } = await api.post("/auth/validateRecoveryPasswordCode", {
+    await api.post("/auth/validateRecoveryPasswordCode", {
       email,
       code,
     });
-    return data.valid;
+    return true;
   },
 
   /**
@@ -179,5 +179,28 @@ export const authService = {
       email,
       password: newPassword,
     });
+  },
+
+  /**
+   * Confirma o e-mail do usuário a partir do token recebido por e-mail
+   */
+  async verifyEmail(
+    token: string,
+  ): Promise<{ message: string; email: string }> {
+    const { data } = await api.post<{ message: string; email: string }>(
+      "/auth/verifyEmail",
+      { token },
+    );
+    return data;
+  },
+
+  /**
+   * Reenvia o e-mail de confirmação para o usuário autenticado
+   */
+  async resendEmailVerification(): Promise<{ message: string }> {
+    const { data } = await api.post<{ message: string }>(
+      "/auth/resendEmailVerification",
+    );
+    return data;
   },
 };

@@ -82,6 +82,10 @@ export default function NotificationsDropdown({
     }
   };
 
+  const normalizeNotificationLink = (link: string): string => {
+    return link.replace(/\/solicitac[^\\/]*\//, "/solicitacao/");
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "new_surgery_request":
@@ -167,7 +171,7 @@ export default function NotificationsDropdown({
                       <div className="flex-1 min-w-0">
                         {notification.link ? (
                           <Link
-                            href={notification.link}
+                            href={normalizeNotificationLink(notification.link)}
                             onClick={() => {
                               if (!notification.read) {
                                 handleMarkAsRead(notification.id);

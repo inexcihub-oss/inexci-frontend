@@ -86,6 +86,7 @@ export default function CadastroPage() {
   const [step1, setStep1] = useState<Step1Data>({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
   });
@@ -217,6 +218,7 @@ export default function CadastroPage() {
       await register({
         name: step1.name,
         email: step1.email,
+        phone: step1.phone || undefined,
         password: step1.password,
         is_doctor: step2.isDoctor,
         ...(step2.isDoctor && {

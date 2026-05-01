@@ -13,6 +13,13 @@ export const step1Schema = z
       .string()
       .min(1, "O e-mail é obrigatório.")
       .email("Informe um e-mail válido."),
+    phone: z
+      .string()
+      .optional()
+      .refine(
+        (v) => !v || v.replace(/\D/g, "").length >= 10,
+        "Informe um telefone válido com DDD.",
+      ),
     password: z
       .string()
       .min(8, "A senha deve ter pelo menos 8 caracteres.")
