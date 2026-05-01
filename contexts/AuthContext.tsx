@@ -63,9 +63,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(
     async (userData: import("@/types").RegisterData) => {
       try {
-        const response = await authService.register(userData);
-        setUser(response.user);
-        router.push("/solicitacoes-cirurgicas");
+        await authService.register(userData);
+        router.push("/login?registered=true");
       } catch (error) {
         throw error;
       }

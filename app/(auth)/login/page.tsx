@@ -18,7 +18,9 @@ function LoginForm() {
 
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
-      setSuccess("Conta criada com sucesso! Faça login para continuar.");
+      setSuccess(
+        "Conta criada com sucesso! Verifique seu e-mail para confirmar o cadastro antes de fazer login.",
+      );
     }
   }, [searchParams]);
 

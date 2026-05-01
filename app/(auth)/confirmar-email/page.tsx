@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -22,8 +22,12 @@ function ConfirmarEmailContent() {
   const [resendSuccess, setResendSuccess] = useState(false);
 
   const token = searchParams.get("token");
+  const calledRef = useRef(false);
 
   useEffect(() => {
+    if (calledRef.current) return;
+    calledRef.current = true;
+
     if (!token) {
       setState("error");
       setErrorMessage(
