@@ -1,11 +1,16 @@
 import api from "@/lib/api";
 
+export interface OpmeSupplier {
+  id: string;
+  name: string;
+}
+
 export interface OpmeItem {
   id: string;
   surgery_request_id: string | number;
   name: string;
   brand?: string;
-  distributor?: string;
+  suppliers: OpmeSupplier[];
   quantity: number;
   authorized_quantity?: number;
   created_at: string;
@@ -15,7 +20,8 @@ export interface CreateOpmeData {
   surgery_request_id: string | number;
   name: string;
   brand?: string;
-  distributor?: string;
+  supplier_ids?: string[];
+  supplier_names?: string[];
   quantity: number;
 }
 
@@ -23,14 +29,12 @@ export interface UpdateOpmeData {
   id: string;
   name?: string;
   brand?: string;
-  distributor?: string;
+  supplier_ids?: string[];
+  supplier_names?: string[];
   quantity?: number;
 }
 
 export const opmeService = {
-  /**
-   * Adiciona um item OPME a uma solicitação
-   */
   async create(data: CreateOpmeData): Promise<OpmeItem> {
     try {
       const response = await api.post("/surgery-requests/opme", data);
@@ -41,9 +45,6 @@ export const opmeService = {
     }
   },
 
-  /**
-   * Atualiza um item OPME
-   */
   async update(data: UpdateOpmeData): Promise<OpmeItem> {
     try {
       const response = await api.put("/surgery-requests/opme", data);
@@ -54,9 +55,6 @@ export const opmeService = {
     }
   },
 
-  /**
-   * Remove um item OPME
-   */
   async delete(id: string, surgeryRequestId: string | number): Promise<void> {
     try {
       await api.delete(`/surgery-requests/opme/${id}`, {
@@ -68,11 +66,6 @@ export const opmeService = {
     }
   },
 
-  /**
-   * Indica se a solicitação utiliza OPME ou não.
-   * true  = utiliza OPME (itens devem ser cadastrados)
-   * false = não utiliza OPME (pendência dispensada)
-   */
   async setHasOpme(surgeryRequestId: string | number, hasOpme: boolean): Promise<void> {
     try {
       await api.patch(`/surgery-requests/${surgeryRequestId}/has-opme`, {

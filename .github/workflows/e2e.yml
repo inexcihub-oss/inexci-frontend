@@ -1,0 +1,62 @@
+name: E2E Tests (Playwright)
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  # URL base do Next.js em CI (webServer no playwright.config sobe na porta 3001)
+  PLAYWRIGHT_BASE_URL: http://localhost:3001
+  # Aponta para a API mockada — em CI a API real não está disponível
+  NEXT_PUBLIC_API_URL: http://localhost:3000
+
+jobs:
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: inexci-frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: inexci-frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: inexci-frontend
+        run: yarn playwright install chromium --with-deps
+
+      - name: Build Next.js (produção)
+        working-directory: inexci-frontend
+        run: yarn build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3000
+
+      - name: Run Playwright tests
+        working-directory: inexci-frontend
+        run: yarn playwright test
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://localhost:3001
+          NEXT_PUBLIC_API_URL: http://localhost:3000
+
+      - name: Upload test artifacts (somente falhas)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: |
+            inexci-frontend/playwright-report/
+            inexci-frontend/test-results/
+          retention-days: 7

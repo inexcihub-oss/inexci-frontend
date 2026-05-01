@@ -8,7 +8,7 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
-import { supplierService, Supplier } from "@/services/supplier.service";
+import { supplierService, Supplier, SupplierQuotation } from "@/services/supplier.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { STATE_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
@@ -16,15 +16,60 @@ import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { ChevronRight } from "lucide-react";
 
+const CATEGORY_OPTIONS = [
+  { value: "", label: "Selecione" },
+  { value: "opme", label: "OPME (Órteses, Próteses e Materiais)" },
+  { value: "medicamentos", label: "Medicamentos" },
+  { value: "equipamentos", label: "Equipamentos Médicos" },
+  { value: "materiais", label: "Materiais Hospitalares" },
+  { value: "instrumentos", label: "Instrumentos Cirúrgicos" },
+  { value: "outros", label: "Outros" },
+];
+
+const PAYMENT_TERMS_OPTIONS = [
+  { value: "", label: "Selecione" },
+  { value: "vista", label: "À Vista" },
+  { value: "7dias", label: "7 dias" },
+  { value: "15dias", label: "15 dias" },
+  { value: "30dias", label: "30 dias" },
+  { value: "45dias", label: "45 dias" },
+  { value: "60dias", label: "60 dias" },
+];
+
+function formatCurrency(value?: number): string {
+  if (value == null) return "-";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(Number(value));
+}
+
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return "-";
+  return new Date(dateStr).toLocaleDateString("pt-BR");
+}
+
+function QuotationStatusBadge({ selected }: { selected: boolean }) {
+  return selected ? (
+    <span className="text-xs px-2 py-0.5 rounded text-green-600 bg-green-50">
+      Selecionada
+    </span>
+  ) : (
+    <span className="text-xs px-2 py-0.5 rounded text-gray-500 bg-gray-100">
+      Não selecionada
+    </span>
+  );
+}
+
 export default function FornecedorDetalhePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [togglingActive, setTogglingActive] = useState(false);
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     cnpj: "",
@@ -41,12 +86,11 @@ export default function FornecedorDetalhePage() {
     contact_name: "",
     contact_phone: "",
     contact_email: "",
-    paymentTerms: "",
-    deliveryTime: "",
+    payment_terms: "",
+    delivery_time: "",
+    notes: "",
   });
-  const [originalData, setOriginalData] = useState<typeof formData | null>(
-    null,
-  );
+  const [originalData, setOriginalData] = useState<typeof formData | null>(null);
   const isDirty =
     originalData !== null &&
     JSON.stringify(formData) !== JSON.stringify(originalData);
@@ -56,58 +100,39 @@ export default function FornecedorDetalhePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
+  const buildFormData = (s: Supplier) => ({
+    name: s.name || "",
+    cnpj: s.cnpj || "",
+    email: s.email || "",
+    phone: s.phone || "",
+    website: s.website || "",
+    category: s.category || "",
+    address: s.address || "",
+    address_number: s.address_number || "",
+    neighborhood: s.neighborhood || "",
+    city: s.city || "",
+    state: s.state || "",
+    zip_code: s.zip_code || "",
+    contact_name: s.contact_name || "",
+    contact_phone: s.contact_phone || "",
+    contact_email: s.contact_email || "",
+    payment_terms: s.payment_terms || "",
+    delivery_time: s.delivery_time || "",
+    notes: s.notes || "",
+  });
+
   const loadData = async () => {
     setLoading(true);
     try {
       const supplierData = await supplierService.getById(params.id);
-
       if (!supplierData) {
-        console.error("Fornecedor não encontrado");
         setLoading(false);
         return;
       }
-
       setSupplier(supplierData);
-
-      // Preenche o formulário
-      setFormData({
-        name: supplierData.name || "",
-        cnpj: supplierData.cnpj || "",
-        email: supplierData.email || "",
-        phone: supplierData.phone || "",
-        website: "",
-        category: "",
-        address: supplierData.address || "",
-        address_number: supplierData.address_number || "",
-        neighborhood: supplierData.neighborhood || "",
-        city: supplierData.city || "",
-        state: supplierData.state || "",
-        zip_code: supplierData.zip_code || "",
-        contact_name: supplierData.contact_name || "",
-        contact_phone: supplierData.contact_phone || "",
-        contact_email: supplierData.contact_email || "",
-        paymentTerms: "",
-        deliveryTime: "",
-      });
-      setOriginalData({
-        name: supplierData.name || "",
-        cnpj: supplierData.cnpj || "",
-        email: supplierData.email || "",
-        phone: supplierData.phone || "",
-        website: "",
-        category: "",
-        address: supplierData.address || "",
-        address_number: supplierData.address_number || "",
-        neighborhood: supplierData.neighborhood || "",
-        city: supplierData.city || "",
-        state: supplierData.state || "",
-        zip_code: supplierData.zip_code || "",
-        contact_name: supplierData.contact_name || "",
-        contact_phone: supplierData.contact_phone || "",
-        contact_email: supplierData.contact_email || "",
-        paymentTerms: "",
-        deliveryTime: "",
-      });
+      const fd = buildFormData(supplierData);
+      setFormData(fd);
+      setOriginalData(fd);
     } catch (error) {
       console.error("Erro ao carregar fornecedor:", error);
     } finally {
@@ -121,14 +146,15 @@ export default function FornecedorDetalhePage() {
 
   const handleSave = async () => {
     if (!supplier) return;
-
     setSaving(true);
     try {
       await supplierService.update(supplier.id, {
         name: formData.name,
-        cnpj: formData.cnpj || undefined,
+        cnpj: formData.cnpj.replace(/\D/g, "") || undefined,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
+        website: formData.website || undefined,
+        category: formData.category || undefined,
         address: formData.address || undefined,
         address_number: formData.address_number || undefined,
         neighborhood: formData.neighborhood || undefined,
@@ -138,6 +164,9 @@ export default function FornecedorDetalhePage() {
         contact_name: formData.contact_name || undefined,
         contact_phone: formData.contact_phone || undefined,
         contact_email: formData.contact_email || undefined,
+        payment_terms: formData.payment_terms || undefined,
+        delivery_time: formData.delivery_time || undefined,
+        notes: formData.notes || undefined,
       });
       setOriginalData(formData);
       showToast("Fornecedor atualizado com sucesso!", "success");
@@ -149,11 +178,29 @@ export default function FornecedorDetalhePage() {
     }
   };
 
+  const handleToggleActive = async () => {
+    if (!supplier) return;
+    setTogglingActive(true);
+    try {
+      await supplierService.update(supplier.id, { active: !supplier.active });
+      setSupplier((prev) => prev ? { ...prev, active: !prev.active } : prev);
+      showToast(
+        supplier.active ? "Fornecedor desativado." : "Fornecedor ativado.",
+        "success",
+      );
+    } catch (error) {
+      console.error("Erro ao alterar status:", error);
+      showToast("Erro ao alterar status do fornecedor.", "error");
+    } finally {
+      setTogglingActive(false);
+    }
+  };
+
   const handleCancel = () => {
     if (isDirty && originalData) {
       setFormData(originalData);
     } else {
-      router.push("/colaboradores");
+      router.push("/fornecedores");
     }
   };
 
@@ -177,108 +224,51 @@ export default function FornecedorDetalhePage() {
     );
   }
 
-  const categoryOptions = [
-    { value: "", label: "Selecione" },
-    { value: "opme", label: "OPME (Órteses, Próteses e Materiais)" },
-    { value: "medicamentos", label: "Medicamentos" },
-    { value: "equipamentos", label: "Equipamentos Médicos" },
-    { value: "materiais", label: "Materiais Hospitalares" },
-    { value: "instrumentos", label: "Instrumentos Cirúrgicos" },
-    { value: "outros", label: "Outros" },
-  ];
-
-  const paymentTermsOptions = [
-    { value: "", label: "Selecione" },
-    { value: "vista", label: "À Vista" },
-    { value: "7dias", label: "7 dias" },
-    { value: "15dias", label: "15 dias" },
-    { value: "30dias", label: "30 dias" },
-    { value: "45dias", label: "45 dias" },
-    { value: "60dias", label: "60 dias" },
-  ];
-
-  // Sidebar com cotações recentes (mock)
-  const recentQuotes = [
-    {
-      id: "1",
-      product: "Prótese de Joelho",
-      date: "15/01/2026",
-      status: "Aprovada",
-      value: "R$ 15.000,00",
-    },
-    {
-      id: "2",
-      product: "Parafusos de Titânio",
-      date: "12/01/2026",
-      status: "Pendente",
-      value: "R$ 2.500,00",
-    },
-    {
-      id: "3",
-      product: "Kit Artroscopia",
-      date: "10/01/2026",
-      status: "Aprovada",
-      value: "R$ 8.000,00",
-    },
-    {
-      id: "4",
-      product: "Placas de Fixação",
-      date: "08/01/2026",
-      status: "Recusada",
-      value: "R$ 4.200,00",
-    },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Aprovada":
-        return "text-green-600 bg-green-50";
-      case "Pendente":
-        return "text-yellow-600 bg-yellow-50";
-      case "Recusada":
-        return "text-red-600 bg-red-50";
-      default:
-        return "text-gray-600 bg-gray-50";
-    }
-  };
+  const quotations: SupplierQuotation[] = supplier.quotations ?? [];
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="flex items-center px-4 py-3 border-b border-gray-200">
         <h3 className="text-sm font-semibold text-gray-900">
-          Cotações recentes
+          Cotações ({quotations.length})
         </h3>
       </div>
-
-      {/* Lista de cotações */}
       <div className="flex-1 overflow-y-auto">
-        {recentQuotes.map((quote) => (
-          <div
-            key={quote.id}
-            className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-          >
-            <div className="flex flex-col flex-1">
-              <span className="text-xs font-semibold text-gray-900">
-                {quote.product}
-              </span>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-gray-500">{quote.date}</span>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded ${getStatusColor(quote.status)}`}
-                >
-                  {quote.status}
+        {quotations.length === 0 ? (
+          <div className="flex items-center justify-center h-32">
+            <p className="text-xs text-gray-400">Nenhuma cotação registrada</p>
+          </div>
+        ) : (
+          quotations.map((q) => (
+            <div
+              key={q.id}
+              className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50"
+            >
+              <div className="flex flex-col flex-1 gap-1">
+                <span className="text-xs font-semibold text-gray-900">
+                  {q.surgery_request?.patient?.name ?? "Paciente não informado"}
                 </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">
+                    {formatDate(q.submission_date || q.created_at)}
+                  </span>
+                  <QuotationStatusBadge selected={q.selected} />
+                </div>
+                {q.proposal_number && (
+                  <span className="text-xs text-gray-400">
+                    Nº {q.proposal_number}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 ml-2">
+                <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                  {formatCurrency(q.total_value)}
+                </span>
+                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-700">
-                {quote.value}
-              </span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
@@ -292,7 +282,33 @@ export default function FornecedorDetalhePage() {
         itemSubtitle="Fornecedor"
         sidebarContent={sidebarContent}
       >
-        {/* Seção: Informações gerais */}
+        {/* Status do fornecedor */}
+        <div className="flex items-center justify-between pb-2">
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
+                supplier.active
+                  ? "text-green-700 bg-green-50"
+                  : "text-gray-500 bg-gray-100"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${supplier.active ? "bg-green-500" : "bg-gray-400"}`}
+              />
+              {supplier.active ? "Ativo" : "Inativo"}
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToggleActive}
+            isLoading={togglingActive}
+          >
+            {supplier.active ? "Desativar" : "Ativar"}
+          </Button>
+        </div>
+
+        {/* Informações gerais */}
         <FormSection title="Informações gerais">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
@@ -313,7 +329,7 @@ export default function FornecedorDetalhePage() {
               label="Categoria"
               value={formData.category}
               onChange={(e) => handleInputChange("category", e.target.value)}
-              options={categoryOptions}
+              options={CATEGORY_OPTIONS}
             />
             <Input
               label="Telefone principal"
@@ -338,17 +354,24 @@ export default function FornecedorDetalhePage() {
           </div>
         </FormSection>
 
-        {/* Seção: Endereço */}
+        {/* Endereço */}
         <FormSection title="Endereço">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <Input
-                label="Endereço completo"
+                label="Logradouro"
                 value={formData.address}
                 onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="Rua, número, complemento"
+                placeholder="Rua, avenida..."
               />
             </div>
+            <Input
+              label="Número"
+              value={formData.address_number}
+              onChange={(e) =>
+                handleInputChange("address_number", e.target.value)
+              }
+            />
             <Input
               label="Bairro"
               value={formData.neighborhood}
@@ -378,7 +401,7 @@ export default function FornecedorDetalhePage() {
           </div>
         </FormSection>
 
-        {/* Seção: Contato */}
+        {/* Contato comercial */}
         <FormSection title="Contato comercial">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
@@ -411,29 +434,39 @@ export default function FornecedorDetalhePage() {
           </div>
         </FormSection>
 
-        {/* Seção: Condições comerciais */}
+        {/* Condições comerciais */}
         <FormSection title="Condições comerciais">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Select
               label="Prazo de pagamento"
-              value={formData.paymentTerms}
+              value={formData.payment_terms}
               onChange={(e) =>
-                handleInputChange("paymentTerms", e.target.value)
+                handleInputChange("payment_terms", e.target.value)
               }
-              options={paymentTermsOptions}
+              options={PAYMENT_TERMS_OPTIONS}
             />
             <Input
               label="Prazo de entrega"
-              value={formData.deliveryTime}
+              value={formData.delivery_time}
               onChange={(e) =>
-                handleInputChange("deliveryTime", e.target.value)
+                handleInputChange("delivery_time", e.target.value)
               }
               placeholder="Ex: 5 dias úteis"
             />
           </div>
         </FormSection>
 
-        {/* Botão de salvar */}
+        {/* Observações */}
+        <FormSection title="Observações">
+          <textarea
+            className="ds-input w-full min-h-[100px] resize-y"
+            placeholder="Notas adicionais sobre o fornecedor..."
+            value={formData.notes}
+            onChange={(e) => handleInputChange("notes", e.target.value)}
+          />
+        </FormSection>
+
+        {/* Ações */}
         <div className="flex justify-end gap-3 pt-4">
           <Button variant="outline" onClick={handleCancel}>
             Cancelar

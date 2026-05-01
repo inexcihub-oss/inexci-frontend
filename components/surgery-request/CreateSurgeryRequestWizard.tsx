@@ -305,6 +305,9 @@ export function CreateSurgeryRequestWizard({
           let opmeCreated = 0;
           for (const item of opmeItems) {
             try {
+              const supplierNames = (item.suppliers || [])
+                .filter((s: string) => s?.trim())
+                .map((s: string) => s.trim());
               await opmeService.create({
                 surgery_request_id: requestId,
                 name: item.name ?? "",
@@ -312,10 +315,7 @@ export function CreateSurgeryRequestWizard({
                   (item.manufacturers || [])
                     .filter((m: string) => m?.trim())
                     .join(", ") || undefined,
-                distributor:
-                  (item.suppliers || [])
-                    .filter((s: string) => s?.trim())
-                    .join(", ") || undefined,
+                supplier_names: supplierNames.length > 0 ? supplierNames : undefined,
                 quantity: item.quantity || 1,
               });
               opmeCreated++;

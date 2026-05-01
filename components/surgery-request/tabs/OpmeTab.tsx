@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
 
-/** Divide uma string separada por vírgula em array de itens não-vazios */
+/** Divide uma string separada por vírgula em array de itens não-vazios (legado) */
 function splitList(value?: string | null): string[] {
   if (!value) return [];
   return value
@@ -76,7 +76,9 @@ export function OpmeTab() {
       (item: any) =>
         item.name?.toLowerCase().includes(term) ||
         item.brand?.toLowerCase().includes(term) ||
-        item.distributor?.toLowerCase().includes(term),
+        (item.suppliers as { name: string }[] | undefined)?.some((s) =>
+          s.name.toLowerCase().includes(term),
+        ),
     );
   }, [solicitacao.opme_items, searchTerm]);
 
@@ -216,7 +218,7 @@ export function OpmeTab() {
           {filteredOpmeItems.length > 0 ? (
             filteredOpmeItems.map((material: any) => {
               const manufacturers = splitList(material.brand);
-              const suppliers = splitList(material.distributor);
+              const suppliers: { id: string; name: string }[] = material.suppliers ?? [];
               const expanded = isExpanded(material.id);
               const isFullyAuthorized =
                 showColorCoding &&
@@ -372,7 +374,7 @@ export function OpmeTab() {
                         {suppliers.length > 0 ? (
                           suppliers.map((s, i) => (
                             <div
-                              key={i}
+                              key={s.id ?? i}
                               className={`flex w-full px-4 py-3 bg-gray-100 ${
                                 i < suppliers.length - 1
                                   ? "border-b border-neutral-100"
@@ -380,7 +382,7 @@ export function OpmeTab() {
                               }`}
                             >
                               <span className="text-xs text-gray-900 w-full">
-                                {s}
+                                {s.name}
                               </span>
                             </div>
                           ))
