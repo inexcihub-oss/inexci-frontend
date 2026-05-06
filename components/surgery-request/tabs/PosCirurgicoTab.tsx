@@ -23,8 +23,6 @@ const POST_DOC_TYPE_LABELS: Record<string, string> = {
   additional_document: "Outros",
 };
 
-const POST_DOC_KEYS = Object.keys(POST_DOC_TYPE_LABELS);
-
 function formatPostDocType(key: string): string {
   return POST_DOC_TYPE_LABELS[key] ?? key;
 }

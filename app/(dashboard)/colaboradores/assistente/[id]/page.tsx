@@ -29,7 +29,7 @@ import { GENDER_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
-import { ChevronRight, Upload, X, FileSignature, Loader2 } from "lucide-react";
+import { ChevronRight, Upload, X, Loader2 } from "lucide-react";
 import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 import { CollaboratorActionsSection } from "@/components/colaboradores/CollaboratorActionsSection";
 

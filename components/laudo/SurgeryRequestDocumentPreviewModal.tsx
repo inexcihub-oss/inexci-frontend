@@ -134,26 +134,30 @@ export function SurgeryRequestDocumentPreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative z-10 flex flex-col bg-white rounded-xl shadow-xl overflow-hidden w-full max-w-[720px] max-h-[92vh]">
-        <div className="flex items-center justify-between px-4 sm:px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
-          <h2 className="ds-modal-title">
+      <div className="relative z-10 flex flex-col bg-white w-full md:max-w-[720px] md:mx-4 rounded-t-3xl md:rounded-2xl max-h-[calc(92vh-64px)] md:max-h-[92vh] shadow-xl overflow-hidden animate-slide-up md:animate-scale-in mobile-sheet-offset">
+        <div className="flex md:hidden justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+        </div>
+
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
+          <h2 className="text-sm md:text-lg font-semibold text-gray-900">
             Pré-visualização da Solicitação Cirúrgica
           </h2>
           <button
             onClick={onClose}
-            className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 active:scale-[0.95] transition-all"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto overflow-x-auto bg-gray-100 p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-auto overscroll-contain bg-gray-100 p-4 md:p-6">
           <SurgeryRequestLaudoDocument
             today={today}
             patientName={patientName}
@@ -184,14 +188,17 @@ export function SurgeryRequestDocumentPreviewModal({
           />
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-4 sm:px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 shrink-0">
-          <button onClick={onClose} className="ds-btn-outline">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 shrink-0">
+          <button
+            onClick={onClose}
+            className="ds-btn-outline flex-1 md:flex-none"
+          >
             Fechar
           </button>
           <button
             onClick={handleExportPdf}
             disabled={isExporting}
-            className="ds-btn-primary disabled:opacity-50"
+            className="ds-btn-primary flex-1 md:flex-none disabled:opacity-50"
           >
             {isExporting ? "Exportando..." : "Exportar PDF"}
           </button>

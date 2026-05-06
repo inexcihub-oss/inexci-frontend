@@ -17,7 +17,6 @@ import {
 } from "@/services/surgery-request.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { STATE_OPTIONS } from "@/lib/options";
-import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";

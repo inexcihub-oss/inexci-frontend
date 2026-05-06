@@ -9,7 +9,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone } from "@/lib/formatters";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
-import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
@@ -34,7 +33,7 @@ import {
 
 export default function ColaboradoresPage() {
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const { user: _currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);

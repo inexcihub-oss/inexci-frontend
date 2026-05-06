@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import {
   ColumnDef,
   flexRender,
@@ -230,7 +229,7 @@ export default function ProcedimentosPage() {
         id: "modelName",
         accessorKey: "modelName",
         header: "Nome do modelo",
-        size: 240,
+        size: 180,
         cell: ({ row }) => (
           <span className="text-xs font-semibold text-black truncate block">
             {row.original.modelName}
@@ -241,7 +240,7 @@ export default function ProcedimentosPage() {
         id: "procedureName",
         accessorKey: "procedureName",
         header: "Procedimento",
-        size: 240,
+        size: 180,
         cell: ({ row }) => (
           <span className="text-xs text-black truncate block">
             {row.original.procedureName}
@@ -284,6 +283,7 @@ export default function ProcedimentosPage() {
         id: "actions",
         header: "",
         size: 50,
+        meta: { className: "sticky right-0 z-10 bg-white" },
         enableSorting: false,
         cell: ({ row }) => (
           <button
@@ -376,7 +376,7 @@ export default function ProcedimentosPage() {
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteClick}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 active:scale-[0.98] transition-all min-h-[44px]"
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 active:scale-[0.98] transition-all min-h-[44px]"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -392,7 +392,10 @@ export default function ProcedimentosPage() {
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-1V5a1 1 0 00-1-1h-4a1 1 0 00-1 1v1H7a1 1 0 000 2h10z"
                 />
               </svg>
-              Excluir selecionados ({selectedItems.length})
+              <span className="sm:hidden">({selectedItems.length})</span>
+              <span className="hidden sm:inline">
+                Excluir selecionados ({selectedItems.length})
+              </span>
             </button>
           )}
           <Button
@@ -427,7 +430,7 @@ export default function ProcedimentosPage() {
             )}
           </div>
         ) : (
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-x-auto overflow-y-auto">
             <Table style={{ width: "100%" }}>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -438,7 +441,7 @@ export default function ProcedimentosPage() {
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
-                        className={`text-xs text-black opacity-70 font-normal h-12 ${header.column.columnDef.meta?.className ?? ""}`}
+                        className={`text-xs text-black opacity-70 font-normal h-12 ${header.column.columnDef.meta?.className ?? ""} ${header.column.id === "actions" ? "sticky right-0 z-20" : ""}`}
                         style={{ width: header.getSize() }}
                       >
                         {header.isPlaceholder
@@ -457,12 +460,12 @@ export default function ProcedimentosPage() {
                   <TableRow
                     key={row.id}
                     onClick={() => handleRowClick(row.original)}
-                    className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+                    className="group border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         key={cell.id}
-                        className={`py-3 px-4 ${cell.column.columnDef.meta?.className ?? ""}`}
+                        className={`py-3 px-4 ${cell.column.columnDef.meta?.className ?? ""} ${cell.column.id === "actions" ? "group-hover:bg-gray-50" : ""}`}
                         style={{ width: cell.column.getSize() }}
                         onClick={
                           cell.column.id === "select" ||

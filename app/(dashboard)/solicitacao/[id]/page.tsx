@@ -562,7 +562,7 @@ export default function SolicitacaoDetalhePage() {
   const [isUpdateAuthorizationsModalOpen, setIsUpdateAuthorizationsModalOpen] =
     useState(false);
   const [pendingDateIndex, setPendingDateIndex] = useState<number | null>(null);
-  const [isSavingDate, setIsSavingDate] = useState(false);
+  const [_isSavingDate, setIsSavingDate] = useState(false);
   const [isEditDateOptionsModalOpen, setIsEditDateOptionsModalOpen] =
     useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);

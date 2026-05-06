@@ -69,7 +69,7 @@ function DocumentUploadModalContent({
     documentTypes[0]?.key ?? "",
   );
   const [documentName, setDocumentName] = useState("");
-  const [isRequired, setIsRequired] = useState(false);
+  const [_isRequired, setIsRequired] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -260,7 +260,9 @@ function DocumentUploadModalContent({
                     <Check className="w-5 h-5 text-green-600" />
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-xs md:text-sm font-medium text-gray-900">Enviado</p>
+                    <p className="text-xs md:text-sm font-medium text-gray-900">
+                      Enviado
+                    </p>
                     <p className="text-xs text-gray-500 truncate">
                       {selectedFile.name}
                     </p>

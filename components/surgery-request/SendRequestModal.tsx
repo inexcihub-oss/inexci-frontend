@@ -686,12 +686,15 @@ export function SendRequestModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
         onClick={currentStep !== 4 ? handleClose : undefined}
       />
-      <div className="relative bg-white rounded-2xl shadow-xl flex flex-col w-full max-w-[640px] h-[650px] max-h-[90vh]">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col w-full sm:mx-4 sm:max-w-[640px] max-h-[92vh] sm:max-h-[90vh] sm:h-[650px] overflow-hidden animate-slide-up sm:animate-scale-in mobile-sheet-offset">
+        <div className="flex sm:hidden justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+        </div>
         {/* Header */}
         <div className="flex items-center gap-2 px-4 sm:px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 ds-modal-title">{getTitle()}</h2>

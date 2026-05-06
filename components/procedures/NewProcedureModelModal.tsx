@@ -39,6 +39,19 @@ export function NewProcedureModelModal({
 
   const debouncedSearch = useDebounce(procedureSearch, 300);
 
+  const handleReset = useCallback(() => {
+    setModelName("");
+    setProcedureSearch("");
+    setSelectedProcedure(null);
+    setShowDropdown(false);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    if (isLoading) return;
+    handleReset();
+    onClose();
+  }, [isLoading, handleReset, onClose]);
+
   // Focus no primeiro input ao abrir
   useEffect(() => {
     if (isOpen) {
@@ -66,7 +79,7 @@ export function NewProcedureModelModal({
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, showDropdown]);
+  }, [isOpen, showDropdown, handleClose]);
 
   // Load procedures when modal opens
   useEffect(() => {
@@ -144,19 +157,6 @@ export function NewProcedureModelModal({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleReset = () => {
-    setModelName("");
-    setProcedureSearch("");
-    setSelectedProcedure(null);
-    setShowDropdown(false);
-  };
-
-  const handleClose = () => {
-    if (isLoading) return;
-    handleReset();
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -246,8 +246,8 @@ export function NewProcedureModelModal({
               </div>
 
               {/* Dropdown de resultados */}
-              {showDropdown && procedureSearch.trim() !== "" && (
-                <div className="absolute z-[60] mt-1 w-full bg-white border border-neutral-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+              {showDropdown && (
+                <div className="absolute z-[60] bottom-full mb-1 w-full bg-white border border-neutral-200 rounded-xl shadow-lg max-h-[36vh] overflow-y-auto scrollbar-mobile-visible md:top-full md:bottom-auto md:mt-1 md:mb-0 md:max-h-48">
                   {isLoadingProcedures ? (
                     <div className="flex items-center justify-center py-4 text-sm text-gray-400">
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />

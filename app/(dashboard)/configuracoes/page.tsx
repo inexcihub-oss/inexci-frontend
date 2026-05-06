@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -16,10 +16,7 @@ import { ToastType } from "@/types/toast.types";
 import { cn } from "@/lib/utils";
 import { GENDER_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
 import { getApiErrorMessage } from "@/lib/http-error";
-import {
-  profileSchema,
-  changePasswordSchema,
-} from "@/lib/schemas/configuracoes.schema";
+import { changePasswordSchema } from "@/lib/schemas/configuracoes.schema";
 import api from "@/lib/api";
 import { userService } from "@/services/user.service";
 import { notificationService } from "@/services/notification.service";
@@ -215,7 +212,6 @@ function ConfiguracoesPageInner() {
   const { user, updateUser, isAdmin } = useAuth();
   const { toast, showToast, hideToast } = useToast();
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const initialTab = (): SettingsTab => {
     const tab = searchParams.get("tab");

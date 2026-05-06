@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import Loading from "@/components/ui/Loading";
 import Sidebar from "@/components/Sidebar";

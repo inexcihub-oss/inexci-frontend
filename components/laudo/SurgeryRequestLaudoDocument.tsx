@@ -471,10 +471,11 @@ export function SurgeryRequestLaudoDocument({
     <div
       style={{
         background: "#ffffff",
-        width: "595px",
+        width: "100%",
+        maxWidth: "595px",
         minHeight: "842px",
         margin: "0 auto",
-        padding: "32px",
+        padding: "clamp(16px, 4vw, 32px)",
         fontFamily: "Inter, Arial, sans-serif",
         fontSize: "12px",
         color: "#111111",

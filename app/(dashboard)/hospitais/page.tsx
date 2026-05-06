@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { hospitalService, Hospital } from "@/services/hospital.service";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
-import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";

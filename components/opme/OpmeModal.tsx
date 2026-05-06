@@ -486,7 +486,7 @@ export function OpmeModal({
       setNewOpmeName("");
       setError(null);
     }
-  }, [isOpen, editingOpme]);
+  }, [isOpen, editingOpme, initialItems]);
 
   if (!isOpen) return null;
 

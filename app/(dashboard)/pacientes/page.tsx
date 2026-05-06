@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { patientService, Patient } from "@/services/patient.service";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
-import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";

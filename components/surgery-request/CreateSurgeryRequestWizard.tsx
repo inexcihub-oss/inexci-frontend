@@ -84,7 +84,7 @@ export function CreateSurgeryRequestWizard({
 }: CreateSurgeryRequestWizardProps) {
   const [modalState, setModalState] = useState<ModalState>("none");
   const [loading, setLoading] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
+  const [isClosing, _setIsClosing] = useState(false);
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(onClose);
 
@@ -315,7 +315,8 @@ export function CreateSurgeryRequestWizard({
                   (item.manufacturers || [])
                     .filter((m: string) => m?.trim())
                     .join(", ") || undefined,
-                supplier_names: supplierNames.length > 0 ? supplierNames : undefined,
+                supplier_names:
+                  supplierNames.length > 0 ? supplierNames : undefined,
                 quantity: item.quantity || 1,
               });
               opmeCreated++;

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { X, Pencil, Check } from "lucide-react";
+import { X, Pencil, Check, Search, Loader2 } from "lucide-react";
 import {
   ProcedureModel,
   ProcedureDocument,
@@ -13,6 +13,7 @@ import { OpmeModal } from "@/components/opme/OpmeModal";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { supplierService } from "@/services/supplier.service";
+import { procedureService, Procedure } from "@/services/procedure.service";
 
 interface ProcedureSideSheetProps {
   isOpen: boolean;
@@ -136,6 +137,15 @@ export function ProcedureSideSheet({
   const [isOpmeModalOpen, setIsOpmeModalOpen] = useState(false);
   const [isTussModalOpen, setIsTussModalOpen] = useState(false);
   const [expandedOpme, setExpandedOpme] = useState<Record<string, boolean>>({});
+  const [procedureName, setProcedureName] = useState("—");
+  const [isEditingProcedure, setIsEditingProcedure] = useState(false);
+  const [procedureSearch, setProcedureSearch] = useState("");
+  const [procedureOptions, setProcedureOptions] = useState<Procedure[]>([]);
+  const [isLoadingProcedures, setIsLoadingProcedures] = useState(false);
+  const [isSavingProcedure, setIsSavingProcedure] = useState(false);
+  const [selectedProcedureOption, setSelectedProcedureOption] =
+    useState<Procedure | null>(null);
+  const procedureDropdownRef = useRef<HTMLDivElement>(null);
 
   // Sync local state when procedure changes
   useEffect(() => {
@@ -144,8 +154,60 @@ export function ProcedureSideSheet({
       setOpmeItems(procedure.opmeItems || []);
       setTussItems(procedure.tussItems || []);
       setModelName(procedure.modelName);
+      setProcedureName(procedure.procedureName || "—");
+      setProcedureSearch(procedure.procedureName || "");
+
+      const rawProcedure = (procedure as any)?._raw?.template_data?.procedure;
+      if (rawProcedure?.id && rawProcedure?.name) {
+        setSelectedProcedureOption({
+          id: String(rawProcedure.id),
+          name: String(rawProcedure.name),
+          createdAt: "",
+          updatedAt: "",
+        });
+      } else {
+        setSelectedProcedureOption(null);
+      }
+
+      setIsEditingProcedure(false);
     }
   }, [procedure]);
+
+  // Carrega procedimentos cadastrados para edição do tipo
+  useEffect(() => {
+    if (!isOpen) return;
+    const loadProcedureOptions = async () => {
+      setIsLoadingProcedures(true);
+      try {
+        const data = await procedureService.getAll();
+        setProcedureOptions(data);
+      } catch {
+        setProcedureOptions([]);
+      } finally {
+        setIsLoadingProcedures(false);
+      }
+    };
+
+    loadProcedureOptions();
+  }, [isOpen]);
+
+  // Fecha dropdown de procedimento ao clicar fora
+  useEffect(() => {
+    if (!isEditingProcedure) return;
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (
+        procedureDropdownRef.current &&
+        !procedureDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsEditingProcedure(false);
+        setProcedureSearch(procedureName === "—" ? "" : procedureName);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isEditingProcedure, procedureName]);
 
   // Focus input when editing name
   useEffect(() => {
@@ -164,6 +226,8 @@ export function ProcedureSideSheet({
   // Persiste alterações no template_data via API
   const persistTemplateData = async (updates: {
     name?: string;
+    procedure?: { id: string; name: string } | null;
+    procedure_name?: string;
     opme_items?: any[];
     tuss_items?: any[];
     required_documents?: any[];
@@ -179,6 +243,10 @@ export function ProcedureSideSheet({
         newData.tuss_items = updates.tuss_items;
       if (updates.required_documents !== undefined)
         newData.required_documents = updates.required_documents;
+      if (updates.procedure !== undefined)
+        newData.procedure = updates.procedure;
+      if (updates.procedure_name !== undefined)
+        newData.procedure_name = updates.procedure_name;
 
       const payload: { name?: string; template_data?: object } = {
         template_data: newData,
@@ -217,6 +285,33 @@ export function ProcedureSideSheet({
     setIsEditingName(false);
     if (modelName.trim() && modelName !== procedure.modelName) {
       persistTemplateData({ name: modelName.trim() });
+    }
+  };
+
+  const filteredProcedureOptions = procedureOptions.filter((item) =>
+    item.name.toLowerCase().includes(procedureSearch.trim().toLowerCase()),
+  );
+
+  const handleSelectProcedure = async (item: Procedure) => {
+    if (isSavingProcedure) return;
+
+    const previousName = procedureName;
+    setIsSavingProcedure(true);
+    setProcedureName(item.name);
+    setProcedureSearch(item.name);
+    setSelectedProcedureOption(item);
+
+    try {
+      await persistTemplateData({
+        procedure: { id: item.id, name: item.name },
+        procedure_name: item.name,
+      });
+      setIsEditingProcedure(false);
+    } catch {
+      setProcedureName(previousName);
+      setProcedureSearch(previousName === "—" ? "" : previousName);
+    } finally {
+      setIsSavingProcedure(false);
     }
   };
 
@@ -280,12 +375,12 @@ export function ProcedureSideSheet({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
         {/* Backdrop */}
         <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
         {/* Modal */}
-        <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] mx-4">
+        <div className="relative bg-white rounded-t-3xl md:rounded-2xl shadow-xl w-full md:max-w-2xl flex flex-col max-h-[92vh] md:max-h-[90vh] md:mx-4 mobile-sheet-offset">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
             {isEditingName ? (
@@ -333,7 +428,7 @@ export function ProcedureSideSheet({
           </div>
 
           {/* Body - Scrollable */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4 modal-content-mobile">
             {/* ─── Informações Gerais ─── */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2.5 py-2">
@@ -343,16 +438,81 @@ export function ProcedureSideSheet({
               </div>
 
               {/* Procedimento */}
-              <div className="flex items-center justify-between gap-1 py-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-2">
                 <span className="text-xs text-gray-500">Procedimento</span>
-                <div className="flex items-center gap-2.5">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl w-72">
-                    <span className="text-xs md:text-sm text-gray-900 truncate">
-                      {procedure.procedureName}
-                    </span>
+                <div
+                  className="flex items-start justify-between sm:justify-start gap-2.5 w-full sm:w-auto"
+                  ref={procedureDropdownRef}
+                >
+                  <div className="relative w-full sm:w-72">
+                    {isEditingProcedure ? (
+                      <>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={procedureSearch}
+                          onChange={(e) => setProcedureSearch(e.target.value)}
+                          placeholder="Buscar procedimento..."
+                          className="w-full h-10 pl-9 pr-3 text-xs md:text-sm text-gray-900 bg-white border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                          autoFocus
+                        />
+
+                        <div className="absolute z-[70] mt-1 w-full bg-white border border-neutral-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+                          {isLoadingProcedures ? (
+                            <div className="flex items-center justify-center py-4 text-sm text-gray-400">
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Carregando procedimentos...
+                            </div>
+                          ) : filteredProcedureOptions.length === 0 ? (
+                            <div className="px-3 py-2.5 text-sm text-gray-400">
+                              Nenhum procedimento cadastrado encontrado.
+                            </div>
+                          ) : (
+                            filteredProcedureOptions.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => handleSelectProcedure(item)}
+                                className={`w-full text-left px-3 py-2.5 text-sm transition-colors flex items-center justify-between ${
+                                  selectedProcedureOption?.id === item.id
+                                    ? "bg-teal-50 text-teal-700 font-medium"
+                                    : "text-gray-700 hover:bg-teal-50"
+                                }`}
+                              >
+                                <span className="truncate">{item.name}</span>
+                                {selectedProcedureOption?.id === item.id && (
+                                  <Check className="h-4 w-4 text-teal-600 shrink-0" />
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl w-full h-10">
+                        <span className="text-xs md:text-sm text-gray-900 truncate">
+                          {procedureName}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <button className="p-1 rounded hover:bg-gray-100 transition-colors">
-                    <IconEdit className="w-6 h-6 text-neutral-900" />
+
+                  <button
+                    onClick={() => {
+                      if (isSavingProcedure) return;
+                      setIsEditingProcedure((prev) => !prev);
+                      setProcedureSearch(
+                        procedureName === "—" ? "" : procedureName,
+                      );
+                    }}
+                    className="p-1 rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
+                    disabled={isSavingProcedure}
+                  >
+                    {isSavingProcedure ? (
+                      <Loader2 className="w-5 h-5 text-neutral-500 animate-spin" />
+                    ) : (
+                      <IconEdit className="w-6 h-6 text-neutral-900" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -361,20 +521,20 @@ export function ProcedureSideSheet({
               <div className="border-b border-gray-200" />
 
               {/* Details row */}
-              <div className="flex gap-16 py-2">
-                <div className="flex flex-col gap-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-8 py-2">
+                <div className="flex flex-col gap-1 min-w-0">
                   <span className="text-xs text-gray-500">Criado em</span>
                   <span className="text-xs md:text-sm text-gray-900">
                     {procedure.createdAt}
                   </span>
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 min-w-0">
                   <span className="text-xs text-gray-500">Criado por</span>
-                  <span className="text-xs md:text-sm text-gray-900">
+                  <span className="text-xs md:text-sm text-gray-900 break-words">
                     {procedure.createdBy}
                   </span>
                 </div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 min-w-0 col-span-2 sm:col-span-1">
                   <span className="text-xs text-gray-500">Número de usos</span>
                   <span className="text-xs md:text-sm text-gray-900">
                     {procedure.usageCount} vezes
@@ -651,7 +811,7 @@ export function ProcedureSideSheet({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
+          <div className="sticky bottom-0 flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 bg-white">
             <button onClick={onClose} className="ds-btn-outline">
               Fechar
             </button>
