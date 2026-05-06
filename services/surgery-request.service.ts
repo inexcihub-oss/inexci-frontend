@@ -273,6 +273,7 @@ export interface SurgeryRequestListItem {
   priority: number;
   created_at: string;
   deadline: string | null;
+  surgery_date: string | null;
   patient: { id: string; name: string } | null;
   manager: { id: string; name: string } | null;
   doctor: { id: string; name: string } | null;
@@ -380,6 +381,14 @@ export const surgeryRequestService = {
   async getAll(): Promise<SurgeryRequestListResponse> {
     const response =
       await api.get<SurgeryRequestListResponse>("/surgery-requests");
+    return response.data;
+  },
+
+  /** Busca cirurgias com data marcada (Agendada=5, Realizada=6, Faturada=7, Finalizada=8) */
+  async getScheduled(): Promise<SurgeryRequestListResponse> {
+    const response = await api.get<SurgeryRequestListResponse>(
+      "/surgery-requests?status=5,6,7,8",
+    );
     return response.data;
   },
 

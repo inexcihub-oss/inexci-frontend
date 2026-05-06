@@ -32,6 +32,11 @@ const PRIMARY_ITEMS: NavItem[] = [
 // Itens exclusivos de admin — aparecem no overflow sheet
 const ADMIN_OVERFLOW_ITEMS: NavItem[] = [
   {
+    iconSrc: "/icons/calendar-schedule.svg",
+    label: "Agenda",
+    href: "/agenda",
+  },
+  {
     iconSrc: "/icons/user-profile.svg",
     label: "Colaboradores",
     href: "/colaboradores",

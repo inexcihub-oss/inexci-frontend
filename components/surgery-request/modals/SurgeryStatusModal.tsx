@@ -373,18 +373,21 @@ export function SurgeryStatusModal({
   // ══════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
         onClick={handleClose}
       />
 
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-t-3xl md:rounded-2xl shadow-xl w-full md:max-w-2xl md:mx-4 md:my-6 flex flex-col max-h-[calc(92vh-64px)] md:max-h-[90vh] overflow-y-auto mobile-sheet-offset">
+        {/* Drag handle — apenas mobile */}
+        <div className="md:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+        </div>
+
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100">
-          <h2 className="flex-1 text-2xl font-light tracking-tight text-neutral-900">
-            {title}
-          </h2>
+          <h2 className="flex-1 ds-modal-title">{title}</h2>
           <button
             onClick={handleClose}
             disabled={isSaving}
@@ -398,11 +401,11 @@ export function SurgeryStatusModal({
         {step === 1 && (
           <>
             <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6">
-              <p className="text-sm md:text-base text-neutral-900">
+              <p className="text-xs md:text-sm text-neutral-900">
                 Qual o status atual da cirurgia?
               </p>
 
-              <div className="flex gap-3 md:gap-4">
+              <div className="grid grid-cols-3 gap-2 md:gap-3">
                 {(
                   [
                     {
@@ -425,14 +428,14 @@ export function SurgeryStatusModal({
                   <button
                     key={opt.value}
                     onClick={() => setOutcome(opt.value)}
-                    className={`flex-1 flex items-center justify-center gap-2 p-4 border rounded-xl transition-colors ${
+                    className={`flex flex-col items-center justify-center gap-1.5 p-3 md:p-4 border rounded-xl transition-colors ${
                       outcome === opt.value
                         ? "border-teal-700"
                         : "border-neutral-100 hover:border-neutral-200"
                     }`}
                   >
                     {opt.icon}
-                    <span className="text-xs md:text-sm font-semibold text-neutral-900">
+                    <span className="text-xs font-semibold text-neutral-900 text-center leading-tight">
                       {opt.label}
                     </span>
                   </button>
@@ -460,7 +463,7 @@ export function SurgeryStatusModal({
         {step === 2 && outcome === "realizada" && (
           <>
             <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6">
-              <p className="text-sm md:text-base text-neutral-900">
+              <p className="text-xs md:text-sm text-neutral-900">
                 Envie os documentos cirúrgicos para confirmar a realização.
               </p>
 
@@ -582,32 +585,33 @@ export function SurgeryStatusModal({
         {/* ══════════ PASSO 2b: Cirurgia Reagendada ══════════════════════════ */}
         {step === 2 && outcome === "reagendada" && (
           <>
-            <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6">
-              <p className="text-sm md:text-base text-neutral-900">
-                Confirme a nova data da cirurgia.
+            <div className="flex flex-col gap-5 px-4 py-5 md:px-6 md:py-6">
+              <p className="text-xs md:text-sm text-neutral-500">
+                Selecione a nova data e horário para a cirurgia.
               </p>
 
-              {/* Linha: Nova data */}
-              <div className="flex items-center gap-2 pl-2 pr-4 py-2">
-                <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900">
-                  Nova data
-                </span>
-
-                <div className="flex items-center gap-2">
-                  {/* Seletor de data */}
-                  <div className="relative flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded">
-                    <span
-                      className={`text-xs md:text-sm text-neutral-900 select-none ${!newDate ? "opacity-50" : ""}`}
+              {/* Campos de data e hora */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Data */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="ds-label mb-0 flex items-center gap-1.5">
+                    <IconCalendar size={14} />
+                    Data
+                  </label>
+                  <div className="relative">
+                    <div
+                      className={`ds-input flex items-center justify-between cursor-pointer ${
+                        newDate ? "text-gray-900" : "text-gray-400"
+                      }`}
                     >
-                      {newDate
-                        ? new Date(`${newDate}T00:00`).toLocaleDateString(
-                            "pt-BR",
-                          )
-                        : "Selecione uma data"}
-                    </span>
-                    <span className="opacity-50 flex-shrink-0 text-neutral-900">
-                      <IconCalendar size={16} />
-                    </span>
+                      <span className="text-sm leading-tight">
+                        {newDate
+                          ? new Date(`${newDate}T00:00`).toLocaleDateString(
+                              "pt-BR",
+                            )
+                          : "dd/mm/aaaa"}
+                      </span>
+                    </div>
                     <input
                       type="date"
                       value={newDate}
@@ -615,40 +619,72 @@ export function SurgeryStatusModal({
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                     />
                   </div>
+                </div>
 
-                  {/* Seletor de hora */}
-                  <div className="flex items-center gap-2 px-3 py-2 border border-neutral-100 rounded">
+                {/* Horário */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="ds-label mb-0 flex items-center gap-1.5">
+                    <IconClock size={14} />
+                    Horário
+                  </label>
+                  <div className="ds-input flex items-center gap-2">
                     <input
                       type="time"
                       value={newTime}
                       onChange={(e) => setNewTime(e.target.value)}
-                      className="text-xs md:text-sm text-neutral-900 bg-transparent outline-none w-16"
+                      className="flex-1 bg-transparent outline-none text-sm text-gray-900 min-w-0"
                     />
-                    <span className="opacity-50 flex-shrink-0 text-neutral-900">
-                      <IconClock size={16} />
-                    </span>
                   </div>
                 </div>
               </div>
+
+              {/* Card de resumo — exibe quando data selecionada */}
+              {newDate && (
+                <div className="flex items-center gap-3 px-4 py-3.5 bg-primary-50 border border-primary-100 rounded-xl">
+                  <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-700 text-white flex-shrink-0">
+                    <IconCalendar size={16} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs text-neutral-500 font-medium">
+                      Nova data da cirurgia
+                    </span>
+                    <span className="text-sm font-semibold text-neutral-900">
+                      {new Date(`${newDate}T00:00`).toLocaleDateString(
+                        "pt-BR",
+                        {
+                          weekday: "long",
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric",
+                        },
+                      )}
+                      {newTime && (
+                        <span className="text-neutral-500 font-normal">
+                          {" "}
+                          · {newTime}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
             <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
               <button
-                onClick={handleClose}
+                onClick={() => setStep(1)}
                 disabled={isSaving}
                 className="ds-btn-outline disabled:opacity-50"
               >
-                Cancelar
+                Voltar
               </button>
               <button
                 onClick={submitReagendada}
                 disabled={!canSendReagendada || isSaving}
-                className={`ds-btn-primary disabled:cursor-not-allowed ${
-                  canSendReagendada && !isSaving ? "" : "opacity-40"
-                }`}
+                className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isSaving ? "Reagendando..." : "Reagendar"}
+                {isSaving ? "Reagendando..." : "Confirmar"}
               </button>
             </div>
           </>
@@ -658,7 +694,7 @@ export function SurgeryStatusModal({
         {step === 2 && outcome === "cancelada" && (
           <>
             <div className="px-4 py-4 md:px-6 md:py-6">
-              <p className="text-sm md:text-base text-neutral-900">
+              <p className="text-xs md:text-sm text-neutral-900">
                 Tem certeza que deseja encerrar a solicitação e marcá-la como
                 cancelada?
               </p>

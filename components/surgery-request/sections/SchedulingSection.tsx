@@ -79,19 +79,28 @@ export function SchedulingSection({
     return (
       <div className="border border-neutral-100 rounded-xl overflow-hidden">
         {/* Cabeçalho */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pr-4 border-b border-neutral-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between sm:pr-4 border-b border-neutral-100">
           {/* Título + badge */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-3 py-3 sm:py-4">
-            <h3 className="ds-section-title">Agendamento</h3>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-1.5 sm:gap-3 px-3 pt-3 pb-2 sm:py-4">
+            <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3">
+              <h3 className="ds-section-title">Agendamento</h3>
+              {/* Botão visível apenas no mobile, alinhado ao título */}
+              <button
+                onClick={onEditDateOptions}
+                className="ds-btn-inline sm:hidden"
+              >
+                Editar
+              </button>
+            </div>
             {dateOptions.length > 0 && (
-              <span className="bg-priority-media-bg text-priority-media-text text-xs font-semibold px-2 py-1 rounded-sm leading-none">
+              <span className="inline-flex items-center bg-priority-media-bg text-priority-media-text text-[11px] sm:text-xs font-semibold px-2 py-1 rounded-sm leading-none self-start sm:self-auto">
                 Aguardando paciente escolher a melhor opção.
               </span>
             )}
           </div>
 
-          {/* Botões */}
-          <div className="flex items-center gap-2">
+          {/* Botão visível apenas no desktop */}
+          <div className="hidden sm:flex items-center gap-2">
             <button onClick={onEditDateOptions} className="ds-btn-inline">
               Editar
             </button>
@@ -99,7 +108,7 @@ export function SchedulingSection({
         </div>
 
         {/* Corpo — grid de opções */}
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           {dateOptions.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-4">
               Nenhuma data proposta ainda. Clique em &quot;Editar&quot; para
@@ -167,22 +176,22 @@ export function SchedulingSection({
                     {/* Corpo do card — Data e Horário */}
                     <div className="flex">
                       {/* Data */}
-                      <div className="flex-1 flex flex-col gap-2 p-2.5 bg-neutral-50">
-                        <span className="text-sm text-black/50 w-full">
+                      <div className="flex-1 flex flex-col gap-1.5 sm:gap-2 p-2.5 sm:p-3 bg-neutral-50">
+                        <span className="text-xs sm:text-sm text-black/50 w-full">
                           Data
                         </span>
-                        <span className="text-xl font-light tracking-tight leading-tight w-full">
+                        <span className="text-base sm:text-xl font-light tracking-tight leading-tight w-full">
                           {formatDate(date)}
                         </span>
                       </div>
                       {/* Divisor vertical */}
                       <div className="w-px bg-neutral-100 self-stretch" />
                       {/* Horário */}
-                      <div className="flex-1 flex flex-col gap-2 p-2.5 bg-neutral-50">
-                        <span className="text-sm text-black/50 w-full">
+                      <div className="flex-1 flex flex-col gap-1.5 sm:gap-2 p-2.5 sm:p-3 bg-neutral-50">
+                        <span className="text-xs sm:text-sm text-black/50 w-full">
                           Horário
                         </span>
-                        <span className="text-xl font-light tracking-tight leading-tight w-full">
+                        <span className="text-base sm:text-xl font-light tracking-tight leading-tight w-full">
                           {formatTime(date)}
                         </span>
                       </div>

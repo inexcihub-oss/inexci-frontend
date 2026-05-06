@@ -132,6 +132,7 @@ export interface HospitalRef extends EntityRef {
 export interface HealthPlanRef extends EntityRef {
   email?: string;
   phone?: string;
+  default_payment_days?: number | null;
 }
 
 /** Item de procedimento TUSS */

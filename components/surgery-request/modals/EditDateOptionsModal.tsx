@@ -79,15 +79,20 @@ export function EditDateOptionsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={handleClose}
       />
 
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col overflow-hidden pb-20 sm:pb-0 max-h-[92vh] sm:max-h-[90vh]">
+        {/* Drag handle (mobile only) */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 sm:px-6 sm:py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-lg font-semibold text-gray-900">Editar Datas</h2>
           <button
             onClick={handleClose}
@@ -106,12 +111,12 @@ export function EditDateOptionsModal({
         </div>
 
         {/* Content */}
-        <div className="p-4 md:p-6 space-y-3 md:space-y-5">
-          <p className="text-xs md:text-sm text-gray-500">
+        <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
+          <p className="text-sm text-gray-500">
             Atualize as opções de data disponíveis para a realização da
             cirurgia. Ao menos uma data é obrigatória.
           </p>
-          <div className="space-y-3 md:space-y-4">
+          <div className="space-y-4">
             {dateOptions.map((date, index) => (
               <div key={index} className="space-y-1.5">
                 <label className="block ds-label mb-0">
@@ -142,7 +147,7 @@ export function EditDateOptionsModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 sm:px-6 border-t border-gray-100 flex-shrink-0">
           <button
             onClick={handleClose}
             disabled={isSaving}

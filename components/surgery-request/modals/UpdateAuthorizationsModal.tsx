@@ -8,6 +8,7 @@ import {
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
+import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────────────
 
@@ -135,6 +136,9 @@ export function UpdateAuthorizationsModal({
     onClose();
   };
 
+  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
+    useSwipeToClose(handleClose);
+
   const hasSomeAuthorization =
     tussAuth.some((e) => e.authorized_quantity !== "") ||
     opmeAuth.some((e) => e.authorized_quantity !== "");
@@ -261,12 +265,29 @@ export function UpdateAuthorizationsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         onClick={handleClose}
       />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+      <div
+        className="relative bg-white rounded-t-3xl md:rounded-2xl shadow-xl w-full md:max-w-2xl md:mx-4 flex flex-col max-h-[92dvh] md:max-h-[90vh] mobile-sheet-offset"
+        style={
+          dragY > 0
+            ? { transform: `translateY(${dragY}px)`, transition: "none" }
+            : undefined
+        }
+      >
+        {/* Drag handle — apenas mobile */}
+        <div
+          className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+        </div>
+
         {/* Header */}
         <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
@@ -492,127 +513,155 @@ export function UpdateAuthorizationsModal({
         {/* Etapa 4: Agendamento */}
         {!showContest && step === 4 && (
           <>
-            <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6 overflow-y-auto">
-              {/* Caixa de informação */}
-              <div className="flex items-center bg-blue-50 rounded-xl p-4">
-                <p className="text-sm md:text-base text-blue-600 leading-normal">
-                  Selecione 3 opções para o agendamento do paciente. Após
-                  selecionadas o paciente poderá escolher a melhor opção.
+            <div className="flex flex-col gap-4 px-4 py-4 md:px-6 md:py-5 overflow-y-auto">
+              {/* Banner informativo */}
+              <div className="flex gap-3 bg-blue-50 border border-blue-100 rounded-2xl p-3.5">
+                <div className="shrink-0 w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-blue-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm text-blue-700 leading-relaxed">
+                  Ofereça{" "}
+                  <strong className="font-semibold">até 3 opções</strong> de
+                  data e horário. O paciente escolherá a que melhor se encaixa
+                  na sua agenda.
                 </p>
               </div>
 
-              {/* Linhas de opção */}
-              <div className="flex flex-col">
+              {/* Cards de opção */}
+              <div className="flex flex-col gap-3">
                 {(
                   [
-                    { label: "1ª Opção" },
-                    { label: "2ª Opção" },
-                    { label: "3ª Opção" },
+                    {
+                      label: "1ª opção",
+                      sublabel: "Preferencial",
+                      color:
+                        "text-primary-700 bg-primary-50 border-primary-100",
+                    },
+                    {
+                      label: "2ª opção",
+                      sublabel: "Alternativa",
+                      color: "text-gray-600 bg-gray-50 border-gray-100",
+                    },
+                    {
+                      label: "3ª opção",
+                      sublabel: "Alternativa",
+                      color: "text-gray-600 bg-gray-50 border-gray-100",
+                    },
                   ] as const
-                ).map(({ label }, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-2 py-3 pl-2 pr-4"
-                  >
-                    <span className="flex-1 text-xs md:text-sm font-semibold text-gray-900">
-                      {label}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {/* Campo de data */}
-                      <div className="flex items-center gap-2 border border-gray-200 rounded px-3 py-2 w-44">
-                        <input
-                          type="date"
-                          value={scheduleDates[index].date}
-                          onChange={(e) => {
-                            const next = [...scheduleDates];
-                            next[index] = {
-                              ...next[index],
-                              date: e.target.value,
-                            };
-                            setScheduleDates(next);
-                          }}
-                          className="flex-1 min-w-0 text-xs md:text-sm text-gray-900 bg-transparent outline-none"
-                        />
-                        <svg
-                          className="w-4 h-4 text-gray-400 shrink-0 opacity-50"
-                          viewBox="0 0 16 16"
-                          fill="none"
+                ).map(({ label, sublabel, color }, index) => {
+                  const filled = scheduleDates[index].date !== "";
+                  return (
+                    <div
+                      key={index}
+                      className={`rounded-2xl border p-4 flex flex-col gap-3 transition-colors duration-200 ${
+                        filled
+                          ? "border-primary-200 bg-primary-50/30"
+                          : "border-neutral-100 bg-white"
+                      }`}
+                    >
+                      {/* Cabeçalho do card */}
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`inline-flex items-center justify-center w-7 h-7 rounded-xl text-xs font-bold border ${color}`}
                         >
-                          <rect
-                            x="1.5"
-                            y="2.5"
-                            width="13"
-                            height="12"
-                            rx="1.5"
-                            stroke="currentColor"
-                            strokeWidth="1.3"
-                          />
-                          <path
-                            d="M1.5 6.5H14.5"
-                            stroke="currentColor"
-                            strokeWidth="1.3"
-                          />
-                          <path
-                            d="M5 1V4M11 1V4"
-                            stroke="currentColor"
-                            strokeWidth="1.3"
-                            strokeLinecap="round"
-                          />
-                        </svg>
+                          {index + 1}
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-gray-900 leading-none">
+                            {label}
+                          </span>
+                          <span className="text-xs text-gray-400 mt-0.5">
+                            {sublabel}
+                          </span>
+                        </div>
+                        {filled && (
+                          <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-primary-600 bg-primary-50 border border-primary-100 rounded-full px-2 py-0.5">
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2.5}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                            Preenchida
+                          </span>
+                        )}
                       </div>
-                      {/* Campo de hora */}
-                      <div className="flex items-center gap-2 border border-gray-200 rounded px-3 py-2">
-                        <input
-                          type="time"
-                          value={scheduleDates[index].time}
-                          onChange={(e) => {
-                            const next = [...scheduleDates];
-                            next[index] = {
-                              ...next[index],
-                              time: e.target.value,
-                            };
-                            setScheduleDates(next);
-                          }}
-                          className="text-xs md:text-sm text-gray-900 bg-transparent outline-none w-20"
-                        />
-                        <svg
-                          className="w-4 h-4 text-gray-400 shrink-0 opacity-50"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                        >
-                          <circle
-                            cx="8"
-                            cy="8"
-                            r="6.5"
-                            stroke="currentColor"
-                            strokeWidth="1.3"
+
+                      {/* Campos data e hora lado a lado */}
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium text-gray-500">
+                            Data
+                          </label>
+                          <input
+                            type="date"
+                            value={scheduleDates[index].date}
+                            onChange={(e) => {
+                              const next = [...scheduleDates];
+                              next[index] = {
+                                ...next[index],
+                                date: e.target.value,
+                              };
+                              setScheduleDates(next);
+                            }}
+                            className="ds-input"
                           />
-                          <path
-                            d="M8 4.5V8L10.5 10"
-                            stroke="currentColor"
-                            strokeWidth="1.3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-xs font-medium text-gray-500">
+                            Horário
+                          </label>
+                          <input
+                            type="time"
+                            value={scheduleDates[index].time}
+                            onChange={(e) => {
+                              const next = [...scheduleDates];
+                              next[index] = {
+                                ...next[index],
+                                time: e.target.value,
+                              };
+                              setScheduleDates(next);
+                            }}
+                            className="ds-input"
                           />
-                        </svg>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 shrink-0">
+            <div className="flex items-center justify-end gap-2.5 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 shrink-0">
               <button onClick={() => setStep(3)} className="ds-btn-outline">
-                Cancelar
+                Voltar
               </button>
               <button
                 onClick={handleAccept}
                 disabled={!canAccept || isSaving}
                 className="ds-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSaving ? "Enviando..." : "Enviar"}
+                {isSaving ? "Enviando..." : "Confirmar agendamento"}
               </button>
             </div>
           </>

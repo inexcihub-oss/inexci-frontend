@@ -377,23 +377,31 @@ export default function ProcedimentosCirurgicos() {
   return (
     <PageContainer>
       {/* Header */}
-      <div className="flex-none flex items-center gap-2 px-4 py-4 lg:py-6 border-b border-neutral-100">
+      <div className="flex-none flex items-center gap-2 px-4 py-3 lg:py-6 border-b border-neutral-100">
         <h1 className="ds-page-title">Solicitações Cirúrgicas</h1>
       </div>
 
       {/* Toolbar */}
-      <div className="flex-none border-b border-neutral-100 px-4 py-0 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center sm:justify-between gap-y-0">
+      <div className="flex-none border-b border-neutral-100 px-3 lg:px-4 py-0 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center sm:justify-between gap-y-0">
         {/* View Toggle */}
         <div className="flex items-center shrink-0">
           <button
             onClick={() => setView("kanban")}
-            className={`flex items-center gap-2.5 px-3 py-4 min-h-[44px] transition-colors ${
-              view === "kanban" ? "border-b-[3px] border-teal-700" : ""
+            className={`flex items-center gap-2 px-2.5 py-3 lg:gap-2.5 lg:px-3 lg:py-4 transition-colors ${
+              view === "kanban"
+                ? "border-b-[2px] lg:border-b-[3px] border-teal-700"
+                : ""
             }`}
           >
-            <Image src="/icons/grid.svg" alt="Kanban" width={24} height={24} />
+            <Image
+              src="/icons/grid.svg"
+              alt="Kanban"
+              width={18}
+              height={18}
+              className="lg:w-6 lg:h-6"
+            />
             <span
-              className={`text-sm ${
+              className={`text-xs lg:text-sm ${
                 view === "kanban" ? "font-semibold" : ""
               } text-black`}
             >
@@ -402,13 +410,21 @@ export default function ProcedimentosCirurgicos() {
           </button>
           <button
             onClick={() => setView("lista")}
-            className={`flex items-center gap-2.5 px-3 py-4 min-h-[44px] transition-colors ${
-              view === "lista" ? "border-b-[3px] border-teal-700" : ""
+            className={`flex items-center gap-2 px-2.5 py-3 lg:gap-2.5 lg:px-3 lg:py-4 transition-colors ${
+              view === "lista"
+                ? "border-b-[2px] lg:border-b-[3px] border-teal-700"
+                : ""
             }`}
           >
-            <Image src="/icons/list.svg" alt="Lista" width={24} height={24} />
+            <Image
+              src="/icons/list.svg"
+              alt="Lista"
+              width={18}
+              height={18}
+              className="lg:w-6 lg:h-6"
+            />
             <span
-              className={`text-sm ${
+              className={`text-xs lg:text-sm ${
                 view === "lista" ? "font-semibold" : ""
               } text-black`}
             >
@@ -418,7 +434,7 @@ export default function ProcedimentosCirurgicos() {
         </div>
 
         {/* Search and Actions */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto pb-4 lg:pb-0 pt-3 sm:pt-0">
+        <div className="flex flex-wrap items-center gap-2 lg:gap-2.5 w-full lg:w-auto pb-3 lg:pb-0 pt-2 sm:pt-0">
           {/* Search */}
           <SearchInput
             value={searchTerm}
@@ -434,7 +450,7 @@ export default function ProcedimentosCirurgicos() {
             return (
               <button
                 onClick={() => setIsFilterOpen(true)}
-                className={`flex items-center gap-1.5 h-11 px-3.5 py-2 border rounded-xl transition-colors min-h-[44px] ${
+                className={`flex items-center gap-1.5 h-9 lg:h-11 px-3 lg:px-3.5 py-1.5 lg:py-2 border rounded-xl transition-colors ${
                   isActive
                     ? "border-teal-600 bg-teal-50 hover:bg-teal-100"
                     : "border-neutral-100 bg-white hover:bg-neutral-50"
@@ -443,23 +459,23 @@ export default function ProcedimentosCirurgicos() {
                 <Image
                   src="/icons/filter.svg"
                   alt="Filtro"
-                  width={20}
-                  height={20}
-                  className={
+                  width={16}
+                  height={16}
+                  className={`lg:w-5 lg:h-5 ${
                     isActive
                       ? "[filter:invert(29%)sepia(74%)saturate(485%)hue-rotate(134deg)brightness(92%)contrast(87%)]"
                       : ""
-                  }
+                  }`}
                 />
                 <span
-                  className={`text-sm font-medium ${
+                  className={`text-xs lg:text-sm font-medium ${
                     isActive ? "text-teal-700" : "text-black"
                   }`}
                 >
                   Filtro
                 </span>
                 {isActive && (
-                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-teal-700 text-white text-xs font-bold rounded-full">
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] lg:min-w-[20px] lg:h-5 px-1 lg:px-1.5 bg-teal-700 text-white text-[10px] lg:text-xs font-bold rounded-full">
                     {activeCount}
                   </span>
                 )}
@@ -474,15 +490,16 @@ export default function ProcedimentosCirurgicos() {
           <div className="relative" ref={exportRef}>
             <button
               onClick={() => setIsExportOpen((v) => !v)}
-              className="flex items-center gap-1.5 h-11 min-h-[44px] px-3.5 py-2 border border-neutral-100 rounded-xl bg-white hover:bg-neutral-50 transition-colors"
+              className="flex items-center gap-1.5 h-9 lg:h-11 px-3 lg:px-3.5 py-1.5 lg:py-2 border border-neutral-100 rounded-xl bg-white hover:bg-neutral-50 transition-colors"
             >
               <Image
                 src="/icons/download.svg"
                 alt="Exportar"
-                width={24}
-                height={24}
+                width={16}
+                height={16}
+                className="lg:w-6 lg:h-6"
               />
-              <span className="text-sm text-black">Exportar</span>
+              <span className="text-xs lg:text-sm text-black">Exportar</span>
               <svg
                 width="16"
                 height="16"
@@ -557,9 +574,10 @@ export default function ProcedimentosCirurgicos() {
           <Button
             onClick={() => setIsNewRequestOpen(true)}
             variant="primary"
-            className="flex-1 sm:flex-none h-11 min-h-[44px]"
+            className="flex-1 sm:flex-none h-9 lg:h-11 text-xs lg:text-sm"
           >
-            Nova solicitação
+            <span className="lg:hidden">+ Solicitação</span>
+            <span className="hidden lg:inline">Nova solicitação</span>
           </Button>
         </div>
       </div>

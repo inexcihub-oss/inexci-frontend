@@ -825,17 +825,27 @@ export function MedicalReportEditor() {
                     /* ── Modo edição ── */
                     <>
                       <div className="flex flex-col gap-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          Título
-                        </label>
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            Título
+                          </label>
+                          <span
+                            className={`text-xs ${
+                              stripHtmlTags(sectionDraft.title).length >= 200
+                                ? "text-red-500 font-semibold"
+                                : "text-gray-400"
+                            }`}
+                          >
+                            {stripHtmlTags(sectionDraft.title).length}/200
+                          </span>
+                        </div>
                         <RichTextEditor
                           value={sectionDraft.title}
-                          onChange={(html) =>
-                            setSectionDraft((d) => ({
-                              ...d,
-                              title: html,
-                            }))
-                          }
+                          onChange={(html) => {
+                            if (stripHtmlTags(html).length <= 200) {
+                              setSectionDraft((d) => ({ ...d, title: html }));
+                            }
+                          }}
                           placeholder="Título da seção"
                           minHeight="36px"
                         />
@@ -1012,14 +1022,27 @@ export function MedicalReportEditor() {
             {isAddingSection && !isReadOnly && (
               <div className="flex flex-col gap-3 border border-teal-200 bg-teal-50/40 rounded-xl p-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Título *
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Título *
+                    </label>
+                    <span
+                      className={`text-xs ${
+                        stripHtmlTags(newSectionDraft.title).length >= 200
+                          ? "text-red-500 font-semibold"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      {stripHtmlTags(newSectionDraft.title).length}/200
+                    </span>
+                  </div>
                   <RichTextEditor
                     value={newSectionDraft.title}
-                    onChange={(html) =>
-                      setNewSectionDraft((d) => ({ ...d, title: html }))
-                    }
+                    onChange={(html) => {
+                      if (stripHtmlTags(html).length <= 200) {
+                        setNewSectionDraft((d) => ({ ...d, title: html }));
+                      }
+                    }}
                     placeholder="Título da nova seção"
                     minHeight="36px"
                   />

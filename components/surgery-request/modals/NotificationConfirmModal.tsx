@@ -76,7 +76,7 @@ export function NotificationConfirmModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col overflow-hidden pb-20 sm:pb-0">
         {/* Drag handle (mobile) */}
         <div className="sm:hidden flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
@@ -84,7 +84,7 @@ export function NotificationConfirmModal({
 
         {/* Header com gradiente */}
         <div className="relative overflow-hidden px-6 pt-5 pb-6">
-          <div className="absolute inset-0 bg-gradient-to-br from-teal-50 via-white to-violet-50 opacity-80" />
+          <div className="absolute inset-0 bg-gradient-to-br from-teal-50 via-white to-violet-50 opacity-80 hidden sm:block" />
           <div className="relative flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-teal-700 flex items-center justify-center shadow-sm flex-shrink-0">

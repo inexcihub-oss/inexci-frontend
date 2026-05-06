@@ -836,7 +836,7 @@ export default function SolicitacaoDetalhePage() {
     if (channels) {
       try {
         await surgeryRequestService.notify(solicitacao!.id, {
-          template: "status_change",
+          template: "status-change-patient",
           channels,
         });
       } catch {
@@ -939,10 +939,10 @@ export default function SolicitacaoDetalhePage() {
 
     // Mapear abas para as keys de pendências correspondentes
     const tabPendencyMap: Record<TabType, string[]> = {
-      "informacoes-gerais": ["patient_data", "hospital_data"],
+      "informacoes-gerais": ["hospital_data"],
       "codigo-tuss": ["tuss_procedures"],
       opme: ["opme_items"],
-      laudo: ["medical_report"],
+      laudo: ["medical_report", "patient_data"],
       "pos-cirurgico": [],
       faturamento: ["confirm_receipt"],
     };
@@ -1139,7 +1139,7 @@ export default function SolicitacaoDetalhePage() {
                 </div>
 
                 {/* Ações contextuais — dependem do status */}
-                <div className="w-full sm:w-auto flex-shrink-0 flex items-center gap-2">
+                <div className="w-full sm:w-auto flex-shrink-0 flex items-center gap-2 min-w-0">
                   {/* Botão Exportar PDF — visível a partir do status Enviada (≥ 2) */}
                   {statusNum >= 2 && statusNum !== 9 && (
                     <button

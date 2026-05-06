@@ -7,12 +7,18 @@ import {
   CheckCircle,
   AlertTriangle,
   Loader2,
+  Receipt,
+  Calendar,
+  Hash,
+  Clock,
+  ChevronLeft,
 } from "lucide-react";
 import {
   surgeryRequestService,
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
+import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -273,154 +279,238 @@ export function ConfirmReceiptModal({
     }
   };
 
+  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
+    useSwipeToClose(handleClose);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
+      {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={handleClose}
       />
 
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col overflow-hidden h-[650px] max-h-[90vh]">
+      <div
+        className="relative bg-white rounded-t-3xl md:rounded-2xl shadow-2xl w-full md:max-w-2xl md:mx-4 flex flex-col overflow-hidden max-h-[92dvh] md:max-h-[90vh] mobile-sheet-offset"
+        style={
+          dragY > 0
+            ? { transform: `translateY(${dragY}px)`, transition: "none" }
+            : undefined
+        }
+      >
+        {/* Drag handle — apenas mobile */}
+        <div
+          className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none shrink-0"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
-          <h2 className="flex-1 text-lg font-semibold text-gray-900">
-            {step === 1 ? "Confirmar recebimento" : "Contestar recebimento"}
-          </h2>
+        <div className="flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100 shrink-0">
+          {step === 2 && (
+            <button
+              onClick={() => setStep(1)}
+              disabled={isSaving}
+              className="md:hidden w-8 h-8 flex items-center justify-center rounded-xl text-neutral-500 hover:bg-neutral-100 transition-colors disabled:opacity-50 shrink-0"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          )}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <div className="hidden md:flex w-8 h-8 items-center justify-center rounded-xl bg-primary-50 shrink-0">
+              <Receipt className="w-4 h-4 text-primary-700" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="ds-modal-title truncate">
+                {step === 1 ? "Confirmar recebimento" : "Contestar recebimento"}
+              </h2>
+              {step === 2 && (
+                <p className="text-xs text-neutral-400 leading-tight mt-0.5">
+                  Envie um e-mail de recurso ao convênio
+                </p>
+              )}
+            </div>
+          </div>
           <button
             onClick={handleClose}
             disabled={isSaving}
-            className="w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors disabled:opacity-50 shrink-0"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* ── Etapa 1: Confirmar recebimento ── */}
         {step === 1 && (
           <>
-            <div className="flex flex-col gap-3 md:gap-6 p-4 md:p-6 overflow-y-auto">
-              {/* Billing info box */}
-              <div className="flex flex-col gap-2 p-4 bg-blue-50 rounded-xl">
-                <p className="text-xs md:text-sm font-semibold text-blue-600">
-                  Dados do faturamento
-                </p>
-                <div className="flex flex-col gap-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-xs md:text-sm text-blue-600">
-                      Protocolo: {protocol}
-                    </p>
-                    <p className="text-xs md:text-sm text-blue-600">
-                      Valor: {invoiceValueStr}
-                    </p>
+            <div className="flex flex-col gap-4 md:gap-5 p-4 md:p-6 overflow-y-auto">
+              {/* Billing info card */}
+              <div className="rounded-xl border border-primary-100 bg-primary-50/60">
+                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-primary-100/70">
+                  <Receipt className="w-3.5 h-3.5 text-primary-600 shrink-0" />
+                  <p className="text-xs font-semibold text-primary-700 uppercase tracking-wide">
+                    Dados do faturamento
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-px bg-primary-100/50 text-xs md:text-sm">
+                  <div className="flex flex-col gap-0.5 px-4 py-3 bg-primary-50/40">
+                    <span className="text-[10px] md:text-xs font-medium text-primary-400 uppercase tracking-wide">
+                      Protocolo
+                    </span>
+                    <span className="font-semibold text-primary-800 flex items-center gap-1.5">
+                      <Hash className="w-3 h-3 shrink-0" />
+                      {protocol}
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-xs md:text-sm text-blue-600">
-                      Envio do faturamento : {sentAtStr}
-                    </p>
-                    <p className="text-xs md:text-sm text-blue-600">
-                      Previsão: {expectedDate}
-                    </p>
+                  <div className="flex flex-col gap-0.5 px-4 py-3 bg-primary-50/40">
+                    <span className="text-[10px] md:text-xs font-medium text-primary-400 uppercase tracking-wide">
+                      Valor faturado
+                    </span>
+                    <span className="font-semibold text-primary-800">
+                      {invoiceValueStr}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-0.5 px-4 py-3 bg-primary-50/40">
+                    <span className="text-[10px] md:text-xs font-medium text-primary-400 uppercase tracking-wide">
+                      Envio
+                    </span>
+                    <span className="font-medium text-primary-700 flex items-center gap-1.5">
+                      <Calendar className="w-3 h-3 shrink-0" />
+                      {sentAtStr}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-0.5 px-4 py-3 bg-primary-50/40">
+                    <span className="text-[10px] md:text-xs font-medium text-primary-400 uppercase tracking-wide">
+                      Previsão de pagamento
+                    </span>
+                    <span className="font-medium text-primary-700 flex items-center gap-1.5">
+                      <Clock className="w-3 h-3 shrink-0" />
+                      {expectedDate}
+                    </span>
                   </div>
                   {alreadyReceivedValue != null && (
-                    <p className="text-xs md:text-sm text-blue-600">
-                      Valor já recebido: {formatCurrency(alreadyReceivedValue)}
-                    </p>
+                    <div className="col-span-2 flex flex-col gap-0.5 px-4 py-3 bg-primary-50/40">
+                      <span className="text-[10px] md:text-xs font-medium text-primary-400 uppercase tracking-wide">
+                        Valor já recebido
+                      </span>
+                      <span className="font-semibold text-primary-800">
+                        {formatCurrency(alreadyReceivedValue)}
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
 
-              <p className="text-sm md:text-base text-gray-900">
-                Confirme os valores recebidos do convênio
-              </p>
+              {/* Seção de confirmação */}
+              <div className="flex flex-col gap-3 md:gap-4">
+                <p className="text-xs md:text-sm font-medium text-neutral-500">
+                  Informe os valores recebidos do convênio
+                </p>
 
-              {/* Value + Date fields */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <label className="ds-label mb-0">Valor recebido</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={receivedValue}
-                    onChange={(e) =>
-                      setReceivedValue(applyBRLMask(e.target.value))
-                    }
-                    placeholder="R$ 0,00"
-                    disabled={isSaving}
-                    className="ds-input disabled:opacity-50"
-                  />
+                {/* Value + Date fields */}
+                <div className="grid grid-cols-2 gap-3 md:gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="ds-label mb-0">Valor recebido</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={receivedValue}
+                      onChange={(e) =>
+                        setReceivedValue(applyBRLMask(e.target.value))
+                      }
+                      placeholder="R$ 0,00"
+                      disabled={isSaving}
+                      className="ds-input disabled:opacity-50"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="ds-label mb-0">Data do recebimento</label>
+                    <input
+                      type="date"
+                      value={receivedAt}
+                      onChange={(e) => setReceivedAt(e.target.value)}
+                      disabled={isSaving}
+                      className="ds-input disabled:opacity-50"
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="ds-label mb-0">Data do recebimento</label>
-                  <input
-                    type="date"
-                    value={receivedAt}
-                    onChange={(e) => setReceivedAt(e.target.value)}
-                    disabled={isSaving}
-                    className="ds-input disabled:opacity-50"
-                  />
-                </div>
-              </div>
 
-              {/* Value comparison alert */}
-              {valueIsValid &&
-                (hasDivergence ? (
-                  <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-xl">
-                    <AlertTriangle className="w-6 h-6 shrink-0 text-yellow-600 mt-0.5" />
-                    <div className="flex flex-col gap-1">
-                      <p className="text-xs md:text-sm font-semibold text-yellow-800">
-                        Valor divergente! Faltam{" "}
-                        {formatCurrency(Math.abs(valueDifference))}
-                      </p>
-                      <p className="text-xs md:text-sm text-yellow-800">
-                        Você poderá enviar um recurso após confirmar o
-                        recebimento.
+                {/* Value comparison alert */}
+                {valueIsValid &&
+                  (hasDivergence ? (
+                    <div className="flex items-start gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+                      <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-100 shrink-0">
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      </div>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <p className="text-xs md:text-sm font-semibold text-amber-800">
+                          Valor divergente — faltam{" "}
+                          {formatCurrency(Math.abs(valueDifference))}
+                        </p>
+                        <p className="text-xs text-amber-700">
+                          Você poderá enviar um recurso ao confirmar o
+                          recebimento.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-100 shrink-0">
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <p className="text-xs md:text-sm font-semibold text-emerald-800">
+                        Valor confere com o faturamento
                       </p>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl">
-                    <CheckCircle className="w-6 h-6 shrink-0 text-emerald-600" />
-                    <p className="text-xs md:text-sm font-semibold text-emerald-700">
-                      Valor confere com o faturamento!
-                    </p>
-                  </div>
-                ))}
+                  ))}
+              </div>
 
               {/* Observations */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">
-                  Observações sobre o Recebimento (Opcional)
+                  Observações{" "}
+                  <span className="font-normal text-neutral-400">
+                    (opcional)
+                  </span>
                 </label>
                 <textarea
                   value={receiptNotes}
                   onChange={(e) => setReceiptNotes(e.target.value)}
-                  placeholder="Ex: Recebido via transferência bancária, glosa parcial do procedimento, etc."
-                  rows={4}
+                  placeholder="Ex: Recebido via transferência bancária, glosa parcial do procedimento…"
+                  rows={3}
                   disabled={isSaving}
                   className="ds-textarea disabled:opacity-50"
                 />
               </div>
 
               {/* Attachments */}
-              <div className="flex items-center justify-between gap-3 p-4 bg-gray-100 border border-dashed border-gray-300 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 flex items-center justify-center bg-gray-100 border border-gray-200 rounded-full">
-                    <Paperclip className="w-5 h-5 text-gray-500" />
+              <div className="flex items-center justify-between gap-3 p-3.5 border border-dashed border-neutral-200 bg-neutral-50 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 flex items-center justify-center bg-white border border-neutral-200 rounded-lg shrink-0">
+                    <Paperclip className="w-4 h-4 text-neutral-500" />
                   </div>
-                  <span className="text-xs md:text-sm font-semibold text-gray-900">
-                    Anexos
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-xs md:text-sm font-medium text-neutral-700">
+                      Anexos
+                    </span>
+                    <span className="text-[10px] md:text-xs text-neutral-400">
+                      PDF, JPG, PNG até 10MB
+                    </span>
+                  </div>
                 </div>
                 <button type="button" className="ds-btn-outline">
-                  Selecionar arquivo
+                  Selecionar
                 </button>
               </div>
             </div>
 
             {/* Footer Etapa 1 */}
-            <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200 shrink-0">
+            <div className="flex items-center justify-end gap-2 md:gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 shrink-0 bg-white">
               <button
                 onClick={handleClose}
                 disabled={isSaving}
@@ -443,7 +533,7 @@ export function ConfirmReceiptModal({
                 className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isSaving ? "Confirmando..." : "Confirmar"}
+                {isSaving ? "Confirmando…" : "Confirmar"}
               </button>
             </div>
           </>
@@ -454,8 +544,8 @@ export function ConfirmReceiptModal({
           <>
             <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
               {/* De */}
-              <div className="flex flex-col gap-1">
-                <label className="ds-label mb-0">De:</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="ds-label mb-0">De</label>
                 <input
                   type="text"
                   value={
@@ -464,21 +554,21 @@ export function ConfirmReceiptModal({
                   }
                   disabled
                   readOnly
-                  className="ds-input disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-100 cursor-not-allowed"
+                  className="ds-input disabled:bg-neutral-50 disabled:text-neutral-400 disabled:opacity-100 cursor-not-allowed"
                 />
               </div>
 
               {/* Para */}
-              <div className="flex flex-col gap-1">
-                <label className="ds-label mb-0">Para:</label>
-                <p className="text-xs text-gray-400">
+              <div className="flex flex-col gap-1.5">
+                <label className="ds-label mb-0">Para</label>
+                <p className="text-xs text-neutral-400 -mt-0.5">
                   Digite um e-mail e pressione Enter para adicionar
                 </p>
                 <div
-                  className={`flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border bg-white min-h-10 cursor-text ${
+                  className={`flex flex-wrap items-center gap-1.5 px-3 py-2 rounded-xl border bg-white min-h-[40px] cursor-text transition-colors ${
                     contestFormTouched && contestToTags.length === 0
                       ? "border-red-400"
-                      : "border-neutral-100"
+                      : "border-neutral-100 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-transparent"
                   }`}
                   onClick={() =>
                     document.getElementById("confirm-receipt-to-input")?.focus()
@@ -487,14 +577,14 @@ export function ConfirmReceiptModal({
                   {contestToTags.map((tag) => (
                     <span
                       key={tag}
-                      className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
+                      className="flex items-center gap-1 px-2 py-0.5 bg-neutral-100 border border-neutral-200 rounded-lg text-xs text-neutral-800"
                     >
                       {tag}
                       <button
                         type="button"
                         onClick={() => removeContestToTag(tag)}
                         disabled={isSaving}
-                        className="text-gray-500 hover:text-gray-700 disabled:cursor-not-allowed"
+                        className="text-neutral-400 hover:text-neutral-700 disabled:cursor-not-allowed"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -516,7 +606,7 @@ export function ConfirmReceiptModal({
                         : undefined
                     }
                     disabled={isSaving}
-                    className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400 disabled:cursor-not-allowed"
+                    className="flex-1 min-w-24 text-sm text-gray-900 outline-none bg-transparent placeholder-neutral-400 disabled:cursor-not-allowed"
                   />
                 </div>
                 {contestFormTouched && contestToTags.length === 0 && (
@@ -527,8 +617,8 @@ export function ConfirmReceiptModal({
               </div>
 
               {/* Assunto */}
-              <div className="flex flex-col gap-1">
-                <label className="ds-label mb-0">Assunto:</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="ds-label mb-0">Assunto</label>
                 <input
                   type="text"
                   value={contestSubject}
@@ -542,44 +632,49 @@ export function ConfirmReceiptModal({
               </div>
 
               {/* Mensagem */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">Mensagem</label>
                 <textarea
                   value={contestMessage}
                   onChange={(e) => setContestMessage(e.target.value)}
-                  rows={8}
+                  rows={7}
                   disabled={isSaving}
                   className="ds-textarea disabled:opacity-50"
                 />
               </div>
 
               {/* Documento de contestação */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">
                   Documento de contestação
                 </label>
-                <div className="flex items-center justify-between gap-3 p-4 bg-gray-100 border border-dashed border-gray-300 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 flex items-center justify-center bg-gray-100 border border-gray-200 rounded-full">
-                      <Paperclip className="w-5 h-5 text-gray-500" />
+                <div className="flex items-center justify-between gap-3 p-3.5 border border-dashed border-neutral-200 bg-neutral-50 rounded-xl">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 flex items-center justify-center bg-white border border-neutral-200 rounded-lg shrink-0">
+                      <Paperclip className="w-4 h-4 text-neutral-500" />
                     </div>
-                    <span className="text-xs md:text-sm font-semibold text-gray-900">
-                      Anexos
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-xs md:text-sm font-medium text-neutral-700">
+                        Anexar documento
+                      </span>
+                      <span className="text-[10px] md:text-xs text-neutral-400">
+                        PDF, JPG, PNG até 10MB
+                      </span>
+                    </div>
                   </div>
                   <button type="button" className="ds-btn-outline">
-                    Selecionar arquivo
+                    Selecionar
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Footer Etapa 2 */}
-            <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200 shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 shrink-0 bg-white">
               <button
                 onClick={() => setStep(1)}
                 disabled={isSaving}
-                className="ds-btn-outline disabled:opacity-50"
+                className="ds-btn-outline disabled:opacity-50 hidden md:flex"
               >
                 Voltar
               </button>
@@ -592,10 +687,10 @@ export function ConfirmReceiptModal({
                   handleSubmitContest();
                 }}
                 disabled={isSaving}
-                className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 w-full md:w-auto justify-center"
               >
                 {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isSaving ? "Enviando..." : "Enviar e-mail"}
+                {isSaving ? "Enviando…" : "Enviar recurso"}
               </button>
             </div>
           </>

@@ -16,7 +16,11 @@ interface PrimaryActionButtonProps {
 
 const ACTION_CONFIG: Record<
   number,
-  { label: string; action: keyof PrimaryActionButtonProps } | null
+  {
+    label: string;
+    mobileLabel?: string;
+    action: keyof PrimaryActionButtonProps;
+  } | null
 > = {
   1: { label: "Enviar Solicitação", action: "onSendRequest" },
   2: { label: "Indicar análise", action: "onStartAnalysis" },
@@ -24,7 +28,11 @@ const ACTION_CONFIG: Record<
   4: { label: "Confirmar Data", action: "onConfirmDate" },
   5: { label: "Status da Cirurgia", action: "onSurgeryStatus" },
   6: { label: "Faturar Solicitação", action: "onInvoice" },
-  7: { label: "Confirmar Recebimento", action: "onConfirmReceipt" },
+  7: {
+    label: "Confirmar Recebimento",
+    mobileLabel: "Recebido",
+    action: "onConfirmReceipt",
+  },
   8: null,
   9: null,
 };
@@ -57,9 +65,16 @@ export function PrimaryActionButton({
   return (
     <button
       onClick={handleClick}
-      className="bg-teal-700 text-white text-xs md:text-sm font-semibold hover:bg-teal-800 active:scale-[0.98] transition-all flex items-center justify-center w-full px-6 py-2.5 gap-3 rounded-xl leading-normal min-h-[36px] md:min-h-[44px]"
+      className="bg-teal-700 text-white text-xs md:text-sm font-semibold hover:bg-teal-800 active:scale-[0.98] transition-all flex items-center justify-center flex-1 sm:flex-none px-4 py-2.5 gap-3 rounded-xl leading-normal min-h-[36px] md:min-h-[44px] whitespace-nowrap"
     >
-      {config.label}
+      {config.mobileLabel ? (
+        <>
+          <span className="sm:hidden">{config.mobileLabel}</span>
+          <span className="hidden sm:inline">{config.label}</span>
+        </>
+      ) : (
+        config.label
+      )}
     </button>
   );
 }

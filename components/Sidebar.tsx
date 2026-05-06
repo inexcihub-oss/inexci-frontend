@@ -63,6 +63,11 @@ const allMenuItems: MenuItem[] = [
     label: "Procedimentos",
     href: "/procedimentos",
   },
+  {
+    iconSrc: "/icons/calendar-schedule.svg",
+    label: "Agenda",
+    href: "/agenda",
+  },
 ];
 
 interface SidebarProps {
