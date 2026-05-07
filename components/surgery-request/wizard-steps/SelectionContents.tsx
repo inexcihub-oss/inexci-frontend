@@ -6,7 +6,7 @@ import { Procedure } from "@/services/procedure.service";
 import { Patient } from "@/services/patient.service";
 import { Hospital } from "@/services/hospital.service";
 import { HealthPlan } from "@/services/health-plan.service";
-import { User, AvailableDoctor } from "@/types";
+import { AvailableDoctor } from "@/types";
 import {
   surgeryRequestService,
   SurgeryRequestTemplate,
@@ -556,116 +556,6 @@ export const DoctorSelectionContent = memo(function DoctorSelectionContent({
                       {doctor.crm_state ? `/${doctor.crm_state}` : ""}
                     </span>
                   )}
-                </div>
-                <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? "border-teal-500" : "border-gray-300"}`}
-                >
-                  {isSelected && (
-                    <div className="w-3 h-3 rounded-full bg-teal-500" />
-                  )}
-                </div>
-              </button>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-});
-
-export const ManagerSelectionContent = memo(function ManagerSelectionContent({
-  onSelect,
-  onCreateNew,
-  selectedItemId,
-  isActive,
-}: {
-  onSelect: (manager: User) => void;
-  onCreateNew?: () => void;
-  onNewItemCreated?: (callback: (item: User) => void) => void;
-  selectedItemId?: string | number | null;
-  isActive?: boolean;
-}) {
-  const [managers, setManagers] = useState<User[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const loadManagers = async () => {
-    setLoading(true);
-    try {
-      const { userService } = await import("@/services/user.service");
-      const data = await userService.getAll();
-      setManagers(Array.isArray(data) ? data : []);
-    } catch {
-      setManagers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isActive) {
-      loadManagers();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive]);
-
-  const filteredManagers = managers.filter(
-    (m) =>
-      m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  return (
-    <div className="p-4 md:p-6">
-      <div className="flex gap-3 mb-4">
-        <div className="flex-1 relative">
-          <Image
-            src="/icons/search.svg"
-            alt="Buscar"
-            width={20}
-            height={20}
-            className="absolute left-3 top-1/2 -translate-y-1/2"
-          />
-          <input
-            type="text"
-            placeholder="Gestor"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs md:text-sm text-gray-900 placeholder:text-gray-400"
-          />
-        </div>
-        {onCreateNew && (
-          <button
-            type="button"
-            onClick={onCreateNew}
-            className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
-          >
-            Novo
-          </button>
-        )}
-      </div>
-      <div className="border-t border-gray-200">
-        {loading ? (
-          <div className="text-center py-8 text-gray-500">Carregando...</div>
-        ) : filteredManagers.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            Nenhum gestor encontrado
-          </div>
-        ) : (
-          filteredManagers.map((manager) => {
-            const isSelected = selectedItemId === manager.id;
-            return (
-              <button
-                type="button"
-                key={manager.id}
-                onClick={() => onSelect(manager)}
-                className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
-              >
-                <div className="flex flex-col">
-                  <span className="text-xs md:text-sm text-gray-900">
-                    {manager.name}
-                  </span>
-                  <span className="text-xs text-gray-500">{manager.email}</span>
                 </div>
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? "border-teal-500" : "border-gray-300"}`}

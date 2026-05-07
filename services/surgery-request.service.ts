@@ -150,7 +150,6 @@ export interface CreateSurgeryRequestPayload {
 export interface SimpleSurgeryRequestPayload {
   procedure_id: string;
   patient_id: string;
-  manager_id: string;
   doctor_id: string;
   health_plan_id?: string;
   hospital_id?: string;
@@ -161,8 +160,6 @@ export interface SimpleSurgeryRequestPayload {
 
 export interface UpdateBasicDataPayload {
   priority?: number;
-  deadline?: string | null;
-  manager_id?: string;
 }
 
 // ─── Payloads de transição de status ──────────────────────────────────────────
@@ -272,10 +269,8 @@ export interface SurgeryRequestListItem {
   protocol: string | null;
   priority: number;
   created_at: string;
-  deadline: string | null;
   surgery_date: string | null;
   patient: { id: string; name: string } | null;
-  manager: { id: string; name: string } | null;
   doctor: { id: string; name: string } | null;
   health_plan: { id: string; name: string } | null;
   health_plan_id?: string | null;
@@ -302,13 +297,11 @@ export interface SurgeryRequestDetail {
   priority: number;
   created_at: string;
   updated_at: string;
-  deadline: string | null;
   observations: string | null;
   procedure_name?: string;
   // Relações tipadas
   patient: PatientRef | null;
   doctor: DoctorRef | null;
-  manager: EntityRef | null;
   hospital: HospitalRef | null;
   health_plan: HealthPlanRef | null;
   procedure: EntityRef | null;
@@ -433,7 +426,7 @@ export const surgeryRequestService = {
     });
   },
 
-  /** Atualiza dados básicos (prioridade, prazo, gestor) */
+  /** Atualiza dados básicos (prioridade) */
   async updateBasicData(
     requestId: string | number,
     data: UpdateBasicDataPayload,

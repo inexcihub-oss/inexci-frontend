@@ -145,20 +145,6 @@ export default function ProcedimentosCirurgicos() {
                 const mm = (d.getMonth() + 1).toString().padStart(2, "0");
                 return `${dd}/${mm}/${d.getFullYear()}`;
               })(),
-              deadline: record.deadline
-                ? (() => {
-                    const m = record.deadline.match(/^(\d{4})-(\d{2})-(\d{2})/);
-                    if (m)
-                      return new Date(
-                        +m[1],
-                        +m[2] - 1,
-                        +m[3],
-                      ).toLocaleDateString("pt-BR");
-                    return new Date(record.deadline).toLocaleDateString(
-                      "pt-BR",
-                    );
-                  })()
-                : "",
               status,
               healthPlan: record.health_plan?.name || "",
             };
@@ -439,7 +425,7 @@ export default function ProcedimentosCirurgicos() {
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
-            placeholder="Buscar por paciente, gestor, procedimento, ID..."
+            placeholder="Buscar por paciente, procedimento, ID..."
             className="w-full sm:flex-1 lg:w-85 lg:flex-none"
           />
 

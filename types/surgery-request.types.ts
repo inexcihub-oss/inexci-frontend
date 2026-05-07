@@ -215,7 +215,6 @@ export interface SurgeryRequest {
   pendenciesCompleted?: number;
   pendenciesWaiting?: number;
   createdAt: string;
-  deadline: string;
   status: SurgeryRequestStatus;
   topPendencies?: Pendency[]; // Preview das principais pendências
   healthPlan?: string; // Convênio

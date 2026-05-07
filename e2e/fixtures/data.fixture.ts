@@ -1,6 +1,8 @@
 /** Factories para dados de teste. Retornam objetos parciais com defaults. */
 
-export function makeSurgeryRequestPayload(overrides: Record<string, unknown> = {}) {
+export function makeSurgeryRequestPayload(
+  overrides: Record<string, unknown> = {},
+) {
   return {
     patient_id: "pat-001",
     doctor_id: "user-admin-001",
@@ -8,7 +10,6 @@ export function makeSurgeryRequestPayload(overrides: Record<string, unknown> = {
     health_plan_id: "hp-001",
     procedure_name: "Artroscopia de Joelho",
     priority: 2,
-    deadline: "2026-05-31",
     observations: "Observações de teste",
     ...overrides,
   };
@@ -47,7 +48,9 @@ export function makeHealthPlanPayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
-export function makeCollaboratorPayload(overrides: Record<string, unknown> = {}) {
+export function makeCollaboratorPayload(
+  overrides: Record<string, unknown> = {},
+) {
   return {
     name: "Novo Colaborador",
     email: `colaborador.${Date.now()}@inexci.com`,

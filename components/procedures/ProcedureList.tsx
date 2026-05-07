@@ -299,17 +299,6 @@ const ProcedureRow: React.FC<{
             {procedure.createdAt}
           </span>
         </div>
-        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-          <span className="text-[0.625rem] text-gray-500 uppercase font-medium">
-            Prazo
-          </span>
-          <span
-            className="text-xs font-semibold text-gray-700 truncate"
-            title={`Prazo final: ${procedure.deadline}`}
-          >
-            {procedure.deadline}
-          </span>
-        </div>
       </div>
 
       {/* Ações */}

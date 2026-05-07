@@ -47,7 +47,6 @@ export const ProcedureFilters: React.FC<ProcedureFiltersProps> = ({
 
   const sortOptions = [
     { value: "createdAt", label: "Data de Criação" },
-    { value: "deadline", label: "Prazo" },
     { value: "patient", label: "Paciente" },
     { value: "priority", label: "Prioridade" },
   ];

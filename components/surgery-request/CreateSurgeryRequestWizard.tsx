@@ -6,7 +6,6 @@ import { CreateProcedureModal } from "./CreateProcedureModal";
 import { CreatePatientModal } from "./CreatePatientModal";
 import { CreateHospitalModal } from "./CreateHospitalModal";
 import { CreateHealthPlanModal } from "./CreateHealthPlanModal";
-import { CreateManagerModal } from "./CreateManagerModal";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { getApiErrorMessage } from "@/lib/http-error";
@@ -21,7 +20,6 @@ import { Hospital } from "@/services/hospital.service";
 import { HealthPlan } from "@/services/health-plan.service";
 import { opmeService } from "@/services/opme.service";
 import { tussService } from "@/services/tuss.service";
-import { User } from "@/types";
 import { AvailableDoctor } from "@/types";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { priorityColors } from "@/lib/design-system";
@@ -36,7 +34,6 @@ import {
   HospitalSelectionContent,
   HealthPlanSelectionContent,
   DoctorSelectionContent,
-  ManagerSelectionContent,
   TemplateSelectionContent,
 } from "./wizard-steps/SelectionContents";
 
@@ -72,8 +69,6 @@ type ModalState =
   | "hospital-create"
   | "healthplan-select"
   | "healthplan-create"
-  | "manager-select"
-  | "manager-create"
   | "doctor-select";
 
 export function CreateSurgeryRequestWizard({
@@ -104,7 +99,6 @@ export function CreateSurgeryRequestWizard({
   );
   const [selectedHealthPlan, setSelectedHealthPlan] =
     useState<HealthPlan | null>(null);
-  const [selectedManager, setSelectedManager] = useState<User | null>(null);
 
   // Available doctors — usa React Query para evitar re-fetch a cada abertura do modal
   const { data: availableDoctors = [], isLoading: loadingDoctors } =
@@ -166,7 +160,7 @@ export function CreateSurgeryRequestWizard({
 
   const handlePatientSelected = (patient: Patient) => {
     setSelectedPatient(patient);
-    setModalState("manager-select");
+    setModalState("doctor-select");
   };
 
   const handlePatientCreated = (patient: Patient) => {
@@ -174,7 +168,7 @@ export function CreateSurgeryRequestWizard({
       addPatientToList(patient);
     }
     setSelectedPatient(patient);
-    setModalState("manager-select");
+    setModalState("doctor-select");
   };
 
   const handleHospitalSelected = (hospital: Hospital) => {
@@ -203,19 +197,9 @@ export function CreateSurgeryRequestWizard({
     setModalState("hospital-select");
   };
 
-  const handleManagerSelected = (manager: User) => {
-    setSelectedManager(manager);
-    setModalState("doctor-select");
-  };
-
   const handleDoctorSelected = (doctor: AvailableDoctor) => {
     setSelectedDoctor(doctor);
     setModalState("healthplan-select");
-  };
-
-  const handleManagerCreated = (manager: User) => {
-    setSelectedManager(manager);
-    setModalState("doctor-select");
   };
 
   const handleTemplateSelected = (template: SurgeryRequestTemplate) => {
@@ -255,15 +239,10 @@ export function CreateSurgeryRequestWizard({
 
   const handleSubmit = async () => {
     // Validar todos os campos obrigatórios para criar a solicitação
-    if (
-      !selectedDoctor ||
-      !selectedPatient ||
-      !selectedManager ||
-      !selectedProcedure
-    ) {
+    if (!selectedDoctor || !selectedPatient || !selectedProcedure) {
       setToast({
         message:
-          "Por favor, preencha todos os campos obrigatórios: Médico, Paciente, Gestor e Procedimento.",
+          "Por favor, preencha todos os campos obrigatórios: Médico, Paciente e Procedimento.",
         type: "error",
       });
       return;
@@ -277,7 +256,6 @@ export function CreateSurgeryRequestWizard({
       const payload: SimpleSurgeryRequestPayload = {
         procedure_id: selectedProcedure.id,
         patient_id: selectedPatient.id,
-        manager_id: selectedManager.id,
         doctor_id: selectedDoctor.id,
         health_plan_id: selectedHealthPlan?.id,
         hospital_id: selectedHospital?.id,
@@ -383,7 +361,6 @@ export function CreateSurgeryRequestWizard({
     setSelectedPatient(null);
     setSelectedHospital(null);
     setSelectedHealthPlan(null);
-    setSelectedManager(null);
     setSelectedDoctor(null);
     setPriority(PRIORITY.LOW);
     setActiveTemplate(null);
@@ -396,7 +373,6 @@ export function CreateSurgeryRequestWizard({
     "template-select": "Usar modelo",
     "procedure-select": "Procedimento",
     "patient-select": "Paciente",
-    "manager-select": "Gestor",
     "doctor-select": "Médico",
     "healthplan-select": "Convênio",
     "hospital-select": "Hospital",
@@ -618,67 +594,13 @@ export function CreateSurgeryRequestWizard({
                   </span>
                 </button>
 
-                {/* Gestor */}
+                {/* Médico */}
                 <button
                   disabled={!selectedPatient}
                   onClick={() =>
-                    selectedPatient && setModalState("manager-select")
+                    selectedPatient && setModalState("doctor-select")
                   }
-                  className={`w-full min-h-[60px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedPatient ? "opacity-40 cursor-not-allowed" : modalState === "manager-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[13px] font-semibold text-gray-900">
-                      Gestor
-                    </span>
-                    {selectedManager && (
-                      <span className="text-xs text-teal-600 font-medium truncate max-w-[200px]">
-                        {selectedManager.name}
-                      </span>
-                    )}
-                  </div>
-                  <span className="flex items-center gap-1.5 ml-3">
-                    {!selectedManager && (
-                      <span className="text-xs text-gray-400">Selecionar</span>
-                    )}
-                    {selectedManager ? (
-                      <svg
-                        className="w-5 h-5 text-teal-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    )}
-                  </span>
-                </button>
-
-                {/* Médico */}
-                <button
-                  disabled={!selectedManager}
-                  onClick={() =>
-                    selectedManager && setModalState("doctor-select")
-                  }
-                  className={`w-full min-h-[60px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedManager ? "opacity-40 cursor-not-allowed" : modalState === "doctor-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
+                  className={`w-full min-h-[60px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedPatient ? "opacity-40 cursor-not-allowed" : modalState === "doctor-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
                 >
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[13px] font-semibold text-gray-900">
@@ -929,7 +851,6 @@ export function CreateSurgeryRequestWizard({
                       isClosing ||
                       !selectedDoctor ||
                       !selectedPatient ||
-                      !selectedManager ||
                       !selectedProcedure
                     }
                     className="w-full px-6 py-3.5 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold shadow-sm"
@@ -1054,14 +975,6 @@ export function CreateSurgeryRequestWizard({
                     isActive={modalState === "healthplan-select"}
                   />
                 )}
-                {modalState === "manager-select" && (
-                  <ManagerSelectionContent
-                    onSelect={handleManagerSelected}
-                    onCreateNew={() => setModalState("manager-create")}
-                    selectedItemId={selectedManager?.id}
-                    isActive={modalState === "manager-select"}
-                  />
-                )}
                 {modalState === "doctor-select" && (
                   <DoctorSelectionContent
                     onSelect={handleDoctorSelected}
@@ -1099,12 +1012,6 @@ export function CreateSurgeryRequestWizard({
         isOpen={modalState === "healthplan-create"}
         onClose={() => setModalState("healthplan-select")}
         onSuccess={handleHealthPlanCreated}
-      />
-
-      <CreateManagerModal
-        isOpen={modalState === "manager-create"}
-        onClose={() => setModalState("manager-select")}
-        onSuccess={handleManagerCreated}
       />
     </>
   );

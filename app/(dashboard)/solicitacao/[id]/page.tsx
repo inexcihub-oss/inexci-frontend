@@ -17,8 +17,6 @@ import {
 import { DynamicPendencyList } from "@/components/pendencies";
 import {
   EditablePriority,
-  EditableManager,
-  EditableDeadline,
   StatusBadge,
 } from "@/components/surgery-request/EditableFields";
 import { MedicalReportEditor } from "@/components/laudo/MedicalReportEditor";
@@ -1199,9 +1197,9 @@ export default function SolicitacaoDetalhePage() {
               </div>
 
               {/* Status Grid */}
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-5 lg:gap-6">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
                 {/* Status */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                   <div className="flex items-center gap-1.5 h-5">
                     <Image
                       src="/icons/view-kanban.svg"
@@ -1214,13 +1212,13 @@ export default function SolicitacaoDetalhePage() {
                       Status
                     </span>
                   </div>
-                  <div>
+                  <div className="flex items-center min-h-[28px]">
                     <StatusBadge status={solicitacao.status} />
                   </div>
                 </div>
 
                 {/* Prioridade */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                   <div className="flex items-center gap-1.5 h-5">
                     <Image
                       src="/icons/flag.svg"
@@ -1233,7 +1231,7 @@ export default function SolicitacaoDetalhePage() {
                       Prioridade
                     </span>
                   </div>
-                  <div>
+                  <div className="flex items-center min-h-[28px]">
                     <EditablePriority
                       initialValue={solicitacao.priority as PriorityLevel}
                       surgeryRequestId={solicitacao.id}
@@ -1243,7 +1241,7 @@ export default function SolicitacaoDetalhePage() {
                 </div>
 
                 {/* Médico */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                   <div className="flex items-center gap-1.5 h-5">
                     <svg
                       width="16"
@@ -1259,7 +1257,7 @@ export default function SolicitacaoDetalhePage() {
                       Médico
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 h-7 px-3 rounded-md border border-gray-200 bg-white text-xs">
+                  <div className="inline-flex items-center gap-2 h-7 px-3 rounded-md border border-gray-200 bg-gray-50 text-xs max-w-[210px]">
                     {solicitacao.doctor ? (
                       <>
                         <span className="w-5 h-5 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600">
@@ -1270,7 +1268,7 @@ export default function SolicitacaoDetalhePage() {
                             .join("")
                             .toUpperCase()}
                         </span>
-                        <span className="flex-1 min-w-0 truncate text-left text-gray-700">
+                        <span className="min-w-0 max-w-[150px] sm:max-w-[160px] truncate text-left text-gray-700">
                           {solicitacao.doctor.name}
                         </span>
                       </>
@@ -1279,61 +1277,6 @@ export default function SolicitacaoDetalhePage() {
                         —
                       </span>
                     )}
-                  </div>
-                </div>
-
-                {/* Gestor */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 h-5">
-                    <Image
-                      src="/icons/person.svg"
-                      alt="Gestor"
-                      width={16}
-                      height={16}
-                      className="text-gray-600"
-                    />
-                    <span className="font-semibold text-gray-900 text-xs">
-                      Gestor
-                    </span>
-                  </div>
-                  <div>
-                    <EditableManager
-                      initialValue={
-                        solicitacao.manager
-                          ? {
-                              id: solicitacao.manager.id,
-                              name: solicitacao.manager.name,
-                            }
-                          : null
-                      }
-                      surgeryRequestId={solicitacao.id}
-                      onUpdate={() => {
-                        handleUpdateProcedure();
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Prazo Final */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 h-5">
-                    <Image
-                      src="/icons/calendar.svg"
-                      alt="Prazo final"
-                      width={16}
-                      height={16}
-                      className="text-gray-600"
-                    />
-                    <span className="font-semibold text-gray-900 text-xs">
-                      Prazo final
-                    </span>
-                  </div>
-                  <div>
-                    <EditableDeadline
-                      initialValue={solicitacao.deadline}
-                      surgeryRequestId={solicitacao.id}
-                      onUpdate={handleUpdateProcedure}
-                    />
                   </div>
                 </div>
               </div>

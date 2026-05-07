@@ -76,6 +76,15 @@ interface NotificationSettings {
 // Tabs da página
 type SettingsTab = "profile" | "notifications" | "plan" | "security" | "header";
 
+function applyPhoneMask(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10)
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 // Componente de Tab
 function TabButton({
   active,
@@ -302,7 +311,7 @@ function ConfiguracoesPageInner() {
         setProfile({
           name: profileData.name || "",
           email: profileData.email || "",
-          phone: profileData.phone || "",
+          phone: applyPhoneMask(profileData.phone || ""),
           document: profileData.document || "",
           birthDate: profileData.birth_date
             ? new Date(profileData.birth_date).toISOString().split("T")[0]
@@ -348,7 +357,7 @@ function ConfiguracoesPageInner() {
           setProfile({
             name: user.name || "",
             email: user.email || "",
-            phone: "",
+            phone: applyPhoneMask(user.phone || ""),
             document: "",
             birthDate: "",
             gender: "",
@@ -1023,19 +1032,12 @@ function ConfiguracoesPageInner() {
               <Input
                 label="Telefone"
                 value={profile.phone}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
-                  let masked = "";
-                  if (digits.length <= 2)
-                    masked = digits.length ? `(${digits}` : "";
-                  else if (digits.length <= 6)
-                    masked = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-                  else if (digits.length <= 10)
-                    masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-                  else
-                    masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-                  setProfile({ ...profile, phone: masked });
-                }}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    phone: applyPhoneMask(e.target.value),
+                  })
+                }
                 placeholder="(00) 00000-0000"
               />
               <Input
