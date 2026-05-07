@@ -7,6 +7,7 @@ import Loading from "@/components/ui/Loading";
 import Sidebar from "@/components/Sidebar";
 import BottomNavBar from "@/components/BottomNavBar";
 import MobileHeaderActions from "@/components/shared/MobileHeaderActions";
+import { ConsentGate } from "@/components/privacy/ConsentGate";
 import Image from "next/image";
 
 export default function DashboardLayout({
@@ -68,7 +69,9 @@ export default function DashboardLayout({
         </header>
 
         {/* Conteúdo principal com padding para bottom nav no mobile */}
-        <main className="flex-1 overflow-hidden pb-16 lg:pb-0">{children}</main>
+        <main className="flex-1 overflow-hidden pb-16 lg:pb-0">
+          <ConsentGate>{children}</ConsentGate>
+        </main>
       </div>
 
       {/* Bottom Navigation - apenas mobile */}

@@ -8,3 +8,4 @@ export {
 } from "./useStatusChangeNotification";
 export { useSwipeToClose } from "./useSwipeToClose";
 export { useNotifications } from "./useNotifications";
+export { useRequireAiConsent } from "./useRequireAiConsent";
