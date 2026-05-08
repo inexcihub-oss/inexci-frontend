@@ -3,13 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
+  Check,
   CheckCircle2,
   ExternalLink,
   FileText,
   Loader2,
-  Shield,
+  Lock,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import type { ToastType } from "@/types/toast.types";
@@ -36,8 +40,15 @@ interface Step {
   type: ConsentType | null;
   required: boolean;
   title: string;
+  shortTitle: string;
   status: ConsentStatus | null;
 }
+
+const STEP_SLUG_PATH: Record<string, string> = {
+  "privacy-policy": "politica",
+  "terms-of-use": "termos",
+  "ai-disclosure": "ia",
+};
 
 /**
  * Modal de tela cheia, não-fechável, exibido apenas quando o usuário tem
@@ -65,6 +76,7 @@ export function ConsentOnboardingModal({
         type: "privacy_policy",
         required: true,
         title: "Política de Privacidade",
+        shortTitle: "Privacidade",
         status: policy,
       });
     }
@@ -74,6 +86,7 @@ export function ConsentOnboardingModal({
         type: "terms_of_use",
         required: true,
         title: "Termos de Uso",
+        shortTitle: "Termos",
         status: terms,
       });
     }
@@ -82,6 +95,7 @@ export function ConsentOnboardingModal({
       type: "ai",
       required: false,
       title: "Inteligência Artificial",
+      shortTitle: "IA",
       status: ai ?? null,
     });
     return list;
@@ -223,88 +237,137 @@ export function ConsentOnboardingModal({
 
   if (!currentStep) return null;
 
-  const Icon = currentStep.key === "ai-choice" ? Bot : FileText;
+  const isAiStep = currentStep.key === "ai-choice";
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center bg-gradient-to-br from-black/60 via-black/55 to-primary-950/60 backdrop-blur-sm animate-fade-in"
+      role="presentation"
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="consent-onboarding-title"
-        className="bg-white w-full sm:max-w-3xl sm:mx-4 h-full sm:h-auto sm:max-h-[90vh] sm:rounded-2xl flex flex-col shadow-2xl"
+        className={cn(
+          "relative bg-white w-full flex flex-col shadow-2xl",
+          "rounded-t-3xl sm:rounded-3xl",
+          "h-[92vh] sm:h-[88vh] sm:max-h-[760px]",
+          "sm:max-w-2xl lg:max-w-3xl sm:mx-4",
+          "animate-slide-up sm:animate-scale-in",
+          "overflow-hidden",
+        )}
       >
-        <header className="px-5 py-4 md:p-6 border-b border-gray-100 flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary-50">
-            <Shield className="w-5 h-5 text-primary-700" />
+        {/* Drag handle decorativo (mobile) */}
+        <div className="flex sm:hidden justify-center pt-2.5 pb-1">
+          <div className="w-10 h-1 bg-neutral-100 rounded-full" />
+        </div>
+
+        {/* Header com gradient sutil */}
+        <header className="relative px-5 pt-3 pb-4 sm:px-7 sm:pt-6 sm:pb-5 bg-gradient-to-br from-primary-50/80 via-white to-white border-b border-neutral-100">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="relative shrink-0">
+              <div className="absolute inset-0 bg-primary-500/20 rounded-2xl blur-md" />
+              <div className="relative h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-700/20">
+                <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
+              <h2
+                id="consent-onboarding-title"
+                className="ds-modal-title font-urbanist tracking-tight"
+              >
+                Bem-vindo(a) à Inexci
+              </h2>
+              <p className="ds-caption mt-0.5 sm:mt-1 leading-relaxed">
+                Antes de começar, precisamos do seu aceite nos termos abaixo
+                para garantir a segurança dos seus dados.
+              </p>
+            </div>
+            <span className="hidden sm:inline-flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full bg-white border border-neutral-100 text-[11px] font-medium text-neutral-200 shadow-sm">
+              <Lock className="w-3 h-3" />
+              LGPD
+            </span>
           </div>
-          <div className="flex-1 min-w-0">
-            <h2
-              id="consent-onboarding-title"
-              className="text-base md:text-lg font-semibold text-gray-900"
-            >
-              Bem-vindo(a) à Inexci
-            </h2>
-            <p className="text-xs md:text-sm text-gray-500 mt-0.5">
-              Antes de continuar, precisamos do seu aceite nos termos abaixo.
-            </p>
-          </div>
+
+          {/* Stepper */}
+          <Stepper steps={steps} currentIndex={stepIndex} />
         </header>
 
-        <nav className="px-5 md:px-6 pt-4 flex items-center gap-2">
-          {steps.map((s, i) => (
-            <div
-              key={s.key}
-              className={cn(
-                "flex-1 h-1.5 rounded-full transition-colors",
-                i < stepIndex
-                  ? "bg-primary-700"
-                  : i === stepIndex
-                    ? "bg-primary-400"
-                    : "bg-gray-200",
-              )}
-            />
-          ))}
-        </nav>
-
-        <div className="px-5 md:px-6 pt-4 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-gray-50">
-            <Icon className="w-4 h-4 text-gray-600" />
-          </div>
-          <div>
-            <h3 className="text-sm md:text-base font-semibold text-gray-900">
-              Passo {stepIndex + 1} de {steps.length} — {currentStep.title}
-            </h3>
-            {currentStep.status?.currentVersion && (
-              <p className="text-xs text-gray-500">
-                Versão {currentStep.status.currentVersion}
-                {currentStep.required ? " · Obrigatório" : " · Opcional"}
-              </p>
+        {/* Sub-header do passo atual */}
+        <div className="flex items-center gap-3 px-5 sm:px-7 py-3 sm:py-3.5 bg-white border-b border-neutral-100">
+          <div
+            className={cn(
+              "h-9 w-9 rounded-xl flex items-center justify-center shrink-0",
+              isAiStep
+                ? "bg-violet-50 text-violet-600"
+                : "bg-primary-50 text-primary-700",
             )}
+          >
+            {isAiStep ? (
+              <Bot className="w-4 h-4" />
+            ) : (
+              <FileText className="w-4 h-4" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-medium text-neutral-200 uppercase tracking-wide">
+              Passo {stepIndex + 1} de {steps.length}
+            </p>
+            <h3 className="text-sm md:text-base font-semibold text-gray-900 truncate">
+              {currentStep.title}
+            </h3>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {currentStep.status?.currentVersion && (
+              <span className="ds-badge-sm bg-neutral-50 text-neutral-200 border border-neutral-100">
+                v{currentStep.status.currentVersion}
+              </span>
+            )}
+            <span
+              className={cn(
+                "ds-badge-sm border",
+                currentStep.required
+                  ? "bg-primary-50 text-primary-700 border-primary-100"
+                  : "bg-violet-50 text-violet-700 border-violet-100",
+              )}
+            >
+              {currentStep.required ? "Obrigatório" : "Opcional"}
+            </span>
           </div>
         </div>
 
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-5 md:px-6 py-4"
-        >
-          {currentStep.key === "ai-choice" ? (
-            <AiChoiceContent
-              accepted={accepted.ai}
-              onChange={(v) => setAccepted((prev) => ({ ...prev, ai: v }))}
-              version={currentStep.status?.currentVersion ?? ""}
-            />
-          ) : loadingDoc || !doc ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
-            </div>
-          ) : (
-            <MarkdownContent source={doc.content_md} />
+        {/* Conteúdo */}
+        <div className="relative flex-1 min-h-0 flex flex-col bg-white">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 sm:px-7 py-4 sm:py-5"
+          >
+            {isAiStep ? (
+              <AiChoiceContent
+                accepted={accepted.ai}
+                onChange={(v) => setAccepted((prev) => ({ ...prev, ai: v }))}
+                version={currentStep.status?.currentVersion ?? ""}
+              />
+            ) : loadingDoc || !doc ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <Loader2 className="w-7 h-7 animate-spin text-primary-600" />
+                <p className="ds-caption">Carregando documento…</p>
+              </div>
+            ) : (
+              <MarkdownContent source={doc.content_md} />
+            )}
+          </div>
+
+          {/* Fade gradient inferior — ajuda a indicar que há mais conteúdo */}
+          {!isAiStep && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent" />
           )}
         </div>
 
-        <footer className="border-t border-gray-100 px-5 md:px-6 py-4 space-y-3 bg-white">
-          {currentStep.key !== "ai-choice" && currentStep.type && (
+        {/* Footer */}
+        <footer className="border-t border-neutral-100 bg-white px-5 sm:px-7 py-3 sm:py-4 space-y-3 mobile-sheet-offset">
+          {!isAiStep && currentStep.type && (
             <ReadingChecklist
               type={currentStep.type}
               hasScrolled={hasScrolledToBottom[currentStep.type]}
@@ -323,21 +386,24 @@ export function ConsentOnboardingModal({
           <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2">
             <Button
               variant="outline"
-              size="sm"
+              size="md"
               onClick={() => setStepIndex((i) => Math.max(0, i - 1))}
               disabled={stepIndex === 0 || submitting}
+              className="w-full sm:w-auto"
             >
               Voltar
             </Button>
             <div className="flex flex-col sm:flex-row gap-2">
-              {currentStep.key === "ai-choice" && !accepted.ai && (
+              {isAiStep && !accepted.ai && (
                 <Button
                   variant="outline"
+                  size="md"
                   onClick={async () => {
                     setAccepted((prev) => ({ ...prev, ai: false }));
                     await grantPending();
                   }}
                   disabled={submitting}
+                  className="w-full sm:w-auto"
                 >
                   Continuar sem IA
                 </Button>
@@ -346,6 +412,8 @@ export function ConsentOnboardingModal({
                 onClick={handleNext}
                 disabled={!canAdvance || submitting}
                 isLoading={submitting && isLast}
+                size="md"
+                className="w-full sm:w-auto"
               >
                 {isLast
                   ? accepted.ai
@@ -369,6 +437,73 @@ export function ConsentOnboardingModal({
   );
 }
 
+/**
+ * Stepper visual: pílulas conectadas com número, ícone de check quando concluídas
+ * e label compacto que aparece somente em telas maiores.
+ */
+function Stepper({
+  steps,
+  currentIndex,
+}: {
+  steps: Step[];
+  currentIndex: number;
+}) {
+  return (
+    <ol className="mt-4 sm:mt-5 flex items-center gap-1.5 sm:gap-2">
+      {steps.map((s, i) => {
+        const isCurrent = i === currentIndex;
+        const isComplete = i < currentIndex;
+        return (
+          <li
+            key={s.key}
+            className="flex-1 flex items-center gap-1.5 sm:gap-2 min-w-0"
+          >
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <span
+                className={cn(
+                  "h-6 w-6 sm:h-7 sm:w-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-semibold shrink-0 transition-all",
+                  isComplete
+                    ? "bg-primary-700 text-white"
+                    : isCurrent
+                      ? "bg-white text-primary-700 ring-2 ring-primary-500 ring-offset-2 ring-offset-primary-50/60 shadow-sm"
+                      : "bg-white text-neutral-200 border border-neutral-100",
+                )}
+                aria-current={isCurrent ? "step" : undefined}
+              >
+                {isComplete ? (
+                  <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                ) : (
+                  i + 1
+                )}
+              </span>
+              <span
+                className={cn(
+                  "hidden sm:inline text-xs font-medium truncate",
+                  isCurrent
+                    ? "text-primary-800"
+                    : isComplete
+                      ? "text-gray-900"
+                      : "text-neutral-200",
+                )}
+              >
+                {s.shortTitle}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <span
+                className={cn(
+                  "flex-1 h-0.5 rounded-full transition-colors",
+                  i < currentIndex ? "bg-primary-700" : "bg-neutral-100",
+                )}
+              />
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function ReadingChecklist({
   type,
   hasScrolled,
@@ -384,51 +519,82 @@ function ReadingChecklist({
   onCheckedChange: (v: boolean) => void;
   docSlug: string;
 }) {
+  const docPath = `/privacidade/${STEP_SLUG_PATH[docSlug] ?? "politica"}`;
+
   return (
     <div className="space-y-2">
-      <a
-        href={`/privacidade/${docSlug === "privacy-policy" ? "politica" : docSlug === "terms-of-use" ? "termos" : "ia"}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs text-primary-700 hover:underline"
-      >
-        <ExternalLink className="w-3 h-3" /> Abrir em nova aba
-      </a>
-      <label
-        className={cn(
-          "flex items-start gap-3 p-3 rounded-xl border transition-colors cursor-pointer",
-          accepted
-            ? "bg-emerald-50 border-emerald-200"
-            : hasScrolled
-              ? "bg-white border-gray-300"
-              : "bg-gray-50 border-gray-200 cursor-not-allowed",
+      <div className="flex items-center justify-between gap-2">
+        <a
+          href={docPath}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-700 hover:text-primary-800 hover:underline underline-offset-2 transition-colors"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          Abrir em nova aba
+        </a>
+        {!hasScrolled && (
+          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-neutral-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+            Role até o final para habilitar
+          </span>
         )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => hasScrolled && onCheckedChange(!accepted)}
+        disabled={!hasScrolled}
+        className={cn(
+          "w-full flex items-start gap-3 p-3 sm:p-3.5 rounded-2xl border text-left transition-all",
+          accepted
+            ? "bg-emerald-50 border-emerald-200 ring-1 ring-emerald-200/60"
+            : hasScrolled
+              ? "bg-white border-neutral-100 hover:border-primary-300 hover:bg-primary-50/30"
+              : "bg-neutral-50 border-neutral-100 cursor-not-allowed opacity-80",
+        )}
+        aria-label={`Confirmar leitura e aceite de ${type} v${version}`}
       >
-        <input
-          type="checkbox"
-          checked={accepted}
-          disabled={!hasScrolled}
-          onChange={(e) => onCheckedChange(e.target.checked)}
-          className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary-700 focus:ring-primary-500"
-          aria-label={`Confirmar leitura e aceite de ${type} v${version}`}
-        />
-        <div className="flex-1 text-xs md:text-sm">
+        <div className="pt-0.5 shrink-0">
+          <Checkbox
+            checked={accepted}
+            disabled={!hasScrolled}
+            onCheckedChange={onCheckedChange}
+            className={cn(
+              accepted && "border-emerald-500 bg-emerald-500",
+            )}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
           <p
             className={cn(
-              "font-medium",
+              "text-xs md:text-sm font-semibold",
               accepted ? "text-emerald-900" : "text-gray-900",
             )}
           >
             Li e concordo com a versão {version}.
           </p>
-          {!hasScrolled && (
-            <p className="text-gray-500 mt-0.5">
-              Role o documento até o final para habilitar o aceite.
-            </p>
-          )}
+          <p
+            className={cn(
+              "text-[11px] md:text-xs mt-0.5",
+              accepted
+                ? "text-emerald-700"
+                : hasScrolled
+                  ? "text-neutral-200"
+                  : "text-neutral-200",
+            )}
+          >
+            {accepted
+              ? "Aceite registrado nesta etapa."
+              : hasScrolled
+                ? "Toque para confirmar seu aceite."
+                : "Role o documento até o final para habilitar o aceite."}
+          </p>
         </div>
-        {accepted && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
-      </label>
+        {accepted && (
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+        )}
+      </button>
     </div>
   );
 }
@@ -443,68 +609,120 @@ function AiChoiceContent({
   version: string;
 }) {
   return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
-        <div className="flex items-start gap-3">
-          <Bot className="w-5 h-5 text-violet-600 mt-0.5" />
-          <div>
+    <div className="space-y-4 sm:space-y-5">
+      {/* Banner explicativo */}
+      <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-violet-50/60 to-white p-4 sm:p-5">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="relative shrink-0">
+            <div className="absolute inset-0 bg-violet-500/20 rounded-2xl blur-md" />
+            <div className="relative h-10 w-10 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center shadow-lg shadow-violet-500/20">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
             <p className="font-semibold text-gray-900 text-sm md:text-base">
-              Assistente de IA via WhatsApp (opcional)
+              Assistente de IA via WhatsApp
+              <span className="ml-1.5 ds-badge-sm bg-white text-violet-700 border border-violet-200 align-middle">
+                Opcional
+              </span>
             </p>
-            <p className="text-xs md:text-sm text-gray-700 mt-1">
+            <p className="text-xs md:text-sm text-gray-700 mt-1.5 leading-relaxed">
               A Inexci oferece um assistente baseado em Inteligência Artificial
               para responder dúvidas e auxiliar na gestão das solicitações
-              cirúrgicas pelo WhatsApp. Antes de processar mensagens, aplicamos
-              <strong> pseudonimização</strong> — substituímos nomes, CPFs,
-              laudos e telefones por códigos opacos para que o provedor externo
-              de IA não tenha acesso a dados identificáveis.
+              cirúrgicas pelo WhatsApp. Antes de processar mensagens, aplicamos{" "}
+              <strong className="font-semibold text-gray-900">
+                pseudonimização
+              </strong>
+              {" "}— substituímos nomes, CPFs, laudos e telefones por códigos
+              opacos para que o provedor externo de IA não tenha acesso a dados
+              identificáveis.
             </p>
-            <p className="text-xs md:text-sm text-gray-700 mt-2">
+            <p className="text-xs md:text-sm text-gray-700 mt-2 leading-relaxed">
               Você pode usar a plataforma normalmente sem ativar o assistente.
-              É possível ativar ou desativar a qualquer momento em
-              <strong> Configurações → Privacidade</strong>.
+              É possível ativar ou desativar a qualquer momento em{" "}
+              <strong className="font-semibold text-gray-900">
+                Configurações → Privacidade
+              </strong>
+              .
             </p>
           </div>
         </div>
       </div>
 
+      {/* Cards de escolha */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button
-          type="button"
+        <ChoiceCard
+          selected={accepted}
           onClick={() => onChange(true)}
-          className={cn(
-            "rounded-2xl border p-4 text-left transition-all",
-            accepted
-              ? "bg-violet-50 border-violet-300 ring-2 ring-violet-200"
-              : "border-gray-200 hover:border-gray-300",
-          )}
-        >
-          <p className="font-semibold text-sm text-gray-900">
-            Aceitar uso de IA (v. {version})
-          </p>
-          <p className="text-xs text-gray-600 mt-1">
-            Habilita respostas automáticas no WhatsApp. Você pode revogar a
-            qualquer momento.
-          </p>
-        </button>
-        <button
-          type="button"
+          tone="violet"
+          title={`Aceitar uso de IA${version ? ` (v. ${version})` : ""}`}
+          description="Habilita respostas automáticas no WhatsApp. Você pode revogar a qualquer momento."
+        />
+        <ChoiceCard
+          selected={!accepted}
           onClick={() => onChange(false)}
-          className={cn(
-            "rounded-2xl border p-4 text-left transition-all",
-            !accepted
-              ? "bg-gray-50 border-gray-300 ring-2 ring-gray-200"
-              : "border-gray-200 hover:border-gray-300",
-          )}
-        >
-          <p className="font-semibold text-sm text-gray-900">
-            Continuar sem IA por enquanto
-          </p>
-          <p className="text-xs text-gray-600 mt-1">
-            A plataforma funciona normalmente. Você pode ativar quando quiser.
-          </p>
-        </button>
+          tone="neutral"
+          title="Continuar sem IA por enquanto"
+          description="A plataforma funciona normalmente. Você pode ativar quando quiser."
+        />
       </div>
     </div>
+  );
+}
+
+function ChoiceCard({
+  selected,
+  onClick,
+  tone,
+  title,
+  description,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  tone: "violet" | "neutral";
+  title: string;
+  description: string;
+}) {
+  const selectedClasses =
+    tone === "violet"
+      ? "bg-violet-50 border-violet-300 ring-2 ring-violet-200 shadow-sm"
+      : "bg-neutral-50 border-neutral-200 ring-2 ring-neutral-100 shadow-sm";
+
+  const checkClasses =
+    tone === "violet"
+      ? "bg-violet-600 text-white"
+      : "bg-gray-700 text-white";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "relative rounded-2xl border p-4 text-left transition-all active:scale-[0.99]",
+        selected
+          ? selectedClasses
+          : "bg-white border-neutral-100 hover:border-gray-300 hover:bg-gray-50",
+      )}
+      aria-pressed={selected}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={cn(
+            "h-5 w-5 rounded-full flex items-center justify-center shrink-0 transition-all mt-0.5",
+            selected
+              ? checkClasses
+              : "bg-white border-2 border-neutral-100",
+          )}
+        >
+          {selected && <Check className="w-3 h-3" strokeWidth={3.5} />}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm text-gray-900">{title}</p>
+          <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+            {description}
+          </p>
+        </div>
+      </div>
+    </button>
   );
 }

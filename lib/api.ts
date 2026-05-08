@@ -4,6 +4,8 @@ const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
   headers: {
     "Content-Type": "application/json",
+    // Pula a página de aviso do ngrok-free quando a API é exposta via túnel
+    "ngrok-skip-browser-warning": "true",
   },
   withCredentials: true,
 });
@@ -88,7 +90,10 @@ api.interceptors.response.use(
         const { data } = await axios.post(
           `${api.defaults.baseURL}/auth/refresh`,
           {},
-          { withCredentials: true },
+          {
+            withCredentials: true,
+            headers: { "ngrok-skip-browser-warning": "true" },
+          },
         );
 
         const newToken = data.access_token;
