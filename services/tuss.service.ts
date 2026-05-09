@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 export interface TussCode {
   id: string;
@@ -62,7 +63,7 @@ export const tussService = {
       const response = await api.get("/tuss", { params });
       return response.data || [];
     } catch (error: unknown) {
-      console.error("Erro ao buscar códigos TUSS:", error);
+      logger.error("Erro ao buscar códigos TUSS", error);
       throw error;
     }
   },
@@ -76,7 +77,7 @@ export const tussService = {
       const response = await api.get("/procedures", { params });
       return response.data.records || response.data || [];
     } catch (error: unknown) {
-      console.error("Erro ao buscar códigos TUSS:", error);
+      logger.error("Erro ao buscar códigos TUSS", error);
       throw error;
     }
   },
@@ -88,7 +89,7 @@ export const tussService = {
     try {
       await api.post("/surgery-requests/procedures", data);
     } catch (error: unknown) {
-      console.error("Erro ao adicionar procedimentos:", error);
+      logger.error("Erro ao adicionar procedimentos", error);
       throw error;
     }
   },
@@ -102,7 +103,7 @@ export const tussService = {
     try {
       await api.post("/surgery-requests/procedures", data);
     } catch (error: unknown) {
-      console.error("Erro ao atualizar procedimentos:", error);
+      logger.error("Erro ao atualizar procedimentos", error);
       throw error;
     }
   },
@@ -119,7 +120,7 @@ export const tussService = {
         data: { surgery_request_id: surgeryRequestId },
       });
     } catch (error: unknown) {
-      console.error("Erro ao remover procedimento:", error);
+      logger.error("Erro ao remover procedimento", error);
       throw error;
     }
   },

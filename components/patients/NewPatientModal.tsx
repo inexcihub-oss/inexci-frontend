@@ -9,6 +9,13 @@ import {
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { GENDER_OPTIONS } from "@/lib/options";
 import { DateInput } from "@/components/ui/DateInput";
+import Input from "@/components/ui/Input";
+import { useZodForm } from "@/hooks/useZodForm";
+import { createPatientSchema } from "@/lib/schemas/patient.schema";
+import { unmask } from "@/lib/masks";
+import { summarizeErrors } from "@/lib/form-errors";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 
 interface NewPatientModalProps {
   isOpen: boolean;
@@ -16,37 +23,18 @@ interface NewPatientModalProps {
   onSuccess: () => void;
 }
 
-const EMPTY_FORM = {
-  name: "",
-  phone: "",
-  email: "",
-  cpf: "",
-  birth_date: "",
-  gender: "",
-  health_plan_id: "",
+const FIELD_LABELS: Record<string, string> = {
+  name: "Nome completo",
+  phone: "Telefone",
+  email: "E-mail",
+  cpf: "CPF",
+  birth_date: "Data de nascimento",
+  gender: "Gênero",
+  health_plan_id: "Convênio",
 };
 
-function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10)
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
-
-function applyCpfMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
-  if (digits.length <= 9)
-    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
-  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
-}
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+const labelClass = "ds-label mb-0";
+const inputClass = "ds-input";
 
 export function NewPatientModal({
   isOpen,
@@ -54,10 +42,22 @@ export function NewPatientModal({
   onSuccess,
 }: NewPatientModalProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState(EMPTY_FORM);
-  const [emailError, setEmailError] = useState("");
   const [error, setError] = useState("");
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
+  const { toast, showToast, hideToast } = useToast();
+
+  const form = useZodForm({
+    schema: createPatientSchema,
+    initialValues: {
+      name: "",
+      phone: "",
+      email: "",
+      cpf: "",
+      birth_date: "",
+      gender: "",
+      health_plan_id: "",
+    },
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -76,91 +76,55 @@ export function NewPatientModal({
 
   const handleClose = () => {
     if (loading) return;
-    setFormData(EMPTY_FORM);
-    setEmailError("");
+    form.reset();
     setError("");
     onClose();
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, phone: applyPhoneMask(e.target.value) });
-  };
-
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, cpf: applyCpfMask(e.target.value) });
-  };
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, email: e.target.value });
-    if (emailError) setEmailError("");
-  };
-
-  const handleEmailBlur = () => {
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-    } else {
-      setEmailError("");
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const payload: CreatePatientPayload = {
-        name: formData.name.trim(),
-        phone: formData.phone || undefined,
-        email: formData.email || undefined,
-        cpf: formData.cpf ? formData.cpf.replace(/\D/g, "") : undefined,
-        birth_date: formData.birth_date || undefined,
-        gender: formData.gender || undefined,
-        health_plan_id: formData.health_plan_id || undefined,
-      };
-
-      const newPatient = await patientService.create(payload);
-      void newPatient;
-      onSuccess();
-      setFormData(EMPTY_FORM);
-      setEmailError("");
+  const onSubmit = form.handleSubmit(
+    async (data) => {
+      setLoading(true);
       setError("");
-      onClose();
-    } catch (err) {
-      const apiError = err as {
-        response?: { data?: { message?: string | string[] } };
-      };
-      const msg = apiError?.response?.data?.message;
-      setError(
-        Array.isArray(msg)
-          ? msg.join(", ")
-          : msg || "Erro ao criar paciente. Tente novamente.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        const payload: CreatePatientPayload = {
+          name: data.name.trim(),
+          phone: unmask(data.phone) || undefined,
+          email: data.email,
+          cpf: data.cpf ? unmask(data.cpf) : undefined,
+          birth_date: data.birth_date || undefined,
+          gender: data.gender || undefined,
+          health_plan_id: data.health_plan_id || undefined,
+        };
+        await patientService.create(payload);
+        onSuccess();
+        form.reset();
+        onClose();
+      } catch (err) {
+        const apiError = err as {
+          response?: { data?: { message?: string | string[] } };
+        };
+        const msg = apiError?.response?.data?.message;
+        setError(
+          Array.isArray(msg)
+            ? msg.join(", ")
+            : msg || "Erro ao criar paciente. Tente novamente.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
+  );
 
   if (!isOpen) return null;
 
-  const inputClass = "ds-input";
-
-  const labelClass = "ds-label mb-0";
-
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
         onClick={handleClose}
       />
 
-      {/* Modal — proporções similares ao modal OPME/TUSS */}
       <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5 flex-shrink-0">
@@ -177,88 +141,59 @@ export function NewPatientModal({
 
         {/* Body */}
         <form
-          onSubmit={handleSubmit}
+          onSubmit={onSubmit}
+          noValidate
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
             {/* Row 1: Nome completo + Telefone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>Nome completo
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="Nome completo"
-                  className={inputClass}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>Telefone
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={formData.phone}
-                  onChange={handlePhoneChange}
-                  placeholder="(21) 98765-4321"
-                  className={inputClass}
-                />
-              </div>
+              <Input
+                label="Nome completo"
+                required
+                placeholder="Nome completo"
+                {...form.getFieldProps("name")}
+              />
+              <Input
+                label="Telefone"
+                type="tel"
+                mask="phone"
+                required
+                placeholder="(21) 98765-4321"
+                {...form.getFieldProps("phone")}
+              />
             </div>
 
             {/* Row 2: E-mail + CPF */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>E-mail
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleEmailChange}
-                  onBlur={handleEmailBlur}
-                  placeholder="paciente@mail.com"
-                  className={`${inputClass} ${emailError ? "border-red-400 focus:ring-red-400" : ""}`}
-                />
-                {emailError && (
-                  <span className="text-xs text-red-500">{emailError}</span>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>CPF</label>
-                <input
-                  type="text"
-                  value={formData.cpf}
-                  onChange={handleCpfChange}
-                  placeholder="123.456.789-00"
-                  className={inputClass}
-                />
-              </div>
+              <Input
+                label="E-mail"
+                type="email"
+                required
+                placeholder="paciente@mail.com"
+                {...form.getFieldProps("email")}
+              />
+              <Input
+                label="CPF"
+                mask="cpf"
+                placeholder="123.456.789-00"
+                {...form.getFieldProps("cpf")}
+              />
             </div>
 
             {/* Row 3: Data de nascimento + Gênero */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <DateInput
                 label="Data de nascimento"
-                value={formData.birth_date}
-                onChange={(v) => setFormData({ ...formData, birth_date: v })}
+                value={form.values.birth_date ?? ""}
+                onChange={(v) => form.setField("birth_date", v)}
                 className={inputClass}
               />
               <div className="flex flex-col gap-1.5">
                 <label className={labelClass}>Gênero</label>
                 <select
-                  value={formData.gender}
-                  onChange={(e) =>
-                    setFormData({ ...formData, gender: e.target.value })
-                  }
+                  value={form.values.gender ?? ""}
+                  onChange={(e) => form.setField("gender", e.target.value)}
                   className={inputClass}
                 >
                   {GENDER_OPTIONS.map((opt) => (
@@ -274,10 +209,8 @@ export function NewPatientModal({
             <div className="flex flex-col gap-1.5">
               <label className={labelClass}>Convênio</label>
               <select
-                value={formData.health_plan_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, health_plan_id: e.target.value })
-                }
+                value={form.values.health_plan_id ?? ""}
+                onChange={(e) => form.setField("health_plan_id", e.target.value)}
                 className={inputClass}
               >
                 <option value="">Selecione</option>
@@ -298,16 +231,16 @@ export function NewPatientModal({
           {/* Footer */}
           <div className="h-px bg-gray-200 flex-shrink-0" />
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
-            <button
-              type="submit"
-              disabled={loading || !!emailError}
-              className="ds-btn-primary"
-            >
+            <button type="submit" disabled={loading} className="ds-btn-primary">
               {loading ? "Adicionando..." : "Adicionar paciente"}
             </button>
           </div>
         </form>
       </div>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
     </div>
   );
 }

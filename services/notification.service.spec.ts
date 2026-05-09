@@ -45,9 +45,9 @@ describe("notificationService", () => {
     it("deve chamar PUT /notifications/:id/read", async () => {
       (api.put as ReturnType<typeof vi.fn>).mockResolvedValue({});
 
-      await notificationService.markAsRead(42);
+      await notificationService.markAsRead("notif-42");
 
-      expect(api.put).toHaveBeenCalledWith("/notifications/42/read");
+      expect(api.put).toHaveBeenCalledWith("/notifications/notif-42/read");
     });
   });
 
@@ -70,32 +70,67 @@ describe("notificationService", () => {
   });
 
   describe("getSettings", () => {
-    it("deve chamar GET /notifications/settings", async () => {
+    it("deve chamar GET /notifications/settings e devolver dados em camelCase", async () => {
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: { id: 1, email_notifications: true },
+        data: {
+          id: "settings-1",
+          userId: "user-1",
+          pushNotifications: true,
+          whatsappNotifications: true,
+          newSurgeryRequest: true,
+          statusUpdate: true,
+          pendencies: true,
+          expiringDocuments: true,
+          weeklyReport: false,
+        },
       });
 
       const result = await notificationService.getSettings();
 
       expect(api.get).toHaveBeenCalledWith("/notifications/settings");
-      expect(result.id).toBe(1);
+      expect(result.pushNotifications).toBe(true);
+      expect(result.weeklyReport).toBe(false);
     });
   });
 
   describe("updateSettings", () => {
-    it("deve chamar PUT /notifications/settings", async () => {
+    it("envia payload em camelCase (sem snake_case)", async () => {
       (api.put as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: { id: 1, email_notifications: false },
+        data: { id: "settings-1", pushNotifications: false },
       });
 
       const result = await notificationService.updateSettings({
-        email_notifications: false,
+        pushNotifications: false,
       });
 
       expect(api.put).toHaveBeenCalledWith("/notifications/settings", {
-        email_notifications: false,
+        pushNotifications: false,
       });
-      expect(result.email_notifications).toBe(false);
+      expect(result.pushNotifications).toBe(false);
+    });
+
+    it("propaga todos os toggles em camelCase", async () => {
+      (api.put as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
+
+      await notificationService.updateSettings({
+        pushNotifications: false,
+        whatsappNotifications: true,
+        newSurgeryRequest: false,
+        statusUpdate: true,
+        pendencies: true,
+        expiringDocuments: false,
+        weeklyReport: true,
+      });
+
+      expect(api.put).toHaveBeenCalledWith("/notifications/settings", {
+        pushNotifications: false,
+        whatsappNotifications: true,
+        newSurgeryRequest: false,
+        statusUpdate: true,
+        pendencies: true,
+        expiringDocuments: false,
+        weeklyReport: true,
+      });
     });
   });
 
@@ -103,9 +138,9 @@ describe("notificationService", () => {
     it("deve chamar DELETE /notifications/:id", async () => {
       (api.delete as ReturnType<typeof vi.fn>).mockResolvedValue({});
 
-      await notificationService.deleteNotification(10);
+      await notificationService.deleteNotification("notif-10");
 
-      expect(api.delete).toHaveBeenCalledWith("/notifications/10");
+      expect(api.delete).toHaveBeenCalledWith("/notifications/notif-10");
     });
   });
 });

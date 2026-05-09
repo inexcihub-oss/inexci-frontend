@@ -8,6 +8,15 @@ import {
   Hospital,
 } from "@/services/hospital.service";
 import { getApiErrorMessage } from "@/lib/http-error";
+import Input from "@/components/ui/Input";
+import { useZodForm } from "@/hooks/useZodForm";
+import { createHospitalSchema } from "@/lib/schemas/hospital.schema";
+import { unmask } from "@/lib/masks";
+import { summarizeErrors } from "@/lib/form-errors";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
+import { useCepLookup } from "@/hooks/useCepLookup";
+import { Loader2 } from "lucide-react";
 
 interface CreateHospitalModalProps {
   isOpen: boolean;
@@ -15,77 +24,22 @@ interface CreateHospitalModalProps {
   onSuccess: (hospital: Hospital) => void;
 }
 
-function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10)
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
-
-function applyCepMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 5) return digits;
-  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
-}
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
 const ESTADOS_BR = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
+  "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC",
+  "SP", "SE", "TO",
 ];
 
-type FormData = {
-  name: string;
-  phone: string;
-  email: string;
-  zip_code: string;
-  address: string;
-  address_number: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-};
-
-const EMPTY_FORM: FormData = {
-  name: "",
-  phone: "",
-  email: "",
-  zip_code: "",
-  address: "",
-  address_number: "",
-  neighborhood: "",
-  city: "",
-  state: "",
+const FIELD_LABELS: Record<string, string> = {
+  name: "Hospital",
+  phone: "Telefone",
+  email: "E-mail",
+  zip_code: "CEP",
+  address_number: "Número",
+  address: "Endereço",
+  neighborhood: "Bairro",
+  city: "Cidade",
+  state: "Estado",
 };
 
 export function CreateHospitalModal({
@@ -94,77 +48,83 @@ export function CreateHospitalModal({
   onSuccess,
 }: CreateHospitalModalProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
-  const [emailError, setEmailError] = useState("");
   const [error, setError] = useState("");
+  const { toast, showToast, hideToast } = useToast();
 
-  const set = (field: keyof FormData) => (value: string) =>
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const form = useZodForm({
+    schema: createHospitalSchema,
+    initialValues: {
+      name: "",
+      phone: "",
+      email: "",
+      zip_code: "",
+      address_number: "",
+      address: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+    },
+  });
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    set("phone")(applyPhoneMask(e.target.value));
-
-  const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    set("zip_code")(applyCepMask(e.target.value));
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    set("email")(e.target.value);
-    if (emailError) setEmailError("");
-  };
-
-  const handleEmailBlur = () => {
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-    } else {
-      setEmailError("");
-    }
-  };
+  const { loading: cepLoading } = useCepLookup({
+    cep: form.values.zip_code,
+    enabled: isOpen,
+    onResolved: (data) => {
+      form.setValues({
+        address: data.logradouro,
+        neighborhood: data.bairro,
+        city: data.cidade,
+        state: data.uf,
+      });
+    },
+    onError: (err) => {
+      if (err.code === "not_found") {
+        showToast("CEP não encontrado.", "error");
+      } else if (err.code === "network") {
+        showToast(err.message, "error");
+      }
+    },
+  });
 
   const handleClose = () => {
     if (loading) return;
-    setFormData(EMPTY_FORM);
-    setEmailError("");
+    form.reset();
     setError("");
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const payload: CreateHospitalPayload = {
-        name: formData.name.trim(),
-        phone: formData.phone || undefined,
-        email: formData.email || undefined,
-        zip_code: formData.zip_code.replace(/\D/g, "") || undefined,
-        address: formData.address.trim() || undefined,
-        address_number: formData.address_number.trim() || undefined,
-        neighborhood: formData.neighborhood.trim() || undefined,
-        city: formData.city.trim() || undefined,
-        state: formData.state || undefined,
-      };
-      const newHospital = await hospitalService.create(payload);
-      onSuccess(newHospital);
-      setFormData(EMPTY_FORM);
-      setEmailError("");
-      onClose();
-    } catch (err: unknown) {
-      setError(
-        getApiErrorMessage(err, "Erro ao criar hospital. Tente novamente."),
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  const onSubmit = form.handleSubmit(
+    async (data) => {
+      setLoading(true);
+      setError("");
+      try {
+        const payload: CreateHospitalPayload = {
+          name: data.name.trim(),
+          phone: unmask(data.phone) || undefined,
+          email: data.email || undefined,
+          zip_code: unmask(data.zip_code) || undefined,
+          address: data.address.trim() || undefined,
+          address_number: data.address_number.trim() || undefined,
+          neighborhood: data.neighborhood.trim() || undefined,
+          city: data.city.trim() || undefined,
+          state: data.state || undefined,
+        };
+        const newHospital = await hospitalService.create(payload);
+        onSuccess(newHospital);
+        form.reset();
+        onClose();
+      } catch (err: unknown) {
+        setError(
+          getApiErrorMessage(err, "Erro ao criar hospital. Tente novamente."),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
+  );
 
   if (!isOpen) return null;
-
-  const inputClass = "ds-input";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
@@ -186,122 +146,95 @@ export function CreateHospitalModal({
 
         {/* Body */}
         <form
-          onSubmit={handleSubmit}
+          onSubmit={onSubmit}
+          noValidate
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
-            {/* Hospital */}
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Hospital</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => set("name")(e.target.value)}
-                placeholder="Nome do hospital"
-                className={inputClass}
-              />
-            </div>
+            <Input
+              label="Hospital"
+              required
+              placeholder="Nome do hospital"
+              {...form.getFieldProps("name")}
+            />
 
-            {/* Telefone */}
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Telefone</label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                placeholder="(21) 98765-4321"
-                className={inputClass}
-              />
-            </div>
+            <Input
+              label="Telefone"
+              type="tel"
+              mask="phone"
+              placeholder="(21) 98765-4321"
+              {...form.getFieldProps("phone")}
+            />
 
-            {/* E-mail */}
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">E-mail</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={handleEmailChange}
-                onBlur={handleEmailBlur}
-                placeholder="hospital@mail.com"
-                className={`ds-input ${emailError ? "border-red-400" : ""}`}
-              />
-              {emailError && (
-                <span className="text-xs text-red-500">{emailError}</span>
-              )}
-            </div>
+            <Input
+              label="E-mail"
+              type="email"
+              placeholder="hospital@mail.com"
+              {...form.getFieldProps("email")}
+            />
 
             {/* CEP + Número */}
             <div className="flex gap-3">
-              <div className="flex-1 flex flex-col gap-1.5">
-                <label className="ds-label mb-0">CEP</label>
-                <input
-                  type="text"
+              <div className="flex-1 relative">
+                <Input
+                  label="CEP"
+                  mask="cep"
                   required
-                  value={formData.zip_code}
-                  onChange={handleCepChange}
                   placeholder="00000-000"
-                  className={inputClass}
+                  {...form.getFieldProps("zip_code")}
                 />
+                {cepLoading && (
+                  <Loader2 className="absolute right-3 top-9 w-4 h-4 text-gray-400 animate-spin" />
+                )}
               </div>
-              <div className="w-32 flex flex-col gap-1.5">
-                <label className="ds-label mb-0">Número</label>
-                <input
-                  type="text"
+              <div className="w-32">
+                <Input
+                  label="Número"
                   required
-                  value={formData.address_number}
-                  onChange={(e) => set("address_number")(e.target.value)}
                   placeholder="123"
-                  className={inputClass}
+                  {...form.getFieldProps("address_number")}
                 />
               </div>
             </div>
 
             {/* Endereço + Bairro */}
             <div className="flex gap-3">
-              <div className="flex-1 flex flex-col gap-1.5">
-                <label className="ds-label mb-0">Endereço</label>
-                <input
-                  type="text"
+              <div className="flex-1">
+                <Input
+                  label="Endereço"
                   required
-                  value={formData.address}
-                  onChange={(e) => set("address")(e.target.value)}
                   placeholder="Rua, Avenida..."
-                  className={inputClass}
+                  {...form.getFieldProps("address")}
                 />
               </div>
-              <div className="flex-1 flex flex-col gap-1.5">
-                <label className="ds-label mb-0">Bairro</label>
-                <input
-                  type="text"
+              <div className="flex-1">
+                <Input
+                  label="Bairro"
                   required
-                  value={formData.neighborhood}
-                  onChange={(e) => set("neighborhood")(e.target.value)}
                   placeholder="Nome do bairro"
-                  className={inputClass}
+                  {...form.getFieldProps("neighborhood")}
                 />
               </div>
             </div>
 
             {/* Cidade + Estado */}
             <div className="flex gap-3">
-              <div className="flex-1 flex flex-col gap-1.5">
-                <label className="ds-label mb-0">Cidade</label>
-                <input
-                  type="text"
+              <div className="flex-1">
+                <Input
+                  label="Cidade"
                   required
-                  value={formData.city}
-                  onChange={(e) => set("city")(e.target.value)}
                   placeholder="São Paulo"
-                  className={inputClass}
+                  {...form.getFieldProps("city")}
                 />
               </div>
               <div className="w-24 flex flex-col gap-1.5">
-                <label className="ds-label mb-0">Estado</label>
+                <label className="ds-label mb-0">
+                  Estado<span className="text-red-500 ml-1">*</span>
+                </label>
                 <select
                   required
-                  value={formData.state}
-                  onChange={(e) => set("state")(e.target.value)}
+                  value={form.values.state}
+                  onChange={(e) => form.setField("state", e.target.value)}
                   className="ds-input"
                 >
                   <option value="">UF</option>
@@ -311,6 +244,9 @@ export function CreateHospitalModal({
                     </option>
                   ))}
                 </select>
+                {form.errors.state && (
+                  <p className="text-xs text-red-600">{form.errors.state}</p>
+                )}
               </div>
             </div>
 
@@ -324,7 +260,7 @@ export function CreateHospitalModal({
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
             <button
               type="submit"
-              disabled={loading || !!emailError}
+              disabled={loading}
               className="ds-btn-primary"
             >
               {loading ? "Adicionando..." : "Adicionar hospital"}
@@ -332,6 +268,14 @@ export function CreateHospitalModal({
           </div>
         </form>
       </div>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+        />
+      )}
     </div>
   );
 }

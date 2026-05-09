@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { ModalFooter } from "@/components/shared/ModalFooter";
+import { useToast } from "@/hooks/useToast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ export function ContestFlow({
   const [toTags, setToTags] = useState<string[]>([]);
   const [toInput, setToInput] = useState("");
   const [formTouched, setFormTouched] = useState(false);
+  const { showToast } = useToast();
 
   const addToTag = (email: string) => {
     const trimmed = email.trim().replace(/[;,]$/, "");
@@ -336,8 +338,13 @@ export function ContestFlow({
         </button>
         {step < 3 ? (
           <button
-            onClick={onNext}
-            disabled={step === 1 && !canProceedStep1}
+            onClick={() => {
+              if (step === 1 && !canProceedStep1) {
+                showToast("Informe o motivo da contestação.", "error");
+                return;
+              }
+              onNext();
+            }}
             className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Próximo
@@ -347,6 +354,13 @@ export function ContestFlow({
             onClick={() => {
               if (!canSubmit) {
                 setFormTouched(true);
+                const missing: string[] = [];
+                if (toTags.length === 0) missing.push("Destinatários");
+                if (!emailForm.subject.trim()) missing.push("Assunto");
+                if (!emailForm.message.trim()) missing.push("Mensagem");
+                if (missing.length > 0) {
+                  showToast(`Preencha: ${missing.join(", ")}`, "error");
+                }
                 return;
               }
               onSubmit();

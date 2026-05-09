@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 export interface OpmeSupplier {
   id: string;
@@ -40,7 +41,7 @@ export const opmeService = {
       const response = await api.post("/surgery-requests/opme", data);
       return response.data;
     } catch (error: unknown) {
-      console.error("Erro ao adicionar OPME:", error);
+      logger.error("Erro ao adicionar OPME", error);
       throw error;
     }
   },
@@ -50,7 +51,7 @@ export const opmeService = {
       const response = await api.put("/surgery-requests/opme", data);
       return response.data;
     } catch (error: unknown) {
-      console.error("Erro ao atualizar OPME:", error);
+      logger.error("Erro ao atualizar OPME", error);
       throw error;
     }
   },
@@ -61,7 +62,7 @@ export const opmeService = {
         data: { surgery_request_id: surgeryRequestId },
       });
     } catch (error: unknown) {
-      console.error("Erro ao remover OPME:", error);
+      logger.error("Erro ao remover OPME", error);
       throw error;
     }
   },
@@ -72,7 +73,7 @@ export const opmeService = {
         has_opme: hasOpme,
       });
     } catch (error: unknown) {
-      console.error("Erro ao definir status de OPME:", error);
+      logger.error("Erro ao definir status de OPME", error);
       throw error;
     }
   },

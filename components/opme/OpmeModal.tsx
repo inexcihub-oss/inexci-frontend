@@ -7,6 +7,7 @@ import {
   CreateOpmeData,
   OpmeSupplier,
 } from "@/services/opme.service";
+import { logger } from "@/lib/logger";
 import { supplierService } from "@/services/supplier.service";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -570,6 +571,24 @@ export function OpmeModal({
       return;
     }
 
+    for (const item of opmeItems) {
+      const filledManufacturers = item.manufacturers.filter((m) => m.trim());
+      if (filledManufacturers.length < MIN_OPTIONS) {
+        setError(
+          `O item "${item.name}" deve ter no mínimo ${MIN_OPTIONS} fabricantes preenchidos.`,
+        );
+        return;
+      }
+
+      const filledSuppliers = item.suppliers.filter((s) => s.name.trim());
+      if (filledSuppliers.length < MIN_OPTIONS) {
+        setError(
+          `O item "${item.name}" deve ter no mínimo ${MIN_OPTIONS} fornecedores preenchidos.`,
+        );
+        return;
+      }
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -627,7 +646,7 @@ export function OpmeModal({
       onSuccess();
       handleCancel();
     } catch (err) {
-      console.error("Erro ao salvar OPME:", err);
+      logger.error("Erro ao salvar OPME:", err);
       setError("Erro ao salvar OPME. Tente novamente.");
     } finally {
       setIsLoading(false);

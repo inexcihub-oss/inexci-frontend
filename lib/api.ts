@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { logger, setRequestId } from "./logger";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
@@ -9,6 +10,13 @@ const api = axios.create({
   },
   withCredentials: true,
 });
+
+function generateRequestId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 // ── Estado do refresh ────────────────────────────────────────────────────────
 let isRefreshing = false;
@@ -45,6 +53,9 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+    if (!config.headers["X-Request-Id"]) {
+      config.headers["X-Request-Id"] = generateRequestId();
+    }
     return config;
   },
   (error) => Promise.reject(error),
@@ -52,8 +63,17 @@ api.interceptors.request.use(
 
 // ── Response interceptor — refresh automático ao receber 401 ─────────────────
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const requestId = (response.headers["x-request-id"] ||
+      response.headers["X-Request-Id"]) as string | undefined;
+    if (requestId) setRequestId(requestId);
+    return response;
+  },
   async (error: AxiosError) => {
+    const responseRequestId = error.response?.headers?.[
+      "x-request-id"
+    ] as string | undefined;
+    if (responseRequestId) setRequestId(responseRequestId);
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
@@ -112,6 +132,13 @@ api.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
+    }
+
+    if (error.response && error.response.status >= 500) {
+      logger.error(
+        `[api] ${error.config?.method?.toUpperCase()} ${error.config?.url} → ${error.response.status}`,
+        error,
+      );
     }
 
     return Promise.reject(error);

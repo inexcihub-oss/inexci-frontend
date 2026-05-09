@@ -3,7 +3,6 @@ import {
   AuthResponse,
   LoginCredentials,
   RegisterData,
-  SubscriptionPlan,
   User,
 } from "@/types";
 import { clearAvatarCache } from "@/lib/avatar-cache";
@@ -46,14 +45,6 @@ export const authService = {
   async register(userData: RegisterData): Promise<AuthResponse> {
     const { data } = await api.post<AuthResponse>("/auth/register", userData);
     // Não salva token/sessão: o usuário precisa confirmar o e-mail antes de logar.
-    return data;
-  },
-
-  /**
-   * Busca planos de assinatura disponíveis (público)
-   */
-  async getPlans(): Promise<SubscriptionPlan[]> {
-    const { data } = await api.get<SubscriptionPlan[]>("/auth/plans");
     return data;
   },
 

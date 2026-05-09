@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { ChevronRight } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 const CATEGORY_OPTIONS = [
   { value: "", label: "Selecione" },
@@ -134,7 +135,7 @@ export default function FornecedorDetalhePage() {
       setFormData(fd);
       setOriginalData(fd);
     } catch (error) {
-      console.error("Erro ao carregar fornecedor:", error);
+      logger.error("Erro ao carregar fornecedor:", error);
     } finally {
       setLoading(false);
     }
@@ -171,7 +172,7 @@ export default function FornecedorDetalhePage() {
       setOriginalData(formData);
       showToast("Fornecedor atualizado com sucesso!", "success");
     } catch (error) {
-      console.error("Erro ao salvar:", error);
+      logger.error("Erro ao salvar:", error);
       showToast("Erro ao salvar as alterações.", "error");
     } finally {
       setSaving(false);
@@ -189,7 +190,7 @@ export default function FornecedorDetalhePage() {
         "success",
       );
     } catch (error) {
-      console.error("Erro ao alterar status:", error);
+      logger.error("Erro ao alterar status:", error);
       showToast("Erro ao alterar status do fornecedor.", "error");
     } finally {
       setTogglingActive(false);

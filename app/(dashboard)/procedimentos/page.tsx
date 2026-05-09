@@ -28,6 +28,7 @@ import { ProcedureModel } from "@/components/procedures/types";
 import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
+import { useAuth } from "@/contexts/AuthContext";
 
 /** Converte um template da API para o tipo ProcedureModel usado na UI */
 function templateToModel(t: any): ProcedureModel {
@@ -85,6 +86,7 @@ export default function ProcedimentosPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState({});
   const { showToast } = useToast();
+  const { canCreateSurgeryRequest, blockReason, isAdmin } = useAuth();
 
   // Modal de exclusão individual
   const [deleteModal, setDeleteModal] = useState<{
@@ -494,6 +496,11 @@ export default function ProcedimentosPage() {
         onClose={handleCloseSideSheet}
         procedure={selectedProcedure}
         onUseTemplate={(template) => {
+          if (!canCreateSurgeryRequest) {
+            if (blockReason) showToast(blockReason, "error");
+            if (isAdmin) router.push("/configuracoes?tab=plan");
+            return;
+          }
           setWizardTemplate(template);
           setIsWizardOpen(true);
         }}

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { authService } from "@/services/auth.service";
 import { ShieldCheck, CheckCircle2, Lock, UserPlus, Bell } from "lucide-react";
+import { useZodForm } from "@/hooks/useZodForm";
+import { newPasswordSchema } from "@/lib/schemas/auth.schema";
 
 function PrimeiroAcessoForm() {
   const router = useRouter();
@@ -16,11 +18,14 @@ function PrimeiroAcessoForm() {
   const email = searchParams.get("email") ?? "";
   const token = searchParams.get("token") ?? "";
 
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  const form = useZodForm({
+    schema: newPasswordSchema,
+    initialValues: { password: "", confirmPassword: "" },
+  });
 
   useEffect(() => {
     if (!email || !token) {
@@ -30,20 +35,8 @@ function PrimeiroAcessoForm() {
     }
   }, [email, token]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = form.handleSubmit(async (data) => {
     setError("");
-
-    if (password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("As senhas não coincidem.");
-      return;
-    }
-
     setIsLoading(true);
     try {
       const valid = await authService.validateRecoveryCode(email, token);
@@ -54,7 +47,7 @@ function PrimeiroAcessoForm() {
         return;
       }
 
-      await authService.changePassword(email, token, password);
+      await authService.changePassword(email, token, data.password);
 
       setSuccess(true);
       setTimeout(() => router.push("/login?registered=true"), 2500);
@@ -74,9 +67,7 @@ function PrimeiroAcessoForm() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const mismatch = confirmPassword.length > 0 && confirmPassword !== password;
+  });
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -135,7 +126,7 @@ function PrimeiroAcessoForm() {
             </div>
           ) : (
             /* Form */
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} noValidate className="space-y-5">
               {/* Error Message */}
               {error && (
                 <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700 flex items-start gap-2.5">
@@ -148,44 +139,29 @@ function PrimeiroAcessoForm() {
               <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
                 <Lock className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 <p className="text-xs text-slate-500">
-                  Sua senha deve ter no mínimo 8 caracteres. Recomendamos usar
-                  letras, números e caracteres especiais.
+                  Sua senha precisa ter pelo menos 8 caracteres, com letra
+                  maiúscula, minúscula, número e caractere especial.
                 </p>
               </div>
 
               <PasswordInput
                 id="password"
-                name="password"
                 label="Nova senha"
                 autoComplete="new-password"
-                value={password}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setPassword(e.target.value)
-                }
+                showRequirements
+                {...form.getFieldProps("password")}
                 placeholder="Mínimo 8 caracteres"
-                showStrength
                 className="min-h-[48px]"
                 disabled={!email || !token}
               />
 
               <PasswordInput
                 id="confirmPassword"
-                name="confirmPassword"
                 label="Confirmar senha"
                 autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setConfirmPassword(e.target.value)
-                }
+                {...form.getFieldProps("confirmPassword")}
                 placeholder="Digite a senha novamente"
-                error={mismatch ? "As senhas não coincidem" : undefined}
-                className={`min-h-[48px] ${
-                  mismatch
-                    ? "border-red-300 bg-red-50"
-                    : confirmPassword && confirmPassword === password
-                      ? "border-teal-300"
-                      : ""
-                }`}
+                className="min-h-[48px]"
                 disabled={!email || !token}
               />
 

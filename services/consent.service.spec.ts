@@ -17,16 +17,13 @@ describe("consentService", () => {
 
   describe("getStatus", () => {
     it("chama GET /privacy/consent/status", async () => {
-      const mock = [
-        {
-          type: "privacy_policy",
-          isAccepted: true,
-          isRequired: true,
-          acceptedVersion: "1.0",
-          currentVersion: "1.0",
-          acceptedAt: "2026-05-07T00:00:00Z",
-        },
-      ];
+      const mock = {
+        privacyPolicyAcceptedAt: "2026-05-07T00:00:00Z",
+        termsOfUseAcceptedAt: "2026-05-07T00:00:00Z",
+        aiConsentAcceptedAt: null,
+        requiredConsentsAccepted: true,
+        pendingRequired: [],
+      };
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: mock });
       const r = await consentService.getStatus();
       expect(api.get).toHaveBeenCalledWith("/privacy/consent/status");
@@ -34,48 +31,38 @@ describe("consentService", () => {
     });
   });
 
-  describe("grant", () => {
-    it("envia type e version no POST /privacy/consent/grant", async () => {
+  describe("acceptTerms", () => {
+    it("chama POST /privacy/consent/accept-terms", async () => {
       (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: { type: "ai", isAccepted: true, currentVersion: "1.0" },
+        data: {
+          privacyPolicyAcceptedAt: "2026-05-07T00:00:00Z",
+          termsOfUseAcceptedAt: "2026-05-07T00:00:00Z",
+          aiConsentAcceptedAt: null,
+          requiredConsentsAccepted: true,
+          pendingRequired: [],
+        },
       });
-      const r = await consentService.grant("ai", "1.0");
-      expect(api.post).toHaveBeenCalledWith("/privacy/consent/grant", {
-        type: "ai",
-        version: "1.0",
-      });
-      expect(r.isAccepted).toBe(true);
+      const r = await consentService.acceptTerms();
+      expect(api.post).toHaveBeenCalledWith("/privacy/consent/accept-terms");
+      expect(r.requiredConsentsAccepted).toBe(true);
     });
   });
 
-  describe("revoke", () => {
-    it("envia somente type no POST /privacy/consent/revoke", async () => {
+  describe("grantAi / revokeAi", () => {
+    it("grantAi chama POST /privacy/consent/grant-ai", async () => {
       (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: { type: "ai", isAccepted: false },
+        data: { aiConsentAcceptedAt: "2026-05-07T00:00:00Z" },
       });
-      await consentService.revoke("ai");
-      expect(api.post).toHaveBeenCalledWith("/privacy/consent/revoke", {
-        type: "ai",
-      });
-    });
-  });
-
-  describe("getHistory", () => {
-    it("inclui filtros type e limit na URL", async () => {
-      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: [] });
-      await consentService.getHistory("ai", 5);
-      const url = (api.get as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(url).toContain("/privacy/consent/history");
-      expect(url).toContain("type=ai");
-      expect(url).toContain("limit=5");
+      await consentService.grantAi();
+      expect(api.post).toHaveBeenCalledWith("/privacy/consent/grant-ai");
     });
 
-    it("usa limit default 50 quando omitido", async () => {
-      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: [] });
-      await consentService.getHistory();
-      const url = (api.get as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      expect(url).toContain("limit=50");
-      expect(url).not.toContain("type=");
+    it("revokeAi chama POST /privacy/consent/revoke-ai", async () => {
+      (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { aiConsentAcceptedAt: null },
+      });
+      await consentService.revokeAi();
+      expect(api.post).toHaveBeenCalledWith("/privacy/consent/revoke-ai");
     });
   });
 
@@ -85,7 +72,6 @@ describe("consentService", () => {
         data: {
           slug: "privacy-policy",
           type: "privacy_policy",
-          version: "1.0",
           content_md: "## Test",
         },
       });

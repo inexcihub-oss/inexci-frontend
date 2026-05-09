@@ -1,4 +1,5 @@
 import { PDFDocument } from "pdf-lib";
+import { logger } from "@/lib/logger";
 
 export interface DocumentEntry {
   uri: string;
@@ -27,7 +28,7 @@ export async function mergeDocumentsAsPdf(
       const response = await fetch(doc.uri);
 
       if (!response.ok) {
-        console.warn(
+        logger.warn(
           `[merge-pdf] Falha ao buscar "${doc.name}" (${response.status})`,
         );
         continue;
@@ -78,12 +79,12 @@ export async function mergeDocumentsAsPdf(
           height: scaled.height,
         });
       } else {
-        console.warn(
+        logger.warn(
           `[merge-pdf] Tipo de arquivo não suportado para "${doc.name}" (${contentType})`,
         );
       }
     } catch (err) {
-      console.warn(`[merge-pdf] Erro ao processar "${doc.name}":`, err);
+      logger.warn(`[merge-pdf] Erro ao processar "${doc.name}":`, err);
     }
   }
 

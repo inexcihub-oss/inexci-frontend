@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { MarkdownContent } from "@/components/privacy/MarkdownContent";
+import { LegalDocumentView } from "./LegalDocumentView";
 
 const SLUG_ALIAS: Record<string, string> = {
   politica: "privacy-policy",
@@ -19,27 +19,6 @@ const TITLE_BY_SLUG: Record<string, string> = {
   "ai-disclosure": "Aviso de uso de Inteligência Artificial",
 };
 
-interface LegalDocument {
-  slug: string;
-  type: string;
-  version: string;
-  content_md: string;
-}
-
-async function fetchDocument(slug: string): Promise<LegalDocument | null> {
-  const apiUrl =
-    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
-  try {
-    const res = await fetch(`${apiUrl}/privacy/policy/${slug}`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as LegalDocument;
-  } catch {
-    return null;
-  }
-}
-
 interface PageProps {
   params: { slug: string };
 }
@@ -55,11 +34,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function LegalDocumentPage({ params }: PageProps) {
+export default function LegalDocumentPage({ params }: PageProps) {
   const canonical = SLUG_ALIAS[params.slug];
   if (!canonical) notFound();
-
-  const doc = await fetchDocument(canonical);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -86,29 +63,10 @@ export default async function LegalDocumentPage({ params }: PageProps) {
 
       <main className="max-w-3xl mx-auto px-5 md:px-8 py-8 md:py-12">
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 md:p-10">
-          {!doc ? (
-            <div className="text-center py-16">
-              <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
-                Documento indisponível
-              </h1>
-              <p className="text-sm text-gray-500 mt-2">
-                Não foi possível carregar este documento agora. Tente novamente
-                em alguns minutos.
-              </p>
-            </div>
-          ) : (
-            <>
-              <header className="mb-6 pb-4 border-b border-gray-100">
-                <p className="text-xs font-medium uppercase tracking-wide text-primary-700">
-                  Documento legal · Versão {doc.version}
-                </p>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mt-1">
-                  {TITLE_BY_SLUG[canonical]}
-                </h1>
-              </header>
-              <MarkdownContent source={doc.content_md} />
-            </>
-          )}
+          <LegalDocumentView
+            slug={canonical}
+            title={TITLE_BY_SLUG[canonical]}
+          />
         </div>
         <p className="text-xs text-gray-500 text-center mt-6">
           Em caso de dúvidas, entre em contato com o nosso Encarregado pelo

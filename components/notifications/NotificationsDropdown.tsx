@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Link from "next/link";
+import { logger } from "@/lib/logger";
 
 interface NotificationsDropdownProps {
   isCollapsed?: boolean;
@@ -38,14 +39,14 @@ export default function NotificationsDropdown({
         setNotifications(response.notifications);
         setUnreadCount(response.unreadCount);
       } catch (error) {
-        console.error("Erro ao carregar notificações:", error);
+        logger.error("Erro ao carregar notificações:", error);
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const handleMarkAsRead = async (notificationId: number) => {
+  const handleMarkAsRead = async (notificationId: string) => {
     try {
       await notificationService.markAsRead(notificationId);
       setNotifications((prev) =>
@@ -53,7 +54,7 @@ export default function NotificationsDropdown({
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error("Erro ao marcar como lida:", error);
+      logger.error("Erro ao marcar como lida:", error);
     }
   };
 
@@ -63,11 +64,11 @@ export default function NotificationsDropdown({
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
-      console.error("Erro ao marcar todas como lidas:", error);
+      logger.error("Erro ao marcar todas como lidas:", error);
     }
   };
 
-  const handleDelete = async (notificationId: number) => {
+  const handleDelete = async (notificationId: string) => {
     try {
       await notificationService.deleteNotification(notificationId);
       const wasUnread = notifications.find(
@@ -78,7 +79,7 @@ export default function NotificationsDropdown({
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error("Erro ao remover notificação:", error);
+      logger.error("Erro ao remover notificação:", error);
     }
   };
 
@@ -199,7 +200,7 @@ export default function NotificationsDropdown({
                         )}
                         <p className="text-xs text-gray-400 mt-1">
                           {formatDistanceToNow(
-                            new Date(notification.created_at),
+                            new Date(notification.createdAt),
                             {
                               addSuffix: true,
                               locale: ptBR,

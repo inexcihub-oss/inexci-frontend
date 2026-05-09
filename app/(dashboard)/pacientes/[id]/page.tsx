@@ -20,6 +20,7 @@ import {
   STATUS_NUMBER_TO_STRING,
   STATUS_COLORS,
 } from "@/services/surgery-request.service";
+import { logger } from "@/lib/logger";
 import { formatCPF, formatPhone } from "@/lib/formatters";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
@@ -82,7 +83,7 @@ export default function PacienteDetalhePage() {
       ]);
 
       if (!patientData) {
-        console.error("Paciente não encontrado");
+        logger.error("Paciente não encontrado");
         setLoading(false);
         return;
       }
@@ -143,7 +144,7 @@ export default function PacienteDetalhePage() {
         medical_notes: patientData.medical_notes || "",
       });
     } catch (error) {
-      console.error("Erro ao carregar paciente:", error);
+      logger.error("Erro ao carregar paciente:", error);
     } finally {
       setLoading(false);
     }
@@ -183,7 +184,7 @@ export default function PacienteDetalhePage() {
         setTimeout(() => router.push(decodeURIComponent(returnUrl)), 800);
       }
     } catch (error) {
-      console.error("Erro ao salvar:", error);
+      logger.error("Erro ao salvar:", error);
       showToast("Erro ao salvar as alterações.", "error");
     } finally {
       setSaving(false);

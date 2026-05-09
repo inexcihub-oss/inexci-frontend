@@ -1,35 +1,23 @@
 import { z } from "zod";
+import {
+  fullNameSchema,
+  emailSchema,
+  phoneOptionalSchema,
+  strongPasswordSchema,
+  passwordsMatchRefine,
+} from "./shared";
 
 // ─── Etapa 1 — Dados pessoais ─────────────────────────────────────────────────
 
 export const step1Schema = z
   .object({
-    name: z
-      .string()
-      .min(3, "O nome deve ter pelo menos 3 caracteres.")
-      .max(100, "O nome deve ter no máximo 100 caracteres.")
-      .regex(/\S+\s+\S+/, "Informe nome e sobrenome."),
-    email: z
-      .string()
-      .min(1, "O e-mail é obrigatório.")
-      .email("Informe um e-mail válido."),
-    phone: z
-      .string()
-      .optional()
-      .refine(
-        (v) => !v || v.replace(/\D/g, "").length >= 10,
-        "Informe um telefone válido com DDD.",
-      ),
-    password: z
-      .string()
-      .min(8, "A senha deve ter pelo menos 8 caracteres.")
-      .max(128, "A senha deve ter no máximo 128 caracteres."),
+    name: fullNameSchema,
+    email: emailSchema,
+    phone: phoneOptionalSchema,
+    password: strongPasswordSchema,
     confirmPassword: z.string().min(1, "Confirme sua senha."),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "As senhas não coincidem.",
-    path: ["confirmPassword"],
-  });
+  .superRefine(passwordsMatchRefine);
 
 export type Step1Input = z.infer<typeof step1Schema>;
 

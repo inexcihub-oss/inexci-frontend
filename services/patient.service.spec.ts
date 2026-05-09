@@ -58,9 +58,7 @@ describe("patientService", () => {
 
       const result = await patientService.getById("abc-123");
 
-      expect(api.get).toHaveBeenCalledWith("/patients", {
-        params: { skip: 0, take: 1 },
-      });
+      expect(api.get).toHaveBeenCalledWith("/patients");
       expect(result).not.toBeNull();
       expect(result?.id).toBe("abc-123");
     });

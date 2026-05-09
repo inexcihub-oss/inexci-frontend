@@ -7,6 +7,7 @@ import {
   PRIORITY_LABELS,
   PRIORITY,
 } from "@/types/surgery-request.types";
+import { logger } from "@/lib/logger";
 
 // Ícone de chevron para dropdown
 const ChevronDownIcon = ({ className }: { className?: string }) => (
@@ -200,7 +201,7 @@ export function EditablePriority({
       setValue(newValue);
       onUpdate?.();
     } catch (error) {
-      console.error("Erro ao atualizar prioridade:", error);
+      logger.error("Erro ao atualizar prioridade:", error);
     } finally {
       setIsLoading(false);
       setIsEditing(false);

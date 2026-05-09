@@ -28,7 +28,7 @@ import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useDebounce } from "@/hooks";
 import { SearchInput } from "@/components/ui";
 import Image from "next/image";
-import Button from "@/components/ui/Button";
+import { NewSurgeryRequestButton } from "@/components/billing/NewSurgeryRequestButton";
 import PageContainer from "@/components/PageContainer";
 import { getInitials, includesIgnoreCase } from "@/lib/utils";
 
@@ -557,14 +557,14 @@ export default function ProcedimentosCirurgicos() {
           </div>
 
           {/* New Request Button */}
-          <Button
+          <NewSurgeryRequestButton
             onClick={() => setIsNewRequestOpen(true)}
             variant="primary"
             className="flex-1 sm:flex-none h-9 lg:h-11 text-xs lg:text-sm"
           >
             <span className="lg:hidden">+ Solicitação</span>
             <span className="hidden lg:inline">Nova solicitação</span>
-          </Button>
+          </NewSurgeryRequestButton>
         </div>
       </div>
 

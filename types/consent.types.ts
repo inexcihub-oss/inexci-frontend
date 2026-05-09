@@ -1,40 +1,26 @@
 /**
  * Tipos relacionados a consentimentos LGPD.
- * Mantém alinhamento com `inexci-api/src/database/entities/consent-log.entity.ts`
- * e `inexci-api/src/modules/privacy/consent.service.ts`.
+ * Mantém alinhamento com `inexci-api/src/modules/privacy/consent.service.ts`.
+ *
+ * Não há versionamento: cada consentimento é representado por um timestamp
+ * de aceite (ou null se ainda não aceito).
  */
 
 export type ConsentType = "privacy_policy" | "terms_of_use" | "ai";
 
-export type ConsentAction = "granted" | "revoked";
-
-export type ConsentChannel = "web" | "mobile" | "api" | "admin";
-
 export interface ConsentStatus {
-  type: ConsentType;
-  isAccepted: boolean;
-  isRequired: boolean;
-  acceptedVersion: string | null;
-  currentVersion: string;
-  acceptedAt: string | null;
-}
-
-export interface ConsentLogEntry {
-  id: string;
-  user_id: string;
-  consent_type: ConsentType;
-  version: string;
-  action: ConsentAction;
-  ip_address: string | null;
-  user_agent: string | null;
-  channel: ConsentChannel;
-  created_at: string;
+  privacyPolicyAcceptedAt: string | null;
+  termsOfUseAcceptedAt: string | null;
+  aiConsentAcceptedAt: string | null;
+  /** True quando Política e Termos foram aceitos. */
+  requiredConsentsAccepted: boolean;
+  /** Tipos obrigatórios ainda pendentes (subset de privacy_policy/terms_of_use). */
+  pendingRequired: ConsentType[];
 }
 
 export interface LegalDocument {
   slug: string;
   type: ConsentType;
-  version: string;
   content_md: string;
 }
 

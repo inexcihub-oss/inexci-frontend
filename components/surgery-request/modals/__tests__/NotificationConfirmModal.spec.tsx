@@ -26,16 +26,24 @@ describe("NotificationConfirmModal", () => {
     expect(screen.getByText("Enviada")).toBeInTheDocument();
   });
 
-  it("chama onConfirm(false) ao clicar 'Apenas alterar'", () => {
+  it("chama onConfirm(null) ao clicar 'Não quero notificar'", () => {
     render(<NotificationConfirmModal {...defaultProps} />);
-    fireEvent.click(screen.getByText("Apenas alterar"));
-    expect(defaultProps.onConfirm).toHaveBeenCalledWith(false);
+    fireEvent.click(screen.getByText("Não quero notificar"));
+    expect(defaultProps.onConfirm).toHaveBeenCalledWith(null);
   });
 
-  it("chama onConfirm(true) ao clicar 'Sim, notificar'", () => {
-    render(<NotificationConfirmModal {...defaultProps} />);
-    fireEvent.click(screen.getByText("Sim, notificar"));
-    expect(defaultProps.onConfirm).toHaveBeenCalledWith(true);
+  it("chama onConfirm com canais ao clicar 'Notificar paciente'", () => {
+    render(
+      <NotificationConfirmModal
+        {...defaultProps}
+        patientEmail="p@test.com"
+        patientPhone="11999999999"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Notificar paciente" }));
+    expect(defaultProps.onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({ email: true, whatsapp: true }),
+    );
   });
 
   it("mostra canal E-mail disponível quando paciente tem email", () => {
@@ -45,14 +53,14 @@ describe("NotificationConfirmModal", () => {
         patientEmail="paciente@test.com"
       />,
     );
-    expect(screen.getByText(/E-mail ✓/)).toBeInTheDocument();
+    expect(screen.getByText("paciente@test.com")).toBeInTheDocument();
   });
 
   it("mostra canal WhatsApp disponível quando paciente tem telefone", () => {
     render(
       <NotificationConfirmModal {...defaultProps} patientPhone="11999999999" />,
     );
-    expect(screen.getByText(/WhatsApp ✓/)).toBeInTheDocument();
+    expect(screen.getByText("11999999999")).toBeInTheDocument();
   });
 
   it("mostra ambos canais disponíveis", () => {
@@ -63,61 +71,46 @@ describe("NotificationConfirmModal", () => {
         patientPhone="11999999999"
       />,
     );
-    expect(screen.getByText(/E-mail ✓/)).toBeInTheDocument();
-    expect(screen.getByText(/WhatsApp ✓/)).toBeInTheDocument();
+    expect(screen.getByText("paciente@test.com")).toBeInTheDocument();
+    expect(screen.getByText("11999999999")).toBeInTheDocument();
   });
 
-  it("mostra canais indisponíveis quando paciente não tem dados", () => {
-    render(<NotificationConfirmModal {...defaultProps} />);
-    expect(screen.getByText(/E-mail ✗/)).toBeInTheDocument();
-    expect(screen.getByText(/WhatsApp ✗/)).toBeInTheDocument();
-  });
-
-  it("exibe alerta quando paciente não tem nenhum dado de contato", () => {
+  it("mostra aviso quando paciente não tem nenhum dado de contato", () => {
     render(<NotificationConfirmModal {...defaultProps} />);
     expect(
       screen.getByText(/não possui e-mail nem telefone cadastrado/),
     ).toBeInTheDocument();
   });
 
-  it("exibe alerta parcial quando falta apenas e-mail", () => {
+  it("exibe 'Não cadastrado' para canais indisponíveis individualmente", () => {
     render(
       <NotificationConfirmModal {...defaultProps} patientPhone="11999999999" />,
     );
-    expect(
-      screen.getByText(/sem e-mail cadastrado.*apenas por WhatsApp/i),
-    ).toBeInTheDocument();
+    expect(screen.getAllByText("Não cadastrado").length).toBeGreaterThanOrEqual(
+      1,
+    );
   });
 
-  it("exibe alerta parcial quando falta apenas telefone", () => {
+  it("exibe 'Não cadastrado' quando falta apenas telefone", () => {
     render(
       <NotificationConfirmModal
         {...defaultProps}
         patientEmail="paciente@test.com"
       />,
     );
-    expect(
-      screen.getByText(/sem telefone cadastrado.*apenas por e-mail/i),
-    ).toBeInTheDocument();
+    expect(screen.getAllByText("Não cadastrado").length).toBeGreaterThanOrEqual(
+      1,
+    );
   });
 
-  it("não exibe nenhum alerta quando ambos os dados existem", () => {
+  it("mostra 'Enviando...' quando isLoading=true e há canal disponível", () => {
     render(
       <NotificationConfirmModal
         {...defaultProps}
-        patientEmail="paciente@test.com"
-        patientPhone="11999999999"
+        isLoading={true}
+        patientEmail="p@test.com"
       />,
     );
-    expect(screen.queryByText(/não possui e-mail/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/sem e-mail cadastrado/)).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/sem telefone cadastrado/),
-    ).not.toBeInTheDocument();
-  });
-
-  it("mostra 'Enviando...' quando isLoading=true", () => {
-    render(<NotificationConfirmModal {...defaultProps} isLoading={true} />);
     expect(screen.getByText("Enviando...")).toBeInTheDocument();
   });
 });

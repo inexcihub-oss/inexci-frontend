@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { Stethoscope } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface DoctorAccessSectionProps {
   collaboratorId: string;
@@ -285,7 +286,7 @@ export function DoctorAccessSection({
       setSelectedDoctorIds(activeIds);
       setOriginalSelectedIds(activeIds);
     } catch (error) {
-      console.error("Erro ao carregar dados de acesso:", error);
+      logger.error("Erro ao carregar dados de acesso:", error);
       showToast("Erro ao carregar dados de acesso a médicos.", "error");
     } finally {
       setLoading(false);
@@ -314,7 +315,7 @@ export function DoctorAccessSection({
       setOriginalSelectedIds([...selectedDoctorIds]);
       showToast("Acessos atualizados com sucesso!", "success");
     } catch (error) {
-      console.error("Erro ao salvar acessos:", error);
+      logger.error("Erro ao salvar acessos:", error);
       showToast("Erro ao salvar acessos.", "error");
     } finally {
       setSaving(false);

@@ -14,6 +14,7 @@ import {
   SimpleSurgeryRequestPayload,
   SurgeryRequestTemplate,
 } from "@/services/surgery-request.service";
+import { logger } from "@/lib/logger";
 import { Procedure } from "@/services/procedure.service";
 import { Patient } from "@/services/patient.service";
 import { Hospital } from "@/services/hospital.service";
@@ -299,7 +300,7 @@ export function CreateSurgeryRequestWizard({
               });
               opmeCreated++;
             } catch (e) {
-              console.warn("Erro ao adicionar OPME do template:", e);
+              logger.warn("Erro ao adicionar OPME do template:", e);
             }
           }
 
@@ -308,7 +309,7 @@ export function CreateSurgeryRequestWizard({
             try {
               await surgeryRequestService.setHasOpme(String(requestId), true);
             } catch (e) {
-              console.warn("Erro ao marcar has_opme:", e);
+              logger.warn("Erro ao marcar has_opme:", e);
             }
           }
 
@@ -329,7 +330,7 @@ export function CreateSurgeryRequestWizard({
                 })),
               });
             } catch (e) {
-              console.warn("Erro ao adicionar TUSS do template:", e);
+              logger.warn("Erro ao adicionar TUSS do template:", e);
             }
           }
         }

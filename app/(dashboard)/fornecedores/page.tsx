@@ -18,6 +18,7 @@ import {
   getSortedRowModel,
   SortingState,
 } from "@tanstack/react-table";
+import { logger } from "@/lib/logger";
 import {
   Table,
   TableBody,
@@ -59,7 +60,7 @@ export default function FornecedoresPage() {
       const data = await supplierService.getAll();
       setSuppliers(data);
     } catch (error) {
-      console.error("Error loading suppliers:", error);
+      logger.error("Error loading suppliers:", error);
     } finally {
       setLoading(false);
     }
@@ -114,7 +115,7 @@ export default function FornecedoresPage() {
       setSuppliers((prev) => prev.filter((s) => s.id !== deleteModal.id));
       setDeleteModal({ open: false, id: null, name: null, loading: false });
     } catch (error) {
-      console.error("Erro ao excluir:", error);
+      logger.error("Erro ao excluir:", error);
       setDeleteModal((prev) => ({ ...prev, loading: false }));
     }
   };
@@ -133,7 +134,7 @@ export default function FornecedoresPage() {
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
     } catch (error) {
-      console.error("Erro ao excluir em lote:", error);
+      logger.error("Erro ao excluir em lote:", error);
       setBulkDeleteModal((prev) => ({ ...prev, loading: false }));
     }
   };

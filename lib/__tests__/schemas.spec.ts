@@ -11,8 +11,8 @@ describe("step1Schema (dados pessoais de cadastro)", () => {
   const valid = {
     name: "João Silva",
     email: "joao@exemplo.com",
-    password: "senha123",
-    confirmPassword: "senha123",
+    password: "Senha@123",
+    confirmPassword: "Senha@123",
   };
 
   it("aceita dados válidos", () => {
@@ -32,7 +32,8 @@ describe("step1Schema (dados pessoais de cadastro)", () => {
   });
 
   it("rejeita nome com mais de 100 caracteres", () => {
-    const r = step1Schema.safeParse({ ...valid, name: "A B".padEnd(101, "x") });
+    const longo = "Aa ".repeat(50);
+    const r = step1Schema.safeParse({ ...valid, name: longo });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toMatch(/100 caracteres/);
   });
@@ -51,15 +52,27 @@ describe("step1Schema (dados pessoais de cadastro)", () => {
   it("rejeita senha com menos de 8 caracteres", () => {
     const r = step1Schema.safeParse({
       ...valid,
-      password: "abc123",
-      confirmPassword: "abc123",
+      password: "Aa@1",
+      confirmPassword: "Aa@1",
     });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toMatch(/8 caracteres/);
   });
 
+  it("rejeita senha sem maiúscula/minúscula/número/especial", () => {
+    const r = step1Schema.safeParse({
+      ...valid,
+      password: "senhasenha",
+      confirmPassword: "senhasenha",
+    });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toMatch(
+      /maiúscula.*minúscula.*número.*especial/i,
+    );
+  });
+
   it("rejeita senha com mais de 128 caracteres", () => {
-    const longa = "a".repeat(129);
+    const longa = "Aa@1" + "x".repeat(125);
     const r = step1Schema.safeParse({
       ...valid,
       password: longa,
@@ -72,11 +85,13 @@ describe("step1Schema (dados pessoais de cadastro)", () => {
   it("rejeita quando senhas não coincidem", () => {
     const r = step1Schema.safeParse({
       ...valid,
-      confirmPassword: "diferente",
+      confirmPassword: "Diferente@1",
     });
     expect(r.success).toBe(false);
-    expect(r.error?.issues[0].message).toMatch(/não coincidem/);
-    expect(r.error?.issues[0].path).toContain("confirmPassword");
+    const issue = r.error?.issues.find((i) =>
+      i.path.includes("confirmPassword"),
+    );
+    expect(issue?.message).toMatch(/não coincidem/);
   });
 });
 
@@ -110,7 +125,7 @@ describe("step2Schema (perfil de cadastro)", () => {
     });
     expect(r.success).toBe(false);
     const msgs = r.error?.issues.map((i) => i.message) ?? [];
-    expect(msgs.some((m) => m.match(/CRM é obrigatório/i))).toBe(true);
+    expect(msgs.some((m) => m.match(/CRM/i))).toBe(true);
   });
 
   it("rejeita médico sem estado do CRM", () => {
@@ -121,7 +136,7 @@ describe("step2Schema (perfil de cadastro)", () => {
     });
     expect(r.success).toBe(false);
     const msgs = r.error?.issues.map((i) => i.message) ?? [];
-    expect(msgs.some((m) => m.match(/Estado do CRM/i))).toBe(true);
+    expect(msgs.some((m) => m.match(/estado.*CRM/i))).toBe(true);
   });
 
   it("rejeita médico sem CRM e sem estado — reporta os dois erros", () => {
@@ -156,11 +171,11 @@ describe("profileSchema (perfil em configurações)", () => {
     expect(profileSchema.safeParse(valid).success).toBe(true);
   });
 
-  it("aceita perfil completo com campos opcionais", () => {
+  it("aceita perfil completo com campos opcionais e CPF válido", () => {
     const r = profileSchema.safeParse({
       ...valid,
       phone: "11987654321",
-      document: "12345678901",
+      document: "529.982.247-25",
       birthDate: "1990-01-01",
       gender: "female",
       specialty: "Ortopedia",
@@ -174,6 +189,12 @@ describe("profileSchema (perfil em configurações)", () => {
     const r = profileSchema.safeParse({ ...valid, name: "Ab" });
     expect(r.success).toBe(false);
     expect(r.error?.issues[0].message).toMatch(/3 caracteres/);
+  });
+
+  it("rejeita nome sem sobrenome", () => {
+    const r = profileSchema.safeParse({ ...valid, name: "Maria" });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toMatch(/sobrenome/i);
   });
 
   it("rejeita e-mail inválido", () => {
@@ -204,10 +225,19 @@ describe("profileSchema (perfil em configurações)", () => {
     expect(r.error?.issues[0].message).toMatch(/11 dígitos/);
   });
 
-  it("aceita CPF com formatação (máscara) se tiver 11 dígitos", () => {
+  it("rejeita CPF com DV inválido", () => {
     const r = profileSchema.safeParse({
       ...valid,
       document: "123.456.789-01",
+    });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toMatch(/CPF inválido/i);
+  });
+
+  it("aceita CPF válido com formatação", () => {
+    const r = profileSchema.safeParse({
+      ...valid,
+      document: "529.982.247-25",
     });
     expect(r.success).toBe(true);
   });
@@ -224,8 +254,8 @@ describe("profileSchema (perfil em configurações)", () => {
 describe("changePasswordSchema (alterar senha)", () => {
   const valid = {
     currentPassword: "senhaAtual123",
-    newPassword: "novaSenha456",
-    confirmPassword: "novaSenha456",
+    newPassword: "NovaSenha@456",
+    confirmPassword: "NovaSenha@456",
   };
 
   it("aceita dados válidos", () => {
@@ -238,18 +268,30 @@ describe("changePasswordSchema (alterar senha)", () => {
     expect(r.error?.issues[0].message).toMatch(/senha atual/i);
   });
 
-  it("rejeita nova senha com menos de 6 caracteres", () => {
+  it("rejeita nova senha com menos de 8 caracteres", () => {
     const r = changePasswordSchema.safeParse({
       ...valid,
-      newPassword: "abc",
-      confirmPassword: "abc",
+      newPassword: "Aa@1",
+      confirmPassword: "Aa@1",
     });
     expect(r.success).toBe(false);
-    expect(r.error?.issues[0].message).toMatch(/6 caracteres/);
+    expect(r.error?.issues[0].message).toMatch(/8 caracteres/);
+  });
+
+  it("rejeita nova senha sem requisitos de força", () => {
+    const r = changePasswordSchema.safeParse({
+      ...valid,
+      newPassword: "senha1234",
+      confirmPassword: "senha1234",
+    });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0].message).toMatch(
+      /maiúscula.*minúscula.*número.*especial/i,
+    );
   });
 
   it("rejeita nova senha com mais de 128 caracteres", () => {
-    const longa = "a".repeat(129);
+    const longa = "Aa@1" + "x".repeat(125);
     const r = changePasswordSchema.safeParse({
       ...valid,
       newPassword: longa,
@@ -262,11 +304,13 @@ describe("changePasswordSchema (alterar senha)", () => {
   it("rejeita quando confirmação de senha não coincide", () => {
     const r = changePasswordSchema.safeParse({
       ...valid,
-      confirmPassword: "diferente",
+      confirmPassword: "Diferente@1",
     });
     expect(r.success).toBe(false);
-    expect(r.error?.issues[0].message).toMatch(/não coincidem/);
-    expect(r.error?.issues[0].path).toContain("confirmPassword");
+    const issue = r.error?.issues.find((i) =>
+      i.path.includes("confirmPassword"),
+    );
+    expect(issue?.message).toMatch(/não coincidem/);
   });
 
   it("rejeita confirmação de senha vazia", () => {

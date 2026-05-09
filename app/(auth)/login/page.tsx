@@ -6,15 +6,20 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button, Input } from "@/components/ui";
+import { useZodForm } from "@/hooks/useZodForm";
+import { loginSchema } from "@/lib/schemas/auth.schema";
 
 function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const searchParams = useSearchParams();
+
+  const form = useZodForm({
+    schema: loginSchema,
+    initialValues: { email: "", password: "" },
+  });
 
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
@@ -24,14 +29,12 @@ function LoginForm() {
     }
   }, [searchParams]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = form.handleSubmit(async (data) => {
     setError("");
     setSuccess("");
     setIsLoading(true);
-
     try {
-      await login(email, password);
+      await login(data.email, data.password);
     } catch (err: unknown) {
       const errorMessage =
         typeof err === "object" &&
@@ -49,7 +52,7 @@ function LoginForm() {
     } finally {
       setIsLoading(false);
     }
-  };
+  });
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -78,33 +81,27 @@ function LoginForm() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <form onSubmit={onSubmit} noValidate className="mt-8 space-y-6">
             <div className="space-y-4">
-              {/* Email */}
               <Input
                 id="email"
-                name="email"
                 label="E-mail"
                 type="email"
                 autoComplete="email"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                {...form.getFieldProps("email")}
                 disabled={isLoading}
                 placeholder="seu@email.com"
                 className="min-h-[48px]"
               />
 
-              {/* Password */}
               <Input
                 id="password"
-                name="password"
                 label="Senha"
                 type="password"
                 autoComplete="current-password"
                 required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                {...form.getFieldProps("password")}
                 disabled={isLoading}
                 placeholder="••••••••"
                 className="min-h-[48px]"

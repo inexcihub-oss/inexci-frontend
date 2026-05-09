@@ -229,6 +229,10 @@ export function SendRequestModal({
     const recipients = emailTags.join(";");
     if (!recipients.trim() || !emailSubject.trim()) {
       setEmailFormTouched(true);
+      const missing: string[] = [];
+      if (!recipients.trim()) missing.push("Destinatários");
+      if (!emailSubject.trim()) missing.push("Assunto");
+      showToast(`Preencha: ${missing.join(", ")}`, "error");
       return;
     }
     setIsSending(true);

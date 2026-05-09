@@ -53,7 +53,6 @@ export function EditDateOptionsModal({
   }, [isOpen, initialDates]);
 
   const validDates = dateOptions.filter((d) => d.trim() !== "");
-  const canSubmit = validDates.length >= 1;
 
   const handleClose = () => {
     if (isSaving) return;
@@ -61,7 +60,10 @@ export function EditDateOptionsModal({
   };
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (validDates.length < 1) {
+      showToast("Informe ao menos uma opção de data.", "error");
+      return;
+    }
     setIsSaving(true);
     try {
       await surgeryRequestService.updateDateOptions(solicitacao.id, {
@@ -157,7 +159,7 @@ export function EditDateOptionsModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit || isSaving}
+            disabled={isSaving}
             className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? "Salvando..." : "Salvar Datas"}

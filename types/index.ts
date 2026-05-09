@@ -27,7 +27,6 @@ export interface User {
   is_doctor: boolean;
   email_verified?: boolean;
   doctor_profile?: DoctorProfile;
-  subscription_plan_id?: string;
   admin_id?: string;
   createdAt: string;
   updatedAt: string;
@@ -80,14 +79,128 @@ export interface RegisterData {
   crm?: string;
   crm_state?: string;
   specialty?: string;
-  subscription_plan_id?: string;
+  /**
+   * Slug do plano selecionado no cadastro (`starter`, `essencial`,
+   * `profissional`, `enterprise`, ou `free-trial`). Quando omitido, o
+   * backend usa o plano default. Em ambos os casos, a conta começa com
+   * 30 dias de trial sem cartão.
+   */
+  planSlug?: string;
 }
+
+// ─── Billing ──────────────────────────────────────────────────────────────────
+
+export type BillingPeriod = "MONTHLY" | "YEARLY";
 
 export interface SubscriptionPlan {
   id: string;
+  slug: string;
   name: string;
-  description: string;
-  max_doctors: number;
+  description: string | null;
+  priceCents: number;
+  currency: string;
+  billingPeriod: BillingPeriod;
+  surgeryRequestQuota: number; // -1 = ilimitado
+  sortOrder: number;
+}
+
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "suspended"
+  | "canceled";
+
+export interface Subscription {
+  id: string;
+  status: SubscriptionStatus;
+  planId: string;
+  nextPlanId: string | null;
+  trialEndsAt: string | null;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: string | null;
+  suspendedAt: string | null;
+  pastDueSince: string | null;
+  defaultPaymentMethodId: string | null;
+  gatewayProvider: string;
+}
+
+export interface QuotaSnapshot {
+  used: number;
+  limit: number;
+  isUnlimited: boolean;
+  remaining: number;
+  periodStart: string;
+  periodEnd: string;
+}
+
+export interface SubscriptionDetail {
+  subscription: Subscription;
+  plan: SubscriptionPlan | null;
+  nextPlan: Pick<
+    SubscriptionPlan,
+    "id" | "slug" | "name" | "priceCents"
+  > | null;
+  quota: QuotaSnapshot | null;
+  daysLeftInTrial: number | null;
+  daysUntilSuspension: number | null;
+}
+
+export interface PaymentMethod {
+  id: string;
+  brand: string;
+  last4: string;
+  holderName: string;
+  expMonth: number;
+  expYear: number;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export type InvoiceStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "overdue"
+  | "refunded"
+  | "canceled";
+
+export interface Invoice {
+  id: string;
+  amountCents: number;
+  currency: string;
+  status: InvoiceStatus;
+  invoiceUrl: string | null;
+  dueDate: string;
+  paidAt: string | null;
+  failedAt: string | null;
+  attemptCount: number;
+  periodStart: string;
+  periodEnd: string;
+  planSnapshot: {
+    slug: string;
+    name: string;
+    priceCents: number;
+    surgeryRequestQuota: number;
+  } | null;
+  createdAt: string;
+}
+
+export interface SavePaymentMethodPayload {
+  number: string;
+  holderName: string;
+  expiryMonth: string;
+  expiryYear: string;
+  ccv: string;
+  holderInfoName: string;
+  holderInfoEmail: string;
+  holderInfoCpfCnpj: string;
+  holderInfoPostalCode: string;
+  holderInfoAddressNumber: string;
+  holderInfoAddressComplement?: string;
+  holderInfoPhone?: string;
 }
 
 export interface AuthResponse {

@@ -8,9 +8,11 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { User } from "@/types";
+import { logger } from "@/lib/logger";
+import { User, SubscriptionDetail } from "@/types";
 import { authService } from "@/services/auth.service";
 import { consentService } from "@/services/consent.service";
+import { billingService } from "@/services/billing.service";
 import type { ConsentStatus, ConsentType } from "@/types/consent.types";
 import { useRouter } from "next/navigation";
 
@@ -20,9 +22,20 @@ interface AuthContextData {
   isDoctor: boolean;
   isAdmin: boolean;
   accountId: string | null;
-  consents: ConsentStatus[];
+  consents: ConsentStatus | null;
   pendingConsents: ConsentType[];
   consentsLoading: boolean;
+  // Billing
+  subscription: SubscriptionDetail | null;
+  subscriptionLoading: boolean;
+  refreshSubscription: () => Promise<void>;
+  /** True quando a assinatura permite criar/enviar novas solicita\u00e7\u00f5es. */
+  canCreateSurgeryRequest: boolean;
+  isInTrial: boolean;
+  isSuspended: boolean;
+  /** Motivo do bloqueio (para tooltip). null se n\u00e3o estiver bloqueado. */
+  blockReason: string | null;
+  // Auth
   login: (email: string, password: string) => Promise<void>;
   register: (userData: import("@/types").RegisterData) => Promise<void>;
   logout: () => void;
@@ -35,24 +48,47 @@ const AuthContext = createContext<AuthContextData | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [consents, setConsents] = useState<ConsentStatus[]>([]);
+  const [consents, setConsents] = useState<ConsentStatus | null>(null);
   const [consentsLoading, setConsentsLoading] = useState(false);
+  const [subscription, setSubscription] = useState<SubscriptionDetail | null>(
+    null,
+  );
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const router = useRouter();
 
   const refreshConsents = useCallback(async () => {
     if (typeof window === "undefined") return;
     if (!localStorage.getItem("token")) {
-      setConsents([]);
+      setConsents(null);
       return;
     }
     setConsentsLoading(true);
     try {
-      const list = await consentService.getStatus();
-      setConsents(list);
+      const status = await consentService.getStatus();
+      setConsents(status);
     } catch (error) {
-      console.error("Erro ao carregar consentimentos:", error);
+      logger.error("Erro ao carregar consentimentos:", error);
     } finally {
       setConsentsLoading(false);
+    }
+  }, []);
+
+  const refreshSubscription = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    if (!localStorage.getItem("token")) {
+      setSubscription(null);
+      return;
+    }
+    setSubscriptionLoading(true);
+    try {
+      const detail = await billingService.getMySubscription();
+      setSubscription(detail);
+    } catch (error) {
+      // Colaboradores podem n\u00e3o ter acesso a essa rota \u2014 silencioso.
+      logger.warn("N\u00e3o foi poss\u00edvel carregar assinatura:", error);
+      setSubscription(null);
+    } finally {
+      setSubscriptionLoading(false);
     }
   }, []);
 
@@ -69,11 +105,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (storedUser) {
         await refreshConsents();
+        if (storedUser.role === "admin") {
+          await refreshSubscription();
+        }
       }
     };
 
     loadUser();
-  }, [refreshConsents]);
+  }, [refreshConsents, refreshSubscription]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -81,12 +120,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const response = await authService.login({ email, password });
         setUser(response.user);
         await refreshConsents();
+        if (response.user?.role === "admin") {
+          await refreshSubscription();
+        }
         router.push("/solicitacoes-cirurgicas");
       } catch (error) {
         throw error;
       }
     },
-    [router, refreshConsents],
+    [router, refreshConsents, refreshSubscription],
   );
 
   const register = useCallback(
@@ -104,7 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);
-    setConsents([]);
+    setConsents(null);
+    setSubscription(null);
     router.push("/login");
   }, [router]);
 
@@ -113,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const updatedUser = await authService.me();
       setUser(updatedUser);
     } catch (error) {
-      console.error("Erro ao atualizar usuário:", error);
+      logger.error("Erro ao atualizar usu\u00e1rio:", error);
     }
   }, []);
 
@@ -121,10 +164,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = useMemo(() => user?.role === "admin", [user]);
   const accountId = useMemo(() => user?.account_id ?? null, [user]);
   const pendingConsents = useMemo<ConsentType[]>(
-    () =>
-      consents.filter((c) => c.isRequired && !c.isAccepted).map((c) => c.type),
+    () => consents?.pendingRequired ?? [],
     [consents],
   );
+
+  const isInTrial = useMemo(
+    () => subscription?.subscription.status === "trialing",
+    [subscription],
+  );
+  const isSuspended = useMemo(
+    () =>
+      subscription?.subscription.status === "suspended" ||
+      subscription?.subscription.status === "canceled",
+    [subscription],
+  );
+
+  /**
+   * Regras consolidadas de bloqueio:
+   * 1. Sem assinatura carregada (colaborador): n\u00e3o bloqueia (servidor decide)
+   * 2. Suspensa/cancelada: bloqueia
+   * 3. Cota saturada: bloqueia
+   */
+  const { canCreateSurgeryRequest, blockReason } = useMemo<{
+    canCreateSurgeryRequest: boolean;
+    blockReason: string | null;
+  }>(() => {
+    if (!subscription) {
+      return { canCreateSurgeryRequest: true, blockReason: null };
+    }
+    const { status } = subscription.subscription;
+    if (status === "suspended") {
+      return {
+        canCreateSurgeryRequest: false,
+        blockReason:
+          "Sua assinatura est\u00e1 suspensa. Cadastre um m\u00e9todo de pagamento ou regularize sua fatura para continuar.",
+      };
+    }
+    if (status === "canceled") {
+      return {
+        canCreateSurgeryRequest: false,
+        blockReason:
+          "Sua assinatura foi cancelada. Contrate um plano para continuar.",
+      };
+    }
+    const quota = subscription.quota;
+    if (quota && !quota.isUnlimited && quota.remaining <= 0) {
+      return {
+        canCreateSurgeryRequest: false,
+        blockReason: `Voc\u00ea atingiu o limite de ${quota.limit} solicita\u00e7\u00f5es deste ciclo. Fa\u00e7a upgrade para continuar.`,
+      };
+    }
+    return { canCreateSurgeryRequest: true, blockReason: null };
+  }, [subscription]);
 
   const value = useMemo(
     () => ({
@@ -136,6 +227,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       consents,
       pendingConsents,
       consentsLoading,
+      subscription,
+      subscriptionLoading,
+      refreshSubscription,
+      canCreateSurgeryRequest,
+      isInTrial,
+      isSuspended,
+      blockReason,
       login,
       register,
       logout,
@@ -151,6 +249,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       consents,
       pendingConsents,
       consentsLoading,
+      subscription,
+      subscriptionLoading,
+      refreshSubscription,
+      canCreateSurgeryRequest,
+      isInTrial,
+      isSuspended,
+      blockReason,
       login,
       register,
       logout,

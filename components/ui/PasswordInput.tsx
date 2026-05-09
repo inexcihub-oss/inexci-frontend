@@ -2,6 +2,8 @@
 
 import { InputHTMLAttributes, forwardRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { passwordStrength } from "@/lib/validators";
+import { PasswordRequirements } from "./PasswordRequirements";
 
 // ─── Ícones inline (evita dependência de lib de ícones) ──────────────────────
 
@@ -49,14 +51,14 @@ function EyeOffIcon({ className }: { className?: string }) {
 
 // ─── Cálculo de força de senha ───────────────────────────────────────────────
 
+/**
+ * Mantém compatibilidade com chamadores antigos. Internamente usa
+ * `passwordStrength` (0-5) e mapeia para a escala antiga (0-4).
+ */
 export function getPasswordStrength(password: string): number {
-  if (!password) return 0;
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-  return score;
+  const score = passwordStrength(password);
+  // Mapeia 0-5 para 0-4 (5 requisitos atendidos => "Forte")
+  return Math.min(4, score === 5 ? 4 : Math.max(0, score - 1));
 }
 
 const STRENGTH_LABELS = ["", "Fraca", "Razoável", "Boa", "Forte"];
@@ -78,12 +80,24 @@ export interface PasswordInputProps extends Omit<
   error?: string;
   /** Exibe barra de força da senha quando true */
   showStrength?: boolean;
+  /** Exibe checklist visual dos requisitos (8 chars, maiúscula, etc.) */
+  showRequirements?: boolean;
 }
 
 // ─── Componente ──────────────────────────────────────────────────────────────
 
 const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
-  ({ className, label, error, showStrength = false, ...props }, ref) => {
+  (
+    {
+      className,
+      label,
+      error,
+      showStrength = false,
+      showRequirements = false,
+      ...props
+    },
+    ref,
+  ) => {
     const [visible, setVisible] = useState(false);
 
     const value = typeof props.value === "string" ? props.value : "";
@@ -107,6 +121,7 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
               className,
             )}
             ref={ref}
+            aria-invalid={error ? "true" : undefined}
             {...props}
           />
           <button
@@ -147,8 +162,13 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           </div>
         )}
 
+        {/* Checklist de requisitos */}
+        {showRequirements && <PasswordRequirements password={value} />}
+
         {error && (
-          <p className="mt-1 text-xs md:text-sm text-red-600">{error}</p>
+          <p className="mt-1 text-xs md:text-sm text-red-600" role="alert">
+            {error}
+          </p>
         )}
       </div>
     );

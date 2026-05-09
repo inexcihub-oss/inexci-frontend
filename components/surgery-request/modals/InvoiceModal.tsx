@@ -62,6 +62,7 @@ export function InvoiceModal({
   const [paymentDeadline, setPaymentDeadline] = useState("");
   const [setAsDefault, setSetAsDefault] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const { showToast } = useToast();
 
   // Pré-preenche o prazo de recebimento com o padrão do convênio ao abrir o modal
@@ -74,9 +75,6 @@ export function InvoiceModal({
     }
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const canSubmit =
-    protocol.trim() !== "" && sentAt !== "" && value.trim() !== "";
-
   const healthPlanName = solicitacao?.health_plan?.name || "Convênio";
   const patientName = solicitacao?.patient?.name || "—";
   const procedureName = solicitacao?.procedure?.name || "—";
@@ -88,6 +86,7 @@ export function InvoiceModal({
     setValue("");
     setPaymentDeadline("");
     setSetAsDefault(false);
+    setAttempted(false);
     onClose();
   };
 
@@ -95,9 +94,18 @@ export function InvoiceModal({
     useSwipeToClose(handleClose);
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    const missing: string[] = [];
+    if (!protocol.trim()) missing.push("Nº do protocolo");
+    if (!sentAt) missing.push("Data de envio");
+    if (!value.trim()) missing.push("Valor faturado");
+    if (missing.length > 0) {
+      setAttempted(true);
+      showToast(`Preencha: ${missing.join(", ")}`, "error");
+      return;
+    }
     const numericValue = parseBRLValue(value);
     if (isNaN(numericValue) || numericValue <= 0) {
+      setAttempted(true);
       showToast("Informe um valor válido.", "error");
       return;
     }
@@ -238,7 +246,7 @@ export function InvoiceModal({
                   onChange={(e) => setProtocol(e.target.value)}
                   placeholder="Ex: 2024000123"
                   disabled={isSaving}
-                  className="ds-input text-xs md:text-sm disabled:opacity-50"
+                  className={`ds-input text-xs md:text-sm disabled:opacity-50 ${attempted && !protocol.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -267,7 +275,7 @@ export function InvoiceModal({
                   onChange={(e) => setValue(applyBRLMask(e.target.value))}
                   placeholder="R$ 0,00"
                   disabled={isSaving}
-                  className="ds-input text-xs md:text-sm disabled:opacity-50"
+                  className={`ds-input text-xs md:text-sm disabled:opacity-50 ${attempted && !value.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -329,7 +337,7 @@ export function InvoiceModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit || isSaving}
+            disabled={isSaving}
             className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}

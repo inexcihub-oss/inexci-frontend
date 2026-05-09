@@ -240,18 +240,16 @@ export function SurgeryStatusModal({
     );
   };
 
-  // ── Validações ────────────────────────────────────────────────────────────
-
-  const canSendRealizada = sections
-    .filter((s) => s.required)
-    .every((s) => s.files.length > 0);
-
-  const canSendReagendada = newDate.trim() !== "";
-
   // ── Submit: Realizada ──────────────────────────────────────────────────────
 
   const submitRealizada = async () => {
-    if (!canSendRealizada) return;
+    const missing = sections
+      .filter((s) => s.required && s.files.length === 0)
+      .map((s) => s.label);
+    if (missing.length > 0) {
+      showToast(`Anexe: ${missing.join(", ")}`, "error");
+      return;
+    }
     setIsSaving(true);
     try {
       const allFiles = sections.flatMap((s) =>
@@ -320,7 +318,10 @@ export function SurgeryStatusModal({
   // ── Submit: Reagendada ─────────────────────────────────────────────────────
 
   const submitReagendada = async () => {
-    if (!newDate) return;
+    if (!newDate) {
+      showToast("Selecione a nova data da cirurgia.", "error");
+      return;
+    }
     setIsSaving(true);
     try {
       const iso = new Date(`${newDate}T${newTime || "00:00"}:00`).toISOString();
@@ -449,8 +450,13 @@ export function SurgeryStatusModal({
                 Cancelar
               </button>
               <button
-                onClick={() => setStep(2)}
-                disabled={!outcome}
+                onClick={() => {
+                  if (!outcome) {
+                    showToast("Selecione o status da cirurgia.", "error");
+                    return;
+                  }
+                  setStep(2);
+                }}
                 className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Próximo
@@ -573,7 +579,7 @@ export function SurgeryStatusModal({
               </button>
               <button
                 onClick={submitRealizada}
-                disabled={!canSendRealizada || isSaving}
+                disabled={isSaving}
                 className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isSaving ? "Enviando..." : "Enviar"}
@@ -681,7 +687,7 @@ export function SurgeryStatusModal({
               </button>
               <button
                 onClick={submitReagendada}
-                disabled={!canSendReagendada || isSaving}
+                disabled={isSaving}
                 className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isSaving ? "Reagendando..." : "Confirmar"}

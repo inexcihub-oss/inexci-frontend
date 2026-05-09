@@ -8,6 +8,7 @@ import {
   DOCUMENT_FOLDERS,
   DocumentFolder,
 } from "@/services/document.service";
+import { logger } from "@/lib/logger";
 
 // ─── Tipos de documento por contexto ─────────────────────────────────────────
 
@@ -197,7 +198,7 @@ function DocumentUploadModalContent({
       onSuccess();
       onClose();
     } catch (err) {
-      console.error("Erro ao fazer upload do documento:", err);
+      logger.error("Erro ao fazer upload do documento:", err);
       setError("Erro ao enviar documento. Tente novamente.");
     } finally {
       setIsUploading(false);

@@ -14,6 +14,7 @@ import {
   collaboratorService,
   Collaborator,
 } from "@/services/collaborator.service";
+import { logger } from "@/lib/logger";
 import { userService } from "@/services/user.service";
 import { uploadService } from "@/services/upload.service";
 import { patientService, Patient } from "@/services/patient.service";
@@ -94,7 +95,7 @@ export default function AssistenteDetalhePage() {
       const collab = await collaboratorService.getById(params.id);
 
       if (!collab) {
-        console.error("Colaborador não encontrado");
+        logger.error("Colaborador não encontrado");
         setLoading(false);
         return;
       }
@@ -136,7 +137,7 @@ export default function AssistenteDetalhePage() {
         }
       }
     } catch (error) {
-      console.error("Erro ao carregar colaborador:", error);
+      logger.error("Erro ao carregar colaborador:", error);
     } finally {
       setLoading(false);
     }
@@ -154,7 +155,7 @@ export default function AssistenteDetalhePage() {
         .slice(0, 5);
       setRecentPatients(sorted);
     } catch (error) {
-      console.error("Erro ao carregar pacientes:", error);
+      logger.error("Erro ao carregar pacientes:", error);
     } finally {
       setLoadingPatients(false);
     }
@@ -170,7 +171,7 @@ export default function AssistenteDetalhePage() {
         setRecentRequests(doctorRequests);
       }
     } catch (error) {
-      console.error("Erro ao carregar solicitações:", error);
+      logger.error("Erro ao carregar solicitações:", error);
     } finally {
       setLoadingRequests(false);
     }
@@ -212,7 +213,7 @@ export default function AssistenteDetalhePage() {
       setOriginalData(formData);
       showToast("Colaborador atualizado com sucesso!", "success");
     } catch (error) {
-      console.error("Erro ao salvar:", error);
+      logger.error("Erro ao salvar:", error);
       showToast("Erro ao salvar as alterações.", "error");
     } finally {
       setSaving(false);
@@ -242,7 +243,7 @@ export default function AssistenteDetalhePage() {
       setSignatureDeleted(false);
       showToast("Assinatura salva com sucesso!", "success");
     } catch (error) {
-      console.error("Erro ao salvar assinatura:", error);
+      logger.error("Erro ao salvar assinatura:", error);
       showToast("Erro ao salvar a assinatura.", "error");
     } finally {
       setSaving(false);

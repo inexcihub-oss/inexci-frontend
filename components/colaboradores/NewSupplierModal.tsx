@@ -6,6 +6,13 @@ import {
   supplierService,
   CreateSupplierPayload,
 } from "@/services/supplier.service";
+import Input from "@/components/ui/Input";
+import { useZodForm } from "@/hooks/useZodForm";
+import { createSupplierSchema } from "@/lib/schemas/supplier.schema";
+import { unmask } from "@/lib/masks";
+import { summarizeErrors } from "@/lib/form-errors";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 
 interface NewSupplierModalProps {
   isOpen: boolean;
@@ -13,39 +20,15 @@ interface NewSupplierModalProps {
   onSuccess: () => void;
 }
 
-const EMPTY_FORM = {
-  name: "",
-  cnpj: "",
-  phone: "",
-  email: "",
-  contact_name: "",
-  contact_phone: "",
-  contact_email: "",
+const FIELD_LABELS: Record<string, string> = {
+  name: "Nome",
+  cnpj: "CNPJ",
+  phone: "Telefone",
+  email: "E-mail",
+  contact_name: "Nome do contato",
+  contact_phone: "Telefone do contato",
+  contact_email: "E-mail do contato",
 };
-
-function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10)
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
-
-function applyCnpjMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-  if (digits.length <= 8)
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
-  if (digits.length <= 12)
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
-}
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
 
 export function NewSupplierModal({
   isOpen,
@@ -53,109 +36,65 @@ export function NewSupplierModal({
   onSuccess,
 }: NewSupplierModalProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState(EMPTY_FORM);
-  const [emailError, setEmailError] = useState("");
-  const [contactEmailError, setContactEmailError] = useState("");
   const [error, setError] = useState("");
+  const { toast, showToast, hideToast } = useToast();
+
+  const form = useZodForm({
+    schema: createSupplierSchema,
+    initialValues: {
+      name: "",
+      cnpj: "",
+      phone: "",
+      email: "",
+      contact_name: "",
+      contact_phone: "",
+      contact_email: "",
+    },
+  });
 
   const handleClose = () => {
     if (loading) return;
-    setFormData(EMPTY_FORM);
-    setEmailError("");
-    setContactEmailError("");
+    form.reset();
     setError("");
     onClose();
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, phone: applyPhoneMask(e.target.value) });
-  };
-
-  const handleContactPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, contact_phone: applyPhoneMask(e.target.value) });
-  };
-
-  const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, cnpj: applyCnpjMask(e.target.value) });
-  };
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, email: e.target.value });
-    if (emailError) setEmailError("");
-  };
-
-  const handleEmailBlur = () => {
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-    } else {
-      setEmailError("");
-    }
-  };
-
-  const handleContactEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, contact_email: e.target.value });
-    if (contactEmailError) setContactEmailError("");
-  };
-
-  const handleContactEmailBlur = () => {
-    if (formData.contact_email && !isValidEmail(formData.contact_email)) {
-      setContactEmailError("E-mail inválido");
-    } else {
-      setContactEmailError("");
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-      return;
-    }
-    if (formData.contact_email && !isValidEmail(formData.contact_email)) {
-      setContactEmailError("E-mail inválido");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const payload: CreateSupplierPayload = {
-        name: formData.name.trim(),
-        cnpj: formData.cnpj ? formData.cnpj.replace(/\D/g, "") : undefined,
-        phone: formData.phone || undefined,
-        email: formData.email || undefined,
-        contact_name: formData.contact_name || undefined,
-        contact_phone: formData.contact_phone || undefined,
-        contact_email: formData.contact_email || undefined,
-      };
-
-      await supplierService.create(payload);
-      onSuccess();
-      setFormData(EMPTY_FORM);
-      setEmailError("");
-      setContactEmailError("");
+  const onSubmit = form.handleSubmit(
+    async (data) => {
+      setLoading(true);
       setError("");
-      onClose();
-    } catch (err) {
-      const apiError = err as {
-        response?: { data?: { message?: string | string[] } };
-      };
-      const msg = apiError?.response?.data?.message;
-      setError(
-        Array.isArray(msg)
-          ? msg.join(", ")
-          : msg || "Erro ao criar fornecedor. Tente novamente.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        const payload: CreateSupplierPayload = {
+          name: data.name.trim(),
+          cnpj: data.cnpj ? unmask(data.cnpj) : undefined,
+          phone: unmask(data.phone) || undefined,
+          email: data.email || undefined,
+          contact_name: data.contact_name || undefined,
+          contact_phone: unmask(data.contact_phone) || undefined,
+          contact_email: data.contact_email || undefined,
+        };
+        await supplierService.create(payload);
+        onSuccess();
+        form.reset();
+        onClose();
+      } catch (err) {
+        const apiError = err as {
+          response?: { data?: { message?: string | string[] } };
+        };
+        const msg = apiError?.response?.data?.message;
+        setError(
+          Array.isArray(msg)
+            ? msg.join(", ")
+            : msg || "Erro ao criar fornecedor. Tente novamente.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
+  );
 
   if (!isOpen) return null;
-
-  const inputClass = "ds-input";
-  const labelClass = "ds-label mb-0";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
@@ -179,117 +118,74 @@ export function NewSupplierModal({
 
         {/* Body */}
         <form
-          onSubmit={handleSubmit}
+          onSubmit={onSubmit}
+          noValidate
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
-            {/* Row 1: Nome + CNPJ */}
+            {/* Row 1 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>Nome
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="Nome do fornecedor"
-                  className={inputClass}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>CNPJ</label>
-                <input
-                  type="text"
-                  value={formData.cnpj}
-                  onChange={handleCnpjChange}
-                  placeholder="12.345.678/0001-90"
-                  className={inputClass}
-                />
-              </div>
+              <Input
+                label="Nome"
+                required
+                placeholder="Nome do fornecedor"
+                {...form.getFieldProps("name")}
+              />
+              <Input
+                label="CNPJ"
+                mask="cnpj"
+                placeholder="12.345.678/0001-90"
+                {...form.getFieldProps("cnpj")}
+              />
             </div>
 
-            {/* Row 2: Telefone + E-mail */}
+            {/* Row 2 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Telefone</label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handlePhoneChange}
-                  placeholder="(21) 98765-4321"
-                  className={inputClass}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>E-mail</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={handleEmailChange}
-                  onBlur={handleEmailBlur}
-                  placeholder="fornecedor@mail.com"
-                  className={`${inputClass} ${emailError ? "border-red-400 focus:ring-red-400" : ""}`}
-                />
-                {emailError && (
-                  <span className="text-xs text-red-500">{emailError}</span>
-                )}
-              </div>
+              <Input
+                label="Telefone"
+                type="tel"
+                mask="phone"
+                placeholder="(21) 98765-4321"
+                {...form.getFieldProps("phone")}
+              />
+              <Input
+                label="E-mail"
+                type="email"
+                placeholder="fornecedor@mail.com"
+                {...form.getFieldProps("email")}
+              />
             </div>
 
-            {/* Separador - Contato comercial */}
+            {/* Separator */}
             <div className="pt-1">
               <p className="text-sm font-bold text-gray-700">
                 Contato comercial
               </p>
             </div>
 
-            {/* Row 3: Nome do contato + Telefone do contato */}
+            {/* Row 3 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Nome do contato</label>
-                <input
-                  type="text"
-                  value={formData.contact_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, contact_name: e.target.value })
-                  }
-                  placeholder="Nome do contato"
-                  className={inputClass}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Telefone do contato</label>
-                <input
-                  type="tel"
-                  value={formData.contact_phone}
-                  onChange={handleContactPhoneChange}
-                  placeholder="(21) 98765-4321"
-                  className={inputClass}
-                />
-              </div>
+              <Input
+                label="Nome do contato"
+                placeholder="Nome do contato"
+                {...form.getFieldProps("contact_name")}
+              />
+              <Input
+                label="Telefone do contato"
+                type="tel"
+                mask="phone"
+                placeholder="(21) 98765-4321"
+                {...form.getFieldProps("contact_phone")}
+              />
             </div>
 
-            {/* Row 4: E-mail do contato (full width) */}
-            <div className="flex flex-col gap-1.5">
-              <label className={labelClass}>E-mail do contato</label>
-              <input
-                type="email"
-                value={formData.contact_email}
-                onChange={handleContactEmailChange}
-                onBlur={handleContactEmailBlur}
-                placeholder="contato@fornecedor.com"
-                className={`${inputClass} ${contactEmailError ? "border-red-400 focus:ring-red-400" : ""}`}
-              />
-              {contactEmailError && (
-                <span className="text-xs text-red-500">
-                  {contactEmailError}
-                </span>
-              )}
-            </div>
+            {/* Row 4 */}
+            <Input
+              label="E-mail do contato"
+              type="email"
+              placeholder="contato@fornecedor.com"
+              {...form.getFieldProps("contact_email")}
+            />
 
             {error && (
               <p className="text-sm text-red-500 text-center">{error}</p>
@@ -301,7 +197,7 @@ export function NewSupplierModal({
           <div className="ds-modal-footer">
             <button
               type="submit"
-              disabled={loading || !!emailError || !!contactEmailError}
+              disabled={loading}
               className="ds-btn-primary"
             >
               {loading ? "Adicionando..." : "Adicionar fornecedor"}
@@ -309,6 +205,10 @@ export function NewSupplierModal({
           </div>
         </form>
       </div>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
     </div>
   );
 }

@@ -599,6 +599,7 @@ export default function SolicitacaoDetalhePage() {
   const [completedActionStatus, setCompletedActionStatus] = useState<{
     previous: string;
     next: string;
+    previousNumber: number;
   } | null>(null);
 
   // Estados de atividades
@@ -821,6 +822,7 @@ export default function SolicitacaoDetalhePage() {
           STATUS_NUMBER_TO_STRING[previousStatusNum] ??
           String(previousStatusNum),
         next: ACTION_NEXT_STATUS_MAP[action] ?? "",
+        previousNumber: previousStatusNum,
       });
       setIsNotificationModalOpen(true);
     }
@@ -836,6 +838,7 @@ export default function SolicitacaoDetalhePage() {
         await surgeryRequestService.notify(solicitacao!.id, {
           template: "status-change-patient",
           channels,
+          old_status: completedActionStatus?.previousNumber,
         });
       } catch {
         // silently ignore

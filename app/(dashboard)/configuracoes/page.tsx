@@ -16,16 +16,22 @@ import { ToastType } from "@/types/toast.types";
 import { cn } from "@/lib/utils";
 import { GENDER_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
 import { getApiErrorMessage } from "@/lib/http-error";
-import { changePasswordSchema } from "@/lib/schemas/configuracoes.schema";
+import {
+  changePasswordSchema,
+  profileSchema,
+} from "@/lib/schemas/configuracoes.schema";
+import { logger } from "@/lib/logger";
+import { unmask } from "@/lib/masks";
+import { summarizeErrors } from "@/lib/form-errors";
+import PasswordInput from "@/components/ui/PasswordInput";
 import api from "@/lib/api";
 import { userService } from "@/services/user.service";
 import { notificationService } from "@/services/notification.service";
 import { uploadService } from "@/services/upload.service";
-import { authService } from "@/services/auth.service";
 import { doctorHeaderService } from "@/services/doctor-header.service";
 import { clearAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
-import type { SubscriptionPlan } from "@/types";
 import type { DoctorHeader } from "@/types/doctor-header.types";
+import { BillingSection } from "@/components/billing/BillingSection";
 import { removeBackground } from "@/lib/utils";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import {
@@ -34,15 +40,16 @@ import {
   Bell,
   CreditCard,
   Shield,
+  ShieldCheck,
   FileSignature,
   Upload,
   X,
   Mail,
-  Smartphone,
   MessageSquare,
   Loader2,
   LayoutTemplate,
 } from "lucide-react";
+import { PrivacySection } from "@/components/privacy/PrivacySection";
 
 // Tipos
 interface UserProfile {
@@ -62,8 +69,6 @@ interface UserProfile {
 }
 
 interface NotificationSettings {
-  emailNotifications: boolean;
-  smsNotifications: boolean;
   pushNotifications: boolean;
   whatsappNotifications: boolean;
   newSurgeryRequest: boolean;
@@ -74,16 +79,28 @@ interface NotificationSettings {
 }
 
 // Tabs da página
-type SettingsTab = "profile" | "notifications" | "plan" | "security" | "header";
+type SettingsTab =
+  | "profile"
+  | "notifications"
+  | "plan"
+  | "security"
+  | "header"
+  | "privacy";
 
-function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10)
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
+import { maskPhone, maskCpf } from "@/lib/masks";
+
+const PROFILE_FIELD_LABELS: Record<string, string> = {
+  name: "Nome completo",
+  email: "E-mail",
+  phone: "Telefone",
+  document: "CPF",
+};
+
+const PASSWORD_FIELD_LABELS: Record<string, string> = {
+  currentPassword: "Senha atual",
+  newPassword: "Nova senha",
+  confirmPassword: "Confirmar nova senha",
+};
 
 // Componente de Tab
 function TabButton({
@@ -177,46 +194,6 @@ function NotificationItem({
   );
 }
 
-// Componente de Plan Card
-function PlanCard({
-  plan,
-  isCurrentPlan,
-}: {
-  plan: SubscriptionPlan;
-  isCurrentPlan: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "relative border rounded-2xl p-6 transition-all",
-        isCurrentPlan
-          ? "bg-primary-50 border-primary-500 shadow-lg shadow-primary-100"
-          : "border-gray-200",
-      )}
-    >
-      {isCurrentPlan && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs font-medium px-3 py-1 rounded-full">
-          Plano Atual
-        </span>
-      )}
-      <h3 className="text-base font-semibold text-gray-900">{plan.name}</h3>
-      <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
-      <div className="mt-4 mb-4">
-        <span className="text-sm text-gray-700 font-medium">
-          Até {plan.max_doctors} {plan.max_doctors === 1 ? "médico" : "médicos"}
-        </span>
-      </div>
-      <Button
-        variant={isCurrentPlan ? "outline" : "primary"}
-        className="w-full"
-        disabled={isCurrentPlan}
-      >
-        {isCurrentPlan ? "Plano Atual" : "Fale Conosco"}
-      </Button>
-    </div>
-  );
-}
-
 function ConfiguracoesPageInner() {
   const { user, updateUser, isAdmin } = useAuth();
   const { toast, showToast, hideToast } = useToast();
@@ -229,7 +206,8 @@ function ConfiguracoesPageInner() {
       tab === "profile" ||
       tab === "notifications" ||
       tab === "plan" ||
-      tab === "security"
+      tab === "security" ||
+      tab === "privacy"
     ) {
       return tab as SettingsTab;
     }
@@ -264,8 +242,6 @@ function ConfiguracoesPageInner() {
   // Estados de notificações
   const [loadingNotifications, setLoadingNotifications] = useState(true);
   const [notifications, setNotifications] = useState<NotificationSettings>({
-    emailNotifications: true,
-    smsNotifications: false,
     pushNotifications: true,
     whatsappNotifications: true,
     newSurgeryRequest: true,
@@ -275,16 +251,20 @@ function ConfiguracoesPageInner() {
     weeklyReport: false,
   });
 
-  // Estados do plano
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [loadingPlans, setLoadingPlans] = useState(false);
-
   // Estados de segurança
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>(
+    {},
+  );
+
+  // Erros do perfil (após validar Zod)
+  const [profileErrors, setProfileErrors] = useState<Record<string, string>>(
+    {},
+  );
 
   // Estados do cabeçalho customizado
   const [loadingHeader, setLoadingHeader] = useState(false);
@@ -311,8 +291,8 @@ function ConfiguracoesPageInner() {
         setProfile({
           name: profileData.name || "",
           email: profileData.email || "",
-          phone: applyPhoneMask(profileData.phone || ""),
-          document: profileData.document || "",
+          phone: maskPhone(profileData.phone || ""),
+          document: maskCpf(profileData.document || ""),
           birthDate: profileData.birth_date
             ? new Date(profileData.birth_date).toISOString().split("T")[0]
             : "",
@@ -350,14 +330,14 @@ function ConfiguracoesPageInner() {
           }
         }
       } catch (error) {
-        console.error("Erro ao carregar perfil:", error);
+        logger.error("Erro ao carregar perfil:", error);
         // Fallback para dados do contexto
         if (user) {
           const dp = user.doctor_profile;
           setProfile({
             name: user.name || "",
             email: user.email || "",
-            phone: applyPhoneMask(user.phone || ""),
+            phone: maskPhone(user.phone || ""),
             document: "",
             birthDate: "",
             gender: "",
@@ -382,18 +362,16 @@ function ConfiguracoesPageInner() {
       try {
         const settings = await notificationService.getSettings();
         setNotifications({
-          emailNotifications: settings.email_notifications,
-          smsNotifications: settings.sms_notifications,
-          pushNotifications: settings.push_notifications,
-          whatsappNotifications: settings.whatsapp_notifications,
-          newSurgeryRequest: settings.new_surgery_request,
-          statusUpdate: settings.status_update,
+          pushNotifications: settings.pushNotifications,
+          whatsappNotifications: settings.whatsappNotifications,
+          newSurgeryRequest: settings.newSurgeryRequest,
+          statusUpdate: settings.statusUpdate,
           pendencies: settings.pendencies,
-          expiringDocuments: settings.expiring_documents,
-          weeklyReport: settings.weekly_report,
+          expiringDocuments: settings.expiringDocuments,
+          weeklyReport: settings.weeklyReport,
         });
       } catch (error) {
-        console.error("Erro ao carregar configurações de notificação:", error);
+        logger.error("Erro ao carregar configurações de notificação:", error);
       } finally {
         setLoadingNotifications(false);
       }
@@ -439,23 +417,6 @@ function ConfiguracoesPageInner() {
     loadHeader();
   }, [profile.isDoctor]);
 
-  // Carregar planos de assinatura
-  useEffect(() => {
-    const loadPlans = async () => {
-      if (!isAdmin) return;
-      setLoadingPlans(true);
-      try {
-        const data = await authService.getPlans();
-        setPlans(data);
-      } catch (error) {
-        console.error("Erro ao carregar planos:", error);
-      } finally {
-        setLoadingPlans(false);
-      }
-    };
-
-    loadPlans();
-  }, [isAdmin]);
 
   // Handlers de upload
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -512,6 +473,30 @@ function ConfiguracoesPageInner() {
 
   // Salvar perfil
   const handleSaveProfile = async () => {
+    // Validação Zod antes de qualquer side-effect
+    const validation = profileSchema.safeParse({
+      name: profile.name,
+      email: profile.email,
+      phone: profile.phone,
+      document: profile.document,
+      birthDate: profile.birthDate,
+      gender: profile.gender,
+      specialty: profile.specialty,
+      crm: profile.crm,
+      crmState: profile.crmState,
+    });
+    if (!validation.success) {
+      const errs: Record<string, string> = {};
+      for (const issue of validation.error.issues) {
+        const field = String(issue.path[0] ?? "");
+        if (field && !errs[field]) errs[field] = issue.message;
+      }
+      setProfileErrors(errs);
+      showToast(summarizeErrors(errs, PROFILE_FIELD_LABELS), "error");
+      return;
+    }
+    setProfileErrors({});
+
     setSaving(true);
     try {
       // 1. Se há novo avatar, fazer upload primeiro
@@ -548,11 +533,13 @@ function ConfiguracoesPageInner() {
         }
       }
 
-      // 3. Salvar dados básicos do perfil
+      // 3. Salvar dados básicos do perfil (telefone e CPF desmascarados)
+      const phoneDigits = unmask(profile.phone);
+      const documentDigits = unmask(profile.document);
       await userService.updateProfile({
-        name: profile.name,
-        phone: profile.phone || undefined,
-        document: profile.document || undefined,
+        name: profile.name.trim(),
+        phone: phoneDigits || undefined,
+        document: documentDigits || undefined,
         birth_date: profile.birthDate || undefined,
         gender: profile.gender || undefined,
         ...(avatarFile
@@ -603,15 +590,13 @@ function ConfiguracoesPageInner() {
     setSaving(true);
     try {
       await notificationService.updateSettings({
-        email_notifications: notifications.emailNotifications,
-        sms_notifications: notifications.smsNotifications,
-        push_notifications: notifications.pushNotifications,
-        whatsapp_notifications: notifications.whatsappNotifications,
-        new_surgery_request: notifications.newSurgeryRequest,
-        status_update: notifications.statusUpdate,
+        pushNotifications: notifications.pushNotifications,
+        whatsappNotifications: notifications.whatsappNotifications,
+        newSurgeryRequest: notifications.newSurgeryRequest,
+        statusUpdate: notifications.statusUpdate,
         pendencies: notifications.pendencies,
-        expiring_documents: notifications.expiringDocuments,
-        weekly_report: notifications.weeklyReport,
+        expiringDocuments: notifications.expiringDocuments,
+        weeklyReport: notifications.weeklyReport,
       });
       showToast("Configurações de notificação atualizadas!", "success");
     } catch (error: unknown) {
@@ -628,9 +613,16 @@ function ConfiguracoesPageInner() {
   const handleChangePassword = async () => {
     const result = changePasswordSchema.safeParse(passwordData);
     if (!result.success) {
-      showToast(result.error.issues[0].message, "error");
+      const errs: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const field = String(issue.path[0] ?? "");
+        if (field && !errs[field]) errs[field] = issue.message;
+      }
+      setPasswordErrors(errs);
+      showToast(summarizeErrors(errs, PASSWORD_FIELD_LABELS), "error");
       return;
     }
+    setPasswordErrors({});
     setSaving(true);
     try {
       await api.put("/auth/changePassword", {
@@ -647,6 +639,29 @@ function ConfiguracoesPageInner() {
       showToast(getApiErrorMessage(error, "Erro ao alterar senha"), "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const updatePasswordField = (
+    field: keyof typeof passwordData,
+    value: string,
+  ) => {
+    setPasswordData((prev) => ({ ...prev, [field]: value }));
+    if (passwordErrors[field]) {
+      setPasswordErrors((prev) => {
+        const { [field]: _omit, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
+
+  const updateProfileField = (field: keyof UserProfile, value: string) => {
+    setProfile((prev) => ({ ...prev, [field]: value }));
+    if (profileErrors[field]) {
+      setProfileErrors((prev) => {
+        const { [field]: _omit, ...rest } = prev;
+        return rest;
+      });
     }
   };
 
@@ -1015,38 +1030,33 @@ function ConfiguracoesPageInner() {
               <Input
                 label="Nome completo"
                 value={profile.name}
-                onChange={(e) =>
-                  setProfile({ ...profile, name: e.target.value })
-                }
+                onChange={(e) => updateProfileField("name", e.target.value)}
                 required
+                error={profileErrors.name}
               />
               <Input
                 label="E-mail"
                 type="email"
                 value={profile.email}
-                onChange={(e) =>
-                  setProfile({ ...profile, email: e.target.value })
-                }
+                onChange={(e) => updateProfileField("email", e.target.value)}
                 required
+                error={profileErrors.email}
               />
               <Input
                 label="Telefone"
+                mask="phone"
                 value={profile.phone}
-                onChange={(e) =>
-                  setProfile({
-                    ...profile,
-                    phone: applyPhoneMask(e.target.value),
-                  })
-                }
+                onChange={(e) => updateProfileField("phone", e.target.value)}
                 placeholder="(00) 00000-0000"
+                error={profileErrors.phone}
               />
               <Input
                 label="CPF"
+                mask="cpf"
                 value={profile.document}
-                onChange={(e) =>
-                  setProfile({ ...profile, document: e.target.value })
-                }
+                onChange={(e) => updateProfileField("document", e.target.value)}
                 placeholder="000.000.000-00"
+                error={profileErrors.document}
               />
               <DateInput
                 label="Data de nascimento"
@@ -1230,33 +1240,9 @@ function ConfiguracoesPageInner() {
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <NotificationItem
-              icon={Mail}
-              title="Notificações por E-mail"
-              description="Receba atualizações importantes no seu e-mail"
-              checked={notifications.emailNotifications}
-              onChange={(checked) =>
-                setNotifications({
-                  ...notifications,
-                  emailNotifications: checked,
-                })
-              }
-            />
-            <NotificationItem
-              icon={Smartphone}
-              title="Notificações por SMS"
-              description="Receba alertas urgentes via mensagem de texto"
-              checked={notifications.smsNotifications}
-              onChange={(checked) =>
-                setNotifications({
-                  ...notifications,
-                  smsNotifications: checked,
-                })
-              }
-            />
-            <NotificationItem
               icon={Bell}
-              title="Notificações Push"
-              description="Receba notificações em tempo real no navegador"
+              title="Notificações na plataforma"
+              description="Receba alertas em tempo real dentro da plataforma"
               checked={notifications.pushNotifications}
               onChange={(checked) =>
                 setNotifications({
@@ -1335,8 +1321,8 @@ function ConfiguracoesPageInner() {
             />
             <NotificationItem
               icon={Mail}
-              title="Relatório Semanal"
-              description="Receba um resumo semanal das suas atividades"
+              title="Resumo semanal por e-mail"
+              description="Receba toda segunda-feira um e-mail com o resumo das suas solicitações cirúrgicas"
               checked={notifications.weeklyReport}
               onChange={(checked) =>
                 setNotifications({ ...notifications, weeklyReport: checked })
@@ -1359,88 +1345,10 @@ function ConfiguracoesPageInner() {
     );
   };
 
-  // Render da aba de Plano
-  const currentPlan = plans.find((p) => p.id === user?.subscription_plan_id);
+  const renderPlanTab = () => <BillingSection />;
 
-  const renderPlanTab = () => (
-    <div className="space-y-6">
-      {/* Plano atual */}
-      {currentPlan && (
-        <Card className="border border-gray-200 rounded-xl bg-gradient-to-r from-primary-50 to-primary-100">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-primary-600 font-medium">
-                  Seu plano atual
-                </p>
-                <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                  {currentPlan.name}
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  {currentPlan.description}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-700">
-                  Até {currentPlan.max_doctors}{" "}
-                  {currentPlan.max_doctors === 1 ? "médico" : "médicos"}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Lista de planos */}
-      <div>
-        <h3 className="text-base font-semibold text-gray-900 mb-4">
-          {currentPlan ? "Planos Disponíveis" : "Escolha seu Plano"}
-        </h3>
-        {loadingPlans ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
-            <span className="ml-2 text-sm text-gray-500">
-              Carregando planos...
-            </span>
-          </div>
-        ) : plans.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-8">
-            Nenhum plano disponível no momento.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <PlanCard
-                key={plan.id}
-                plan={plan}
-                isCurrentPlan={user?.subscription_plan_id === plan.id}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Informação de contato para alteração de plano */}
-      <Card className="border border-gray-200 rounded-2xl">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary-100 rounded-lg">
-              <CreditCard className="w-4 h-4 text-primary-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">
-                Precisa alterar seu plano?
-              </p>
-              <p className="text-xs text-gray-500">
-                Entre em contato com nosso time comercial para alterações no seu
-                plano de assinatura.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  // Render da aba de Privacidade
+  const renderPrivacyTab = () => <PrivacySection />;
 
   // Render da aba de Segurança
   const renderSecurityTab = () => (
@@ -1457,41 +1365,33 @@ function ConfiguracoesPageInner() {
         </CardHeader>
         <CardContent className="p-6 pt-0">
           <div className="space-y-4 max-w-md">
-            <Input
+            <PasswordInput
               label="Senha atual"
-              type="password"
               value={passwordData.currentPassword}
               onChange={(e) =>
-                setPasswordData({
-                  ...passwordData,
-                  currentPassword: e.target.value,
-                })
+                updatePasswordField("currentPassword", e.target.value)
               }
               required
+              error={passwordErrors.currentPassword}
             />
-            <Input
+            <PasswordInput
               label="Nova senha"
-              type="password"
+              showRequirements
               value={passwordData.newPassword}
               onChange={(e) =>
-                setPasswordData({
-                  ...passwordData,
-                  newPassword: e.target.value,
-                })
+                updatePasswordField("newPassword", e.target.value)
               }
               required
+              error={passwordErrors.newPassword}
             />
-            <Input
+            <PasswordInput
               label="Confirmar nova senha"
-              type="password"
               value={passwordData.confirmPassword}
               onChange={(e) =>
-                setPasswordData({
-                  ...passwordData,
-                  confirmPassword: e.target.value,
-                })
+                updatePasswordField("confirmPassword", e.target.value)
               }
               required
+              error={passwordErrors.confirmPassword}
             />
             <Button
               onClick={handleChangePassword}
@@ -1556,6 +1456,12 @@ function ConfiguracoesPageInner() {
                 icon={Shield}
                 label="Segurança"
               />
+              <TabButton
+                active={activeTab === "privacy"}
+                onClick={() => setActiveTab("privacy")}
+                icon={ShieldCheck}
+                label="Privacidade e Termos"
+              />
             </nav>
           </div>
 
@@ -1566,6 +1472,7 @@ function ConfiguracoesPageInner() {
             {activeTab === "plan" && isAdmin && renderPlanTab()}
             {activeTab === "security" && renderSecurityTab()}
             {activeTab === "header" && profile.isDoctor && renderHeaderTab()}
+            {activeTab === "privacy" && renderPrivacyTab()}
           </div>
         </div>
       </div>

@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import {
   collaboratorService,
   CreateCollaboratorPayload,
 } from "@/services/collaborator.service";
+import Input from "@/components/ui/Input";
+import { useZodForm } from "@/hooks/useZodForm";
+import { createCollaboratorSchema } from "@/lib/schemas/collaborator.schema";
+import { unmask } from "@/lib/masks";
+import { isValidEmail } from "@/lib/validators";
+import { summarizeErrors } from "@/lib/form-errors";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 
 interface NewCollaboratorModalProps {
   isOpen: boolean;
@@ -15,58 +23,22 @@ interface NewCollaboratorModalProps {
   defaultIsDoctor?: boolean;
 }
 
-const EMPTY_FORM = {
-  name: "",
-  email: "",
-  phone: "",
-  is_doctor: false,
-  crm: "",
-  crm_state: "",
-  specialty: "",
-};
-
 const BRAZILIAN_STATES = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
+  "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC",
+  "SP", "SE", "TO",
 ];
 
-function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10)
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
+const FIELD_LABELS: Record<string, string> = {
+  name: "Nome completo",
+  email: "E-mail",
+  phone: "Telefone",
+  crm: "CRM",
+  crm_state: "UF do CRM",
+};
 
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+const inputClass = "ds-input";
+const labelClass = "ds-label mb-0";
 
 export function NewCollaboratorModal({
   isOpen,
@@ -75,90 +47,111 @@ export function NewCollaboratorModal({
   defaultIsDoctor = false,
 }: NewCollaboratorModalProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    ...EMPTY_FORM,
-    is_doctor: defaultIsDoctor,
-  });
   const [emailError, setEmailError] = useState("");
   const [error, setError] = useState("");
+  const { toast, showToast, hideToast } = useToast();
+
+  const form = useZodForm({
+    schema: createCollaboratorSchema,
+    initialValues: {
+      name: "",
+      email: "",
+      phone: "",
+      is_doctor: defaultIsDoctor,
+      crm: "",
+      crm_state: "",
+      specialty: "",
+    },
+  });
+
+  // Mantém is_doctor sincronizado quando defaultIsDoctor mudar
+  useEffect(() => {
+    form.setField("is_doctor", defaultIsDoctor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultIsDoctor]);
 
   const handleClose = () => {
     if (loading) return;
-    setFormData({ ...EMPTY_FORM, is_doctor: defaultIsDoctor });
+    form.reset({
+      name: "",
+      email: "",
+      phone: "",
+      is_doctor: defaultIsDoctor,
+      crm: "",
+      crm_state: "",
+      specialty: "",
+    });
     setEmailError("");
     setError("");
     onClose();
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, phone: applyPhoneMask(e.target.value) });
-  };
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, email: e.target.value });
-    if (emailError) setEmailError("");
-  };
-
   const handleEmailBlur = () => {
-    if (formData.email && !isValidEmail(formData.email)) {
+    const value = form.values.email;
+    if (value && !isValidEmail(value)) {
       setEmailError("E-mail inválido");
     } else {
       setEmailError("");
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const payload: CreateCollaboratorPayload = {
-        name: formData.name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone || undefined,
-        is_doctor: formData.is_doctor || undefined,
-        ...(formData.is_doctor &&
-          formData.crm.trim() && {
-            crm: formData.crm.trim(),
-            crm_state: formData.crm_state,
-            specialty: formData.specialty.trim() || undefined,
-          }),
-      };
-
-      await collaboratorService.create(payload);
-      onSuccess();
-      setFormData({ ...EMPTY_FORM, is_doctor: defaultIsDoctor });
-      setEmailError("");
-      setError("");
-      onClose();
-    } catch (err) {
-      const apiError = err as {
-        response?: { data?: { message?: string | string[] } };
-      };
-      const msg = apiError?.response?.data?.message;
-      setError(
-        Array.isArray(msg)
-          ? msg.join(", ")
-          : msg ||
-              (defaultIsDoctor
-                ? "Erro ao criar médico. Tente novamente."
-                : "Erro ao criar colaborador. Tente novamente."),
-      );
-    } finally {
-      setLoading(false);
-    }
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    form.setField("email", e.target.value);
+    if (emailError) setEmailError("");
   };
 
-  if (!isOpen) return null;
+  const onSubmit = form.handleSubmit(
+    async (data) => {
+      setLoading(true);
+      setError("");
+      try {
+        const payload: CreateCollaboratorPayload = {
+          name: data.name.trim(),
+          email: data.email.trim(),
+          phone: unmask(data.phone) || undefined,
+          ...(data.is_doctor &&
+            data.crm &&
+            data.crm.trim() && {
+              crm: data.crm.trim(),
+              crm_state: data.crm_state || undefined,
+              specialty: data.specialty?.trim() || undefined,
+            }),
+        };
+        await collaboratorService.create(payload);
+        onSuccess();
+        form.reset({
+          name: "",
+          email: "",
+          phone: "",
+          is_doctor: defaultIsDoctor,
+          crm: "",
+          crm_state: "",
+          specialty: "",
+        });
+        setEmailError("");
+        setError("");
+        onClose();
+      } catch (err) {
+        const apiError = err as {
+          response?: { data?: { message?: string | string[] } };
+        };
+        const msg = apiError?.response?.data?.message;
+        setError(
+          Array.isArray(msg)
+            ? msg.join(", ")
+            : msg ||
+                (defaultIsDoctor
+                  ? "Erro ao criar médico. Tente novamente."
+                  : "Erro ao criar colaborador. Tente novamente."),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
+  );
 
-  const inputClass = "ds-input";
-  const labelClass = "ds-label mb-0";
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
@@ -184,7 +177,8 @@ export function NewCollaboratorModal({
 
         {/* Body */}
         <form
-          onSubmit={handleSubmit}
+          onSubmit={onSubmit}
+          noValidate
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
@@ -197,24 +191,24 @@ export function NewCollaboratorModal({
                 <input
                   type="text"
                   required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  value={form.values.name}
+                  onChange={(e) => form.setField("name", e.target.value)}
                   placeholder="Nome completo"
                   className={inputClass}
                 />
+                {form.errors.name && (
+                  <span className="text-xs text-red-500">{form.errors.name}</span>
+                )}
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Telefone</label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handlePhoneChange}
-                  placeholder="(21) 98765-4321"
-                  className={inputClass}
-                />
-              </div>
+              <Input
+                label="Telefone"
+                type="tel"
+                mask="phone"
+                placeholder="(21) 98765-4321"
+                value={form.values.phone}
+                onChange={(e) => form.setField("phone", e.target.value)}
+                error={form.errors.phone}
+              />
             </div>
 
             {/* Row 2: E-mail */}
@@ -225,14 +219,16 @@ export function NewCollaboratorModal({
               <input
                 type="email"
                 required
-                value={formData.email}
+                value={form.values.email}
                 onChange={handleEmailChange}
                 onBlur={handleEmailBlur}
                 placeholder="colaborador@mail.com"
-                className={`${inputClass} ${emailError ? "border-red-400 focus:ring-red-400" : ""}`}
+                className={`${inputClass} ${emailError || form.errors.email ? "border-red-400 focus:ring-red-400" : ""}`}
               />
-              {emailError && (
-                <span className="text-xs text-red-500">{emailError}</span>
+              {(emailError || form.errors.email) && (
+                <span className="text-xs text-red-500">
+                  {emailError || form.errors.email}
+                </span>
               )}
             </div>
 
@@ -241,17 +237,17 @@ export function NewCollaboratorModal({
               <button
                 type="button"
                 role="switch"
-                aria-checked={formData.is_doctor}
+                aria-checked={form.values.is_doctor}
                 onClick={() =>
-                  setFormData({ ...formData, is_doctor: !formData.is_doctor })
+                  form.setField("is_doctor", !form.values.is_doctor)
                 }
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                  formData.is_doctor ? "bg-teal-500" : "bg-gray-200"
+                  form.values.is_doctor ? "bg-teal-500" : "bg-gray-200"
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    formData.is_doctor ? "translate-x-6" : "translate-x-1"
+                    form.values.is_doctor ? "translate-x-6" : "translate-x-1"
                   }`}
                 />
               </button>
@@ -261,7 +257,7 @@ export function NewCollaboratorModal({
             </div>
 
             {/* Doctor Fields (conditional) */}
-            {formData.is_doctor && (
+            {form.values.is_doctor && (
               <div className="space-y-3 p-4 bg-teal-50 rounded-xl border border-teal-100">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
@@ -270,24 +266,25 @@ export function NewCollaboratorModal({
                     </label>
                     <input
                       type="text"
-                      required={formData.is_doctor}
-                      value={formData.crm}
-                      onChange={(e) =>
-                        setFormData({ ...formData, crm: e.target.value })
-                      }
+                      required={form.values.is_doctor}
+                      value={form.values.crm}
+                      onChange={(e) => form.setField("crm", e.target.value)}
                       placeholder="123456"
                       className={inputClass}
                     />
+                    {form.errors.crm && (
+                      <span className="text-xs text-red-500">{form.errors.crm}</span>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className={labelClass}>
                       <span className="text-red-500 mr-0.5">*</span>UF do CRM
                     </label>
                     <select
-                      required={formData.is_doctor}
-                      value={formData.crm_state}
+                      required={form.values.is_doctor}
+                      value={form.values.crm_state}
                       onChange={(e) =>
-                        setFormData({ ...formData, crm_state: e.target.value })
+                        form.setField("crm_state", e.target.value)
                       }
                       className={inputClass}
                     >
@@ -298,15 +295,20 @@ export function NewCollaboratorModal({
                         </option>
                       ))}
                     </select>
+                    {form.errors.crm_state && (
+                      <span className="text-xs text-red-500">
+                        {form.errors.crm_state}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className={labelClass}>Especialidade</label>
                   <input
                     type="text"
-                    value={formData.specialty}
+                    value={form.values.specialty}
                     onChange={(e) =>
-                      setFormData({ ...formData, specialty: e.target.value })
+                      form.setField("specialty", e.target.value)
                     }
                     placeholder="Ex: Ortopedia, Cardiologia..."
                     className={inputClass}
@@ -337,6 +339,10 @@ export function NewCollaboratorModal({
           </div>
         </form>
       </div>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
     </div>
   );
 }

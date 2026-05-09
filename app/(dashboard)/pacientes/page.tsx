@@ -17,6 +17,7 @@ import {
   getSortedRowModel,
   SortingState,
 } from "@tanstack/react-table";
+import { logger } from "@/lib/logger";
 import {
   Table,
   TableBody,
@@ -72,7 +73,7 @@ export default function PacientesPage() {
       const data = await patientService.getAll();
       setPatients(data);
     } catch (error) {
-      console.error("Erro ao carregar pacientes:", error);
+      logger.error("Erro ao carregar pacientes:", error);
     } finally {
       setLoading(false);
     }
@@ -168,7 +169,7 @@ export default function PacientesPage() {
       );
       setDeleteModal({ open: false, patient: null, loading: false });
     } catch (error) {
-      console.error("Erro ao excluir paciente:", error);
+      logger.error("Erro ao excluir paciente:", error);
       setDeleteModal((prev) => ({ ...prev, loading: false }));
     }
   };
@@ -195,7 +196,7 @@ export default function PacientesPage() {
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
     } catch (error) {
-      console.error("Erro ao excluir pacientes:", error);
+      logger.error("Erro ao excluir pacientes:", error);
       setBulkDeleteModal((prev) => ({ ...prev, loading: false }));
     }
   };

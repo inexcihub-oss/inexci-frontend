@@ -54,15 +54,23 @@ export function UpdateReceiptModal({
   }, [isOpen, receipt]);
 
   const parsedValue = parseFloat(receivedValue.replace(",", "."));
-  const canSubmit = !isNaN(parsedValue) && parsedValue > 0 && receivedAt !== "";
+  const [attempted, setAttempted] = useState(false);
 
   const handleClose = () => {
     if (isSaving) return;
+    setAttempted(false);
     onClose();
   };
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    const missing: string[] = [];
+    if (isNaN(parsedValue) || parsedValue <= 0) missing.push("Valor recebido");
+    if (!receivedAt) missing.push("Data do recebimento");
+    if (missing.length > 0) {
+      setAttempted(true);
+      showToast(`Preencha: ${missing.join(", ")}`, "error");
+      return;
+    }
     setIsSaving(true);
     try {
       await surgeryRequestService.updateReceipt(solicitacao.id, {
@@ -129,7 +137,7 @@ export function UpdateReceiptModal({
                 onChange={(e) => setReceivedValue(e.target.value)}
                 placeholder="0,00"
                 disabled={isSaving}
-                className="ds-input pl-10 disabled:opacity-50"
+                className={`ds-input pl-10 disabled:opacity-50 ${attempted && (isNaN(parsedValue) || parsedValue <= 0) ? "border-red-400 focus:ring-red-400" : ""}`}
               />
             </div>
           </div>
@@ -144,7 +152,7 @@ export function UpdateReceiptModal({
               value={receivedAt}
               onChange={(e) => setReceivedAt(e.target.value)}
               disabled={isSaving}
-              className="ds-input disabled:opacity-50"
+              className={`ds-input disabled:opacity-50 ${attempted && !receivedAt ? "border-red-400 focus:ring-red-400" : ""}`}
             />
           </div>
         </div>
@@ -160,7 +168,7 @@ export function UpdateReceiptModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit || isSaving}
+            disabled={isSaving}
             className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? "Salvando..." : "Salvar Alterações"}

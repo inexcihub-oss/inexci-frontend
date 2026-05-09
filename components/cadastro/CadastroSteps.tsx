@@ -1,50 +1,130 @@
 "use client";
 
-import { SubscriptionPlan } from "@/types";
-import { Button, Input, Select } from "@/components/ui";
+import {
+  Briefcase,
+  Building2,
+  Crown,
+  type LucideIcon,
+  Sparkles,
+} from "lucide-react";
+import { Input, Select } from "@/components/ui";
 import { PasswordInput } from "@/components/ui";
 import { BRAZILIAN_STATES } from "@/lib/options";
+import type { SubscriptionPlan } from "@/types";
+import { PlanCard, type PlanCardTheme } from "@/components/cadastro/PlanCard";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 /** @deprecated Use BRAZILIAN_STATES from @/lib/options */
 export { BRAZILIAN_STATES as brazilianStates } from "@/lib/options";
 
-export const PLAN_META: Record<
-  string,
-  { icon: string; color: string; highlight: boolean; features: string[] }
-> = {
-  Básico: {
-    icon: "🌱",
-    color: "teal",
-    highlight: false,
+/**
+ * Metadata visual por slug de plano: \u00edcone, tema de cores, features extras.
+ * Mantemos aqui (e n\u00e3o no backend) porque s\u00e3o decis\u00f5es puramente de design.
+ */
+export interface PlanPresentation {
+  icon: LucideIcon;
+  theme: PlanCardTheme;
+  highlight?: boolean;
+  features: string[];
+}
+
+export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
+  starter: {
+    icon: Sparkles,
     features: [
       "1 médico cadastrado",
-      "Solicitações ilimitadas",
+      "Equipe de até 2 colaboradores",
       "Suporte por e-mail",
+      "Notificações por WhatsApp",
     ],
+    theme: {
+      gradient: "from-slate-800 via-slate-800 to-slate-900",
+      accent: "bg-teal-400",
+      badgeBg: "bg-teal-500",
+      badgeText: "text-white",
+      ring: "border-teal-400/80",
+      buttonBg: "bg-teal-500 hover:bg-teal-600",
+      buttonText: "text-white",
+      iconBg: "bg-teal-500/15",
+      iconColor: "text-teal-300",
+    },
   },
-  Profissional: {
-    icon: "🚀",
-    color: "purple",
-    highlight: true,
-    features: [
-      "Até 10 médicos cadastrados",
-      "Solicitações ilimitadas",
-      "Suporte prioritário",
-    ],
-  },
-  Enterprise: {
-    icon: "🏢",
-    color: "indigo",
-    highlight: false,
+  essencial: {
+    icon: Briefcase,
     features: [
       "Médicos ilimitados",
-      "Solicitações ilimitadas",
-      "Suporte dedicado 24/7",
+      "Colaboradores ilimitados",
+      "Templates de procedimentos",
+      "Notificações por e-mail e WhatsApp",
+      "Relatórios e exportação CSV/PDF",
     ],
+    theme: {
+      gradient: "from-slate-800 via-blue-900/40 to-slate-900",
+      accent: "bg-blue-400",
+      badgeBg: "bg-blue-500",
+      badgeText: "text-white",
+      ring: "border-blue-400/80",
+      buttonBg: "bg-blue-500 hover:bg-blue-600",
+      buttonText: "text-white",
+      iconBg: "bg-blue-500/15",
+      iconColor: "text-blue-300",
+    },
+  },
+  profissional: {
+    icon: Crown,
+    highlight: true,
+    features: [
+      "Tudo do Essencial",
+      "Assistente de IA via WhatsApp",
+      "Transcrição de áudios médicos",
+      "Suporte prioritário",
+      "Onboarding guiado da equipe",
+    ],
+    theme: {
+      gradient: "from-purple-700 via-fuchsia-700 to-indigo-800",
+      accent: "bg-purple-400",
+      badgeBg: "bg-amber-400",
+      badgeText: "text-amber-950",
+      ring: "border-fuchsia-300",
+      buttonBg: "bg-white hover:bg-white/90",
+      buttonText: "text-purple-700",
+      iconBg: "bg-white/15",
+      iconColor: "text-amber-200",
+    },
+  },
+  enterprise: {
+    icon: Building2,
+    features: [
+      "Tudo do Profissional",
+      "SLA dedicado e gerente de conta",
+      "Integrações personalizadas",
+      "Treinamento exclusivo da equipe",
+      "Auditoria avançada e compliance",
+    ],
+    theme: {
+      gradient: "from-slate-900 via-indigo-950 to-black",
+      accent: "bg-indigo-400",
+      badgeBg: "bg-indigo-500",
+      badgeText: "text-white",
+      ring: "border-indigo-300",
+      buttonBg: "bg-indigo-500 hover:bg-indigo-600",
+      buttonText: "text-white",
+      iconBg: "bg-indigo-500/15",
+      iconColor: "text-indigo-300",
+    },
   },
 };
+
+function getPresentation(slug: string): PlanPresentation {
+  return (
+    PLAN_PRESENTATION[slug] ?? {
+      icon: Sparkles,
+      features: [],
+      theme: PLAN_PRESENTATION.starter.theme,
+    }
+  );
+}
 
 // ─── Indicador de Progresso ──────────────────────────────────────────────────
 
@@ -136,24 +216,10 @@ export interface Step1Data {
 interface Step1Props {
   data: Step1Data;
   onChange: (field: keyof Step1Data, value: string) => void;
+  fieldErrors?: Partial<Record<keyof Step1Data, string>>;
 }
 
-function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 10) {
-    return digits
-      .replace(/(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{4})(\d)/, "$1-$2");
-  }
-  return digits
-    .replace(/(\d{2})(\d)/, "($1) $2")
-    .replace(/(\d{5})(\d)/, "$1-$2");
-}
-
-export function Step1PersonalData({ data, onChange }: Step1Props) {
-  const mismatch =
-    data.confirmPassword.length > 0 && data.confirmPassword !== data.password;
-
+export function Step1PersonalData({ data, onChange, fieldErrors }: Step1Props) {
   return (
     <div className="space-y-4">
       <Input
@@ -162,10 +228,12 @@ export function Step1PersonalData({ data, onChange }: Step1Props) {
         label="Nome completo"
         type="text"
         autoComplete="name"
+        required
         value={data.name}
         onChange={(e) => onChange("name", e.target.value)}
         placeholder="Seu nome completo"
         className="min-h-[48px]"
+        error={fieldErrors?.name}
       />
 
       <Input
@@ -174,10 +242,12 @@ export function Step1PersonalData({ data, onChange }: Step1Props) {
         label="E-mail"
         type="email"
         autoComplete="email"
+        required
         value={data.email}
         onChange={(e) => onChange("email", e.target.value)}
         placeholder="seu@email.com"
         className="min-h-[48px]"
+        error={fieldErrors?.email}
       />
 
       <Input
@@ -186,10 +256,13 @@ export function Step1PersonalData({ data, onChange }: Step1Props) {
         label="Telefone"
         type="tel"
         autoComplete="tel"
-        value={applyPhoneMask(data.phone)}
-        onChange={(e) => onChange("phone", e.target.value.replace(/\D/g, ""))}
+        mask="phone"
+        required
+        value={data.phone}
+        onChange={(e) => onChange("phone", e.target.value)}
         placeholder="(00) 00000-0000"
         className="min-h-[48px]"
+        error={fieldErrors?.phone}
       />
 
       <PasswordInput
@@ -197,11 +270,13 @@ export function Step1PersonalData({ data, onChange }: Step1Props) {
         name="password"
         label="Senha"
         autoComplete="new-password"
+        required
+        showRequirements
         value={data.password}
         onChange={(e) => onChange("password", e.target.value)}
         placeholder="Mínimo 8 caracteres"
-        showStrength
         className="min-h-[48px]"
+        error={fieldErrors?.password}
       />
 
       <PasswordInput
@@ -209,17 +284,12 @@ export function Step1PersonalData({ data, onChange }: Step1Props) {
         name="confirmPassword"
         label="Confirmar senha"
         autoComplete="new-password"
+        required
         value={data.confirmPassword}
         onChange={(e) => onChange("confirmPassword", e.target.value)}
         placeholder="Digite a senha novamente"
-        error={mismatch ? "As senhas não coincidem" : undefined}
-        className={`min-h-[48px] ${
-          mismatch
-            ? "border-red-300 bg-red-50"
-            : data.confirmPassword && data.confirmPassword === data.password
-              ? "border-teal-300"
-              : ""
-        }`}
+        className="min-h-[48px]"
+        error={fieldErrors?.confirmPassword}
       />
     </div>
   );
@@ -372,185 +442,120 @@ function ProfileCard({
   );
 }
 
-// ─── Etapa 3 — Plano ─────────────────────────────────────────────────────────
+// ─── Etapa 3 — Sele\u00e7\u00e3o de plano ──────────────────────────────────────────────
 
-interface Step3Props {
+interface Step3PlanProps {
   plans: SubscriptionPlan[];
   plansLoading: boolean;
-  selectedPlanId: string;
-  onSelectPlan: (id: string) => void;
-  error: string;
-  errorType: "" | "email_active" | "email_pending" | "generic";
-  isLoading: boolean;
-  onBack: () => void;
-  onSubmit: (e: React.FormEvent) => void;
+  /** Slug do plano selecionado. */
+  selectedSlug: string;
+  onSelectPlan: (slug: string) => void;
+  /** Quando true, exibe selo "Free Trial" no card e oculta o pre\u00e7o. */
+  trialMode: boolean;
+  onToggleTrialMode: (value: boolean) => void;
 }
 
 export function Step3Plan({
   plans,
   plansLoading,
-  selectedPlanId,
+  selectedSlug,
   onSelectPlan,
-  error,
-  errorType,
-  isLoading,
-  onBack,
-  onSubmit,
-}: Step3Props) {
-  const getPlanMeta = (name: string) =>
-    PLAN_META[name] ?? {
-      icon: "📋",
-      color: "gray",
-      highlight: false,
-      features: [],
-    };
+  trialMode,
+  onToggleTrialMode,
+}: Step3PlanProps) {
+  const sortedPlans = [...plans]
+    .filter((p) => p.slug !== "free-trial")
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <form onSubmit={onSubmit}>
-      {plansLoading ? (
-        <div className="flex flex-col items-center justify-center py-12 gap-3">
-          <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-500">Carregando planos...</p>
+    <div className="space-y-6">
+      {/* Toggle Free Trial vs Plano */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-white">
+            {trialMode ? "Comece com 30 dias grátis" : "Escolha seu plano"}
+          </h3>
+          <p className="text-xs text-white/60 mt-1">
+            {trialMode
+              ? "Você usa todos os recursos do plano escolhido por 30 dias, sem cartão."
+              : "Todos os planos começam com 30 dias grátis. Você decide depois."}
+          </p>
         </div>
-      ) : plans.length === 0 ? (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-700">
-          Não foi possível carregar os planos. Sua conta será criada no plano
-          Básico.
+        <div className="inline-flex bg-white/5 border border-white/10 rounded-full p-1 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={() => onToggleTrialMode(true)}
+            className={`px-4 py-2 text-xs font-medium rounded-full transition-all ${
+              trialMode
+                ? "bg-teal-500 text-white shadow"
+                : "text-white/70 hover:text-white"
+            }`}
+          >
+            Free Trial
+          </button>
+          <button
+            type="button"
+            onClick={() => onToggleTrialMode(false)}
+            className={`px-4 py-2 text-xs font-medium rounded-full transition-all ${
+              !trialMode
+                ? "bg-white text-slate-900 shadow"
+                : "text-white/70 hover:text-white"
+            }`}
+          >
+            Ver preços
+          </button>
+        </div>
+      </div>
+
+      {/* Grid de planos */}
+      {plansLoading ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-white/60">Carregando planos...</p>
+        </div>
+      ) : sortedPlans.length === 0 ? (
+        <div className="bg-amber-500/10 border border-amber-400/30 rounded-2xl p-5 text-sm text-amber-200">
+          Não foi possível carregar os planos no momento. Sua conta será criada
+          em modo Free Trial e você poderá escolher um plano depois.
         </div>
       ) : (
-        <div className="space-y-3">
-          {plans.map((plan) => {
-            const meta = getPlanMeta(plan.name);
-            const isSelected = plan.id === selectedPlanId;
-
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+          {sortedPlans.map((plan) => {
+            const presentation = getPresentation(plan.slug);
             return (
-              <button
+              <PlanCard
                 key={plan.id}
-                type="button"
-                onClick={() => onSelectPlan(plan.id)}
-                className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 relative overflow-hidden ${
-                  isSelected
-                    ? "border-teal-500 bg-teal-50 shadow-md"
-                    : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
-                } ${meta.highlight ? "ring-2 ring-purple-400 ring-offset-1" : ""}`}
-              >
-                {meta.highlight && (
-                  <div className="absolute top-0 right-0 bg-purple-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-bl-xl">
-                    POPULAR
-                  </div>
-                )}
-
-                <div className="flex items-start gap-3">
-                  <div className="text-2xl mt-0.5">{meta.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3
-                        className={`font-semibold text-base ${isSelected ? "text-teal-700" : "text-gray-800"}`}
-                      >
-                        {plan.name}
-                      </h3>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5 mb-2 line-clamp-2">
-                      {plan.description}
-                    </p>
-                    <ul className="space-y-1">
-                      {meta.features.map((f) => (
-                        <li
-                          key={f}
-                          className="flex items-center gap-1.5 text-xs text-gray-600"
-                        >
-                          <svg
-                            className="w-3.5 h-3.5 text-teal-500 flex-shrink-0"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2.5}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${
-                      isSelected
-                        ? "border-teal-500 bg-teal-500"
-                        : "border-gray-300"
-                    }`}
-                  >
-                    {isSelected && (
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    )}
-                  </div>
-                </div>
-              </button>
+                plan={plan}
+                features={presentation.features}
+                icon={presentation.icon}
+                theme={presentation.theme}
+                highlight={presentation.highlight}
+                selected={plan.slug === selectedSlug}
+                onSelect={() => onSelectPlan(plan.slug)}
+                trialMode={trialMode}
+              />
             );
           })}
         </div>
       )}
 
-      {/* Erro */}
-      {error && (
-        <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700">
-          <p>{error}</p>
-          {errorType === "email_active" && (
-            <div className="mt-2 flex gap-3">
-              <a
-                href="/login"
-                className="font-semibold underline hover:text-red-900"
-              >
-                Fazer login
-              </a>
-              <span className="text-red-400">·</span>
-              <a
-                href="/login?tab=recovery"
-                className="font-semibold underline hover:text-red-900"
-              >
-                Recuperar senha
-              </a>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Botões da etapa 3 */}
-      <div className="mt-6 flex gap-3">
-        <Button
-          type="button"
-          onClick={onBack}
-          disabled={isLoading}
-          variant="outline"
-          className="flex-1 text-sm font-semibold min-h-[48px]"
-        >
-          Voltar
-        </Button>
-        <Button
-          type="submit"
-          disabled={isLoading}
-          isLoading={isLoading}
-          className="flex-[2] text-sm font-semibold min-h-[48px]"
-        >
-          Criar conta
-        </Button>
+      {/* Garantias */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+        {[
+          { icon: "🔒", text: "Pagamento seguro com criptografia" },
+          { icon: "🔄", text: "Cancele a qualquer momento" },
+          { icon: "🎁", text: "30 dias grátis em todos os planos" },
+        ].map((g) => (
+          <div
+            key={g.text}
+            className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 backdrop-blur-sm"
+          >
+            <span className="text-xl">{g.icon}</span>
+            <span className="text-xs text-white/80">{g.text}</span>
+          </div>
+        ))}
       </div>
-    </form>
+    </div>
   );
 }
+

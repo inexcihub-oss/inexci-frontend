@@ -41,7 +41,10 @@ export function ConfirmDateModal({
   };
 
   const handleConfirm = async () => {
-    if (selectedIndex === null) return;
+    if (selectedIndex === null) {
+      showToast("Selecione uma data para confirmar.", "error");
+      return;
+    }
     setIsSaving(true);
     try {
       await surgeryRequestService.confirmDate(solicitacao.id, {
@@ -156,9 +159,7 @@ export function ConfirmDateModal({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={
-              selectedIndex === null || isSaving || dateOptions.length === 0
-            }
+            disabled={isSaving || dateOptions.length === 0}
             className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? (

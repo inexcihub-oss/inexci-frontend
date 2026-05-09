@@ -17,6 +17,7 @@ import {
   Info,
   RefreshCw,
 } from "lucide-react";
+import { logger } from "@/lib/logger";
 import {
   notificationService,
   Notification,
@@ -116,7 +117,7 @@ export default function NotificacoesPage() {
       setUnreadCount(response.unreadCount);
       setTotal(response.total);
     } catch (error) {
-      console.error("Erro ao carregar notificações:", error);
+      logger.error("Erro ao carregar notificações:", error);
     } finally {
       setLoading(false);
     }
@@ -126,7 +127,7 @@ export default function NotificacoesPage() {
     loadNotifications();
   }, [loadNotifications]);
 
-  const handleMarkAsRead = async (notificationId: number) => {
+  const handleMarkAsRead = async (notificationId: string) => {
     try {
       await notificationService.markAsRead(notificationId);
       setNotifications((prev) =>
@@ -134,7 +135,7 @@ export default function NotificacoesPage() {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error("Erro ao marcar como lida:", error);
+      logger.error("Erro ao marcar como lida:", error);
     }
   };
 
@@ -144,11 +145,11 @@ export default function NotificacoesPage() {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
-      console.error("Erro ao marcar todas como lidas:", error);
+      logger.error("Erro ao marcar todas como lidas:", error);
     }
   };
 
-  const handleDelete = async (notificationId: number) => {
+  const handleDelete = async (notificationId: string) => {
     try {
       await notificationService.deleteNotification(notificationId);
       const wasUnread = notifications.find(
@@ -157,7 +158,7 @@ export default function NotificacoesPage() {
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
       if (wasUnread) setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error("Erro ao remover notificação:", error);
+      logger.error("Erro ao remover notificação:", error);
     }
   };
 
@@ -330,7 +331,7 @@ export default function NotificacoesPage() {
                       <span className="text-gray-300 text-[10px]">·</span>
                       <span className="text-[11px] text-gray-400 tabular-nums">
                         {formatDistanceToNow(
-                          new Date(notification.created_at),
+                          new Date(notification.createdAt),
                           { addSuffix: true, locale: ptBR },
                         )}
                       </span>

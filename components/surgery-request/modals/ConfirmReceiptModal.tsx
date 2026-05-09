@@ -155,6 +155,7 @@ export function ConfirmReceiptModal({
   };
 
   const [isSaving, setIsSaving] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const { showToast } = useToast();
 
   // ── Billing data ──
@@ -168,12 +169,6 @@ export function ConfirmReceiptModal({
     parsedReceivedValue >= 0;
   const hasDivergence = valueIsValid && parsedReceivedValue !== invoiceValue;
   const valueDifference = valueIsValid ? invoiceValue - parsedReceivedValue : 0;
-
-  const canProceedStep1 = valueIsValid && receivedAt !== "";
-  const canSubmitContest =
-    contestToTags.length > 0 &&
-    contestSubject.trim() !== "" &&
-    contestMessage.trim() !== "";
 
   // ── Display values ──
   const protocol = billing?.invoice_protocol || "—";
@@ -194,12 +189,20 @@ export function ConfirmReceiptModal({
     setContestFormTouched(false);
     setContestSubject("");
     setContestMessage("");
+    setAttempted(false);
     onClose();
   };
 
   // Confirma recebimento (novo ou edição de contestação)
   const handleConfirm = async () => {
-    if (!canProceedStep1) return;
+    const missing: string[] = [];
+    if (!receivedValue.trim() || !valueIsValid) missing.push("Valor recebido");
+    if (!receivedAt) missing.push("Data do recebimento");
+    if (missing.length > 0) {
+      setAttempted(true);
+      showToast(`Preencha: ${missing.join(", ")}`, "error");
+      return;
+    }
     setIsSaving(true);
     try {
       if (isEditMode) {
@@ -230,7 +233,14 @@ export function ConfirmReceiptModal({
 
   // Abre etapa de contestação
   const handleConfirmAndContest = () => {
-    if (!canProceedStep1) return;
+    const missing: string[] = [];
+    if (!receivedValue.trim() || !valueIsValid) missing.push("Valor recebido");
+    if (!receivedAt) missing.push("Data do recebimento");
+    if (missing.length > 0) {
+      setAttempted(true);
+      showToast(`Preencha: ${missing.join(", ")}`, "error");
+      return;
+    }
     setContestSubject(
       `Recurso - Valor Faltante - Protocolo ${billing?.invoice_protocol ?? ""}`,
     );
@@ -242,7 +252,15 @@ export function ConfirmReceiptModal({
 
   // Confirma e envia contestação por e-mail
   const handleSubmitContest = async () => {
-    if (!canSubmitContest) return;
+    const missing: string[] = [];
+    if (contestToTags.length === 0) missing.push("Destinatários");
+    if (!contestSubject.trim()) missing.push("Assunto");
+    if (!contestMessage.trim()) missing.push("Mensagem");
+    if (missing.length > 0) {
+      setContestFormTouched(true);
+      showToast(`Preencha: ${missing.join(", ")}`, "error");
+      return;
+    }
     setIsSaving(true);
     try {
       // 1. Confirma o recebimento — muda status para Finalizada
@@ -425,7 +443,7 @@ export function ConfirmReceiptModal({
                       }
                       placeholder="R$ 0,00"
                       disabled={isSaving}
-                      className="ds-input disabled:opacity-50"
+                      className={`ds-input disabled:opacity-50 ${attempted && (!receivedValue.trim() || !valueIsValid) ? "border-red-400 focus:ring-red-400" : ""}`}
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -521,7 +539,7 @@ export function ConfirmReceiptModal({
               {hasDivergence && (
                 <button
                   onClick={handleConfirmAndContest}
-                  disabled={!canProceedStep1 || isSaving}
+                  disabled={isSaving}
                   className="ds-btn-outline disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Confirmar e recorrer
@@ -529,7 +547,7 @@ export function ConfirmReceiptModal({
               )}
               <button
                 onClick={handleConfirm}
-                disabled={!canProceedStep1 || isSaving}
+                disabled={isSaving}
                 className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -679,13 +697,7 @@ export function ConfirmReceiptModal({
                 Voltar
               </button>
               <button
-                onClick={() => {
-                  if (!canSubmitContest) {
-                    setContestFormTouched(true);
-                    return;
-                  }
-                  handleSubmitContest();
-                }}
+                onClick={handleSubmitContest}
                 disabled={isSaving}
                 className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 w-full md:w-auto justify-center"
               >

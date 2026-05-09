@@ -8,6 +8,7 @@ import {
   ProcedureOpmeItem,
   ProcedureTussItem,
 } from "./types";
+import { logger } from "@/lib/logger";
 import { AddDocumentModal } from "./AddDocumentModal";
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
@@ -256,7 +257,7 @@ export function ProcedureSideSheet({
       await surgeryRequestService.updateTemplate(procedure.id, payload);
       onTemplateUpdated?.();
     } catch (err) {
-      console.error("Erro ao atualizar template:", err);
+      logger.error("Erro ao atualizar template:", err);
     }
   };
 
@@ -345,7 +346,7 @@ export function ProcedureSideSheet({
           toCreate.map((name) => supplierService.create({ name })),
         );
       } catch (err) {
-        console.error("Erro ao criar fornecedores:", err);
+        logger.error("Erro ao criar fornecedores:", err);
       }
     }
 

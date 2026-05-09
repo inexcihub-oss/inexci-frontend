@@ -6,6 +6,7 @@ import {
   collaboratorService,
   Collaborator,
 } from "@/services/collaborator.service";
+import { logger } from "@/lib/logger";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone } from "@/lib/formatters";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
@@ -64,7 +65,7 @@ export default function ColaboradoresPage() {
       const data = await collaboratorService.getAll();
       setCollaborators(data);
     } catch (error) {
-      console.error("Error loading collaborators:", error);
+      logger.error("Error loading collaborators:", error);
     } finally {
       setLoading(false);
     }
@@ -119,7 +120,7 @@ export default function ColaboradoresPage() {
       setCollaborators((prev) => prev.filter((c) => c.id !== deleteModal.id));
       setDeleteModal({ open: false, id: null, name: null, loading: false });
     } catch (error) {
-      console.error("Erro ao excluir:", error);
+      logger.error("Erro ao excluir:", error);
       setDeleteModal((prev) => ({ ...prev, loading: false }));
     }
   };
@@ -138,7 +139,7 @@ export default function ColaboradoresPage() {
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
     } catch (error) {
-      console.error("Erro ao excluir em lote:", error);
+      logger.error("Erro ao excluir em lote:", error);
       setBulkDeleteModal((prev) => ({ ...prev, loading: false }));
     }
   };

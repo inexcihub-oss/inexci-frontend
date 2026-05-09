@@ -253,6 +253,8 @@ export interface NotifyPayload {
   to?: string;
   /** Canais a enviar (quando não informado, o backend decide) */
   channels?: { email?: boolean; whatsapp?: boolean };
+  /** Status anterior (numérico) para templates de mudança de status */
+  old_status?: number;
 }
 
 export interface CreateTemplatePayload {
@@ -408,14 +410,6 @@ export const surgeryRequestService = {
     data: SimpleSurgeryRequestPayload,
   ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post("/surgery-requests", data);
-    return response.data;
-  },
-
-  /** Cria uma nova solicitação a partir de um template */
-  async createFromTemplate(
-    data: SimpleSurgeryRequestPayload,
-  ): Promise<SurgeryRequestMutationResponse> {
-    const response = await api.post("/surgery-requests/from-template", data);
     return response.data;
   },
 

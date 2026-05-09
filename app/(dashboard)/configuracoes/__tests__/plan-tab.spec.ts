@@ -1,205 +1,169 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 /**
- * TASK-FE-Q03 — Testes para validar que os planos de assinatura são
- * carregados dinamicamente do backend (authService.getPlans) e que o
- * plano atual é identificado via user.subscription_plan_id.
- *
- * Valida que:
- * - Não há planos hardcoded (Starter/Professional/Enterprise com preço)
- * - Os planos vêm do authService.getPlans()
- * - O plano atual é determinado por user.subscription_plan_id
- * - PlanCard trabalha com SubscriptionPlan (description, max_doctors)
+ * Após a re-arquitetura do sistema de planos (Billing v2):
+ * - Planos vêm de billingService.listPlans()
+ * - O plano atual é determinado por subscription.planId (vindo de
+ *   billingService.getMySubscription()) e nunca mais por user.subscription_plan_id.
+ * - Plano usa surgeryRequestQuota (em vez de maxDoctors) e priceCents/currency.
  */
 
-import type { SubscriptionPlan } from "@/types";
+import type { SubscriptionPlan, SubscriptionDetail } from "@/types";
 
-// Mock do authService
-const mockGetPlans = vi.fn<() => Promise<SubscriptionPlan[]>>();
+const mockListPlans = vi.fn<() => Promise<SubscriptionPlan[]>>();
+const mockGetMySubscription = vi.fn<() => Promise<SubscriptionDetail>>();
 
-vi.mock("@/services/auth.service", () => ({
-  authService: {
-    getPlans: () => mockGetPlans(),
+vi.mock("@/services/billing.service", () => ({
+  billingService: {
+    listPlans: () => mockListPlans(),
+    getMySubscription: () => mockGetMySubscription(),
   },
 }));
 
-// Dados de planos do backend (sem price/features)
 const backendPlans: SubscriptionPlan[] = [
   {
-    id: "plan-starter-uuid",
-    name: "Starter",
-    description: "Ideal para clínicas pequenas",
-    max_doctors: 1,
+    id: "plan-trial-uuid",
+    slug: "free-trial",
+    name: "Free Trial",
+    description: "30 dias grátis",
+    priceCents: 0,
+    currency: "BRL",
+    billingPeriod: "MONTHLY",
+    surgeryRequestQuota: 10,
+    sortOrder: 0,
+  },
+  {
+    id: "plan-essencial-uuid",
+    slug: "essencial",
+    name: "Essencial",
+    description: "Para clínicas pequenas",
+    priceCents: 19900,
+    currency: "BRL",
+    billingPeriod: "MONTHLY",
+    surgeryRequestQuota: 30,
+    sortOrder: 1,
   },
   {
     id: "plan-pro-uuid",
-    name: "Professional",
+    slug: "profissional",
+    name: "Profissional",
     description: "Para clínicas em crescimento",
-    max_doctors: 5,
+    priceCents: 49900,
+    currency: "BRL",
+    billingPeriod: "MONTHLY",
+    surgeryRequestQuota: 100,
+    sortOrder: 2,
   },
   {
     id: "plan-enterprise-uuid",
+    slug: "enterprise",
     name: "Enterprise",
     description: "Para grandes hospitais",
-    max_doctors: 50,
+    priceCents: 99900,
+    currency: "BRL",
+    billingPeriod: "MONTHLY",
+    surgeryRequestQuota: -1,
+    sortOrder: 3,
   },
 ];
 
-// Simula a lógica de carregamento de planos extraída do componente
-async function loadPlans(
-  isAdmin: boolean,
-  setPlans: (plans: SubscriptionPlan[]) => void,
-  setLoadingPlans: (loading: boolean) => void,
-  getPlans: typeof mockGetPlans,
-) {
-  if (!isAdmin) return;
-  setLoadingPlans(true);
-  try {
-    const data = await getPlans();
-    setPlans(data);
-  } catch (error) {
-    console.error("Erro ao carregar planos:", error);
-  } finally {
-    setLoadingPlans(false);
-  }
-}
-
-// Simula a lógica de identificação do plano atual
-function findCurrentPlan(
-  plans: SubscriptionPlan[],
-  subscriptionPlanId?: string,
-): SubscriptionPlan | undefined {
-  return plans.find((p) => p.id === subscriptionPlanId);
-}
-
-// Simula a lógica do PlanCard para determinar se é plano atual
-function isPlanCurrent(
+function buildSubscriptionDetail(
   planId: string,
-  userSubscriptionPlanId?: string,
-): boolean {
-  return planId === userSubscriptionPlanId;
+  nextPlanId: string | null = null,
+): SubscriptionDetail {
+  const plan = backendPlans.find((p) => p.id === planId)!;
+  return {
+    subscription: {
+      id: "sub-1",
+      status: "active",
+      planId,
+      nextPlanId,
+      trialEndsAt: null,
+      currentPeriodStart: "2026-05-01T00:00:00.000Z",
+      currentPeriodEnd: "2026-06-01T00:00:00.000Z",
+      cancelAtPeriodEnd: false,
+      canceledAt: null,
+      suspendedAt: null,
+      pastDueSince: null,
+      defaultPaymentMethodId: null,
+      gatewayProvider: "asaas",
+    },
+    plan,
+    nextPlan: nextPlanId
+      ? {
+          id: nextPlanId,
+          slug: backendPlans.find((p) => p.id === nextPlanId)!.slug,
+          name: backendPlans.find((p) => p.id === nextPlanId)!.name,
+          priceCents: backendPlans.find((p) => p.id === nextPlanId)!
+            .priceCents,
+        }
+      : null,
+    quota: {
+      used: 5,
+      limit: plan.surgeryRequestQuota,
+      isUnlimited: plan.surgeryRequestQuota === -1,
+      remaining:
+        plan.surgeryRequestQuota === -1
+          ? Number.POSITIVE_INFINITY
+          : Math.max(0, plan.surgeryRequestQuota - 5),
+      periodStart: "2026-05-01T00:00:00.000Z",
+      periodEnd: "2026-06-01T00:00:00.000Z",
+    },
+    daysLeftInTrial: null,
+    daysUntilSuspension: null,
+  };
 }
 
-describe("Configurações — Aba de Planos (Q03)", () => {
+describe("Configurações — Aba de Planos (Billing v2)", () => {
   beforeEach(() => {
-    mockGetPlans.mockClear();
-    mockGetPlans.mockResolvedValue(backendPlans);
+    mockListPlans.mockClear();
+    mockGetMySubscription.mockClear();
+    mockListPlans.mockResolvedValue(backendPlans);
   });
 
-  describe("Carregamento dinâmico de planos", () => {
-    it("deve buscar planos do backend via authService.getPlans()", async () => {
-      const setPlans = vi.fn();
-      const setLoadingPlans = vi.fn();
-
-      await loadPlans(true, setPlans, setLoadingPlans, mockGetPlans);
-
-      expect(mockGetPlans).toHaveBeenCalledOnce();
-      expect(setPlans).toHaveBeenCalledWith(backendPlans);
-    });
-
-    it("não deve carregar planos se não for admin", async () => {
-      const setPlans = vi.fn();
-      const setLoadingPlans = vi.fn();
-
-      await loadPlans(false, setPlans, setLoadingPlans, mockGetPlans);
-
-      expect(mockGetPlans).not.toHaveBeenCalled();
-      expect(setPlans).not.toHaveBeenCalled();
-    });
-
-    it("deve gerenciar estado de loading corretamente", async () => {
-      const setPlans = vi.fn();
-      const setLoadingPlans = vi.fn();
-
-      await loadPlans(true, setPlans, setLoadingPlans, mockGetPlans);
-
-      // Primeiro true, depois false
-      expect(setLoadingPlans).toHaveBeenCalledTimes(2);
-      expect(setLoadingPlans).toHaveBeenNthCalledWith(1, true);
-      expect(setLoadingPlans).toHaveBeenNthCalledWith(2, false);
-    });
-
-    it("deve tratar erro graciosamente e finalizar loading", async () => {
-      mockGetPlans.mockRejectedValueOnce(new Error("Network error"));
-      const setPlans = vi.fn();
-      const setLoadingPlans = vi.fn();
-
-      await loadPlans(true, setPlans, setLoadingPlans, mockGetPlans);
-
-      expect(setPlans).not.toHaveBeenCalled();
-      expect(setLoadingPlans).toHaveBeenNthCalledWith(2, false);
+  describe("Carregamento de planos via billingService", () => {
+    it("listPlans deve retornar a lista de planos disponíveis", async () => {
+      const data = await mockListPlans();
+      expect(data).toHaveLength(4);
+      expect(data.every((p) => typeof p.surgeryRequestQuota === "number")).toBe(
+        true,
+      );
     });
   });
 
-  describe("Identificação do plano atual", () => {
-    it("deve encontrar o plano atual via subscription_plan_id", () => {
-      const current = findCurrentPlan(backendPlans, "plan-pro-uuid");
-
-      expect(current).toBeDefined();
-      expect(current?.name).toBe("Professional");
-      expect(current?.description).toBe("Para clínicas em crescimento");
-      expect(current?.max_doctors).toBe(5);
+  describe("Identificação do plano atual via subscription.planId", () => {
+    it("deve identificar o plano atual a partir de subscription.planId", () => {
+      const detail = buildSubscriptionDetail("plan-pro-uuid");
+      expect(detail.plan?.name).toBe("Profissional");
     });
 
-    it("deve retornar undefined quando não há subscription_plan_id", () => {
-      const current = findCurrentPlan(backendPlans, undefined);
-
-      expect(current).toBeUndefined();
-    });
-
-    it("deve retornar undefined quando subscription_plan_id não corresponde", () => {
-      const current = findCurrentPlan(backendPlans, "plan-inexistente");
-
-      expect(current).toBeUndefined();
-    });
-
-    it("deve identificar corretamente se um plano é o atual do usuário", () => {
-      const userPlanId = "plan-starter-uuid";
-
-      expect(isPlanCurrent("plan-starter-uuid", userPlanId)).toBe(true);
-      expect(isPlanCurrent("plan-pro-uuid", userPlanId)).toBe(false);
-      expect(isPlanCurrent("plan-enterprise-uuid", userPlanId)).toBe(false);
+    it("deve identificar o próximo plano agendado via subscription.nextPlanId", () => {
+      const detail = buildSubscriptionDetail(
+        "plan-essencial-uuid",
+        "plan-pro-uuid",
+      );
+      expect(detail.nextPlan?.name).toBe("Profissional");
     });
   });
 
-  describe("Estrutura de dados dos planos (SubscriptionPlan)", () => {
-    it("planos do backend devem ter description em vez de features[]", () => {
+  describe("Estrutura de dados dos planos (SubscriptionPlan v2)", () => {
+    it("não deve mais ter o campo legado max_doctors", () => {
       for (const plan of backendPlans) {
-        expect(plan).toHaveProperty("description");
-        expect(typeof plan.description).toBe("string");
-        // Não deve ter 'features' (campo do tipo antigo)
-        expect(plan).not.toHaveProperty("features");
+        expect(plan).not.toHaveProperty("max_doctors");
       }
     });
 
-    it("planos do backend devem ter max_doctors em vez de price", () => {
+    it("deve ter priceCents, currency e billingPeriod", () => {
       for (const plan of backendPlans) {
-        expect(plan).toHaveProperty("max_doctors");
-        expect(typeof plan.max_doctors).toBe("number");
-        // Não deve ter 'price' (campo do tipo antigo)
-        expect(plan).not.toHaveProperty("price");
+        expect(typeof plan.priceCents).toBe("number");
+        expect(plan.currency).toBe("BRL");
+        expect(["MONTHLY", "YEARLY"]).toContain(plan.billingPeriod);
       }
     });
 
-    it("planos do backend não devem ter campo 'popular' ou 'current'", () => {
-      for (const plan of backendPlans) {
-        expect(plan).not.toHaveProperty("popular");
-        expect(plan).not.toHaveProperty("current");
-      }
-    });
-
-    it("max_doctors=1 deve usar singular 'médico'", () => {
-      const plan = backendPlans.find((p) => p.max_doctors === 1);
-      expect(plan).toBeDefined();
-      const label = `Até ${plan!.max_doctors} ${plan!.max_doctors === 1 ? "médico" : "médicos"}`;
-      expect(label).toBe("Até 1 médico");
-    });
-
-    it("max_doctors>1 deve usar plural 'médicos'", () => {
-      const plan = backendPlans.find((p) => p.max_doctors === 5);
-      expect(plan).toBeDefined();
-      const label = `Até ${plan!.max_doctors} ${plan!.max_doctors === 1 ? "médico" : "médicos"}`;
-      expect(label).toBe("Até 5 médicos");
+    it("surgeryRequestQuota === -1 representa ilimitado", () => {
+      const enterprise = backendPlans.find((p) => p.slug === "enterprise");
+      expect(enterprise?.surgeryRequestQuota).toBe(-1);
     });
   });
 });

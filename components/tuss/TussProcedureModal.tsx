@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { tussService, TussCode } from "@/services/tuss.service";
+import { logger } from "@/lib/logger";
 
 // Função debounce customizada com método cancel
 function debounce<T extends (...args: any[]) => any>(
@@ -197,7 +198,7 @@ export function TussProcedureModal({
         setSearchResults(results);
         setIsDropdownOpen(results.length > 0);
       } catch (err) {
-        console.error("Erro na busca:", err);
+        logger.error("Erro na busca:", err);
       } finally {
         setIsSearching(false);
       }
@@ -227,7 +228,7 @@ export function TussProcedureModal({
         setSearchResults(results);
         setIsDropdownOpen(results.length > 0);
       } catch (err) {
-        console.error("Erro na busca:", err);
+        logger.error("Erro na busca:", err);
       } finally {
         setIsSearching(false);
       }
@@ -328,7 +329,7 @@ export function TussProcedureModal({
       onSuccess();
       handleCancel();
     } catch (err) {
-      console.error("Erro ao salvar procedimentos:", err);
+      logger.error("Erro ao salvar procedimentos:", err);
       setError("Erro ao salvar procedimentos. Tente novamente.");
     } finally {
       setIsLoading(false);

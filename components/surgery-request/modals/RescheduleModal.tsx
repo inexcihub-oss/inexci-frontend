@@ -28,16 +28,22 @@ export function RescheduleModal({
 }: RescheduleModalProps) {
   const [newDate, setNewDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const { showToast } = useToast();
 
   const handleClose = () => {
     if (isSaving) return;
     setNewDate("");
+    setAttempted(false);
     onClose();
   };
 
   const handleSubmit = async () => {
-    if (!newDate.trim()) return;
+    if (!newDate.trim()) {
+      setAttempted(true);
+      showToast("Informe a nova data da cirurgia.", "error");
+      return;
+    }
     setIsSaving(true);
     try {
       await surgeryRequestService.reschedule(solicitacao.id, {
@@ -98,7 +104,7 @@ export function RescheduleModal({
               value={newDate}
               onChange={(e) => setNewDate(e.target.value)}
               disabled={isSaving}
-              className="ds-input disabled:opacity-50"
+              className={`ds-input disabled:opacity-50 ${attempted && !newDate.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
             />
           </div>
         </div>
@@ -114,7 +120,7 @@ export function RescheduleModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!newDate.trim() || isSaving}
+            disabled={isSaving}
             className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? "Salvando..." : "Reagendar"}

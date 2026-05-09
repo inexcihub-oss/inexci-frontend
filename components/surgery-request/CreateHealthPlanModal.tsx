@@ -8,6 +8,13 @@ import {
   HealthPlan,
 } from "@/services/health-plan.service";
 import { getApiErrorMessage } from "@/lib/http-error";
+import Input from "@/components/ui/Input";
+import { useZodForm } from "@/hooks/useZodForm";
+import { createHealthPlanSchema } from "@/lib/schemas/healthPlan.schema";
+import { unmask } from "@/lib/masks";
+import { summarizeErrors } from "@/lib/form-errors";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 
 interface CreateHealthPlanModalProps {
   isOpen: boolean;
@@ -15,21 +22,11 @@ interface CreateHealthPlanModalProps {
   onSuccess: (healthPlan: HealthPlan) => void;
 }
 
-function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10)
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-type FormData = { name: string; phone: string; email: string };
-const EMPTY_FORM: FormData = { name: "", phone: "", email: "" };
+const FIELD_LABELS: Record<string, string> = {
+  name: "Convênio",
+  phone: "Telefone",
+  email: "E-mail",
+};
 
 export function CreateHealthPlanModal({
   isOpen,
@@ -37,65 +34,47 @@ export function CreateHealthPlanModal({
   onSuccess,
 }: CreateHealthPlanModalProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
-  const [emailError, setEmailError] = useState("");
   const [error, setError] = useState("");
+  const { toast, showToast, hideToast } = useToast();
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setFormData((prev) => ({ ...prev, phone: applyPhoneMask(e.target.value) }));
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, email: e.target.value }));
-    if (emailError) setEmailError("");
-  };
-
-  const handleEmailBlur = () => {
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-    } else {
-      setEmailError("");
-    }
-  };
+  const form = useZodForm({
+    schema: createHealthPlanSchema,
+    initialValues: { name: "", phone: "", email: "" },
+  });
 
   const handleClose = () => {
     if (loading) return;
-    setFormData(EMPTY_FORM);
-    setEmailError("");
+    form.reset();
     setError("");
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const payload: CreateHealthPlanPayload = {
-        name: formData.name.trim(),
-        phone: formData.phone,
-        email: formData.email,
-      };
-      const newHealthPlan = await healthPlanService.create(payload);
-      onSuccess(newHealthPlan);
-      setFormData(EMPTY_FORM);
-      setEmailError("");
-      onClose();
-    } catch (err: unknown) {
-      setError(
-        getApiErrorMessage(err, "Erro ao criar convênio. Tente novamente."),
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  const onSubmit = form.handleSubmit(
+    async (data) => {
+      setLoading(true);
+      setError("");
+      try {
+        const payload: CreateHealthPlanPayload = {
+          name: data.name.trim(),
+          phone: unmask(data.phone),
+          email: data.email,
+        };
+        const newHealthPlan = await healthPlanService.create(payload);
+        onSuccess(newHealthPlan);
+        form.reset();
+        onClose();
+      } catch (err: unknown) {
+        setError(
+          getApiErrorMessage(err, "Erro ao criar convênio. Tente novamente."),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
+  );
 
   if (!isOpen) return null;
-
-  const inputClass = "ds-input";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
@@ -116,52 +95,31 @@ export function CreateHealthPlanModal({
         <div className="h-px bg-gray-200" />
 
         {/* Body */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={onSubmit} noValidate>
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
-            {/* Convênio */}
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Convênio</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
-                placeholder="Nome do convênio"
-                className={inputClass}
-              />
-            </div>
+            <Input
+              label="Convênio"
+              required
+              placeholder="Nome do convênio"
+              {...form.getFieldProps("name")}
+            />
 
-            {/* Telefone */}
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Telefone</label>
-              <input
-                type="tel"
-                required
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                placeholder="(21) 98765-4321"
-                className={inputClass}
-              />
-            </div>
+            <Input
+              label="Telefone"
+              type="tel"
+              mask="phone"
+              required
+              placeholder="(21) 98765-4321"
+              {...form.getFieldProps("phone")}
+            />
 
-            {/* E-mail */}
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">E-mail</label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleEmailChange}
-                onBlur={handleEmailBlur}
-                placeholder="convenio@mail.com"
-                className={`ds-input ${emailError ? "border-red-400" : ""}`}
-              />
-              {emailError && (
-                <span className="text-xs text-red-500">{emailError}</span>
-              )}
-            </div>
+            <Input
+              label="E-mail"
+              type="email"
+              required
+              placeholder="convenio@mail.com"
+              {...form.getFieldProps("email")}
+            />
 
             {error && (
               <p className="text-sm text-red-500 text-center">{error}</p>
@@ -171,16 +129,16 @@ export function CreateHealthPlanModal({
           {/* Footer */}
           <div className="h-px bg-gray-200" />
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4">
-            <button
-              type="submit"
-              disabled={loading || !!emailError}
-              className="ds-btn-primary"
-            >
+            <button type="submit" disabled={loading} className="ds-btn-primary">
               {loading ? "Adicionando..." : "Adicionar convênio"}
             </button>
           </div>
         </form>
       </div>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
     </div>
   );
 }

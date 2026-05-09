@@ -37,6 +37,7 @@ export function StartAnalysisModal({
   const [quotation3ReceivedAt, setQuotation3ReceivedAt] = useState("");
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const { showToast } = useToast();
 
   const handleClose = () => {
@@ -50,16 +51,27 @@ export function StartAnalysisModal({
     setQuotation3Number("");
     setQuotation3ReceivedAt("");
     setNotes("");
+    setAttempted(false);
     onClose();
   };
 
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(handleClose);
 
-  const canSubmit = requestNumber.trim() !== "" && receivedAt !== "";
+  const missingFields = (): string[] => {
+    const m: string[] = [];
+    if (!requestNumber.trim()) m.push("Nº da solicitação");
+    if (!receivedAt) m.push("Data de recebimento");
+    return m;
+  };
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    const missing = missingFields();
+    if (missing.length > 0) {
+      setAttempted(true);
+      showToast(`Preencha: ${missing.join(", ")}`, "error");
+      return;
+    }
     setIsSaving(true);
     try {
       const payload: StartAnalysisPayload = {
@@ -210,7 +222,7 @@ export function StartAnalysisModal({
                   onChange={(e) => setRequestNumber(e.target.value)}
                   placeholder="Ex: 0000000-0"
                   disabled={isSaving}
-                  className={inputClass}
+                  className={`${inputClass} ${attempted && !requestNumber.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
                 />
               </div>
 
@@ -225,7 +237,7 @@ export function StartAnalysisModal({
                   value={receivedAt}
                   onChange={(e) => setReceivedAt(e.target.value)}
                   disabled={isSaving}
-                  className={inputClass}
+                  className={`${inputClass} ${attempted && !receivedAt ? "border-red-400 focus:ring-red-400" : ""}`}
                 />
               </div>
             </div>
@@ -383,7 +395,7 @@ export function StartAnalysisModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit || isSaving}
+            disabled={isSaving}
             className="ds-btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex-1 md:flex-none"
           >
             {isSaving ? (

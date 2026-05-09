@@ -9,6 +9,7 @@ import {
   notificationService,
   Notification,
 } from "@/services/notification.service";
+import { logger } from "@/lib/logger";
 import { useNotifications, useClickOutside } from "@/hooks";
 import { uploadService } from "@/services/upload.service";
 import { useAuth } from "@/contexts/AuthContext";
@@ -81,14 +82,14 @@ export default function MobileHeaderActions() {
         setNotifications(response.notifications);
         setUnreadCount(response.unreadCount);
       } catch (error) {
-        console.error("Erro ao carregar notificações:", error);
+        logger.error("Erro ao carregar notificações:", error);
       } finally {
         setLoading(false);
       }
     }
   };
 
-  const handleMarkAsRead = async (notificationId: number) => {
+  const handleMarkAsRead = async (notificationId: string) => {
     try {
       await notificationService.markAsRead(notificationId);
       setNotifications((prev) =>
@@ -96,7 +97,7 @@ export default function MobileHeaderActions() {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error("Erro ao marcar como lida:", error);
+      logger.error("Erro ao marcar como lida:", error);
     }
   };
 
@@ -106,11 +107,11 @@ export default function MobileHeaderActions() {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
-      console.error("Erro ao marcar todas como lidas:", error);
+      logger.error("Erro ao marcar todas como lidas:", error);
     }
   };
 
-  const handleDelete = async (notificationId: number) => {
+  const handleDelete = async (notificationId: string) => {
     try {
       await notificationService.deleteNotification(notificationId);
       const wasUnread = notifications.find(
@@ -119,7 +120,7 @@ export default function MobileHeaderActions() {
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
       if (wasUnread) setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error("Erro ao remover notificação:", error);
+      logger.error("Erro ao remover notificação:", error);
     }
   };
 
@@ -230,7 +231,7 @@ export default function MobileHeaderActions() {
                           </p>
                           <p className="text-[11px] text-neutral-400 mt-0.5">
                             {formatDistanceToNow(
-                              new Date(notification.created_at),
+                              new Date(notification.createdAt),
                               {
                                 addSuffix: true,
                                 locale: ptBR,

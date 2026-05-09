@@ -15,6 +15,7 @@ import {
   STATUS_NUMBER_TO_STRING,
   STATUS_COLORS,
 } from "@/services/surgery-request.service";
+import { logger } from "@/lib/logger";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { STATE_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
@@ -69,7 +70,7 @@ export default function ConvenioDetalhePage() {
       const healthPlanData = await healthPlanService.getById(params.id);
 
       if (!healthPlanData) {
-        console.error("Convênio não encontrado");
+        logger.error("Convênio não encontrado");
         setLoading(false);
         return;
       }
@@ -125,7 +126,7 @@ export default function ConvenioDetalhePage() {
         setLoadingSurgeries(false);
       }
     } catch (error) {
-      console.error("Erro ao carregar convênio:", error);
+      logger.error("Erro ao carregar convênio:", error);
     } finally {
       setLoading(false);
     }
@@ -149,7 +150,7 @@ export default function ConvenioDetalhePage() {
       setOriginalData(formData);
       showToast("Convênio atualizado com sucesso!", "success");
     } catch (error) {
-      console.error("Erro ao salvar:", error);
+      logger.error("Erro ao salvar:", error);
       showToast("Erro ao salvar as alterações.", "error");
     } finally {
       setSaving(false);

@@ -8,6 +8,12 @@ import { Button, Input } from "@/components/ui";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { authService } from "@/services/auth.service";
 import { ArrowLeft, CheckCircle2, Mail, KeyRound, Lock } from "lucide-react";
+import { useZodForm } from "@/hooks/useZodForm";
+import {
+  forgotPasswordEmailSchema,
+  forgotPasswordCodeSchema,
+  newPasswordSchema,
+} from "@/lib/schemas/auth.schema";
 
 type Step = "email" | "code" | "password" | "success";
 
@@ -15,20 +21,30 @@ function ForgotPasswordForm() {
   const router = useRouter();
 
   const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const emailForm = useZodForm({
+    schema: forgotPasswordEmailSchema,
+    initialValues: { email: "" },
+  });
+  const codeForm = useZodForm({
+    schema: forgotPasswordCodeSchema,
+    initialValues: { code: "" },
+  });
+  const passwordForm = useZodForm({
+    schema: newPasswordSchema,
+    initialValues: { password: "", confirmPassword: "" },
+  });
+
+  const email = emailForm.values.email;
+
   /* ── Etapa 1: solicitar código ── */
-  const handleSendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendCode = emailForm.handleSubmit(async (data) => {
     setError("");
     setIsLoading(true);
     try {
-      await authService.requestPasswordReset(email);
+      await authService.requestPasswordReset(data.email);
       setStep("code");
     } catch (err: unknown) {
       setError(
@@ -38,15 +54,14 @@ function ForgotPasswordForm() {
     } finally {
       setIsLoading(false);
     }
-  };
+  });
 
   /* ── Etapa 2: validar código ── */
-  const handleValidateCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleValidateCode = codeForm.handleSubmit(async (data) => {
     setError("");
     setIsLoading(true);
     try {
-      const valid = await authService.validateRecoveryCode(email, code);
+      const valid = await authService.validateRecoveryCode(email, data.code);
       if (!valid) {
         setError("Código inválido ou expirado. Verifique e tente novamente.");
         return;
@@ -57,25 +72,14 @@ function ForgotPasswordForm() {
     } finally {
       setIsLoading(false);
     }
-  };
+  });
 
   /* ── Etapa 3: redefinir senha ── */
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleChangePassword = passwordForm.handleSubmit(async (data) => {
     setError("");
-
-    if (password.length < 8) {
-      setError("A senha deve ter pelo menos 8 caracteres.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("As senhas não coincidem.");
-      return;
-    }
-
     setIsLoading(true);
     try {
-      await authService.changePassword(email, code, password);
+      await authService.changePassword(email, codeForm.values.code, data.password);
       setStep("success");
       setTimeout(() => router.push("/login"), 3000);
     } catch (err: unknown) {
@@ -86,9 +90,7 @@ function ForgotPasswordForm() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const mismatch = confirmPassword.length > 0 && confirmPassword !== password;
+  });
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -220,16 +222,14 @@ function ForgotPasswordForm() {
 
               {/* ── Formulário: Etapa 1 — E-mail ── */}
               {step === "email" && (
-                <form onSubmit={handleSendCode} className="space-y-5">
+                <form onSubmit={handleSendCode} noValidate className="space-y-5">
                   <Input
                     id="email"
-                    name="email"
                     label="E-mail"
                     type="email"
                     autoComplete="email"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    {...emailForm.getFieldProps("email")}
                     disabled={isLoading}
                     placeholder="seu@email.com"
                     className="min-h-[48px]"
@@ -263,17 +263,15 @@ function ForgotPasswordForm() {
 
               {/* ── Formulário: Etapa 2 — Código ── */}
               {step === "code" && (
-                <form onSubmit={handleValidateCode} className="space-y-5">
+                <form onSubmit={handleValidateCode} noValidate className="space-y-5">
                   <Input
                     id="code"
-                    name="code"
                     label="Código de verificação"
                     type="text"
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     required
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.trim())}
+                    {...codeForm.getFieldProps("code")}
                     disabled={isLoading}
                     placeholder="Ex: 123456"
                     className="min-h-[48px] tracking-widest text-center text-lg"
@@ -299,7 +297,7 @@ function ForgotPasswordForm() {
                       onClick={() => {
                         setStep("email");
                         setError("");
-                        setCode("");
+                        codeForm.reset();
                       }}
                       className="hover:text-gray-700 underline underline-offset-2"
                     >
@@ -311,15 +309,14 @@ function ForgotPasswordForm() {
 
               {/* ── Formulário: Etapa 3 — Nova senha ── */}
               {step === "password" && (
-                <form onSubmit={handleChangePassword} className="space-y-5">
+                <form onSubmit={handleChangePassword} noValidate className="space-y-5">
                   <PasswordInput
                     id="password"
-                    name="password"
                     label="Nova senha"
                     autoComplete="new-password"
                     required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    showRequirements
+                    {...passwordForm.getFieldProps("password")}
                     disabled={isLoading}
                     placeholder="Mínimo 8 caracteres"
                     className="min-h-[48px]"
@@ -327,22 +324,14 @@ function ForgotPasswordForm() {
 
                   <PasswordInput
                     id="confirmPassword"
-                    name="confirmPassword"
                     label="Confirmar senha"
                     autoComplete="new-password"
                     required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    {...passwordForm.getFieldProps("confirmPassword")}
                     disabled={isLoading}
                     placeholder="Repita a nova senha"
-                    className={`min-h-[48px] ${mismatch ? "border-red-400" : ""}`}
+                    className="min-h-[48px]"
                   />
-
-                  {mismatch && (
-                    <p className="text-xs text-red-500 -mt-2">
-                      As senhas não coincidem.
-                    </p>
-                  )}
 
                   {error && (
                     <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700">
@@ -353,7 +342,6 @@ function ForgotPasswordForm() {
                   <Button
                     type="submit"
                     isLoading={isLoading}
-                    disabled={mismatch}
                     className="w-full text-sm font-semibold min-h-[48px]"
                   >
                     Redefinir senha

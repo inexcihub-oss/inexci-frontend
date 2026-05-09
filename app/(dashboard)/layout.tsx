@@ -8,6 +8,7 @@ import Sidebar from "@/components/Sidebar";
 import BottomNavBar from "@/components/BottomNavBar";
 import MobileHeaderActions from "@/components/shared/MobileHeaderActions";
 import { ConsentGate } from "@/components/privacy/ConsentGate";
+import { BillingStatusBanner } from "@/components/billing/BillingStatusBanner";
 import Image from "next/image";
 
 export default function DashboardLayout({
@@ -67,6 +68,8 @@ export default function DashboardLayout({
           </div>
           <MobileHeaderActions />
         </header>
+
+        <BillingStatusBanner />
 
         {/* Conteúdo principal com padding para bottom nav no mobile */}
         <main className="flex-1 overflow-hidden pb-16 lg:pb-0">

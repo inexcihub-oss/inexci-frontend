@@ -13,6 +13,15 @@
         "caughtErrorsIgnorePattern": "^_"
       }
     ],
-    "react-hooks/exhaustive-deps": "warn"
-  }
+    "react-hooks/exhaustive-deps": "warn",
+    "no-console": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["lib/logger.ts", "e2e/**/*.{ts,tsx}", "*.config.{js,ts,mjs}"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
 }

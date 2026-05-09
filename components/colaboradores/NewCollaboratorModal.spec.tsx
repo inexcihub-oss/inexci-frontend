@@ -155,7 +155,7 @@ describe("NewCollaboratorModal", () => {
 
     render(<NewCollaboratorModal {...defaultProps} />);
 
-    await userEvent.type(screen.getByPlaceholderText("Nome completo"), "Maria");
+    await userEvent.type(screen.getByPlaceholderText("Nome completo"), "Maria Silva");
     await userEvent.type(
       screen.getByPlaceholderText("colaborador@mail.com"),
       "maria@email.com",
@@ -220,10 +220,8 @@ describe("NewCollaboratorModal", () => {
         expect.objectContaining({
           name: "Dr. Carlos",
           email: "carlos@email.com",
-          doctor_profile: expect.objectContaining({
-            crm: "654321",
-            crm_state: "SP",
-          }),
+          crm: "654321",
+          crm_state: "SP",
         }),
       );
     });
@@ -300,10 +298,8 @@ describe("NewCollaboratorModal — defaultIsDoctor", () => {
         expect.objectContaining({
           name: "Dr. João Silva",
           email: "joao@email.com",
-          doctor_profile: expect.objectContaining({
-            crm: "999888",
-            crm_state: "RJ",
-          }),
+          crm: "999888",
+          crm_state: "RJ",
         }),
       );
     });

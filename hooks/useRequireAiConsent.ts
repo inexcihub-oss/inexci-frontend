@@ -1,25 +1,22 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { consentService } from "@/services/consent.service";
 
 interface UseRequireAiConsentResult {
-  /** Indica se o usuário aceitou a versão vigente do termo de IA. */
+  /** Indica se o usuário já aceitou o termo de IA. */
   canUseAi: boolean;
   /** Indica se a verificação ainda está em andamento. */
   loading: boolean;
   /**
    * Direciona o usuário ao fluxo de aceite. Se `inline` for `true`, registra
-   * o aceite imediatamente para a versão vigente; caso contrário, navega
-   * para a página `/configuracoes/privacidade`.
+   * o aceite imediatamente; caso contrário, navega para `/configuracoes/privacidade`.
    */
   requestConsent: (options?: {
     inline?: boolean;
   }) => Promise<{ accepted: boolean }>;
-  /** Versão atual do termo de IA (quando conhecida). */
-  currentVersion: string | null;
 }
 
 /**
@@ -36,21 +33,11 @@ export function useRequireAiConsent(): UseRequireAiConsentResult {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const aiStatus = useMemo(
-    () => consents.find((c) => c.type === "ai") ?? null,
-    [consents],
-  );
-
-  const canUseAi = !!aiStatus?.isAccepted;
-  const currentVersion = aiStatus?.currentVersion ?? null;
+  const canUseAi = Boolean(consents?.aiConsentAcceptedAt);
 
   const requestConsent = useCallback(
     async ({ inline = false }: { inline?: boolean } = {}) => {
       if (canUseAi) return { accepted: true };
-      if (!aiStatus) {
-        router.push("/configuracoes/privacidade");
-        return { accepted: false };
-      }
 
       if (!inline) {
         router.push("/configuracoes/privacidade");
@@ -59,7 +46,7 @@ export function useRequireAiConsent(): UseRequireAiConsentResult {
 
       setLoading(true);
       try {
-        await consentService.grant("ai", aiStatus.currentVersion);
+        await consentService.grantAi();
         await refreshConsents();
         return { accepted: true };
       } catch {
@@ -68,8 +55,8 @@ export function useRequireAiConsent(): UseRequireAiConsentResult {
         setLoading(false);
       }
     },
-    [aiStatus, canUseAi, refreshConsents, router],
+    [canUseAi, refreshConsents, router],
   );
 
-  return { canUseAi, loading, requestConsent, currentVersion };
+  return { canUseAi, loading, requestConsent };
 }

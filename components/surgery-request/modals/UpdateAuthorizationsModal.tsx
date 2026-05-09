@@ -148,9 +148,15 @@ export function UpdateAuthorizationsModal({
     return e.authorized_quantity !== "" && (auth === 0 || auth < e.quantity);
   });
 
-  const canAccept = scheduleDates.some((d) => d.date.trim() !== "");
-
   const handleAccept = async () => {
+    const hasDate = scheduleDates.some((d) => d.date.trim() !== "");
+    if (!hasDate) {
+      showToast(
+        "Preencha pelo menos uma opção de data para o agendamento.",
+        "error",
+      );
+      return;
+    }
     setIsSaving(true);
     try {
       // 1. Salvar quantidades autorizadas no banco antes de aceitar
@@ -203,7 +209,10 @@ export function UpdateAuthorizationsModal({
   };
 
   const handleContest = async () => {
-    if (!contestReason.trim()) return;
+    if (!contestReason.trim()) {
+      showToast("Informe o motivo da contestação.", "error");
+      return;
+    }
     setIsSaving(true);
     try {
       // Salvar quantidades autorizadas no banco antes de contestar
@@ -658,7 +667,7 @@ export function UpdateAuthorizationsModal({
               </button>
               <button
                 onClick={handleAccept}
-                disabled={!canAccept || isSaving}
+                disabled={isSaving}
                 className="ds-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? "Enviando..." : "Confirmar agendamento"}

@@ -15,6 +15,7 @@ import {
   STATUS_NUMBER_TO_STRING,
   STATUS_COLORS,
 } from "@/services/surgery-request.service";
+import { logger } from "@/lib/logger";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { STATE_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
@@ -67,7 +68,7 @@ export default function HospitalDetalhePage() {
       const hospitalData = await hospitalService.getById(params.id);
 
       if (!hospitalData) {
-        console.error("Hospital não encontrado");
+        logger.error("Hospital não encontrado");
         setLoading(false);
         return;
       }
@@ -119,7 +120,7 @@ export default function HospitalDetalhePage() {
         setLoadingSurgeries(false);
       }
     } catch (error) {
-      console.error("Erro ao carregar hospital:", error);
+      logger.error("Erro ao carregar hospital:", error);
     } finally {
       setLoading(false);
     }
@@ -148,7 +149,7 @@ export default function HospitalDetalhePage() {
       setOriginalData(formData);
       showToast("Hospital atualizado com sucesso!", "success");
     } catch (error) {
-      console.error("Erro ao salvar:", error);
+      logger.error("Erro ao salvar:", error);
       showToast("Erro ao salvar as alterações.", "error");
     } finally {
       setSaving(false);

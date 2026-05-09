@@ -4,6 +4,13 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import api from "@/lib/api";
 import { getApiErrorMessage } from "@/lib/http-error";
+import Input from "@/components/ui/Input";
+import { useZodForm } from "@/hooks/useZodForm";
+import { createManagerSchema } from "@/lib/schemas/collaborator.schema";
+import { unmask } from "@/lib/masks";
+import { summarizeErrors } from "@/lib/form-errors";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 
 interface CreateManagerModalProps {
   isOpen: boolean;
@@ -11,18 +18,11 @@ interface CreateManagerModalProps {
   onSuccess: (manager: any) => void;
 }
 
-function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10)
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+const FIELD_LABELS: Record<string, string> = {
+  name: "Nome completo",
+  phone: "Telefone",
+  email: "E-mail",
+};
 
 export function CreateManagerModal({
   isOpen,
@@ -30,62 +30,45 @@ export function CreateManagerModal({
   onSuccess,
 }: CreateManagerModalProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({ name: "", phone: "", email: "" });
-  const [emailError, setEmailError] = useState("");
   const [error, setError] = useState("");
+  const { toast, showToast, hideToast } = useToast();
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, phone: applyPhoneMask(e.target.value) });
-  };
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, email: e.target.value });
-    if (emailError) setEmailError("");
-  };
-
-  const handleEmailBlur = () => {
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-    } else {
-      setEmailError("");
-    }
-  };
+  const form = useZodForm({
+    schema: createManagerSchema,
+    initialValues: { name: "", phone: "", email: "" },
+  });
 
   const handleClose = () => {
     if (loading) return;
-    setFormData({ name: "", phone: "", email: "" });
-    setEmailError("");
+    form.reset();
     setError("");
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const response = await api.post("/users", {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        role: "collaborator",
-      });
-      onSuccess(response.data);
-      setFormData({ name: "", phone: "", email: "" });
-      setEmailError("");
-      onClose();
-    } catch (err: unknown) {
-      setError(
-        getApiErrorMessage(err, "Erro ao criar gestor. Tente novamente."),
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  const onSubmit = form.handleSubmit(
+    async (data) => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await api.post("/users", {
+          name: data.name.trim(),
+          email: data.email,
+          phone: unmask(data.phone),
+          role: "collaborator",
+        });
+        onSuccess(response.data);
+        form.reset();
+        onClose();
+      } catch (err: unknown) {
+        setError(
+          getApiErrorMessage(err, "Erro ao criar gestor. Tente novamente."),
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
+  );
 
   if (!isOpen) return null;
 
@@ -108,52 +91,29 @@ export function CreateManagerModal({
         <div className="h-px bg-gray-200" />
 
         {/* Body */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={onSubmit} noValidate>
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
-            {/* Nome completo */}
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Nome completo</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="Nome do gestor"
-                className="ds-input"
-              />
-            </div>
-
-            {/* Telefone */}
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Telefone</label>
-              <input
-                type="tel"
-                required
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                placeholder="(21) 98765-4321"
-                className="ds-input"
-              />
-            </div>
-
-            {/* E-mail */}
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">E-mail</label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleEmailChange}
-                onBlur={handleEmailBlur}
-                placeholder="gestor@mail.com"
-                className={`ds-input ${emailError ? "border-red-400" : ""}`}
-              />
-              {emailError && (
-                <span className="text-xs text-red-500">{emailError}</span>
-              )}
-            </div>
+            <Input
+              label="Nome completo"
+              required
+              placeholder="Nome do gestor"
+              {...form.getFieldProps("name")}
+            />
+            <Input
+              label="Telefone"
+              type="tel"
+              mask="phone"
+              required
+              placeholder="(21) 98765-4321"
+              {...form.getFieldProps("phone")}
+            />
+            <Input
+              label="E-mail"
+              type="email"
+              required
+              placeholder="gestor@mail.com"
+              {...form.getFieldProps("email")}
+            />
 
             {error && (
               <p className="text-sm text-red-500 text-center">{error}</p>
@@ -163,16 +123,16 @@ export function CreateManagerModal({
           {/* Footer */}
           <div className="h-px bg-gray-200" />
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4">
-            <button
-              type="submit"
-              disabled={loading || !!emailError}
-              className="ds-btn-primary"
-            >
+            <button type="submit" disabled={loading} className="ds-btn-primary">
               {loading ? "Adicionando..." : "Adicionar gestor"}
             </button>
           </div>
         </form>
       </div>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
     </div>
   );
 }

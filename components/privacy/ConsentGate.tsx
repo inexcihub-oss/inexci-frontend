@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ConsentOnboardingModal } from "./ConsentOnboardingModal";
-import { ConsentVersionNotice } from "./ConsentVersionNotice";
 
 const ALLOWED_PATH_PREFIXES = ["/configuracoes/privacidade", "/privacidade"];
 
@@ -20,19 +19,19 @@ interface ConsentGateProps {
  * pendências, para que ele possa rever o que falta aceitar.
  */
 export function ConsentGate({ children }: ConsentGateProps) {
-  const { user, consents, pendingConsents, refreshConsents } = useAuth();
+  const { user, consents, refreshConsents } = useAuth();
   const pathname = usePathname() ?? "";
 
   const blocking = useMemo(() => {
-    if (!user) return false;
-    return pendingConsents.some(
-      (t) => t === "privacy_policy" || t === "terms_of_use",
-    );
-  }, [user, pendingConsents]);
+    if (!user || !consents) return false;
+    return !consents.requiredConsentsAccepted;
+  }, [user, consents]);
 
-  const isAllowedPath = ALLOWED_PATH_PREFIXES.some((p) => pathname.startsWith(p));
+  const isAllowedPath = ALLOWED_PATH_PREFIXES.some((p) =>
+    pathname.startsWith(p),
+  );
 
-  if (blocking && !isAllowedPath) {
+  if (blocking && !isAllowedPath && consents) {
     return (
       <ConsentOnboardingModal
         consents={consents}
@@ -41,10 +40,5 @@ export function ConsentGate({ children }: ConsentGateProps) {
     );
   }
 
-  return (
-    <>
-      {children}
-      <ConsentVersionNotice />
-    </>
-  );
+  return <>{children}</>;
 }

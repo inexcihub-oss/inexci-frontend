@@ -14,6 +14,7 @@ import type {
   PendingNotificationsData,
   DashboardData,
 } from "@/services/reports.service";
+import { logger } from "@/lib/logger";
 import { STATUS_NUMBER_TO_STRING } from "@/services/surgery-request.service";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -766,7 +767,7 @@ export default function DashboardPage() {
 
       setDashboard(processed);
     } catch (err: unknown) {
-      console.error("Erro ao carregar dashboard:", err);
+      logger.error("Erro ao carregar dashboard:", err);
       const e = err as {
         response?: { data?: { message?: string } };
         message?: string;

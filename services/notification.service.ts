@@ -1,41 +1,37 @@
 import api from "@/lib/api";
 
 export interface NotificationSettings {
-  id: number;
-  user_id: number;
-  email_notifications: boolean;
-  sms_notifications: boolean;
-  push_notifications: boolean;
-  whatsapp_notifications: boolean;
-  new_surgery_request: boolean;
-  status_update: boolean;
+  id: string;
+  userId: string;
+  pushNotifications: boolean;
+  whatsappNotifications: boolean;
+  newSurgeryRequest: boolean;
+  statusUpdate: boolean;
   pendencies: boolean;
-  expiring_documents: boolean;
-  weekly_report: boolean;
+  expiringDocuments: boolean;
+  weeklyReport: boolean;
 }
 
 export interface UpdateNotificationSettingsData {
-  email_notifications?: boolean;
-  sms_notifications?: boolean;
-  push_notifications?: boolean;
-  whatsapp_notifications?: boolean;
-  new_surgery_request?: boolean;
-  status_update?: boolean;
+  pushNotifications?: boolean;
+  whatsappNotifications?: boolean;
+  newSurgeryRequest?: boolean;
+  statusUpdate?: boolean;
   pendencies?: boolean;
-  expiring_documents?: boolean;
-  weekly_report?: boolean;
+  expiringDocuments?: boolean;
+  weeklyReport?: boolean;
 }
 
 export interface Notification {
-  id: number;
-  user_id: number;
+  id: string;
+  userId: string;
   type: string;
   title: string;
   message: string;
   read: boolean;
   link?: string;
-  metadata?: Record<string, any>;
-  created_at: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface NotificationsResponse {
@@ -104,7 +100,7 @@ export const notificationService = {
   /**
    * Marca uma notificação como lida
    */
-  async markAsRead(notificationId: number): Promise<void> {
+  async markAsRead(notificationId: string): Promise<void> {
     await api.put(`/notifications/${notificationId}/read`);
   },
 
@@ -118,7 +114,7 @@ export const notificationService = {
   /**
    * Remove uma notificação
    */
-  async deleteNotification(notificationId: number): Promise<void> {
+  async deleteNotification(notificationId: string): Promise<void> {
     await api.delete(`/notifications/${notificationId}`);
   },
 };
