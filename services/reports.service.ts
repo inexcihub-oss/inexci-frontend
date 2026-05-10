@@ -1,25 +1,25 @@
 import api from "@/lib/api";
 
 export interface DashboardData {
-  surgery_request: {
+  surgeryRequest: {
     total: number;
-    total_scheduled: number;
-    total_performed: number;
-    total_invoiced_count: number;
-    total_invoiced_value: number | null;
-    total_received_value: number | null;
-    total_by_health_plan: Array<{
-      health_plan_id: string;
-      health_plan_name: string;
+    totalScheduled: number;
+    totalPerformed: number;
+    totalInvoicedCount: number;
+    totalInvoicedValue: number | null;
+    totalReceivedValue: number | null;
+    totalByHealthPlan: Array<{
+      healthPlanId: string;
+      healthPlanName: string;
       total: number;
     }>;
-    total_by_status: Array<{
+    totalByStatus: Array<{
       status: number;
       total: number;
     }>;
-    total_by_hospital: Array<{
-      hospital_id: string;
-      hospital_name: string;
+    totalByHospital: Array<{
+      hospitalId: string;
+      hospitalName: string;
       total: number;
     }>;
   };
@@ -28,17 +28,17 @@ export interface DashboardData {
 export interface TemporalEvolutionData {
   date: string;
   count: string;
-  invoiced_value: string | null;
+  invoicedValue: string | null;
 }
 
 export interface AverageCompletionTimeData {
-  average_days: number;
+  averageDays: number;
 }
 
 export interface PendingNotificationsData {
   total: number;
-  pending_analysis: number;
-  pending_scheduling: number;
+  pendingAnalysis: number;
+  pendingScheduling: number;
 }
 
 export interface MonthlyEvolutionData {

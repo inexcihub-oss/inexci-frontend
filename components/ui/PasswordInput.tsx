@@ -99,6 +99,7 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
     ref,
   ) => {
     const [visible, setVisible] = useState(false);
+    const [focused, setFocused] = useState(false);
 
     const value = typeof props.value === "string" ? props.value : "";
     const strength = showStrength ? getPasswordStrength(value) : 0;
@@ -122,6 +123,14 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
             )}
             ref={ref}
             aria-invalid={error ? "true" : undefined}
+            onFocus={(e) => {
+              setFocused(true);
+              props.onFocus?.(e);
+            }}
+            onBlur={(e) => {
+              setFocused(false);
+              props.onBlur?.(e);
+            }}
             {...props}
           />
           <button
@@ -163,7 +172,9 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
         )}
 
         {/* Checklist de requisitos */}
-        {showRequirements && <PasswordRequirements password={value} />}
+        {showRequirements && (focused || value.length > 0) && (
+          <PasswordRequirements password={value} />
+        )}
 
         {error && (
           <p className="mt-1 text-xs md:text-sm text-red-600" role="alert">

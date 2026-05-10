@@ -47,7 +47,7 @@ export function RescheduleModal({
     setIsSaving(true);
     try {
       await surgeryRequestService.reschedule(solicitacao.id, {
-        new_date: new Date(newDate).toISOString(),
+        newDate: new Date(newDate).toISOString(),
       });
       showToast("Cirurgia reagendada com sucesso.", "success");
       setNewDate("");

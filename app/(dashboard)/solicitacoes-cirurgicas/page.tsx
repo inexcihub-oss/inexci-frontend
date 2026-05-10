@@ -136,17 +136,17 @@ export default function ProcedimentosCirurgicos() {
               procedureName: getProcedureName(),
               doctor: getDoctor(),
               priority: (record.priority as PriorityLevel) || PRIORITY.MEDIUM,
-              pendenciesCount: record.pendencies_count || 0,
+              pendenciesCount: record.pendenciesCount || 0,
               pendenciesCompleted: 0,
               pendenciesWaiting: 0,
               createdAt: (() => {
-                const d = new Date(record.created_at);
+                const d = new Date(record.createdAt);
                 const dd = d.getDate().toString().padStart(2, "0");
                 const mm = (d.getMonth() + 1).toString().padStart(2, "0");
                 return `${dd}/${mm}/${d.getFullYear()}`;
               })(),
               status,
-              healthPlan: record.health_plan?.name || "",
+              healthPlan: record.healthPlan?.name || "",
             };
           },
         );

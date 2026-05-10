@@ -95,38 +95,38 @@ function AvatarOrInitials({
   user,
   size = 28,
 }: {
-  user: { id?: string; name: string; avatar_url?: string | null };
+  user: { id?: string; name: string; avatarUrl?: string | null };
   size?: number;
 }) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
-    if (!user.avatar_url) return;
+    if (!user.avatarUrl) return;
     // Se já for URL absoluta, usa direto
     if (
-      user.avatar_url.startsWith("http://") ||
-      user.avatar_url.startsWith("https://")
+      user.avatarUrl.startsWith("http://") ||
+      user.avatarUrl.startsWith("https://")
     ) {
-      setResolvedUrl(user.avatar_url);
+      setResolvedUrl(user.avatarUrl);
       return;
     }
     // Verificar cache do localStorage antes de buscar signed URL
     if (user.id) {
-      const cached = getAvatarCache(user.id, user.avatar_url);
+      const cached = getAvatarCache(user.id, user.avatarUrl);
       if (cached) {
         setResolvedUrl(cached);
         return;
       }
     }
     uploadService
-      .getSignedUrl(user.avatar_url)
+      .getSignedUrl(user.avatarUrl)
       .then((url) => {
-        if (user.id) setAvatarCache(user.id, user.avatar_url!, url);
+        if (user.id) setAvatarCache(user.id, user.avatarUrl!, url);
         setResolvedUrl(url);
       })
       .catch(() => setImgError(true));
-  }, [user.avatar_url, user.id]);
+  }, [user.avatarUrl, user.id]);
 
   if (resolvedUrl && !imgError) {
     return (
@@ -215,16 +215,16 @@ function ActivityItem({ activity }: { activity: Activity }) {
             {activity.user?.name ?? "Sistema"}
           </span>
           <span className="text-[11px] text-gray-400 flex-shrink-0">
-            {formatActivityDate(activity.created_at)}
+            {formatActivityDate(activity.createdAt)}
           </span>
         </div>
-        {isPdfGenerated && activity.pdf_url ? (
+        {isPdfGenerated && activity.pdfUrl ? (
           <div className="flex items-center gap-1.5">
             <p className="text-xs text-gray-600 leading-snug">
               {activity.content}
             </p>
             <a
-              href={getApiFileUrl(activity.pdf_url) ?? "#"}
+              href={getApiFileUrl(activity.pdfUrl) ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium underline underline-offset-2 flex-shrink-0"
@@ -272,7 +272,7 @@ function StatusTimeline({
     .filter((a) => a.type === "status_change")
     .sort(
       (a, b) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     )
     .forEach((a) => {
       // Try to extract status from content like "Status alterado para Enviada"
@@ -281,7 +281,7 @@ function StatusTimeline({
         const label = match[1].trim();
         const found = ALL_STATUSES.find((s) => s.label === label);
         if (found && !statusDates.has(found.num)) {
-          statusDates.set(found.num, a.created_at);
+          statusDates.set(found.num, a.createdAt);
         }
       }
     });
@@ -755,7 +755,7 @@ export default function SolicitacaoDetalhePage() {
     insert_tuss: "codigo-tuss",
     opme_items: "opme",
     insert_opme: "opme",
-    medical_report: "laudo",
+    medicalReport: "laudo",
     confirm_receipt: "faturamento",
   };
 
@@ -838,7 +838,7 @@ export default function SolicitacaoDetalhePage() {
         await surgeryRequestService.notify(solicitacao!.id, {
           template: "status-change-patient",
           channels,
-          old_status: completedActionStatus?.previousNumber,
+          oldStatus: completedActionStatus?.previousNumber,
         });
       } catch {
         // silently ignore
@@ -855,7 +855,7 @@ export default function SolicitacaoDetalhePage() {
     const previousStatusNum = solicitacao?.status ?? 0;
     try {
       await surgeryRequestService.confirmDate(solicitacao!.id, {
-        selected_date_index: pendingDateIndex as 0 | 1 | 2,
+        selectedDateIndex: pendingDateIndex as 0 | 1 | 2,
       });
       setPendingDateIndex(null);
       handleUpdateProcedure();
@@ -1500,7 +1500,7 @@ export default function SolicitacaoDetalhePage() {
                 >
                   <StatusTimeline
                     currentStatus={solicitacao.status}
-                    createdAt={solicitacao.created_at}
+                    createdAt={solicitacao.createdAt}
                     activities={activities}
                   />
                 </div>

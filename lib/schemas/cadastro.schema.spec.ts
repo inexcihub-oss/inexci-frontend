@@ -15,9 +15,21 @@ describe("step1Schema (cadastro)", () => {
     expect(result.success).toBe(true);
   });
 
-  it("aceita quando o telefone está vazio (campo opcional)", () => {
+  it("rejeita quando o telefone está vazio", () => {
     const result = step1Schema.safeParse({ ...validData, phone: "" });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const phoneIssue = result.error.issues.find(
+        (i) => i.path[0] === "phone",
+      );
+      expect(phoneIssue).toBeDefined();
+    }
+  });
+
+  it("rejeita quando o telefone está ausente", () => {
+    const { phone: _phone, ...withoutPhone } = validData;
+    const result = step1Schema.safeParse(withoutPhone);
+    expect(result.success).toBe(false);
   });
 
   it("rejeita quando o telefone tem menos de 10 dígitos", () => {

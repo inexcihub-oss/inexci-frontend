@@ -70,17 +70,17 @@ export function FaturamentoTab() {
     );
   }
 
-  const expectedDateStr = safeDate(billing.payment_deadline);
+  const expectedDateStr = safeDate(billing.paymentDeadline);
 
   // Contestação pendente: divergente mas ainda não resolvida
   const isContestPending =
-    receipt?.is_contested &&
-    receipt.contested_received_value === receipt.received_value;
+    receipt?.isContested &&
+    receipt.contestedReceivedValue === receipt.receivedValue;
 
   // Contestação resolvida: segundo pagamento já foi registrado
   const isContestResolved =
-    receipt?.is_contested &&
-    receipt.contested_received_value !== receipt.received_value;
+    receipt?.isContested &&
+    receipt.contestedReceivedValue !== receipt.receivedValue;
 
   return (
     <div className="flex flex-col gap-3">
@@ -116,7 +116,7 @@ export function FaturamentoTab() {
                 </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
                   {formatDateDisplay(
-                    receipt.contested_received_at ?? receipt.received_at,
+                    receipt.contestedReceivedAt ?? receipt.receivedAt,
                   )}
                 </span>
               </div>
@@ -125,7 +125,7 @@ export function FaturamentoTab() {
                   Valor recebido
                 </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
-                  {formatCurrency(receipt.contested_received_value ?? 0)}
+                  {formatCurrency(receipt.contestedReceivedValue ?? 0)}
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-t sm:border-t-0 sm:border-l border-gray-200">
@@ -133,7 +133,7 @@ export function FaturamentoTab() {
                   Data do recebimento
                 </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
-                  {formatDateDisplay(receipt.received_at)}
+                  {formatDateDisplay(receipt.receivedAt)}
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-l border-gray-200">
@@ -141,7 +141,7 @@ export function FaturamentoTab() {
                   Valor recebido
                 </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
-                  {formatCurrency(receipt.received_value)}
+                  {formatCurrency(receipt.receivedValue)}
                 </span>
               </div>
             </div>
@@ -152,7 +152,7 @@ export function FaturamentoTab() {
                   Data do recebimento
                 </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
-                  {formatDateDisplay(receipt.received_at)}
+                  {formatDateDisplay(receipt.receivedAt)}
                 </span>
               </div>
               <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-t sm:border-t-0 sm:border-l border-gray-200">
@@ -160,16 +160,16 @@ export function FaturamentoTab() {
                   Valor recebido
                 </span>
                 <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
-                  {formatCurrency(receipt.received_value)}
+                  {formatCurrency(receipt.receivedValue)}
                 </span>
               </div>
             </div>
           )}
 
-          {receipt.receipt_notes && (
+          {receipt.receiptNotes && (
             <div className="flex flex-col gap-1 p-4 border-t border-gray-200">
               <label className="ds-label mb-0">Observações</label>
-              <div className="ds-field-readonly">{receipt.receipt_notes}</div>
+              <div className="ds-field-readonly">{receipt.receiptNotes}</div>
             </div>
           )}
         </div>
@@ -196,8 +196,8 @@ export function FaturamentoTab() {
           <div className="flex flex-col items-center justify-center gap-2 py-3 px-4 bg-gray-100 border-t sm:border-t-0 sm:border-l border-gray-200">
             <span className="text-xs md:text-sm text-gray-500">Valor</span>
             <span className="text-2xl sm:text-3xl font-light tracking-tight text-gray-900">
-              {billing.invoice_value != null
-                ? formatCurrency(billing.invoice_value)
+              {billing.invoiceValue != null
+                ? formatCurrency(billing.invoiceValue)
                 : "—"}
             </span>
           </div>
@@ -218,13 +218,13 @@ export function FaturamentoTab() {
               Nº do protocolo de faturamento
             </label>
             <div className="ds-field-readonly">
-              {billing.invoice_protocol ?? "—"}
+              {billing.invoiceProtocol ?? "—"}
             </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className="ds-label mb-0">Envio do faturamento</label>
             <div className="ds-field-readonly">
-              {formatDate(billing.invoice_sent_at)}
+              {formatDate(billing.invoiceSentAt)}
             </div>
           </div>
         </div>
@@ -236,11 +236,11 @@ export function FaturamentoTab() {
         solicitacao={solicitacao}
         isEditMode
         initialReceivedValue={
-          billing?.invoice_value != null &&
-          receipt?.contested_received_value != null
+          billing?.invoiceValue != null &&
+          receipt?.contestedReceivedValue != null
             ? Math.max(
                 0,
-                billing.invoice_value - receipt.contested_received_value,
+                billing.invoiceValue - receipt.contestedReceivedValue,
               )
             : undefined
         }

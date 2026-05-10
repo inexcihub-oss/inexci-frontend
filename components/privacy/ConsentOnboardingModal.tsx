@@ -104,7 +104,7 @@ export function ConsentOnboardingModal({
           <div className="w-10 h-1 bg-neutral-100 rounded-full" />
         </div>
 
-        <header className="relative px-5 pt-3 pb-5 sm:px-7 sm:pt-6 sm:pb-6 bg-gradient-to-br from-primary-50/80 via-white to-white border-b border-neutral-100">
+        <header className="relative px-5 pt-3 pb-5 sm:px-7 sm:pt-6 sm:pb-6 bg-white sm:bg-gradient-to-br sm:from-primary-50/80 sm:via-white sm:to-white border-b border-neutral-100">
           <div className="flex items-start gap-3 sm:gap-4">
             <div className="relative shrink-0">
               <div className="absolute inset-0 bg-primary-500/20 rounded-2xl blur-md" />
@@ -183,25 +183,31 @@ export function ConsentOnboardingModal({
                   Ler aviso completo
                 </a>
 
-                <button
-                  type="button"
-                  onClick={() => setAcceptedAi((v) => !v)}
-                  disabled={aiAlreadyAccepted}
+                <div
+                  role="checkbox"
+                  aria-checked={acceptedAi || aiAlreadyAccepted}
+                  tabIndex={aiAlreadyAccepted ? -1 : 0}
+                  onClick={() => !aiAlreadyAccepted && setAcceptedAi((v) => !v)}
+                  onKeyDown={(e) => {
+                    if (!aiAlreadyAccepted && (e.key === " " || e.key === "Enter")) {
+                      e.preventDefault();
+                      setAcceptedAi((v) => !v);
+                    }
+                  }}
                   className={cn(
-                    "mt-3 w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all",
+                    "mt-3 w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all select-none",
                     aiAlreadyAccepted
                       ? "bg-emerald-50 border-emerald-200 cursor-not-allowed"
                       : acceptedAi
-                        ? "bg-violet-100 border-violet-300"
-                        : "bg-white border-neutral-100 hover:border-violet-300",
+                        ? "bg-violet-100 border-violet-300 cursor-pointer"
+                        : "bg-white border-neutral-100 hover:border-violet-300 cursor-pointer",
                   )}
-                  aria-pressed={acceptedAi || aiAlreadyAccepted}
                 >
                   <Checkbox
                     checked={acceptedAi || aiAlreadyAccepted}
                     disabled={aiAlreadyAccepted}
-                    onCheckedChange={(v) => setAcceptedAi(Boolean(v))}
                     className={cn(
+                      "pointer-events-none",
                       (acceptedAi || aiAlreadyAccepted) &&
                         "border-violet-500 bg-violet-500",
                     )}
@@ -221,13 +227,13 @@ export function ConsentOnboardingModal({
                   {(acceptedAi || aiAlreadyAccepted) && (
                     <CheckCircle2 className="w-4 h-4 text-violet-600 shrink-0 mt-0.5" />
                   )}
-                </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <footer className="border-t border-neutral-100 bg-white px-5 sm:px-7 py-4 mobile-sheet-offset">
+        <footer className="border-t border-neutral-100 bg-white px-5 sm:px-7 py-2.5 sm:py-4">
           <Button
             onClick={handleSubmit}
             disabled={!canSubmit}
@@ -318,21 +324,27 @@ function ConsentRow({
         </div>
       </div>
 
-      <button
-        type="button"
+      <div
+        role="checkbox"
+        aria-checked={checked}
+        tabIndex={0}
         onClick={() => onChange(!checked)}
+        onKeyDown={(e) => {
+          if (e.key === " " || e.key === "Enter") {
+            e.preventDefault();
+            onChange(!checked);
+          }
+        }}
         className={cn(
-          "mt-3 w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all",
+          "mt-3 w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer select-none",
           checked
             ? "bg-white border-emerald-200"
             : "bg-neutral-50 border-neutral-100 hover:border-primary-300",
         )}
-        aria-pressed={checked}
       >
         <Checkbox
           checked={checked}
-          onCheckedChange={onChange}
-          className={cn(checked && "border-emerald-500 bg-emerald-500")}
+          className={cn("pointer-events-none", checked && "border-emerald-500 bg-emerald-500")}
         />
         <div className="flex-1 min-w-0">
           <p
@@ -347,7 +359,7 @@ function ConsentRow({
         {checked && (
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
         )}
-      </button>
+      </div>
     </div>
   );
 }

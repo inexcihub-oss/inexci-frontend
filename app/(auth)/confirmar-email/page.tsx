@@ -210,7 +210,7 @@ function ConfirmarEmailContent() {
 
               <div className="space-y-3">
                 {/* Botão de reenvio — disponível apenas para usuários autenticados */}
-                {user && !user.email_verified && (
+                {user && !user.emailVerified && (
                   <Button
                     onClick={handleResend}
                     isLoading={isResending}

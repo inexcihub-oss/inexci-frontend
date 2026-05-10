@@ -32,17 +32,17 @@ describe("TASK-FE-I04 — Unificação de interfaces Doctor", () => {
         phone: "11999990000",
         avatarUrl: "https://example.com/avatar.jpg",
         avatarColor: "#3B82F6",
-        doctor_profile: {
+        doctorProfile: {
           id: "dp1",
-          user_id: "u2",
+          userId: "u2",
           crm: "123456",
-          crm_state: "SP",
+          crmState: "SP",
           specialty: "Ortopedia",
-          signature_url: "https://example.com/sig.png",
-          clinic_name: "Clínica São Paulo",
+          signatureUrl: "https://example.com/sig.png",
+          clinicName: "Clínica São Paulo",
         },
       };
-      expect(doctor.doctor_profile?.crm).toBe("123456");
+      expect(doctor.doctorProfile?.crm).toBe("123456");
       expect(doctor.avatarUrl).toBe("https://example.com/avatar.jpg");
     });
   });
@@ -76,14 +76,14 @@ describe("TASK-FE-I04 — Unificação de interfaces Doctor", () => {
       const doc: SurgeryDoctor = {
         id: "4",
         name: "Dr. D",
-        doctor_profile: {
+        doctorProfile: {
           id: "dp4",
-          user_id: "4",
+          userId: "4",
           crm: "789",
-          crm_state: "RJ",
+          crmState: "RJ",
         },
       };
-      expect(doc.doctor_profile?.crm).toBe("789");
+      expect(doc.doctorProfile?.crm).toBe("789");
     });
   });
 
@@ -121,17 +121,17 @@ describe("TASK-FE-I04 — Unificação de interfaces Doctor", () => {
       const doc: CollaboratorDoctor = {
         id: "7",
         name: "Dr. G",
-        doctor_profile: {
+        doctorProfile: {
           id: "dp7",
-          user_id: "7",
+          userId: "7",
           crm: "999",
-          crm_state: "MG",
+          crmState: "MG",
           specialty: "Cardio",
         },
         createdAt: "2026-01-01T00:00:00Z",
         updatedAt: "2026-01-01T00:00:00Z",
       };
-      expect(doc.doctor_profile?.specialty).toBe("Cardio");
+      expect(doc.doctorProfile?.specialty).toBe("Cardio");
     });
 
     it("CollaboratorDoctor herda avatarUrl/avatarColor de DoctorSummary", () => {

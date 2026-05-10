@@ -187,7 +187,7 @@ function DocumentUploadModalContent({
 
     try {
       await documentService.upload({
-        surgery_request_id: surgeryRequestId,
+        surgeryRequestId: surgeryRequestId,
         key: documentType,
         name: documentName.trim(),
         file: selectedFile,

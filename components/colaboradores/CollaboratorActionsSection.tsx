@@ -8,7 +8,14 @@ import { collaboratorService } from "@/services/collaborator.service";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
-import { ShieldCheck, ShieldOff, KeyRound, Eye, EyeOff } from "lucide-react";
+import {
+  ShieldCheck,
+  ShieldOff,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Mail,
+} from "lucide-react";
 
 interface CollaboratorActionsSectionProps {
   collaboratorId: string;
@@ -23,6 +30,7 @@ export function CollaboratorActionsSection({
 }: CollaboratorActionsSectionProps) {
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [resendingInvite, setResendingInvite] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,6 +38,7 @@ export function CollaboratorActionsSection({
   const { toast, showToast, hideToast } = useToast();
 
   const isActive = currentStatus === "active";
+  const isPending = currentStatus === "pending";
 
   const handleToggleStatus = async () => {
     setTogglingStatus(true);
@@ -46,6 +55,26 @@ export function CollaboratorActionsSection({
       showToast("Erro ao alterar status do usuário.", "error");
     } finally {
       setTogglingStatus(false);
+    }
+  };
+
+  const handleResendInvite = async () => {
+    setResendingInvite(true);
+    try {
+      const result = await collaboratorService.resendInvite(collaboratorId);
+      showToast(
+        `Convite reenviado para ${result.email}. O link é válido por 72h.`,
+        "success",
+      );
+    } catch (err: unknown) {
+      const msg =
+        typeof err === "object" && err !== null && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response
+              ?.data?.message
+          : undefined;
+      showToast(msg ?? "Erro ao reenviar convite.", "error");
+    } finally {
+      setResendingInvite(false);
     }
   };
 
@@ -127,66 +156,94 @@ export function CollaboratorActionsSection({
           </button>
         </div>
 
-        {/* Redefinir senha */}
-        <div className="mt-5">
-          <div className="flex items-center gap-2 mb-3">
-            <KeyRound className="w-4 h-4 text-neutral-500" />
-            <p className="text-sm font-medium text-neutral-900">
-              Redefinir senha
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <Input
-                label="Nova senha"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-9 text-neutral-400 hover:text-neutral-600"
-              >
-                {showPassword ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
+        {/* Reenviar convite (apenas para usuários pendentes) */}
+        {isPending && (
+          <div className="mt-5 p-4 rounded-xl border border-yellow-200 bg-yellow-50">
+            <div className="flex items-start gap-3">
+              <Mail className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-neutral-900">
+                  Reenviar e-mail de convite
+                </p>
+                <p className="text-xs text-neutral-600 mt-1">
+                  Caso o link anterior tenha expirado ou não tenha sido
+                  recebido, gere um novo link válido por 72 horas.
+                </p>
+              </div>
             </div>
-            <div className="relative">
-              <Input
-                label="Confirmar senha"
-                type={showConfirm ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Repita a nova senha"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirm((v) => !v)}
-                className="absolute right-3 top-9 text-neutral-400 hover:text-neutral-600"
+            <div className="flex justify-end mt-3">
+              <Button
+                onClick={handleResendInvite}
+                isLoading={resendingInvite}
               >
-                {showConfirm ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
+                Reenviar convite
+              </Button>
             </div>
           </div>
-          <div className="flex justify-end mt-4">
-            <Button
-              onClick={handleResetPassword}
-              isLoading={savingPassword}
-              disabled={!password || !confirmPassword}
-            >
-              Salvar nova senha
-            </Button>
+        )}
+
+        {/* Redefinir senha (apenas para usuários ativos) */}
+        {!isPending && (
+          <div className="mt-5">
+            <div className="flex items-center gap-2 mb-3">
+              <KeyRound className="w-4 h-4 text-neutral-500" />
+              <p className="text-sm font-medium text-neutral-900">
+                Redefinir senha
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="relative">
+                <Input
+                  label="Nova senha"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-9 text-neutral-400 hover:text-neutral-600"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <div className="relative">
+                <Input
+                  label="Confirmar senha"
+                  type={showConfirm ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repita a nova senha"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  className="absolute right-3 top-9 text-neutral-400 hover:text-neutral-600"
+                >
+                  {showConfirm ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button
+                onClick={handleResetPassword}
+                isLoading={savingPassword}
+                disabled={!password || !confirmPassword}
+              >
+                Salvar nova senha
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </FormSection>
 
       {toast && (

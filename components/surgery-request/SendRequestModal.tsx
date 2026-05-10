@@ -60,7 +60,7 @@ export function SendRequestModal({
     hospital: "Informações Gerais",
     tuss_procedures: "Código TUSS",
     opme_items: "OPME",
-    medical_report: "Laudo",
+    medicalReport: "Laudo",
   };
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export function SendRequestModal({
           let isComplete = found ? found.isComplete : false;
           if (!found && key === "hospital") {
             isComplete = !!(
-              solicitacao.hospital_id || solicitacao.hospital?.id
+              solicitacao.hospitalId || solicitacao.hospital?.id
             );
           }
           return { key, label, isComplete, isRequired: true };
@@ -110,25 +110,25 @@ export function SendRequestModal({
         {
           key: "hospital",
           label: "Informações Gerais",
-          isComplete: !!(solicitacao.hospital_id || solicitacao.hospital?.id),
+          isComplete: !!(solicitacao.hospitalId || solicitacao.hospital?.id),
           isRequired: true,
         },
         {
           key: "tuss_procedures",
           label: "Código TUSS",
-          isComplete: !!(solicitacao.tuss_items?.length > 0),
+          isComplete: !!(solicitacao.tussItems?.length > 0),
           isRequired: true,
         },
         {
           key: "opme_items",
           label: "OPME",
-          isComplete: !!(solicitacao.opme_items?.length > 0),
+          isComplete: !!(solicitacao.opmeItems?.length > 0),
           isRequired: true,
         },
         {
           key: "medical_report",
           label: "Laudo",
-          isComplete: !!solicitacao.medical_report,
+          isComplete: !!solicitacao.medicalReport,
           isRequired: true,
         },
       ]);
@@ -159,16 +159,16 @@ export function SendRequestModal({
             name:
               templateName.trim() ||
               `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
-            template_data: {
+            templateData: {
               procedure: solicitacao.procedure,
-              tuss_items: solicitacao.tuss_items,
-              opme_items: solicitacao.opme_items,
+              tussItems: solicitacao.tussItems,
+              opmeItems: solicitacao.opmeItems,
               hospital: solicitacao.hospital,
-              hospital_id: solicitacao.hospital_id,
-              health_plan: solicitacao.health_plan,
-              health_plan_id: solicitacao.health_plan_id,
-              medical_report: solicitacao.medical_report,
-              required_documents: (solicitacao.documents || []).map((d) => ({
+              hospitalId: solicitacao.hospitalId,
+              healthPlan: solicitacao.healthPlan,
+              healthPlanId: solicitacao.healthPlanId,
+              medicalReport: solicitacao.medicalReport,
+              requiredDocuments: (solicitacao.documents || []).map((d) => ({
                 type: d.key || "",
                 name: d.name || d.key || "",
               })),

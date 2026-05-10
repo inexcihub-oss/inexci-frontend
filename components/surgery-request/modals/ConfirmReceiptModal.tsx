@@ -160,7 +160,7 @@ export function ConfirmReceiptModal({
 
   // ── Billing data ──
   const billing = solicitacao?.billing;
-  const invoiceValue: number = Number(billing?.invoice_value ?? 0);
+  const invoiceValue: number = Number(billing?.invoiceValue ?? 0);
 
   const parsedReceivedValue = parseBRLValue(receivedValue);
   const valueIsValid =
@@ -171,12 +171,12 @@ export function ConfirmReceiptModal({
   const valueDifference = valueIsValid ? invoiceValue - parsedReceivedValue : 0;
 
   // ── Display values ──
-  const protocol = billing?.invoice_protocol || "—";
+  const protocol = billing?.invoiceProtocol || "—";
   const invoiceValueStr = invoiceValue > 0 ? formatCurrency(invoiceValue) : "—";
-  const sentAtStr = formatDate(billing?.invoice_sent_at);
-  const expectedDate = formatExpectedDate(billing?.payment_deadline);
+  const sentAtStr = formatDate(billing?.invoiceSentAt);
+  const expectedDate = formatExpectedDate(billing?.paymentDeadline);
   const alreadyReceivedValue: number | null =
-    solicitacao?.receipt?.received_value ?? null;
+    solicitacao?.receipt?.receivedValue ?? null;
 
   const handleClose = () => {
     if (isSaving) return;
@@ -207,15 +207,15 @@ export function ConfirmReceiptModal({
     try {
       if (isEditMode) {
         await surgeryRequestService.updateReceipt(solicitacao.id, {
-          received_value: parsedReceivedValue,
-          received_at: parseDate(receivedAt).toISOString(),
+          receivedValue: parsedReceivedValue,
+          receivedAt: parseDate(receivedAt).toISOString(),
         });
         showToast("Recebimento atualizado com sucesso.", "success");
       } else {
         await surgeryRequestService.confirmReceipt(solicitacao.id, {
-          received_value: parsedReceivedValue,
-          received_at: parseDate(receivedAt).toISOString(),
-          receipt_notes: receiptNotes.trim() || undefined,
+          receivedValue: parsedReceivedValue,
+          receivedAt: parseDate(receivedAt).toISOString(),
+          receiptNotes: receiptNotes.trim() || undefined,
         });
         showToast(
           "Recebimento confirmado! Status alterado para Finalizada.",
@@ -242,10 +242,10 @@ export function ConfirmReceiptModal({
       return;
     }
     setContestSubject(
-      `Recurso - Valor Faltante - Protocolo ${billing?.invoice_protocol ?? ""}`,
+      `Recurso - Valor Faltante - Protocolo ${billing?.invoiceProtocol ?? ""}`,
     );
     setContestMessage(
-      `Prezados,\n\nVenho por meio deste solicitar o pagamento do valor faltante referente ao protocolo ${billing?.invoice_protocol ?? ""}.\n\nValor Faturado: ${formatCurrency(invoiceValue)}\nValor Recebido: ${formatCurrency(parsedReceivedValue)}\nValor Faltante: ${formatCurrency(Math.abs(valueDifference))}\n\nAguardo retorno.\n\nAtenciosamente.`,
+      `Prezados,\n\nVenho por meio deste solicitar o pagamento do valor faltante referente ao protocolo ${billing?.invoiceProtocol ?? ""}.\n\nValor Faturado: ${formatCurrency(invoiceValue)}\nValor Recebido: ${formatCurrency(parsedReceivedValue)}\nValor Faltante: ${formatCurrency(Math.abs(valueDifference))}\n\nAguardo retorno.\n\nAtenciosamente.`,
     );
     setStep(2);
   };
@@ -265,9 +265,9 @@ export function ConfirmReceiptModal({
     try {
       // 1. Confirma o recebimento — muda status para Finalizada
       await surgeryRequestService.confirmReceipt(solicitacao.id, {
-        received_value: parsedReceivedValue,
-        received_at: new Date(receivedAt).toISOString(),
-        receipt_notes: receiptNotes.trim() || undefined,
+        receivedValue: parsedReceivedValue,
+        receivedAt: new Date(receivedAt).toISOString(),
+        receiptNotes: receiptNotes.trim() || undefined,
       });
 
       // 2. Tenta enviar o e-mail de contestação (falha não bloqueia o fluxo)

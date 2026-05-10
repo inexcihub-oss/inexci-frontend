@@ -123,6 +123,10 @@ describe("NewCollaboratorModal", () => {
       "Maria Silva",
     );
     await userEvent.type(
+      screen.getByPlaceholderText("(21) 98765-4321"),
+      "21987654321",
+    );
+    await userEvent.type(
       screen.getByPlaceholderText("colaborador@mail.com"),
       "maria@email.com",
     );
@@ -156,6 +160,7 @@ describe("NewCollaboratorModal", () => {
     render(<NewCollaboratorModal {...defaultProps} />);
 
     await userEvent.type(screen.getByPlaceholderText("Nome completo"), "Maria Silva");
+    await userEvent.type(screen.getByPlaceholderText("(21) 98765-4321"), "21987654321");
     await userEvent.type(
       screen.getByPlaceholderText("colaborador@mail.com"),
       "maria@email.com",
@@ -199,6 +204,10 @@ describe("NewCollaboratorModal", () => {
       "Dr. Carlos",
     );
     await userEvent.type(
+      screen.getByPlaceholderText("(21) 98765-4321"),
+      "21987654321",
+    );
+    await userEvent.type(
       screen.getByPlaceholderText("colaborador@mail.com"),
       "carlos@email.com",
     );
@@ -221,14 +230,14 @@ describe("NewCollaboratorModal", () => {
           name: "Dr. Carlos",
           email: "carlos@email.com",
           crm: "654321",
-          crm_state: "SP",
+          crmState: "SP",
         }),
       );
     });
 
-    // Não deve enviar is_doctor no payload (campo gerenciado pelo backend)
     const callArgs = (collaboratorService.create as ReturnType<typeof vi.fn>)
       .mock.calls[0][0];
+    expect(callArgs).not.toHaveProperty("isDoctor");
     expect(callArgs).not.toHaveProperty("is_doctor");
   });
 });
@@ -283,6 +292,10 @@ describe("NewCollaboratorModal — defaultIsDoctor", () => {
       "Dr. João Silva",
     );
     await userEvent.type(
+      screen.getByPlaceholderText("(21) 98765-4321"),
+      "21987654321",
+    );
+    await userEvent.type(
       screen.getByPlaceholderText("colaborador@mail.com"),
       "joao@email.com",
     );
@@ -299,7 +312,7 @@ describe("NewCollaboratorModal — defaultIsDoctor", () => {
           name: "Dr. João Silva",
           email: "joao@email.com",
           crm: "999888",
-          crm_state: "RJ",
+          crmState: "RJ",
         }),
       );
     });
@@ -318,6 +331,10 @@ describe("NewCollaboratorModal — defaultIsDoctor", () => {
     await userEvent.type(
       screen.getByPlaceholderText("Nome completo"),
       "Dr. Teste",
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("(21) 98765-4321"),
+      "21987654321",
     );
     await userEvent.type(
       screen.getByPlaceholderText("colaborador@mail.com"),

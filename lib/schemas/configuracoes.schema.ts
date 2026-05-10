@@ -45,9 +45,9 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 // ─── Cabeçalho de documentos ──────────────────────────────────────────────────
 
 export const doctorHeaderSchema = z.object({
-  logo_url: z.string().nullable().optional(),
-  logo_position: z.enum(["left", "right"]).default("left"),
-  content_html: z
+  logoUrl: z.string().nullable().optional(),
+  logoPosition: z.enum(["left", "right"]).default("left"),
+  contentHtml: z
     .string()
     .max(10000, "O conteúdo deve ter no máximo 10.000 caracteres.")
     .nullable()

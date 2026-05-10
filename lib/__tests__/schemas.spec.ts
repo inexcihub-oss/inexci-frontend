@@ -11,6 +11,7 @@ describe("step1Schema (dados pessoais de cadastro)", () => {
   const valid = {
     name: "João Silva",
     email: "joao@exemplo.com",
+    phone: "(11) 98888-7777",
     password: "Senha@123",
     confirmPassword: "Senha@123",
   };

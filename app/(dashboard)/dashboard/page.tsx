@@ -671,16 +671,16 @@ export default function DashboardPage() {
         reportsService.getDashboard(filters).catch(
           () =>
             ({
-              surgery_request: {
+              surgeryRequest: {
                 total: 0,
-                total_scheduled: 0,
-                total_performed: 0,
-                total_invoiced_count: 0,
-                total_invoiced_value: 0,
-                total_received_value: 0,
-                total_by_health_plan: [],
-                total_by_status: [],
-                total_by_hospital: [],
+                totalScheduled: 0,
+                totalPerformed: 0,
+                totalInvoicedCount: 0,
+                totalInvoicedValue: 0,
+                totalReceivedValue: 0,
+                totalByHealthPlan: [],
+                totalByStatus: [],
+                totalByHospital: [],
               },
             }) as DashboardData,
         ),
@@ -692,26 +692,26 @@ export default function DashboardPage() {
           .catch(() => [] as MonthlyEvolutionData[]),
         reportsService
           .getAverageCompletionTime(filters)
-          .catch(() => ({ average_days: 0 }) as AverageCompletionTimeData),
+          .catch(() => ({ averageDays: 0 }) as AverageCompletionTimeData),
         reportsService.getPendingNotifications(filters).catch(
           () =>
             ({
               total: 0,
-              pending_analysis: 0,
-              pending_scheduling: 0,
+              pendingAnalysis: 0,
+              pendingScheduling: 0,
             }) as PendingNotificationsData,
         ),
       ]);
 
       const totalInvoiced =
-        Number(dashData.surgery_request.total_invoiced_value) || 0;
+        Number(dashData.surgeryRequest.totalInvoicedValue) || 0;
       const totalReceived =
-        Number(dashData.surgery_request.total_received_value) || 0;
+        Number(dashData.surgeryRequest.totalReceivedValue) || 0;
 
       // Calcular "autorizadas" = agendadas + realizadas + faturadas + finalizadas + encerradas
       // (tudo que passou da análise)
       const statusTotals = new Map(
-        dashData.surgery_request.total_by_status.map((s) => [
+        dashData.surgeryRequest.totalByStatus.map((s) => [
           s.status,
           s.total,
         ]),
@@ -725,20 +725,20 @@ export default function DashboardPage() {
         (statusTotals.get(9) || 0); // Encerrada
 
       const processed: ProcessedDashboard = {
-        total: dashData.surgery_request.total,
+        total: dashData.surgeryRequest.total,
         totalAuthorized,
-        totalScheduled: dashData.surgery_request.total_scheduled,
-        totalDone: dashData.surgery_request.total_performed,
+        totalScheduled: dashData.surgeryRequest.totalScheduled,
+        totalDone: dashData.surgeryRequest.totalPerformed,
         totalInvoiced,
         totalReceived,
         toReceive: totalInvoiced - totalReceived,
         approvalRate:
-          dashData.surgery_request.total > 0
-            ? (totalAuthorized / dashData.surgery_request.total) * 100
+          dashData.surgeryRequest.total > 0
+            ? (totalAuthorized / dashData.surgeryRequest.total) * 100
             : 0,
-        avgCompletionDays: avgTimeData.average_days,
+        avgCompletionDays: avgTimeData.averageDays,
         pendingNotifications: notificationsData,
-        byStatus: dashData.surgery_request.total_by_status.map((item) => {
+        byStatus: dashData.surgeryRequest.totalByStatus.map((item) => {
           const label = STATUS_NUMBER_TO_STRING[item.status] || "Desconhecido";
           return {
             status: item.status,
@@ -747,20 +747,20 @@ export default function DashboardPage() {
             color: STATUS_CHART_COLORS[label] || "#6b7280",
           };
         }),
-        byHealthPlan: dashData.surgery_request.total_by_health_plan.map(
+        byHealthPlan: dashData.surgeryRequest.totalByHealthPlan.map(
           (item) => ({
-            name: item.health_plan_name,
+            name: item.healthPlanName,
             count: item.total,
           }),
         ),
-        byHospital: dashData.surgery_request.total_by_hospital.map((item) => ({
-          name: item.hospital_name,
+        byHospital: dashData.surgeryRequest.totalByHospital.map((item) => ({
+          name: item.hospitalName,
           count: item.total,
         })),
         temporalData: evolutionData.map((item) => ({
           date: item.date,
           count: parseInt(item.count) || 0,
-          invoiced: parseFloat(item.invoiced_value || "0"),
+          invoiced: parseFloat(item.invoicedValue || "0"),
         })),
         monthlyEvolution: monthlyData,
       };
@@ -1042,19 +1042,19 @@ export default function DashboardPage() {
           {/* ── Alertas ────────────────────────────────────────────── */}
           {hasAlerts && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {dashboard.pendingNotifications.pending_analysis > 0 && (
+              {dashboard.pendingNotifications.pendingAnalysis > 0 && (
                 <AlertCard
                   title="Em Análise há mais de 5 dias"
-                  count={dashboard.pendingNotifications.pending_analysis}
+                  count={dashboard.pendingNotifications.pendingAnalysis}
                   description="Aguardando resposta da operadora"
                   color="amber"
                   icon="/icons/warning.svg"
                 />
               )}
-              {dashboard.pendingNotifications.pending_scheduling > 0 && (
+              {dashboard.pendingNotifications.pendingScheduling > 0 && (
                 <AlertCard
                   title="Em Agendamento há mais de 5 dias"
-                  count={dashboard.pendingNotifications.pending_scheduling}
+                  count={dashboard.pendingNotifications.pendingScheduling}
                   description="Aguardando confirmação de data"
                   color="red"
                   icon="/icons/alarm-clock-time.svg"

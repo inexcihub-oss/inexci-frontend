@@ -44,7 +44,7 @@ export default function MobileHeaderActions() {
 
   // Resolve avatar URL
   useEffect(() => {
-    const raw = user?.avatar_url;
+    const raw = user?.avatarUrl;
     if (!raw) {
       setAvatarUrl(null);
       return;
@@ -57,7 +57,7 @@ export default function MobileHeaderActions() {
         .then(setAvatarUrl)
         .catch(() => setAvatarUrl(null));
     }
-  }, [user?.avatar_url]);
+  }, [user?.avatarUrl]);
 
   // Close on navigation
   useEffect(() => {

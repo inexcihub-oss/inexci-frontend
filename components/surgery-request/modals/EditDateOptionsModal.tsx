@@ -27,8 +27,8 @@ export function EditDateOptionsModal({
   onSuccess,
 }: EditDateOptionsModalProps) {
   const initialDates: string[] = React.useMemo(() => {
-    const opts: string[] = (solicitacao?.scheduling?.date_options ??
-      solicitacao?.date_options ??
+    const opts: string[] = (solicitacao?.scheduling?.dateOptions ??
+      solicitacao?.dateOptions ??
       []) as string[];
     // Converter ISO para datetime-local format (YYYY-MM-DDTHH:mm)
     const toLocal = (iso: string) => {
@@ -67,7 +67,7 @@ export function EditDateOptionsModal({
     setIsSaving(true);
     try {
       await surgeryRequestService.updateDateOptions(solicitacao.id, {
-        date_options: validDates.map((d) => new Date(d).toISOString()),
+        dateOptions: validDates.map((d) => new Date(d).toISOString()),
       });
       showToast("Datas atualizadas com sucesso.", "success");
       onSuccess();

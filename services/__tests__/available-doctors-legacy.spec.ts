@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest";
  *
  * Valida que o mapeamento de dados do endpoint /users/doctors
  * usa APENAS doctor_profile.* e NÃO faz fallback para campos
- * removidos do model User (user.crm, user.crm_state, user.specialty).
+ * removidos do model User (user.crm, user.crmState, user.specialty).
  */
 
 // Reproduz a lógica de mapeamento limpa do service
@@ -13,9 +13,9 @@ function mapDoctorRecord(user: any) {
   return {
     id: user.id,
     name: user.name,
-    crm: user.doctor_profile?.crm ?? "",
-    crm_state: user.doctor_profile?.crm_state ?? "",
-    specialty: user.doctor_profile?.specialty ?? undefined,
+    crm: user.doctorProfile?.crm ?? "",
+    crmState: user.doctorProfile?.crmState ?? "",
+    specialty: user.doctorProfile?.specialty ?? undefined,
   };
 }
 
@@ -25,9 +25,9 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
       const user = {
         id: "u1",
         name: "Dr. Silva",
-        doctor_profile: {
+        doctorProfile: {
           crm: "123456",
-          crm_state: "SP",
+          crmState: "SP",
           specialty: "Ortopedia",
         },
       };
@@ -36,7 +36,7 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
         id: "u1",
         name: "Dr. Silva",
         crm: "123456",
-        crm_state: "SP",
+        crmState: "SP",
         specialty: "Ortopedia",
       });
     });
@@ -45,11 +45,11 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
       const user = {
         id: "u2",
         name: "Dr. Nulo",
-        doctor_profile: null,
+        doctorProfile: null,
       };
       const result = mapDoctorRecord(user);
       expect(result.crm).toBe("");
-      expect(result.crm_state).toBe("");
+      expect(result.crmState).toBe("");
       expect(result.specialty).toBeUndefined();
     });
 
@@ -60,7 +60,7 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
       };
       const result = mapDoctorRecord(user);
       expect(result.crm).toBe("");
-      expect(result.crm_state).toBe("");
+      expect(result.crmState).toBe("");
       expect(result.specialty).toBeUndefined();
     });
 
@@ -70,14 +70,14 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
         id: "u4",
         name: "Dr. Legacy",
         crm: "LEGACY-CRM",
-        crm_state: "LEGACY-STATE",
+        crmState: "LEGACY-STATE",
         specialty: "LEGACY-SPEC",
-        doctor_profile: null,
+        doctorProfile: null,
       };
       const result = mapDoctorRecord(user);
       // Deve retornar "" e undefined, NÃO os valores legacy
       expect(result.crm).toBe("");
-      expect(result.crm_state).toBe("");
+      expect(result.crmState).toBe("");
       expect(result.specialty).toBeUndefined();
     });
 
@@ -85,16 +85,16 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
       const user = {
         id: "u5",
         name: "Dr. Vazio",
-        doctor_profile: {
+        doctorProfile: {
           crm: "",
-          crm_state: "",
+          crmState: "",
           specialty: "",
         },
       };
       const result = mapDoctorRecord(user);
       // ?? não trata "" como nullish, então retorna ""
       expect(result.crm).toBe("");
-      expect(result.crm_state).toBe("");
+      expect(result.crmState).toBe("");
       expect(result.specialty).toBe("");
     });
 
@@ -102,7 +102,7 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
       const user = {
         id: "abc-123",
         name: "Dr. Maria Santos",
-        doctor_profile: { crm: "999" },
+        doctorProfile: { crm: "999" },
       };
       const result = mapDoctorRecord(user);
       expect(result.id).toBe("abc-123");
@@ -114,18 +114,18 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
         {
           id: "1",
           name: "Dr. A",
-          doctor_profile: { crm: "111", crm_state: "RJ", specialty: "Cardio" },
+          doctorProfile: { crm: "111", crmState: "RJ", specialty: "Cardio" },
         },
         {
           id: "2",
           name: "Dr. B",
-          doctor_profile: null,
+          doctorProfile: null,
         },
         {
           id: "3",
           name: "Dr. C",
           crm: "LEGACY",
-          doctor_profile: { crm: "333", crm_state: "MG" },
+          doctorProfile: { crm: "333", crmState: "MG" },
         },
       ];
       const results = records.map(mapDoctorRecord);

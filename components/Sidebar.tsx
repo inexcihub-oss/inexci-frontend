@@ -84,9 +84,9 @@ export default function Sidebar({
   const { user, logout, isAdmin } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  // Resolve signed URL when user.avatar_url changes
+  // Resolve signed URL when user.avatarUrl changes
   useEffect(() => {
-    const raw = user?.avatar_url;
+    const raw = user?.avatarUrl;
     const userId = user?.id;
 
     if (!raw || !userId) {
@@ -116,7 +116,7 @@ export default function Sidebar({
         setAvatarCache(userId, raw, url);
       })
       .catch(() => setAvatarUrl(null));
-  }, [user?.avatar_url, user?.id]);
+  }, [user?.avatarUrl, user?.id]);
 
   // Filtrar itens do menu com base nas permissões do usuário
   const menuItems = allMenuItems.filter((item) => {
@@ -275,11 +275,10 @@ export default function Sidebar({
           {/* Notifications */}
           <NotificationsDropdown isCollapsed={isCollapsed} />
 
-          {/* Settings */}
+          {/* Settings — visível apenas no mobile */}
           <Link
             href="/configuracoes"
-            className={`relative flex items-center gap-3 px-3 py-3 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px] ${isCollapsed ? "lg:justify-center" : ""}`}
-            title={isCollapsed ? "Configurações" : undefined}
+            className={`lg:hidden relative flex items-center gap-3 px-3 py-3 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px]`}
             onClick={onMobileClose}
           >
             <Image
@@ -289,11 +288,9 @@ export default function Sidebar({
               height={20}
               className="text-neutral-900 shrink-0"
             />
-            {!isCollapsed && (
-              <span className="text-xs md:text-sm font-semibold text-neutral-900">
-                Configurações
-              </span>
-            )}
+            <span className="text-xs md:text-sm font-semibold text-neutral-900">
+              Configurações
+            </span>
           </Link>
         </div>
 
@@ -351,6 +348,23 @@ export default function Sidebar({
           {/* Dropdown Menu */}
           {isMenuOpen && (
             <div className="absolute bottom-full left-2 right-2 mb-2 bg-white border border-neutral-100 rounded-xl shadow-lg overflow-hidden">
+              <Link
+                href="/configuracoes"
+                onClick={closeMenu}
+                className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+              >
+                <Image
+                  src="/icons/settings.svg"
+                  alt="Configurações"
+                  width={20}
+                  height={20}
+                  className="text-neutral-900 shrink-0"
+                />
+                <span className="text-xs md:text-sm text-neutral-900">
+                  Configurações
+                </span>
+              </Link>
+              <div className="h-px bg-neutral-100 mx-3" />
               <button
                 onClick={() => {
                   handleLogout();

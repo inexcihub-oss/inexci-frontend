@@ -8,14 +8,14 @@ export interface Hospital {
   phone?: string;
   email?: string;
   address?: string;
-  address_number?: string;
+  addressNumber?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
-  zip_code?: string;
-  contact_name?: string;
-  contact_phone?: string;
-  contact_email?: string;
+  zipCode?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,11 +26,14 @@ export interface CreateHospitalPayload {
   phone?: string;
   email?: string;
   address?: string;
-  address_number?: string;
+  addressNumber?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
-  zip_code?: string;
+  zipCode?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
 }
 
 interface BackendHospital {
@@ -40,16 +43,16 @@ interface BackendHospital {
   phone?: string;
   email?: string;
   address?: string;
-  address_number?: string;
+  addressNumber?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
-  zip_code?: string;
-  contact_name?: string;
-  contact_phone?: string;
-  contact_email?: string;
-  created_at: string;
-  updated_at: string;
+  zipCode?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const hospitalService = {
@@ -60,7 +63,6 @@ export const hospitalService = {
     const response = await api.get("/hospitals");
     const data = getApiRecords<BackendHospital>(response.data);
 
-    // Mapeia os campos do backend para o frontend
     return data.map((h) => ({
       id: h.id,
       name: h.name,
@@ -68,16 +70,16 @@ export const hospitalService = {
       phone: h.phone,
       email: h.email,
       address: h.address,
-      address_number: h.address_number,
+      addressNumber: h.addressNumber,
       neighborhood: h.neighborhood,
       city: h.city,
       state: h.state,
-      zip_code: h.zip_code,
-      contact_name: h.contact_name,
-      contact_phone: h.contact_phone,
-      contact_email: h.contact_email,
-      createdAt: h.created_at,
-      updatedAt: h.updated_at,
+      zipCode: h.zipCode,
+      contactName: h.contactName,
+      contactPhone: h.contactPhone,
+      contactEmail: h.contactEmail,
+      createdAt: h.createdAt,
+      updatedAt: h.updatedAt,
     }));
   },
 

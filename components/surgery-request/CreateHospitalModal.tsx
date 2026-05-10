@@ -34,8 +34,8 @@ const FIELD_LABELS: Record<string, string> = {
   name: "Hospital",
   phone: "Telefone",
   email: "E-mail",
-  zip_code: "CEP",
-  address_number: "Número",
+  zipCode: "CEP",
+  addressNumber: "Número",
   address: "Endereço",
   neighborhood: "Bairro",
   city: "Cidade",
@@ -57,8 +57,8 @@ export function CreateHospitalModal({
       name: "",
       phone: "",
       email: "",
-      zip_code: "",
-      address_number: "",
+      zipCode: "",
+      addressNumber: "",
       address: "",
       neighborhood: "",
       city: "",
@@ -67,7 +67,7 @@ export function CreateHospitalModal({
   });
 
   const { loading: cepLoading } = useCepLookup({
-    cep: form.values.zip_code,
+    cep: form.values.zipCode,
     enabled: isOpen,
     onResolved: (data) => {
       form.setValues({
@@ -102,9 +102,9 @@ export function CreateHospitalModal({
           name: data.name.trim(),
           phone: unmask(data.phone) || undefined,
           email: data.email || undefined,
-          zip_code: unmask(data.zip_code) || undefined,
+          zipCode: unmask(data.zipCode) || undefined,
           address: data.address.trim() || undefined,
-          address_number: data.address_number.trim() || undefined,
+          addressNumber: data.addressNumber.trim() || undefined,
           neighborhood: data.neighborhood.trim() || undefined,
           city: data.city.trim() || undefined,
           state: data.state || undefined,
@@ -181,7 +181,7 @@ export function CreateHospitalModal({
                   mask="cep"
                   required
                   placeholder="00000-000"
-                  {...form.getFieldProps("zip_code")}
+                  {...form.getFieldProps("zipCode")}
                 />
                 {cepLoading && (
                   <Loader2 className="absolute right-3 top-9 w-4 h-4 text-gray-400 animate-spin" />
@@ -192,7 +192,7 @@ export function CreateHospitalModal({
                   label="Número"
                   required
                   placeholder="123"
-                  {...form.getFieldProps("address_number")}
+                  {...form.getFieldProps("addressNumber")}
                 />
               </div>
             </div>

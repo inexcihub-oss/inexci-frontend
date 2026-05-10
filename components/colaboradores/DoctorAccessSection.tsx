@@ -234,7 +234,7 @@ function SearchableMultiSelect({
                       {(opt.crm || opt.specialty) && (
                         <p className="text-xs text-neutral-400 truncate">
                           {opt.crm
-                            ? `CRM ${opt.crm}${opt.crm_state ? `/${opt.crm_state}` : ""}`
+                            ? `CRM ${opt.crm}${opt.crmState ? `/${opt.crmState}` : ""}`
                             : ""}
                           {opt.crm && opt.specialty ? " · " : ""}
                           {opt.specialty ?? ""}
@@ -281,7 +281,7 @@ export function DoctorAccessSection({
 
       const activeIds = access
         .filter((a) => a.status === "active")
-        .map((a) => a.doctor_user_id);
+        .map((a) => a.doctorUserId);
 
       setSelectedDoctorIds(activeIds);
       setOriginalSelectedIds(activeIds);

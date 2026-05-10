@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
   fullNameSchema,
   emailSchema,
-  phoneOptionalSchema,
+  phoneSchema,
   strongPasswordSchema,
   passwordsMatchRefine,
 } from "./shared";
@@ -13,7 +13,7 @@ export const step1Schema = z
   .object({
     name: fullNameSchema,
     email: emailSchema,
-    phone: phoneOptionalSchema,
+    phone: phoneSchema,
     password: strongPasswordSchema,
     confirmPassword: z.string().min(1, "Confirme sua senha."),
   })

@@ -2,14 +2,14 @@
 
 export interface DoctorProfile {
   id: string;
-  user_id: string;
+  userId: string;
   crm: string;
-  crm_state: string;
+  crmState: string;
   specialty?: string;
-  signature_url?: string;
-  clinic_name?: string;
-  clinic_cnpj?: string;
-  clinic_address?: string;
+  signatureUrl?: string;
+  clinicName?: string;
+  clinicCnpj?: string;
+  clinicAddress?: string;
 }
 
 // ─── User types ───────────────────────────────────────────────────────────────
@@ -22,12 +22,12 @@ export interface User {
   status: number;
   phone?: string;
   role: "admin" | "collaborator";
-  account_id: string;
-  avatar_url?: string | null;
-  is_doctor: boolean;
-  email_verified?: boolean;
-  doctor_profile?: DoctorProfile;
-  admin_id?: string;
+  accountId: string;
+  avatarUrl?: string | null;
+  isDoctor: boolean;
+  emailVerified?: boolean;
+  doctorProfile?: DoctorProfile;
+  adminId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,8 +36,8 @@ export interface User {
 
 export interface UserDoctorAccess {
   id: string;
-  user_id: string;
-  doctor_user_id: string;
+  userId: string;
+  doctorUserId: string;
   status: "active" | "inactive";
   doctor: { id: string; name: string; crm: string; specialty?: string };
 }
@@ -48,7 +48,7 @@ export interface AvailableDoctor {
   id: string;
   name: string;
   crm: string;
-  crm_state: string;
+  crmState: string;
   specialty?: string;
 }
 
@@ -61,7 +61,7 @@ export interface DoctorSummary {
   phone?: string;
   avatarUrl?: string;
   avatarColor?: string;
-  doctor_profile?: DoctorProfile;
+  doctorProfile?: DoctorProfile;
 }
 
 // Auth types
@@ -75,9 +75,14 @@ export interface RegisterData {
   email: string;
   phone?: string;
   password: string;
-  is_doctor?: boolean;
+  /**
+   * Campos enviados em camelCase porque o backend usa
+   * `forbidNonWhitelisted: true` e o `RegisterDto` declara `isDoctor` /
+   * `crmState`. Usar snake_case faz o request retornar 400.
+   */
+  isDoctor?: boolean;
   crm?: string;
-  crm_state?: string;
+  crmState?: string;
   specialty?: string;
   /**
    * Slug do plano selecionado no cadastro (`starter`, `essencial`,

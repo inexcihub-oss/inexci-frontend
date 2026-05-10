@@ -39,19 +39,19 @@ export function EditableProcedureData({
   // Estados para os valores do formulário
   const [formData, setFormData] = useState({
     hospitalId: solicitacao.hospital?.id?.toString() || "",
-    cidId: solicitacao.cid_id || "",
-    cidDescription: solicitacao.cid_description || "",
-    healthPlanId: solicitacao.health_plan?.id?.toString() || "",
-    healthPlanRegistry: solicitacao.health_plan_registration || "",
-    healthPlanType: solicitacao.health_plan_type || "",
+    cidId: solicitacao.cidId || "",
+    cidDescription: solicitacao.cidDescription || "",
+    healthPlanId: solicitacao.healthPlan?.id?.toString() || "",
+    healthPlanRegistry: solicitacao.healthPlanRegistration || "",
+    healthPlanType: solicitacao.healthPlanType || "",
   });
 
   // Label de exibição do CID (inclui a descrição buscada da API quando necessário)
   const [cidDisplayLabel, setCidDisplayLabel] = useState(
     solicitacao.cid
       ? `${solicitacao.cid.code} - ${solicitacao.cid.description}`
-      : solicitacao.cid_id
-        ? solicitacao.cid_id
+      : solicitacao.cidId
+        ? solicitacao.cidId
         : "",
   );
 
@@ -61,25 +61,25 @@ export function EditableProcedureData({
       setCidDisplayLabel(
         `${solicitacao.cid.code} - ${solicitacao.cid.description}`,
       );
-    } else if (solicitacao.cid_id) {
+    } else if (solicitacao.cidId) {
       // Fallback: busca na API pelo UUID
       cidService
-        .search(solicitacao.cid_id, 10)
+        .search(solicitacao.cidId, 10)
         .then((res) => {
-          const found = res.records.find((r) => r.id === solicitacao.cid_id);
+          const found = res.records.find((r) => r.id === solicitacao.cidId);
           if (found) {
             setCidDisplayLabel(`${found.code} - ${found.description}`);
           } else {
-            setCidDisplayLabel(solicitacao.cid_id ?? "");
+            setCidDisplayLabel(solicitacao.cidId ?? "");
           }
         })
         .catch(() => {
-          setCidDisplayLabel(solicitacao.cid_id ?? "");
+          setCidDisplayLabel(solicitacao.cidId ?? "");
         });
     } else {
       setCidDisplayLabel("");
     }
-  }, [solicitacao.cid, solicitacao.cid_id]);
+  }, [solicitacao.cid, solicitacao.cidId]);
 
   // Função para buscar CIDs
   const searchCid = useCallback(async (search: string) => {
@@ -130,11 +130,11 @@ export function EditableProcedureData({
     // Resetar valores do formulário
     setFormData({
       hospitalId: solicitacao.hospital?.id?.toString() || "",
-      cidId: solicitacao.cid_id || "",
-      cidDescription: solicitacao.cid_description || "",
-      healthPlanId: solicitacao.health_plan?.id?.toString() || "",
-      healthPlanRegistry: solicitacao.health_plan_registration || "",
-      healthPlanType: solicitacao.health_plan_type || "",
+      cidId: solicitacao.cidId || "",
+      cidDescription: solicitacao.cidDescription || "",
+      healthPlanId: solicitacao.healthPlan?.id?.toString() || "",
+      healthPlanRegistry: solicitacao.healthPlanRegistration || "",
+      healthPlanType: solicitacao.healthPlanType || "",
     });
   };
 
@@ -167,8 +167,8 @@ export function EditableProcedureData({
       const updateData: Record<string, unknown> = {
         id: solicitacao.id,
         diagnosis: solicitacao.diagnosis || "",
-        medical_report: solicitacao.medical_report || "",
-        patient_history: solicitacao.patient_history || "",
+        medicalReport: solicitacao.medicalReport || "",
+        patientHistory: solicitacao.patientHistory || "",
       };
 
       // Adicionar hospital se preenchido, ou null se foi limpo
@@ -183,18 +183,18 @@ export function EditableProcedureData({
 
       // Adicionar convênio se preenchido, ou null se foi limpo
       if (healthPlan) {
-        updateData.health_plan = {
+        updateData.healthPlan = {
           id: formData.healthPlanId,
           name: healthPlan.label,
-          email: solicitacao.health_plan?.email || "contato@convenio.com",
-          phone: solicitacao.health_plan?.phone || "0000000000",
+          email: solicitacao.healthPlan?.email || "contato@convenio.com",
+          phone: solicitacao.healthPlan?.phone || "0000000000",
         };
       } else if (!formData.healthPlanId) {
-        updateData.health_plan = null;
+        updateData.healthPlan = null;
       }
       // Sempre envia matrícula e plano (permite limpar os campos)
-      updateData.health_plan_registration = formData.healthPlanRegistry || null;
-      updateData.health_plan_type = formData.healthPlanType || null;
+      updateData.healthPlanRegistration = formData.healthPlanRegistry || null;
+      updateData.healthPlanType = formData.healthPlanType || null;
 
       // Adicionar CID se preenchido, ou null se foi limpo
       if (formData.cidId) {
@@ -347,10 +347,10 @@ export function EditableProcedureData({
               <label className="ds-label mb-0">Convênio</label>
               <input
                 type="text"
-                value={solicitacao.health_plan?.name || ""}
+                value={solicitacao.healthPlan?.name || ""}
                 placeholder="Não informado"
                 className={`ds-field-readonly bg-gray-50 cursor-default ${
-                  solicitacao.health_plan?.name
+                  solicitacao.healthPlan?.name
                     ? "text-gray-500"
                     : "text-gray-400 italic"
                 }`}
@@ -384,10 +384,10 @@ export function EditableProcedureData({
               <label className="ds-label mb-0">Matrícula do convênio</label>
               <input
                 type="text"
-                value={solicitacao.health_plan_registration || ""}
+                value={solicitacao.healthPlanRegistration || ""}
                 placeholder="Não informado"
                 className={`ds-field-readonly bg-gray-50 cursor-default ${
-                  solicitacao.health_plan_registration
+                  solicitacao.healthPlanRegistration
                     ? "text-gray-500"
                     : "text-gray-400 italic"
                 }`}
@@ -417,10 +417,10 @@ export function EditableProcedureData({
               <label className="ds-label mb-0">Plano do convênio</label>
               <input
                 type="text"
-                value={solicitacao.health_plan_type || ""}
+                value={solicitacao.healthPlanType || ""}
                 placeholder="Não informado"
                 className={`ds-field-readonly bg-gray-50 cursor-default ${
-                  solicitacao.health_plan_type
+                  solicitacao.healthPlanType
                     ? "text-gray-500"
                     : "text-gray-400 italic"
                 }`}

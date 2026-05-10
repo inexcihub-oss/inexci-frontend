@@ -1,6 +1,18 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  ChevronDown,
+  Copy,
+  Pencil,
+  Trash2,
+  Plus,
+  Minus,
+  X,
+  Package,
+  Check,
+  AlertCircle,
+} from "lucide-react";
 import {
   opmeService,
   OpmeItem,
@@ -9,6 +21,9 @@ import {
 } from "@/services/opme.service";
 import { logger } from "@/lib/logger";
 import { supplierService } from "@/services/supplier.service";
+import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -49,209 +64,1012 @@ interface OpmeModalProps {
   }[];
 }
 
-// ─── Ícones ───────────────────────────────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
-const IconClose = ({ className = "" }: { className?: string }) => (
-  <svg
-    className={className}
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.5" />
-    <path
-      d="M9.5 9.5L14.5 14.5M14.5 9.5L9.5 14.5"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-  </svg>
-);
+const MIN_OPTIONS = 3;
 
-const IconPlus = ({ className = "" }: { className?: string }) => (
-  <svg
-    className={className}
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path d="M11 13H5V11H11V5H13V11H19V13H13V19H11V13Z" fill="currentColor" />
-  </svg>
-);
-
-const IconMinus = ({ className = "" }: { className?: string }) => (
-  <svg
-    className={className}
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path d="M5 13V11H19V13H5Z" fill="currentColor" />
-  </svg>
-);
-
-const IconArrowDown = ({ className = "" }: { className?: string }) => (
-  <svg
-    className={className}
-    width="16"
-    height="16"
-    viewBox="0 0 16 16"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M3.76 5.48L8 9.72L12.24 5.48"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const IconCopy = ({ className = "" }: { className?: string }) => (
-  <svg
-    className={className}
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M9 18C8.45 18 7.97917 17.8042 7.5875 17.4125C7.19583 17.0208 7 16.55 7 16V4C7 3.45 7.19583 2.97917 7.5875 2.5875C7.97917 2.19583 8.45 2 9 2H18C18.55 2 19.0208 2.19583 19.4125 2.5875C19.8042 2.97917 20 3.45 20 4V16C20 16.55 19.8042 17.0208 19.4125 17.4125C19.0208 17.8042 18.55 18 18 18H9ZM9 16H18V4H9V16ZM5 22C4.45 22 3.97917 21.8042 3.5875 21.4125C3.19583 21.0208 3 20.55 3 20V7C3 6.71667 3.09583 6.47917 3.2875 6.2875C3.47917 6.09583 3.71667 6 4 6C4.28333 6 4.52083 6.09583 4.7125 6.2875C4.90417 6.47917 5 6.71667 5 7V20H15C15.2833 20 15.5208 20.0958 15.7125 20.2875C15.9042 20.4792 16 20.7167 16 21C16 21.2833 15.9042 21.5208 15.7125 21.7125C15.5208 21.9042 15.2833 22 15 22H5Z"
-      fill="currentColor"
-    />
-    <path d="M13.5 8H14.5V12H13.5V8Z" fill="currentColor" />
-    <path d="M12 9.5V10.5H16V9.5H12Z" fill="currentColor" />
-  </svg>
-);
-
-const IconEdit = ({ className = "" }: { className?: string }) => (
-  <svg
-    className={className}
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M5 19H6.4L15.025 10.375L13.625 8.975L5 17.6V19ZM19.3 8.925L15.05 4.725L16.45 3.325C16.8333 2.94167 17.3043 2.75 17.863 2.75C18.4217 2.75 18.8923 2.94167 19.275 3.325L20.675 4.725C21.0583 5.10833 21.2583 5.571 21.275 6.113C21.2917 6.655 21.1083 7.11733 20.725 7.5L19.3 8.925ZM4 21C3.71667 21 3.47933 20.904 3.288 20.712C3.09667 20.52 3.00067 20.2827 3 20V17.175C3 17.0417 3.025 16.9127 3.075 16.788C3.125 16.6633 3.2 16.5507 3.3 16.45L13.6 6.15L17.85 10.4L7.55 20.7C7.45 20.8 7.33767 20.875 7.213 20.925C7.08833 20.975 6.959 21 6.825 21H4Z"
-      fill="currentColor"
-    />
-  </svg>
-);
-
-const IconTrash = ({ className = "" }: { className?: string }) => (
-  <svg
-    className={className}
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M7 21C6.45 21 5.97933 20.8043 5.588 20.413C5.19667 20.0217 5.00067 19.5507 5 19V6H4V4H9V3H15V4H20V6H19V19C19 19.55 18.8043 20.021 18.413 20.413C18.0217 20.805 17.5507 21.0007 17 21H7ZM9 17H11V8H9V17ZM13 17H15V8H13V17Z"
-      fill="currentColor"
-    />
-  </svg>
-);
-
-const IconEmptyOpme = ({ className = "" }: { className?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <rect
-      x="2.75"
-      y="2.75"
-      width="26.5"
-      height="26.5"
-      rx="3.25"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    />
-    <path
-      d="M8 10H24M8 16H24M8 22H17"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M22 20V26M19 23H25"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-// ─── Accordion ────────────────────────────────────────────────────────────────
-
-interface AccordionProps {
-  title: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
+function emptySupplierSlots(): SupplierOption[] {
+  return Array.from({ length: MIN_OPTIONS }, () => ({ name: "" }));
 }
 
-function Accordion({ title, isOpen, onToggle, children }: AccordionProps) {
+function emptyManufacturerSlots(): string[] {
+  return Array.from({ length: MIN_OPTIONS }, () => "");
+}
+
+function padManufacturers(items: string[]): string[] {
+  if (items.length >= MIN_OPTIONS) return items;
+  return [
+    ...items,
+    ...Array.from({ length: MIN_OPTIONS - items.length }, () => ""),
+  ];
+}
+
+function padSuppliers(items: SupplierOption[]): SupplierOption[] {
+  if (items.length >= MIN_OPTIONS) return items;
+  return [
+    ...items,
+    ...Array.from({ length: MIN_OPTIONS - items.length }, () => ({ name: "" })),
+  ];
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
+
+export function OpmeModal({
+  isOpen,
+  onClose,
+  surgeryRequestId,
+  onSuccess,
+  editingOpme,
+  onLocalSave,
+  initialItems,
+}: OpmeModalProps) {
+  const [opmeItems, setOpmeItems] = useState<OpmeItemForm[]>([]);
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [editingNameIndex, setEditingNameIndex] = useState<number | null>(null);
+  const [newOpmeName, setNewOpmeName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [availableSuppliers, setAvailableSuppliers] = useState<OpmeSupplier[]>(
+    [],
+  );
+
+  const { toast, showToast, hideToast } = useToast();
+  const handleClose = useCallback(() => {
+    if (isLoading) return;
+    setOpmeItems([]);
+    setExpandedIndex(null);
+    setEditingNameIndex(null);
+    setNewOpmeName("");
+    onClose();
+  }, [isLoading, onClose]);
+
+  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
+    useSwipeToClose(handleClose);
+
+  // ── Carrega fornecedores ao abrir
+  useEffect(() => {
+    if (!isOpen) return;
+    supplierService
+      .getAll()
+      .then((list) => {
+        setAvailableSuppliers(list.map((s) => ({ id: s.id, name: s.name })));
+      })
+      .catch(() => {
+        // Falha silenciosa: combobox segue funcionando como texto livre.
+      });
+  }, [isOpen]);
+
+  // ── Inicializa o formulário ao abrir
+  useEffect(() => {
+    if (!isOpen) return;
+    if (editingOpme) {
+      const existingSuppliers: SupplierOption[] =
+        editingOpme.suppliers?.map((s) => ({ id: s.id, name: s.name })) ?? [];
+      setOpmeItems([
+        {
+          id: editingOpme.id,
+          name: editingOpme.name,
+          manufacturers: padManufacturers(
+            (editingOpme.brand ?? "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+          ),
+          suppliers: padSuppliers(existingSuppliers),
+          quantity: editingOpme.quantity,
+        },
+      ]);
+      setExpandedIndex(0);
+    } else if (initialItems && initialItems.length > 0) {
+      setOpmeItems(
+        initialItems.map((item) => ({
+          name: item.name,
+          manufacturers: padManufacturers([...item.manufacturers]),
+          suppliers: padSuppliers(item.suppliers.map((name) => ({ name }))),
+          quantity: item.quantity,
+        })),
+      );
+      setExpandedIndex(0);
+    } else {
+      setOpmeItems([]);
+      setExpandedIndex(null);
+    }
+    setNewOpmeName("");
+    setEditingNameIndex(null);
+  }, [isOpen, editingOpme, initialItems]);
+
+  // ── ESC fecha o modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, handleClose]);
+
+  // ── Bloqueia scroll do body
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  // ── Handlers de itens
+
+  const handleAddOpme = () => {
+    const name = newOpmeName.trim();
+    if (!name) return;
+    const newItem: OpmeItemForm = {
+      name,
+      manufacturers: emptyManufacturerSlots(),
+      suppliers: emptySupplierSlots(),
+      quantity: 1,
+    };
+    setOpmeItems((prev) => {
+      const next = [...prev, newItem];
+      setExpandedIndex(next.length - 1);
+      return next;
+    });
+    setNewOpmeName("");
+  };
+
+  const handleRemoveOpme = (index: number) => {
+    setOpmeItems((prev) => prev.filter((_, i) => i !== index));
+    setExpandedIndex((prev) => {
+      if (prev === null) return null;
+      if (prev === index) return null;
+      if (prev > index) return prev - 1;
+      return prev;
+    });
+    if (editingNameIndex === index) setEditingNameIndex(null);
+  };
+
+  const handleDuplicateOpme = (index: number) => {
+    setOpmeItems((prev) => {
+      const next = [
+        ...prev,
+        {
+          ...prev[index],
+          id: undefined,
+          name: `${prev[index].name} (cópia)`,
+        },
+      ];
+      setExpandedIndex(next.length - 1);
+      return next;
+    });
+  };
+
+  const updateItem = (index: number, updates: Partial<OpmeItemForm>) => {
+    setOpmeItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, ...updates } : item)),
+    );
+  };
+
+  const handleRenameOpme = (index: number, name: string) => {
+    updateItem(index, { name });
+  };
+
+  const handleManufacturerChange = (
+    itemIndex: number,
+    fieldIndex: number,
+    value: string,
+  ) => {
+    setOpmeItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== itemIndex) return item;
+        const next = [...item.manufacturers];
+        next[fieldIndex] = value;
+        return { ...item, manufacturers: next };
+      }),
+    );
+  };
+
+  const handleAddManufacturer = (itemIndex: number) => {
+    setOpmeItems((prev) =>
+      prev.map((item, i) =>
+        i === itemIndex
+          ? { ...item, manufacturers: [...item.manufacturers, ""] }
+          : item,
+      ),
+    );
+  };
+
+  const handleRemoveManufacturer = (itemIndex: number, fieldIndex: number) => {
+    setOpmeItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== itemIndex) return item;
+        if (item.manufacturers.length <= MIN_OPTIONS) return item;
+        return {
+          ...item,
+          manufacturers: item.manufacturers.filter((_, j) => j !== fieldIndex),
+        };
+      }),
+    );
+  };
+
+  const handleSupplierChange = (
+    itemIndex: number,
+    fieldIndex: number,
+    value: SupplierOption,
+  ) => {
+    setOpmeItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== itemIndex) return item;
+        const next = [...item.suppliers];
+        next[fieldIndex] = value;
+        return { ...item, suppliers: next };
+      }),
+    );
+  };
+
+  const handleAddSupplier = (itemIndex: number) => {
+    setOpmeItems((prev) =>
+      prev.map((item, i) =>
+        i === itemIndex
+          ? { ...item, suppliers: [...item.suppliers, { name: "" }] }
+          : item,
+      ),
+    );
+  };
+
+  const handleRemoveSupplier = (itemIndex: number, fieldIndex: number) => {
+    setOpmeItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== itemIndex) return item;
+        if (item.suppliers.length <= MIN_OPTIONS) return item;
+        return {
+          ...item,
+          suppliers: item.suppliers.filter((_, j) => j !== fieldIndex),
+        };
+      }),
+    );
+  };
+
+  const handleQuantityChange = (itemIndex: number, delta: number) => {
+    setOpmeItems((prev) =>
+      prev.map((item, i) =>
+        i === itemIndex
+          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          : item,
+      ),
+    );
+  };
+
+  const handleQuantitySet = (itemIndex: number, raw: string) => {
+    const parsed = parseInt(raw, 10);
+    const value = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+    updateItem(itemIndex, { quantity: value });
+  };
+
+  // ── Validação e submit
+
+  const validate = (): { ok: boolean; failingIndex: number | null } => {
+    for (let i = 0; i < opmeItems.length; i++) {
+      const item = opmeItems[i];
+      const manufacturers = item.manufacturers.filter((m) => m.trim()).length;
+      const suppliers = item.suppliers.filter((s) => s.name.trim()).length;
+      if (manufacturers < MIN_OPTIONS || suppliers < MIN_OPTIONS) {
+        return { ok: false, failingIndex: i };
+      }
+    }
+    return { ok: true, failingIndex: null };
+  };
+
+  const handleSave = async () => {
+    if (opmeItems.length === 0) {
+      showToast("Adicione pelo menos um item OPME.", "error");
+      return;
+    }
+
+    const { ok, failingIndex } = validate();
+    if (!ok) {
+      const item = opmeItems[failingIndex ?? 0];
+      showToast(
+        `O material "${item.name}" precisa de no mínimo ${MIN_OPTIONS} fabricantes e ${MIN_OPTIONS} fornecedores preenchidos.`,
+        "error",
+      );
+      setExpandedIndex(failingIndex);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (onLocalSave) {
+        onLocalSave(
+          opmeItems.map((item) => ({
+            name: item.name,
+            manufacturers: item.manufacturers.filter((m) => m.trim()),
+            suppliers: item.suppliers
+              .filter((s) => s.name.trim())
+              .map((s) => s.name),
+            quantity: item.quantity,
+          })),
+        );
+        onSuccess();
+        handleClose();
+        return;
+      }
+
+      for (const item of opmeItems) {
+        const filledSuppliers = item.suppliers.filter((s) => s.name.trim());
+        const supplierIds = filledSuppliers
+          .filter((s) => s.id)
+          .map((s) => s.id!);
+        const supplierNames = filledSuppliers
+          .filter((s) => !s.id)
+          .map((s) => s.name.trim());
+
+        const data: CreateOpmeData = {
+          surgeryRequestId,
+          name: item.name,
+          brand:
+            item.manufacturers.filter((m) => m.trim()).join(", ") || undefined,
+          supplierIds: supplierIds.length > 0 ? supplierIds : undefined,
+          supplierNames: supplierNames.length > 0 ? supplierNames : undefined,
+          quantity: item.quantity,
+        };
+
+        if (item.id) {
+          await opmeService.update({
+            id: item.id,
+            name: data.name,
+            brand: data.brand,
+            supplierIds: data.supplierIds,
+            supplierNames: data.supplierNames,
+            quantity: data.quantity,
+          });
+        } else {
+          await opmeService.create(data);
+        }
+      }
+
+      onSuccess();
+      handleClose();
+    } catch (err) {
+      logger.error("Erro ao salvar OPME:", err);
+      showToast("Erro ao salvar OPME. Tente novamente.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const isDragging = dragY > 0;
+  const overlayOpacity = isDragging ? Math.max(0.2, 1 - dragY / 300) : 1;
+
   return (
-    <div className="border-b border-neutral-100 w-full">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`flex items-center justify-between w-full px-4 py-2 ${isOpen ? "border-b border-neutral-100" : ""}`}
+    <>
+      <div
+        className="fixed inset-0 z-60 flex items-end md:items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Materiais OPME"
       >
-        <span className="text-sm md:text-base font-semibold text-neutral-900">
-          {title}
-        </span>
         <div
-          className={`transform transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
+          style={{ opacity: overlayOpacity }}
+          onClick={handleClose}
+        />
+
+        <div
+          className="relative bg-white w-full md:max-w-2xl flex flex-col rounded-t-3xl md:rounded-2xl max-h-[92dvh] md:max-h-[85vh] animate-slide-up md:animate-scale-in md:mx-4 shadow-xl mobile-sheet-offset"
+          style={
+            isDragging
+              ? { transform: `translateY(${dragY}px)`, transition: "none" }
+              : undefined
+          }
         >
-          <IconArrowDown className="w-4 h-4 text-neutral-900" />
+          {/* Drag handle (mobile) */}
+          <div
+            className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
+            <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+          </div>
+
+          {/* Header */}
+          <div className="flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100 shrink-0">
+            <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl bg-primary-50 text-primary-700 shrink-0">
+              <Package className="w-5 h-5" strokeWidth={1.75} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="ds-modal-title">Materiais OPME</h2>
+              <p className="hidden sm:block ds-caption mt-0.5">
+                Configure os materiais necessários para esta cirurgia
+              </p>
+            </div>
+            <button
+              onClick={handleClose}
+              disabled={isLoading}
+              aria-label="Fechar"
+              className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 rounded-xl min-h-11 min-w-11 flex items-center justify-center disabled:opacity-50"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 md:px-6 md:py-5">
+            <div className="flex flex-col gap-3 md:gap-4">
+              <AddOpmeRow
+                value={newOpmeName}
+                onChange={setNewOpmeName}
+                onConfirm={handleAddOpme}
+              />
+
+              {opmeItems.length === 0 ? (
+                <EmptyState />
+              ) : (
+                opmeItems.map((item, index) => (
+                  <OpmeItemCard
+                    key={index}
+                    item={item}
+                    expanded={expandedIndex === index}
+                    isEditingName={editingNameIndex === index}
+                    onToggleExpand={() =>
+                      setExpandedIndex(expandedIndex === index ? null : index)
+                    }
+                    onStartEditName={() => setEditingNameIndex(index)}
+                    onFinishEditName={() => setEditingNameIndex(null)}
+                    onRename={(name) => handleRenameOpme(index, name)}
+                    onDuplicate={() => handleDuplicateOpme(index)}
+                    onRemove={() => handleRemoveOpme(index)}
+                    onQuantityDelta={(delta) =>
+                      handleQuantityChange(index, delta)
+                    }
+                    onQuantitySet={(value) => handleQuantitySet(index, value)}
+                    onManufacturerChange={(fieldIndex, value) =>
+                      handleManufacturerChange(index, fieldIndex, value)
+                    }
+                    onAddManufacturer={() => handleAddManufacturer(index)}
+                    onRemoveManufacturer={(fieldIndex) =>
+                      handleRemoveManufacturer(index, fieldIndex)
+                    }
+                    onSupplierChange={(fieldIndex, value) =>
+                      handleSupplierChange(index, fieldIndex, value)
+                    }
+                    onAddSupplier={() => handleAddSupplier(index)}
+                    onRemoveSupplier={(fieldIndex) =>
+                      handleRemoveSupplier(index, fieldIndex)
+                    }
+                    availableSuppliers={availableSuppliers}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="ds-modal-footer shrink-0 rounded-b-3xl md:rounded-b-2xl">
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={isLoading}
+              className="ds-btn-outline"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isLoading || opmeItems.length === 0}
+              className="ds-btn-primary inline-flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Salvando...
+                </>
+              ) : (
+                "Salvar"
+              )}
+            </button>
+          </div>
         </div>
-      </button>
-      {isOpen && <div className="bg-neutral-50 p-4 space-y-6">{children}</div>}
+      </div>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+        />
+      )}
+    </>
+  );
+}
+
+// ─── EmptyState ───────────────────────────────────────────────────────────────
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center text-center py-6 md:py-10 px-4 gap-3">
+      <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary-50 text-primary-700">
+        <Package className="w-7 h-7" strokeWidth={1.5} />
+      </div>
+      <div className="flex flex-col gap-1 max-w-sm">
+        <h3 className="text-sm md:text-base font-semibold text-gray-900">
+          Nenhum material adicionado
+        </h3>
+        <p className="ds-caption">
+          Use o campo acima para adicionar os materiais OPME necessários
+          para esta solicitação.
+        </p>
+      </div>
     </div>
   );
 }
 
-// ─── SupplierCombobox ─────────────────────────────────────────────────────────
+// ─── Input de adicionar OPME (sempre visível) ────────────────────────────────
 
-interface SupplierComboboxProps {
-  value: SupplierOption;
-  onChange: (value: SupplierOption) => void;
-  availableSuppliers: OpmeSupplier[];
-  label: string;
-}
-
-function SupplierCombobox({
+function AddOpmeRow({
   value,
   onChange,
+  onConfirm,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onConfirm: () => void;
+}) {
+  const canAdd = value.trim().length > 0;
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-neutral-100 bg-white p-1.5 pl-3 focus-within:border-primary-300 focus-within:ring-2 focus-within:ring-primary-100 transition-colors">
+      <Plus className="w-4 h-4 text-gray-400 shrink-0" strokeWidth={2} />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onConfirm();
+          }
+        }}
+        placeholder="Nome do material..."
+        aria-label="Nome do material OPME"
+        className="flex-1 min-w-0 bg-transparent outline-none text-sm text-gray-900 placeholder:text-gray-400 py-1.5"
+      />
+      <button
+        type="button"
+        onClick={onConfirm}
+        disabled={!canAdd}
+        className="ds-btn-primary h-8 md:h-9 min-h-0 inline-flex items-center gap-1.5 shrink-0"
+      >
+        <Check className="w-4 h-4" strokeWidth={2} />
+        <span className="hidden sm:inline">Adicionar</span>
+      </button>
+    </div>
+  );
+}
+
+// ─── OpmeItemCard ─────────────────────────────────────────────────────────────
+
+interface OpmeItemCardProps {
+  item: OpmeItemForm;
+  expanded: boolean;
+  isEditingName: boolean;
+  availableSuppliers: OpmeSupplier[];
+  onToggleExpand: () => void;
+  onStartEditName: () => void;
+  onFinishEditName: () => void;
+  onRename: (name: string) => void;
+  onDuplicate: () => void;
+  onRemove: () => void;
+  onQuantityDelta: (delta: number) => void;
+  onQuantitySet: (value: string) => void;
+  onManufacturerChange: (index: number, value: string) => void;
+  onAddManufacturer: () => void;
+  onRemoveManufacturer: (index: number) => void;
+  onSupplierChange: (index: number, value: SupplierOption) => void;
+  onAddSupplier: () => void;
+  onRemoveSupplier: (index: number) => void;
+}
+
+function OpmeItemCard({
+  item,
+  expanded,
+  isEditingName,
   availableSuppliers,
+  onToggleExpand,
+  onStartEditName,
+  onFinishEditName,
+  onRename,
+  onDuplicate,
+  onRemove,
+  onQuantityDelta,
+  onQuantitySet,
+  onManufacturerChange,
+  onAddManufacturer,
+  onRemoveManufacturer,
+  onSupplierChange,
+  onAddSupplier,
+  onRemoveSupplier,
+}: OpmeItemCardProps) {
+  const filledManufacturers = useMemo(
+    () => item.manufacturers.filter((m) => m.trim()).length,
+    [item.manufacturers],
+  );
+  const filledSuppliers = useMemo(
+    () => item.suppliers.filter((s) => s.name.trim()).length,
+    [item.suppliers],
+  );
+
+  const isComplete =
+    filledManufacturers >= MIN_OPTIONS && filledSuppliers >= MIN_OPTIONS;
+
+  return (
+    <div
+      className={`rounded-2xl border bg-white overflow-hidden transition-colors ${
+        expanded ? "border-primary-200" : "border-neutral-100"
+      }`}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3">
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          className="flex-1 flex items-center gap-2 sm:gap-3 min-w-0 text-left p-2 -m-2 rounded-xl hover:bg-gray-50 transition-colors"
+          aria-expanded={expanded}
+        >
+          <ChevronDown
+            className={`w-5 h-5 text-gray-400 transition-transform shrink-0 ${
+              expanded ? "" : "-rotate-90"
+            }`}
+            strokeWidth={2}
+          />
+          {isEditingName ? (
+            <input
+              autoFocus
+              type="text"
+              value={item.name}
+              onChange={(e) => onRename(e.target.value)}
+              onBlur={onFinishEditName}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === "Escape") {
+                  e.preventDefault();
+                  onFinishEditName();
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="ds-input flex-1 min-w-0"
+            />
+          ) : (
+            <span className="flex-1 truncate text-sm md:text-base font-semibold text-gray-900">
+              {item.name}
+            </span>
+          )}
+          <span
+            className={`hidden sm:inline-flex items-center gap-1 ds-badge-sm ${
+              isComplete
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-amber-50 text-amber-700"
+            }`}
+            title={
+              isComplete
+                ? "Material configurado"
+                : `Faltam ${Math.max(
+                    0,
+                    MIN_OPTIONS - filledManufacturers,
+                  )} fabricante(s) e ${Math.max(
+                    0,
+                    MIN_OPTIONS - filledSuppliers,
+                  )} fornecedor(es)`
+            }
+          >
+            {isComplete ? (
+              <>
+                <Check className="w-3 h-3" strokeWidth={2.5} />
+                Completo
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-3 h-3" strokeWidth={2} />
+                Pendente
+              </>
+            )}
+          </span>
+          <span className="hidden md:inline-flex items-center gap-1 ds-badge-sm bg-gray-50 text-gray-700 border border-neutral-100">
+            <span className="text-gray-500">Qnt:</span>
+            <span className="font-semibold">{item.quantity}</span>
+          </span>
+        </button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onStartEditName();
+            }}
+            label="Renomear"
+          >
+            <Pencil className="w-4 h-4" strokeWidth={1.75} />
+          </IconButton>
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate();
+            }}
+            label="Duplicar"
+          >
+            <Copy className="w-4 h-4" strokeWidth={1.75} />
+          </IconButton>
+          <IconButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            label="Remover"
+            tone="danger"
+          >
+            <Trash2 className="w-4 h-4" strokeWidth={1.75} />
+          </IconButton>
+        </div>
+      </div>
+
+      {/* Body (expanded) */}
+      {expanded && (
+        <div className="border-t border-neutral-100 bg-gray-50/60 p-3 md:p-4 flex flex-col gap-4 md:gap-5">
+          {/* Quantidade */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <span className="ds-label mb-0">Quantidade</span>
+              <span className="ds-caption mt-0.5">
+                Total de unidades necessárias
+              </span>
+            </div>
+            <QuantityStepper
+              value={item.quantity}
+              onIncrement={() => onQuantityDelta(1)}
+              onDecrement={() => onQuantityDelta(-1)}
+              onChange={onQuantitySet}
+            />
+          </div>
+
+          {/* Fabricantes */}
+          <FieldGroup
+            title="Fabricantes"
+            description={`Informe ao menos ${MIN_OPTIONS} fabricantes`}
+            filled={filledManufacturers}
+            min={MIN_OPTIONS}
+          >
+            {item.manufacturers.map((manufacturer, fieldIndex) => (
+              <div key={fieldIndex} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={manufacturer}
+                  onChange={(e) =>
+                    onManufacturerChange(fieldIndex, e.target.value)
+                  }
+                  placeholder={`Fabricante ${fieldIndex + 1}`}
+                  className="ds-input flex-1"
+                />
+                <RemoveFieldButton
+                  onClick={() => onRemoveManufacturer(fieldIndex)}
+                  disabled={item.manufacturers.length <= MIN_OPTIONS}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={onAddManufacturer}
+              className="ds-btn-inline self-start inline-flex items-center gap-1.5 text-primary-700"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2} />
+              Adicionar fabricante
+            </button>
+          </FieldGroup>
+
+          {/* Fornecedores */}
+          <FieldGroup
+            title="Fornecedores"
+            description={`Informe ao menos ${MIN_OPTIONS} fornecedores`}
+            filled={filledSuppliers}
+            min={MIN_OPTIONS}
+          >
+            {item.suppliers.map((supplier, fieldIndex) => (
+              <div key={fieldIndex} className="flex items-center gap-2">
+                <SupplierAutocomplete
+                  value={supplier}
+                  placeholder={`Fornecedor ${fieldIndex + 1}`}
+                  availableSuppliers={availableSuppliers}
+                  onChange={(val) => onSupplierChange(fieldIndex, val)}
+                />
+                <RemoveFieldButton
+                  onClick={() => onRemoveSupplier(fieldIndex)}
+                  disabled={item.suppliers.length <= MIN_OPTIONS}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={onAddSupplier}
+              className="ds-btn-inline self-start inline-flex items-center gap-1.5 text-primary-700"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2} />
+              Adicionar fornecedor
+            </button>
+          </FieldGroup>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Sub-componentes auxiliares ───────────────────────────────────────────────
+
+function IconButton({
+  onClick,
   label,
-}: SupplierComboboxProps) {
+  tone = "default",
+  children,
+}: {
+  onClick: (e: React.MouseEvent) => void;
+  label: string;
+  tone?: "default" | "danger";
+  children: React.ReactNode;
+}) {
+  const toneClass =
+    tone === "danger"
+      ? "text-red-500 hover:bg-red-50 hover:text-red-600"
+      : "text-gray-500 hover:bg-gray-100 hover:text-gray-900";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-xl transition-colors ${toneClass}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function FieldGroup({
+  title,
+  description,
+  filled,
+  min,
+  children,
+}: {
+  title: string;
+  description: string;
+  filled: number;
+  min: number;
+  children: React.ReactNode;
+}) {
+  const isComplete = filled >= min;
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col">
+          <span className="ds-label mb-0">{title}</span>
+          <span className="ds-caption mt-0.5">{description}</span>
+        </div>
+        <span
+          className={`ds-badge-sm ${
+            isComplete
+              ? "bg-emerald-50 text-emerald-700"
+              : "bg-amber-50 text-amber-700"
+          }`}
+        >
+          {filled}/{min}
+        </span>
+      </div>
+      <div className="flex flex-col gap-2">{children}</div>
+    </div>
+  );
+}
+
+function RemoveFieldButton({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label="Remover campo"
+      className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 shrink-0 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
+    >
+      <Trash2 className="w-4 h-4" strokeWidth={1.75} />
+    </button>
+  );
+}
+
+function QuantityStepper({
+  value,
+  onIncrement,
+  onDecrement,
+  onChange,
+}: {
+  value: number;
+  onIncrement: () => void;
+  onDecrement: () => void;
+  onChange: (raw: string) => void;
+}) {
+  return (
+    <div className="inline-flex items-center rounded-xl border border-neutral-100 bg-white overflow-hidden">
+      <button
+        type="button"
+        onClick={onDecrement}
+        disabled={value <= 1}
+        aria-label="Diminuir quantidade"
+        className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+      >
+        <Minus className="w-4 h-4" strokeWidth={2} />
+      </button>
+      <input
+        type="number"
+        min={1}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Quantidade"
+        className="w-12 h-9 md:h-10 text-center text-sm font-semibold text-gray-900 bg-transparent border-x border-neutral-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+      />
+      <button
+        type="button"
+        onClick={onIncrement}
+        aria-label="Aumentar quantidade"
+        className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 text-gray-700 hover:bg-gray-50 transition-colors"
+      >
+        <Plus className="w-4 h-4" strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
+
+// ─── SupplierAutocomplete ─────────────────────────────────────────────────────
+
+interface SupplierAutocompleteProps {
+  value: SupplierOption;
+  placeholder: string;
+  availableSuppliers: OpmeSupplier[];
+  onChange: (value: SupplierOption) => void;
+}
+
+function SupplierAutocomplete({
+  value,
+  placeholder,
+  availableSuppliers,
+  onChange,
+}: SupplierAutocompleteProps) {
   const [query, setQuery] = useState(value.name);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync query when value changes externally
   useEffect(() => {
     setQuery(value.name);
   }, [value.name]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -259,13 +1077,8 @@ function SupplierCombobox({
         !containerRef.current.contains(e.target as Node)
       ) {
         setIsOpen(false);
-        // Confirm free-text entry when clicking outside
         if (query.trim() !== value.name) {
-          if (query.trim()) {
-            onChange({ name: query.trim() });
-          } else {
-            onChange({ name: "" });
-          }
+          onChange({ name: query.trim() });
         }
       }
     };
@@ -287,16 +1100,6 @@ function SupplierCombobox({
     setIsOpen(false);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setQuery(val);
-    // Clear ID if user is typing a different name
-    if (value.id && val !== value.name) {
-      onChange({ name: val });
-    }
-    setIsOpen(true);
-  };
-
   const handleAddNew = () => {
     const name = query.trim();
     if (!name) return;
@@ -308,27 +1111,35 @@ function SupplierCombobox({
     isOpen && (filtered.length > 0 || (query.trim() && !hasExactMatch));
 
   return (
-    <div ref={containerRef} className="space-y-1 relative">
-      <label className="ds-label mb-0">{label}</label>
+    <div ref={containerRef} className="flex-1 min-w-0 relative">
       <div className="relative">
         <input
           type="text"
           value={query}
-          onChange={handleInputChange}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (value.id && e.target.value !== value.name) {
+              onChange({ name: e.target.value });
+            }
+            setIsOpen(true);
+          }}
           onFocus={() => setIsOpen(true)}
-          placeholder="Buscar ou digitar fornecedor..."
-          className={`ds-input pr-8 ${value.id ? "border-primary-300 bg-primary-50/30" : ""}`}
+          placeholder={placeholder}
+          className={`ds-input pr-8 ${
+            value.id ? "border-primary-300 bg-primary-50/30" : ""
+          }`}
         />
         {value.id && (
           <span
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary-500"
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary-500"
             title="Fornecedor cadastrado"
+            aria-hidden="true"
           />
         )}
       </div>
 
       {showDropdown && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+        <div className="absolute z-60 top-full left-0 right-0 mt-1 bg-white border border-neutral-100 rounded-xl shadow-lg max-h-56 overflow-y-auto">
           {filtered.map((s) => (
             <button
               key={s.id}
@@ -337,10 +1148,10 @@ function SupplierCombobox({
                 e.preventDefault();
                 handleSelect(s);
               }}
-              className="w-full text-left px-3 py-2 text-xs text-neutral-900 hover:bg-primary-50 transition-colors flex items-center gap-2"
+              className="w-full text-left px-3 py-2.5 text-sm text-gray-900 hover:bg-primary-50 transition-colors flex items-center gap-2"
             >
-              <span className="w-2 h-2 rounded-full bg-primary-400 flex-shrink-0" />
-              {s.name}
+              <span className="w-2 h-2 rounded-full bg-primary-400 shrink-0" />
+              <span className="truncate">{s.name}</span>
             </button>
           ))}
           {query.trim() && !hasExactMatch && (
@@ -350,668 +1161,16 @@ function SupplierCombobox({
                 e.preventDefault();
                 handleAddNew();
               }}
-              className="w-full text-left px-3 py-2 text-xs text-primary-700 font-semibold hover:bg-primary-50 transition-colors border-t border-neutral-100 flex items-center gap-2"
+              className="w-full text-left px-3 py-2.5 text-sm text-primary-700 font-semibold hover:bg-primary-50 transition-colors border-t border-neutral-100 flex items-center gap-2"
             >
-              <IconPlus className="w-3 h-3" />
-              Adicionar &ldquo;{query.trim()}&rdquo; como novo fornecedor
+              <Plus className="w-3.5 h-3.5" strokeWidth={2} />
+              <span className="truncate">
+                Adicionar &ldquo;{query.trim()}&rdquo; como novo fornecedor
+              </span>
             </button>
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const MIN_OPTIONS = 3;
-
-function emptySupplierSlots(): SupplierOption[] {
-  return Array.from({ length: MIN_OPTIONS }, () => ({ name: "" }));
-}
-
-function padToMin(suppliers: SupplierOption[]): SupplierOption[] {
-  if (suppliers.length >= MIN_OPTIONS) return suppliers;
-  return [
-    ...suppliers,
-    ...Array.from({ length: MIN_OPTIONS - suppliers.length }, () => ({
-      name: "",
-    })),
-  ];
-}
-
-// ─── OpmeModal ────────────────────────────────────────────────────────────────
-
-export function OpmeModal({
-  isOpen,
-  onClose,
-  surgeryRequestId,
-  onSuccess,
-  editingOpme,
-  onLocalSave,
-  initialItems,
-}: OpmeModalProps) {
-  const [opmeItems, setOpmeItems] = useState<OpmeItemForm[]>([]);
-  const [selectedOpmeIndex, setSelectedOpmeIndex] = useState<number | null>(
-    null,
-  );
-  const [newOpmeName, setNewOpmeName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [editingNameIndex, setEditingNameIndex] = useState<number | null>(null);
-  const [isAddingOpme, setIsAddingOpme] = useState(false);
-  const [availableSuppliers, setAvailableSuppliers] = useState<OpmeSupplier[]>(
-    [],
-  );
-
-  const [manufacturersOpen, setManufacturersOpen] = useState(true);
-  const [suppliersOpen, setSuppliersOpen] = useState(true);
-  const [quantityOpen, setQuantityOpen] = useState(true);
-
-  // Fetch suppliers once when modal opens
-  useEffect(() => {
-    if (!isOpen) return;
-    supplierService
-      .getAll()
-      .then((list) => {
-        setAvailableSuppliers(list.map((s) => ({ id: s.id, name: s.name })));
-      })
-      .catch(() => {
-        // If fetch fails, combobox still works as free-text
-      });
-  }, [isOpen]);
-
-  // Deve ficar antes do early return para não violar regras de hooks
-  const handleSupplierChange = useCallback(
-    (optionIndex: number, value: SupplierOption) => {
-      setOpmeItems((prev) => {
-        if (selectedOpmeIndex === null) return prev;
-        return prev.map((item, i) => {
-          if (i !== selectedOpmeIndex) return item;
-          const next = [...item.suppliers];
-          next[optionIndex] = value;
-          return { ...item, suppliers: next };
-        });
-      });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    },
-    [selectedOpmeIndex],
-  );
-
-  // Reset form when modal opens/closes
-  useEffect(() => {
-    if (isOpen) {
-      if (editingOpme) {
-        const existingSuppliers: SupplierOption[] =
-          editingOpme.suppliers?.map((s) => ({
-            id: s.id,
-            name: s.name,
-          })) ?? [];
-        setOpmeItems([
-          {
-            id: editingOpme.id,
-            name: editingOpme.name,
-            manufacturers: (() => {
-              const items = (editingOpme.brand ?? "")
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean);
-              while (items.length < MIN_OPTIONS) items.push("");
-              return items;
-            })(),
-            suppliers: padToMin(existingSuppliers),
-            quantity: editingOpme.quantity,
-          },
-        ]);
-        setSelectedOpmeIndex(0);
-      } else if (initialItems && initialItems.length > 0) {
-        setOpmeItems(
-          initialItems.map((item) => ({
-            name: item.name,
-            manufacturers:
-              item.manufacturers.length >= MIN_OPTIONS
-                ? [...item.manufacturers]
-                : [
-                    ...item.manufacturers,
-                    ...Array(MIN_OPTIONS - item.manufacturers.length).fill(""),
-                  ],
-            suppliers: padToMin(item.suppliers.map((name) => ({ name }))),
-            quantity: item.quantity,
-          })),
-        );
-        setSelectedOpmeIndex(0);
-      } else {
-        setOpmeItems([]);
-        setSelectedOpmeIndex(null);
-      }
-      setNewOpmeName("");
-      setError(null);
-    }
-  }, [isOpen, editingOpme, initialItems]);
-
-  if (!isOpen) return null;
-
-  const handleAddOpme = () => {
-    if (!newOpmeName.trim()) return;
-    const newItem: OpmeItemForm = {
-      name: newOpmeName.trim(),
-      manufacturers: ["", "", ""],
-      suppliers: emptySupplierSlots(),
-      quantity: 1,
-    };
-    setOpmeItems((prev) => [...prev, newItem]);
-    setSelectedOpmeIndex(opmeItems.length);
-    setNewOpmeName("");
-    setIsAddingOpme(false);
-  };
-
-  const handleSelectOpme = (index: number) => setSelectedOpmeIndex(index);
-
-  const handleRemoveOpme = (index: number) => {
-    setOpmeItems((prev) => prev.filter((_, i) => i !== index));
-    if (selectedOpmeIndex === index) {
-      setSelectedOpmeIndex(opmeItems.length > 1 ? 0 : null);
-    } else if (selectedOpmeIndex !== null && selectedOpmeIndex > index) {
-      setSelectedOpmeIndex(selectedOpmeIndex - 1);
-    }
-  };
-
-  const handleDuplicateOpme = (index: number) => {
-    setOpmeItems((prev) => [...prev, { ...prev[index], id: undefined }]);
-  };
-
-  const updateSelectedOpme = (updates: Partial<OpmeItemForm>) => {
-    if (selectedOpmeIndex === null) return;
-    setOpmeItems((prev) =>
-      prev.map((item, i) =>
-        i === selectedOpmeIndex ? { ...item, ...updates } : item,
-      ),
-    );
-  };
-
-  const handleManufacturerChange = (optionIndex: number, value: string) => {
-    if (selectedOpmeIndex === null) return;
-    const next = [...opmeItems[selectedOpmeIndex].manufacturers];
-    next[optionIndex] = value;
-    updateSelectedOpme({ manufacturers: next });
-  };
-
-  const handleAddManufacturer = () => {
-    if (selectedOpmeIndex === null) return;
-    updateSelectedOpme({
-      manufacturers: [...opmeItems[selectedOpmeIndex].manufacturers, ""],
-    });
-  };
-
-  const handleAddSupplier = () => {
-    if (selectedOpmeIndex === null) return;
-    updateSelectedOpme({
-      suppliers: [...opmeItems[selectedOpmeIndex].suppliers, { name: "" }],
-    });
-  };
-
-  const handleQuantityChange = (delta: number) => {
-    if (selectedOpmeIndex === null) return;
-    updateSelectedOpme({
-      quantity: Math.max(1, opmeItems[selectedOpmeIndex].quantity + delta),
-    });
-  };
-
-  const handleCancel = () => {
-    setOpmeItems([]);
-    setSelectedOpmeIndex(null);
-    setNewOpmeName("");
-    setError(null);
-    onClose();
-  };
-
-  const handleSave = async () => {
-    if (opmeItems.length === 0) {
-      setError("Adicione pelo menos um item OPME.");
-      return;
-    }
-
-    for (const item of opmeItems) {
-      const filledManufacturers = item.manufacturers.filter((m) => m.trim());
-      if (filledManufacturers.length < MIN_OPTIONS) {
-        setError(
-          `O item "${item.name}" deve ter no mínimo ${MIN_OPTIONS} fabricantes preenchidos.`,
-        );
-        return;
-      }
-
-      const filledSuppliers = item.suppliers.filter((s) => s.name.trim());
-      if (filledSuppliers.length < MIN_OPTIONS) {
-        setError(
-          `O item "${item.name}" deve ter no mínimo ${MIN_OPTIONS} fornecedores preenchidos.`,
-        );
-        return;
-      }
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      if (onLocalSave) {
-        onLocalSave(
-          opmeItems.map((item) => ({
-            name: item.name,
-            manufacturers: item.manufacturers.filter((m) => m.trim()),
-            suppliers: item.suppliers
-              .filter((s) => s.name.trim())
-              .map((s) => s.name),
-            quantity: item.quantity,
-          })),
-        );
-        onSuccess();
-        handleCancel();
-        return;
-      }
-
-      for (const item of opmeItems) {
-        const filledSuppliers = item.suppliers.filter((s) => s.name.trim());
-        const supplier_ids = filledSuppliers
-          .filter((s) => s.id)
-          .map((s) => s.id!);
-        const supplier_names = filledSuppliers
-          .filter((s) => !s.id)
-          .map((s) => s.name.trim());
-
-        const data: CreateOpmeData = {
-          surgery_request_id: surgeryRequestId,
-          name: item.name,
-          brand:
-            item.manufacturers.filter((m) => m.trim()).join(", ") || undefined,
-          supplier_ids: supplier_ids.length > 0 ? supplier_ids : undefined,
-          supplier_names:
-            supplier_names.length > 0 ? supplier_names : undefined,
-          quantity: item.quantity,
-        };
-
-        if (item.id) {
-          await opmeService.update({
-            id: item.id,
-            name: data.name,
-            brand: data.brand,
-            supplier_ids: data.supplier_ids,
-            supplier_names: data.supplier_names,
-            quantity: data.quantity,
-          });
-        } else {
-          await opmeService.create(data);
-        }
-      }
-
-      onSuccess();
-      handleCancel();
-    } catch (err) {
-      logger.error("Erro ao salvar OPME:", err);
-      setError("Erro ao salvar OPME. Tente novamente.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const selectedItem =
-    selectedOpmeIndex !== null ? opmeItems[selectedOpmeIndex] : null;
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={!isLoading ? handleCancel : undefined}
-      />
-
-      <div className="relative bg-white sm:rounded-2xl shadow-xl flex flex-col w-full h-full sm:w-[800px] sm:h-[650px] sm:max-h-[90vh] sm:overflow-hidden mobile-sheet-offset">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100">
-          <h2 className="ds-modal-title">OPME</h2>
-          <button
-            onClick={!isLoading ? handleCancel : undefined}
-            className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors"
-            disabled={isLoading}
-          >
-            <IconClose className="w-6 h-6 text-neutral-900" />
-          </button>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 flex flex-col sm:flex-row overflow-hidden">
-          {/* Painel Esquerdo */}
-          <div className="flex flex-col flex-1 min-w-0">
-            {error && (
-              <div className="mx-4 mt-4 bg-red-50 text-red-700 p-3 rounded-xl text-xs md:text-sm">
-                {error}
-              </div>
-            )}
-
-            <div className="flex-1 flex flex-col overflow-y-auto">
-              {opmeItems.length === 0 && (
-                <div className="flex flex-col items-center justify-center flex-1 gap-5 px-6 sm:px-10 py-8 sm:py-12">
-                  <div className="w-16 h-16 rounded-full bg-primary-50 flex items-center justify-center">
-                    <IconEmptyOpme className="w-8 h-8 text-primary-700" />
-                  </div>
-                  <div className="text-center space-y-2">
-                    <p className="text-sm md:text-base font-semibold text-neutral-900">
-                      Nenhum OPME adicionado
-                    </p>
-                    <p className="text-xs md:text-sm text-neutral-200 leading-relaxed">
-                      Adicione os itens de OPME necessários para esta
-                      solicitação cirúrgica
-                    </p>
-                  </div>
-                  {isAddingOpme ? (
-                    <div className="w-full max-w-xs flex flex-col items-center gap-2">
-                      <input
-                        type="text"
-                        autoFocus
-                        value={newOpmeName}
-                        onChange={(e) => setNewOpmeName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleAddOpme();
-                          if (e.key === "Escape") {
-                            setIsAddingOpme(false);
-                            setNewOpmeName("");
-                          }
-                        }}
-                        onBlur={() => {
-                          if (!newOpmeName.trim()) {
-                            setIsAddingOpme(false);
-                            setNewOpmeName("");
-                          }
-                        }}
-                        placeholder="Nome da OPME..."
-                        className="w-full px-3 py-2.5 text-xs md:text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border-2 border-primary-700 rounded-xl focus:outline-none shadow-sm"
-                      />
-                      <p className="text-xs text-neutral-200">
-                        Pressione{" "}
-                        <kbd className="px-1.5 py-0.5 text-xs font-medium bg-gray-100 border border-gray-300 rounded">
-                          Enter
-                        </kbd>{" "}
-                        para adicionar
-                      </p>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingOpme(true)}
-                      className="flex items-center gap-2 px-5 py-2.5 text-xs md:text-sm font-semibold text-white bg-primary-700 rounded-xl hover:bg-primary-800 transition-colors shadow-sm"
-                    >
-                      <IconPlus className="w-4 h-4" />
-                      Adicionar OPME
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {opmeItems.map((item, index) => (
-                <div
-                  key={index}
-                  className={`p-1 cursor-pointer ${selectedOpmeIndex === index ? "bg-gray-50" : ""}`}
-                  onClick={() =>
-                    editingNameIndex !== index && handleSelectOpme(index)
-                  }
-                >
-                  <div className="flex items-center gap-3 px-4 py-3 border border-neutral-100 rounded-xl shadow-[0px_1px_2px_rgba(0,0,0,0.05)] min-h-[64px]">
-                    {editingNameIndex === index ? (
-                      <input
-                        type="text"
-                        autoFocus
-                        value={item.name}
-                        onChange={(e) =>
-                          setOpmeItems((prev) =>
-                            prev.map((it, i) =>
-                              i === index
-                                ? { ...it, name: e.target.value }
-                                : it,
-                            ),
-                          )
-                        }
-                        onBlur={() => setEditingNameIndex(null)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === "Escape")
-                            setEditingNameIndex(null);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex-1 px-2 py-1 text-xs md:text-sm text-neutral-900 border border-neutral-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-700"
-                      />
-                    ) : (
-                      <span className="flex-1 text-xs md:text-sm text-neutral-900">
-                        {item.name}
-                      </span>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDuplicateOpme(index);
-                        }}
-                        className="p-2 hover:bg-gray-100 rounded transition-colors"
-                        title="Duplicar"
-                      >
-                        <IconCopy className="w-5 h-5 text-neutral-900" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingNameIndex(index);
-                        }}
-                        className="p-2 hover:bg-gray-100 rounded transition-colors"
-                        title="Renomear"
-                      >
-                        <IconEdit className="w-5 h-5 text-neutral-900" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveOpme(index);
-                        }}
-                        className="p-2 hover:bg-gray-100 rounded transition-colors"
-                        title="Remover"
-                      >
-                        <IconTrash className="w-5 h-5 text-error" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {opmeItems.length > 0 && (
-              <div className="border-t border-neutral-100 px-4 py-3">
-                {isAddingOpme ? (
-                  <input
-                    type="text"
-                    autoFocus
-                    value={newOpmeName}
-                    onChange={(e) => setNewOpmeName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAddOpme();
-                      if (e.key === "Escape") {
-                        setIsAddingOpme(false);
-                        setNewOpmeName("");
-                      }
-                    }}
-                    onBlur={() => {
-                      if (!newOpmeName.trim()) {
-                        setIsAddingOpme(false);
-                        setNewOpmeName("");
-                      }
-                    }}
-                    placeholder="Nome da OPME..."
-                    className="w-full px-3 py-2 text-xs md:text-sm text-neutral-900 placeholder:text-neutral-200 bg-white border border-neutral-100 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-700"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingOpme(true)}
-                    className="flex items-center gap-2 text-xs md:text-sm font-semibold text-primary-700 hover:text-primary-800 transition-colors"
-                  >
-                    <IconPlus className="w-4 h-4" />
-                    Adicionar OPME
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Painel Direito */}
-          {opmeItems.length > 0 && (
-            <div className="flex-1 flex flex-col border-t sm:border-t-0 sm:border-l border-neutral-100 min-w-0 sm:max-w-[342px]">
-              {selectedItem ? (
-                <div className="flex flex-col overflow-y-auto flex-1">
-                  {/* Fabricantes */}
-                  <Accordion
-                    title="Fabricantes"
-                    isOpen={manufacturersOpen}
-                    onToggle={() => setManufacturersOpen(!manufacturersOpen)}
-                  >
-                    {selectedItem.manufacturers.map(
-                      (manufacturer, optIndex) => (
-                        <div key={optIndex} className="space-y-1">
-                          <label className="ds-label mb-0">
-                            Opção {optIndex + 1}
-                          </label>
-                          <input
-                            type="text"
-                            value={manufacturer}
-                            onChange={(e) =>
-                              handleManufacturerChange(optIndex, e.target.value)
-                            }
-                            placeholder="Fabricante"
-                            className="ds-input"
-                          />
-                        </div>
-                      ),
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleAddManufacturer}
-                      className="flex items-center gap-2 px-6 py-2 text-xs font-semibold text-neutral-900 hover:text-primary-700 transition-colors"
-                    >
-                      <IconPlus className="w-5 h-5" />
-                      Adicionar Opção
-                    </button>
-                  </Accordion>
-
-                  {/* Fornecedores */}
-                  <Accordion
-                    title="Fornecedores"
-                    isOpen={suppliersOpen}
-                    onToggle={() => setSuppliersOpen(!suppliersOpen)}
-                  >
-                    {selectedItem.suppliers.map((supplier, optIndex) => (
-                      <SupplierCombobox
-                        key={optIndex}
-                        label={`Opção ${optIndex + 1}`}
-                        value={supplier}
-                        onChange={(val) => handleSupplierChange(optIndex, val)}
-                        availableSuppliers={availableSuppliers}
-                      />
-                    ))}
-                    <button
-                      type="button"
-                      onClick={handleAddSupplier}
-                      className="flex items-center gap-2 px-6 py-2 text-xs font-semibold text-neutral-900 hover:text-primary-700 transition-colors"
-                    >
-                      <IconPlus className="w-5 h-5" />
-                      Adicionar Opção
-                    </button>
-                  </Accordion>
-
-                  {/* Quantidade */}
-                  <Accordion
-                    title="Quantidade"
-                    isOpen={quantityOpen}
-                    onToggle={() => setQuantityOpen(!quantityOpen)}
-                  >
-                    <div className="space-y-1">
-                      <label className="ds-label mb-0">Quantidade</label>
-                      <div className="flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleQuantityChange(-1)}
-                          disabled={selectedItem.quantity <= 1}
-                          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <IconMinus className="w-5 h-5 text-neutral-900 opacity-50" />
-                        </button>
-                        <div
-                          className="flex items-center justify-center px-3 py-2 border border-neutral-100 rounded-xl bg-white"
-                          style={{ width: "52px", height: "40px" }}
-                        >
-                          <span className="text-xs md:text-sm font-semibold text-neutral-900">
-                            {selectedItem.quantity}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleQuantityChange(1)}
-                          className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white transition-colors"
-                        >
-                          <IconPlus className="w-5 h-5 text-neutral-900" />
-                        </button>
-                      </div>
-                    </div>
-                  </Accordion>
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-neutral-200 text-xs md:text-sm">
-                  Selecione um OPME para configurar
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-4 sm:px-3 py-4 bg-white border-t-2 border-neutral-100 safe-area-bottom">
-          <button
-            onClick={handleCancel}
-            className="ds-btn-outline"
-            disabled={isLoading}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            className="ds-btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading || opmeItems.length === 0}
-          >
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <svg
-                  className="animate-spin h-4 w-4 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Salvando...
-              </span>
-            ) : (
-              "Salvar"
-            )}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

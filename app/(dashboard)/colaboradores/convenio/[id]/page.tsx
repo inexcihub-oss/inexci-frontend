@@ -116,7 +116,7 @@ export default function ConvenioDetalhePage() {
         const surgeryData = await surgeryRequestService.getAll();
         const filtered = (surgeryData.records ?? []).filter(
           (r: any) =>
-            String(r.health_plan_id) === String(healthPlanData.id) ||
+            String(r.healthPlanId) === String(healthPlanData.id) ||
             String(r.health_plan?.id) === String(healthPlanData.id),
         );
         setSurgeryRequests(filtered);
@@ -230,9 +230,9 @@ export default function ConvenioDetalhePage() {
             const patientName =
               surgery.patient?.name || "Paciente não informado";
             const procedureName =
-              (surgery as any).procedure_name ||
+              (surgery as any).procedureName ||
               surgery.procedure?.name ||
-              surgery.tuss_procedure?.description ||
+              surgery.tussProcedure?.description ||
               "Procedimento não especificado";
             return (
               <div

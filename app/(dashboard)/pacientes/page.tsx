@@ -292,16 +292,16 @@ export default function PacientesPage() {
       ),
     },
     {
-      accessorKey: "birth_date",
+      accessorKey: "birthDate",
       header: "Data de Nascimento",
       size: 150,
       meta: { className: "hidden md:table-cell" },
       cell: ({ row }) => (
         <span
           className="text-xs text-black"
-          title={formatDate(row.original.birth_date)}
+          title={formatDate(row.original.birthDate)}
         >
-          {formatDate(row.original.birth_date)}
+          {formatDate(row.original.birthDate)}
         </span>
       ),
     },

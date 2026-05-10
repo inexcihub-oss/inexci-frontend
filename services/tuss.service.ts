@@ -3,38 +3,38 @@ import { logger } from "@/lib/logger";
 
 export interface TussCode {
   id: string;
-  tuss_code: string;
+  tussCode: string;
   name: string;
   active: boolean;
 }
 
 export interface SurgeryRequestTussItem {
   id: string;
-  surgery_request_id: string | number;
-  tuss_code: string;
+  surgeryRequestId: string | number;
+  tussCode: string;
   name: string;
   quantity: number;
-  authorized_quantity?: number;
+  authorizedQuantity?: number;
 }
 
 // Mantido por compatibilidade
 export interface SurgeryRequestProcedure extends SurgeryRequestTussItem {}
 
 export interface CreateSurgeryRequestProcedureData {
-  surgery_request_id: string | number;
+  surgeryRequestId: string | number;
   procedures: {
-    procedure_id: string;
-    tuss_code: string;
+    procedureId: string;
+    tussCode: string;
     name: string;
     quantity: number;
   }[];
 }
 
 export interface UpdateSurgeryRequestProcedureData {
-  surgery_request_id: string | number;
+  surgeryRequestId: string | number;
   procedures: {
     id?: string;
-    procedure_id: string;
+    procedureId: string;
     quantity: number;
   }[];
 }
@@ -109,6 +109,20 @@ export const tussService = {
   },
 
   /**
+   * Atualiza a quantidade de um procedimento TUSS de uma solicitação
+   */
+  async updateProcedure(procedureId: string, quantity: number): Promise<void> {
+    try {
+      await api.patch(`/surgery-requests/procedures/${procedureId}`, {
+        quantity,
+      });
+    } catch (error: unknown) {
+      logger.error("Erro ao atualizar procedimento", error);
+      throw error;
+    }
+  },
+
+  /**
    * Remove um procedimento TUSS de uma solicitação
    */
   async removeProcedure(
@@ -117,7 +131,7 @@ export const tussService = {
   ): Promise<void> {
     try {
       await api.delete(`/surgery-requests/procedures/${procedureId}`, {
-        data: { surgery_request_id: surgeryRequestId },
+        data: { surgeryRequestId },
       });
     } catch (error: unknown) {
       logger.error("Erro ao remover procedimento", error);

@@ -24,7 +24,6 @@
   html,
   body {
     height: 100%;
-    overflow: hidden;
     /* Previne zoom indesejado no iOS ao focar inputs */
     -webkit-text-size-adjust: 100%;
   }

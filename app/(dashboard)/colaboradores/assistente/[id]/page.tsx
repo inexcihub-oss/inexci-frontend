@@ -56,7 +56,7 @@ export default function AssistenteDetalhePage() {
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const { toast, showToast, hideToast } = useToast();
 
-  const isDoctor = collaborator?.is_doctor === true;
+  const isDoctor = collaborator?.isDoctor === true;
 
   // Form state
   const [formData, setFormData] = useState({
@@ -64,12 +64,12 @@ export default function AssistenteDetalhePage() {
     email: "",
     phone: "",
     gender: "",
-    birth_date: "",
+    birthDate: "",
     cpf: "",
     cep: "",
     address: "",
-    address_number: "",
-    address_complement: "",
+    addressNumber: "",
+    addressComplement: "",
     city: "",
     state: "",
     // Doctor-specific fields
@@ -103,7 +103,7 @@ export default function AssistenteDetalhePage() {
       setCollaborator(collab);
       setCollaboratorStatus(collab.status);
 
-      const dp = collab.doctor_profile;
+      const dp = collab.doctorProfile;
 
       // Preenche o formulário
       const fd = {
@@ -111,26 +111,26 @@ export default function AssistenteDetalhePage() {
         email: collab.email || "",
         phone: collab.phone || "",
         gender: collab.gender || "",
-        birth_date: collab.birthDate || "",
+        birthDate: collab.birthDate || "",
         cpf: collab.document || "",
         cep: collab.cep || "",
         address: collab.address || "",
-        address_number: collab.address_number || "",
-        address_complement: collab.address_complement || "",
+        addressNumber: collab.addressNumber || "",
+        addressComplement: collab.addressComplement || "",
         city: collab.city || "",
         state: collab.state || "",
         // Doctor-specific
         specialty: dp?.specialty || "",
         crm: dp?.crm || "",
-        crmState: dp?.crm_state || "",
+        crmState: dp?.crmState || "",
       };
       setFormData(fd);
       setOriginalData(fd);
 
       // Carregar assinatura do médico
-      if (dp?.signature_url) {
+      if (dp?.signatureUrl) {
         try {
-          const signedUrl = await uploadService.getSignedUrl(dp.signature_url);
+          const signedUrl = await uploadService.getSignedUrl(dp.signatureUrl);
           setSignaturePreview(signedUrl);
         } catch {
           // ignora erro ao carregar assinatura
@@ -166,7 +166,7 @@ export default function AssistenteDetalhePage() {
       const response = await surgeryRequestService.getAll();
       if (response?.records && Array.isArray(response.records)) {
         const doctorRequests = response.records
-          .filter((r: any) => String(r.doctor_id) === String(params.id))
+          .filter((r: any) => String(r.doctorId) === String(params.id))
           .slice(0, 10);
         setRecentRequests(doctorRequests);
       }
@@ -191,21 +191,21 @@ export default function AssistenteDetalhePage() {
         email: formData.email,
         phone: formData.phone,
         gender: formData.gender,
-        birth_date: formData.birth_date || undefined,
+        birthDate: formData.birthDate || undefined,
         cpf: formData.cpf || undefined,
         cep: formData.cep || undefined,
         address: formData.address || undefined,
-        address_number: formData.address_number || undefined,
-        address_complement: formData.address_complement || undefined,
+        addressNumber: formData.addressNumber || undefined,
+        addressComplement: formData.addressComplement || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
       });
 
       // Se for médico, salvar dados profissionais
-      if (isDoctor && collaborator.doctor_profile?.id) {
+      if (isDoctor && collaborator.doctorProfile?.id) {
         await userService.updateDoctorProfile(collaborator.id, {
           crm: formData.crm || undefined,
-          crm_state: formData.crmState || undefined,
+          crmState: formData.crmState || undefined,
           specialty: formData.specialty || undefined,
         });
       }
@@ -234,9 +234,9 @@ export default function AssistenteDetalhePage() {
       }
       await userService.updateDoctorProfile(collaborator.id, {
         ...(signatureFile
-          ? { signature_image_url: signaturePath }
+          ? { signatureImageUrl: signaturePath }
           : signatureDeleted
-            ? { signature_image_url: null }
+            ? { signatureImageUrl: null }
             : {}),
       });
       setSignatureFile(null);
@@ -361,10 +361,10 @@ export default function AssistenteDetalhePage() {
             };
             const patientName = req.patient?.name || "Paciente";
             const procedureName =
-              (req as any).procedure_name ||
-              (req as any).indication_name ||
+              (req as any).procedureName ||
+              (req as any).indicationName ||
               req.procedure?.name ||
-              req.tuss_procedure?.description ||
+              req.tussProcedure?.description ||
               "Procedimento";
             return (
               <div
@@ -498,8 +498,8 @@ export default function AssistenteDetalhePage() {
             />
             <DateInput
               label="Data de nascimento"
-              value={formData.birth_date}
-              onChange={(v) => handleInputChange("birth_date", v)}
+              value={formData.birthDate}
+              onChange={(v) => handleInputChange("birthDate", v)}
             />
             <Input
               label="Endereço"
@@ -515,16 +515,16 @@ export default function AssistenteDetalhePage() {
             />
             <Input
               label="Número"
-              value={formData.address_number}
+              value={formData.addressNumber}
               onChange={(e) =>
-                handleInputChange("address_number", e.target.value)
+                handleInputChange("addressNumber", e.target.value)
               }
             />
             <Input
               label="Complemento"
-              value={formData.address_complement}
+              value={formData.addressComplement}
               onChange={(e) =>
-                handleInputChange("address_complement", e.target.value)
+                handleInputChange("addressComplement", e.target.value)
               }
               placeholder="Apto, sala..."
             />

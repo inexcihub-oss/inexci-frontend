@@ -56,10 +56,10 @@ export function unique<T>(arr: T[]): T[] {
   return [...new Set(arr)];
 }
 
-export function parseMedicalReport(sol: { medical_report?: string | null }) {
-  if (!sol?.medical_report) return {};
+export function parseMedicalReport(sol: { medicalReport?: string | null }) {
+  if (!sol?.medicalReport) return {};
   try {
-    return JSON.parse(sol.medical_report) as {
+    return JSON.parse(sol.medicalReport) as {
       patientData?: {
         name?: string;
         birthDate?: string;
@@ -202,7 +202,7 @@ function ProceduresTable({ procedures }: { procedures: TussItemRef[] }) {
                   background: bg,
                 }}
               >
-                {proc.tuss_code || "—"}
+                {proc.tussCode || "—"}
               </td>
               <td
                 style={{

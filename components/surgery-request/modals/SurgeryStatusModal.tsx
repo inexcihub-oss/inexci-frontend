@@ -278,7 +278,7 @@ export function SurgeryStatusModal({
         );
 
         await documentService.upload({
-          surgery_request_id: solicitacao.id,
+          surgeryRequestId: solicitacao.id,
           key: sectionKey,
           name: docName,
           file,
@@ -301,7 +301,7 @@ export function SurgeryStatusModal({
       }
 
       await surgeryRequestService.markPerformed(solicitacao.id, {
-        surgery_performed_at: new Date().toISOString(),
+        surgeryPerformedAt: new Date().toISOString(),
       });
 
       showToast("Cirurgia marcada como Realizada!", "success");
@@ -325,7 +325,7 @@ export function SurgeryStatusModal({
     setIsSaving(true);
     try {
       const iso = new Date(`${newDate}T${newTime || "00:00"}:00`).toISOString();
-      await surgeryRequestService.reschedule(solicitacao.id, { new_date: iso });
+      await surgeryRequestService.reschedule(solicitacao.id, { newDate: iso });
       showToast("Cirurgia reagendada com sucesso.", "success");
       reset();
       onClose();

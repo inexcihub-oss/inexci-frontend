@@ -35,10 +35,10 @@ describe("userService", () => {
         name: "Dr. João",
         email: "joao@email.com",
         role: "admin",
-        is_doctor: true,
-        doctor_profile: {
+        isDoctor: true,
+        doctorProfile: {
           crm: "123456",
-          crm_state: "SP",
+          crmState: "SP",
         },
       };
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -55,11 +55,11 @@ describe("userService", () => {
       const mockProfile = {
         id: "user-2",
         name: "Dr. Carlos",
-        is_doctor: true,
-        doctor_profile: {
+        isDoctor: true,
+        doctorProfile: {
           crm: "654321",
-          crm_state: "RJ",
-          signature_url: "https://example.com/sig.png",
+          crmState: "RJ",
+          signatureUrl: "https://example.com/sig.png",
         },
       };
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -68,9 +68,9 @@ describe("userService", () => {
 
       const result = await userService.getProfile();
 
-      expect(result.is_doctor).toBe(true);
-      expect(result.doctor_profile?.crm).toBe("654321");
-      expect(result.doctor_profile?.signature_url).toBe(
+      expect(result.isDoctor).toBe(true);
+      expect(result.doctorProfile?.crm).toBe("654321");
+      expect(result.doctorProfile?.signatureUrl).toBe(
         "https://example.com/sig.png",
       );
     });
@@ -139,7 +139,7 @@ describe("userService", () => {
         data: {
           id: "u-1",
           name: "Test",
-          avatar_url: "https://storage.example.com/avatars/photo.jpg",
+          avatarUrl: "https://storage.example.com/avatars/photo.jpg",
         },
       });
 
@@ -148,9 +148,9 @@ describe("userService", () => {
 
       expect(uploadService.uploadSingle).toHaveBeenCalledWith(file, "avatars");
       expect(api.put).toHaveBeenCalledWith("/users/profile", {
-        avatar_url: "https://storage.example.com/avatars/photo.jpg",
+        avatarUrl: "https://storage.example.com/avatars/photo.jpg",
       });
-      expect(result.avatar_url).toBe(
+      expect(result.avatarUrl).toBe(
         "https://storage.example.com/avatars/photo.jpg",
       );
     });

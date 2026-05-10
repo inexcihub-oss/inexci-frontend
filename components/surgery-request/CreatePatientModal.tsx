@@ -55,8 +55,8 @@ export function CreatePatientModal({
       try {
         const payload: CreatePatientPayload = {
           name: data.name.trim(),
-          email: data.email || undefined,
-          phone: unmask(data.phone) || undefined,
+          email: data.email,
+          phone: unmask(data.phone),
         };
         const newPatient = await patientService.create(payload);
         onSuccess(newPatient);
@@ -98,7 +98,6 @@ export function CreatePatientModal({
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
             <Input
               label="Nome completo"
-              required
               placeholder="Nome do paciente"
               {...form.getFieldProps("name")}
             />

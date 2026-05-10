@@ -30,8 +30,8 @@ export function ConfirmDateModal({
   const [isSaving, setIsSaving] = useState(false);
   const { showToast } = useToast();
 
-  const dateOptions: string[] = (solicitacao?.scheduling?.date_options ??
-    solicitacao?.date_options ??
+  const dateOptions: string[] = (solicitacao?.scheduling?.dateOptions ??
+    solicitacao?.dateOptions ??
     []) as string[];
 
   const handleClose = () => {
@@ -48,7 +48,7 @@ export function ConfirmDateModal({
     setIsSaving(true);
     try {
       await surgeryRequestService.confirmDate(solicitacao.id, {
-        selected_date_index: selectedIndex,
+        selectedDateIndex: selectedIndex,
       });
       showToast("Data confirmada! Status alterado para Agendada.", "success");
       setSelectedIndex(null);

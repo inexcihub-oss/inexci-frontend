@@ -94,7 +94,7 @@ export function PosCirurgicoTab() {
       await documentService.delete({
         id: documentToDelete.id,
         key: documentToDelete.key,
-        surgery_request_id: solicitacao.id,
+        surgeryRequestId: solicitacao.id,
       });
       showToast("Documento removido com sucesso", "success");
       onUpdate();
@@ -188,7 +188,7 @@ export function PosCirurgicoTab() {
     </div>
   );
 
-  const performedAt: string | null = solicitacao.surgery_performed_at ?? null;
+  const performedAt: string | null = solicitacao.surgeryPerformedAt ?? null;
 
   return (
     <div className="space-y-2.5">
@@ -299,7 +299,7 @@ export function PosCirurgicoTab() {
 
               {/* Anexado em — oculto em mobile */}
               <div className="hidden sm:block w-36 flex-shrink-0 text-xs text-gray-900">
-                {new Date(doc.created_at).toLocaleDateString("pt-BR", {
+                {new Date(doc.createdAt).toLocaleDateString("pt-BR", {
                   weekday: "short",
                   day: "numeric",
                   month: "short",

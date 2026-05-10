@@ -287,24 +287,24 @@ function ConfiguracoesPageInner() {
       setLoadingProfile(true);
       try {
         const profileData = await userService.getProfile();
-        const dp = profileData.doctor_profile;
+        const dp = profileData.doctorProfile;
         setProfile({
           name: profileData.name || "",
           email: profileData.email || "",
           phone: maskPhone(profileData.phone || ""),
           document: maskCpf(profileData.document || ""),
-          birthDate: profileData.birth_date
-            ? new Date(profileData.birth_date).toISOString().split("T")[0]
+          birthDate: profileData.birthDate
+            ? new Date(profileData.birthDate).toISOString().split("T")[0]
             : "",
           gender: profileData.gender || "",
           specialty: dp?.specialty || "",
           crm: dp?.crm || "",
-          crmState: dp?.crm_state || "",
-          signatureImageUrl: dp?.signature_url || "",
-          isDoctor: profileData.is_doctor || false,
+          crmState: dp?.crmState || "",
+          signatureImageUrl: dp?.signatureUrl || "",
+          isDoctor: profileData.isDoctor || false,
         });
-        if (profileData.avatar_url) {
-          const url = profileData.avatar_url;
+        if (profileData.avatarUrl) {
+          const url = profileData.avatarUrl;
           if (url.startsWith("http://") || url.startsWith("https://")) {
             setAvatarPreview(url);
           } else {
@@ -316,8 +316,8 @@ function ConfiguracoesPageInner() {
             }
           }
         }
-        if (dp?.signature_url) {
-          const sUrl = dp.signature_url;
+        if (dp?.signatureUrl) {
+          const sUrl = dp.signatureUrl;
           if (sUrl.startsWith("http://") || sUrl.startsWith("https://")) {
             setSignaturePreview(sUrl);
           } else {
@@ -333,7 +333,7 @@ function ConfiguracoesPageInner() {
         logger.error("Erro ao carregar perfil:", error);
         // Fallback para dados do contexto
         if (user) {
-          const dp = user.doctor_profile;
+          const dp = user.doctorProfile;
           setProfile({
             name: user.name || "",
             email: user.email || "",
@@ -343,8 +343,8 @@ function ConfiguracoesPageInner() {
             gender: "",
             specialty: dp?.specialty || "",
             crm: dp?.crm || "",
-            crmState: dp?.crm_state || "",
-            isDoctor: user.is_doctor || false,
+            crmState: dp?.crmState || "",
+            isDoctor: user.isDoctor || false,
           });
         }
       } finally {
@@ -389,10 +389,10 @@ function ConfiguracoesPageInner() {
         const header = await doctorHeaderService.get();
         setCurrentHeader(header);
         if (header) {
-          setHeaderLogoPosition(header.logo_position);
-          setHeaderContentHtml(header.content_html || "");
-          if (header.logo_url) {
-            const logoUrl = header.logo_url;
+          setHeaderLogoPosition(header.logoPosition);
+          setHeaderContentHtml(header.contentHtml || "");
+          if (header.logoUrl) {
+            const logoUrl = header.logoUrl;
             if (
               logoUrl.startsWith("http://") ||
               logoUrl.startsWith("https://")
@@ -540,23 +540,23 @@ function ConfiguracoesPageInner() {
         name: profile.name.trim(),
         phone: phoneDigits || undefined,
         document: documentDigits || undefined,
-        birth_date: profile.birthDate || undefined,
+        birthDate: profile.birthDate || undefined,
         gender: profile.gender || undefined,
         ...(avatarFile
-          ? { avatar_url: avatarUrl }
-          : { avatar_url: avatarPreview ? undefined : undefined }),
+          ? { avatarUrl }
+          : { avatarUrl: avatarPreview ? undefined : undefined }),
         ...(signatureFile
-          ? { signature_url: signaturePath }
+          ? { signatureUrl: signaturePath }
           : signatureDeleted
-            ? { signature_url: undefined }
+            ? { signatureUrl: undefined }
             : {}),
       });
 
-      // 4. Se é médico, salvar dados profissionais (usa user.id, não doctor_profile.id)
+      // 4. Se é médico, salvar dados profissionais (usa user.id, não doctorProfile.id)
       if (profile.isDoctor && user?.id) {
         await userService.updateDoctorProfile(user.id, {
           crm: profile.crm || undefined,
-          crm_state: profile.crmState || undefined,
+          crmState: profile.crmState || undefined,
           specialty: profile.specialty || undefined,
         });
       }
@@ -690,7 +690,7 @@ function ConfiguracoesPageInner() {
   const handleSaveHeader = async () => {
     setSavingHeader(true);
     try {
-      let logoPath: string | null = currentHeader?.logo_url ?? null;
+      let logoPath: string | null = currentHeader?.logoUrl ?? null;
 
       if (headerLogoFile) {
         const result = await uploadService.uploadSingle(
@@ -703,9 +703,9 @@ function ConfiguracoesPageInner() {
       }
 
       const saved = await doctorHeaderService.upsert({
-        logo_url: logoPath,
-        logo_position: headerLogoPosition,
-        content_html: headerContentHtml || null,
+        logoUrl: logoPath,
+        logoPosition: headerLogoPosition,
+        contentHtml: headerContentHtml || null,
       });
       setCurrentHeader(saved);
       setHeaderLogoDeleted(false);
@@ -751,50 +751,6 @@ function ConfiguracoesPageInner() {
 
     return (
       <div className="space-y-6">
-        {/* Pré-visualização */}
-        {(headerLogoPreview || headerContentHtml) && (
-          <Card className="border border-gray-200 rounded-2xl">
-            <CardHeader className="p-6 pb-4">
-              <h3 className="text-base font-semibold text-gray-900">
-                Pré-visualização
-              </h3>
-              <p className="text-sm text-gray-500">
-                Como o cabeçalho aparecerá nos documentos
-              </p>
-            </CardHeader>
-            <CardContent className="p-6 pt-0">
-              <div
-                className={cn(
-                  "relative flex items-center",
-                  headerLogoPosition === "right"
-                    ? "flex-row-reverse"
-                    : "flex-row",
-                  headerLogoPreview ? "min-h-20" : "",
-                )}
-              >
-                {headerLogoPreview && (
-                  <img
-                    src={headerLogoPreview}
-                    alt="Logo"
-                    className="max-h-20 max-w-48 object-contain relative z-10 flex-shrink-0"
-                  />
-                )}
-                {headerContentHtml && (
-                  <div
-                    className={cn(
-                      "text-xs text-gray-700 leading-relaxed text-center",
-                      headerLogoPreview
-                        ? "absolute inset-x-0 pointer-events-none"
-                        : "flex-1",
-                    )}
-                    dangerouslySetInnerHTML={{ __html: headerContentHtml }}
-                  />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Upload da logo */}
         <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
@@ -906,6 +862,50 @@ function ConfiguracoesPageInner() {
             />
           </CardContent>
         </Card>
+
+        {/* Pré-visualização */}
+        {(headerLogoPreview || headerContentHtml) && (
+          <Card className="border border-gray-200 rounded-2xl">
+            <CardHeader className="p-6 pb-4">
+              <h3 className="text-base font-semibold text-gray-900">
+                Pré-visualização
+              </h3>
+              <p className="text-sm text-gray-500">
+                Como o cabeçalho aparecerá nos documentos
+              </p>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              <div
+                className={cn(
+                  "relative flex items-center",
+                  headerLogoPosition === "right"
+                    ? "flex-row-reverse"
+                    : "flex-row",
+                  headerLogoPreview ? "min-h-20" : "",
+                )}
+              >
+                {headerLogoPreview && (
+                  <img
+                    src={headerLogoPreview}
+                    alt="Logo"
+                    className="max-h-20 max-w-48 object-contain relative z-10 flex-shrink-0"
+                  />
+                )}
+                {headerContentHtml && (
+                  <div
+                    className={cn(
+                      "text-xs text-gray-700 leading-relaxed text-center",
+                      headerLogoPreview
+                        ? "absolute inset-x-0 pointer-events-none"
+                        : "flex-1",
+                    )}
+                    dangerouslySetInnerHTML={{ __html: headerContentHtml }}
+                  />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Botões de ação */}
         <div className="flex gap-3 flex-wrap">

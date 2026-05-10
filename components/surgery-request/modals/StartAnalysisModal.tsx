@@ -75,25 +75,25 @@ export function StartAnalysisModal({
     setIsSaving(true);
     try {
       const payload: StartAnalysisPayload = {
-        request_number: requestNumber.trim(),
-        received_at: receivedAt,
+        requestNumber: requestNumber.trim(),
+        receivedAt: receivedAt,
         notes: notes.trim() || undefined,
       };
 
       if (quotation1Number) {
-        payload.quotation_1_number = quotation1Number;
+        payload.quotation1Number = quotation1Number;
         if (quotation1ReceivedAt)
-          payload.quotation_1_received_at = quotation1ReceivedAt;
+          payload.quotation1ReceivedAt = quotation1ReceivedAt;
       }
       if (quotation2Number) {
-        payload.quotation_2_number = quotation2Number;
+        payload.quotation2Number = quotation2Number;
         if (quotation2ReceivedAt)
-          payload.quotation_2_received_at = quotation2ReceivedAt;
+          payload.quotation2ReceivedAt = quotation2ReceivedAt;
       }
       if (quotation3Number) {
-        payload.quotation_3_number = quotation3Number;
+        payload.quotation3Number = quotation3Number;
         if (quotation3ReceivedAt)
-          payload.quotation_3_received_at = quotation3ReceivedAt;
+          payload.quotation3ReceivedAt = quotation3ReceivedAt;
       }
 
       await surgeryRequestService.startAnalysis(surgeryRequestId, payload);

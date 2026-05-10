@@ -30,11 +30,11 @@ export function UpdateReceiptModal({
   const receipt = solicitacao?.receipt;
 
   const [receivedValue, setReceivedValue] = useState<string>(
-    receipt?.received_value != null ? String(receipt.received_value) : "",
+    receipt?.receivedValue != null ? String(receipt.receivedValue) : "",
   );
   const [receivedAt, setReceivedAt] = useState<string>(
-    receipt?.received_at
-      ? new Date(receipt.received_at).toISOString().split("T")[0]
+    receipt?.receivedAt
+      ? new Date(receipt.receivedAt).toISOString().split("T")[0]
       : "",
   );
   const [isSaving, setIsSaving] = useState(false);
@@ -43,11 +43,11 @@ export function UpdateReceiptModal({
   React.useEffect(() => {
     if (isOpen) {
       setReceivedValue(
-        receipt?.received_value != null ? String(receipt.received_value) : "",
+        receipt?.receivedValue != null ? String(receipt.receivedValue) : "",
       );
       setReceivedAt(
-        receipt?.received_at
-          ? new Date(receipt.received_at).toISOString().split("T")[0]
+        receipt?.receivedAt
+          ? new Date(receipt.receivedAt).toISOString().split("T")[0]
           : "",
       );
     }
@@ -74,8 +74,8 @@ export function UpdateReceiptModal({
     setIsSaving(true);
     try {
       await surgeryRequestService.updateReceipt(solicitacao.id, {
-        received_value: parsedValue,
-        received_at: new Date(receivedAt).toISOString(),
+        receivedValue: parsedValue,
+        receivedAt: new Date(receivedAt).toISOString(),
       });
       showToast("Recebimento atualizado com sucesso.", "success");
       handleClose();

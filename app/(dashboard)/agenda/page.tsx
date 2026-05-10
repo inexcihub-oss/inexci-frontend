@@ -99,7 +99,7 @@ function toLocalDateKey(dateStr: string): string {
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 
-type AgendaItem = SurgeryRequestListItem & { surgery_date: string };
+type AgendaItem = SurgeryRequestListItem & { surgeryDate: string };
 type StatusFilter = 4 | 5 | 6 | null; // null = todos
 
 /** Mapa de data → { total, statusPrioritário } para colorir o calendário */
@@ -130,7 +130,7 @@ function SurgeryCard({
   item: AgendaItem;
   onClick: () => void;
 }) {
-  const time = formatTime(item.surgery_date);
+  const time = formatTime(item.surgeryDate);
   const [hh, mm] = time !== "—" ? time.split(":") : ["", ""];
   const dotColor =
     STATUS_CONFIG[DISPLAY_STATUS(item.status)]?.dot ?? "bg-gray-400";
@@ -165,7 +165,7 @@ function SurgeryCard({
         </div>
         <p className="text-xs text-neutral-500 truncate mb-1">
           {item.procedure?.name ??
-            (item.tuss_procedure?.description || item.procedure_name) ??
+            (item.tussProcedure?.description || item.procedureName) ??
             "Procedimento não informado"}
         </p>
         <div className="flex items-center gap-3 text-xs text-neutral-400 flex-wrap">
@@ -440,12 +440,12 @@ export default function AgendaPage() {
       const agenda: AgendaItem[] = records
         .filter(
           (r): r is AgendaItem =>
-            typeof r.surgery_date === "string" && r.surgery_date.length > 0,
+            typeof r.surgeryDate === "string" && r.surgeryDate.length > 0,
         )
         .sort(
           (a, b) =>
-            new Date(a.surgery_date).getTime() -
-            new Date(b.surgery_date).getTime(),
+            new Date(a.surgeryDate).getTime() -
+            new Date(b.surgeryDate).getTime(),
         );
 
       setItems(agenda);
@@ -476,7 +476,7 @@ export default function AgendaPage() {
   const dayEventMap = useMemo<DayEventMap>(() => {
     const map: DayEventMap = new Map();
     items.forEach((i) => {
-      const key = toLocalDateKey(i.surgery_date);
+      const key = toLocalDateKey(i.surgeryDate);
       const displayStatus = DISPLAY_STATUS(i.status);
       const prev = map.get(key);
       const prevPriorityIdx = prev
@@ -501,7 +501,7 @@ export default function AgendaPage() {
       result = result.filter((i) => DISPLAY_STATUS(i.status) === statusFilter);
     if (selectedDay)
       result = result.filter(
-        (i) => toLocalDateKey(i.surgery_date) === selectedDay,
+        (i) => toLocalDateKey(i.surgeryDate) === selectedDay,
       );
     return result;
   }, [items, statusFilter, selectedDay]);
@@ -510,7 +510,7 @@ export default function AgendaPage() {
   const groupedByDate = useMemo(() => {
     const map = new Map<string, AgendaItem[]>();
     filteredItems.forEach((item) => {
-      const key = toLocalDateKey(item.surgery_date);
+      const key = toLocalDateKey(item.surgeryDate);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     });

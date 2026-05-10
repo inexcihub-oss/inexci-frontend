@@ -12,13 +12,13 @@ export interface Collaborator {
   document?: string;
   cep?: string;
   address?: string;
-  address_number?: string;
-  address_complement?: string;
+  addressNumber?: string;
+  addressComplement?: string;
   city?: string;
   state?: string;
   status?: string;
-  is_doctor?: boolean;
-  doctor_profile?: DoctorProfile;
+  isDoctor?: boolean;
+  doctorProfile?: DoctorProfile;
   createdAt: string;
   updatedAt: string;
 }
@@ -29,8 +29,8 @@ export interface Doctor extends DoctorSummary {
   document?: string;
   cep?: string;
   address?: string;
-  address_number?: string;
-  address_complement?: string;
+  addressNumber?: string;
+  addressComplement?: string;
   city?: string;
   state?: string;
   status?: string;
@@ -42,9 +42,9 @@ export interface CreateCollaboratorPayload {
   name: string;
   email: string;
   phone?: string;
-  is_doctor?: boolean;
+  isDoctor?: boolean;
   crm?: string;
-  crm_state?: string;
+  crmState?: string;
   specialty?: string;
 }
 
@@ -54,19 +54,19 @@ interface BackendUserRecord {
   email?: string;
   phone?: string;
   gender?: string;
-  birth_date?: string;
+  birthDate?: string;
   cpf?: string;
   cep?: string;
   address?: string;
-  address_number?: string;
-  address_complement?: string;
+  addressNumber?: string;
+  addressComplement?: string;
   city?: string;
   state?: string;
   status?: string;
-  is_doctor?: boolean;
-  doctor_profile?: DoctorProfile;
-  created_at: string;
-  updated_at: string;
+  isDoctor?: boolean;
+  doctorProfile?: DoctorProfile;
+  createdAt: string;
+  updatedAt: string;
 }
 
 function toCollaborator(user: BackendUserRecord): Collaborator {
@@ -76,19 +76,19 @@ function toCollaborator(user: BackendUserRecord): Collaborator {
     email: user.email,
     phone: user.phone,
     gender: user.gender,
-    birthDate: user.birth_date,
+    birthDate: user.birthDate,
     document: user.cpf,
     cep: user.cep,
     address: user.address,
-    address_number: user.address_number,
-    address_complement: user.address_complement,
+    addressNumber: user.addressNumber,
+    addressComplement: user.addressComplement,
     city: user.city,
     state: user.state,
     status: user.status,
-    is_doctor: user.is_doctor || !!user.doctor_profile,
-    doctor_profile: user.doctor_profile || undefined,
-    createdAt: user.created_at,
-    updatedAt: user.updated_at,
+    isDoctor: user.isDoctor || !!user.doctorProfile,
+    doctorProfile: user.doctorProfile || undefined,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
   };
 }
 
@@ -99,18 +99,18 @@ function toDoctor(user: BackendUserRecord): Doctor {
     email: user.email,
     phone: user.phone,
     gender: user.gender,
-    birthDate: user.birth_date,
+    birthDate: user.birthDate,
     document: user.cpf,
     cep: user.cep,
     address: user.address,
-    address_number: user.address_number,
-    address_complement: user.address_complement,
+    addressNumber: user.addressNumber,
+    addressComplement: user.addressComplement,
     city: user.city,
     state: user.state,
     status: user.status,
-    doctor_profile: user.doctor_profile || undefined,
-    createdAt: user.created_at,
-    updatedAt: user.updated_at,
+    doctorProfile: user.doctorProfile || undefined,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
   };
 }
 
@@ -167,12 +167,12 @@ export const collaboratorService = {
       phone?: string;
       specialty?: string;
       gender?: string;
-      birth_date?: string;
+      birthDate?: string;
       cpf?: string;
       cep?: string;
       address?: string;
-      address_number?: string;
-      address_complement?: string;
+      addressNumber?: string;
+      addressComplement?: string;
       city?: string;
       state?: string;
     },
@@ -201,6 +201,19 @@ export const collaboratorService = {
     const response = await api.patch(
       `/users/collaborators/${collaboratorId}/reset-password`,
       { password },
+    );
+    return response.data;
+  },
+
+  /**
+   * Reenvia o e-mail de convite (link de primeiro acesso) para um colaborador
+   * com status pendente. Gera um novo token válido por 72h.
+   */
+  async resendInvite(
+    collaboratorId: string,
+  ): Promise<{ message: string; email: string }> {
+    const response = await api.post(
+      `/users/collaborators/${collaboratorId}/resend-invite`,
     );
     return response.data;
   },

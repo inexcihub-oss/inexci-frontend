@@ -151,25 +151,25 @@ export function MedicalReportPreviewModal({
   useEffect(() => {
     if (!isOpen) return;
     // Usa exclusivamente os dados do médico vinculado à solicitação.
-    // Nova estrutura: doctor = User, doctor.doctor_profile = DoctorProfile
+    // Nova estrutura: doctor = User, doctor.doctorProfile = DoctorProfile
     // O backend já converte signature_url para URL assinada em findOne().
     const doctor = solicitacao?.doctor;
-    const dp = doctor?.doctor_profile;
-    setDoctorSignatureUrl(doctor?.signature_url ?? dp?.signature_url ?? null);
+    const dp = doctor?.doctorProfile;
+    setDoctorSignatureUrl(doctor?.signatureUrl ?? dp?.signatureUrl ?? null);
     setDoctorName(doctor?.name ?? "");
     setDoctorSpecialty(dp?.specialty ?? "");
     setDoctorCrm(dp?.crm ?? "");
-    setDoctorCrmState(dp?.crm_state ?? "");
+    setDoctorCrmState(dp?.crmState ?? "");
 
     const rawHeader = dp?.header;
     setCustomHeader(
       rawHeader
         ? {
-            logoUrl: rawHeader.logo_url ?? null,
-            logoPosition: (rawHeader.logo_position ?? "left") as
+            logoUrl: rawHeader.logoUrl ?? null,
+            logoPosition: (rawHeader.logoPosition ?? "left") as
               | "left"
               | "right",
-            contentHtml: rawHeader.content_html ?? null,
+            contentHtml: rawHeader.contentHtml ?? null,
           }
         : null,
     );
@@ -194,16 +194,16 @@ export function MedicalReportPreviewModal({
 
   const patientName = pd?.name || patient?.name || undefined;
   const patientBirthDate =
-    formatDateBR(pd?.birthDate || patient?.birth_date || "") || undefined;
+    formatDateBR(pd?.birthDate || patient?.birthDate || "") || undefined;
   const patientRg = pd?.rg || patient?.rg || undefined;
   const patientCpf = formatCpf(pd?.cpf || patient?.cpf || "") || undefined;
   const patientPhone =
     formatPhone(pd?.phone || patient?.phone || "") || undefined;
   const patientAddress = pd?.address || patient?.address || undefined;
   const patientZipCode =
-    pd?.zipCode || patient?.zip_code || (patient as any)?.cep || undefined;
+    pd?.zipCode || patient?.zipCode || (patient as any)?.cep || undefined;
   const patientHealthPlan =
-    pd?.healthPlan || solicitacao?.health_plan?.name || undefined;
+    pd?.healthPlan || solicitacao?.healthPlan?.name || undefined;
 
   // Seções dinâmicas têm prioridade; fallback para campos legados
   const legacyHistoryAndDiagnosis =

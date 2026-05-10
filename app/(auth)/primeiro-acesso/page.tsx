@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { authService } from "@/services/auth.service";
+import { useAuth } from "@/contexts/AuthContext";
 import { ShieldCheck, CheckCircle2, Lock, UserPlus, Bell } from "lucide-react";
 import { useZodForm } from "@/hooks/useZodForm";
 import { newPasswordSchema } from "@/lib/schemas/auth.schema";
@@ -14,9 +15,11 @@ import { newPasswordSchema } from "@/lib/schemas/auth.schema";
 function PrimeiroAcessoForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { login } = useAuth();
 
   const email = searchParams.get("email") ?? "";
   const token = searchParams.get("token") ?? "";
+  const hasValidLink = Boolean(email && token);
 
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -27,15 +30,8 @@ function PrimeiroAcessoForm() {
     initialValues: { password: "", confirmPassword: "" },
   });
 
-  useEffect(() => {
-    if (!email || !token) {
-      setError(
-        "Link inválido ou expirado. Solicite um novo convite ao administrador.",
-      );
-    }
-  }, [email, token]);
-
   const handleSubmit = form.handleSubmit(async (data) => {
+    if (!hasValidLink) return;
     setError("");
     setIsLoading(true);
     try {
@@ -49,8 +45,15 @@ function PrimeiroAcessoForm() {
 
       await authService.changePassword(email, token, data.password);
 
+      // Tenta fazer login automático após ativar a conta.
+      // Mostra a tela de sucesso independentemente do resultado do login.
       setSuccess(true);
-      setTimeout(() => router.push("/login?registered=true"), 2500);
+      try {
+        await login(email, data.password);
+      } catch {
+        // Login automático falhou — redireciona para o login manual após breve delay.
+        setTimeout(() => router.push("/login"), 2000);
+      }
     } catch (err: unknown) {
       const msg =
         typeof err === "object" && err !== null && "response" in err
@@ -89,12 +92,14 @@ function PrimeiroAcessoForm() {
           {/* Title */}
           <div className="text-center">
             <h2 className="text-2xl sm:text-3xl font-semibold text-black font-urbanist">
-              Crie sua senha
+              {hasValidLink ? "Crie sua senha" : "Link inválido"}
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              Defina uma senha segura para ativar sua conta na plataforma
+              {hasValidLink
+                ? "Defina uma senha segura para ativar sua conta na plataforma"
+                : "Este convite expirou ou o link está incompleto"}
             </p>
-            {email && (
+            {hasValidLink && email && (
               <div className="mt-3 inline-flex items-center gap-2 bg-teal-50 border border-teal-100 rounded-full px-4 py-1.5">
                 <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
                 <span className="text-sm font-medium text-teal-700">
@@ -104,8 +109,25 @@ function PrimeiroAcessoForm() {
             )}
           </div>
 
-          {/* Success State */}
-          {success ? (
+          {/* Invalid Link State */}
+          {!hasValidLink ? (
+            <div className="space-y-5">
+              <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700 flex items-start gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                <span>
+                  Solicite um novo convite ao administrador da sua conta para
+                  acessar a plataforma.
+                </span>
+              </div>
+              <Link
+                href="/login"
+                className="block w-full text-center bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 rounded-lg transition-colors"
+              >
+                Ir para o login
+              </Link>
+            </div>
+          ) : success ? (
+            /* Success State */
             <div className="rounded-xl bg-gradient-to-br from-teal-50 to-emerald-50 border border-teal-200 p-8 text-center space-y-4">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-100">
                 <CheckCircle2 className="w-8 h-8 text-teal-600" />
@@ -115,7 +137,7 @@ function PrimeiroAcessoForm() {
                   Conta ativada com sucesso!
                 </p>
                 <p className="text-sm text-teal-600 mt-1">
-                  Redirecionando para o login…
+                  Entrando na plataforma…
                 </p>
               </div>
               <div className="flex justify-center">
@@ -126,7 +148,12 @@ function PrimeiroAcessoForm() {
             </div>
           ) : (
             /* Form */
-            <form onSubmit={handleSubmit} noValidate className="space-y-5">
+            <form
+              onSubmit={handleSubmit}
+              method="post"
+              noValidate
+              className="space-y-5"
+            >
               {/* Error Message */}
               {error && (
                 <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700 flex items-start gap-2.5">
@@ -152,7 +179,6 @@ function PrimeiroAcessoForm() {
                 {...form.getFieldProps("password")}
                 placeholder="Mínimo 8 caracteres"
                 className="min-h-[48px]"
-                disabled={!email || !token}
               />
 
               <PasswordInput
@@ -162,14 +188,13 @@ function PrimeiroAcessoForm() {
                 {...form.getFieldProps("confirmPassword")}
                 placeholder="Digite a senha novamente"
                 className="min-h-[48px]"
-                disabled={!email || !token}
               />
 
               <Button
                 type="submit"
                 isLoading={isLoading}
                 className="w-full text-sm font-semibold min-h-[48px]"
-                disabled={isLoading || !email || !token}
+                disabled={isLoading}
               >
                 Ativar conta
               </Button>

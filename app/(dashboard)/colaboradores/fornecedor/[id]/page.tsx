@@ -79,16 +79,16 @@ export default function FornecedorDetalhePage() {
     website: "",
     category: "",
     address: "",
-    address_number: "",
+    addressNumber: "",
     neighborhood: "",
     city: "",
     state: "",
-    zip_code: "",
-    contact_name: "",
-    contact_phone: "",
-    contact_email: "",
-    payment_terms: "",
-    delivery_time: "",
+    zipCode: "",
+    contactName: "",
+    contactPhone: "",
+    contactEmail: "",
+    paymentTerms: "",
+    deliveryTime: "",
     notes: "",
   });
   const [originalData, setOriginalData] = useState<typeof formData | null>(null);
@@ -109,16 +109,16 @@ export default function FornecedorDetalhePage() {
     website: s.website || "",
     category: s.category || "",
     address: s.address || "",
-    address_number: s.address_number || "",
+    addressNumber: s.addressNumber || "",
     neighborhood: s.neighborhood || "",
     city: s.city || "",
     state: s.state || "",
-    zip_code: s.zip_code || "",
-    contact_name: s.contact_name || "",
-    contact_phone: s.contact_phone || "",
-    contact_email: s.contact_email || "",
-    payment_terms: s.payment_terms || "",
-    delivery_time: s.delivery_time || "",
+    zipCode: s.zipCode || "",
+    contactName: s.contactName || "",
+    contactPhone: s.contactPhone || "",
+    contactEmail: s.contactEmail || "",
+    paymentTerms: s.paymentTerms || "",
+    deliveryTime: s.deliveryTime || "",
     notes: s.notes || "",
   });
 
@@ -157,16 +157,16 @@ export default function FornecedorDetalhePage() {
         website: formData.website || undefined,
         category: formData.category || undefined,
         address: formData.address || undefined,
-        address_number: formData.address_number || undefined,
+        addressNumber: formData.addressNumber || undefined,
         neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
-        zip_code: formData.zip_code.replace(/\D/g, "") || undefined,
-        contact_name: formData.contact_name || undefined,
-        contact_phone: formData.contact_phone || undefined,
-        contact_email: formData.contact_email || undefined,
-        payment_terms: formData.payment_terms || undefined,
-        delivery_time: formData.delivery_time || undefined,
+        zipCode: formData.zipCode.replace(/\D/g, "") || undefined,
+        contactName: formData.contactName || undefined,
+        contactPhone: formData.contactPhone || undefined,
+        contactEmail: formData.contactEmail || undefined,
+        paymentTerms: formData.paymentTerms || undefined,
+        deliveryTime: formData.deliveryTime || undefined,
         notes: formData.notes || undefined,
       });
       setOriginalData(formData);
@@ -247,23 +247,23 @@ export default function FornecedorDetalhePage() {
             >
               <div className="flex flex-col flex-1 gap-1">
                 <span className="text-xs font-semibold text-gray-900">
-                  {q.surgery_request?.patient?.name ?? "Paciente não informado"}
+                  {q.surgeryRequest?.patient?.name ?? "Paciente não informado"}
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">
-                    {formatDate(q.submission_date || q.created_at)}
+                    {formatDate(q.submissionDate || q.createdAt)}
                   </span>
                   <QuotationStatusBadge selected={q.selected} />
                 </div>
-                {q.proposal_number && (
+                {q.proposalNumber && (
                   <span className="text-xs text-gray-400">
-                    Nº {q.proposal_number}
+                    Nº {q.proposalNumber}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-2 ml-2">
                 <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
-                  {formatCurrency(q.total_value)}
+                  {formatCurrency(q.totalValue)}
                 </span>
                 <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
               </div>
@@ -368,9 +368,9 @@ export default function FornecedorDetalhePage() {
             </div>
             <Input
               label="Número"
-              value={formData.address_number}
+              value={formData.addressNumber}
               onChange={(e) =>
-                handleInputChange("address_number", e.target.value)
+                handleInputChange("addressNumber", e.target.value)
               }
             />
             <Input
@@ -393,9 +393,9 @@ export default function FornecedorDetalhePage() {
             />
             <Input
               label="CEP"
-              value={formData.zip_code.replace(/^(\d{5})(\d)/, "$1-$2")}
+              value={formData.zipCode.replace(/^(\d{5})(\d)/, "$1-$2")}
               onChange={(e) =>
-                handleInputChange("zip_code", e.target.value.replace(/\D/g, ""))
+                handleInputChange("zipCode", e.target.value.replace(/\D/g, ""))
               }
               placeholder="00000-000"
             />
@@ -407,18 +407,18 @@ export default function FornecedorDetalhePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
               label="Nome do contato"
-              value={formData.contact_name}
+              value={formData.contactName}
               onChange={(e) =>
-                handleInputChange("contact_name", e.target.value)
+                handleInputChange("contactName", e.target.value)
               }
               placeholder="Nome do representante"
             />
             <Input
               label="Telefone do contato"
-              value={formatPhone(formData.contact_phone)}
+              value={formatPhone(formData.contactPhone)}
               onChange={(e) =>
                 handleInputChange(
-                  "contact_phone",
+                  "contactPhone",
                   e.target.value.replace(/\D/g, ""),
                 )
               }
@@ -427,9 +427,9 @@ export default function FornecedorDetalhePage() {
             <Input
               label="E-mail do contato"
               type="email"
-              value={formData.contact_email}
+              value={formData.contactEmail}
               onChange={(e) =>
-                handleInputChange("contact_email", e.target.value)
+                handleInputChange("contactEmail", e.target.value)
               }
             />
           </div>
@@ -440,17 +440,17 @@ export default function FornecedorDetalhePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Select
               label="Prazo de pagamento"
-              value={formData.payment_terms}
+              value={formData.paymentTerms}
               onChange={(e) =>
-                handleInputChange("payment_terms", e.target.value)
+                handleInputChange("paymentTerms", e.target.value)
               }
               options={PAYMENT_TERMS_OPTIONS}
             />
             <Input
               label="Prazo de entrega"
-              value={formData.delivery_time}
+              value={formData.deliveryTime}
               onChange={(e) =>
-                handleInputChange("delivery_time", e.target.value)
+                handleInputChange("deliveryTime", e.target.value)
               }
               placeholder="Ex: 5 dias úteis"
             />

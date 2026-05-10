@@ -1,15 +1,15 @@
 export interface DoctorHeader {
   id: string;
-  doctor_profile_id: string;
-  logo_url: string | null;
-  logo_position: "left" | "right";
-  content_html: string | null;
-  created_at: string;
-  updated_at: string;
+  doctorProfileId: string;
+  logoUrl: string | null;
+  logoPosition: "left" | "right";
+  contentHtml: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UpsertDoctorHeaderInput {
-  logo_url?: string | null;
-  logo_position?: "left" | "right";
-  content_html?: string | null;
+  logoUrl?: string | null;
+  logoPosition?: "left" | "right";
+  contentHtml?: string | null;
 }

@@ -8,21 +8,21 @@ export interface OpmeSupplier {
 
 export interface OpmeItem {
   id: string;
-  surgery_request_id: string | number;
+  surgeryRequestId: string | number;
   name: string;
   brand?: string;
   suppliers: OpmeSupplier[];
   quantity: number;
-  authorized_quantity?: number;
-  created_at: string;
+  authorizedQuantity?: number;
+  createdAt: string;
 }
 
 export interface CreateOpmeData {
-  surgery_request_id: string | number;
+  surgeryRequestId: string | number;
   name: string;
   brand?: string;
-  supplier_ids?: string[];
-  supplier_names?: string[];
+  supplierIds?: string[];
+  supplierNames?: string[];
   quantity: number;
 }
 
@@ -30,8 +30,8 @@ export interface UpdateOpmeData {
   id: string;
   name?: string;
   brand?: string;
-  supplier_ids?: string[];
-  supplier_names?: string[];
+  supplierIds?: string[];
+  supplierNames?: string[];
   quantity?: number;
 }
 
@@ -59,7 +59,7 @@ export const opmeService = {
   async delete(id: string, surgeryRequestId: string | number): Promise<void> {
     try {
       await api.delete(`/surgery-requests/opme/${id}`, {
-        data: { surgery_request_id: surgeryRequestId },
+        data: { surgeryRequestId },
       });
     } catch (error: unknown) {
       logger.error("Erro ao remover OPME", error);
@@ -67,10 +67,13 @@ export const opmeService = {
     }
   },
 
-  async setHasOpme(surgeryRequestId: string | number, hasOpme: boolean): Promise<void> {
+  async setHasOpme(
+    surgeryRequestId: string | number,
+    hasOpme: boolean,
+  ): Promise<void> {
     try {
       await api.patch(`/surgery-requests/${surgeryRequestId}/has-opme`, {
-        has_opme: hasOpme,
+        hasOpme,
       });
     } catch (error: unknown) {
       logger.error("Erro ao definir status de OPME", error);

@@ -2,15 +2,15 @@ import api from "@/lib/api";
 
 export interface Document {
   id: string;
-  surgery_request_id: string;
+  surgeryRequestId: string;
   key: string;
   name: string;
   /** Caminho raw no bucket (ex: documents/uuid.pdf ou post-surgical/uuid.pdf) */
   path: string;
   uri: string;
   size?: number;
-  created_at: string;
-  created_by: string;
+  createdAt: string;
+  createdBy: string;
 }
 
 export const DOCUMENT_FOLDERS = {
@@ -23,7 +23,7 @@ export type DocumentFolder =
   (typeof DOCUMENT_FOLDERS)[keyof typeof DOCUMENT_FOLDERS];
 
 export interface CreateDocumentData {
-  surgery_request_id: string | number;
+  surgeryRequestId: string | number;
   key: string;
   name: string;
   file: File;
@@ -34,7 +34,7 @@ export interface CreateDocumentData {
 export const documentService = {
   async upload(data: CreateDocumentData): Promise<Document> {
     const formData = new FormData();
-    formData.append("surgery_request_id", data.surgery_request_id.toString());
+    formData.append("surgeryRequestId", data.surgeryRequestId.toString());
     formData.append("key", data.key);
     formData.append("name", data.name);
     formData.append("document", data.file);
@@ -60,7 +60,7 @@ export const documentService = {
   async delete(data: {
     id: string;
     key: string;
-    surgery_request_id: string | number;
+    surgeryRequestId: string | number;
   }): Promise<void> {
     await api.delete("/surgery-requests/documents", {
       data,

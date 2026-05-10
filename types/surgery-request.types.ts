@@ -44,8 +44,8 @@ export interface Pendency {
   name?: string;
   description?: string;
   concluded: boolean;
-  concluded_at: string | null;
-  responsible_type:
+  concludedAt: string | null;
+  responsibleType:
     | "collaborator"
     | "patient"
     | "doctor"
@@ -53,9 +53,9 @@ export interface Pendency {
     | "health_plan"
     | "supplier"
     | null;
-  is_optional: boolean;
-  is_waiting: boolean;
-  status_context: number | null;
+  isOptional: boolean;
+  isWaiting: boolean;
+  statusContext: number | null;
   responsible?: {
     id: number;
     name: string;
@@ -89,35 +89,35 @@ export interface EntityRef {
   [key: string]: unknown;
 }
 
-/** Referência ao médico (inclui doctor_profile aninhado) */
+/** Referência ao médico (inclui doctorProfile aninhado) */
 export interface DoctorRef extends EntityRef {
   email?: string;
   phone?: string;
-  doctor_profile?: {
+  doctorProfile?: {
     crm?: string;
     specialty?: string;
-    crm_state?: string;
-    signature_url?: string | null;
+    crmState?: string;
+    signatureUrl?: string | null;
     header?: {
       id?: string;
-      logo_url?: string | null;
-      logo_position?: "left" | "right";
-      content_html?: string | null;
+      logoUrl?: string | null;
+      logoPosition?: "left" | "right";
+      contentHtml?: string | null;
     } | null;
     [key: string]: unknown;
   } | null;
-  signature_url?: string | null;
+  signatureUrl?: string | null;
 }
 
 /** Referência ao paciente */
 export interface PatientRef extends EntityRef {
   cpf?: string;
-  birth_date?: string;
+  birthDate?: string;
   phone?: string;
   email?: string;
   rg?: string;
   address?: string;
-  zip_code?: string;
+  zipCode?: string;
   cep?: string;
 }
 
@@ -132,7 +132,7 @@ export interface HospitalRef extends EntityRef {
 export interface HealthPlanRef extends EntityRef {
   email?: string;
   phone?: string;
-  default_payment_days?: number | null;
+  defaultPaymentDays?: number | null;
 }
 
 /** Item de procedimento TUSS */
@@ -141,10 +141,10 @@ export interface TussItemRef {
   description?: string;
   name?: string;
   code?: string;
-  tuss_code?: string;
+  tussCode?: string;
   quantity?: number;
   authorized?: boolean | null;
-  authorized_quantity?: number | null;
+  authorizedQuantity?: number | null;
   [key: string]: unknown;
 }
 
@@ -156,7 +156,7 @@ export interface OpmeItemRef {
   quantity?: number;
   unit?: string;
   authorized?: boolean | null;
-  authorized_quantity?: number | null;
+  authorizedQuantity?: number | null;
   brand?: string;
   distributor?: string;
   [key: string]: unknown;
@@ -164,28 +164,28 @@ export interface OpmeItemRef {
 
 /** Dados de faturamento */
 export interface BillingInfo {
-  invoice_value: number | null;
-  invoice_protocol: string | null;
-  invoice_sent_at: string | null;
-  payment_deadline: string | null;
+  invoiceValue: number | null;
+  invoiceProtocol: string | null;
+  invoiceSentAt: string | null;
+  paymentDeadline: string | null;
   [key: string]: unknown;
 }
 
 /** Dados de recebimento */
 export interface ReceiptInfo {
-  received_value: number;
-  received_at: string | null;
-  receipt_notes: string | null;
-  is_contested: boolean;
-  contested_received_value: number | null;
-  contested_received_at: string | null;
+  receivedValue: number;
+  receivedAt: string | null;
+  receiptNotes: string | null;
+  isContested: boolean;
+  contestedReceivedValue: number | null;
+  contestedReceivedAt: string | null;
   [key: string]: unknown;
 }
 
 /** Dados de agendamento */
 export interface SchedulingInfo {
-  date_options?: string[];
-  confirmed_date?: string | null;
+  dateOptions?: string[];
+  confirmedDate?: string | null;
   [key: string]: unknown;
 }
 

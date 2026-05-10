@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 /**
  * Testes para validar que a lógica de extração de dados do médico
- * usa a nova estrutura: doctor = User, doctor.doctor_profile = DoctorProfile
+ * usa a nova estrutura: doctor = User, doctor.doctorProfile = DoctorProfile
  *
  * Estes testes validam a lógica pura de extração, sem renderizar componentes React.
  */
@@ -10,14 +10,14 @@ import { describe, it, expect } from "vitest";
 // Simula a lógica de extração de SurgeryRequestDocumentPreviewModal
 function extractDoctorDataForDocument(solicitacao: any) {
   const doctorUser = solicitacao?.doctor ?? null;
-  const doctorProfile = doctorUser?.doctor_profile ?? null;
+  const doctorProfile = doctorUser?.doctorProfile ?? null;
 
   const doctorName = doctorUser?.name ?? "";
   const doctorEmail = doctorUser?.email ?? "";
   const doctorPhone = doctorUser?.phone ?? "";
   const doctorSpecialty = doctorProfile?.specialty ?? "";
   const crmNum = doctorProfile?.crm ?? "";
-  const crmState = doctorProfile?.crm_state ?? "";
+  const crmState = doctorProfile?.crmState ?? "";
   const doctorCRM = crmNum
     ? `CRM ${crmNum}${crmState ? `/${crmState}` : ""}`
     : "";
@@ -36,14 +36,14 @@ function extractDoctorDataForDocument(solicitacao: any) {
 // Simula a lógica de extração de MedicalReportPreviewModal
 function extractDoctorDataForReport(solicitacao: any) {
   const doctor = solicitacao?.doctor;
-  const dp = doctor?.doctor_profile;
+  const dp = doctor?.doctorProfile;
 
   return {
-    signatureUrl: dp?.signature_url ?? null,
+    signatureUrl: dp?.signatureUrl ?? null,
     name: doctor?.name ?? "",
     specialty: dp?.specialty ?? "",
     crm: dp?.crm ?? "",
-    crmState: dp?.crm_state ?? "",
+    crmState: dp?.crmState ?? "",
   };
 }
 
@@ -55,13 +55,13 @@ describe("Extração de dados do médico — Nova estrutura (User → doctor_pro
       name: "Dr. João Silva",
       email: "joao@clinica.com",
       phone: "11999998888",
-      doctor_profile: {
+      doctorProfile: {
         id: "dp-001",
         crm: "123456",
-        crm_state: "SP",
+        crmState: "SP",
         specialty: "Ortopedia",
-        signature_url: "https://storage.example.com/signatures/dr-joao.png",
-        clinic_name: "Clínica São Paulo",
+        signatureUrl: "https://storage.example.com/signatures/dr-joao.png",
+        clinicName: "Clínica São Paulo",
       },
     },
   };
@@ -122,7 +122,7 @@ describe("Extração de dados do médico — Nova estrutura (User → doctor_pro
       const solicitacao = {
         doctor: {
           name: "Dr. Test",
-          doctor_profile: { crm: "654321", crm_state: "" },
+          doctorProfile: { crm: "654321", crmState: "" },
         },
       };
       const result = extractDoctorDataForDocument(solicitacao);
@@ -180,13 +180,13 @@ describe("Extração de dados do médico — Nova estrutura (User → doctor_pro
       expect(result.name).toBe(""); // NÃO deve ser "Dr. Antigo"
     });
 
-    it("NÃO deve acessar doctor.signature_url diretamente (campo movido para doctor_profile)", () => {
+    it("NÃO deve acessar doctor.signatureUrl diretamente (campo movido para doctor_profile)", () => {
       const solicitacao = {
         doctor: {
           name: "Dr. Test",
-          signature_url: "https://old-location.com/sig.png", // campo no nível errado
+          signatureUrl: "https://old-location.com/sig.png", // campo no nível errado
           // doctor_profile não tem signature_url
-          doctor_profile: { crm: "111", crm_state: "RJ" },
+          doctorProfile: { crm: "111", crmState: "RJ" },
         },
       };
       const result = extractDoctorDataForReport(solicitacao);

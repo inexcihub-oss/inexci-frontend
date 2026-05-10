@@ -32,15 +32,15 @@ export type {
 export interface ActivityUser {
   id: string;
   name: string;
-  avatar_url: string | null;
+  avatarUrl: string | null;
 }
 
 export interface Activity {
   id: string;
   type: "comment" | "status_change" | "system" | "pdf_generated";
   content: string;
-  pdf_url?: string;
-  created_at: string;
+  pdfUrl?: string;
+  createdAt: string;
   user: ActivityUser | null;
 }
 
@@ -51,9 +51,9 @@ export interface ReportSection {
   title: string;
   description: string | null;
   order: number;
-  surgery_request_id: string;
-  created_at: string;
-  updated_at: string;
+  surgeryRequestId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Mapeamento de status string para número (conforme backend)
@@ -148,14 +148,14 @@ export interface CreateSurgeryRequestPayload {
 }
 
 export interface SimpleSurgeryRequestPayload {
-  procedure_id: string;
-  patient_id: string;
-  doctor_id: string;
-  health_plan_id?: string;
-  hospital_id?: string;
+  procedureId: string;
+  patientId: string;
+  doctorId: string;
+  healthPlanId?: string;
+  hospitalId?: string;
   priority: number | string;
-  template_id?: string;
-  required_documents?: Array<{ type: string; name: string }>;
+  templateId?: string;
+  requiredDocuments?: Array<{ type: string; name: string }>;
 }
 
 export interface UpdateBasicDataPayload {
@@ -169,26 +169,26 @@ export interface SendPayload {
   to?: string;
   subject?: string;
   message?: string;
-  notify_patient?: boolean;
+  notifyPatient?: boolean;
 }
 
 export interface StartAnalysisPayload {
-  request_number: string;
-  received_at: string;
-  notify_patient?: boolean;
-  quotation_1_number?: string;
-  quotation_1_received_at?: string;
-  quotation_2_number?: string;
-  quotation_2_received_at?: string;
-  quotation_3_number?: string;
-  quotation_3_received_at?: string;
+  requestNumber: string;
+  receivedAt: string;
+  notifyPatient?: boolean;
+  quotation1Number?: string;
+  quotation1ReceivedAt?: string;
+  quotation2Number?: string;
+  quotation2ReceivedAt?: string;
+  quotation3Number?: string;
+  quotation3ReceivedAt?: string;
   notes?: string;
 }
 
 export interface AcceptAuthorizationPayload {
   /** Mínimo 1, máximo 3 datas ISO no formato YYYY-MM-DDTHH:mm:ss */
-  date_options: string[];
-  notify_patient?: boolean;
+  dateOptions: string[];
+  notifyPatient?: boolean;
 }
 
 export interface ContestAuthorizationPayload {
@@ -201,35 +201,35 @@ export interface ContestAuthorizationPayload {
 }
 
 export interface ConfirmDatePayload {
-  selected_date_index: 0 | 1 | 2;
-  notify_patient?: boolean;
+  selectedDateIndex: 0 | 1 | 2;
+  notifyPatient?: boolean;
 }
 
 export interface UpdateDateOptionsPayload {
-  date_options: string[];
+  dateOptions: string[];
 }
 
 export interface ReschedulePayload {
-  new_date: string;
+  newDate: string;
 }
 
 export interface MarkPerformedPayload {
-  surgery_performed_at: string;
-  notify_patient?: boolean;
+  surgeryPerformedAt: string;
+  notifyPatient?: boolean;
 }
 
 export interface InvoicePayload {
-  invoice_protocol: string;
-  invoice_value: number;
-  invoice_sent_at: string;
-  payment_deadline?: string;
-  set_as_default_for_health_plan?: boolean;
+  invoiceProtocol: string;
+  invoiceValue: number;
+  invoiceSentAt: string;
+  paymentDeadline?: string;
+  setAsDefaultForHealthPlan?: boolean;
 }
 
 export interface ConfirmReceiptPayload {
-  received_value: number;
-  received_at: string;
-  receipt_notes?: string;
+  receivedValue: number;
+  receivedAt: string;
+  receiptNotes?: string;
 }
 
 export interface ContestPaymentPayload {
@@ -240,8 +240,8 @@ export interface ContestPaymentPayload {
 }
 
 export interface UpdateReceiptPayload {
-  received_value: number;
-  received_at: string;
+  receivedValue: number;
+  receivedAt: string;
 }
 
 export interface ClosePayload {
@@ -254,12 +254,12 @@ export interface NotifyPayload {
   /** Canais a enviar (quando não informado, o backend decide) */
   channels?: { email?: boolean; whatsapp?: boolean };
   /** Status anterior (numérico) para templates de mudança de status */
-  old_status?: number;
+  oldStatus?: number;
 }
 
 export interface CreateTemplatePayload {
   name: string;
-  template_data: object;
+  templateData: object;
 }
 
 // ─── Tipos de resposta ────────────────────────────────────────────────────────
@@ -270,18 +270,18 @@ export interface SurgeryRequestListItem {
   status: number;
   protocol: string | null;
   priority: number;
-  created_at: string;
-  surgery_date: string | null;
+  createdAt: string;
+  surgeryDate: string | null;
   patient: { id: string; name: string } | null;
   doctor: { id: string; name: string } | null;
-  health_plan: { id: string; name: string } | null;
-  health_plan_id?: string | null;
+  healthPlan: { id: string; name: string } | null;
+  healthPlanId?: string | null;
   hospital: { id: string; name: string } | null;
-  hospital_id?: string | null;
+  hospitalId?: string | null;
   procedure: { id: string; name: string } | null;
-  tuss_procedure: { id: string; description: string } | null;
-  procedure_name?: string;
-  pendencies_count?: number;
+  tussProcedure: { id: string; description: string } | null;
+  procedureName?: string;
+  pendenciesCount?: number;
   [key: string]: unknown;
 }
 
@@ -297,20 +297,20 @@ export interface SurgeryRequestDetail {
   status: number;
   protocol: string | null;
   priority: number;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
   observations: string | null;
-  procedure_name?: string;
+  procedureName?: string;
   // Relações tipadas
   patient: PatientRef | null;
   doctor: DoctorRef | null;
   hospital: HospitalRef | null;
-  health_plan: HealthPlanRef | null;
+  healthPlan: HealthPlanRef | null;
   procedure: EntityRef | null;
-  tuss_procedure: TussItemRef | null;
+  tussProcedure: TussItemRef | null;
   // Arrays
-  tuss_items: TussItemRef[];
-  opme_items: OpmeItemRef[];
+  tussItems: TussItemRef[];
+  opmeItems: OpmeItemRef[];
   documents: Document[];
   sections: ReportSection[];
   activities: Activity[];
@@ -321,7 +321,7 @@ export interface SurgeryRequestDetail {
   billing: BillingInfo | null;
   receipt: ReceiptInfo | null;
   scheduling: SchedulingInfo | null;
-  pendencies_summary: {
+  pendenciesSummary: {
     total: number;
     completed: number;
     pending: number;
@@ -330,19 +330,19 @@ export interface SurgeryRequestDetail {
     canTransition: boolean;
   } | null;
   // Campos primitivos adicionais usados por componentes
-  cid_id: string | null;
-  cid_description: string | null;
+  cidId: string | null;
+  cidDescription: string | null;
   cid?: { id: string; code: string; description: string } | null;
-  health_plan_registration: string | null;
-  health_plan_type: string | null;
-  hospital_id: string | number | null;
-  health_plan_id: string | number | null;
-  has_opme: boolean | null;
-  surgery_date: string | null;
-  surgery_performed_at: string | null;
+  healthPlanRegistration: string | null;
+  healthPlanType: string | null;
+  hospitalId: string | number | null;
+  healthPlanId: string | number | null;
+  hasOpme: boolean | null;
+  surgeryDate: string | null;
+  surgeryPerformedAt: string | null;
   diagnosis: string | null;
-  medical_report: string | null;
-  patient_history: string | null;
+  medicalReport: string | null;
+  patientHistory: string | null;
   [key: string]: unknown;
 }
 
@@ -354,16 +354,16 @@ export interface SurgeryRequestMutationResponse {
 
 /** Resposta do envio com download de PDF */
 export interface SendResponse extends SurgeryRequestMutationResponse {
-  pdf_base64?: string;
+  pdfBase64?: string;
 }
 
 /** Template de solicitação salvo */
 export interface SurgeryRequestTemplate {
   id: string;
   name: string;
-  template_data: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
+  templateData: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
   [key: string]: unknown;
 }
 
@@ -416,7 +416,7 @@ export const surgeryRequestService = {
   /** Define se a solicitação possui OPME */
   async setHasOpme(requestId: string, hasOpme: boolean): Promise<void> {
     await api.patch(`/surgery-requests/${requestId}/has-opme`, {
-      has_opme: hasOpme,
+      hasOpme,
     });
   },
 
@@ -494,13 +494,13 @@ export const surgeryRequestService = {
    */
   async authorizeQuantities(
     surgeryRequestId: string | number,
-    procedures: { id: string | number; authorized_quantity: number }[],
-    opmeItems: { id: string | number; authorized_quantity: number }[],
+    procedures: { id: string | number; authorizedQuantity: number }[],
+    opmeItems: { id: string | number; authorizedQuantity: number }[],
   ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post("/surgery-requests/procedures/authorize", {
-      surgery_request_id: surgeryRequestId,
-      surgery_request_procedures: procedures,
-      opme_items: opmeItems,
+      surgeryRequestId,
+      surgeryRequestProcedures: procedures,
+      opmeItems,
     });
     return response.data;
   },
@@ -706,7 +706,7 @@ export const surgeryRequestService = {
   /** Atualiza um template de solicitação */
   async updateTemplate(
     id: string,
-    data: { name?: string; template_data?: object },
+    data: { name?: string; templateData?: object },
   ): Promise<SurgeryRequestTemplate> {
     const response = await api.patch<SurgeryRequestTemplate>(
       `/surgery-requests/templates/${id}`,

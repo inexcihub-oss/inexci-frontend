@@ -23,11 +23,11 @@ describe("tussService", () => {
       (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({});
 
       await tussService.addProcedures({
-        surgery_request_id: "sr-1",
+        surgeryRequestId: "sr-1",
         procedures: [
           {
-            procedure_id: "p-1",
-            tuss_code: "30715016",
+            procedureId: "p-1",
+            tussCode: "30715016",
             name: "Artroscopia",
             quantity: 1,
           },
@@ -35,11 +35,11 @@ describe("tussService", () => {
       });
 
       expect(api.post).toHaveBeenCalledWith("/surgery-requests/procedures", {
-        surgery_request_id: "sr-1",
+        surgeryRequestId: "sr-1",
         procedures: [
           {
-            procedure_id: "p-1",
-            tuss_code: "30715016",
+            procedureId: "p-1",
+            tussCode: "30715016",
             name: "Artroscopia",
             quantity: 1,
           },
@@ -50,13 +50,13 @@ describe("tussService", () => {
     it("não deve aceitar procedures sem tuss_code e name (TypeScript enforced)", () => {
       // Verifica que a interface requer tuss_code e name
       const validProcedure = {
-        procedure_id: "p-1",
-        tuss_code: "30715016",
+        procedureId: "p-1",
+        tussCode: "30715016",
         name: "Artroscopia",
         quantity: 1,
       };
 
-      expect(validProcedure.tuss_code).toBeDefined();
+      expect(validProcedure.tussCode).toBeDefined();
       expect(validProcedure.name).toBeDefined();
     });
   });
@@ -64,7 +64,7 @@ describe("tussService", () => {
   describe("searchTussFromJson", () => {
     it("deve chamar GET /tuss com params", async () => {
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: [{ id: "1", tuss_code: "123", name: "Test", active: true }],
+        data: [{ id: "1", tussCode: "123", name: "Test", active: true }],
       });
 
       const result = await tussService.searchTussFromJson("artro", 10);
@@ -84,7 +84,7 @@ describe("tussService", () => {
 
       expect(api.delete).toHaveBeenCalledWith(
         "/surgery-requests/procedures/proc-1",
-        { data: { surgery_request_id: "sr-1" } },
+        { data: { surgeryRequestId: "sr-1" } },
       );
     });
   });

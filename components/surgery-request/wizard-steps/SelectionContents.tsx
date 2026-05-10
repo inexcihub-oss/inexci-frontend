@@ -553,7 +553,7 @@ export const DoctorSelectionContent = memo(function DoctorSelectionContent({
                   {doctor.crm && (
                     <span className="text-xs text-gray-500">
                       CRM {doctor.crm}
-                      {doctor.crm_state ? `/${doctor.crm_state}` : ""}
+                      {doctor.crmState ? `/${doctor.crmState}` : ""}
                     </span>
                   )}
                 </div>
@@ -642,7 +642,7 @@ export const TemplateSelectionContent = memo(function TemplateSelectionContent({
           </div>
         ) : (
           filtered.map((template) => {
-            const td = template.template_data as Record<
+            const td = template.templateData as Record<
               string,
               Record<string, unknown> & {
                 name?: string;

@@ -68,14 +68,14 @@ export function InvoiceModal({
   // Pré-preenche o prazo de recebimento com o padrão do convênio ao abrir o modal
   useEffect(() => {
     if (isOpen) {
-      const defaultDays = solicitacao?.health_plan?.default_payment_days;
+      const defaultDays = solicitacao?.healthPlan?.defaultPaymentDays;
       if (defaultDays) {
         setPaymentDeadline(String(defaultDays));
       }
     }
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const healthPlanName = solicitacao?.health_plan?.name || "Convênio";
+  const healthPlanName = solicitacao?.healthPlan?.name || "Convênio";
   const patientName = solicitacao?.patient?.name || "—";
   const procedureName = solicitacao?.procedure?.name || "—";
 
@@ -125,11 +125,11 @@ export function InvoiceModal({
       }
 
       await surgeryRequestService.invoice(solicitacao.id, {
-        invoice_protocol: protocol.trim(),
-        invoice_value: numericValue,
-        invoice_sent_at: sentAtDate.toISOString(),
-        payment_deadline: paymentDeadlineISO,
-        set_as_default_for_health_plan: setAsDefault || undefined,
+        invoiceProtocol: protocol.trim(),
+        invoiceValue: numericValue,
+        invoiceSentAt: sentAtDate.toISOString(),
+        paymentDeadline: paymentDeadlineISO,
+        setAsDefaultForHealthPlan: setAsDefault || undefined,
       });
       showToast(
         "Faturamento registrado! Status alterado para Faturada.",

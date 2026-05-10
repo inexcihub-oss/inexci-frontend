@@ -5,9 +5,9 @@ import { AvailableDoctor } from "@/types";
 interface BackendDoctorRecord {
   id: string;
   name: string;
-  doctor_profile?: {
+  doctorProfile?: {
     crm?: string;
-    crm_state?: string;
+    crmState?: string;
     specialty?: string;
   };
 }
@@ -35,9 +35,9 @@ export const availableDoctorsService = {
     return records.map((user) => ({
       id: user.id,
       name: user.name,
-      crm: user.doctor_profile?.crm ?? "",
-      crm_state: user.doctor_profile?.crm_state ?? "",
-      specialty: user.doctor_profile?.specialty ?? undefined,
+      crm: user.doctorProfile?.crm ?? "",
+      crmState: user.doctorProfile?.crmState ?? "",
+      specialty: user.doctorProfile?.specialty ?? undefined,
     }));
   },
 };

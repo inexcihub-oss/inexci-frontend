@@ -28,9 +28,9 @@ const FIELD_LABELS: Record<string, string> = {
   phone: "Telefone",
   email: "E-mail",
   cpf: "CPF",
-  birth_date: "Data de nascimento",
+  birthDate: "Data de nascimento",
   gender: "Gênero",
-  health_plan_id: "Convênio",
+  healthPlanId: "Convênio",
 };
 
 const labelClass = "ds-label mb-0";
@@ -53,9 +53,9 @@ export function NewPatientModal({
       phone: "",
       email: "",
       cpf: "",
-      birth_date: "",
+      birthDate: "",
       gender: "",
-      health_plan_id: "",
+      healthPlanId: "",
     },
   });
 
@@ -91,9 +91,9 @@ export function NewPatientModal({
           phone: unmask(data.phone) || undefined,
           email: data.email,
           cpf: data.cpf ? unmask(data.cpf) : undefined,
-          birth_date: data.birth_date || undefined,
+          birthDate: data.birthDate || undefined,
           gender: data.gender || undefined,
-          health_plan_id: data.health_plan_id || undefined,
+          healthPlanId: data.healthPlanId || undefined,
         };
         await patientService.create(payload);
         onSuccess();
@@ -185,8 +185,8 @@ export function NewPatientModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <DateInput
                 label="Data de nascimento"
-                value={form.values.birth_date ?? ""}
-                onChange={(v) => form.setField("birth_date", v)}
+                value={form.values.birthDate ?? ""}
+                onChange={(v) => form.setField("birthDate", v)}
                 className={inputClass}
               />
               <div className="flex flex-col gap-1.5">
@@ -209,8 +209,8 @@ export function NewPatientModal({
             <div className="flex flex-col gap-1.5">
               <label className={labelClass}>Convênio</label>
               <select
-                value={form.values.health_plan_id ?? ""}
-                onChange={(e) => form.setField("health_plan_id", e.target.value)}
+                value={form.values.healthPlanId ?? ""}
+                onChange={(e) => form.setField("healthPlanId", e.target.value)}
                 className={inputClass}
               >
                 <option value="">Selecione</option>

@@ -16,11 +16,11 @@ vi.mock("@/services/user.service", () => ({
       name: "Dr. João",
       email: "joao@test.com",
       phone: "11999999999",
-      is_doctor: true,
-      doctor_profile: {
+      isDoctor: true,
+      doctorProfile: {
         id: "dp-001",
         crm: "123456",
-        crm_state: "SP",
+        crmState: "SP",
         specialty: "Ortopedia",
       },
     }),
@@ -42,7 +42,7 @@ async function handleSaveProfile(
     crmState?: string;
     specialty?: string;
   },
-  user: { doctor_profile?: { id: string } } | null,
+  user: { doctorProfile?: { id: string } } | null,
   updateProfile: typeof mockUpdateProfile,
   updateDoctorProfile: typeof mockUpdateDoctorProfile,
 ) {
@@ -56,10 +56,10 @@ async function handleSaveProfile(
   });
 
   // 2. Se é médico e tem doctor_profile, salvar dados profissionais
-  if (profile.isDoctor && user?.doctor_profile?.id) {
-    await updateDoctorProfile(user.doctor_profile.id, {
+  if (profile.isDoctor && user?.doctorProfile?.id) {
+    await updateDoctorProfile(user.doctorProfile.id, {
       crm: profile.crm || undefined,
-      crm_state: profile.crmState || undefined,
+      crmState: profile.crmState || undefined,
       specialty: profile.specialty || undefined,
     });
   }
@@ -83,7 +83,7 @@ describe("Configurações — handleSaveProfile", () => {
       crmState: "SP",
       specialty: "Ortopedia",
     };
-    const user = { doctor_profile: { id: "dp-001" } };
+    const user = { doctorProfile: { id: "dp-001" } };
 
     await handleSaveProfile(
       profile,
@@ -106,7 +106,7 @@ describe("Configurações — handleSaveProfile", () => {
     expect(mockUpdateDoctorProfile).toHaveBeenCalledTimes(1);
     expect(mockUpdateDoctorProfile).toHaveBeenCalledWith("dp-001", {
       crm: "123456",
-      crm_state: "SP",
+      crmState: "SP",
       specialty: "Ortopedia",
     });
   });
@@ -123,7 +123,7 @@ describe("Configurações — handleSaveProfile", () => {
       crmState: "",
       specialty: "",
     };
-    const user = { doctor_profile: undefined };
+    const user = { doctorProfile: undefined };
 
     await handleSaveProfile(
       profile,
@@ -168,7 +168,7 @@ describe("Configurações — handleSaveProfile", () => {
       crm: "111111",
       crmState: "RJ",
     };
-    const user = { doctor_profile: undefined };
+    const user = { doctorProfile: undefined };
 
     await handleSaveProfile(
       profile,
@@ -193,7 +193,7 @@ describe("Configurações — handleSaveProfile", () => {
       crmState: "",
       specialty: "",
     };
-    const user = { doctor_profile: { id: "dp-002" } };
+    const user = { doctorProfile: { id: "dp-002" } };
 
     await handleSaveProfile(
       profile,
@@ -212,7 +212,7 @@ describe("Configurações — handleSaveProfile", () => {
 
     expect(mockUpdateDoctorProfile).toHaveBeenCalledWith("dp-002", {
       crm: undefined,
-      crm_state: undefined,
+      crmState: undefined,
       specialty: undefined,
     });
   });

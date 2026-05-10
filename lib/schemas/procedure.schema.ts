@@ -16,7 +16,7 @@ export const createProcedureModelSchema = z.object({
     .trim()
     .min(2, "Informe o nome do modelo.")
     .max(160, "Nome muito longo."),
-  procedure_id: z.string().optional().or(z.literal("")),
+  procedureId: z.string().optional().or(z.literal("")),
   procedure_name: z.string().optional().or(z.literal("")),
 });
 

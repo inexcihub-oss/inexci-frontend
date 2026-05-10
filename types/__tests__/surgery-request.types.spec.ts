@@ -19,7 +19,7 @@ describe("surgery-request.types", () => {
       };
       expect(doctor.id).toBe("uuid-123");
       expect(doctor.name).toBe("Dr. João Silva");
-      expect(doctor.doctor_profile).toBeUndefined();
+      expect(doctor.doctorProfile).toBeUndefined();
     });
 
     it("deve aceitar Doctor com doctor_profile completo", () => {
@@ -30,39 +30,39 @@ describe("surgery-request.types", () => {
         phone: "11999999999",
         avatarUrl: "https://example.com/avatar.png",
         avatarColor: "#FF5733",
-        doctor_profile: {
+        doctorProfile: {
           id: "dp-uuid-456",
-          user_id: "uuid-123",
+          userId: "uuid-123",
           crm: "123456",
-          crm_state: "SP",
+          crmState: "SP",
           specialty: "Ortopedia",
-          signature_url: "https://example.com/signature.png",
-          clinic_name: "Clínica São Paulo",
+          signatureUrl: "https://example.com/signature.png",
+          clinicName: "Clínica São Paulo",
         },
       };
-      expect(doctor.doctor_profile?.crm).toBe("123456");
-      expect(doctor.doctor_profile?.crm_state).toBe("SP");
-      expect(doctor.doctor_profile?.specialty).toBe("Ortopedia");
-      expect(doctor.doctor_profile?.signature_url).toBe(
+      expect(doctor.doctorProfile?.crm).toBe("123456");
+      expect(doctor.doctorProfile?.crmState).toBe("SP");
+      expect(doctor.doctorProfile?.specialty).toBe("Ortopedia");
+      expect(doctor.doctorProfile?.signatureUrl).toBe(
         "https://example.com/signature.png",
       );
-      expect(doctor.doctor_profile?.clinic_name).toBe("Clínica São Paulo");
+      expect(doctor.doctorProfile?.clinicName).toBe("Clínica São Paulo");
     });
 
     it("deve aceitar Doctor com doctor_profile parcial (campos opcionais)", () => {
       const doctor: Doctor = {
         id: "uuid-123",
         name: "Dr. Maria",
-        doctor_profile: {
+        doctorProfile: {
           id: "dp-uuid-789",
-          user_id: "uuid-123",
+          userId: "uuid-123",
           crm: "654321",
-          crm_state: "RJ",
+          crmState: "RJ",
         },
       };
-      expect(doctor.doctor_profile?.specialty).toBeUndefined();
-      expect(doctor.doctor_profile?.signature_url).toBeUndefined();
-      expect(doctor.doctor_profile?.clinic_name).toBeUndefined();
+      expect(doctor.doctorProfile?.specialty).toBeUndefined();
+      expect(doctor.doctorProfile?.signatureUrl).toBeUndefined();
+      expect(doctor.doctorProfile?.clinicName).toBeUndefined();
     });
 
     it("deve aceitar Doctor com email e phone sem doctor_profile", () => {
@@ -74,7 +74,7 @@ describe("surgery-request.types", () => {
       };
       expect(doctor.email).toBe("carlos@example.com");
       expect(doctor.phone).toBe("21988888888");
-      expect(doctor.doctor_profile).toBeUndefined();
+      expect(doctor.doctorProfile).toBeUndefined();
     });
   });
 
@@ -87,11 +87,11 @@ describe("surgery-request.types", () => {
         doctor: {
           id: "d-001",
           name: "Dr. João",
-          doctor_profile: {
+          doctorProfile: {
             id: "dp-001",
-            user_id: "d-001",
+            userId: "d-001",
             crm: "123456",
-            crm_state: "SP",
+            crmState: "SP",
             specialty: "Ortopedia",
           },
         },
@@ -103,8 +103,8 @@ describe("surgery-request.types", () => {
 
       // Nova estrutura: doctor é User, doctor_profile é aninhado
       expect(request.doctor.name).toBe("Dr. João");
-      expect(request.doctor.doctor_profile?.crm).toBe("123456");
-      expect(request.doctor.doctor_profile?.specialty).toBe("Ortopedia");
+      expect(request.doctor.doctorProfile?.crm).toBe("123456");
+      expect(request.doctor.doctorProfile?.specialty).toBe("Ortopedia");
     });
 
     it("deve funcionar sem doctor_profile (médico sem perfil profissional)", () => {
@@ -123,7 +123,7 @@ describe("surgery-request.types", () => {
       };
 
       expect(request.doctor.name).toBe("Dr. Maria");
-      expect(request.doctor.doctor_profile).toBeUndefined();
+      expect(request.doctor.doctorProfile).toBeUndefined();
     });
   });
 

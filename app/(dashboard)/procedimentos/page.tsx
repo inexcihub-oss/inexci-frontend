@@ -32,36 +32,36 @@ import { useAuth } from "@/contexts/AuthContext";
 
 /** Converte um template da API para o tipo ProcedureModel usado na UI */
 function templateToModel(t: any): ProcedureModel {
-  const data = t.template_data || {};
+  const data = t.templateData || {};
   return {
     id: t.id,
     modelName: t.name,
     procedureName:
       data.procedure?.name ||
       data.procedures?.[0]?.name ||
-      data.procedure_name ||
+      data.procedureName ||
       "—",
-    createdAt: t.created_at
-      ? new Date(t.created_at).toLocaleDateString("pt-BR")
+    createdAt: t.createdAt
+      ? new Date(t.createdAt).toLocaleDateString("pt-BR")
       : "—",
     createdBy: t.doctor?.name || "Você",
     usageCount: t.usage_count ?? 0,
-    documents: (data.required_documents || []).map((d: any, i: number) => ({
+    documents: (data.requiredDocuments || []).map((d: any, i: number) => ({
       id: String(i),
       type: d.type || d,
       name: d.name || d.type || d,
     })),
-    opmeItems: (data.opme_items || []).map((o: any, i: number) => ({
+    opmeItems: (data.opmeItems || []).map((o: any, i: number) => ({
       id: String(i),
       name: o.name,
       quantity: o.quantity || 1,
       manufacturers: o.manufacturers || (o.brand ? [o.brand] : []),
       suppliers: o.suppliers || (o.distributor ? [o.distributor] : []),
     })),
-    tussItems: (data.tuss_items || data.procedures || []).map(
+    tussItems: (data.tussItems || data.procedures || []).map(
       (p: any, i: number) => ({
         id: String(i),
-        code: p.tuss_code || "",
+        code: p.tussCode || "",
         name: p.name || "",
         quantity: p.quantity || 1,
       }),
@@ -343,7 +343,7 @@ export default function ProcedimentosPage() {
     try {
       const created = await surgeryRequestService.createTemplate({
         name: data.modelName,
-        template_data: {
+        templateData: {
           procedure: data.procedure || null,
           procedure_name: data.procedureName,
         },

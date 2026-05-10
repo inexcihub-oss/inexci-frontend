@@ -3,21 +3,20 @@ import {
   fullNameSchema,
   emailSchema,
   phoneSchema,
-  phoneOptionalSchema,
 } from "./shared";
 
 export const createCollaboratorSchema = z
   .object({
     name: fullNameSchema,
-    phone: phoneOptionalSchema,
+    phone: phoneSchema,
     email: emailSchema,
-    is_doctor: z.boolean().default(false),
+    isDoctor: z.boolean().default(false),
     crm: z.string().optional().or(z.literal("")),
-    crm_state: z.string().optional().or(z.literal("")),
+    crmState: z.string().optional().or(z.literal("")),
     specialty: z.string().optional().or(z.literal("")),
   })
   .superRefine((data, ctx) => {
-    if (data.is_doctor) {
+    if (data.isDoctor) {
       if (!data.crm || !data.crm.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -25,7 +24,7 @@ export const createCollaboratorSchema = z
           path: ["crm"],
         });
       }
-      if (!data.crm_state) {
+      if (!data.crmState) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Selecione o estado do CRM.",

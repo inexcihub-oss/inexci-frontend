@@ -38,27 +38,27 @@ function createAccessManager(initialActiveIds: string[]) {
 
 // Simula a transformação de access data para selectedIds
 function extractActiveIds(
-  accessList: Array<{ doctor_user_id: string; status: "active" | "inactive" }>,
+  accessList: Array<{ doctorUserId: string; status: "active" | "inactive" }>,
 ): string[] {
   return accessList
     .filter((a) => a.status === "active")
-    .map((a) => a.doctor_user_id);
+    .map((a) => a.doctorUserId);
 }
 
 describe("DoctorAccessSection — Lógica", () => {
   describe("extractActiveIds", () => {
     it("deve extrair apenas IDs ativos", () => {
       const access = [
-        { doctor_user_id: "d1", status: "active" as const },
-        { doctor_user_id: "d2", status: "inactive" as const },
-        { doctor_user_id: "d3", status: "active" as const },
+        { doctorUserId: "d1", status: "active" as const },
+        { doctorUserId: "d2", status: "inactive" as const },
+        { doctorUserId: "d3", status: "active" as const },
       ];
       const ids = extractActiveIds(access);
       expect(ids).toEqual(["d1", "d3"]);
     });
 
     it("deve retornar array vazio quando não há acessos ativos", () => {
-      const access = [{ doctor_user_id: "d1", status: "inactive" as const }];
+      const access = [{ doctorUserId: "d1", status: "inactive" as const }];
       expect(extractActiveIds(access)).toEqual([]);
     });
 

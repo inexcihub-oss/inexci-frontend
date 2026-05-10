@@ -27,7 +27,6 @@ vi.mock("date-fns/locale", () => ({
   ptBR: {},
 }));
 
-const mockGetUnreadCount = vi.fn();
 const mockGetNotifications = vi.fn();
 const mockMarkAsRead = vi.fn();
 const mockMarkAllAsRead = vi.fn();
@@ -35,12 +34,30 @@ const mockDeleteNotification = vi.fn();
 
 vi.mock("@/services/notification.service", () => ({
   notificationService: {
-    getUnreadCount: (...args: unknown[]) => mockGetUnreadCount(...args),
     getNotifications: (...args: unknown[]) => mockGetNotifications(...args),
     markAsRead: (...args: unknown[]) => mockMarkAsRead(...args),
     markAllAsRead: (...args: unknown[]) => mockMarkAllAsRead(...args),
     deleteNotification: (...args: unknown[]) => mockDeleteNotification(...args),
   },
+}));
+
+// O hook agora vem do NotificationsContext (via socket único). Para os
+// testes deste dropdown não precisamos de socket real — fornecemos um stub
+// que apenas simula o estado compartilhado.
+let mockUnreadCount = 2;
+const mockSetUnreadCount = vi.fn(
+  (next: number | ((prev: number) => number)) => {
+    mockUnreadCount =
+      typeof next === "function" ? next(mockUnreadCount) : next;
+  },
+);
+vi.mock("@/hooks/useNotifications", () => ({
+  useNotifications: () => ({
+    unreadCount: mockUnreadCount,
+    setUnreadCount: mockSetUnreadCount,
+    latest: [],
+    setLatest: vi.fn(),
+  }),
 }));
 
 const mockNotifications = [
@@ -79,7 +96,7 @@ const mockNotifications = [
 describe("NotificationsDropdown", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetUnreadCount.mockResolvedValue(2);
+    mockUnreadCount = 2;
     mockGetNotifications.mockResolvedValue({
       notifications: mockNotifications,
       unreadCount: 2,
@@ -98,19 +115,13 @@ describe("NotificationsDropdown", () => {
   });
 
   it("não renderiza badge quando não há notificações", async () => {
-    mockGetUnreadCount.mockResolvedValue(0);
+    mockUnreadCount = 0;
     render(<NotificationsDropdown />);
-    await waitFor(() => {
-      expect(mockGetUnreadCount).toHaveBeenCalled();
-    });
     expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 
   it("abre dropdown ao clicar e carrega notificações", async () => {
     render(<NotificationsDropdown />);
-    await waitFor(() => {
-      expect(mockGetUnreadCount).toHaveBeenCalled();
-    });
 
     const bellButton = screen.getByText("Notificações");
     fireEvent.click(bellButton);
@@ -211,7 +222,7 @@ describe("NotificationsDropdown", () => {
       unreadCount: 0,
       total: 0,
     });
-    mockGetUnreadCount.mockResolvedValue(0);
+    mockUnreadCount = 0;
 
     render(<NotificationsDropdown />);
     fireEvent.click(screen.getByText("Notificações"));
@@ -221,13 +232,9 @@ describe("NotificationsDropdown", () => {
     });
   });
 
-  it("renderiza corretamente quando isCollapsed=true", async () => {
+  it("renderiza corretamente quando isCollapsed=true", () => {
     render(<NotificationsDropdown isCollapsed={true} />);
-    // Should not show text label when collapsed
-    await waitFor(() => {
-      expect(mockGetUnreadCount).toHaveBeenCalled();
-    });
-    // The text "Notificações" should not be visible
+    // The text "Notificações" should not be visible quando colapsado
     expect(screen.queryByText("Notificações")).not.toBeInTheDocument();
   });
 });

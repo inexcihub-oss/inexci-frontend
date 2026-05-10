@@ -52,13 +52,13 @@ export function PendencyItem({
   className,
 }: PendencyItemProps) {
   const isCompleted = pendency.concluded;
-  const isWaiting = pendency.is_waiting || isWaitingPendency(pendency.key);
-  const isOptional = pendency.is_optional;
+  const isWaiting = pendency.isWaiting || isWaitingPendency(pendency.key);
+  const isOptional = pendency.isOptional;
 
   const action = getPendencyAction(pendency.key);
 
-  const ResponsibleIcon = pendency.responsible_type
-    ? responsibleIcons[pendency.responsible_type] || User
+  const ResponsibleIcon = pendency.responsibleType
+    ? responsibleIcons[pendency.responsibleType] || User
     : User;
 
   const handleNavigate = () => {
@@ -173,20 +173,20 @@ export function PendencyItem({
           <p className="text-xs text-gray-500 mb-1">{pendency.description}</p>
         )}
 
-        {showResponsible && pendency.responsible_type && (
+        {showResponsible && pendency.responsibleType && (
           <div className="flex items-center gap-1.5 text-xs text-gray-500">
             <ResponsibleIcon className="h-3.5 w-3.5" />
             <span>
-              {responsibleLabels[pendency.responsible_type] ||
-                pendency.responsible_type}
+              {responsibleLabels[pendency.responsibleType] ||
+                pendency.responsibleType}
             </span>
           </div>
         )}
 
-        {pendency.concluded_at && (
+        {pendency.concludedAt && (
           <p className="text-xs text-gray-400 mt-1">
             Concluída em{" "}
-            {new Date(pendency.concluded_at).toLocaleDateString("pt-BR")}
+            {new Date(pendency.concludedAt).toLocaleDateString("pt-BR")}
           </p>
         )}
       </div>

@@ -34,7 +34,7 @@ const FIELD_LABELS: Record<string, string> = {
   email: "E-mail",
   phone: "Telefone",
   crm: "CRM",
-  crm_state: "UF do CRM",
+  crmState: "UF do CRM",
 };
 
 const inputClass = "ds-input";
@@ -57,16 +57,16 @@ export function NewCollaboratorModal({
       name: "",
       email: "",
       phone: "",
-      is_doctor: defaultIsDoctor,
+      isDoctor: defaultIsDoctor,
       crm: "",
-      crm_state: "",
+      crmState: "",
       specialty: "",
     },
   });
 
   // Mantém is_doctor sincronizado quando defaultIsDoctor mudar
   useEffect(() => {
-    form.setField("is_doctor", defaultIsDoctor);
+    form.setField("isDoctor", defaultIsDoctor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultIsDoctor]);
 
@@ -76,9 +76,9 @@ export function NewCollaboratorModal({
       name: "",
       email: "",
       phone: "",
-      is_doctor: defaultIsDoctor,
+      isDoctor: defaultIsDoctor,
       crm: "",
-      crm_state: "",
+      crmState: "",
       specialty: "",
     });
     setEmailError("");
@@ -108,12 +108,12 @@ export function NewCollaboratorModal({
         const payload: CreateCollaboratorPayload = {
           name: data.name.trim(),
           email: data.email.trim(),
-          phone: unmask(data.phone) || undefined,
-          ...(data.is_doctor &&
+          phone: unmask(data.phone),
+          ...(data.isDoctor &&
             data.crm &&
             data.crm.trim() && {
               crm: data.crm.trim(),
-              crm_state: data.crm_state || undefined,
+              crmState: data.crmState || undefined,
               specialty: data.specialty?.trim() || undefined,
             }),
         };
@@ -123,9 +123,9 @@ export function NewCollaboratorModal({
           name: "",
           email: "",
           phone: "",
-          is_doctor: defaultIsDoctor,
+          isDoctor: defaultIsDoctor,
           crm: "",
-          crm_state: "",
+          crmState: "",
           specialty: "",
         });
         setEmailError("");
@@ -185,9 +185,7 @@ export function NewCollaboratorModal({
             {/* Row 1: Nome + Telefone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>Nome completo
-                </label>
+                <label className={labelClass}>Nome completo</label>
                 <input
                   type="text"
                   required
@@ -200,22 +198,22 @@ export function NewCollaboratorModal({
                   <span className="text-xs text-red-500">{form.errors.name}</span>
                 )}
               </div>
-              <Input
-                label="Telefone"
-                type="tel"
-                mask="phone"
-                placeholder="(21) 98765-4321"
-                value={form.values.phone}
-                onChange={(e) => form.setField("phone", e.target.value)}
-                error={form.errors.phone}
-              />
+              <div className="flex flex-col gap-1.5">
+                <label className={labelClass}>Telefone</label>
+                <Input
+                  type="tel"
+                  mask="phone"
+                  placeholder="(21) 98765-4321"
+                  value={form.values.phone}
+                  onChange={(e) => form.setField("phone", e.target.value)}
+                  error={form.errors.phone}
+                />
+              </div>
             </div>
 
             {/* Row 2: E-mail */}
             <div className="flex flex-col gap-1.5">
-              <label className={labelClass}>
-                <span className="text-red-500 mr-0.5">*</span>E-mail
-              </label>
+              <label className={labelClass}>E-mail</label>
               <input
                 type="email"
                 required
@@ -237,17 +235,17 @@ export function NewCollaboratorModal({
               <button
                 type="button"
                 role="switch"
-                aria-checked={form.values.is_doctor}
+                aria-checked={form.values.isDoctor}
                 onClick={() =>
-                  form.setField("is_doctor", !form.values.is_doctor)
+                  form.setField("isDoctor", !form.values.isDoctor)
                 }
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                  form.values.is_doctor ? "bg-teal-500" : "bg-gray-200"
+                  form.values.isDoctor ? "bg-teal-500" : "bg-gray-200"
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    form.values.is_doctor ? "translate-x-6" : "translate-x-1"
+                    form.values.isDoctor ? "translate-x-6" : "translate-x-1"
                   }`}
                 />
               </button>
@@ -257,16 +255,14 @@ export function NewCollaboratorModal({
             </div>
 
             {/* Doctor Fields (conditional) */}
-            {form.values.is_doctor && (
+            {form.values.isDoctor && (
               <div className="space-y-3 p-4 bg-teal-50 rounded-xl border border-teal-100">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <label className={labelClass}>
-                      <span className="text-red-500 mr-0.5">*</span>CRM
-                    </label>
+                    <label className={labelClass}>CRM</label>
                     <input
                       type="text"
-                      required={form.values.is_doctor}
+                      required={form.values.isDoctor}
                       value={form.values.crm}
                       onChange={(e) => form.setField("crm", e.target.value)}
                       placeholder="123456"
@@ -277,14 +273,12 @@ export function NewCollaboratorModal({
                     )}
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className={labelClass}>
-                      <span className="text-red-500 mr-0.5">*</span>UF do CRM
-                    </label>
+                    <label className={labelClass}>UF do CRM</label>
                     <select
-                      required={form.values.is_doctor}
-                      value={form.values.crm_state}
+                      required={form.values.isDoctor}
+                      value={form.values.crmState}
                       onChange={(e) =>
-                        form.setField("crm_state", e.target.value)
+                        form.setField("crmState", e.target.value)
                       }
                       className={inputClass}
                     >
@@ -295,15 +289,18 @@ export function NewCollaboratorModal({
                         </option>
                       ))}
                     </select>
-                    {form.errors.crm_state && (
+                    {form.errors.crmState && (
                       <span className="text-xs text-red-500">
-                        {form.errors.crm_state}
+                        {form.errors.crmState}
                       </span>
                     )}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className={labelClass}>Especialidade</label>
+                  <label className={labelClass}>
+                    Especialidade{" "}
+                    <span className="text-gray-400 font-normal">(opcional)</span>
+                  </label>
                   <input
                     type="text"
                     value={form.values.specialty}

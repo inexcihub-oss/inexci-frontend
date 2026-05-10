@@ -99,7 +99,6 @@ export function CreateHealthPlanModal({
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
             <Input
               label="Convênio"
-              required
               placeholder="Nome do convênio"
               {...form.getFieldProps("name")}
             />
@@ -108,7 +107,6 @@ export function CreateHealthPlanModal({
               label="Telefone"
               type="tel"
               mask="phone"
-              required
               placeholder="(21) 98765-4321"
               {...form.getFieldProps("phone")}
             />
@@ -116,7 +114,6 @@ export function CreateHealthPlanModal({
             <Input
               label="E-mail"
               type="email"
-              required
               placeholder="convenio@mail.com"
               {...form.getFieldProps("email")}
             />

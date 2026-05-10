@@ -4,7 +4,7 @@ import { PasswordRequirements } from "@/components/ui/PasswordRequirements";
 
 function getStatus(key: string): string | null {
   const li = document.querySelector(`[data-key="${key}"]`);
-  return li?.getAttribute("data-ok");
+  return li?.getAttribute("data-ok") ?? null;
 }
 
 describe("PasswordRequirements", () => {

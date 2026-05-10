@@ -88,16 +88,6 @@ export const notificationService = {
   },
 
   /**
-   * Busca a quantidade de notificações não lidas
-   */
-  async getUnreadCount(): Promise<number> {
-    const response = await api.get<{ count: number }>(
-      "/notifications/unread-count",
-    );
-    return response.data.count;
-  },
-
-  /**
    * Marca uma notificação como lida
    */
   async markAsRead(notificationId: string): Promise<void> {

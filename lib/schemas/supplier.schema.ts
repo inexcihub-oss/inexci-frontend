@@ -14,9 +14,9 @@ export const createSupplierSchema = z.object({
   cnpj: cnpjOptionalSchema,
   phone: phoneOptionalSchema,
   email: emailOptionalSchema,
-  contact_name: z.string().optional().or(z.literal("")),
-  contact_phone: phoneOptionalSchema,
-  contact_email: emailOptionalSchema,
+  contactName: z.string().optional().or(z.literal("")),
+  contactPhone: phoneOptionalSchema,
+  contactEmail: emailOptionalSchema,
 });
 
 export type CreateSupplierInput = z.infer<typeof createSupplierSchema>;

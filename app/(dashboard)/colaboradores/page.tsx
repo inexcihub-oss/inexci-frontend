@@ -220,7 +220,7 @@ export default function ColaboradoresPage() {
       size: 120,
       meta: { className: "hidden md:table-cell" },
       cell: ({ row }) =>
-        row.original.is_doctor ? (
+        row.original.isDoctor ? (
           <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
             Médico
           </span>

@@ -3,12 +3,12 @@ import { getApiRecords } from "@/lib/api-response";
 
 export interface SupplierQuotation {
   id: string;
-  proposal_number?: string;
-  total_value?: number;
-  submission_date?: string;
+  proposalNumber?: string;
+  totalValue?: number;
+  submissionDate?: string;
   selected: boolean;
-  created_at: string;
-  surgery_request?: {
+  createdAt: string;
+  surgeryRequest?: {
     id: string;
     patient?: { name: string };
   };
@@ -22,14 +22,14 @@ export interface Supplier {
   email?: string;
   website?: string;
   category?: string;
-  payment_terms?: string;
-  delivery_time?: string;
-  contact_name?: string;
-  contact_phone?: string;
-  contact_email?: string;
-  zip_code?: string;
+  paymentTerms?: string;
+  deliveryTime?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  zipCode?: string;
   address?: string;
-  address_number?: string;
+  addressNumber?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
@@ -47,14 +47,14 @@ export interface CreateSupplierPayload {
   email?: string;
   website?: string;
   category?: string;
-  payment_terms?: string;
-  delivery_time?: string;
-  contact_name?: string;
-  contact_phone?: string;
-  contact_email?: string;
-  zip_code?: string;
+  paymentTerms?: string;
+  deliveryTime?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  zipCode?: string;
   address?: string;
-  address_number?: string;
+  addressNumber?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
@@ -71,22 +71,22 @@ function mapSupplier(s: Record<string, unknown>): Supplier {
     email: s.email as string | undefined,
     website: s.website as string | undefined,
     category: s.category as string | undefined,
-    payment_terms: s.payment_terms as string | undefined,
-    delivery_time: s.delivery_time as string | undefined,
-    contact_name: s.contact_name as string | undefined,
-    contact_phone: s.contact_phone as string | undefined,
-    contact_email: s.contact_email as string | undefined,
-    zip_code: s.zip_code as string | undefined,
+    paymentTerms: s.paymentTerms as string | undefined,
+    deliveryTime: s.deliveryTime as string | undefined,
+    contactName: s.contactName as string | undefined,
+    contactPhone: s.contactPhone as string | undefined,
+    contactEmail: s.contactEmail as string | undefined,
+    zipCode: s.zipCode as string | undefined,
     address: s.address as string | undefined,
-    address_number: s.address_number as string | undefined,
+    addressNumber: s.addressNumber as string | undefined,
     neighborhood: s.neighborhood as string | undefined,
     city: s.city as string | undefined,
     state: s.state as string | undefined,
     notes: s.notes as string | undefined,
     active: (s.active as boolean) ?? true,
     quotations: s.quotations as SupplierQuotation[] | undefined,
-    createdAt: s.created_at as string,
-    updatedAt: s.updated_at as string,
+    createdAt: s.createdAt as string,
+    updatedAt: s.updatedAt as string,
   };
 }
 

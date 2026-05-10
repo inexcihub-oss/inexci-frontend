@@ -25,9 +25,9 @@ const FIELD_LABELS: Record<string, string> = {
   cnpj: "CNPJ",
   phone: "Telefone",
   email: "E-mail",
-  contact_name: "Nome do contato",
-  contact_phone: "Telefone do contato",
-  contact_email: "E-mail do contato",
+  contactName: "Nome do contato",
+  contactPhone: "Telefone do contato",
+  contactEmail: "E-mail do contato",
 };
 
 export function NewSupplierModal({
@@ -46,9 +46,9 @@ export function NewSupplierModal({
       cnpj: "",
       phone: "",
       email: "",
-      contact_name: "",
-      contact_phone: "",
-      contact_email: "",
+      contactName: "",
+      contactPhone: "",
+      contactEmail: "",
     },
   });
 
@@ -69,9 +69,9 @@ export function NewSupplierModal({
           cnpj: data.cnpj ? unmask(data.cnpj) : undefined,
           phone: unmask(data.phone) || undefined,
           email: data.email || undefined,
-          contact_name: data.contact_name || undefined,
-          contact_phone: unmask(data.contact_phone) || undefined,
-          contact_email: data.contact_email || undefined,
+          contactName: data.contactName || undefined,
+          contactPhone: unmask(data.contactPhone) || undefined,
+          contactEmail: data.contactEmail || undefined,
         };
         await supplierService.create(payload);
         onSuccess();
@@ -168,14 +168,14 @@ export function NewSupplierModal({
               <Input
                 label="Nome do contato"
                 placeholder="Nome do contato"
-                {...form.getFieldProps("contact_name")}
+                {...form.getFieldProps("contactName")}
               />
               <Input
                 label="Telefone do contato"
                 type="tel"
                 mask="phone"
                 placeholder="(21) 98765-4321"
-                {...form.getFieldProps("contact_phone")}
+                {...form.getFieldProps("contactPhone")}
               />
             </div>
 
@@ -184,7 +184,7 @@ export function NewSupplierModal({
               label="E-mail do contato"
               type="email"
               placeholder="contato@fornecedor.com"
-              {...form.getFieldProps("contact_email")}
+              {...form.getFieldProps("contactEmail")}
             />
 
             {error && (

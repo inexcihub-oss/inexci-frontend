@@ -24,8 +24,8 @@ interface BackendHealthPlan {
   cnpj?: string;
   phone?: string;
   email?: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const healthPlanService = {
@@ -43,8 +43,8 @@ export const healthPlanService = {
       cnpj: h.cnpj,
       phone: h.phone,
       email: h.email,
-      createdAt: h.created_at,
-      updatedAt: h.updated_at,
+      createdAt: h.createdAt,
+      updatedAt: h.updatedAt,
     }));
   },
 

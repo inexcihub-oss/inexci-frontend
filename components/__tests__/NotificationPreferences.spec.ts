@@ -70,13 +70,13 @@ describe("Preferências de Notificação — integração com a API", () => {
 
       const settings = await notificationService.getSettings();
 
-      expect((settings as Record<string, unknown>).smsNotifications).toBe(
+      expect((settings as unknown as Record<string, unknown>).smsNotifications).toBe(
         undefined,
       );
-      expect((settings as Record<string, unknown>).sms_notifications).toBe(
+      expect((settings as unknown as Record<string, unknown>).sms_notifications).toBe(
         undefined,
       );
-      expect((settings as Record<string, unknown>).emailNotifications).toBe(
+      expect((settings as unknown as Record<string, unknown>).emailNotifications).toBe(
         undefined,
       );
     });

@@ -40,7 +40,7 @@ export function OpmeTab() {
   const { showToast } = useToast();
 
   // has_opme: null = não informado | true = tem OPME | false = sem OPME
-  const hasOpme: boolean | null = solicitacao.has_opme ?? null;
+  const hasOpme: boolean | null = solicitacao.hasOpme ?? null;
   const isReadOnly = statusNum >= 2;
 
   const handleEdit = (opme: OpmeItem) => {
@@ -69,10 +69,10 @@ export function OpmeTab() {
   const isExpanded = (id: string) => expandedItems[id] ?? true;
 
   const filteredOpmeItems = useMemo(() => {
-    if (!solicitacao.opme_items) return [];
-    if (!searchTerm.trim()) return solicitacao.opme_items;
+    if (!solicitacao.opmeItems) return [];
+    if (!searchTerm.trim()) return solicitacao.opmeItems;
     const term = searchTerm.toLowerCase();
-    return solicitacao.opme_items.filter(
+    return solicitacao.opmeItems.filter(
       (item: any) =>
         item.name?.toLowerCase().includes(term) ||
         item.brand?.toLowerCase().includes(term) ||
@@ -80,7 +80,7 @@ export function OpmeTab() {
           s.name.toLowerCase().includes(term),
         ),
     );
-  }, [solicitacao.opme_items, searchTerm]);
+  }, [solicitacao.opmeItems, searchTerm]);
 
   const handleSetHasOpme = async (value: boolean) => {
     if (isSettingHasOpme) return;
@@ -222,8 +222,8 @@ export function OpmeTab() {
               const expanded = isExpanded(material.id);
               const isFullyAuthorized =
                 showColorCoding &&
-                material.authorized_quantity != null &&
-                material.authorized_quantity >= (material.quantity ?? 1);
+                material.authorizedQuantity != null &&
+                material.authorizedQuantity >= (material.quantity ?? 1);
               const headerBg = showColorCoding
                 ? isFullyAuthorized
                   ? "bg-teal-50"
@@ -258,7 +258,7 @@ export function OpmeTab() {
                       <span className="text-xs text-gray-500">Quantidade:</span>
                       <span className="text-xs md:text-sm font-semibold text-gray-900">
                         {showColorCoding
-                          ? `${material.authorized_quantity ?? 0}/${material.quantity ?? 1}`
+                          ? `${material.authorizedQuantity ?? 0}/${material.quantity ?? 1}`
                           : (material.quantity ?? "-")}
                       </span>
                     </div>

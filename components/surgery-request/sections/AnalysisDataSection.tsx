@@ -5,14 +5,14 @@ import { SectionCard, SectionCardBody } from "@/components/shared/SectionCard";
 
 interface AnalysisDataSectionProps {
   analysis: {
-    request_number?: string | null;
-    received_at?: string | null;
-    quotation_1_number?: string | null;
-    quotation_1_received_at?: string | null;
-    quotation_2_number?: string | null;
-    quotation_2_received_at?: string | null;
-    quotation_3_number?: string | null;
-    quotation_3_received_at?: string | null;
+    requestNumber?: string | null;
+    receivedAt?: string | null;
+    quotation1Number?: string | null;
+    quotation1ReceivedAt?: string | null;
+    quotation2Number?: string | null;
+    quotation2ReceivedAt?: string | null;
+    quotation3Number?: string | null;
+    quotation3ReceivedAt?: string | null;
     notes?: string | null;
   };
 }
@@ -31,16 +31,16 @@ function formatDate(dateStr: string | null | undefined): string {
 export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
   const quotations = [
     {
-      number: analysis.quotation_1_number,
-      date: analysis.quotation_1_received_at,
+      number: analysis.quotation1Number,
+      date: analysis.quotation1ReceivedAt,
     },
     {
-      number: analysis.quotation_2_number,
-      date: analysis.quotation_2_received_at,
+      number: analysis.quotation2Number,
+      date: analysis.quotation2ReceivedAt,
     },
     {
-      number: analysis.quotation_3_number,
-      date: analysis.quotation_3_received_at,
+      number: analysis.quotation3Number,
+      date: analysis.quotation3ReceivedAt,
     },
   ].filter((q) => q.number);
 
@@ -55,13 +55,13 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
             <div className="flex flex-col gap-1.5">
               <label className="ds-label mb-0">Nº da solicitação</label>
               <div className="ds-field-readonly">
-                {analysis.request_number ?? "—"}
+                {analysis.requestNumber ?? "—"}
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="ds-label mb-0">Data de recebimento</label>
               <div className="ds-field-readonly">
-                {formatDate(analysis.received_at)}
+                {formatDate(analysis.receivedAt)}
               </div>
             </div>
           </div>

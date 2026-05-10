@@ -39,15 +39,13 @@ export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
       "Notificações por WhatsApp",
     ],
     theme: {
-      gradient: "from-slate-800 via-slate-800 to-slate-900",
-      accent: "bg-teal-400",
-      badgeBg: "bg-teal-500",
-      badgeText: "text-white",
-      ring: "border-teal-400/80",
-      buttonBg: "bg-teal-500 hover:bg-teal-600",
-      buttonText: "text-white",
-      iconBg: "bg-teal-500/15",
-      iconColor: "text-teal-300",
+      accent: "bg-teal-500 hover:bg-teal-600",
+      iconBg: "bg-teal-500",
+      iconColor: "text-white",
+      checkColor: "text-teal-500",
+      ringBorder: "border-teal-500",
+      selectedBg: "bg-teal-50/40",
+      priceColor: "text-teal-600",
     },
   },
   essencial: {
@@ -60,15 +58,13 @@ export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
       "Relatórios e exportação CSV/PDF",
     ],
     theme: {
-      gradient: "from-slate-800 via-blue-900/40 to-slate-900",
-      accent: "bg-blue-400",
-      badgeBg: "bg-blue-500",
-      badgeText: "text-white",
-      ring: "border-blue-400/80",
-      buttonBg: "bg-blue-500 hover:bg-blue-600",
-      buttonText: "text-white",
-      iconBg: "bg-blue-500/15",
-      iconColor: "text-blue-300",
+      accent: "bg-blue-500 hover:bg-blue-600",
+      iconBg: "bg-blue-500",
+      iconColor: "text-white",
+      checkColor: "text-blue-500",
+      ringBorder: "border-blue-500",
+      selectedBg: "bg-blue-50/40",
+      priceColor: "text-blue-600",
     },
   },
   profissional: {
@@ -82,15 +78,14 @@ export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
       "Onboarding guiado da equipe",
     ],
     theme: {
-      gradient: "from-purple-700 via-fuchsia-700 to-indigo-800",
-      accent: "bg-purple-400",
-      badgeBg: "bg-amber-400",
-      badgeText: "text-amber-950",
-      ring: "border-fuchsia-300",
-      buttonBg: "bg-white hover:bg-white/90",
-      buttonText: "text-purple-700",
-      iconBg: "bg-white/15",
-      iconColor: "text-amber-200",
+      accent: "bg-purple-600 hover:bg-purple-700",
+      iconBg: "bg-purple-600",
+      iconColor: "text-white",
+      checkColor: "text-purple-600",
+      ringBorder: "border-purple-500",
+      selectedBg: "bg-purple-50/50",
+      priceColor: "text-purple-600",
+      highlightGradient: "from-white via-purple-50/40 to-fuchsia-50/40",
     },
   },
   enterprise: {
@@ -103,15 +98,13 @@ export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
       "Auditoria avançada e compliance",
     ],
     theme: {
-      gradient: "from-slate-900 via-indigo-950 to-black",
-      accent: "bg-indigo-400",
-      badgeBg: "bg-indigo-500",
-      badgeText: "text-white",
-      ring: "border-indigo-300",
-      buttonBg: "bg-indigo-500 hover:bg-indigo-600",
-      buttonText: "text-white",
-      iconBg: "bg-indigo-500/15",
-      iconColor: "text-indigo-300",
+      accent: "bg-indigo-600 hover:bg-indigo-700",
+      iconBg: "bg-indigo-600",
+      iconColor: "text-white",
+      checkColor: "text-indigo-600",
+      ringBorder: "border-indigo-500",
+      selectedBg: "bg-indigo-50/40",
+      priceColor: "text-indigo-600",
     },
   },
 };
@@ -228,7 +221,6 @@ export function Step1PersonalData({ data, onChange, fieldErrors }: Step1Props) {
         label="Nome completo"
         type="text"
         autoComplete="name"
-        required
         value={data.name}
         onChange={(e) => onChange("name", e.target.value)}
         placeholder="Seu nome completo"
@@ -242,7 +234,6 @@ export function Step1PersonalData({ data, onChange, fieldErrors }: Step1Props) {
         label="E-mail"
         type="email"
         autoComplete="email"
-        required
         value={data.email}
         onChange={(e) => onChange("email", e.target.value)}
         placeholder="seu@email.com"
@@ -257,7 +248,6 @@ export function Step1PersonalData({ data, onChange, fieldErrors }: Step1Props) {
         type="tel"
         autoComplete="tel"
         mask="phone"
-        required
         value={data.phone}
         onChange={(e) => onChange("phone", e.target.value)}
         placeholder="(00) 00000-0000"
@@ -270,7 +260,6 @@ export function Step1PersonalData({ data, onChange, fieldErrors }: Step1Props) {
         name="password"
         label="Senha"
         autoComplete="new-password"
-        required
         showRequirements
         value={data.password}
         onChange={(e) => onChange("password", e.target.value)}
@@ -284,7 +273,6 @@ export function Step1PersonalData({ data, onChange, fieldErrors }: Step1Props) {
         name="confirmPassword"
         label="Confirmar senha"
         autoComplete="new-password"
-        required
         value={data.confirmPassword}
         onChange={(e) => onChange("confirmPassword", e.target.value)}
         placeholder="Digite a senha novamente"
@@ -346,7 +334,6 @@ export function Step2Profile({ data, onChange, fieldErrors }: Step2Props) {
               id="crm"
               name="crm"
               label="CRM"
-              required
               type="text"
               value={data.crm}
               onChange={(e) => onChange("crm", e.target.value)}
@@ -358,11 +345,10 @@ export function Step2Profile({ data, onChange, fieldErrors }: Step2Props) {
               id="crm-state"
               name="crm-state"
               label="UF"
-              required
               value={data.crmState}
               onChange={(e) => onChange("crmState", e.target.value)}
               options={[
-                { value: "", label: "UF" },
+                { value: "", label: "Selecione" },
                 ...BRAZILIAN_STATES.map((uf) => ({ value: uf, label: uf })),
               ]}
               className="min-h-[42px] bg-white"
@@ -372,7 +358,7 @@ export function Step2Profile({ data, onChange, fieldErrors }: Step2Props) {
           <Input
             id="specialty"
             name="specialty"
-            label="Especialidade"
+            label="Especialidade (opcional)"
             type="text"
             value={data.specialty}
             onChange={(e) => onChange("specialty", e.target.value)}
@@ -469,26 +455,16 @@ export function Step3Plan({
 
   return (
     <div className="space-y-6">
-      {/* Toggle Free Trial vs Plano */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold text-white">
-            {trialMode ? "Comece com 30 dias grátis" : "Escolha seu plano"}
-          </h3>
-          <p className="text-xs text-white/60 mt-1">
-            {trialMode
-              ? "Você usa todos os recursos do plano escolhido por 30 dias, sem cartão."
-              : "Todos os planos começam com 30 dias grátis. Você decide depois."}
-          </p>
-        </div>
-        <div className="inline-flex bg-white/5 border border-white/10 rounded-full p-1 backdrop-blur-sm">
+      {/* Toggle Free Trial vs Preços */}
+      <div className="flex justify-center">
+        <div className="inline-flex bg-white border border-gray-200 rounded-full p-1 shadow-sm">
           <button
             type="button"
             onClick={() => onToggleTrialMode(true)}
-            className={`px-4 py-2 text-xs font-medium rounded-full transition-all ${
+            className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all ${
               trialMode
-                ? "bg-teal-500 text-white shadow"
-                : "text-white/70 hover:text-white"
+                ? "bg-teal-500 text-white shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
             }`}
           >
             Free Trial
@@ -496,10 +472,10 @@ export function Step3Plan({
           <button
             type="button"
             onClick={() => onToggleTrialMode(false)}
-            className={`px-4 py-2 text-xs font-medium rounded-full transition-all ${
+            className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all ${
               !trialMode
-                ? "bg-white text-slate-900 shadow"
-                : "text-white/70 hover:text-white"
+                ? "bg-gray-900 text-white shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
             }`}
           >
             Ver preços
@@ -509,17 +485,17 @@ export function Step3Plan({
 
       {/* Grid de planos */}
       {plansLoading ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-white/60">Carregando planos...</p>
+        <div className="flex flex-col items-center justify-center py-12 gap-3">
+          <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500">Carregando planos...</p>
         </div>
       ) : sortedPlans.length === 0 ? (
-        <div className="bg-amber-500/10 border border-amber-400/30 rounded-2xl p-5 text-sm text-amber-200">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
           Não foi possível carregar os planos no momento. Sua conta será criada
           em modo Free Trial e você poderá escolher um plano depois.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 items-stretch">
           {sortedPlans.map((plan) => {
             const presentation = getPresentation(plan.slug);
             return (
@@ -538,24 +514,6 @@ export function Step3Plan({
           })}
         </div>
       )}
-
-      {/* Garantias */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-        {[
-          { icon: "🔒", text: "Pagamento seguro com criptografia" },
-          { icon: "🔄", text: "Cancele a qualquer momento" },
-          { icon: "🎁", text: "30 dias grátis em todos os planos" },
-        ].map((g) => (
-          <div
-            key={g.text}
-            className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 backdrop-blur-sm"
-          >
-            <span className="text-xl">{g.icon}</span>
-            <span className="text-xs text-white/80">{g.text}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
-

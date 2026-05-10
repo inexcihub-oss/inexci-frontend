@@ -19,7 +19,7 @@ type ContestMethod = "email" | "document";
 interface AuthorizationEntry {
   id: string | number;
   quantity: number;
-  authorized_quantity: string;
+  authorizedQuantity: string;
 }
 
 interface UpdateAuthorizationsModalProps {
@@ -52,23 +52,23 @@ export function UpdateAuthorizationsModal({
   const [isSaving, setIsSaving] = useState(false);
 
   const [tussAuth, setTussAuth] = useState<AuthorizationEntry[]>(() =>
-    (solicitacao?.tuss_items ?? []).map((p) => ({
+    (solicitacao?.tussItems ?? []).map((p) => ({
       id: p.id,
       quantity: p.quantity ?? 1,
-      authorized_quantity:
-        p.authorized_quantity != null
-          ? String(p.authorized_quantity)
+      authorizedQuantity:
+        p.authorizedQuantity != null
+          ? String(p.authorizedQuantity)
           : String(p.quantity ?? 1),
     })),
   );
 
   const [opmeAuth, setOpmeAuth] = useState<AuthorizationEntry[]>(() =>
-    (solicitacao?.opme_items ?? []).map((o) => ({
+    (solicitacao?.opmeItems ?? []).map((o) => ({
       id: o.id,
       quantity: o.quantity ?? 1,
-      authorized_quantity:
-        o.authorized_quantity != null
-          ? String(o.authorized_quantity)
+      authorizedQuantity:
+        o.authorizedQuantity != null
+          ? String(o.authorizedQuantity)
           : String(o.quantity ?? 1),
     })),
   );
@@ -109,22 +109,22 @@ export function UpdateAuthorizationsModal({
       { date: "", time: "00:00" },
     ]);
     setTussAuth(
-      (solicitacao?.tuss_items ?? []).map((p) => ({
+      (solicitacao?.tussItems ?? []).map((p) => ({
         id: p.id,
         quantity: p.quantity ?? 1,
-        authorized_quantity:
-          p.authorized_quantity != null
-            ? String(p.authorized_quantity)
+        authorizedQuantity:
+          p.authorizedQuantity != null
+            ? String(p.authorizedQuantity)
             : String(p.quantity ?? 1),
       })),
     );
     setOpmeAuth(
-      (solicitacao?.opme_items ?? []).map((o) => ({
+      (solicitacao?.opmeItems ?? []).map((o) => ({
         id: o.id,
         quantity: o.quantity ?? 1,
-        authorized_quantity:
-          o.authorized_quantity != null
-            ? String(o.authorized_quantity)
+        authorizedQuantity:
+          o.authorizedQuantity != null
+            ? String(o.authorizedQuantity)
             : String(o.quantity ?? 1),
       })),
     );
@@ -140,12 +140,12 @@ export function UpdateAuthorizationsModal({
     useSwipeToClose(handleClose);
 
   const hasSomeAuthorization =
-    tussAuth.some((e) => e.authorized_quantity !== "") ||
-    opmeAuth.some((e) => e.authorized_quantity !== "");
+    tussAuth.some((e) => e.authorizedQuantity !== "") ||
+    opmeAuth.some((e) => e.authorizedQuantity !== "");
 
   const hasPartialOrRejected = [...tussAuth, ...opmeAuth].some((e) => {
-    const auth = Number(e.authorized_quantity);
-    return e.authorized_quantity !== "" && (auth === 0 || auth < e.quantity);
+    const auth = Number(e.authorizedQuantity);
+    return e.authorizedQuantity !== "" && (auth === 0 || auth < e.quantity);
   });
 
   const handleAccept = async () => {
@@ -164,11 +164,11 @@ export function UpdateAuthorizationsModal({
         solicitacao.id,
         tussAuth.map((e) => ({
           id: e.id,
-          authorized_quantity: Number(e.authorized_quantity) || 0,
+          authorizedQuantity: Number(e.authorizedQuantity) || 0,
         })),
         opmeAuth.map((e) => ({
           id: e.id,
-          authorized_quantity: Number(e.authorized_quantity) || 0,
+          authorizedQuantity: Number(e.authorizedQuantity) || 0,
         })),
       );
 
@@ -178,11 +178,11 @@ export function UpdateAuthorizationsModal({
         solicitacao.id,
         tussAuth.map((e) => ({
           id: e.id,
-          authorized_quantity: Number(e.authorized_quantity) || 0,
+          authorizedQuantity: Number(e.authorizedQuantity) || 0,
         })),
         opmeAuth.map((e) => ({
           id: e.id,
-          authorized_quantity: Number(e.authorized_quantity) || 0,
+          authorizedQuantity: Number(e.authorizedQuantity) || 0,
         })),
       );
 
@@ -195,7 +195,7 @@ export function UpdateAuthorizationsModal({
           return new Date(datetime).toISOString();
         });
       const payload: AcceptAuthorizationPayload = {
-        date_options: validDates,
+        dateOptions: validDates,
       };
       await surgeryRequestService.acceptAuthorization(solicitacao.id, payload);
       showToast("Autorização aceita! Status: Em Agendamento", "success");
@@ -220,11 +220,11 @@ export function UpdateAuthorizationsModal({
         solicitacao.id,
         tussAuth.map((e) => ({
           id: e.id,
-          authorized_quantity: Number(e.authorized_quantity) || 0,
+          authorizedQuantity: Number(e.authorizedQuantity) || 0,
         })),
         opmeAuth.map((e) => ({
           id: e.id,
-          authorized_quantity: Number(e.authorized_quantity) || 0,
+          authorizedQuantity: Number(e.authorizedQuantity) || 0,
         })),
       );
 
@@ -362,15 +362,15 @@ export function UpdateAuthorizationsModal({
                 items={tussAuth}
                 labelHeader="Procedimento"
                 renderLabel={(item) => {
-                  const proc = solicitacao.tuss_items?.find(
+                  const proc = solicitacao.tussItems?.find(
                     (p) => p.id === item.id,
                   );
-                  return `${proc?.tuss_code ?? ""} — ${proc?.name ?? ""}`;
+                  return `${proc?.tussCode ?? ""} — ${proc?.name ?? ""}`;
                 }}
                 onChange={(id, val) =>
                   setTussAuth((prev) =>
                     prev.map((e) =>
-                      e.id === id ? { ...e, authorized_quantity: val } : e,
+                      e.id === id ? { ...e, authorizedQuantity: val } : e,
                     ),
                   )
                 }
@@ -399,7 +399,7 @@ export function UpdateAuthorizationsModal({
                   items={opmeAuth}
                   labelHeader="Descrição"
                   renderLabel={(item) => {
-                    const opme = solicitacao.opme_items?.find(
+                    const opme = solicitacao.opmeItems?.find(
                       (o) => o.id === item.id,
                     );
                     return opme?.name ?? String(item.id);
@@ -407,7 +407,7 @@ export function UpdateAuthorizationsModal({
                   onChange={(id, val) =>
                     setOpmeAuth((prev) =>
                       prev.map((e) =>
-                        e.id === id ? { ...e, authorized_quantity: val } : e,
+                        e.id === id ? { ...e, authorizedQuantity: val } : e,
                       ),
                     )
                   }
@@ -448,15 +448,15 @@ export function UpdateAuthorizationsModal({
                   <SummaryTable
                     labelHeader="Procedimento"
                     items={tussAuth.map((e) => {
-                      const proc = solicitacao.tuss_items?.find(
+                      const proc = solicitacao.tussItems?.find(
                         (p) => p.id === e.id,
                       );
                       return {
-                        label: `${proc?.tuss_code ?? ""} — ${proc?.name ?? ""}`,
+                        label: `${proc?.tussCode ?? ""} — ${proc?.name ?? ""}`,
                         requested: e.quantity,
                         authorized:
-                          e.authorized_quantity !== ""
-                            ? Number(e.authorized_quantity)
+                          e.authorizedQuantity !== ""
+                            ? Number(e.authorizedQuantity)
                             : null,
                       };
                     })}
@@ -471,15 +471,15 @@ export function UpdateAuthorizationsModal({
                   <SummaryTable
                     labelHeader="Descrição"
                     items={opmeAuth.map((e) => {
-                      const opme = solicitacao.opme_items?.find(
+                      const opme = solicitacao.opmeItems?.find(
                         (o) => o.id === e.id,
                       );
                       return {
                         label: opme?.name ?? String(e.id),
                         requested: e.quantity,
                         authorized:
-                          e.authorized_quantity !== ""
-                            ? Number(e.authorized_quantity)
+                          e.authorizedQuantity !== ""
+                            ? Number(e.authorizedQuantity)
                             : null,
                       };
                     })}
@@ -745,7 +745,7 @@ function AuthorizationTable({
             <input
               type="number"
               min="0"
-              value={item.authorized_quantity}
+              value={item.authorizedQuantity}
               onChange={(e) => onChange(item.id, e.target.value)}
               className="ds-input w-14 h-10 !px-0 text-center font-semibold appearance-none"
             />

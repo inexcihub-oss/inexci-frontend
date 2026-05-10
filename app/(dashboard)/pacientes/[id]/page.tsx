@@ -47,19 +47,19 @@ export default function PacienteDetalhePage() {
     cpf: "",
     email: "",
     phone: "",
-    birth_date: "",
+    birthDate: "",
     gender: "",
     address: "",
-    address_number: "",
-    address_complement: "",
+    addressNumber: "",
+    addressComplement: "",
     neighborhood: "",
     city: "",
     state: "",
-    zip_code: "",
-    health_plan_id: "",
-    health_plan_number: "",
-    health_plan_type: "",
-    medical_notes: "",
+    zipCode: "",
+    healthPlanId: "",
+    healthPlanNumber: "",
+    healthPlanType: "",
+    medicalNotes: "",
   });
   const [originalData, setOriginalData] = useState<typeof formData | null>(
     null,
@@ -110,38 +110,38 @@ export default function PacienteDetalhePage() {
         cpf: patientData.cpf || "",
         email: patientData.email || "",
         phone: patientData.phone || "",
-        birth_date: patientData.birth_date || "",
+        birthDate: patientData.birthDate || "",
         gender: patientData.gender || "",
         address: patientData.address || "",
-        address_number: patientData.address_number || "",
-        address_complement: patientData.address_complement || "",
+        addressNumber: patientData.addressNumber || "",
+        addressComplement: patientData.addressComplement || "",
         neighborhood: patientData.neighborhood || "",
         city: patientData.city || "",
         state: patientData.state || "",
-        zip_code: patientData.zip_code || "",
-        health_plan_id: patientData.health_plan_id || "",
-        health_plan_number: patientData.health_plan_number || "",
-        health_plan_type: patientData.health_plan_type || "",
-        medical_notes: patientData.medical_notes || "",
+        zipCode: patientData.zipCode || "",
+        healthPlanId: patientData.healthPlanId || "",
+        healthPlanNumber: patientData.healthPlanNumber || "",
+        healthPlanType: patientData.healthPlanType || "",
+        medicalNotes: patientData.medicalNotes || "",
       });
       setOriginalData({
         name: patientData.name || "",
         cpf: patientData.cpf || "",
         email: patientData.email || "",
         phone: patientData.phone || "",
-        birth_date: patientData.birth_date || "",
+        birthDate: patientData.birthDate || "",
         gender: patientData.gender || "",
         address: patientData.address || "",
-        address_number: patientData.address_number || "",
-        address_complement: patientData.address_complement || "",
+        addressNumber: patientData.addressNumber || "",
+        addressComplement: patientData.addressComplement || "",
         neighborhood: patientData.neighborhood || "",
         city: patientData.city || "",
         state: patientData.state || "",
-        zip_code: patientData.zip_code || "",
-        health_plan_id: patientData.health_plan_id || "",
-        health_plan_number: patientData.health_plan_number || "",
-        health_plan_type: patientData.health_plan_type || "",
-        medical_notes: patientData.medical_notes || "",
+        zipCode: patientData.zipCode || "",
+        healthPlanId: patientData.healthPlanId || "",
+        healthPlanNumber: patientData.healthPlanNumber || "",
+        healthPlanType: patientData.healthPlanType || "",
+        medicalNotes: patientData.medicalNotes || "",
       });
     } catch (error) {
       logger.error("Erro ao carregar paciente:", error);
@@ -164,19 +164,19 @@ export default function PacienteDetalhePage() {
         cpf: formData.cpf || undefined,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
-        birth_date: formData.birth_date || undefined,
+        birthDate: formData.birthDate || undefined,
         gender: formData.gender || undefined,
         address: formData.address || undefined,
-        address_number: formData.address_number || undefined,
-        address_complement: formData.address_complement || undefined,
+        addressNumber: formData.addressNumber || undefined,
+        addressComplement: formData.addressComplement || undefined,
         neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
-        zip_code: formData.zip_code.replace(/\D/g, "") || undefined,
-        health_plan_id: formData.health_plan_id || undefined,
-        health_plan_number: formData.health_plan_number || undefined,
-        health_plan_type: formData.health_plan_type || undefined,
-        medical_notes: formData.medical_notes || undefined,
+        zipCode: formData.zipCode.replace(/\D/g, "") || undefined,
+        healthPlanId: formData.healthPlanId || undefined,
+        healthPlanNumber: formData.healthPlanNumber || undefined,
+        healthPlanType: formData.healthPlanType || undefined,
+        medicalNotes: formData.medicalNotes || undefined,
       });
       setOriginalData(formData);
       showToast("Paciente atualizado com sucesso!", "success");
@@ -260,12 +260,12 @@ export default function PacienteDetalhePage() {
               border: "border-gray-200",
             };
             const procedureName =
-              (surgery as any).procedure_name ||
+              (surgery as any).procedureName ||
               surgery.procedure?.name ||
-              surgery.tuss_procedure?.description ||
+              surgery.tussProcedure?.description ||
               "Procedimento não especificado";
-            const date = surgery.created_at
-              ? formatDate(surgery.created_at)
+            const date = surgery.createdAt
+              ? formatDate(surgery.createdAt)
               : "—";
             return (
               <div
@@ -323,8 +323,8 @@ export default function PacienteDetalhePage() {
             />
             <DateInput
               label="Data de nascimento"
-              value={formData.birth_date}
-              onChange={(v) => handleInputChange("birth_date", v)}
+              value={formData.birthDate}
+              onChange={(v) => handleInputChange("birthDate", v)}
             />
             <Select
               label="Gênero"
@@ -362,16 +362,16 @@ export default function PacienteDetalhePage() {
             </div>
             <Input
               label="Número"
-              value={formData.address_number}
+              value={formData.addressNumber}
               onChange={(e) =>
-                handleInputChange("address_number", e.target.value)
+                handleInputChange("addressNumber", e.target.value)
               }
             />
             <Input
               label="Complemento"
-              value={formData.address_complement}
+              value={formData.addressComplement}
               onChange={(e) =>
-                handleInputChange("address_complement", e.target.value)
+                handleInputChange("addressComplement", e.target.value)
               }
             />
             <Input
@@ -394,9 +394,9 @@ export default function PacienteDetalhePage() {
             />
             <Input
               label="CEP"
-              value={formData.zip_code.replace(/^(\d{5})(\d)/, "$1-$2")}
+              value={formData.zipCode.replace(/^(\d{5})(\d)/, "$1-$2")}
               onChange={(e) =>
-                handleInputChange("zip_code", e.target.value.replace(/\D/g, ""))
+                handleInputChange("zipCode", e.target.value.replace(/\D/g, ""))
               }
               placeholder="00000-000"
             />
@@ -408,17 +408,17 @@ export default function PacienteDetalhePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Select
               label="Convênio"
-              value={formData.health_plan_id}
+              value={formData.healthPlanId}
               onChange={(e) =>
-                handleInputChange("health_plan_id", e.target.value)
+                handleInputChange("healthPlanId", e.target.value)
               }
               options={healthPlanOptions}
             />
             <Input
               label="Número da carteirinha"
-              value={formData.health_plan_number}
+              value={formData.healthPlanNumber}
               onChange={(e) =>
-                handleInputChange("health_plan_number", e.target.value)
+                handleInputChange("healthPlanNumber", e.target.value)
               }
               placeholder="Número do convênio"
             />

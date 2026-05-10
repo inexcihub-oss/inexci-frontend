@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import Loading from "@/components/ui/Loading";
 import Sidebar from "@/components/Sidebar";
 import BottomNavBar from "@/components/BottomNavBar";
@@ -44,41 +45,43 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-white overflow-hidden">
-      {/* Sidebar - apenas visível no desktop ou como drawer */}
-      <Sidebar
-        isMobileOpen={isMobileMenuOpen}
-        onMobileClose={() => setIsMobileMenuOpen(false)}
-      />
+    <NotificationsProvider>
+      <div className="flex h-screen bg-white overflow-hidden">
+        {/* Sidebar - apenas visível no desktop ou como drawer */}
+        <Sidebar
+          isMobileOpen={isMobileMenuOpen}
+          onMobileClose={() => setIsMobileMenuOpen(false)}
+        />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header Mobile - Compacto com logo e ações */}
-        <header className="flex items-center justify-between px-4 h-14 border-b border-neutral-100 lg:hidden">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/brand/icon.png"
-              alt="Inexci"
-              width={28}
-              height={28}
-              className="object-contain"
-            />
-            <span className="text-sm font-semibold text-neutral-900">
-              Inexci
-            </span>
-          </div>
-          <MobileHeaderActions />
-        </header>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header Mobile - Compacto com logo e ações */}
+          <header className="flex items-center justify-between px-4 h-14 border-b border-neutral-100 lg:hidden">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/brand/icon.png"
+                alt="Inexci"
+                width={28}
+                height={28}
+                className="object-contain"
+              />
+              <span className="text-sm font-semibold text-neutral-900">
+                Inexci
+              </span>
+            </div>
+            <MobileHeaderActions />
+          </header>
 
-        <BillingStatusBanner />
+          <BillingStatusBanner />
 
-        {/* Conteúdo principal com padding para bottom nav no mobile */}
-        <main className="flex-1 overflow-hidden pb-16 lg:pb-0">
-          <ConsentGate>{children}</ConsentGate>
-        </main>
+          {/* Conteúdo principal com padding para bottom nav no mobile */}
+          <main className="flex-1 overflow-hidden pb-16 lg:pb-0">
+            <ConsentGate>{children}</ConsentGate>
+          </main>
+        </div>
+
+        {/* Bottom Navigation - apenas mobile */}
+        <BottomNavBar />
       </div>
-
-      {/* Bottom Navigation - apenas mobile */}
-      <BottomNavBar />
-    </div>
+    </NotificationsProvider>
   );
 }

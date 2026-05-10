@@ -18,19 +18,6 @@ describe("notificationService", () => {
     vi.clearAllMocks();
   });
 
-  describe("getUnreadCount", () => {
-    it("deve chamar GET /notifications/unread-count", async () => {
-      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: { count: 5 },
-      });
-
-      const result = await notificationService.getUnreadCount();
-
-      expect(api.get).toHaveBeenCalledWith("/notifications/unread-count");
-      expect(result).toBe(5);
-    });
-  });
-
   describe("markAllAsRead", () => {
     it("deve chamar PUT /notifications/read-all", async () => {
       (api.put as ReturnType<typeof vi.fn>).mockResolvedValue({});

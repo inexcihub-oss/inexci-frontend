@@ -24,8 +24,8 @@ describe("patientService", () => {
         {
           id: "1",
           name: "Paciente 1",
-          created_at: "2024-01-01",
-          updated_at: "2024-01-01",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
         },
       ];
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -48,8 +48,8 @@ describe("patientService", () => {
         {
           id: "abc-123",
           name: "Paciente Específico",
-          created_at: "2024-01-01",
-          updated_at: "2024-01-01",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-01",
         },
       ];
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({

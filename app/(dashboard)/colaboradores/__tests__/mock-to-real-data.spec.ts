@@ -15,12 +15,12 @@ import { formatTimeAgo } from "@/lib/formatters";
 
 interface RawSurgeryRequest {
   id: number;
-  doctor_id: string;
+  doctorId: string;
   patient: { id: number; name: string };
   procedure: { name: string } | null;
-  is_indication?: boolean;
-  indication_name?: string;
-  created_at: string;
+  isIndication?: boolean;
+  indicationName?: string;
+  createdAt: string;
 }
 
 interface RawPatient {
@@ -37,7 +37,7 @@ function filterByDoctorId(
   records: RawSurgeryRequest[],
   doctorId: string,
 ): RawSurgeryRequest[] {
-  return records.filter((r) => String(r.doctor_id) === String(doctorId));
+  return records.filter((r) => String(r.doctorId) === String(doctorId));
 }
 
 function mapToSidebarRequest(record: RawSurgeryRequest) {
@@ -45,10 +45,10 @@ function mapToSidebarRequest(record: RawSurgeryRequest) {
     id: String(record.id),
     patientName: record.patient?.name || "Paciente",
     procedure:
-      record.is_indication && record.indication_name
-        ? record.indication_name
+      record.isIndication && record.indicationName
+        ? record.indicationName
         : record.procedure?.name || "Procedimento",
-    time: formatTimeAgo(record.created_at),
+    time: formatTimeAgo(record.createdAt),
   };
 }
 
@@ -138,33 +138,33 @@ describe("TASK-FE-I02 — Dados reais nas páginas de detalhe", () => {
     const mockRecords: RawSurgeryRequest[] = [
       {
         id: 1,
-        doctor_id: "doc-1",
+        doctorId: "doc-1",
         patient: { id: 10, name: "Maria Silva" },
         procedure: { name: "Artroscopia" },
-        created_at: "2026-04-10T10:00:00Z",
+        createdAt: "2026-04-10T10:00:00Z",
       },
       {
         id: 2,
-        doctor_id: "doc-2",
+        doctorId: "doc-2",
         patient: { id: 11, name: "João Santos" },
         procedure: { name: "Cirurgia de Menisco" },
-        created_at: "2026-04-11T10:00:00Z",
+        createdAt: "2026-04-11T10:00:00Z",
       },
       {
         id: 3,
-        doctor_id: "doc-1",
+        doctorId: "doc-1",
         patient: { id: 12, name: "Ana Souza" },
         procedure: { name: "Reconstrução LCA" },
-        created_at: "2026-04-12T10:00:00Z",
+        createdAt: "2026-04-12T10:00:00Z",
       },
       {
         id: 4,
-        doctor_id: "doc-3",
+        doctorId: "doc-3",
         patient: { id: 13, name: "Pedro Oliveira" },
         procedure: null,
-        is_indication: true,
-        indication_name: "Procedimento Indicado",
-        created_at: "2026-04-13T10:00:00Z",
+        isIndication: true,
+        indicationName: "Procedimento Indicado",
+        createdAt: "2026-04-13T10:00:00Z",
       },
     ];
 
@@ -183,10 +183,10 @@ describe("TASK-FE-I02 — Dados reais nas páginas de detalhe", () => {
       const records = [
         {
           id: 10,
-          doctor_id: "42",
+          doctorId: "42",
           patient: { id: 1, name: "Teste" },
           procedure: { name: "Proc" },
-          created_at: "2026-04-10T10:00:00Z",
+          createdAt: "2026-04-10T10:00:00Z",
         },
       ];
       const filtered = filterByDoctorId(records, "42");
@@ -207,10 +207,10 @@ describe("TASK-FE-I02 — Dados reais nas páginas de detalhe", () => {
     it("mapeia corretamente um registro com procedure", () => {
       const record: RawSurgeryRequest = {
         id: 1,
-        doctor_id: "doc-1",
+        doctorId: "doc-1",
         patient: { id: 10, name: "Maria Silva" },
         procedure: { name: "Artroscopia de Joelho" },
-        created_at: "2026-04-14T12:00:00Z",
+        createdAt: "2026-04-14T12:00:00Z",
       };
       const mapped = mapToSidebarRequest(record);
       expect(mapped).toEqual({
@@ -224,12 +224,12 @@ describe("TASK-FE-I02 — Dados reais nas páginas de detalhe", () => {
     it("usa indication_name quando is_indication é true", () => {
       const record: RawSurgeryRequest = {
         id: 2,
-        doctor_id: "doc-1",
+        doctorId: "doc-1",
         patient: { id: 11, name: "João" },
         procedure: null,
-        is_indication: true,
-        indication_name: "Indicação Especial",
-        created_at: "2026-04-13T12:00:00Z",
+        isIndication: true,
+        indicationName: "Indicação Especial",
+        createdAt: "2026-04-13T12:00:00Z",
       };
       const mapped = mapToSidebarRequest(record);
       expect(mapped.procedure).toBe("Indicação Especial");
@@ -238,10 +238,10 @@ describe("TASK-FE-I02 — Dados reais nas páginas de detalhe", () => {
     it('usa "Procedimento" como fallback quando procedure é null', () => {
       const record: RawSurgeryRequest = {
         id: 3,
-        doctor_id: "doc-1",
+        doctorId: "doc-1",
         patient: { id: 12, name: "Ana" },
         procedure: null,
-        created_at: "2026-04-12T12:00:00Z",
+        createdAt: "2026-04-12T12:00:00Z",
       };
       const mapped = mapToSidebarRequest(record);
       expect(mapped.procedure).toBe("Procedimento");
@@ -250,10 +250,10 @@ describe("TASK-FE-I02 — Dados reais nas páginas de detalhe", () => {
     it('usa "Paciente" como fallback quando patient.name é vazio', () => {
       const record: RawSurgeryRequest = {
         id: 4,
-        doctor_id: "doc-1",
+        doctorId: "doc-1",
         patient: { id: 13, name: "" },
         procedure: { name: "Proc" },
-        created_at: "2026-04-11T12:00:00Z",
+        createdAt: "2026-04-11T12:00:00Z",
       };
       const mapped = mapToSidebarRequest(record);
       // Nota: string vazia é falsy, então cai no fallback

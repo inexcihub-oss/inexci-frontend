@@ -62,13 +62,13 @@ export function SchedulingSection({
   onEditDateOptions,
   onReschedule,
 }: SchedulingSectionProps) {
-  const dateOptions: string[] = (solicitacao?.scheduling?.date_options ??
-    solicitacao?.date_options ??
+  const dateOptions: string[] = (solicitacao?.scheduling?.dateOptions ??
+    solicitacao?.dateOptions ??
     []) as string[];
 
   const surgeryDate: string | null =
-    solicitacao?.surgery_date ??
-    solicitacao?.scheduling?.confirmed_date ??
+    solicitacao?.surgeryDate ??
+    (solicitacao?.scheduling?.confirmedDate as string | null | undefined) ??
     null;
 
   // Índice confirmado pelo backend (usado apenas para referência)

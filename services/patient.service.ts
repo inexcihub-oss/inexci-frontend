@@ -7,19 +7,19 @@ export interface Patient {
   email?: string;
   phone?: string;
   cpf?: string;
-  birth_date?: string;
+  birthDate?: string;
   gender?: string;
   address?: string;
-  address_number?: string;
-  address_complement?: string;
+  addressNumber?: string;
+  addressComplement?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
-  zip_code?: string;
-  health_plan_id?: string;
-  health_plan_number?: string;
-  health_plan_type?: string;
-  medical_notes?: string;
+  zipCode?: string;
+  healthPlanId?: string;
+  healthPlanNumber?: string;
+  healthPlanType?: string;
+  medicalNotes?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -29,19 +29,19 @@ export interface UpdatePatientPayload {
   email?: string;
   phone?: string;
   cpf?: string;
-  birth_date?: string;
+  birthDate?: string;
   gender?: string;
   address?: string;
-  address_number?: string;
-  address_complement?: string;
+  addressNumber?: string;
+  addressComplement?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
-  zip_code?: string;
-  health_plan_id?: string;
-  health_plan_number?: string;
-  health_plan_type?: string;
-  medical_notes?: string;
+  zipCode?: string;
+  healthPlanId?: string;
+  healthPlanNumber?: string;
+  healthPlanType?: string;
+  medicalNotes?: string;
 }
 
 export interface CreatePatientPayload extends UpdatePatientPayload {
@@ -54,21 +54,50 @@ interface BackendPatient {
   email?: string;
   phone?: string;
   cpf?: string;
-  birth_date?: string | Date;
+  birthDate?: string | Date;
   gender?: string;
   address?: string;
-  address_number?: string;
-  address_complement?: string;
+  addressNumber?: string;
+  addressComplement?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
-  zip_code?: string;
-  health_plan_id?: string;
-  health_plan_number?: string;
-  health_plan_type?: string;
-  medical_notes?: string;
-  created_at: string;
-  updated_at: string;
+  zipCode?: string;
+  healthPlanId?: string;
+  healthPlanNumber?: string;
+  healthPlanType?: string;
+  medicalNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function mapBackendPatient(p: BackendPatient): Patient {
+  return {
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    phone: p.phone,
+    cpf: p.cpf,
+    birthDate: p.birthDate
+      ? typeof p.birthDate === "string"
+        ? p.birthDate.substring(0, 10)
+        : new Date(p.birthDate).toISOString().substring(0, 10)
+      : undefined,
+    gender: p.gender,
+    address: p.address,
+    addressNumber: p.addressNumber,
+    addressComplement: p.addressComplement,
+    neighborhood: p.neighborhood,
+    city: p.city,
+    state: p.state,
+    zipCode: p.zipCode,
+    healthPlanId: p.healthPlanId,
+    healthPlanNumber: p.healthPlanNumber,
+    healthPlanType: p.healthPlanType,
+    medicalNotes: p.medicalNotes,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
 }
 
 export const patientService = {
@@ -78,33 +107,7 @@ export const patientService = {
   async getAll(): Promise<Patient[]> {
     const response = await api.get("/patients");
     const data = getApiRecords<BackendPatient>(response.data);
-
-    return data.map((p) => ({
-      id: p.id,
-      name: p.name,
-      email: p.email,
-      phone: p.phone,
-      cpf: p.cpf,
-      birth_date: p.birth_date
-        ? typeof p.birth_date === "string"
-          ? p.birth_date.substring(0, 10)
-          : new Date(p.birth_date).toISOString().substring(0, 10)
-        : undefined,
-      gender: p.gender,
-      address: p.address,
-      address_number: p.address_number,
-      address_complement: p.address_complement,
-      neighborhood: p.neighborhood,
-      city: p.city,
-      state: p.state,
-      zip_code: p.zip_code,
-      health_plan_id: p.health_plan_id,
-      health_plan_number: p.health_plan_number,
-      health_plan_type: p.health_plan_type,
-      medical_notes: p.medical_notes,
-      createdAt: p.created_at,
-      updatedAt: p.updated_at,
-    }));
+    return data.map(mapBackendPatient);
   },
 
   /**
@@ -116,33 +119,7 @@ export const patientService = {
       const response = await api.get("/patients");
       const data = getApiRecords<BackendPatient>(response.data);
       const patient = data.find((p) => String(p.id) === String(patientId));
-      if (!patient) return null;
-      return {
-        id: patient.id,
-        name: patient.name,
-        email: patient.email,
-        phone: patient.phone,
-        cpf: patient.cpf,
-        birth_date: patient.birth_date
-          ? typeof patient.birth_date === "string"
-            ? patient.birth_date.substring(0, 10)
-            : new Date(patient.birth_date).toISOString().substring(0, 10)
-          : undefined,
-        gender: patient.gender,
-        address: patient.address,
-        address_number: patient.address_number,
-        address_complement: patient.address_complement,
-        neighborhood: patient.neighborhood,
-        city: patient.city,
-        state: patient.state,
-        zip_code: patient.zip_code,
-        health_plan_id: patient.health_plan_id,
-        health_plan_number: patient.health_plan_number,
-        health_plan_type: patient.health_plan_type,
-        medical_notes: patient.medical_notes,
-        createdAt: patient.created_at,
-        updatedAt: patient.updated_at,
-      };
+      return patient ? mapBackendPatient(patient) : null;
     } catch {
       return null;
     }

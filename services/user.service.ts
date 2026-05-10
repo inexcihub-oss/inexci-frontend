@@ -13,26 +13,36 @@ export interface UserProfileResponse {
   email: string;
   phone?: string;
   document?: string;
-  birth_date?: string;
+  birthDate?: string;
   gender?: string;
-  avatar_url?: string;
-  is_doctor?: boolean;
+  avatarUrl?: string;
+  isDoctor?: boolean;
   role?: "admin" | "collaborator";
-  account_id?: string;
+  accountId?: string;
   status: number;
-  doctor_profile?: DoctorProfile;
-  created_at: string;
-  updated_at: string;
+  doctorProfile?: DoctorProfile;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UpdateProfileData {
   name?: string;
   phone?: string;
   document?: string;
-  birth_date?: string;
+  birthDate?: string;
   gender?: string;
-  avatar_url?: string;
-  signature_url?: string | null;
+  avatarUrl?: string;
+  signatureUrl?: string | null;
+  cpf?: string;
+  specialty?: string;
+  crm?: string;
+  crmState?: string;
+  cep?: string;
+  address?: string;
+  addressNumber?: string;
+  addressComplement?: string;
+  city?: string;
+  state?: string;
 }
 
 export const userService = {
@@ -76,15 +86,15 @@ export const userService = {
   },
 
   /**
-   * Atualiza o doctor_profile do médico logado
+   * Atualiza o doctorProfile do médico logado
    */
   async updateDoctorProfile(
     doctorProfileId: string,
     data: {
       crm?: string;
-      crm_state?: string;
+      crmState?: string;
       specialty?: string;
-      signature_image_url?: string | null;
+      signatureImageUrl?: string | null;
     },
   ): Promise<DoctorProfile> {
     const response = await api.patch<DoctorProfile>(
@@ -95,13 +105,13 @@ export const userService = {
   },
 
   /**
-   * Faz upload de foto de perfil e atualiza o avatar_url no perfil do usuário.
+   * Faz upload de foto de perfil e atualiza o avatarUrl no perfil do usuário.
    * @param file Arquivo de imagem selecionado pelo usuário
-   * @returns O perfil atualizado com a nova avatar_url
+   * @returns O perfil atualizado com a nova avatarUrl
    */
   async uploadAvatar(file: File): Promise<UserProfileResponse> {
     const uploadResponse = await uploadService.uploadSingle(file, "avatars");
     const avatarUrl = uploadResponse.data.url;
-    return this.updateProfile({ avatar_url: avatarUrl });
+    return this.updateProfile({ avatarUrl });
   },
 };

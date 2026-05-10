@@ -52,9 +52,9 @@ function formatDateBR(dateStr: string | undefined | null): string {
 }
 
 function parseMedicalReport(sol: any): any {
-  if (!sol?.medical_report) return {};
+  if (!sol?.medicalReport) return {};
   try {
-    return JSON.parse(sol.medical_report);
+    return JSON.parse(sol.medicalReport);
   } catch {
     return {};
   }
@@ -65,14 +65,14 @@ function buildPatientData(sol: any, parsed: any): PatientFormData {
   const p = sol?.patient;
   return {
     name: pd?.name ?? p?.name ?? "",
-    birthDate: pd?.birthDate ?? formatDateBR(p?.birth_date) ?? "",
+    birthDate: pd?.birthDate ?? formatDateBR(p?.birthDate) ?? "",
     rg: pd?.rg ?? p?.rg ?? "",
     cpf: pd?.cpf ?? p?.cpf ?? "",
     phone: pd?.phone ?? p?.phone ?? "",
     address: pd?.address ?? p?.address ?? "",
-    zipCode: pd?.zipCode ?? p?.zip_code ?? p?.cep ?? "",
+    zipCode: pd?.zipCode ?? p?.zipCode ?? p?.cep ?? "",
     healthPlan:
-      pd?.healthPlan ?? sol?.health_plan?.name ?? sol?.health_plan_name ?? "",
+      pd?.healthPlan ?? sol?.healthPlan?.name ?? sol?.healthPlanName ?? "",
   };
 }
 
@@ -275,7 +275,7 @@ export function MedicalReportEditor() {
   // O backend já converte o path para URL assinada em findOne().
   useEffect(() => {
     const doctor = solicitacao?.doctor;
-    const url: string | null = doctor?.signature_url ?? null;
+    const url: string | null = doctor?.signatureUrl ?? null;
     setSignatureUrl(url);
   }, [solicitacao]);
 
@@ -452,7 +452,7 @@ export function MedicalReportEditor() {
           const file = files[i];
           const itemId = initialItems[i].id;
           await documentService.upload({
-            surgery_request_id: solicitacao.id,
+            surgeryRequestId: solicitacao.id,
             key: "report_images",
             name: file.name.replace(/\.[^.]+$/, ""),
             file,
@@ -493,7 +493,7 @@ export function MedicalReportEditor() {
         await documentService.delete({
           id: docId,
           key,
-          surgery_request_id: solicitacao.id,
+          surgeryRequestId: solicitacao.id,
         });
         showToast("Arquivo removido", "success");
         onUpdate();
@@ -541,11 +541,11 @@ export function MedicalReportEditor() {
   const p = solicitacao?.patient;
   const patientComplete = !!(
     p?.name &&
-    p?.birth_date &&
+    p?.birthDate &&
     p?.cpf &&
     p?.phone &&
     p?.address &&
-    p?.zip_code
+    p?.zipCode
   );
 
   const progressSteps = [
@@ -709,8 +709,8 @@ export function MedicalReportEditor() {
               <div className="flex flex-col gap-1">
                 <label className="ds-label mb-0">Data de nascimento</label>
                 <div className={inputClass(false)}>
-                  {p?.birth_date ? (
-                    formatDateBR(p.birth_date)
+                  {p?.birthDate ? (
+                    formatDateBR(p.birthDate)
                   ) : (
                     <span className="text-gray-300">—</span>
                   )}
@@ -753,8 +753,8 @@ export function MedicalReportEditor() {
               <div className="flex flex-col gap-1">
                 <label className="ds-label mb-0">CEP</label>
                 <div className={inputClass(false)}>
-                  {p?.zip_code ? (
-                    applyCepMask(p.zip_code)
+                  {p?.zipCode ? (
+                    applyCepMask(p.zipCode)
                   ) : (
                     <span className="text-gray-300">—</span>
                   )}

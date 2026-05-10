@@ -7,6 +7,7 @@ import React, {
   useState,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import { logger } from "@/lib/logger";
 import { User, SubscriptionDetail } from "@/types";
@@ -55,6 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const router = useRouter();
+  const consentsRequestRef = useRef<Promise<void> | null>(null);
+  const subscriptionRequestRef = useRef<Promise<void> | null>(null);
+  const initialLoadRef = useRef(false);
 
   const refreshConsents = useCallback(async () => {
     if (typeof window === "undefined") return;
@@ -62,15 +66,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setConsents(null);
       return;
     }
-    setConsentsLoading(true);
-    try {
-      const status = await consentService.getStatus();
-      setConsents(status);
-    } catch (error) {
-      logger.error("Erro ao carregar consentimentos:", error);
-    } finally {
-      setConsentsLoading(false);
+    if (consentsRequestRef.current) {
+      return consentsRequestRef.current;
     }
+    setConsentsLoading(true);
+    const promise = (async () => {
+      try {
+        const status = await consentService.getStatus();
+        setConsents(status);
+      } catch (error) {
+        logger.error("Erro ao carregar consentimentos:", error);
+      } finally {
+        setConsentsLoading(false);
+        consentsRequestRef.current = null;
+      }
+    })();
+    consentsRequestRef.current = promise;
+    return promise;
   }, []);
 
   const refreshSubscription = useCallback(async () => {
@@ -79,20 +91,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSubscription(null);
       return;
     }
-    setSubscriptionLoading(true);
-    try {
-      const detail = await billingService.getMySubscription();
-      setSubscription(detail);
-    } catch (error) {
-      // Colaboradores podem n\u00e3o ter acesso a essa rota \u2014 silencioso.
-      logger.warn("N\u00e3o foi poss\u00edvel carregar assinatura:", error);
-      setSubscription(null);
-    } finally {
-      setSubscriptionLoading(false);
+    if (subscriptionRequestRef.current) {
+      return subscriptionRequestRef.current;
     }
+    setSubscriptionLoading(true);
+    const promise = (async () => {
+      try {
+        const detail = await billingService.getMySubscription();
+        setSubscription(detail);
+      } catch (error) {
+        // Colaboradores podem n\u00e3o ter acesso a essa rota \u2014 silencioso.
+        logger.warn("N\u00e3o foi poss\u00edvel carregar assinatura:", error);
+        setSubscription(null);
+      } finally {
+        setSubscriptionLoading(false);
+        subscriptionRequestRef.current = null;
+      }
+    })();
+    subscriptionRequestRef.current = promise;
+    return promise;
   }, []);
 
   useEffect(() => {
+    if (initialLoadRef.current) return;
+    initialLoadRef.current = true;
+
     const loadUser = async () => {
       if (typeof window === "undefined") {
         setLoading(false);
@@ -160,9 +183,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const isDoctor = useMemo(() => user?.is_doctor ?? false, [user]);
+  const isDoctor = useMemo(() => user?.isDoctor ?? false, [user]);
   const isAdmin = useMemo(() => user?.role === "admin", [user]);
-  const accountId = useMemo(() => user?.account_id ?? null, [user]);
+  const accountId = useMemo(() => user?.accountId ?? null, [user]);
   const pendingConsents = useMemo<ConsentType[]>(
     () => consents?.pendingRequired ?? [],
     [consents],

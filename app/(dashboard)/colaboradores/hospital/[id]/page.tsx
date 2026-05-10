@@ -84,11 +84,11 @@ export default function HospitalDetalhePage() {
         address: hospitalData.address || "",
         city: hospitalData.city || "",
         state: hospitalData.state || "",
-        zipCode: hospitalData.zip_code || "",
+        zipCode: hospitalData.zipCode || "",
         neighborhood: hospitalData.neighborhood || "",
         type: "",
-        contact: hospitalData.contact_name || "",
-        contactPhone: hospitalData.contact_phone || "",
+        contact: hospitalData.contactName || "",
+        contactPhone: hospitalData.contactPhone || "",
       });
       setOriginalData({
         name: hospitalData.name || "",
@@ -98,11 +98,11 @@ export default function HospitalDetalhePage() {
         address: hospitalData.address || "",
         city: hospitalData.city || "",
         state: hospitalData.state || "",
-        zipCode: hospitalData.zip_code || "",
+        zipCode: hospitalData.zipCode || "",
         neighborhood: hospitalData.neighborhood || "",
         type: "",
-        contact: hospitalData.contact_name || "",
-        contactPhone: hospitalData.contact_phone || "",
+        contact: hospitalData.contactName || "",
+        contactPhone: hospitalData.contactPhone || "",
       });
       // Buscar solicitações cirúrgicas deste hospital
       setLoadingSurgeries(true);
@@ -110,7 +110,7 @@ export default function HospitalDetalhePage() {
         const surgeryData = await surgeryRequestService.getAll();
         const filtered = (surgeryData.records ?? []).filter(
           (r: any) =>
-            String(r.hospital_id) === String(hospitalData.id) ||
+            String(r.hospitalId) === String(hospitalData.id) ||
             String(r.hospital?.id) === String(hospitalData.id),
         );
         setSurgeryRequests(filtered);
@@ -144,7 +144,7 @@ export default function HospitalDetalhePage() {
         neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
-        zip_code: formData.zipCode.replace(/\D/g, "") || undefined,
+        zipCode: formData.zipCode.replace(/\D/g, "") || undefined,
       });
       setOriginalData(formData);
       showToast("Hospital atualizado com sucesso!", "success");
@@ -227,9 +227,9 @@ export default function HospitalDetalhePage() {
               text: "text-gray-600",
             };
             const procedureName =
-              (surgery as any).procedure_name ||
+              (surgery as any).procedureName ||
               surgery.procedure?.name ||
-              surgery.tuss_procedure?.description ||
+              surgery.tussProcedure?.description ||
               "Procedimento não especificado";
             const doctorName = surgery.doctor?.name || "Médico não informado";
             return (

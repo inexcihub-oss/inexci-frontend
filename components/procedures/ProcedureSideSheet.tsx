@@ -158,7 +158,7 @@ export function ProcedureSideSheet({
       setProcedureName(procedure.procedureName || "—");
       setProcedureSearch(procedure.procedureName || "");
 
-      const rawProcedure = (procedure as any)?._raw?.template_data?.procedure;
+      const rawProcedure = (procedure as any)?._raw?.templateData?.procedure;
       if (rawProcedure?.id && rawProcedure?.name) {
         setSelectedProcedureOption({
           id: String(rawProcedure.id),
@@ -224,33 +224,33 @@ export function ProcedureSideSheet({
   const hasOpme = opmeItems.length > 0;
   const hasTuss = tussItems.length > 0;
 
-  // Persiste alterações no template_data via API
+  // Persiste alterações no templateData via API
   const persistTemplateData = async (updates: {
     name?: string;
     procedure?: { id: string; name: string } | null;
-    procedure_name?: string;
-    opme_items?: any[];
-    tuss_items?: any[];
-    required_documents?: any[];
+    procedureName?: string;
+    opmeItems?: any[];
+    tussItems?: any[];
+    requiredDocuments?: any[];
   }) => {
     try {
       const raw = (procedure as any)._raw;
       if (!raw) return;
-      const currentData = raw.template_data || {};
+      const currentData = raw.templateData || {};
       const newData = { ...currentData };
-      if (updates.opme_items !== undefined)
-        newData.opme_items = updates.opme_items;
-      if (updates.tuss_items !== undefined)
-        newData.tuss_items = updates.tuss_items;
-      if (updates.required_documents !== undefined)
-        newData.required_documents = updates.required_documents;
+      if (updates.opmeItems !== undefined)
+        newData.opmeItems = updates.opmeItems;
+      if (updates.tussItems !== undefined)
+        newData.tussItems = updates.tussItems;
+      if (updates.requiredDocuments !== undefined)
+        newData.requiredDocuments = updates.requiredDocuments;
       if (updates.procedure !== undefined)
         newData.procedure = updates.procedure;
-      if (updates.procedure_name !== undefined)
-        newData.procedure_name = updates.procedure_name;
+      if (updates.procedureName !== undefined)
+        newData.procedureName = updates.procedureName;
 
-      const payload: { name?: string; template_data?: object } = {
-        template_data: newData,
+      const payload: { name?: string; templateData?: object } = {
+        templateData: newData,
       };
       if (updates.name !== undefined) payload.name = updates.name;
 
@@ -270,7 +270,7 @@ export function ProcedureSideSheet({
     const newDocs = [...documents, newDoc];
     setDocuments(newDocs);
     persistTemplateData({
-      required_documents: newDocs.map((d) => ({ type: d.type, name: d.name })),
+      requiredDocuments: newDocs.map((d) => ({ type: d.type, name: d.name })),
     });
   };
 
@@ -278,7 +278,7 @@ export function ProcedureSideSheet({
     const newDocs = documents.filter((d) => d.id !== id);
     setDocuments(newDocs);
     persistTemplateData({
-      required_documents: newDocs.map((d) => ({ type: d.type, name: d.name })),
+      requiredDocuments: newDocs.map((d) => ({ type: d.type, name: d.name })),
     });
   };
 
@@ -305,7 +305,7 @@ export function ProcedureSideSheet({
     try {
       await persistTemplateData({
         procedure: { id: item.id, name: item.name },
-        procedure_name: item.name,
+        procedureName: item.name,
       });
       setIsEditingProcedure(false);
     } catch {
@@ -358,20 +358,20 @@ export function ProcedureSideSheet({
       quantity: item.quantity,
     }));
     setOpmeItems(mapped);
-    persistTemplateData({ opme_items: items });
+    persistTemplateData({ opmeItems: items });
   };
 
   const handleTussLocalSave = (
-    items: { tuss_code: string; name: string; quantity: number }[],
+    items: { tussCode: string; name: string; quantity: number }[],
   ) => {
     const mapped: ProcedureTussItem[] = items.map((item, i) => ({
       id: String(i),
-      code: item.tuss_code,
+      code: item.tussCode,
       name: item.name,
       quantity: item.quantity,
     }));
     setTussItems(mapped);
-    persistTemplateData({ tuss_items: items });
+    persistTemplateData({ tussItems: items });
   };
 
   return (

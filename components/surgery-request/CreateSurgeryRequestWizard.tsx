@@ -46,8 +46,8 @@ interface TemplateOpmeItem {
 }
 
 interface TemplateTussItem {
-  procedure_id?: string | number;
-  tuss_code?: string;
+  procedureId?: string | number;
+  tussCode?: string;
   name?: string;
   quantity?: number;
 }
@@ -204,7 +204,7 @@ export function CreateSurgeryRequestWizard({
   };
 
   const handleTemplateSelected = (template: SurgeryRequestTemplate) => {
-    const data = (template.template_data || {}) as Record<string, unknown> & {
+    const data = (template.templateData || {}) as Record<string, unknown> & {
       procedure?: { id?: string } & Record<string, unknown>;
       hospital?: unknown;
       hospital_id?: string;
@@ -219,18 +219,18 @@ export function CreateSurgeryRequestWizard({
     // Pré-preencher hospital (objeto completo salvo no template)
     if (data.hospital) {
       setSelectedHospital(data.hospital as unknown as Hospital);
-    } else if (data.hospital_id) {
+    } else if (data.hospitalId) {
       setSelectedHospital({
-        id: data.hospital_id,
+        id: data.hospitalId,
         name: "Hospital do modelo",
       } as unknown as Hospital);
     }
     // Pré-preencher convênio (objeto completo salvo no template)
     if (data.health_plan) {
       setSelectedHealthPlan(data.health_plan as unknown as HealthPlan);
-    } else if (data.health_plan_id) {
+    } else if (data.healthPlanId) {
       setSelectedHealthPlan({
-        id: data.health_plan_id,
+        id: data.healthPlanId,
         name: "Convênio do modelo",
       } as unknown as HealthPlan);
     }
@@ -253,18 +253,18 @@ export function CreateSurgeryRequestWizard({
 
     try {
       // Criar payload simplificado com apenas IDs
-      const templateData = activeTemplate?.template_data;
+      const templateData = activeTemplate?.templateData;
       const payload: SimpleSurgeryRequestPayload = {
-        procedure_id: selectedProcedure.id,
-        patient_id: selectedPatient.id,
-        doctor_id: selectedDoctor.id,
-        health_plan_id: selectedHealthPlan?.id,
-        hospital_id: selectedHospital?.id,
+        procedureId: selectedProcedure.id,
+        patientId: selectedPatient.id,
+        doctorId: selectedDoctor.id,
+        healthPlanId: selectedHealthPlan?.id,
+        hospitalId: selectedHospital?.id,
         priority: priority,
-        required_documents:
-          Array.isArray(templateData?.required_documents) &&
-          templateData.required_documents.length
-            ? (templateData.required_documents as {
+        requiredDocuments:
+          Array.isArray(templateData?.requiredDocuments) &&
+          templateData.requiredDocuments.length
+            ? (templateData.requiredDocuments as {
                 type: string;
                 name: string;
               }[])
@@ -280,7 +280,7 @@ export function CreateSurgeryRequestWizard({
         if (requestId) {
           // Adicionar OPME
           const opmeItems =
-            (templateData.opme_items as TemplateOpmeItem[] | undefined) || [];
+            (templateData.opmeItems as TemplateOpmeItem[] | undefined) || [];
           let opmeCreated = 0;
           for (const item of opmeItems) {
             try {
@@ -288,13 +288,13 @@ export function CreateSurgeryRequestWizard({
                 .filter((s: string) => s?.trim())
                 .map((s: string) => s.trim());
               await opmeService.create({
-                surgery_request_id: requestId,
+                surgeryRequestId: requestId,
                 name: item.name ?? "",
                 brand:
                   (item.manufacturers || [])
                     .filter((m: string) => m?.trim())
                     .join(", ") || undefined,
-                supplier_names:
+                supplierNames:
                   supplierNames.length > 0 ? supplierNames : undefined,
                 quantity: item.quantity || 1,
               });
@@ -315,16 +315,16 @@ export function CreateSurgeryRequestWizard({
 
           // Adicionar TUSS
           const tussItems =
-            (templateData.tuss_items as TemplateTussItem[] | undefined) || [];
+            (templateData.tussItems as TemplateTussItem[] | undefined) || [];
           if (tussItems.length > 0) {
             try {
               await tussService.addProcedures({
-                surgery_request_id: requestId,
+                surgeryRequestId: requestId,
                 procedures: tussItems.map((item) => ({
-                  procedure_id: String(
-                    item.procedure_id || item.tuss_code || "",
+                  procedureId: String(
+                    item.procedureId || item.tussCode || "",
                   ),
-                  tuss_code: item.tuss_code ?? "",
+                  tussCode: item.tussCode ?? "",
                   name: item.name ?? "",
                   quantity: item.quantity || 1,
                 })),

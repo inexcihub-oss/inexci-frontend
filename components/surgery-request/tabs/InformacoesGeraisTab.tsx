@@ -107,7 +107,7 @@ export function InformacoesGeraisTab({
       await documentService.delete({
         id: documentToDelete.id,
         key: documentToDelete.key,
-        surgery_request_id: solicitacao.id,
+        surgeryRequestId: solicitacao.id,
       });
       showToast("Documento deletado com sucesso", "success");
       onDocumentsUploaded();
@@ -340,7 +340,7 @@ export function InformacoesGeraisTab({
                   </a>
                 </div>
                 <div className="hidden sm:block w-36 flex-shrink-0 text-xs text-gray-900">
-                  {new Date(doc.created_at).toLocaleDateString("pt-BR", {
+                  {new Date(doc.createdAt).toLocaleDateString("pt-BR", {
                     weekday: "short",
                     day: "numeric",
                     month: "short",

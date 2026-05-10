@@ -35,7 +35,7 @@ export function SurgeryRequestDocumentPreviewModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    setSignatureUrl(solicitacao?.doctor?.signature_url ?? "");
+    setSignatureUrl(solicitacao?.doctor?.signatureUrl ?? "");
   }, [isOpen, solicitacao]);
 
   useEffect(() => {
@@ -54,19 +54,19 @@ export function SurgeryRequestDocumentPreviewModal({
 
   const patientName = pd.name || patient?.name || undefined;
   const patientBirthDate =
-    formatDateBR(pd.birthDate || patient?.birth_date || "") || undefined;
+    formatDateBR(pd.birthDate || patient?.birthDate || "") || undefined;
   const patientRg = pd.rg || patient?.rg || undefined;
   const patientCpf = formatCpf(pd.cpf || patient?.cpf || "") || undefined;
   const patientPhone =
     formatPhone(pd.phone || patient?.phone || "") || undefined;
   const patientAddress = pd.address || patient?.address || undefined;
   const patientZipCode =
-    pd.zipCode || patient?.zip_code || (patient as any)?.cep || undefined;
+    pd.zipCode || patient?.zipCode || (patient as any)?.cep || undefined;
   const patientHealthPlan =
-    pd.healthPlan || solicitacao?.health_plan?.name || undefined;
+    pd.healthPlan || solicitacao?.healthPlan?.name || undefined;
 
-  const procedures: TussItemRef[] = solicitacao?.tuss_items ?? [];
-  const opmeItems: OpmeItemRef[] = solicitacao?.opme_items ?? [];
+  const procedures: TussItemRef[] = solicitacao?.tussItems ?? [];
+  const opmeItems: OpmeItemRef[] = solicitacao?.opmeItems ?? [];
 
   const fabricantesText =
     unique(opmeItems.map((i) => i.brand).filter(Boolean) as string[]).join(
@@ -84,22 +84,22 @@ export function SurgeryRequestDocumentPreviewModal({
   const hasSeparator = !!(fabricantesText || fornecedoresText || localText);
 
   const doctorUser = solicitacao?.doctor ?? null;
-  const doctorProfile = doctorUser?.doctor_profile ?? null;
+  const doctorProfile = doctorUser?.doctorProfile ?? null;
   const doctorName = doctorUser?.name ?? "Médico";
   const doctorEmail = doctorUser?.email || "";
   const doctorPhone = formatPhone(doctorUser?.phone ?? "") || "";
   const doctorSpecialty = doctorProfile?.specialty || "";
   const doctorCrm = doctorProfile?.crm
-    ? `CRM ${doctorProfile.crm}${doctorProfile.crm_state ? `/${doctorProfile.crm_state}` : ""}`
+    ? `CRM ${doctorProfile.crm}${doctorProfile.crmState ? `/${doctorProfile.crmState}` : ""}`
     : "";
 
   const customHeader = doctorProfile?.header
     ? {
-        logoUrl: doctorProfile.header.logo_url ?? null,
-        logoPosition: (doctorProfile.header.logo_position ?? "left") as
+        logoUrl: doctorProfile.header.logoUrl ?? null,
+        logoPosition: (doctorProfile.header.logoPosition ?? "left") as
           | "left"
           | "right",
-        contentHtml: doctorProfile.header.content_html ?? null,
+        contentHtml: doctorProfile.header.contentHtml ?? null,
       }
     : null;
 

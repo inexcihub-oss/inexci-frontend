@@ -90,7 +90,6 @@ export function CreateProcedureModal({
           <div className="px-6 pt-5 pb-6">
             <Input
               label="Nome do procedimento"
-              required
               placeholder="Ex. Artroscopia de Joelho"
               {...form.getFieldProps("name")}
             />
