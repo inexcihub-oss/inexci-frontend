@@ -18,7 +18,7 @@
   },
   "overrides": [
     {
-      "files": ["lib/logger.ts", "e2e/**/*.{ts,tsx}", "*.config.{js,ts,mjs}"],
+      "files": ["lib/logger.ts", "*.config.{js,ts,mjs}"],
       "rules": {
         "no-console": "off"
       }
