@@ -35,6 +35,7 @@ export interface Supplier {
   city?: string;
   state?: string;
   notes?: string;
+  active?: boolean;
   quotations?: SupplierQuotation[];
   createdAt: string;
   updatedAt: string;
