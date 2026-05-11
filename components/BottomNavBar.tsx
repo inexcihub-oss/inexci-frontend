@@ -29,18 +29,8 @@ const PRIMARY_ITEMS: NavItem[] = [
   },
 ];
 
-// Itens exclusivos de admin — aparecem no overflow sheet
-const ADMIN_OVERFLOW_ITEMS: NavItem[] = [
-  {
-    iconSrc: "/icons/calendar-schedule.svg",
-    label: "Agenda",
-    href: "/agenda",
-  },
-  {
-    iconSrc: "/icons/user-profile.svg",
-    label: "Colaboradores",
-    href: "/colaboradores",
-  },
+// Itens compartilhados com todos da conta (admin, colaborador e médico)
+const SHARED_OVERFLOW_ITEMS: NavItem[] = [
   { iconSrc: "/icons/users.svg", label: "Hospitais", href: "/hospitais" },
   {
     iconSrc: "/icons/document.svg",
@@ -54,6 +44,20 @@ const ADMIN_OVERFLOW_ITEMS: NavItem[] = [
   },
 ];
 
+// Itens exclusivos de admin — aparecem no overflow sheet
+const ADMIN_ONLY_OVERFLOW_ITEMS: NavItem[] = [
+  {
+    iconSrc: "/icons/calendar-schedule.svg",
+    label: "Agenda",
+    href: "/agenda",
+  },
+  {
+    iconSrc: "/icons/user-profile.svg",
+    label: "Colaboradores",
+    href: "/colaboradores",
+  },
+];
+
 export default function BottomNavBar() {
   const pathname = usePathname();
   const { isAdmin } = useAuth();
@@ -62,6 +66,14 @@ export default function BottomNavBar() {
   const closeOverflow = () => setOverflowOpen(false);
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(closeOverflow);
+
+  const overflowItems = useMemo(
+    () =>
+      isAdmin
+        ? [...ADMIN_ONLY_OVERFLOW_ITEMS, ...SHARED_OVERFLOW_ITEMS]
+        : SHARED_OVERFLOW_ITEMS,
+    [isAdmin],
+  );
 
   // Fecha o overflow ao navegar
   useEffect(() => {
@@ -75,9 +87,9 @@ export default function BottomNavBar() {
 
   // Verifica se a página atual está em um dos itens de overflow
   const overflowActive = useMemo(
-    () => isAdmin && ADMIN_OVERFLOW_ITEMS.some((item) => isActive(item.href)),
+    () => overflowItems.some((item) => isActive(item.href)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pathname, isAdmin],
+    [pathname, overflowItems],
   );
 
   const isDragging = dragY > 0;
@@ -134,8 +146,8 @@ export default function BottomNavBar() {
             );
           })}
 
-          {/* Botão "Mais" — apenas para admin */}
-          {isAdmin && (
+          {/* Botão "Mais" */}
+          {overflowItems.length > 0 && (
             <button
               onClick={() => setOverflowOpen((v) => !v)}
               className={`
@@ -174,8 +186,8 @@ export default function BottomNavBar() {
         </div>
       </nav>
 
-      {/* Overflow sheet — itens de admin */}
-      {isAdmin && overflowOpen && (
+      {/* Overflow sheet */}
+      {overflowOpen && (
         <>
           {/* Backdrop */}
           <div
@@ -210,7 +222,7 @@ export default function BottomNavBar() {
                 paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
               }}
             >
-              {ADMIN_OVERFLOW_ITEMS.map((item) => {
+              {overflowItems.map((item) => {
                 const active = isActive(item.href);
                 return (
                   <Link

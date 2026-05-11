@@ -24,15 +24,18 @@ import {
   STATUS_NUMBER_TO_STRING,
   STATUS_COLORS,
 } from "@/services/surgery-request.service";
-import { formatPhone, formatTimeAgo } from "@/lib/formatters";
+import { formatTimeAgo } from "@/lib/formatters";
 import { removeBackground, cn } from "@/lib/utils";
-import { GENDER_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
+import { GENDER_OPTIONS, STATE_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { ChevronRight, Upload, X, Loader2 } from "lucide-react";
 import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 import { CollaboratorActionsSection } from "@/components/colaboradores/CollaboratorActionsSection";
+import { useCepLookup } from "@/hooks/useCepLookup";
+import { maskCep, maskCpf, maskPhone, unmask } from "@/lib/masks";
+import { isValidCpf } from "@/lib/validators";
 
 export default function AssistenteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -84,6 +87,26 @@ export default function AssistenteDetalhePage() {
     originalData !== null &&
     JSON.stringify(formData) !== JSON.stringify(originalData);
 
+  const { loading: cepLoading } = useCepLookup({
+    cep: formData.cep,
+    enabled: !!collaborator,
+    onResolved: (data) => {
+      setFormData((prev) => ({
+        ...prev,
+        address: data.logradouro || prev.address,
+        city: data.cidade || prev.city,
+        state: data.uf || prev.state,
+      }));
+    },
+    onError: (err) => {
+      if (err.code === "not_found") {
+        showToast("CEP não encontrado.", "error");
+      } else if (err.code === "network") {
+        showToast(err.message, "error");
+      }
+    },
+  });
+
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,11 +132,11 @@ export default function AssistenteDetalhePage() {
       const fd = {
         name: collab.name || "",
         email: collab.email || "",
-        phone: collab.phone || "",
+        phone: maskPhone(collab.phone || ""),
         gender: collab.gender || "",
         birthDate: collab.birthDate || "",
-        cpf: collab.document || "",
-        cep: collab.cep || "",
+        cpf: maskCpf(collab.document || ""),
+        cep: maskCep(collab.cep || ""),
         address: collab.address || "",
         addressNumber: collab.addressNumber || "",
         addressComplement: collab.addressComplement || "",
@@ -184,22 +207,45 @@ export default function AssistenteDetalhePage() {
   const handleSave = async () => {
     if (!collaborator) return;
 
+    if (
+      !formData.name.trim() ||
+      !formData.email.trim() ||
+      !unmask(formData.phone)
+    ) {
+      showToast("Nome completo, e-mail e telefone são obrigatórios.", "error");
+      return;
+    }
+
+    if (formData.cpf && !isValidCpf(formData.cpf)) {
+      showToast("CPF inválido.", "error");
+      return;
+    }
+
+    const normalizedEmail = formData.email.trim();
+    const currentEmail = (collaborator.email ?? "").trim();
+    const emailChanged = normalizedEmail !== currentEmail;
+
     setSaving(true);
     try {
       await collaboratorService.updateProfile(collaborator.id, {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
+        name: formData.name.trim(),
+        phone: unmask(formData.phone),
         gender: formData.gender,
         birthDate: formData.birthDate || undefined,
-        cpf: formData.cpf || undefined,
-        cep: formData.cep || undefined,
+        cpf: unmask(formData.cpf) || undefined,
+        cep: unmask(formData.cep) || undefined,
         address: formData.address || undefined,
         addressNumber: formData.addressNumber || undefined,
         addressComplement: formData.addressComplement || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
       });
+
+      if (emailChanged) {
+        await collaboratorService.update(collaborator.id, {
+          email: normalizedEmail,
+        });
+      }
 
       // Se for médico, salvar dados profissionais
       if (isDoctor && collaborator.doctorProfile?.id) {
@@ -214,7 +260,16 @@ export default function AssistenteDetalhePage() {
       showToast("Colaborador atualizado com sucesso!", "success");
     } catch (error) {
       logger.error("Erro ao salvar:", error);
-      showToast("Erro ao salvar as alterações.", "error");
+      const apiError = error as {
+        response?: { data?: { message?: string | string[] } };
+      };
+      const msg = apiError?.response?.data?.message;
+      showToast(
+        Array.isArray(msg)
+          ? msg.join(", ")
+          : msg || "Erro ao salvar as alterações.",
+        "error",
+      );
     } finally {
       setSaving(false);
     }
@@ -469,23 +524,26 @@ export default function AssistenteDetalhePage() {
               label="Nome completo"
               value={formData.name}
               onChange={(e) => handleInputChange("name", e.target.value)}
+              aria-required="true"
             />
             <Input
               label="E-mail"
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
+              aria-required="true"
             />
             <Input
               label="Telefone"
-              value={formatPhone(formData.phone)}
-              onChange={(e) =>
-                handleInputChange("phone", e.target.value.replace(/\D/g, ""))
-              }
+              mask="phone"
+              value={formData.phone}
+              onChange={(e) => handleInputChange("phone", e.target.value)}
               placeholder="(00) 00000-0000"
+              aria-required="true"
             />
             <Input
               label="CPF"
+              mask="cpf"
               value={formData.cpf}
               onChange={(e) => handleInputChange("cpf", e.target.value)}
               placeholder="000.000.000-00"
@@ -507,12 +565,18 @@ export default function AssistenteDetalhePage() {
               onChange={(e) => handleInputChange("address", e.target.value)}
               placeholder="Rua, Avenida..."
             />
-            <Input
-              label="CEP"
-              value={formData.cep}
-              onChange={(e) => handleInputChange("cep", e.target.value)}
-              placeholder="00000-000"
-            />
+            <div className="relative">
+              <Input
+                label="CEP"
+                mask="cep"
+                value={formData.cep}
+                onChange={(e) => handleInputChange("cep", e.target.value)}
+                placeholder="00000-000"
+              />
+              {cepLoading && (
+                <Loader2 className="absolute right-3 top-9 w-4 h-4 text-gray-400 animate-spin" />
+              )}
+            </div>
             <Input
               label="Número"
               value={formData.addressNumber}
@@ -533,11 +597,11 @@ export default function AssistenteDetalhePage() {
               value={formData.city}
               onChange={(e) => handleInputChange("city", e.target.value)}
             />
-            <Input
+            <Select
               label="Estado"
               value={formData.state}
               onChange={(e) => handleInputChange("state", e.target.value)}
-              placeholder="UF"
+              options={STATE_OPTIONS}
             />
           </div>
           {/* Botões dentro da seção */}

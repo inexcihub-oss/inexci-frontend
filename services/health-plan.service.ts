@@ -7,15 +7,37 @@ export interface HealthPlan {
   cnpj?: string;
   phone?: string;
   email?: string;
+  ansCode?: string;
+  zipCode?: string;
+  address?: string;
+  addressNumber?: string;
+  addressComplement?: string;
+  city?: string;
+  state?: string;
+  authorizationContact?: string;
+  authorizationPhone?: string;
+  authorizationEmail?: string;
+  website?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateHealthPlanPayload {
   name: string;
-  phone: string;
-  email: string;
+  phone?: string;
+  email?: string;
   cnpj?: string;
+  ansCode?: string;
+  zipCode?: string;
+  address?: string;
+  addressNumber?: string;
+  addressComplement?: string;
+  city?: string;
+  state?: string;
+  authorizationContact?: string;
+  authorizationPhone?: string;
+  authorizationEmail?: string;
+  website?: string;
 }
 
 interface BackendHealthPlan {
@@ -24,6 +46,17 @@ interface BackendHealthPlan {
   cnpj?: string;
   phone?: string;
   email?: string;
+  ansCode?: string;
+  zipCode?: string;
+  address?: string;
+  addressNumber?: string;
+  addressComplement?: string;
+  city?: string;
+  state?: string;
+  authorizationContact?: string;
+  authorizationPhone?: string;
+  authorizationEmail?: string;
+  website?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,6 +76,17 @@ export const healthPlanService = {
       cnpj: h.cnpj,
       phone: h.phone,
       email: h.email,
+      ansCode: h.ansCode,
+      zipCode: h.zipCode,
+      address: h.address,
+      addressNumber: h.addressNumber,
+      addressComplement: h.addressComplement,
+      city: h.city,
+      state: h.state,
+      authorizationContact: h.authorizationContact,
+      authorizationPhone: h.authorizationPhone,
+      authorizationEmail: h.authorizationEmail,
+      website: h.website,
       createdAt: h.createdAt,
       updatedAt: h.updatedAt,
     }));

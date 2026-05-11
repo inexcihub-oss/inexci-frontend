@@ -16,9 +16,10 @@ import {
   STATUS_COLORS,
 } from "@/services/surgery-request.service";
 import { logger } from "@/lib/logger";
-import { formatCNPJ, formatPhone } from "@/lib/formatters";
+import { maskCep, maskCnpj, maskPhone, unmask } from "@/lib/masks";
 import { STATE_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
+import { useCepLookup } from "@/hooks/useCepLookup";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { ChevronRight } from "lucide-react";
@@ -42,11 +43,11 @@ export default function HospitalDetalhePage() {
     email: "",
     phone: "",
     address: "",
+    addressNumber: "",
     city: "",
     state: "",
     zipCode: "",
     neighborhood: "",
-    type: "",
     contact: "",
     contactPhone: "",
   });
@@ -56,6 +57,31 @@ export default function HospitalDetalhePage() {
   const isDirty =
     originalData !== null &&
     JSON.stringify(formData) !== JSON.stringify(originalData);
+
+  const { loading: cepLoading } = useCepLookup({
+    cep: formData.zipCode,
+    enabled: !loading,
+    onResolved: (data) => {
+      setFormData((prev) => ({
+        ...prev,
+        address: data.logradouro,
+        neighborhood: data.bairro,
+        city: data.cidade,
+        state: data.uf,
+      }));
+    },
+    onError: (err) => {
+      if (err.code === "not_found") {
+        showToast("CEP não encontrado.", "error");
+        return;
+      }
+      if (err.code === "invalid") {
+        showToast("CEP inválido.", "error");
+        return;
+      }
+      showToast("Não foi possível consultar o CEP.", "error");
+    },
+  });
 
   useEffect(() => {
     loadData();
@@ -78,31 +104,31 @@ export default function HospitalDetalhePage() {
       // Preenche o formulário
       setFormData({
         name: hospitalData.name || "",
-        cnpj: hospitalData.cnpj || "",
+        cnpj: maskCnpj(hospitalData.cnpj || ""),
         email: hospitalData.email || "",
-        phone: hospitalData.phone || "",
+        phone: maskPhone(hospitalData.phone || ""),
         address: hospitalData.address || "",
+        addressNumber: hospitalData.addressNumber || "",
         city: hospitalData.city || "",
         state: hospitalData.state || "",
-        zipCode: hospitalData.zipCode || "",
+        zipCode: maskCep(hospitalData.zipCode || ""),
         neighborhood: hospitalData.neighborhood || "",
-        type: "",
         contact: hospitalData.contactName || "",
-        contactPhone: hospitalData.contactPhone || "",
+        contactPhone: maskPhone(hospitalData.contactPhone || ""),
       });
       setOriginalData({
         name: hospitalData.name || "",
-        cnpj: hospitalData.cnpj || "",
+        cnpj: maskCnpj(hospitalData.cnpj || ""),
         email: hospitalData.email || "",
-        phone: hospitalData.phone || "",
+        phone: maskPhone(hospitalData.phone || ""),
         address: hospitalData.address || "",
+        addressNumber: hospitalData.addressNumber || "",
         city: hospitalData.city || "",
         state: hospitalData.state || "",
-        zipCode: hospitalData.zipCode || "",
+        zipCode: maskCep(hospitalData.zipCode || ""),
         neighborhood: hospitalData.neighborhood || "",
-        type: "",
         contact: hospitalData.contactName || "",
-        contactPhone: hospitalData.contactPhone || "",
+        contactPhone: maskPhone(hospitalData.contactPhone || ""),
       });
       // Buscar solicitações cirúrgicas deste hospital
       setLoadingSurgeries(true);
@@ -133,20 +159,29 @@ export default function HospitalDetalhePage() {
   const handleSave = async () => {
     if (!hospital) return;
 
+    const name = formData.name.trim();
+    if (!name) {
+      showToast("Nome do hospital é obrigatório.", "error");
+      return;
+    }
+
     setSaving(true);
     try {
+      const normalizedFormData = { ...formData, name };
       await hospitalService.update(hospital.id, {
-        name: formData.name,
-        cnpj: formData.cnpj || undefined,
+        name,
+        cnpj: unmask(formData.cnpj) || undefined,
         email: formData.email || undefined,
-        phone: formData.phone || undefined,
+        phone: unmask(formData.phone) || undefined,
         address: formData.address || undefined,
+        addressNumber: formData.addressNumber || undefined,
         neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
-        zipCode: formData.zipCode.replace(/\D/g, "") || undefined,
+        zipCode: unmask(formData.zipCode) || undefined,
       });
-      setOriginalData(formData);
+      setFormData(normalizedFormData);
+      setOriginalData(normalizedFormData);
       showToast("Hospital atualizado com sucesso!", "success");
     } catch (error) {
       logger.error("Erro ao salvar:", error);
@@ -183,14 +218,6 @@ export default function HospitalDetalhePage() {
       </PageContainer>
     );
   }
-
-  const hospitalTypeOptions = [
-    { value: "", label: "Selecione" },
-    { value: "publico", label: "Público" },
-    { value: "privado", label: "Privado" },
-    { value: "filantrópico", label: "Filantrópico" },
-    { value: "universitário", label: "Universitário" },
-  ];
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
@@ -278,29 +305,20 @@ export default function HospitalDetalhePage() {
               label="Nome do hospital"
               value={formData.name}
               onChange={(e) => handleInputChange("name", e.target.value)}
-              required
             />
             <Input
               label="CNPJ"
-              value={formatCNPJ(formData.cnpj)}
-              onChange={(e) =>
-                handleInputChange("cnpj", e.target.value.replace(/\D/g, ""))
-              }
+              value={formData.cnpj}
+              onChange={(e) => handleInputChange("cnpj", e.target.value)}
+              mask="cnpj"
               placeholder="00.000.000/0000-00"
-            />
-            <Select
-              label="Tipo de hospital"
-              value={formData.type}
-              onChange={(e) => handleInputChange("type", e.target.value)}
-              options={hospitalTypeOptions}
             />
             <Input
               label="Telefone principal"
-              value={formatPhone(formData.phone)}
-              onChange={(e) =>
-                handleInputChange("phone", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="(00) 0000-0000"
+              value={formData.phone}
+              onChange={(e) => handleInputChange("phone", e.target.value)}
+              mask="phone"
+              placeholder="(00) 00000-0000"
             />
             <Input
               label="E-mail"
@@ -314,7 +332,7 @@ export default function HospitalDetalhePage() {
         {/* Seção: Endereço */}
         <FormSection title="Endereço">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
+            <div>
               <Input
                 label="Endereço completo"
                 value={formData.address}
@@ -322,6 +340,14 @@ export default function HospitalDetalhePage() {
                 placeholder="Rua, número, complemento"
               />
             </div>
+            <Input
+              label="Número"
+              value={formData.addressNumber}
+              onChange={(e) =>
+                handleInputChange("addressNumber", e.target.value)
+              }
+              placeholder="123"
+            />
             <Input
               label="Bairro"
               value={formData.neighborhood}
@@ -344,9 +370,15 @@ export default function HospitalDetalhePage() {
               label="CEP"
               value={formData.zipCode}
               onChange={(e) => handleInputChange("zipCode", e.target.value)}
+              mask="cep"
               placeholder="00000-000"
             />
           </div>
+          {cepLoading && (
+            <p className="text-xs text-gray-500 -mt-2">
+              Buscando endereço pelo CEP...
+            </p>
+          )}
         </FormSection>
 
         {/* Seção: Contato */}
@@ -364,6 +396,7 @@ export default function HospitalDetalhePage() {
               onChange={(e) =>
                 handleInputChange("contactPhone", e.target.value)
               }
+              mask="phone"
               placeholder="(00) 00000-0000"
             />
           </div>

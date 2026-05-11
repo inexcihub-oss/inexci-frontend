@@ -16,9 +16,10 @@ import {
   STATUS_COLORS,
 } from "@/services/surgery-request.service";
 import { logger } from "@/lib/logger";
-import { formatCNPJ, formatPhone } from "@/lib/formatters";
+import { maskCep, maskCnpj, maskPhone, unmask } from "@/lib/masks";
 import { STATE_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
+import { useCepLookup } from "@/hooks/useCepLookup";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { ChevronRight } from "lucide-react";
@@ -42,9 +43,10 @@ export default function ConvenioDetalhePage() {
     email: "",
     phone: "",
     website: "",
-    type: "",
     ansRegistry: "",
     address: "",
+    addressNumber: "",
+    addressComplement: "",
     city: "",
     state: "",
     zipCode: "",
@@ -58,6 +60,30 @@ export default function ConvenioDetalhePage() {
   const isDirty =
     originalData !== null &&
     JSON.stringify(formData) !== JSON.stringify(originalData);
+
+  const { loading: cepLoading } = useCepLookup({
+    cep: formData.zipCode,
+    enabled: !loading,
+    onResolved: (data) => {
+      setFormData((prev) => ({
+        ...prev,
+        address: data.logradouro,
+        city: data.cidade,
+        state: data.uf,
+      }));
+    },
+    onError: (err) => {
+      if (err.code === "not_found") {
+        showToast("CEP não encontrado.", "error");
+        return;
+      }
+      if (err.code === "invalid") {
+        showToast("CEP inválido.", "error");
+        return;
+      }
+      showToast("Não foi possível consultar o CEP.", "error");
+    },
+  });
 
   useEffect(() => {
     loadData();
@@ -80,35 +106,37 @@ export default function ConvenioDetalhePage() {
       // Preenche o formulário
       setFormData({
         name: healthPlanData.name || "",
-        cnpj: healthPlanData.cnpj || "",
+        cnpj: maskCnpj(healthPlanData.cnpj || ""),
         email: healthPlanData.email || "",
-        phone: healthPlanData.phone || "",
-        website: "",
-        type: "",
-        ansRegistry: "",
-        address: "",
-        city: "",
-        state: "",
-        zipCode: "",
-        contact: "",
-        contactPhone: "",
-        contactEmail: "",
+        phone: maskPhone(healthPlanData.phone || ""),
+        website: healthPlanData.website || "",
+        ansRegistry: healthPlanData.ansCode || "",
+        address: healthPlanData.address || "",
+        addressNumber: healthPlanData.addressNumber || "",
+        addressComplement: healthPlanData.addressComplement || "",
+        city: healthPlanData.city || "",
+        state: healthPlanData.state || "",
+        zipCode: maskCep(healthPlanData.zipCode || ""),
+        contact: healthPlanData.authorizationContact || "",
+        contactPhone: maskPhone(healthPlanData.authorizationPhone || ""),
+        contactEmail: healthPlanData.authorizationEmail || "",
       });
       setOriginalData({
         name: healthPlanData.name || "",
-        cnpj: healthPlanData.cnpj || "",
+        cnpj: maskCnpj(healthPlanData.cnpj || ""),
         email: healthPlanData.email || "",
-        phone: healthPlanData.phone || "",
-        website: "",
-        type: "",
-        ansRegistry: "",
-        address: "",
-        city: "",
-        state: "",
-        zipCode: "",
-        contact: "",
-        contactPhone: "",
-        contactEmail: "",
+        phone: maskPhone(healthPlanData.phone || ""),
+        website: healthPlanData.website || "",
+        ansRegistry: healthPlanData.ansCode || "",
+        address: healthPlanData.address || "",
+        addressNumber: healthPlanData.addressNumber || "",
+        addressComplement: healthPlanData.addressComplement || "",
+        city: healthPlanData.city || "",
+        state: healthPlanData.state || "",
+        zipCode: maskCep(healthPlanData.zipCode || ""),
+        contact: healthPlanData.authorizationContact || "",
+        contactPhone: maskPhone(healthPlanData.authorizationPhone || ""),
+        contactEmail: healthPlanData.authorizationEmail || "",
       });
       // Buscar solicitações cirúrgicas deste convênio
       setLoadingSurgeries(true);
@@ -139,15 +167,34 @@ export default function ConvenioDetalhePage() {
   const handleSave = async () => {
     if (!healthPlan) return;
 
+    const name = formData.name.trim();
+    if (!name) {
+      showToast("Nome do convênio é obrigatório.", "error");
+      return;
+    }
+
     setSaving(true);
     try {
+      const normalizedFormData = { ...formData, name };
       await healthPlanService.update(healthPlan.id, {
-        name: formData.name,
-        cnpj: formData.cnpj,
-        email: formData.email,
-        phone: formData.phone,
+        name,
+        cnpj: unmask(formData.cnpj) || undefined,
+        email: formData.email || undefined,
+        phone: unmask(formData.phone) || undefined,
+        ansCode: formData.ansRegistry || undefined,
+        website: formData.website || undefined,
+        address: formData.address || undefined,
+        addressNumber: formData.addressNumber || undefined,
+        addressComplement: formData.addressComplement || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        zipCode: unmask(formData.zipCode) || undefined,
+        authorizationContact: formData.contact || undefined,
+        authorizationPhone: unmask(formData.contactPhone) || undefined,
+        authorizationEmail: formData.contactEmail || undefined,
       });
-      setOriginalData(formData);
+      setFormData(normalizedFormData);
+      setOriginalData(normalizedFormData);
       showToast("Convênio atualizado com sucesso!", "success");
     } catch (error) {
       logger.error("Erro ao salvar:", error);
@@ -184,14 +231,6 @@ export default function ConvenioDetalhePage() {
       </PageContainer>
     );
   }
-
-  const planTypeOptions = [
-    { value: "", label: "Selecione" },
-    { value: "individual", label: "Individual" },
-    { value: "familiar", label: "Familiar" },
-    { value: "empresarial", label: "Empresarial" },
-    { value: "coletivo", label: "Coletivo por Adesão" },
-  ];
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
@@ -280,14 +319,13 @@ export default function ConvenioDetalhePage() {
               label="Nome do convênio"
               value={formData.name}
               onChange={(e) => handleInputChange("name", e.target.value)}
-              required
+              aria-required="true"
             />
             <Input
               label="CNPJ"
-              value={formatCNPJ(formData.cnpj)}
-              onChange={(e) =>
-                handleInputChange("cnpj", e.target.value.replace(/\D/g, ""))
-              }
+              value={formData.cnpj}
+              onChange={(e) => handleInputChange("cnpj", e.target.value)}
+              mask="cnpj"
               placeholder="00.000.000/0000-00"
             />
             <Input
@@ -296,19 +334,12 @@ export default function ConvenioDetalhePage() {
               onChange={(e) => handleInputChange("ansRegistry", e.target.value)}
               placeholder="Número de registro na ANS"
             />
-            <Select
-              label="Tipo de plano"
-              value={formData.type}
-              onChange={(e) => handleInputChange("type", e.target.value)}
-              options={planTypeOptions}
-            />
             <Input
               label="Telefone principal"
-              value={formatPhone(formData.phone)}
-              onChange={(e) =>
-                handleInputChange("phone", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="(00) 0000-0000"
+              value={formData.phone}
+              onChange={(e) => handleInputChange("phone", e.target.value)}
+              mask="phone"
+              placeholder="(00) 00000-0000"
             />
             <Input
               label="E-mail"
@@ -328,18 +359,12 @@ export default function ConvenioDetalhePage() {
         {/* Seção: Endereço */}
         <FormSection title="Endereço">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
-              <Input
-                label="Endereço completo"
-                value={formData.address}
-                onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="Rua, número, complemento"
-              />
-            </div>
             <Input
-              label="Cidade"
-              value={formData.city}
-              onChange={(e) => handleInputChange("city", e.target.value)}
+              label="CEP"
+              value={formData.zipCode}
+              onChange={(e) => handleInputChange("zipCode", e.target.value)}
+              mask="cep"
+              placeholder="00000-000"
             />
             <Select
               label="Estado"
@@ -347,15 +372,41 @@ export default function ConvenioDetalhePage() {
               onChange={(e) => handleInputChange("state", e.target.value)}
               options={STATE_OPTIONS}
             />
+            <div>
+              <Input
+                label="Endereço completo"
+                value={formData.address}
+                onChange={(e) => handleInputChange("address", e.target.value)}
+                placeholder="Rua, avenida, etc."
+              />
+            </div>
             <Input
-              label="CEP"
-              value={formData.zipCode.replace(/^(\d{5})(\d)/, "$1-$2")}
+              label="Número"
+              value={formData.addressNumber}
               onChange={(e) =>
-                handleInputChange("zipCode", e.target.value.replace(/\D/g, ""))
+                handleInputChange("addressNumber", e.target.value)
               }
-              placeholder="00000-000"
+              placeholder="123"
+            />
+            <Input
+              label="Complemento"
+              value={formData.addressComplement}
+              onChange={(e) =>
+                handleInputChange("addressComplement", e.target.value)
+              }
+              placeholder="Sala, bloco, apto (opcional)"
+            />
+            <Input
+              label="Cidade"
+              value={formData.city}
+              onChange={(e) => handleInputChange("city", e.target.value)}
             />
           </div>
+          {cepLoading && (
+            <p className="text-xs text-gray-500 -mt-2">
+              Buscando endereço pelo CEP...
+            </p>
+          )}
         </FormSection>
 
         {/* Seção: Contato */}
@@ -373,6 +424,7 @@ export default function ConvenioDetalhePage() {
               onChange={(e) =>
                 handleInputChange("contactPhone", e.target.value)
               }
+              mask="phone"
               placeholder="(00) 00000-0000"
             />
             <Input

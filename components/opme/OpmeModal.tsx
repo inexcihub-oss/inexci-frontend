@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   ChevronDown,
   Copy,
@@ -90,6 +96,10 @@ function padSuppliers(items: SupplierOption[]): SupplierOption[] {
     ...items,
     ...Array.from({ length: MIN_OPTIONS - items.length }, () => ({ name: "" })),
   ];
+}
+
+function normalizeSupplierName(name: string): string {
+  return name.trim().toLowerCase();
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -594,11 +604,7 @@ export function OpmeModal({
       </div>
 
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
       )}
     </>
   );
@@ -617,8 +623,8 @@ function EmptyState() {
           Nenhum material adicionado
         </h3>
         <p className="ds-caption">
-          Use o campo acima para adicionar os materiais OPME necessários
-          para esta solicitação.
+          Use o campo acima para adicionar os materiais OPME necessários para
+          esta solicitação.
         </p>
       </div>
     </div>
@@ -717,6 +723,30 @@ function OpmeItemCard({
   const filledSuppliers = useMemo(
     () => item.suppliers.filter((s) => s.name.trim()).length,
     [item.suppliers],
+  );
+
+  const getAvailableSuppliersForIndex = useCallback(
+    (fieldIndex: number) => {
+      const selectedIds = new Set(
+        item.suppliers
+          .filter((_, i) => i !== fieldIndex)
+          .map((s) => s.id)
+          .filter((id): id is string => Boolean(id)),
+      );
+
+      const selectedNames = new Set(
+        item.suppliers
+          .filter((_, i) => i !== fieldIndex)
+          .map((s) => normalizeSupplierName(s.name))
+          .filter(Boolean),
+      );
+
+      return availableSuppliers.filter((supplier) => {
+        if (selectedIds.has(supplier.id)) return false;
+        return !selectedNames.has(normalizeSupplierName(supplier.name));
+      });
+    },
+    [item.suppliers, availableSuppliers],
   );
 
   const isComplete =
@@ -895,7 +925,7 @@ function OpmeItemCard({
                 <SupplierAutocomplete
                   value={supplier}
                   placeholder={`Fornecedor ${fieldIndex + 1}`}
-                  availableSuppliers={availableSuppliers}
+                  availableSuppliers={getAvailableSuppliersForIndex(fieldIndex)}
                   onChange={(val) => onSupplierChange(fieldIndex, val)}
                 />
                 <RemoveFieldButton

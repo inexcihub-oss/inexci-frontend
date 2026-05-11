@@ -8,10 +8,15 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
-import { supplierService, Supplier, SupplierQuotation } from "@/services/supplier.service";
-import { formatCNPJ, formatPhone } from "@/lib/formatters";
+import {
+  supplierService,
+  Supplier,
+  SupplierQuotation,
+} from "@/services/supplier.service";
+import { maskCep, maskCnpj, maskPhone, unmask } from "@/lib/masks";
 import { STATE_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
+import { useCepLookup } from "@/hooks/useCepLookup";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { ChevronRight } from "lucide-react";
@@ -67,7 +72,6 @@ export default function FornecedorDetalhePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [togglingActive, setTogglingActive] = useState(false);
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
@@ -80,6 +84,7 @@ export default function FornecedorDetalhePage() {
     category: "",
     address: "",
     addressNumber: "",
+    addressComplement: "",
     neighborhood: "",
     city: "",
     state: "",
@@ -91,10 +96,37 @@ export default function FornecedorDetalhePage() {
     deliveryTime: "",
     notes: "",
   });
-  const [originalData, setOriginalData] = useState<typeof formData | null>(null);
+  const [originalData, setOriginalData] = useState<typeof formData | null>(
+    null,
+  );
   const isDirty =
     originalData !== null &&
     JSON.stringify(formData) !== JSON.stringify(originalData);
+
+  const { loading: cepLoading } = useCepLookup({
+    cep: formData.zipCode,
+    enabled: !loading,
+    onResolved: (data) => {
+      setFormData((prev) => ({
+        ...prev,
+        address: data.logradouro || prev.address,
+        neighborhood: data.bairro || prev.neighborhood,
+        city: data.cidade || prev.city,
+        state: data.uf || prev.state,
+      }));
+    },
+    onError: (err) => {
+      if (err.code === "not_found") {
+        showToast("CEP não encontrado.", "error");
+        return;
+      }
+      if (err.code === "invalid") {
+        showToast("CEP inválido.", "error");
+        return;
+      }
+      showToast("Não foi possível consultar o CEP.", "error");
+    },
+  });
 
   useEffect(() => {
     loadData();
@@ -103,19 +135,20 @@ export default function FornecedorDetalhePage() {
 
   const buildFormData = (s: Supplier) => ({
     name: s.name || "",
-    cnpj: s.cnpj || "",
+    cnpj: maskCnpj(s.cnpj || ""),
     email: s.email || "",
-    phone: s.phone || "",
+    phone: maskPhone(s.phone || ""),
     website: s.website || "",
     category: s.category || "",
     address: s.address || "",
     addressNumber: s.addressNumber || "",
+    addressComplement: s.addressComplement || "",
     neighborhood: s.neighborhood || "",
     city: s.city || "",
     state: s.state || "",
-    zipCode: s.zipCode || "",
+    zipCode: maskCep(s.zipCode || ""),
     contactName: s.contactName || "",
-    contactPhone: s.contactPhone || "",
+    contactPhone: maskPhone(s.contactPhone || ""),
     contactEmail: s.contactEmail || "",
     paymentTerms: s.paymentTerms || "",
     deliveryTime: s.deliveryTime || "",
@@ -147,53 +180,53 @@ export default function FornecedorDetalhePage() {
 
   const handleSave = async () => {
     if (!supplier) return;
+
+    const name = formData.name.trim();
+    if (!name) {
+      showToast("Nome do fornecedor é obrigatório.", "error");
+      return;
+    }
+
     setSaving(true);
     try {
+      const normalizedFormData = {
+        ...formData,
+        name,
+        cnpj: maskCnpj(formData.cnpj),
+        phone: maskPhone(formData.phone),
+        zipCode: maskCep(formData.zipCode),
+        contactPhone: maskPhone(formData.contactPhone),
+      };
+
       await supplierService.update(supplier.id, {
-        name: formData.name,
-        cnpj: formData.cnpj.replace(/\D/g, "") || undefined,
+        name,
+        cnpj: unmask(formData.cnpj) || undefined,
         email: formData.email || undefined,
-        phone: formData.phone || undefined,
+        phone: unmask(formData.phone) || undefined,
         website: formData.website || undefined,
         category: formData.category || undefined,
         address: formData.address || undefined,
         addressNumber: formData.addressNumber || undefined,
+        addressComplement: formData.addressComplement || undefined,
         neighborhood: formData.neighborhood || undefined,
         city: formData.city || undefined,
         state: formData.state || undefined,
-        zipCode: formData.zipCode.replace(/\D/g, "") || undefined,
+        zipCode: unmask(formData.zipCode) || undefined,
         contactName: formData.contactName || undefined,
-        contactPhone: formData.contactPhone || undefined,
+        contactPhone: unmask(formData.contactPhone) || undefined,
         contactEmail: formData.contactEmail || undefined,
         paymentTerms: formData.paymentTerms || undefined,
         deliveryTime: formData.deliveryTime || undefined,
         notes: formData.notes || undefined,
       });
-      setOriginalData(formData);
+      setFormData(normalizedFormData);
+      setOriginalData(normalizedFormData);
       showToast("Fornecedor atualizado com sucesso!", "success");
     } catch (error) {
       logger.error("Erro ao salvar:", error);
       showToast("Erro ao salvar as alterações.", "error");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleToggleActive = async () => {
-    if (!supplier) return;
-    setTogglingActive(true);
-    try {
-      await supplierService.update(supplier.id, { active: !supplier.active });
-      setSupplier((prev) => prev ? { ...prev, active: !prev.active } : prev);
-      showToast(
-        supplier.active ? "Fornecedor desativado." : "Fornecedor ativado.",
-        "success",
-      );
-    } catch (error) {
-      logger.error("Erro ao alterar status:", error);
-      showToast("Erro ao alterar status do fornecedor.", "error");
-    } finally {
-      setTogglingActive(false);
     }
   };
 
@@ -283,32 +316,6 @@ export default function FornecedorDetalhePage() {
         itemSubtitle="Fornecedor"
         sidebarContent={sidebarContent}
       >
-        {/* Status do fornecedor */}
-        <div className="flex items-center justify-between pb-2">
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-                supplier.active
-                  ? "text-green-700 bg-green-50"
-                  : "text-gray-500 bg-gray-100"
-              }`}
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${supplier.active ? "bg-green-500" : "bg-gray-400"}`}
-              />
-              {supplier.active ? "Ativo" : "Inativo"}
-            </span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleToggleActive}
-            isLoading={togglingActive}
-          >
-            {supplier.active ? "Desativar" : "Ativar"}
-          </Button>
-        </div>
-
         {/* Informações gerais */}
         <FormSection title="Informações gerais">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -316,14 +323,12 @@ export default function FornecedorDetalhePage() {
               label="Nome do fornecedor"
               value={formData.name}
               onChange={(e) => handleInputChange("name", e.target.value)}
-              required
             />
             <Input
               label="CNPJ"
-              value={formatCNPJ(formData.cnpj)}
-              onChange={(e) =>
-                handleInputChange("cnpj", e.target.value.replace(/\D/g, ""))
-              }
+              value={formData.cnpj}
+              onChange={(e) => handleInputChange("cnpj", e.target.value)}
+              mask="cnpj"
               placeholder="00.000.000/0000-00"
             />
             <Select
@@ -334,11 +339,10 @@ export default function FornecedorDetalhePage() {
             />
             <Input
               label="Telefone principal"
-              value={formatPhone(formData.phone)}
-              onChange={(e) =>
-                handleInputChange("phone", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="(00) 0000-0000"
+              value={formData.phone}
+              onChange={(e) => handleInputChange("phone", e.target.value)}
+              mask="phone"
+              placeholder="(00) 00000-0000"
             />
             <Input
               label="E-mail"
@@ -358,6 +362,19 @@ export default function FornecedorDetalhePage() {
         {/* Endereço */}
         <FormSection title="Endereço">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Input
+              label="CEP"
+              value={formData.zipCode}
+              onChange={(e) => handleInputChange("zipCode", e.target.value)}
+              mask="cep"
+              placeholder="00000-000"
+            />
+            <Select
+              label="Estado"
+              value={formData.state}
+              onChange={(e) => handleInputChange("state", e.target.value)}
+              options={STATE_OPTIONS}
+            />
             <div className="md:col-span-2">
               <Input
                 label="Logradouro"
@@ -374,6 +391,14 @@ export default function FornecedorDetalhePage() {
               }
             />
             <Input
+              label="Complemento"
+              value={formData.addressComplement}
+              onChange={(e) =>
+                handleInputChange("addressComplement", e.target.value)
+              }
+              placeholder="Sala, bloco, apto (opcional)"
+            />
+            <Input
               label="Bairro"
               value={formData.neighborhood}
               onChange={(e) =>
@@ -385,21 +410,12 @@ export default function FornecedorDetalhePage() {
               value={formData.city}
               onChange={(e) => handleInputChange("city", e.target.value)}
             />
-            <Select
-              label="Estado"
-              value={formData.state}
-              onChange={(e) => handleInputChange("state", e.target.value)}
-              options={STATE_OPTIONS}
-            />
-            <Input
-              label="CEP"
-              value={formData.zipCode.replace(/^(\d{5})(\d)/, "$1-$2")}
-              onChange={(e) =>
-                handleInputChange("zipCode", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="00000-000"
-            />
           </div>
+          {cepLoading && (
+            <p className="text-xs text-gray-500 -mt-2">
+              Buscando endereço pelo CEP...
+            </p>
+          )}
         </FormSection>
 
         {/* Contato comercial */}
@@ -408,20 +424,16 @@ export default function FornecedorDetalhePage() {
             <Input
               label="Nome do contato"
               value={formData.contactName}
-              onChange={(e) =>
-                handleInputChange("contactName", e.target.value)
-              }
+              onChange={(e) => handleInputChange("contactName", e.target.value)}
               placeholder="Nome do representante"
             />
             <Input
               label="Telefone do contato"
-              value={formatPhone(formData.contactPhone)}
+              value={formData.contactPhone}
               onChange={(e) =>
-                handleInputChange(
-                  "contactPhone",
-                  e.target.value.replace(/\D/g, ""),
-                )
+                handleInputChange("contactPhone", e.target.value)
               }
+              mask="phone"
               placeholder="(00) 00000-0000"
             />
             <Input

@@ -30,11 +30,11 @@ export interface Supplier {
   zipCode?: string;
   address?: string;
   addressNumber?: string;
+  addressComplement?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
   notes?: string;
-  active: boolean;
   quotations?: SupplierQuotation[];
   createdAt: string;
   updatedAt: string;
@@ -55,11 +55,11 @@ export interface CreateSupplierPayload {
   zipCode?: string;
   address?: string;
   addressNumber?: string;
+  addressComplement?: string;
   neighborhood?: string;
   city?: string;
   state?: string;
   notes?: string;
-  active?: boolean;
 }
 
 function mapSupplier(s: Record<string, unknown>): Supplier {
@@ -79,11 +79,11 @@ function mapSupplier(s: Record<string, unknown>): Supplier {
     zipCode: s.zipCode as string | undefined,
     address: s.address as string | undefined,
     addressNumber: s.addressNumber as string | undefined,
+    addressComplement: s.addressComplement as string | undefined,
     neighborhood: s.neighborhood as string | undefined,
     city: s.city as string | undefined,
     state: s.state as string | undefined,
     notes: s.notes as string | undefined,
-    active: (s.active as boolean) ?? true,
     quotations: s.quotations as SupplierQuotation[] | undefined,
     createdAt: s.createdAt as string,
     updatedAt: s.updatedAt as string,

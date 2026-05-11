@@ -24,7 +24,9 @@ import { logger } from "@/lib/logger";
 import { formatCPF, formatPhone } from "@/lib/formatters";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
-import { ChevronRight } from "lucide-react";
+import { useCepLookup } from "@/hooks/useCepLookup";
+import { maskCep } from "@/lib/masks";
+import { ChevronRight, Loader2 } from "lucide-react";
 
 export default function PacienteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -67,6 +69,27 @@ export default function PacienteDetalhePage() {
   const isDirty =
     originalData !== null &&
     JSON.stringify(formData) !== JSON.stringify(originalData);
+
+  const { loading: cepLoading } = useCepLookup({
+    cep: formData.zipCode,
+    enabled: !!patient,
+    onResolved: (data) => {
+      setFormData((prev) => ({
+        ...prev,
+        address: data.logradouro,
+        neighborhood: data.bairro,
+        city: data.cidade,
+        state: data.uf,
+      }));
+    },
+    onError: (err) => {
+      if (err.code === "not_found") {
+        showToast("CEP não encontrado.", "error");
+      } else if (err.code === "network") {
+        showToast(err.message, "error");
+      }
+    },
+  });
 
   useEffect(() => {
     loadData();
@@ -118,7 +141,7 @@ export default function PacienteDetalhePage() {
         neighborhood: patientData.neighborhood || "",
         city: patientData.city || "",
         state: patientData.state || "",
-        zipCode: patientData.zipCode || "",
+        zipCode: maskCep(patientData.zipCode || ""),
         healthPlanId: patientData.healthPlanId || "",
         healthPlanNumber: patientData.healthPlanNumber || "",
         healthPlanType: patientData.healthPlanType || "",
@@ -137,7 +160,7 @@ export default function PacienteDetalhePage() {
         neighborhood: patientData.neighborhood || "",
         city: patientData.city || "",
         state: patientData.state || "",
-        zipCode: patientData.zipCode || "",
+        zipCode: maskCep(patientData.zipCode || ""),
         healthPlanId: patientData.healthPlanId || "",
         healthPlanNumber: patientData.healthPlanNumber || "",
         healthPlanType: patientData.healthPlanType || "",
@@ -352,6 +375,24 @@ export default function PacienteDetalhePage() {
         {/* Seção: Endereço */}
         <FormSection title="Endereço">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="relative">
+              <Input
+                label="CEP"
+                mask="cep"
+                value={formData.zipCode}
+                onChange={(e) => handleInputChange("zipCode", e.target.value)}
+                placeholder="00000-000"
+              />
+              {cepLoading && (
+                <Loader2 className="absolute right-3 top-9 w-4 h-4 text-gray-400 animate-spin" />
+              )}
+            </div>
+            <Select
+              label="Estado"
+              value={formData.state}
+              onChange={(e) => handleInputChange("state", e.target.value)}
+              options={STATE_OPTIONS}
+            />
             <div className="md:col-span-2">
               <Input
                 label="Logradouro"
@@ -385,20 +426,6 @@ export default function PacienteDetalhePage() {
               label="Cidade"
               value={formData.city}
               onChange={(e) => handleInputChange("city", e.target.value)}
-            />
-            <Select
-              label="Estado"
-              value={formData.state}
-              onChange={(e) => handleInputChange("state", e.target.value)}
-              options={STATE_OPTIONS}
-            />
-            <Input
-              label="CEP"
-              value={formData.zipCode.replace(/^(\d{5})(\d)/, "$1-$2")}
-              onChange={(e) =>
-                handleInputChange("zipCode", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="00000-000"
             />
           </div>
         </FormSection>

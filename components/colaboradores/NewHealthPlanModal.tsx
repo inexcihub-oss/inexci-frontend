@@ -6,6 +6,7 @@ import {
   healthPlanService,
   CreateHealthPlanPayload,
 } from "@/services/health-plan.service";
+import { maskCnpj, maskPhone, unmask } from "@/lib/masks";
 
 interface NewHealthPlanModalProps {
   isOpen: boolean;
@@ -21,23 +22,11 @@ const EMPTY_FORM = {
 };
 
 function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10)
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  return maskPhone(value);
 }
 
 function applyCnpjMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-  if (digits.length <= 8)
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
-  if (digits.length <= 12)
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+  return maskCnpj(value);
 }
 
 function isValidEmail(email: string): boolean {
@@ -85,6 +74,10 @@ export function NewHealthPlanModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      setError("Nome do convênio é obrigatório.");
+      return;
+    }
     if (!isValidEmail(formData.email)) {
       setEmailError("E-mail inválido");
       return;
@@ -96,9 +89,9 @@ export function NewHealthPlanModal({
     try {
       const payload: CreateHealthPlanPayload = {
         name: formData.name.trim(),
-        phone: formData.phone,
+        phone: unmask(formData.phone),
         email: formData.email.trim(),
-        cnpj: formData.cnpj ? formData.cnpj.replace(/\D/g, "") : undefined,
+        cnpj: unmask(formData.cnpj) || undefined,
       };
 
       await healthPlanService.create(payload);
@@ -156,12 +149,10 @@ export function NewHealthPlanModal({
             {/* Row 1: Nome + CNPJ */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>Nome
-                </label>
+                <label className={labelClass}>Nome</label>
                 <input
                   type="text"
-                  required
+                  aria-required="true"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
@@ -185,9 +176,7 @@ export function NewHealthPlanModal({
             {/* Row 2: Telefone + E-mail */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>Telefone
-                </label>
+                <label className={labelClass}>Telefone</label>
                 <input
                   type="tel"
                   required
@@ -198,9 +187,7 @@ export function NewHealthPlanModal({
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>E-mail
-                </label>
+                <label className={labelClass}>E-mail</label>
                 <input
                   type="email"
                   required

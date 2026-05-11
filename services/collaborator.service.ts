@@ -163,7 +163,6 @@ export const collaboratorService = {
     userId: string,
     payload: {
       name?: string;
-      email?: string;
       phone?: string;
       specialty?: string;
       gender?: string;

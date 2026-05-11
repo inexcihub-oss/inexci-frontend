@@ -127,7 +127,6 @@ export function NewSupplierModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Nome"
-                required
                 placeholder="Nome do fornecedor"
                 {...form.getFieldProps("name")}
               />
@@ -195,11 +194,7 @@ export function NewSupplierModal({
           {/* Footer */}
           <div className="h-px bg-gray-200 flex-shrink-0" />
           <div className="ds-modal-footer">
-            <button
-              type="submit"
-              disabled={loading}
-              className="ds-btn-primary"
-            >
+            <button type="submit" disabled={loading} className="ds-btn-primary">
               {loading ? "Adicionando..." : "Adicionar fornecedor"}
             </button>
           </div>

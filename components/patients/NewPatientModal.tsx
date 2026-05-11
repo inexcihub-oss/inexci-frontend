@@ -150,7 +150,7 @@ export function NewPatientModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Nome completo"
-                required
+                aria-required="true"
                 placeholder="Nome completo"
                 {...form.getFieldProps("name")}
               />
@@ -158,7 +158,7 @@ export function NewPatientModal({
                 label="Telefone"
                 type="tel"
                 mask="phone"
-                required
+                aria-required="true"
                 placeholder="(21) 98765-4321"
                 {...form.getFieldProps("phone")}
               />
@@ -169,12 +169,12 @@ export function NewPatientModal({
               <Input
                 label="E-mail"
                 type="email"
-                required
+                aria-required="true"
                 placeholder="paciente@mail.com"
                 {...form.getFieldProps("email")}
               />
               <Input
-                label="CPF"
+                label="CPF (opcional)"
                 mask="cpf"
                 placeholder="123.456.789-00"
                 {...form.getFieldProps("cpf")}
@@ -184,13 +184,13 @@ export function NewPatientModal({
             {/* Row 3: Data de nascimento + Gênero */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <DateInput
-                label="Data de nascimento"
+                label="Data de nascimento (opcional)"
                 value={form.values.birthDate ?? ""}
                 onChange={(v) => form.setField("birthDate", v)}
                 className={inputClass}
               />
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Gênero</label>
+                <label className={labelClass}>Gênero (opcional)</label>
                 <select
                   value={form.values.gender ?? ""}
                   onChange={(e) => form.setField("gender", e.target.value)}
@@ -207,7 +207,7 @@ export function NewPatientModal({
 
             {/* Row 4: Convênio (full width) */}
             <div className="flex flex-col gap-1.5">
-              <label className={labelClass}>Convênio</label>
+              <label className={labelClass}>Convênio (opcional)</label>
               <select
                 value={form.values.healthPlanId ?? ""}
                 onChange={(e) => form.setField("healthPlanId", e.target.value)}

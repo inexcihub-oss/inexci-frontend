@@ -44,19 +44,16 @@ const allMenuItems: MenuItem[] = [
     iconSrc: "/icons/users.svg",
     label: "Hospitais",
     href: "/hospitais",
-    adminOnly: true,
   },
   {
     iconSrc: "/icons/document.svg",
     label: "Convênios",
     href: "/convenios",
-    adminOnly: true,
   },
   {
     iconSrc: "/icons/dollar-cash-circle.svg",
     label: "Fornecedores",
     href: "/fornecedores",
-    adminOnly: true,
   },
   {
     iconSrc: "/icons/status-surgeries.svg",
