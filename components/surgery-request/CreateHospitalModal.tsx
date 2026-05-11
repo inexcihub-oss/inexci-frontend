@@ -15,8 +15,6 @@ import { unmask } from "@/lib/masks";
 import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
-import { useCepLookup } from "@/hooks/useCepLookup";
-import { Loader2 } from "lucide-react";
 
 interface CreateHospitalModalProps {
   isOpen: boolean;
@@ -24,22 +22,10 @@ interface CreateHospitalModalProps {
   onSuccess: (hospital: Hospital) => void;
 }
 
-const ESTADOS_BR = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
-  "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC",
-  "SP", "SE", "TO",
-];
-
 const FIELD_LABELS: Record<string, string> = {
   name: "Hospital",
   phone: "Telefone",
   email: "E-mail",
-  zipCode: "CEP",
-  addressNumber: "Número",
-  address: "Endereço",
-  neighborhood: "Bairro",
-  city: "Cidade",
-  state: "Estado",
 };
 
 export function CreateHospitalModal({
@@ -57,32 +43,6 @@ export function CreateHospitalModal({
       name: "",
       phone: "",
       email: "",
-      zipCode: "",
-      addressNumber: "",
-      address: "",
-      neighborhood: "",
-      city: "",
-      state: "",
-    },
-  });
-
-  const { loading: cepLoading } = useCepLookup({
-    cep: form.values.zipCode,
-    enabled: isOpen,
-    onResolved: (data) => {
-      form.setValues({
-        address: data.logradouro,
-        neighborhood: data.bairro,
-        city: data.cidade,
-        state: data.uf,
-      });
-    },
-    onError: (err) => {
-      if (err.code === "not_found") {
-        showToast("CEP não encontrado.", "error");
-      } else if (err.code === "network") {
-        showToast(err.message, "error");
-      }
     },
   });
 
@@ -102,12 +62,6 @@ export function CreateHospitalModal({
           name: data.name.trim(),
           phone: unmask(data.phone) || undefined,
           email: data.email || undefined,
-          zipCode: unmask(data.zipCode) || undefined,
-          address: data.address.trim() || undefined,
-          addressNumber: data.addressNumber.trim() || undefined,
-          neighborhood: data.neighborhood.trim() || undefined,
-          city: data.city.trim() || undefined,
-          state: data.state || undefined,
         };
         const newHospital = await hospitalService.create(payload);
         onSuccess(newHospital);
@@ -172,83 +126,6 @@ export function CreateHospitalModal({
               placeholder="hospital@mail.com"
               {...form.getFieldProps("email")}
             />
-
-            {/* CEP + Número */}
-            <div className="flex gap-3">
-              <div className="flex-1 relative">
-                <Input
-                  label="CEP"
-                  mask="cep"
-                  required
-                  placeholder="00000-000"
-                  {...form.getFieldProps("zipCode")}
-                />
-                {cepLoading && (
-                  <Loader2 className="absolute right-3 top-9 w-4 h-4 text-gray-400 animate-spin" />
-                )}
-              </div>
-              <div className="w-32">
-                <Input
-                  label="Número"
-                  required
-                  placeholder="123"
-                  {...form.getFieldProps("addressNumber")}
-                />
-              </div>
-            </div>
-
-            {/* Endereço + Bairro */}
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Input
-                  label="Endereço"
-                  required
-                  placeholder="Rua, Avenida..."
-                  {...form.getFieldProps("address")}
-                />
-              </div>
-              <div className="flex-1">
-                <Input
-                  label="Bairro"
-                  required
-                  placeholder="Nome do bairro"
-                  {...form.getFieldProps("neighborhood")}
-                />
-              </div>
-            </div>
-
-            {/* Cidade + Estado */}
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <Input
-                  label="Cidade"
-                  required
-                  placeholder="São Paulo"
-                  {...form.getFieldProps("city")}
-                />
-              </div>
-              <div className="w-24 flex flex-col gap-1.5">
-                <label className="ds-label mb-0">
-                  Estado<span className="text-red-500 ml-1">*</span>
-                </label>
-                <select
-                  required
-                  value={form.values.state}
-                  onChange={(e) => form.setField("state", e.target.value)}
-                  className="ds-input"
-                >
-                  <option value="">UF</option>
-                  {ESTADOS_BR.map((uf) => (
-                    <option key={uf} value={uf}>
-                      {uf}
-                    </option>
-                  ))}
-                </select>
-                {form.errors.state && (
-                  <p className="text-xs text-red-600">{form.errors.state}</p>
-                )}
-              </div>
-            </div>
 
             {error && (
               <p className="text-sm text-red-500 text-center">{error}</p>
