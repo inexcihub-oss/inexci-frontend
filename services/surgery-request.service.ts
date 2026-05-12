@@ -392,7 +392,14 @@ export const surgeryRequestService = {
     const response = await api.get<SurgeryRequestDetail>(
       `/surgery-requests/one?id=${requestId}`,
     );
-    return response.data;
+    const data = response.data as SurgeryRequestDetail & {
+      cidCode?: string | null;
+    };
+    // Backend serializa o campo como cidCode; normaliza para cidId esperado pelos componentes
+    if (data.cidCode != null && !data.cidId) {
+      data.cidId = data.cidCode;
+    }
+    return data;
   },
 
   // ── Criação e edição básica ────────────────────────────────────────────────
