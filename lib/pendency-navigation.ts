@@ -50,7 +50,7 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
   },
 
   // Relatório médico
-  medicalReport: {
+  medical_report: {
     type: "scroll",
     target: "medical-report-section",
     label: "Preencher",

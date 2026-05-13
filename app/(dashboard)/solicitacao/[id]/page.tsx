@@ -755,7 +755,7 @@ export default function SolicitacaoDetalhePage() {
     insert_tuss: "codigo-tuss",
     opme_items: "opme",
     insert_opme: "opme",
-    medicalReport: "laudo",
+    medical_report: "laudo",
     confirm_receipt: "faturamento",
   };
 

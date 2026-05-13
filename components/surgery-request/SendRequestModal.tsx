@@ -60,7 +60,7 @@ export function SendRequestModal({
     hospital: "Informações Gerais",
     tuss_procedures: "Código TUSS",
     opme_items: "OPME",
-    medicalReport: "Laudo",
+    medical_report: "Laudo",
   };
 
   useEffect(() => {
