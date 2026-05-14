@@ -548,7 +548,7 @@ function ConfiguracoesPageInner() {
         ...(signatureFile
           ? { signatureUrl: signaturePath }
           : signatureDeleted
-            ? { signatureUrl: undefined }
+            ? { signatureUrl: null }
             : {}),
       });
 
