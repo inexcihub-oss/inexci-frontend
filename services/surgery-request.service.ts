@@ -282,6 +282,7 @@ export interface SurgeryRequestListItem {
   tussProcedure: { id: string; description: string } | null;
   procedureName?: string;
   pendenciesCount?: number;
+  hasIncompletePayment?: boolean;
   [key: string]: unknown;
 }
 

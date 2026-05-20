@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { AlertTriangle } from "lucide-react";
 import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
@@ -934,6 +935,25 @@ export default function SolicitacaoDetalhePage() {
     );
   }
 
+  const hasPartialBillingPending = (() => {
+    const invoiceValue = Number(solicitacao?.billing?.invoiceValue ?? 0);
+    const receipt = solicitacao?.receipt;
+
+    if (invoiceValue <= 0 || !receipt) return false;
+
+    const isContestResolved =
+      receipt.isContested &&
+      receipt.contestedReceivedValue != null &&
+      receipt.contestedReceivedValue !== receipt.receivedValue;
+
+    const totalReceived = isContestResolved
+      ? Number(receipt.receivedValue ?? 0) +
+        Number(receipt.contestedReceivedValue ?? 0)
+      : Number(receipt.receivedValue ?? 0);
+
+    return totalReceived > 0 && totalReceived < invoiceValue;
+  })();
+
   // Função para verificar se uma aba tem pendências não concluídas
   const getTabWarning = (tabId: TabType): boolean => {
     if (!validation || !validation.pendencies) return false;
@@ -950,13 +970,19 @@ export default function SolicitacaoDetalhePage() {
 
     const pendencyKeys = tabPendencyMap[tabId] || [];
 
-    // Verificar se há pendências não concluídas para esta aba
-    return validation.pendencies.some(
+    const hasValidationWarning = validation.pendencies.some(
       (pendency) =>
         pendencyKeys.includes(pendency.key) &&
         !pendency.isComplete &&
         !pendency.isOptional,
     );
+
+    if (tabId === "faturamento") {
+      return hasValidationWarning || hasPartialBillingPending;
+    }
+
+    // Verificar se há pendências não concluídas para esta aba
+    return hasValidationWarning;
   };
 
   const statusNum: number = solicitacao?.status ?? 0;
@@ -1307,12 +1333,9 @@ export default function SolicitacaoDetalhePage() {
                   >
                     {tab.label}
                     {tab.hasWarning && (
-                      <Image
-                        src="/icons/warning.svg"
-                        alt="Aviso"
-                        width={20}
-                        height={20}
-                        className="text-red-500"
+                      <AlertTriangle
+                        aria-label="Aviso"
+                        className="w-4 h-4 text-amber-500"
                       />
                     )}
                   </button>

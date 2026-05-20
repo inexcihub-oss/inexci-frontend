@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { ConfirmReceiptModal } from "@/components/surgery-request/modals/ConfirmReceiptModal";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
 
@@ -82,8 +83,43 @@ export function FaturamentoTab() {
     receipt?.isContested &&
     receipt.contestedReceivedValue !== receipt.receivedValue;
 
+  const invoiceValue = Number(billing.invoiceValue ?? 0);
+  const totalReceived = (() => {
+    if (!receipt) return 0;
+
+    if (isContestResolved) {
+      return (
+        Number(receipt.contestedReceivedValue ?? 0) +
+        Number(receipt.receivedValue ?? 0)
+      );
+    }
+
+    return Number(receipt.receivedValue ?? 0);
+  })();
+
+  const hasPartialReceipt =
+    invoiceValue > 0 && totalReceived > 0 && totalReceived < invoiceValue;
+
+  const missingValue = Math.max(0, invoiceValue - totalReceived);
+
   return (
     <div className="flex flex-col gap-3">
+      {hasPartialReceipt && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+          <AlertTriangle className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs md:text-sm font-semibold text-amber-800">
+              Recebimento parcial identificado
+            </span>
+            <span className="text-xs text-amber-700">
+              Recebido {formatCurrency(totalReceived)} de{" "}
+              {formatCurrency(invoiceValue)} · Falta{" "}
+              {formatCurrency(missingValue)}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* ── Seção Recebimento (status 8+) — aparece primeiro quando disponível ── */}
       {receipt && (
         <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden">
@@ -238,10 +274,7 @@ export function FaturamentoTab() {
         initialReceivedValue={
           billing?.invoiceValue != null &&
           receipt?.contestedReceivedValue != null
-            ? Math.max(
-                0,
-                billing.invoiceValue - receipt.contestedReceivedValue,
-              )
+            ? Math.max(0, billing.invoiceValue - receipt.contestedReceivedValue)
             : undefined
         }
         onSuccess={() => {

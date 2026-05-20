@@ -33,6 +33,7 @@ import { clearAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import type { DoctorHeader } from "@/types/doctor-header.types";
 import { BillingSection } from "@/components/billing/BillingSection";
 import { removeBackground } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import {
   User,
@@ -899,7 +900,7 @@ function ConfiguracoesPageInner() {
                         ? "absolute inset-x-0 pointer-events-none"
                         : "flex-1",
                     )}
-                    dangerouslySetInnerHTML={{ __html: headerContentHtml }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(headerContentHtml) }}
                   />
                 )}
               </div>

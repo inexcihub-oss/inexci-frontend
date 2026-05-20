@@ -147,6 +147,7 @@ export default function ProcedimentosCirurgicos() {
               })(),
               status,
               healthPlan: record.healthPlan?.name || "",
+              hasIncompletePayment: record.hasIncompletePayment === true,
             };
           },
         );

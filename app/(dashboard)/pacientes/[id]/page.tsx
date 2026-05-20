@@ -32,7 +32,12 @@ export default function PacienteDetalhePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get("returnUrl");
+  const rawReturnUrl = searchParams.get("returnUrl");
+  const returnUrl = (() => {
+    if (!rawReturnUrl) return null;
+    const decoded = decodeURIComponent(rawReturnUrl);
+    return decoded.startsWith("/") && !decoded.startsWith("//") ? decoded : null;
+  })();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -204,7 +209,7 @@ export default function PacienteDetalhePage() {
       setOriginalData(formData);
       showToast("Paciente atualizado com sucesso!", "success");
       if (returnUrl) {
-        setTimeout(() => router.push(decodeURIComponent(returnUrl)), 800);
+        setTimeout(() => router.push(returnUrl), 800);
       }
     } catch (error) {
       logger.error("Erro ao salvar:", error);
@@ -218,7 +223,7 @@ export default function PacienteDetalhePage() {
     if (isDirty && originalData) {
       setFormData(originalData);
     } else {
-      router.push(returnUrl ? decodeURIComponent(returnUrl) : "/pacientes");
+      router.push(returnUrl ?? "/pacientes");
     }
   };
 

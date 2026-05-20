@@ -22,6 +22,7 @@ export { SearchInput } from "./SearchInput";
 export { DateInput } from "./DateInput";
 export { Spinner } from "./Spinner";
 export { Tooltip } from "./Tooltip";
+export { OtpInput } from "./OtpInput";
 export {
   Table,
   TableBody,

@@ -13,6 +13,7 @@ import {
   MoreHorizontal,
   Stethoscope,
   ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 import {
   SurgeryRequest,
@@ -33,21 +34,21 @@ type StaleTier = {
 const STALE_TIERS: StaleTier[] = [
   {
     minDays: 15,
-    label: "Há 15d+ parada",
+    label: "Há mais de 15 dias neste status",
     bg: "bg-red-50",
     text: "text-red-700",
     dot: "bg-red-500",
   },
   {
     minDays: 7,
-    label: "Há 7d parada",
+    label: "Há 7 dias neste status",
     bg: "bg-orange-50",
     text: "text-orange-700",
     dot: "bg-orange-500",
   },
   {
     minDays: 3,
-    label: "Há 3d parada",
+    label: "Há 3 dias neste status",
     bg: "bg-yellow-50",
     text: "text-yellow-700",
     dot: "bg-yellow-500",
@@ -377,6 +378,14 @@ export const ProcedureCard = memo<ProcedureCardProps>(
             <p className="text-sm md:text-base text-gray-500 leading-normal line-clamp-1">
               {procedure.healthPlan}
             </p>
+          </div>
+        )}
+
+        {/* Alerta de faturamento parcial */}
+        {procedure.hasIncompletePayment && (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 mb-3 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span className="text-xs font-semibold">Faturada parcialmente</span>
           </div>
         )}
 

@@ -27,8 +27,8 @@ export type ForgotPasswordEmailInput = z.infer<typeof forgotPasswordEmailSchema>
 export const forgotPasswordCodeSchema = z.object({
   code: z
     .string()
-    .min(1, "Informe o código de verificação.")
-    .regex(/^\d{4,8}$/, "Código deve conter apenas dígitos."),
+    .length(6, "Informe os 6 dígitos do código.")
+    .regex(/^\d{6}$/, "O código deve conter apenas dígitos."),
 });
 
 export type ForgotPasswordCodeInput = z.infer<typeof forgotPasswordCodeSchema>;

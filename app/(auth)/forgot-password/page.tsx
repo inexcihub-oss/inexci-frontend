@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, OtpInput } from "@/components/ui";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { authService } from "@/services/auth.service";
 import { ArrowLeft, CheckCircle2, Mail, KeyRound, Lock } from "lucide-react";
@@ -58,21 +58,21 @@ function ForgotPasswordForm() {
 
   /* ── Etapa 2: validar código ── */
   const handleValidateCode = codeForm.handleSubmit(async (data) => {
+    await runCodeValidation(data.code);
+  });
+
+  const runCodeValidation = async (code: string) => {
     setError("");
     setIsLoading(true);
     try {
-      const valid = await authService.validateRecoveryCode(email, data.code);
-      if (!valid) {
-        setError("Código inválido ou expirado. Verifique e tente novamente.");
-        return;
-      }
+      await authService.validateRecoveryCode(email, code);
       setStep("password");
     } catch (err: unknown) {
       setError(extractMessage(err) ?? "Código inválido ou expirado.");
     } finally {
       setIsLoading(false);
     }
-  });
+  };
 
   /* ── Etapa 3: redefinir senha ── */
   const handleChangePassword = passwordForm.handleSubmit(async (data) => {
@@ -264,17 +264,16 @@ function ForgotPasswordForm() {
               {/* ── Formulário: Etapa 2 — Código ── */}
               {step === "code" && (
                 <form onSubmit={handleValidateCode} noValidate className="space-y-5">
-                  <Input
-                    id="code"
+                  <OtpInput
                     label="Código de verificação"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
                     required
+                    autoFocus
                     {...codeForm.getFieldProps("code")}
                     disabled={isLoading}
-                    placeholder="Ex: 123456"
-                    className="min-h-[48px] tracking-widest text-center text-lg"
+                    onComplete={(val) => {
+                      codeForm.setField("code", val);
+                      runCodeValidation(val);
+                    }}
                   />
 
                   {error && (

@@ -141,8 +141,20 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
           </span>
         </div>
 
-        {/* Col 6: Badge Pendências - padding 0 4px */}
-        <div className="hidden lg:flex items-center justify-center px-1 shrink-0">
+        {/* Col 6: Alertas (pendências + faturamento parcial) */}
+        <div className="hidden lg:flex items-center justify-center gap-1 px-1 shrink-0">
+          {request.hasIncompletePayment && (
+            <div
+              className="flex items-center gap-1 px-2 py-1 border border-amber-200 rounded-full bg-amber-50"
+              title="Solicitação faturada parcialmente"
+            >
+              <AlertTriangle className="w-4 h-4 text-amber-700" />
+              <span className="text-xs text-amber-700 font-medium">
+                Parcial
+              </span>
+            </div>
+          )}
+
           {request.pendenciesCount > 0 ? (
             <div className="flex items-center gap-1 px-3 py-1 border border-error rounded-full bg-white">
               <AlertTriangle className="w-5 h-5 text-error" />
@@ -151,7 +163,9 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
               </span>
             </div>
           ) : (
-            <div className="w-16" /> // Placeholder para manter alinhamento
+            !request.hasIncompletePayment && (
+              <div className="w-16" /> // Placeholder para manter alinhamento
+            )
           )}
         </div>
 
@@ -222,7 +236,9 @@ const StatusGroup = memo<StatusGroupProps>(
           />
 
           {/* Nome do Status */}
-          <span className="text-sm md:text-base font-semibold text-black">{status}</span>
+          <span className="text-sm md:text-base font-semibold text-black">
+            {status}
+          </span>
 
           {/* Contador */}
           <div className="flex items-center justify-center w-6 h-6 bg-white border border-neutral-100 rounded-full">
