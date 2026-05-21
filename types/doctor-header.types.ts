@@ -2,7 +2,7 @@ export interface DoctorHeader {
   id: string;
   doctorProfileId: string;
   logoUrl: string | null;
-  logoPosition: "left" | "right";
+  logoPosition: "left" | "center" | "right";
   contentHtml: string | null;
   createdAt: string;
   updatedAt: string;
@@ -10,6 +10,6 @@ export interface DoctorHeader {
 
 export interface UpsertDoctorHeaderInput {
   logoUrl?: string | null;
-  logoPosition?: "left" | "right";
+  logoPosition?: "left" | "center" | "right";
   contentHtml?: string | null;
 }

@@ -140,7 +140,7 @@ export function MedicalReportPreviewModal({
   const [doctorCrmState, setDoctorCrmState] = useState<string>("");
   const [customHeader, setCustomHeader] = useState<{
     logoUrl?: string | null;
-    logoPosition?: "left" | "right";
+    logoPosition?: "left" | "center" | "right";
     contentHtml?: string | null;
   } | null>(null);
 
@@ -168,6 +168,7 @@ export function MedicalReportPreviewModal({
             logoUrl: rawHeader.logoUrl ?? null,
             logoPosition: (rawHeader.logoPosition ?? "left") as
               | "left"
+              | "center"
               | "right",
             contentHtml: rawHeader.contentHtml ?? null,
           }
@@ -225,17 +226,15 @@ export function MedicalReportPreviewModal({
     setIsExporting(true);
     try {
       const response = await api.get(
-        `/surgery-requests/${solicitacao.id}/report-pdf`,
+        `/surgery-requests/${solicitacao.id}/medical-report-pdf`,
         { responseType: "arraybuffer" },
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `laudo-${solicitacao.id}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        showToast("Não foi possível abrir o PDF em uma nova aba", "error");
+      }
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       showToast("Erro ao exportar PDF", "error");
@@ -255,7 +254,7 @@ export function MedicalReportPreviewModal({
       />
 
       {/* Modal — bottom sheet no mobile, centralizado no desktop */}
-      <div className="relative z-10 flex flex-col bg-white w-full md:max-w-3xl md:mx-4 md:my-6 rounded-t-3xl md:rounded-2xl max-h-[calc(92vh-64px)] md:max-h-[85vh] shadow-xl overflow-hidden">
+      <div className="relative z-10 flex flex-col bg-white w-full md:max-w-3xl md:mx-4 md:my-6 rounded-t-3xl md:rounded-2xl max-h-[calc(92vh-64px)] md:max-h-[85vh] shadow-xl overflow-hidden mobile-sheet-offset">
         {/* Drag handle — apenas mobile */}
         <div className="flex md:hidden justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
@@ -276,7 +275,7 @@ export function MedicalReportPreviewModal({
         </div>
 
         {/* ─── Scrollable Content ─────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto overflow-x-auto overscroll-contain bg-gray-100 p-5 md:p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto overscroll-contain bg-gray-100 p-5 md:p-6">
           <SurgeryRequestLaudoDocument
             today={today}
             patientName={patientName}

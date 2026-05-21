@@ -276,7 +276,7 @@ function ConfiguracoesPageInner() {
   const [headerLogoFile, setHeaderLogoFile] = useState<File | null>(null);
   const [headerLogoDeleted, setHeaderLogoDeleted] = useState(false);
   const [headerLogoPosition, setHeaderLogoPosition] = useState<
-    "left" | "right"
+    "left" | "center" | "right"
   >("left");
   const [headerContentHtml, setHeaderContentHtml] = useState<string>("");
   const [savingHeader, setSavingHeader] = useState(false);
@@ -284,11 +284,16 @@ function ConfiguracoesPageInner() {
 
   // Carregar dados do usuário
   useEffect(() => {
+    if (!user?.id) return;
+
+    let isMounted = true;
+
     const loadProfile = async () => {
       setLoadingProfile(true);
       try {
         const profileData = await userService.getProfile();
         const dp = profileData.doctorProfile;
+        if (!isMounted) return;
         setProfile({
           name: profileData.name || "",
           email: profileData.email || "",
@@ -307,11 +312,11 @@ function ConfiguracoesPageInner() {
         if (profileData.avatarUrl) {
           const url = profileData.avatarUrl;
           if (url.startsWith("http://") || url.startsWith("https://")) {
-            setAvatarPreview(url);
+            if (isMounted) setAvatarPreview(url);
           } else {
             try {
               const signedUrl = await uploadService.getSignedUrl(url);
-              setAvatarPreview(signedUrl);
+              if (isMounted) setAvatarPreview(signedUrl);
             } catch {
               // ignora erro de URL assinada
             }
@@ -320,11 +325,11 @@ function ConfiguracoesPageInner() {
         if (dp?.signatureUrl) {
           const sUrl = dp.signatureUrl;
           if (sUrl.startsWith("http://") || sUrl.startsWith("https://")) {
-            setSignaturePreview(sUrl);
+            if (isMounted) setSignaturePreview(sUrl);
           } else {
             try {
               const signedUrl = await uploadService.getSignedUrl(sUrl);
-              setSignaturePreview(signedUrl);
+              if (isMounted) setSignaturePreview(signedUrl);
             } catch {
               // ignora erro de URL assinada
             }
@@ -333,7 +338,7 @@ function ConfiguracoesPageInner() {
       } catch (error) {
         logger.error("Erro ao carregar perfil:", error);
         // Fallback para dados do contexto
-        if (user) {
+        if (isMounted && user) {
           const dp = user.doctorProfile;
           setProfile({
             name: user.name || "",
@@ -349,12 +354,16 @@ function ConfiguracoesPageInner() {
           });
         }
       } finally {
-        setLoadingProfile(false);
+        if (isMounted) setLoadingProfile(false);
       }
     };
 
     loadProfile();
-  }, [user]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
 
   // Carregar configurações de notificação
   useEffect(() => {
@@ -417,7 +426,6 @@ function ConfiguracoesPageInner() {
     };
     loadHeader();
   }, [profile.isDoctor]);
-
 
   // Handlers de upload
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -830,6 +838,17 @@ function ConfiguracoesPageInner() {
                 ← Esquerda
               </button>
               <button
+                onClick={() => setHeaderLogoPosition("center")}
+                className={cn(
+                  "flex-1 py-3 px-4 rounded-xl border text-sm font-medium transition-all",
+                  headerLogoPosition === "center"
+                    ? "bg-primary-50 border-primary-500 text-primary-700"
+                    : "border-gray-200 text-gray-600 hover:border-gray-300",
+                )}
+              >
+                Centro
+              </button>
+              <button
                 onClick={() => setHeaderLogoPosition("right")}
                 className={cn(
                   "flex-1 py-3 px-4 rounded-xl border text-sm font-medium transition-all",
@@ -876,31 +895,31 @@ function ConfiguracoesPageInner() {
               </p>
             </CardHeader>
             <CardContent className="p-6 pt-0">
-              <div
-                className={cn(
-                  "relative flex items-center",
-                  headerLogoPosition === "right"
-                    ? "flex-row-reverse"
-                    : "flex-row",
-                  headerLogoPreview ? "min-h-20" : "",
-                )}
-              >
+              <div className={cn("flex flex-col gap-2")}>
                 {headerLogoPreview && (
-                  <img
-                    src={headerLogoPreview}
-                    alt="Logo"
-                    className="max-h-20 max-w-48 object-contain relative z-10 flex-shrink-0"
-                  />
+                  <div
+                    className={cn(
+                      "flex",
+                      headerLogoPosition === "right"
+                        ? "justify-end"
+                        : headerLogoPosition === "center"
+                          ? "justify-center"
+                          : "justify-start",
+                    )}
+                  >
+                    <img
+                      src={headerLogoPreview}
+                      alt="Logo"
+                      className="max-h-20 max-w-48 object-contain flex-shrink-0"
+                    />
+                  </div>
                 )}
                 {headerContentHtml && (
                   <div
-                    className={cn(
-                      "text-xs text-gray-700 leading-relaxed text-center",
-                      headerLogoPreview
-                        ? "absolute inset-x-0 pointer-events-none"
-                        : "flex-1",
-                    )}
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(headerContentHtml) }}
+                    className="text-xs text-gray-700 leading-relaxed text-center"
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeHtml(headerContentHtml),
+                    }}
                   />
                 )}
               </div>

@@ -224,6 +224,13 @@ function ProceduresTable({ procedures }: { procedures: TussItemRef[] }) {
 
 function MaterialsTable({ opmeItems }: { opmeItems: OpmeItemRef[] }) {
   if (!opmeItems?.length) return null;
+
+  const splitList = (value?: string) =>
+    (value ?? "")
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
   return (
     <table
       style={{
@@ -238,7 +245,7 @@ function MaterialsTable({ opmeItems }: { opmeItems: OpmeItemRef[] }) {
         <tr>
           <th
             style={{
-              width: "80%",
+              width: "50%",
               fontWeight: 500,
               textAlign: "left",
               padding: "6px 10px",
@@ -255,6 +262,30 @@ function MaterialsTable({ opmeItems }: { opmeItems: OpmeItemRef[] }) {
               textAlign: "left",
               padding: "6px 10px",
               borderBottom: "1px solid #dcdfe3",
+              borderRight: "1px solid #dcdfe3",
+            }}
+          >
+            Fabricantes
+          </th>
+          <th
+            style={{
+              width: "20%",
+              fontWeight: 500,
+              textAlign: "left",
+              padding: "6px 10px",
+              borderBottom: "1px solid #dcdfe3",
+              borderRight: "1px solid #dcdfe3",
+            }}
+          >
+            Fornecedores
+          </th>
+          <th
+            style={{
+              width: "10%",
+              fontWeight: 500,
+              textAlign: "left",
+              padding: "6px 10px",
+              borderBottom: "1px solid #dcdfe3",
             }}
           >
             Quantidade
@@ -264,6 +295,14 @@ function MaterialsTable({ opmeItems }: { opmeItems: OpmeItemRef[] }) {
       <tbody>
         {opmeItems.map((item, idx) => {
           const bg = idx % 2 === 0 ? "#f2f2f2" : "#ffffff";
+          const fabricantes = unique(splitList(item.brand)).join(", ");
+          const fornecedores = unique([
+            ...splitList(item.distributor),
+            ...((item.suppliers ?? [])
+              .map((supplier) => supplier.name)
+              .filter(Boolean) as string[]),
+          ]).join(", ");
+
           return (
             <tr key={item.id ?? idx}>
               <td
@@ -276,6 +315,28 @@ function MaterialsTable({ opmeItems }: { opmeItems: OpmeItemRef[] }) {
                 }}
               >
                 {item.name || "—"}
+              </td>
+              <td
+                style={{
+                  padding: "8px 10px",
+                  borderBottom: "1px solid #dcdfe3",
+                  borderRight: "1px solid #dcdfe3",
+                  lineHeight: "1.333",
+                  background: bg,
+                }}
+              >
+                {fabricantes || "—"}
+              </td>
+              <td
+                style={{
+                  padding: "8px 10px",
+                  borderBottom: "1px solid #dcdfe3",
+                  borderRight: "1px solid #dcdfe3",
+                  lineHeight: "1.333",
+                  background: bg,
+                }}
+              >
+                {fornecedores || "—"}
               </td>
               <td
                 style={{
@@ -430,7 +491,7 @@ export interface SurgeryRequestLaudoDocumentProps {
   /** Cabeçalho customizado do médico (substitui o cabeçalho padrão "LAUDO MÉDICO" quando presente) */
   customHeader?: {
     logoUrl?: string | null;
-    logoPosition?: "left" | "right";
+    logoPosition?: "left" | "center" | "right";
     contentHtml?: string | null;
   } | null;
 }
@@ -486,52 +547,46 @@ export function SurgeryRequestLaudoDocument({
       {customHeader ? (
         <div
           style={{
-            position: "relative",
             display: "flex",
-            flexDirection:
-              customHeader.logoPosition === "right" ? "row-reverse" : "row",
-            alignItems: "center",
+            flexDirection: "column",
+            alignItems: "stretch",
+            gap: customHeader.logoUrl && customHeader.contentHtml ? "8px" : "0",
             marginBottom: "20px",
-            minHeight: customHeader.logoUrl ? "80px" : undefined,
           }}
         >
           {customHeader.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={customHeader.logoUrl}
-              alt="Logo"
+            <div
               style={{
-                maxHeight: "80px",
-                maxWidth: "200px",
-                objectFit: "contain",
-                flexShrink: 0,
-                position: "relative",
-                zIndex: 1,
+                display: "flex",
+                justifyContent:
+                  customHeader.logoPosition === "right"
+                    ? "flex-end"
+                    : customHeader.logoPosition === "center"
+                      ? "center"
+                      : "flex-start",
               }}
-            />
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={customHeader.logoUrl}
+                alt="Logo"
+                style={{
+                  maxHeight: "80px",
+                  maxWidth: "200px",
+                  objectFit: "contain",
+                  flexShrink: 0,
+                }}
+              />
+            </div>
           )}
           {customHeader.contentHtml && (
             <div
-              style={
-                customHeader.logoUrl
-                  ? {
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      textAlign: "center",
-                      fontSize: "11px",
-                      lineHeight: "1.4",
-                      color: "#111",
-                      pointerEvents: "none",
-                    }
-                  : {
-                      flex: 1,
-                      textAlign: "center",
-                      fontSize: "11px",
-                      lineHeight: "1.4",
-                      color: "#111",
-                    }
-              }
+              style={{
+                textAlign: "center",
+                fontSize: "11px",
+                lineHeight: "1.4",
+                color: "#111",
+              }}
               dangerouslySetInnerHTML={{
                 __html: sanitizeHtml(customHeader.contentHtml),
               }}

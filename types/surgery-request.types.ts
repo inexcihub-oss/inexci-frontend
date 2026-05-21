@@ -101,7 +101,7 @@ export interface DoctorRef extends EntityRef {
     header?: {
       id?: string;
       logoUrl?: string | null;
-      logoPosition?: "left" | "right";
+      logoPosition?: "left" | "center" | "right";
       contentHtml?: string | null;
     } | null;
     [key: string]: unknown;
@@ -159,6 +159,15 @@ export interface OpmeItemRef {
   authorizedQuantity?: number | null;
   brand?: string;
   distributor?: string;
+  selectedSupplierId?: string | null;
+  selectedSupplier?: {
+    id?: string | number;
+    name?: string;
+  } | null;
+  suppliers?: Array<{
+    id?: string | number;
+    name?: string;
+  }>;
   [key: string]: unknown;
 }
 

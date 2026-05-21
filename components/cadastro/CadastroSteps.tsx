@@ -495,24 +495,69 @@ export function Step3Plan({
           em modo Free Trial e você poderá escolher um plano depois.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 items-stretch">
-          {sortedPlans.map((plan) => {
-            const presentation = getPresentation(plan.slug);
-            return (
-              <PlanCard
-                key={plan.id}
-                plan={plan}
-                features={presentation.features}
-                icon={presentation.icon}
-                theme={presentation.theme}
-                highlight={presentation.highlight}
-                selected={plan.slug === selectedSlug}
-                onSelect={() => onSelectPlan(plan.slug)}
-                trialMode={trialMode}
-              />
-            );
-          })}
-        </div>
+        <>
+          {/* Mobile: carrossel */}
+          <div className="sm:hidden -mx-4 px-4">
+            <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {sortedPlans.map((plan) => {
+                const presentation = getPresentation(plan.slug);
+                return (
+                  <div
+                    key={plan.id}
+                    className="snap-center shrink-0 w-[78vw] max-w-[280px]"
+                  >
+                    <PlanCard
+                      plan={plan}
+                      features={presentation.features}
+                      icon={presentation.icon}
+                      theme={presentation.theme}
+                      highlight={presentation.highlight}
+                      selected={plan.slug === selectedSlug}
+                      onSelect={() => onSelectPlan(plan.slug)}
+                      trialMode={trialMode}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            {/* Indicadores de paginação */}
+            <div className="flex justify-center gap-1.5 mt-2">
+              {sortedPlans.map((plan) => (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => onSelectPlan(plan.slug)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    plan.slug === selectedSlug
+                      ? "w-4 bg-teal-500"
+                      : "w-1.5 bg-gray-300"
+                  }`}
+                  aria-label={`Selecionar ${plan.name}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Tablet/Desktop: grid */}
+          <div className="hidden sm:grid sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 items-stretch">
+            {sortedPlans.map((plan) => {
+              const presentation = getPresentation(plan.slug);
+              return (
+                <PlanCard
+                  key={plan.id}
+                  plan={plan}
+                  features={presentation.features}
+                  icon={presentation.icon}
+                  theme={presentation.theme}
+                  highlight={presentation.highlight}
+                  selected={plan.slug === selectedSlug}
+                  onSelect={() => onSelectPlan(plan.slug)}
+                  trialMode={trialMode}
+                />
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

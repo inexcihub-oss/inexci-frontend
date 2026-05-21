@@ -14,6 +14,17 @@ export interface SupplierQuotation {
   };
 }
 
+export interface SupplierSupplyRecord {
+  surgeryRequestId: string;
+  surgeryRequestProtocol?: string | null;
+  patientName?: string | null;
+  opmeItemId: string;
+  opmeItemName: string;
+  authorizedQuantity?: number | null;
+  quantity: number;
+  updatedAt: string;
+}
+
 export interface Supplier {
   id: string;
   name: string;
@@ -37,6 +48,7 @@ export interface Supplier {
   notes?: string;
   active?: boolean;
   quotations?: SupplierQuotation[];
+  suppliedSurgeryRequests?: SupplierSupplyRecord[];
   createdAt: string;
   updatedAt: string;
 }
@@ -86,6 +98,9 @@ function mapSupplier(s: Record<string, unknown>): Supplier {
     state: s.state as string | undefined,
     notes: s.notes as string | undefined,
     quotations: s.quotations as SupplierQuotation[] | undefined,
+    suppliedSurgeryRequests: s.suppliedSurgeryRequests as
+      | SupplierSupplyRecord[]
+      | undefined,
     createdAt: s.createdAt as string,
     updatedAt: s.updatedAt as string,
   };

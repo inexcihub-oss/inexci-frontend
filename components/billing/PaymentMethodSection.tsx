@@ -16,15 +16,9 @@ interface Props {
   methods: PaymentMethod[];
   loading: boolean;
   onChanged: () => void;
-  defaults?: React.ComponentProps<typeof AddCardModal>["defaults"];
 }
 
-export function PaymentMethodSection({
-  methods,
-  loading,
-  onChanged,
-  defaults,
-}: Props) {
+export function PaymentMethodSection({ methods, loading, onChanged }: Props) {
   const { toast, showToast, hideToast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -125,7 +119,6 @@ export function PaymentMethodSection({
         isOpen={showAdd}
         onClose={() => setShowAdd(false)}
         onSuccess={onChanged}
-        defaults={defaults}
       />
 
       <ConfirmDeleteModal

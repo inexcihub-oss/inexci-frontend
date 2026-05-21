@@ -7,6 +7,7 @@ import {
   ContestAuthorizationPayload,
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
+import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
@@ -30,13 +31,83 @@ interface UpdateAuthorizationsModalProps {
   onSuccess: () => void;
 }
 
+interface SupplierSelectOption {
+  value: string;
+  label: string;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────────────
 
-function getSummaryRowBg(authorized: number | null, requested: number): string {
-  if (authorized === null) return "";
-  if (authorized === 0) return "bg-rose-50/50";
-  if (authorized < requested) return "bg-amber-50/60";
-  return "bg-emerald-50/70";
+function getSummaryRowStyles(
+  authorized: number | null,
+  requested: number,
+): { row: string; authorizedBox: string } {
+  if (authorized === null) {
+    return {
+      row: "",
+      authorizedBox: "bg-white border-gray-200 text-gray-500",
+    };
+  }
+
+  if (authorized === 0) {
+    return {
+      row: "bg-rose-100/90 border-l-4 border-l-rose-500",
+      authorizedBox: "bg-rose-50 border-rose-300 text-rose-700",
+    };
+  }
+
+  if (authorized < requested) {
+    return {
+      row: "bg-amber-100/90 border-l-4 border-l-amber-500",
+      authorizedBox: "bg-amber-50 border-amber-300 text-amber-700",
+    };
+  }
+
+  return {
+    row: "bg-emerald-100/90 border-l-4 border-l-emerald-500",
+    authorizedBox: "bg-emerald-50 border-emerald-300 text-emerald-700",
+  };
+}
+
+function getSupplierOptionValue(supplier: {
+  id?: string | number;
+  name?: string;
+}): string {
+  if (supplier.id != null) return String(supplier.id);
+  return supplier.name?.trim() ? `name:${supplier.name.trim()}` : "";
+}
+
+function getSelectedSupplierIdFromValue(value?: string): string | undefined {
+  if (!value || value.startsWith("name:")) return undefined;
+  return value;
+}
+
+function buildInitialSelectedOpmeSuppliers(
+  solicitacao: SurgeryRequestDetail,
+): Record<string, string> {
+  const initial: Record<string, string> = {};
+
+  (solicitacao?.opmeItems ?? []).forEach((item) => {
+    const selectedSupplierValue = item.selectedSupplier?.id
+      ? String(item.selectedSupplier.id)
+      : item.selectedSupplierId
+        ? String(item.selectedSupplierId)
+        : "";
+
+    if (selectedSupplierValue) {
+      initial[String(item.id)] = selectedSupplierValue;
+      return;
+    }
+
+    const firstSupplier = (item.suppliers ?? []).find(
+      (supplier) => !!getSupplierOptionValue(supplier),
+    );
+    if (firstSupplier) {
+      initial[String(item.id)] = getSupplierOptionValue(firstSupplier);
+    }
+  });
+
+  return initial;
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────────────
@@ -55,10 +126,7 @@ export function UpdateAuthorizationsModal({
     (solicitacao?.tussItems ?? []).map((p) => ({
       id: p.id,
       quantity: p.quantity ?? 1,
-      authorizedQuantity:
-        p.authorizedQuantity != null
-          ? String(p.authorizedQuantity)
-          : String(p.quantity ?? 1),
+      authorizedQuantity: String(p.quantity ?? 1),
     })),
   );
 
@@ -66,12 +134,13 @@ export function UpdateAuthorizationsModal({
     (solicitacao?.opmeItems ?? []).map((o) => ({
       id: o.id,
       quantity: o.quantity ?? 1,
-      authorizedQuantity:
-        o.authorizedQuantity != null
-          ? String(o.authorizedQuantity)
-          : String(o.quantity ?? 1),
+      authorizedQuantity: String(o.quantity ?? 1),
     })),
   );
+
+  const [selectedOpmeSuppliers, setSelectedOpmeSuppliers] = useState<
+    Record<string, string>
+  >(() => buildInitialSelectedOpmeSuppliers(solicitacao));
 
   const [scheduleDates, setScheduleDates] = useState<
     Array<{ date: string; time: string }>
@@ -90,6 +159,7 @@ export function UpdateAuthorizationsModal({
     subject: `Contestação de autorizações - ${solicitacao?.patient?.name ?? ""}`,
     message: "",
   });
+  const [contestAttachments, setContestAttachments] = useState<File[]>([]);
 
   const { showToast } = useToast();
 
@@ -103,6 +173,7 @@ export function UpdateAuthorizationsModal({
       subject: `Contestação de autorizações - ${solicitacao?.patient?.name ?? ""}`,
       message: "",
     });
+    setContestAttachments([]);
     setScheduleDates([
       { date: "", time: "00:00" },
       { date: "", time: "00:00" },
@@ -112,22 +183,17 @@ export function UpdateAuthorizationsModal({
       (solicitacao?.tussItems ?? []).map((p) => ({
         id: p.id,
         quantity: p.quantity ?? 1,
-        authorizedQuantity:
-          p.authorizedQuantity != null
-            ? String(p.authorizedQuantity)
-            : String(p.quantity ?? 1),
+        authorizedQuantity: String(p.quantity ?? 1),
       })),
     );
     setOpmeAuth(
       (solicitacao?.opmeItems ?? []).map((o) => ({
         id: o.id,
         quantity: o.quantity ?? 1,
-        authorizedQuantity:
-          o.authorizedQuantity != null
-            ? String(o.authorizedQuantity)
-            : String(o.quantity ?? 1),
+        authorizedQuantity: String(o.quantity ?? 1),
       })),
     );
+    setSelectedOpmeSuppliers(buildInitialSelectedOpmeSuppliers(solicitacao));
   }, [solicitacao]);
 
   const handleClose = () => {
@@ -148,13 +214,19 @@ export function UpdateAuthorizationsModal({
     return e.authorizedQuantity !== "" && (auth === 0 || auth < e.quantity);
   });
 
+  const mapOpmeAuthorizationPayload = () =>
+    opmeAuth.map((e) => ({
+      id: e.id,
+      authorizedQuantity: Number(e.authorizedQuantity) || 0,
+      selectedSupplierId: getSelectedSupplierIdFromValue(
+        selectedOpmeSuppliers[String(e.id)],
+      ),
+    }));
+
   const handleAccept = async () => {
-    const hasDate = scheduleDates.some((d) => d.date.trim() !== "");
+    const hasDate = scheduleDates.every((d) => d.date.trim() !== "");
     if (!hasDate) {
-      showToast(
-        "Preencha pelo menos uma opção de data para o agendamento.",
-        "error",
-      );
+      showToast("Preencha as 3 opções de data para o agendamento.", "error");
       return;
     }
     setIsSaving(true);
@@ -166,24 +238,7 @@ export function UpdateAuthorizationsModal({
           id: e.id,
           authorizedQuantity: Number(e.authorizedQuantity) || 0,
         })),
-        opmeAuth.map((e) => ({
-          id: e.id,
-          authorizedQuantity: Number(e.authorizedQuantity) || 0,
-        })),
-      );
-
-      // 2. Aceitar autorizacao e propor datas
-      // 1. Salvar quantidades autorizadas no banco antes de aceitar
-      await surgeryRequestService.authorizeQuantities(
-        solicitacao.id,
-        tussAuth.map((e) => ({
-          id: e.id,
-          authorizedQuantity: Number(e.authorizedQuantity) || 0,
-        })),
-        opmeAuth.map((e) => ({
-          id: e.id,
-          authorizedQuantity: Number(e.authorizedQuantity) || 0,
-        })),
+        mapOpmeAuthorizationPayload(),
       );
 
       // 2. Aceitar autorizacao e propor datas
@@ -215,6 +270,22 @@ export function UpdateAuthorizationsModal({
     }
     setIsSaving(true);
     try {
+      let uploadedAttachmentPaths: string[] = [];
+      if (contestAttachments.length > 0) {
+        uploadedAttachmentPaths = await Promise.all(
+          contestAttachments.map(async (file) => {
+            const uploaded = await documentService.upload({
+              surgeryRequestId: solicitacao.id,
+              key: "contestation_attachment",
+              name: file.name,
+              file,
+              folder: DOCUMENT_FOLDERS.PRE_SURGERY,
+            });
+            return uploaded.path;
+          }),
+        );
+      }
+
       // Salvar quantidades autorizadas no banco antes de contestar
       await surgeryRequestService.authorizeQuantities(
         solicitacao.id,
@@ -222,15 +293,15 @@ export function UpdateAuthorizationsModal({
           id: e.id,
           authorizedQuantity: Number(e.authorizedQuantity) || 0,
         })),
-        opmeAuth.map((e) => ({
-          id: e.id,
-          authorizedQuantity: Number(e.authorizedQuantity) || 0,
-        })),
+        mapOpmeAuthorizationPayload(),
       );
 
       const payload: ContestAuthorizationPayload = {
         reason: contestReason.trim(),
         method: contestMethod,
+        ...(uploadedAttachmentPaths.length > 0 && {
+          attachments: uploadedAttachmentPaths,
+        }),
         ...(contestMethod === "email" && {
           to: contestEmail.to,
           subject: contestEmail.subject,
@@ -331,12 +402,14 @@ export function UpdateAuthorizationsModal({
             reason={contestReason}
             method={contestMethod}
             emailForm={contestEmail}
+            attachments={contestAttachments}
             isSaving={isSaving}
             onReasonChange={setContestReason}
             onMethodChange={setContestMethod}
             onEmailChange={(field, val) =>
               setContestEmail((prev) => ({ ...prev, [field]: val }))
             }
+            onAttachmentsChange={setContestAttachments}
             onNext={() =>
               setContestStep((s) => Math.min(3, s + 1) as ContestStep)
             }
@@ -411,6 +484,26 @@ export function UpdateAuthorizationsModal({
                       ),
                     )
                   }
+                  getSupplierOptions={(item) => {
+                    const opme = solicitacao.opmeItems?.find(
+                      (o) => o.id === item.id,
+                    );
+                    return (opme?.suppliers ?? [])
+                      .map((supplier) => ({
+                        value: getSupplierOptionValue(supplier),
+                        label: supplier.name?.trim() || "Fornecedor sem nome",
+                      }))
+                      .filter((supplier) => supplier.value !== "");
+                  }}
+                  getSelectedSupplier={(id) =>
+                    selectedOpmeSuppliers[String(id)] ?? ""
+                  }
+                  onSupplierChange={(id, value) =>
+                    setSelectedOpmeSuppliers((prev) => ({
+                      ...prev,
+                      [String(id)]: value,
+                    }))
+                  }
                 />
               ) : (
                 <p className="text-xs md:text-sm text-gray-400 text-center py-6">
@@ -484,6 +577,39 @@ export function UpdateAuthorizationsModal({
                       };
                     })}
                   />
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs font-semibold text-gray-600">
+                      Fornecedor selecionado
+                    </p>
+                    {opmeAuth.map((e) => {
+                      const opme = solicitacao.opmeItems?.find(
+                        (o) => o.id === e.id,
+                      );
+                      const selectedValue = selectedOpmeSuppliers[String(e.id)];
+                      const selectedSupplierLabel =
+                        (opme?.suppliers ?? []).find(
+                          (supplier) =>
+                            getSupplierOptionValue(supplier) === selectedValue,
+                        )?.name ??
+                        (selectedValue?.startsWith("name:")
+                          ? selectedValue.replace("name:", "")
+                          : "Não selecionado");
+
+                      return (
+                        <div
+                          key={e.id}
+                          className="flex items-center justify-between gap-3 text-xs md:text-sm"
+                        >
+                          <span className="text-gray-500 truncate">
+                            {opme?.name ?? String(e.id)}
+                          </span>
+                          <span className="font-medium text-gray-800">
+                            {selectedSupplierLabel}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -541,10 +667,10 @@ export function UpdateAuthorizationsModal({
                   </svg>
                 </div>
                 <p className="text-sm text-blue-700 leading-relaxed">
-                  Ofereça{" "}
-                  <strong className="font-semibold">até 3 opções</strong> de
-                  data e horário. O paciente escolherá a que melhor se encaixa
-                  na sua agenda.
+                  Informe{" "}
+                  <strong className="font-semibold">exatamente 3 opções</strong>{" "}
+                  de data e horário. Todas são obrigatórias. O paciente
+                  escolherá a que melhor se encaixa na sua agenda.
                 </p>
               </div>
 
@@ -703,6 +829,9 @@ interface AuthorizationTableProps {
   labelHeader: string;
   renderLabel: (item: AuthorizationEntry) => string;
   onChange: (id: string | number, value: string) => void;
+  getSupplierOptions?: (item: AuthorizationEntry) => SupplierSelectOption[];
+  getSelectedSupplier?: (id: string | number) => string;
+  onSupplierChange?: (id: string | number, value: string) => void;
 }
 
 function AuthorizationTable({
@@ -710,48 +839,221 @@ function AuthorizationTable({
   labelHeader,
   renderLabel,
   onChange,
+  getSupplierOptions,
+  getSelectedSupplier,
+  onSupplierChange,
 }: AuthorizationTableProps) {
+  const showSupplierSelect =
+    !!getSupplierOptions && !!getSelectedSupplier && !!onSupplierChange;
+
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-1 border-b border-gray-200">
-        <span className="flex-1 text-xs text-gray-900 opacity-50">
-          {labelHeader}
-        </span>
-        <div className="w-24 flex justify-center">
-          <span className="text-xs text-gray-900 opacity-50 text-center">
-            Qnt. Solicitada
+      {/* Mobile: cards */}
+      <div className="md:hidden">
+        <div className="px-4 py-2 border-b border-gray-200">
+          <span className="text-xs text-gray-900 opacity-50">
+            {labelHeader}
           </span>
         </div>
-        <div className="w-24 flex justify-center">
-          <span className="text-xs text-gray-900 opacity-50 text-center">
-            Qnt. Autorizada
-          </span>
-        </div>
-      </div>
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 last:border-b-0"
-        >
-          <span className="flex-1 text-xs md:text-sm text-gray-900 leading-snug">
-            {renderLabel(item)}
-          </span>
-          <div className="w-24 flex justify-center">
-            <div className="w-14 h-10 flex items-center justify-center border border-gray-200 rounded-xl text-xs md:text-sm font-semibold text-gray-500">
-              {item.quantity}
+        {items.map((item) => {
+          const supplierOptions = getSupplierOptions?.(item) ?? [];
+          const selectedSupplier = getSelectedSupplier?.(item.id) ?? "";
+
+          return (
+            <div
+              key={item.id}
+              className="px-4 py-3 border-b border-gray-200 last:border-b-0 space-y-2.5"
+            >
+              <p className="text-sm text-gray-900 leading-snug break-words">
+                {renderLabel(item)}
+              </p>
+
+              {showSupplierSelect && (
+                <div className="space-y-1">
+                  <label className="text-[11px] text-gray-500">
+                    Fornecedor
+                  </label>
+                  {supplierOptions.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {supplierOptions.map((supplier) => {
+                        const isSelected = selectedSupplier === supplier.value;
+                        return (
+                          <button
+                            key={supplier.value}
+                            type="button"
+                            onClick={() =>
+                              onSupplierChange?.(item.id, supplier.value)
+                            }
+                            className={`px-2.5 py-1.5 rounded-lg border text-xs leading-tight transition-colors ${
+                              isSelected
+                                ? "border-primary-500 bg-primary-50 text-primary-700"
+                                : "border-gray-200 bg-white text-gray-700"
+                            }`}
+                          >
+                            {supplier.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="ds-field-readonly text-xs text-gray-400">
+                      Sem fornecedores disponíveis
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[11px] text-gray-500">
+                    Qnt. Solicitada
+                  </label>
+                  <div className="h-10 flex items-center justify-center border border-gray-200 rounded-xl text-sm font-semibold text-gray-500 bg-white">
+                    {item.quantity}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] text-gray-500">
+                    Qnt. Autorizada
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={item.quantity}
+                    value={item.authorizedQuantity}
+                    onChange={(e) => {
+                      const rawValue = e.target.value;
+
+                      if (rawValue === "") {
+                        onChange(item.id, "");
+                        return;
+                      }
+
+                      const parsed = Number(rawValue);
+                      if (!Number.isFinite(parsed)) return;
+
+                      const clamped = Math.min(
+                        item.quantity,
+                        Math.max(0, parsed),
+                      );
+                      onChange(item.id, String(clamped));
+                    }}
+                    className="ds-input h-10 w-full !px-0 text-center font-semibold appearance-none"
+                  />
+                </div>
+              </div>
             </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop/tablet: table (comportamento original) */}
+      <div className="hidden md:block">
+        <div className="flex items-center gap-2 px-4 py-1 border-b border-gray-200">
+          <span className="flex-1 text-xs text-gray-900 opacity-50">
+            {labelHeader}
+          </span>
+          {showSupplierSelect && (
+            <div className="w-44 flex justify-center">
+              <span className="text-xs text-gray-900 opacity-50 text-center">
+                Fornecedor
+              </span>
+            </div>
+          )}
+          <div className="w-24 flex justify-center">
+            <span className="text-xs text-gray-900 opacity-50 text-center">
+              Qnt. Solicitada
+            </span>
           </div>
           <div className="w-24 flex justify-center">
-            <input
-              type="number"
-              min="0"
-              value={item.authorizedQuantity}
-              onChange={(e) => onChange(item.id, e.target.value)}
-              className="ds-input w-14 h-10 !px-0 text-center font-semibold appearance-none"
-            />
+            <span className="text-xs text-gray-900 opacity-50 text-center">
+              Qnt. Autorizada
+            </span>
           </div>
         </div>
-      ))}
+        {items.map((item) => {
+          const supplierOptions = getSupplierOptions?.(item) ?? [];
+          const selectedSupplier = getSelectedSupplier?.(item.id) ?? "";
+
+          return (
+            <div
+              key={item.id}
+              className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 last:border-b-0"
+            >
+              <span className="flex-1 min-w-0 text-xs md:text-sm text-gray-900 leading-snug break-words">
+                {renderLabel(item)}
+              </span>
+              {showSupplierSelect && (
+                <div className="w-44 flex justify-center">
+                  <div className="relative w-full">
+                    <select
+                      value={selectedSupplier}
+                      onChange={(e) =>
+                        onSupplierChange?.(item.id, e.target.value)
+                      }
+                      disabled={supplierOptions.length === 0}
+                      className="ds-input h-10 w-full pr-8 text-xs md:text-sm appearance-none disabled:bg-gray-100 disabled:text-gray-400"
+                    >
+                      <option value="">Selecionar</option>
+                      {supplierOptions.map((supplier) => (
+                        <option key={supplier.value} value={supplier.value}>
+                          {supplier.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="w-24 flex justify-center">
+                <div className="w-14 h-10 flex items-center justify-center border border-gray-200 rounded-xl text-xs md:text-sm font-semibold text-gray-500">
+                  {item.quantity}
+                </div>
+              </div>
+              <div className="w-24 flex justify-center">
+                <input
+                  type="number"
+                  min="0"
+                  max={item.quantity}
+                  value={item.authorizedQuantity}
+                  onChange={(e) => {
+                    const rawValue = e.target.value;
+
+                    if (rawValue === "") {
+                      onChange(item.id, "");
+                      return;
+                    }
+
+                    const parsed = Number(rawValue);
+                    if (!Number.isFinite(parsed)) return;
+
+                    const clamped = Math.min(
+                      item.quantity,
+                      Math.max(0, parsed),
+                    );
+                    onChange(item.id, String(clamped));
+                  }}
+                  className="ds-input w-14 h-10 !px-0 text-center font-semibold appearance-none"
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -764,41 +1066,91 @@ interface SummaryTableProps {
 function SummaryTable({ labelHeader, items }: SummaryTableProps) {
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-1 border-b border-gray-200">
-        <span className="flex-1 text-xs text-gray-900 opacity-50">
-          {labelHeader}
-        </span>
-        <div className="w-24 flex justify-center">
-          <span className="text-xs text-gray-900 opacity-50 text-center">
-            Qnt. Solicitada
+      <div className="md:hidden">
+        <div className="px-4 py-2 border-b border-gray-200">
+          <span className="text-xs text-gray-900 opacity-50">
+            {labelHeader}
           </span>
         </div>
-        <div className="w-24 flex justify-center">
-          <span className="text-xs text-gray-900 opacity-50 text-center">
-            Qnt. Autorizada
-          </span>
-        </div>
+        {items.map((item, index) => {
+          const styles = getSummaryRowStyles(item.authorized, item.requested);
+
+          return (
+            <div
+              key={index}
+              className={`px-4 py-3 border-b border-gray-200 last:border-b-0 space-y-2 ${styles.row}`}
+            >
+              <p className="text-sm text-gray-900 leading-snug break-words">
+                {item.label}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[11px] text-gray-500">
+                    Qnt. Solicitada
+                  </label>
+                  <div className="h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-500">
+                    {item.requested}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] text-gray-500">
+                    Qnt. Autorizada
+                  </label>
+                  <div
+                    className={`h-10 flex items-center justify-center border rounded-xl text-sm font-semibold ${styles.authorizedBox}`}
+                  >
+                    {item.authorized ?? "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      {items.map((item, index) => (
-        <div
-          key={index}
-          className={`flex items-center gap-2 px-4 py-3 border-b border-gray-200 last:border-b-0 ${getSummaryRowBg(item.authorized, item.requested)}`}
-        >
-          <span className="flex-1 text-xs md:text-sm text-gray-900 leading-snug">
-            {item.label}
+
+      <div className="hidden md:block">
+        <div className="flex items-center gap-2 px-4 py-1 border-b border-gray-200">
+          <span className="flex-1 text-xs text-gray-900 opacity-50">
+            {labelHeader}
           </span>
           <div className="w-24 flex justify-center">
-            <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-xs md:text-sm font-semibold text-gray-500">
-              {item.requested}
-            </div>
+            <span className="text-xs text-gray-900 opacity-50 text-center">
+              Qnt. Solicitada
+            </span>
           </div>
           <div className="w-24 flex justify-center">
-            <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-xs md:text-sm font-semibold text-gray-500">
-              {item.authorized ?? "—"}
-            </div>
+            <span className="text-xs text-gray-900 opacity-50 text-center">
+              Qnt. Autorizada
+            </span>
           </div>
         </div>
-      ))}
+        {items.map((item, index) => {
+          const styles = getSummaryRowStyles(item.authorized, item.requested);
+
+          return (
+            <div
+              key={index}
+              className={`flex items-center gap-2 px-4 py-3 border-b border-gray-200 last:border-b-0 ${styles.row}`}
+            >
+              <span className="flex-1 text-xs md:text-sm text-gray-900 leading-snug">
+                {item.label}
+              </span>
+              <div className="w-24 flex justify-center">
+                <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-xs md:text-sm font-semibold text-gray-500">
+                  {item.requested}
+                </div>
+              </div>
+              <div className="w-24 flex justify-center">
+                <div
+                  className={`w-14 h-10 flex items-center justify-center border rounded-xl text-xs md:text-sm font-semibold ${styles.authorizedBox}`}
+                >
+                  {item.authorized ?? "—"}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -810,10 +1162,12 @@ interface ContestFlowProps {
   reason: string;
   method: ContestMethod;
   emailForm: { to: string; subject: string; message: string };
+  attachments: File[];
   isSaving: boolean;
   onReasonChange: (v: string) => void;
   onMethodChange: (v: ContestMethod) => void;
   onEmailChange: (field: "to" | "subject" | "message", v: string) => void;
+  onAttachmentsChange: (files: File[]) => void;
   onNext: () => void;
   onBack: () => void;
   onSubmit: () => void;
@@ -824,15 +1178,16 @@ function ContestFlow({
   reason,
   method,
   emailForm,
+  attachments,
   isSaving,
   onReasonChange,
   onMethodChange,
   onEmailChange,
+  onAttachmentsChange,
   onNext,
   onBack,
   onSubmit,
 }: ContestFlowProps) {
-  const [attachedFile, setAttachedFile] = React.useState<File | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Tag input para campo Para
@@ -873,6 +1228,16 @@ function ContestFlow({
       ? toTags.length > 0 && emailForm.subject.trim() !== ""
       : true;
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    onAttachmentsChange([...attachments, ...Array.from(e.target.files)]);
+    e.target.value = "";
+  };
+
+  const removeAttachmentAt = (index: number) => {
+    onAttachmentsChange(attachments.filter((_, i) => i !== index));
+  };
+
   return (
     <>
       {/* Body */}
@@ -881,12 +1246,12 @@ function ContestFlow({
         {step === 1 && (
           <div className="flex flex-col gap-1.5">
             <label className="ds-label mb-0">Motivo da contestação</label>
-            <input
-              type="text"
+            <textarea
               value={reason}
               onChange={(e) => onReasonChange(e.target.value)}
-              placeholder="Digite o motivo"
-              className="ds-input"
+              placeholder="Descreva detalhadamente o motivo da contestação..."
+              rows={6}
+              className="ds-textarea"
             />
           </div>
         )}
@@ -1056,11 +1421,13 @@ function ContestFlow({
               )}
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Mensagem de contestação:</label>
+              <label className="ds-label mb-0">
+                Mensagem do corpo do e-mail:
+              </label>
               <textarea
                 value={emailForm.message}
                 onChange={(e) => onEmailChange("message", e.target.value)}
-                placeholder="Digite sua mensagem..."
+                placeholder="Digite a mensagem do corpo do e-mail..."
                 rows={4}
                 className="ds-textarea"
               />
@@ -1084,15 +1451,16 @@ function ContestFlow({
                   </svg>
                 </div>
                 <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900 truncate">
-                  {attachedFile ? attachedFile.name : "Anexos"}
+                  {attachments.length > 0
+                    ? `${attachments.length} anexo(s) selecionado(s)`
+                    : "Anexos"}
                 </span>
                 <input
                   ref={fileInputRef}
                   type="file"
+                  multiple
                   className="hidden"
-                  onChange={(e) =>
-                    e.target.files?.[0] && setAttachedFile(e.target.files[0])
-                  }
+                  onChange={handleFileSelect}
                 />
                 <button
                   type="button"
@@ -1102,6 +1470,25 @@ function ContestFlow({
                   Selecionar arquivo
                 </button>
               </div>
+              {attachments.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {attachments.map((file, index) => (
+                    <div
+                      key={`${file.name}-${file.size}-${index}`}
+                      className="flex items-center justify-between text-xs text-neutral-600"
+                    >
+                      <span className="truncate pr-2">{file.name}</span>
+                      <button
+                        type="button"
+                        className="text-neutral-500 hover:text-neutral-700"
+                        onClick={() => removeAttachmentAt(index)}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1110,17 +1497,12 @@ function ContestFlow({
         {step === 3 && method === "document" && (
           <div className="flex flex-col gap-3 md:gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Mensagem de contestação:</label>
-              <textarea
-                value={emailForm.message}
-                onChange={(e) => onEmailChange("message", e.target.value)}
-                placeholder="Digite sua mensagem..."
-                rows={8}
-                className="ds-textarea"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Documento de contestação</label>
+              <label className="ds-label mb-0">
+                Documento de contestação (opcional)
+              </label>
+              <p className="text-xs text-gray-500">
+                Você pode gerar o PDF sem anexar documentos.
+              </p>
               <div className="flex items-center gap-3 px-4 py-4 bg-neutral-50 border border-dashed border-neutral-100 rounded-xl">
                 <div className="flex items-center justify-center w-10 h-10 bg-white border border-neutral-100 rounded-full shrink-0">
                   <svg
@@ -1138,15 +1520,16 @@ function ContestFlow({
                   </svg>
                 </div>
                 <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900 truncate">
-                  {attachedFile ? attachedFile.name : "Anexos"}
+                  {attachments.length > 0
+                    ? `${attachments.length} anexo(s) selecionado(s)`
+                    : "Anexos"}
                 </span>
                 <input
                   ref={fileInputRef}
                   type="file"
+                  multiple
                   className="hidden"
-                  onChange={(e) =>
-                    e.target.files?.[0] && setAttachedFile(e.target.files[0])
-                  }
+                  onChange={handleFileSelect}
                 />
                 <button
                   type="button"
@@ -1156,6 +1539,25 @@ function ContestFlow({
                   Selecionar arquivo
                 </button>
               </div>
+              {attachments.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {attachments.map((file, index) => (
+                    <div
+                      key={`${file.name}-${file.size}-${index}`}
+                      className="flex items-center justify-between text-xs text-neutral-600"
+                    >
+                      <span className="truncate pr-2">{file.name}</span>
+                      <button
+                        type="button"
+                        className="text-neutral-500 hover:text-neutral-700"
+                        onClick={() => removeAttachmentAt(index)}
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

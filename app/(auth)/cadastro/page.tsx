@@ -96,7 +96,7 @@ export default function CadastroPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState<string>(DEFAULT_PLAN_SLUG);
-  const [trialMode, setTrialMode] = useState<boolean>(true);
+  const [trialMode, setTrialMode] = useState<boolean>(false);
 
   const [error, setError] = useState("");
   const [errorType, setErrorType] = useState<
@@ -448,12 +448,8 @@ function PlanStepLayout({
         <div className="absolute -bottom-40 left-1/3 w-[400px] sm:w-[600px] h-[200px] sm:h-[300px] bg-blue-200 rounded-full filter blur-3xl opacity-30" />
       </div>
 
-      {/*
-       * Área de conteúdo. O `pb-` extra evita que o footer sticky cubra
-       * a parte inferior dos cards (sticky elements ocupam o slot natural
-       * mas, ao "grudar", se sobrepõem visualmente ao conteúdo acima).
-       */}
-      <div className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 lg:pt-8 pb-32 sm:pb-40">
+      {/* Área de conteúdo */}
+      <div className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 lg:pt-8 pb-6 sm:pb-8">
         {/* Topbar */}
         <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6">
           <Image
@@ -527,36 +523,35 @@ function PlanStepLayout({
         )}
       </div>
 
-      {/* Footer sticky — cola no fundo da viewport sem bloquear scroll */}
-      <div className="sticky bottom-0 z-20 w-full bg-gray-50/90 backdrop-blur-sm border-t border-gray-200/60 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* Footer — parte do fluxo normal da página */}
+      <div className="w-full bg-gray-50/90 backdrop-blur-sm border-t border-gray-200/60 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        {/* Linha principal: info do plano + botões */}
+        <div className="max-w-7xl mx-auto flex items-center gap-3">
+          {/* Ícone — oculto no mobile para economizar espaço */}
+          <div className="hidden sm:flex w-9 h-9 rounded-xl bg-teal-50 items-center justify-center shrink-0">
+            <ShieldCheck className="w-4 h-4 text-teal-600" />
+          </div>
+
           {/* Info do plano selecionado */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-4 h-4 text-teal-600" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
-                Plano selecionado:{" "}
-                <span className="text-teal-600">
-                  {selectedPlan?.name ?? "—"}
-                </span>
-              </p>
-              <p className="text-[11px] text-gray-500 truncate">
-                {trialMode
-                  ? "Trial de 30 dias gratuito · Sem cartão agora"
-                  : "Trial de 30 dias antes da primeira cobrança"}
-              </p>
-            </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
+              Plano selecionado:{" "}
+              <span className="text-teal-600">{selectedPlan?.name ?? "—"}</span>
+            </p>
+            <p className="text-[11px] text-gray-500 truncate">
+              {trialMode
+                ? "Trial de 30 dias gratuito · Sem cartão agora"
+                : "Trial de 30 dias antes da primeira cobrança"}
+            </p>
           </div>
 
           {/* Botões */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={onBack}
               disabled={isLoading}
-              className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50 shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50"
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Voltar</span>
@@ -565,7 +560,7 @@ function PlanStepLayout({
               type="button"
               onClick={onSubmit}
               disabled={isLoading || !selectedSlug}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white text-xs sm:text-sm font-semibold shadow-md shadow-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white text-xs sm:text-sm font-semibold shadow-md shadow-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
@@ -582,16 +577,20 @@ function PlanStepLayout({
           </div>
         </div>
 
-        {/* Garantias — só em telas maiores */}
-        <div className="hidden sm:flex mt-3 flex-wrap items-center justify-center gap-x-6 gap-y-1.5 text-[11px] text-gray-500">
-          <span className="inline-flex items-center gap-1.5">
-            <span>🔒</span> Pagamento seguro com criptografia
+        {/* Garantias — em linha no desktop, compactas no mobile */}
+        <div className="max-w-7xl mx-auto mt-2.5 flex items-center justify-center gap-3 sm:gap-6 text-[10px] sm:text-[11px] text-gray-400">
+          <span className="inline-flex items-center gap-1">
+            🔒 <span className="hidden xs:inline">Pagamento seguro</span>
+            <span className="xs:hidden">Seguro</span>
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span>🔄</span> Cancele a qualquer momento
+          <span className="text-gray-300">·</span>
+          <span className="inline-flex items-center gap-1">
+            🔄 <span className="hidden xs:inline">Cancele quando quiser</span>
+            <span className="xs:hidden">Cancele</span>
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span>🎁</span> 30 dias grátis em todos os planos
+          <span className="text-gray-300">·</span>
+          <span className="inline-flex items-center gap-1">
+            🎁 <span>30 dias grátis</span>
           </span>
         </div>
       </div>

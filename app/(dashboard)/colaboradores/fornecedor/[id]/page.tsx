@@ -259,50 +259,102 @@ export default function FornecedorDetalhePage() {
   }
 
   const quotations: SupplierQuotation[] = supplier.quotations ?? [];
+  const suppliedSurgeryRequests = supplier.suppliedSurgeryRequests ?? [];
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
-      <div className="flex items-center px-4 py-3 border-b border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Cotações ({quotations.length})
-        </h3>
+      <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <h3 className="text-sm font-semibold text-gray-900">Histórico</h3>
       </div>
       <div className="flex-1 overflow-y-auto">
-        {quotations.length === 0 ? (
-          <div className="flex items-center justify-center h-32">
-            <p className="text-xs text-gray-400">Nenhuma cotação registrada</p>
+        <div className="border-b border-gray-200">
+          <div className="flex items-center px-4 py-2">
+            <h4 className="text-xs font-semibold text-gray-700">
+              Fornecimentos OPME ({suppliedSurgeryRequests.length})
+            </h4>
           </div>
-        ) : (
-          quotations.map((q) => (
-            <div
-              key={q.id}
-              className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50"
-            >
-              <div className="flex flex-col flex-1 gap-1">
-                <span className="text-xs font-semibold text-gray-900">
-                  {q.surgeryRequest?.patient?.name ?? "Paciente não informado"}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">
-                    {formatDate(q.submissionDate || q.createdAt)}
-                  </span>
-                  <QuotationStatusBadge selected={q.selected} />
-                </div>
-                {q.proposalNumber && (
-                  <span className="text-xs text-gray-400">
-                    Nº {q.proposalNumber}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 ml-2">
-                <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
-                  {formatCurrency(q.totalValue)}
-                </span>
-                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              </div>
+          {suppliedSurgeryRequests.length === 0 ? (
+            <div className="flex items-center justify-center h-20 px-4">
+              <p className="text-xs text-gray-400">
+                Nenhum fornecimento registrado
+              </p>
             </div>
-          ))
-        )}
+          ) : (
+            suppliedSurgeryRequests.map((record) => (
+              <div
+                key={record.opmeItemId}
+                className="flex items-center justify-between px-4 py-3 border-t border-gray-100 hover:bg-gray-50"
+              >
+                <div className="flex flex-col flex-1 gap-1 min-w-0">
+                  <span className="text-xs font-semibold text-gray-900 truncate">
+                    {record.patientName ?? "Paciente não informado"}
+                  </span>
+                  <span className="text-xs text-gray-500 truncate">
+                    {record.opmeItemName}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    {record.authorizedQuantity ?? 0}/{record.quantity} •{" "}
+                    {formatDate(record.updatedAt)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 ml-2">
+                  <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                    {record.surgeryRequestProtocol
+                      ? `#${record.surgeryRequestProtocol}`
+                      : "Sem protocolo"}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div>
+          <div className="flex items-center px-4 py-2 border-b border-gray-200">
+            <h4 className="text-xs font-semibold text-gray-700">
+              Cotações ({quotations.length})
+            </h4>
+          </div>
+          {quotations.length === 0 ? (
+            <div className="flex items-center justify-center h-20 px-4">
+              <p className="text-xs text-gray-400">
+                Nenhuma cotação registrada
+              </p>
+            </div>
+          ) : (
+            quotations.map((q) => (
+              <div
+                key={q.id}
+                className="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50"
+              >
+                <div className="flex flex-col flex-1 gap-1">
+                  <span className="text-xs font-semibold text-gray-900">
+                    {q.surgeryRequest?.patient?.name ??
+                      "Paciente não informado"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">
+                      {formatDate(q.submissionDate || q.createdAt)}
+                    </span>
+                    <QuotationStatusBadge selected={q.selected} />
+                  </div>
+                  {q.proposalNumber && (
+                    <span className="text-xs text-gray-400">
+                      Nº {q.proposalNumber}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 ml-2">
+                  <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                    {formatCurrency(q.totalValue)}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

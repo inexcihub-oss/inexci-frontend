@@ -522,14 +522,6 @@ export default function SolicitacaoDetalhePage() {
     return true;
   });
 
-  const [isActivitiesExpanded, setIsActivitiesExpanded] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("solicitacao-activities-expanded");
-      return saved !== null ? JSON.parse(saved) : true;
-    }
-    return true;
-  });
-
   const closeSidebar = () => setIsSidebarOpen(false);
   const {
     dragY: sidebarDragY,
@@ -538,9 +530,9 @@ export default function SolicitacaoDetalhePage() {
     onTouchEnd: sidebarTouchEnd,
   } = useSwipeToClose(closeSidebar);
 
-  const [sidebarTab, setSidebarTab] = useState<"pendencias" | "timeline">(
-    "pendencias",
-  );
+  const [sidebarTab, setSidebarTab] = useState<
+    "pendencias" | "atividades" | "timeline"
+  >("pendencias");
 
   const [solicitacao, setSolicitacao] = useState<SurgeryRequestDetail | null>(
     null,
@@ -581,13 +573,8 @@ export default function SolicitacaoDetalhePage() {
     try {
       const blob = await surgeryRequestService.exportPdf(solicitacao.id);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `solicitacao-${solicitacao.protocol ?? solicitacao.id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       // silencia o erro, sem toast nesta página
     } finally {
@@ -609,9 +596,14 @@ export default function SolicitacaoDetalhePage() {
   const [newComment, setNewComment] = useState("");
   const [sendingComment, setSendingComment] = useState(false);
   const activitiesEndRef = useRef<HTMLDivElement>(null);
+  const mobileInfoCardsRef = useRef<HTMLDivElement>(null);
   const [highlightedPendency, setHighlightedPendency] =
     useState<CalculatedPendency | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [mobileCardsCanScrollLeft, setMobileCardsCanScrollLeft] =
+    useState(false);
+  const [mobileCardsCanScrollRight, setMobileCardsCanScrollRight] =
+    useState(false);
 
   // Salvar estado da sidebar no localStorage quando mudar
   useEffect(() => {
@@ -629,16 +621,6 @@ export default function SolicitacaoDetalhePage() {
       setIsSidebarOpen(false);
     }
   }, []);
-
-  // Salvar estado das atividades no localStorage quando mudar
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        "solicitacao-activities-expanded",
-        JSON.stringify(isActivitiesExpanded),
-      );
-    }
-  }, [isActivitiesExpanded]);
 
   // Carregar validação de pendências (dinâmica - baseada nos dados atuais)
   const fetchPendencies = useCallback(async () => {
@@ -716,10 +698,10 @@ export default function SolicitacaoDetalhePage() {
 
   // Rolar para o fim quando novas atividades chegam
   useEffect(() => {
-    if (isActivitiesExpanded && activities.length > 0) {
+    if (activities.length > 0) {
       activitiesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [activities, isActivitiesExpanded]);
+  }, [activities]);
 
   const handleSendComment = async () => {
     const text = newComment.trim();
@@ -745,6 +727,31 @@ export default function SolicitacaoDetalhePage() {
       handleSendComment();
     }
   };
+
+  const updateMobileCardsScrollHints = useCallback(() => {
+    const el = mobileInfoCardsRef.current;
+    if (!el) return;
+
+    const maxScrollLeft = el.scrollWidth - el.clientWidth;
+    setMobileCardsCanScrollLeft(el.scrollLeft > 2);
+    setMobileCardsCanScrollRight(el.scrollLeft < maxScrollLeft - 2);
+  }, []);
+
+  useEffect(() => {
+    const el = mobileInfoCardsRef.current;
+    if (!el) return;
+
+    updateMobileCardsScrollHints();
+    el.addEventListener("scroll", updateMobileCardsScrollHints, {
+      passive: true,
+    });
+    window.addEventListener("resize", updateMobileCardsScrollHints);
+
+    return () => {
+      el.removeEventListener("scroll", updateMobileCardsScrollHints);
+      window.removeEventListener("resize", updateMobileCardsScrollHints);
+    };
+  }, [updateMobileCardsScrollHints, solicitacao?.id]);
 
   // Mapeamento: chave de pendência → aba
   const pendencyKeyToTab: Partial<Record<string, TabType>> = {
@@ -1225,89 +1232,107 @@ export default function SolicitacaoDetalhePage() {
                 </div>
               </div>
 
-              {/* Status Grid */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
-                {/* Status */}
-                <div className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                  <div className="flex items-center gap-1.5 h-5">
-                    <Image
-                      src="/icons/view-kanban.svg"
-                      alt="Status"
-                      width={16}
-                      height={16}
-                      className="text-gray-600"
-                    />
-                    <span className="font-semibold text-gray-900 text-xs">
-                      Status
-                    </span>
-                  </div>
-                  <div className="flex items-center min-h-[28px]">
-                    <StatusBadge status={solicitacao.status} />
-                  </div>
-                </div>
-
-                {/* Prioridade */}
-                <div className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                  <div className="flex items-center gap-1.5 h-5">
-                    <Image
-                      src="/icons/flag.svg"
-                      alt="Prioridade"
-                      width={16}
-                      height={16}
-                      className="text-gray-600"
-                    />
-                    <span className="font-semibold text-gray-900 text-xs">
-                      Prioridade
-                    </span>
-                  </div>
-                  <div className="flex items-center min-h-[28px]">
-                    <EditablePriority
-                      initialValue={solicitacao.priority as PriorityLevel}
-                      surgeryRequestId={solicitacao.id}
-                      onUpdate={handleUpdateProcedure}
-                    />
-                  </div>
-                </div>
-
-                {/* Médico */}
-                <div className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-                  <div className="flex items-center gap-1.5 h-5">
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="#111111"
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="flex-shrink-0"
-                    >
-                      <path d="M9 21q-1.65 0-2.825-1.175T5 17q0-1.425.838-2.475T8 13.2V9.8q-1.325-.4-2.163-1.45T5 6q0-1.65 1.175-2.825T9 2q1.65 0 2.825 1.175T13 6q0 1.4-.838 2.45T10 9.8v3.4q1.325.4 2.163 1.45T13 17q0 1.65-1.175 2.825T9 21Zm0-2q.825 0 1.413-.588T11 17q0-.825-.588-1.413T9 15q-.825 0-1.413.588T7 17q0 .825.588 1.413T9 19Zm0-11q.825 0 1.413-.588T11 6q0-.825-.588-1.413T9 3q-.825 0-1.413.588T7 6q0 .825.588 1.413T9 7Zm0 3q.4 0 .7-.3T10 9q0-.4-.3-.7T9 8q-.4 0-.7.3T8 9q0 .4.3.7T9 10Zm3-4h1q.825 0 1.413.588T15 8v5.075q1.325.375 2.163 1.425T18 17q0 1.65-1.175 2.825T14 21q-1.65 0-2.825-1.175T10 17q0-1.425.838-2.475T13 13.075V8h-1V6Zm2 11q.825 0 1.413-.588T16 17q0-.825-.588-1.413T14 15q-.825 0-1.413.588T12 17q0 .825.588 1.413T14 19Z" />
-                    </svg>
-                    <span className="font-semibold text-gray-900 text-xs">
-                      Médico
-                    </span>
-                  </div>
-                  <div className="inline-flex items-center gap-2 h-7 px-3 rounded-md border border-gray-200 bg-gray-50 text-xs max-w-[210px]">
-                    {solicitacao.doctor ? (
-                      <>
-                        <span className="w-5 h-5 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600">
-                          {solicitacao.doctor.name
-                            .split(" ")
-                            .slice(0, 2)
-                            .map((n: string) => n[0])
-                            .join("")
-                            .toUpperCase()}
-                        </span>
-                        <span className="min-w-0 max-w-[150px] sm:max-w-[160px] truncate text-left text-gray-700">
-                          {solicitacao.doctor.name}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="flex-1 min-w-0 truncate text-left text-gray-400">
-                        —
+              {/* Status / Prioridade / Médico
+                  - Mobile: carrossel horizontal (snap)
+                  - sm+    : layout em grid (como antes) */}
+              <div className="relative">
+                <div
+                  ref={mobileInfoCardsRef}
+                  className="flex gap-3 overflow-x-auto overflow-y-visible snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:snap-none lg:grid-cols-3 lg:gap-4"
+                >
+                  {/* Status */}
+                  <div className="relative z-20 w-full min-w-full shrink-0 snap-start sm:min-w-0 sm:shrink flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                    <div className="flex items-center gap-1.5 h-5">
+                      <Image
+                        src="/icons/view-kanban.svg"
+                        alt="Status"
+                        width={16}
+                        height={16}
+                        className="text-gray-600"
+                      />
+                      <span className="font-semibold text-gray-900 text-xs">
+                        Status
                       </span>
-                    )}
+                    </div>
+                    <div className="flex items-center min-h-[28px]">
+                      <StatusBadge status={solicitacao.status} />
+                    </div>
+                  </div>
+
+                  {/* Prioridade */}
+                  <div className="w-full min-w-full shrink-0 snap-start sm:min-w-0 sm:shrink flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                    <div className="flex items-center gap-1.5 h-5">
+                      <Image
+                        src="/icons/flag.svg"
+                        alt="Prioridade"
+                        width={16}
+                        height={16}
+                        className="text-gray-600"
+                      />
+                      <span className="font-semibold text-gray-900 text-xs">
+                        Prioridade
+                      </span>
+                    </div>
+                    <div className="relative z-30 flex items-center min-h-[28px]">
+                      <EditablePriority
+                        initialValue={solicitacao.priority as PriorityLevel}
+                        surgeryRequestId={solicitacao.id}
+                        onUpdate={handleUpdateProcedure}
+                        openUpOnMobile
+                      />
+                    </div>
+                  </div>
+
+                  {/* Médico */}
+                  <div className="w-full min-w-full shrink-0 snap-start sm:min-w-0 sm:shrink flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                    <div className="flex items-center gap-1.5 h-5">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="#111111"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="flex-shrink-0"
+                      >
+                        <path d="M9 21q-1.65 0-2.825-1.175T5 17q0-1.425.838-2.475T8 13.2V9.8q-1.325-.4-2.163-1.45T5 6q0-1.65 1.175-2.825T9 2q1.65 0 2.825 1.175T13 6q0 1.4-.838 2.45T10 9.8v3.4q1.325.4 2.163 1.45T13 17q0 1.65-1.175 2.825T9 21Zm0-2q.825 0 1.413-.588T11 17q0-.825-.588-1.413T9 15q-.825 0-1.413.588T7 17q0 .825.588 1.413T9 19Zm0-11q.825 0 1.413-.588T11 6q0-.825-.588-1.413T9 3q-.825 0-1.413.588T7 6q0 .825.588 1.413T9 7Zm0 3q.4 0 .7-.3T10 9q0-.4-.3-.7T9 8q-.4 0-.7.3T8 9q0 .4.3.7T9 10Zm3-4h1q.825 0 1.413.588T15 8v5.075q1.325.375 2.163 1.425T18 17q0 1.65-1.175 2.825T14 21q-1.65 0-2.825-1.175T10 17q0-1.425.838-2.475T13 13.075V8h-1V6Zm2 11q.825 0 1.413-.588T16 17q0-.825-.588-1.413T14 15q-.825 0-1.413.588T12 17q0 .825.588 1.413T14 19Z" />
+                      </svg>
+                      <span className="font-semibold text-gray-900 text-xs">
+                        Médico
+                      </span>
+                    </div>
+                    <div className="inline-flex items-center gap-2 h-7 px-3 rounded-md border border-gray-200 bg-gray-50 text-xs max-w-[210px]">
+                      {solicitacao.doctor ? (
+                        <>
+                          <span className="w-5 h-5 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600">
+                            {solicitacao.doctor.name
+                              .split(" ")
+                              .slice(0, 2)
+                              .map((n: string) => n[0])
+                              .join("")
+                              .toUpperCase()}
+                          </span>
+                          <span className="min-w-0 max-w-[150px] sm:max-w-[160px] truncate text-left text-gray-700">
+                            {solicitacao.doctor.name}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="flex-1 min-w-0 truncate text-left text-gray-400">
+                          —
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {(mobileCardsCanScrollLeft || mobileCardsCanScrollRight) && (
+                  <div className="sm:hidden mt-1 px-1">
+                    <p className="text-[11px] text-gray-400 leading-none">
+                      {mobileCardsCanScrollRight
+                        ? "Deslize para ver mais"
+                        : "Deslize para voltar"}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Tabs */}
@@ -1498,6 +1523,19 @@ export default function SolicitacaoDetalhePage() {
                   )}
                 </button>
                 <button
+                  onClick={() => setSidebarTab("atividades")}
+                  className={`flex-1 h-full text-sm font-semibold transition-colors relative ${
+                    sidebarTab === "atividades"
+                      ? "text-teal-700"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  Atividades
+                  {sidebarTab === "atividades" && (
+                    <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-teal-600 rounded-full" />
+                  )}
+                </button>
+                <button
                   onClick={() => setSidebarTab("timeline")}
                   className={`flex-1 h-full text-sm font-semibold transition-colors relative ${
                     sidebarTab === "timeline"
@@ -1527,6 +1565,61 @@ export default function SolicitacaoDetalhePage() {
                     activities={activities}
                   />
                 </div>
+              ) : sidebarTab === "atividades" ? (
+                <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
+                  {/* Lista de Atividades */}
+                  <div className="flex-1 overflow-y-auto min-h-0">
+                    {loadingActivities ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-700" />
+                      </div>
+                    ) : activities.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-xs text-gray-400">
+                        Nenhuma atividade registrada.
+                        <br />
+                        Adicione um comentário abaixo.
+                      </div>
+                    ) : (
+                      <div className="flex flex-col">
+                        {activities.map((activity) => (
+                          <ActivityItem key={activity.id} activity={activity} />
+                        ))}
+                        <div ref={activitiesEndRef} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Campo de Comentário */}
+                  <div className="bg-white py-2 px-4 border-t border-neutral-100 flex-shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
+                    <div className="flex items-center bg-white border border-neutral-100 gap-2 py-2.5 px-3.5 rounded-xl">
+                      <input
+                        type="text"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        onKeyDown={handleCommentKeyDown}
+                        placeholder="Escreva um comentário"
+                        disabled={sendingComment}
+                        className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug disabled:opacity-50"
+                      />
+                      <button
+                        onClick={handleSendComment}
+                        disabled={!newComment.trim() || sendingComment}
+                        className="w-6 h-6 flex-shrink-0 hover:opacity-70 transition-opacity disabled:opacity-30"
+                      >
+                        {sendingComment ? (
+                          <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Image
+                            src="/icons/send.svg"
+                            alt="Enviar"
+                            width={24}
+                            height={24}
+                          />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <>
                   {/* Pendências Content */}
@@ -1555,95 +1648,6 @@ export default function SolicitacaoDetalhePage() {
                         </div>
                       )}
                     </div>
-
-                    {/* Seção Atividades - Collapsible com fundo que cobre o input */}
-                    <div
-                      className={`bg-white transition-all duration-200 flex flex-col ${isActivitiesExpanded ? "flex-1 min-h-0" : ""}`}
-                    >
-                      <button
-                        onClick={() =>
-                          setIsActivitiesExpanded(!isActivitiesExpanded)
-                        }
-                        className="w-full flex items-center justify-between px-4 py-4 border-t border-b border-neutral-100 hover:bg-gray-50 transition-colors bg-white flex-shrink-0"
-                      >
-                        <h3 className="font-semibold text-sm text-black leading-normal">
-                          Atividades
-                        </h3>
-                        <svg
-                          className={`w-4 h-4 transition-transform ${isActivitiesExpanded ? "" : "rotate-180"}`}
-                          viewBox="0 0 24 24"
-                          fill="none"
-                        >
-                          <path
-                            d="M6 15L12 9L18 15"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* Timeline de Atividades */}
-                      {isActivitiesExpanded && (
-                        <div className="flex-1 overflow-y-auto min-h-0">
-                          {loadingActivities ? (
-                            <div className="flex items-center justify-center py-8">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-700" />
-                            </div>
-                          ) : activities.length === 0 ? (
-                            <div className="px-4 py-8 text-center text-xs text-gray-400">
-                              Nenhuma atividade registrada.
-                              <br />
-                              Adicione um comentário abaixo.
-                            </div>
-                          ) : (
-                            <div className="flex flex-col">
-                              {activities.map((activity) => (
-                                <ActivityItem
-                                  key={activity.id}
-                                  activity={activity}
-                                />
-                              ))}
-                              <div ref={activitiesEndRef} />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Campo de Comentário */}
-                    {isActivitiesExpanded && (
-                      <div className="bg-white py-2 px-4 border-t border-neutral-100 flex-shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
-                        <div className="flex items-center bg-white border border-neutral-100 gap-2 py-2.5 px-3.5 rounded-xl">
-                          <input
-                            type="text"
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            onKeyDown={handleCommentKeyDown}
-                            placeholder="Escreva um comentário"
-                            disabled={sendingComment}
-                            className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug disabled:opacity-50"
-                          />
-                          <button
-                            onClick={handleSendComment}
-                            disabled={!newComment.trim() || sendingComment}
-                            className="w-6 h-6 flex-shrink-0 hover:opacity-70 transition-opacity disabled:opacity-30"
-                          >
-                            {sendingComment ? (
-                              <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <Image
-                                src="/icons/send.svg"
-                                alt="Enviar"
-                                width={24}
-                                height={24}
-                              />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </>
               )}

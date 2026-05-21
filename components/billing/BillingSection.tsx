@@ -22,7 +22,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Loader2, RotateCcw, XCircle } from "lucide-react";
 
 export function BillingSection() {
-  const { user, subscription, refreshSubscription, subscriptionLoading } =
+  const { subscription, refreshSubscription, subscriptionLoading } =
     useAuth();
   const { toast, showToast, hideToast } = useToast();
 
@@ -207,16 +207,6 @@ export function BillingSection() {
             loadMethods();
             refreshSubscription();
           }}
-          defaults={
-            user
-              ? {
-                  holderInfoName: user.name,
-                  holderInfoEmail: user.email,
-                  holderInfoCpfCnpj: user.cpf ?? undefined,
-                  holderInfoPhone: user.phone ?? undefined,
-                }
-              : undefined
-          }
         />
 
         <InvoicesList invoices={invoices} loading={loadingInvoices} />

@@ -45,6 +45,14 @@ export interface UpdateProfileData {
   state?: string;
 }
 
+let profileCache: { data: UserProfileResponse; expiresAt: number } | null =
+  null;
+let profileInFlight: Promise<UserProfileResponse> | null = null;
+
+function invalidateProfileCache() {
+  profileCache = null;
+}
+
 export const userService = {
   /**
    * Busca todos os usuários/gestores
@@ -73,15 +81,43 @@ export const userService = {
    * Busca o perfil do usuário logado
    */
   async getProfile(): Promise<UserProfileResponse> {
-    const response = await api.get<UserProfileResponse>("/users/profile");
-    return response.data;
+    const now = Date.now();
+
+    if (profileCache && profileCache.expiresAt > now) {
+      return profileCache.data;
+    }
+
+    if (profileInFlight) {
+      return profileInFlight;
+    }
+
+    profileInFlight = api
+      .get<UserProfileResponse>("/users/profile")
+      .then((response) => {
+        profileCache = {
+          data: response.data,
+          // cache curto para absorver remount/StrictMode sem staleness relevante
+          expiresAt: Date.now() + 2000,
+        };
+        return response.data;
+      })
+      .finally(() => {
+        profileInFlight = null;
+      });
+
+    return profileInFlight;
   },
 
   /**
    * Atualiza o perfil do usuário logado
    */
   async updateProfile(data: UpdateProfileData): Promise<UserProfileResponse> {
+    invalidateProfileCache();
     const response = await api.put<UserProfileResponse>("/users/profile", data);
+    profileCache = {
+      data: response.data,
+      expiresAt: Date.now() + 2000,
+    };
     return response.data;
   },
 
@@ -97,6 +133,7 @@ export const userService = {
       signatureImageUrl?: string | null;
     },
   ): Promise<DoctorProfile> {
+    invalidateProfileCache();
     const response = await api.patch<DoctorProfile>(
       `/users/doctor-profile/${doctorProfileId}`,
       data,

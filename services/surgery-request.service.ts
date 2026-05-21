@@ -186,7 +186,7 @@ export interface StartAnalysisPayload {
 }
 
 export interface AcceptAuthorizationPayload {
-  /** Mínimo 1, máximo 3 datas ISO no formato YYYY-MM-DDTHH:mm:ss */
+  /** Exatamente 3 datas ISO no formato YYYY-MM-DDTHH:mm:ss */
   dateOptions: string[];
   notifyPatient?: boolean;
 }
@@ -503,7 +503,11 @@ export const surgeryRequestService = {
   async authorizeQuantities(
     surgeryRequestId: string | number,
     procedures: { id: string | number; authorizedQuantity: number }[],
-    opmeItems: { id: string | number; authorizedQuantity: number }[],
+    opmeItems: {
+      id: string | number;
+      authorizedQuantity: number;
+      selectedSupplierId?: string;
+    }[],
   ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post("/surgery-requests/procedures/authorize", {
       surgeryRequestId,
@@ -732,14 +736,6 @@ export const surgeryRequestService = {
   },
 
   // ── Downloads de PDF ────────────────────────────────────────────────────
-
-  async downloadReportPdf(requestId: string | number): Promise<Blob> {
-    const response = await api.get(
-      `/surgery-requests/${requestId}/report-pdf`,
-      { responseType: "arraybuffer" },
-    );
-    return new Blob([response.data], { type: "application/pdf" });
-  },
 
   async downloadContestAuthorizationPdf(
     requestId: string | number,

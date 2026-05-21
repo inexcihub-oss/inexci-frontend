@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -38,6 +38,7 @@ function ForgotPasswordForm() {
   });
 
   const email = emailForm.values.email;
+  const validatingRef = useRef(false);
 
   /* ── Etapa 1: solicitar código ── */
   const handleSendCode = emailForm.handleSubmit(async (data) => {
@@ -62,6 +63,8 @@ function ForgotPasswordForm() {
   });
 
   const runCodeValidation = async (code: string) => {
+    if (validatingRef.current) return;
+    validatingRef.current = true;
     setError("");
     setIsLoading(true);
     try {
@@ -69,6 +72,7 @@ function ForgotPasswordForm() {
       setStep("password");
     } catch (err: unknown) {
       setError(extractMessage(err) ?? "Código inválido ou expirado.");
+      validatingRef.current = false;
     } finally {
       setIsLoading(false);
     }
@@ -272,7 +276,6 @@ function ForgotPasswordForm() {
                     disabled={isLoading}
                     onComplete={(val) => {
                       codeForm.setField("code", val);
-                      runCodeValidation(val);
                     }}
                   />
 
@@ -297,6 +300,7 @@ function ForgotPasswordForm() {
                         setStep("email");
                         setError("");
                         codeForm.reset();
+                        validatingRef.current = false;
                       }}
                       className="hover:text-gray-700 underline underline-offset-2"
                     >

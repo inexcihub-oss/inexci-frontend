@@ -97,9 +97,7 @@ export function SendRequestModal({
           const found = result.pendencies.find((p) => p.key === key);
           let isComplete = found ? found.isComplete : false;
           if (!found && key === "hospital") {
-            isComplete = !!(
-              solicitacao.hospitalId || solicitacao.hospital?.id
-            );
+            isComplete = !!(solicitacao.hospitalId || solicitacao.hospital?.id);
           }
           return { key, label, isComplete, isRequired: true };
         },
@@ -203,9 +201,9 @@ export function SendRequestModal({
       // Primeiro chama o endpoint de envio para mudar o status para "Enviada"
       await surgeryRequestService.send(solicitacao.id, { method: "download" });
 
-      // Em seguida baixa o PDF da solicitação
+      // Em seguida abre o PDF da solicitação (com documentos anexados)
       const response = await api.get(
-        `/surgery-requests/${solicitacao.id}/report-pdf`,
+        `/surgery-requests/${solicitacao.id}/export-pdf`,
         { responseType: "arraybuffer" },
       );
       const blob = new Blob([response.data], { type: "application/pdf" });

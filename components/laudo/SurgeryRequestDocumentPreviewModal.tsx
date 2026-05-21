@@ -32,25 +32,68 @@ export function SurgeryRequestDocumentPreviewModal({
   const [isExporting, setIsExporting] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string>("");
   const [sections, setSections] = useState<ReportSection[]>([]);
+  const [latestSolicitacao, setLatestSolicitacao] =
+    useState<SurgeryRequestDetail>(solicitacao);
+
+  const request = latestSolicitacao ?? solicitacao;
+
+  const documentTypeLabel = (key?: string) => {
+    switch (key) {
+      case "personal_document":
+        return "RG/CNH";
+      case "health_plan_card":
+        return "Carteirinha do Convênio";
+      case "exam":
+        return "Exames";
+      case "exam_report":
+        return "Laudo do Exame";
+      case "clinical_history":
+        return "Histórico Clínico";
+      case "medical_conduct":
+        return "Conduta Médica";
+      case "signed_report":
+        return "Laudo Assinado";
+      default:
+        return "Documento";
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
-    setSignatureUrl(solicitacao?.doctor?.signatureUrl ?? "");
-  }, [isOpen, solicitacao]);
+    setSignatureUrl(request?.doctor?.signatureUrl ?? "");
+  }, [isOpen, request]);
 
   useEffect(() => {
     if (!isOpen || !solicitacao?.id) return;
+
+    let active = true;
     surgeryRequestService
-      .getSections(solicitacao.id)
+      .getById(solicitacao.id)
+      .then((data) => {
+        if (active) setLatestSolicitacao(data);
+      })
+      .catch(() => {
+        if (active) setLatestSolicitacao(solicitacao);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isOpen, solicitacao]);
+
+  useEffect(() => {
+    if (!isOpen || !request?.id) return;
+    surgeryRequestService
+      .getSections(request.id)
       .then(setSections)
       .catch(() => setSections([]));
-  }, [isOpen, solicitacao?.id]);
+  }, [isOpen, request?.id]);
 
   if (!isOpen) return null;
 
-  const reportData = parseMedicalReport(solicitacao);
+  const reportData = parseMedicalReport(request);
   const pd = reportData?.patientData ?? {};
-  const patient = solicitacao?.patient;
+  const patient = request?.patient;
 
   const patientName = pd.name || patient?.name || undefined;
   const patientBirthDate =
@@ -63,27 +106,34 @@ export function SurgeryRequestDocumentPreviewModal({
   const patientZipCode =
     pd.zipCode || patient?.zipCode || (patient as any)?.cep || undefined;
   const patientHealthPlan =
-    pd.healthPlan || solicitacao?.healthPlan?.name || undefined;
+    pd.healthPlan || request?.healthPlan?.name || undefined;
 
-  const procedures: TussItemRef[] = solicitacao?.tussItems ?? [];
-  const opmeItems: OpmeItemRef[] = solicitacao?.opmeItems ?? [];
+  const procedures: TussItemRef[] = request?.tussItems ?? [];
+  const opmeItems: OpmeItemRef[] = request?.opmeItems ?? [];
+
+  const splitList = (value?: string) =>
+    (value ?? "")
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
 
   const fabricantesText =
-    unique(opmeItems.map((i) => i.brand).filter(Boolean) as string[]).join(
-      ", ",
-    ) || "";
+    unique(opmeItems.flatMap((i) => splitList(i.brand))).join(", ") || "";
   const fornecedoresText =
     unique(
-      opmeItems.map((i) => i.distributor).filter(Boolean) as string[],
+      opmeItems.flatMap((i) => [
+        ...splitList(i.distributor),
+        ...((i.suppliers ?? []).map((s) => s.name).filter(Boolean) as string[]),
+      ]),
     ).join(", ") || "";
 
-  const hospitalName = solicitacao?.hospital?.name || "";
-  const hospitalAddress = solicitacao?.hospital?.address || "";
+  const hospitalName = request?.hospital?.name || "";
+  const hospitalAddress = request?.hospital?.address || "";
   const localText =
     [hospitalName, hospitalAddress].filter(Boolean).join(" – ") || "";
   const hasSeparator = !!(fabricantesText || fornecedoresText || localText);
 
-  const doctorUser = solicitacao?.doctor ?? null;
+  const doctorUser = request?.doctor ?? null;
   const doctorProfile = doctorUser?.doctorProfile ?? null;
   const doctorName = doctorUser?.name ?? "Médico";
   const doctorEmail = doctorUser?.email || "";
@@ -98,6 +148,7 @@ export function SurgeryRequestDocumentPreviewModal({
         logoUrl: doctorProfile.header.logoUrl ?? null,
         logoPosition: (doctorProfile.header.logoPosition ?? "left") as
           | "left"
+          | "center"
           | "right",
         contentHtml: doctorProfile.header.contentHtml ?? null,
       }
@@ -106,25 +157,25 @@ export function SurgeryRequestDocumentPreviewModal({
   const today = new Date().toLocaleDateString("pt-BR");
 
   const examImages = (
-    solicitacao?.documents?.filter((d) => d.key === "report_images") ?? []
+    request?.documents?.filter((d) => d.key === "report_images") ?? []
   ).map((d) => ({ id: d.id, name: d.name, uri: d.uri }));
+
+  const attachedDocuments =
+    request?.documents?.filter(
+      (d) => d.key !== "report_images" && d.path?.startsWith("documents/"),
+    ) ?? [];
 
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
       const { default: api } = await import("@/lib/api");
       const response = await api.get(
-        `/surgery-requests/${solicitacao.id}/report-pdf`,
+        `/surgery-requests/${request.id}/export-pdf`,
         { responseType: "arraybuffer" },
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `solicitacao-${solicitacao.id}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      window.open(url, "_blank", "noopener,noreferrer");
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       // silently fail
@@ -186,6 +237,34 @@ export function SurgeryRequestDocumentPreviewModal({
             doctorSignatureUrl={signatureUrl || undefined}
             customHeader={customHeader}
           />
+
+          {attachedDocuments.length > 0 && (
+            <div className="mt-4 bg-white border border-gray-200 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                Documentos anexados na SC
+              </h3>
+              <ul className="space-y-1.5">
+                {attachedDocuments.map((doc) => (
+                  <li
+                    key={doc.id}
+                    className="flex items-center justify-between gap-3 text-xs"
+                  >
+                    <a
+                      href={doc.uri}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-900 hover:text-teal-700 hover:underline truncate"
+                    >
+                      {doc.name}
+                    </a>
+                    <span className="text-gray-500 shrink-0">
+                      {documentTypeLabel(doc.key)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 shrink-0">

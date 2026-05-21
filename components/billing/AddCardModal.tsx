@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  loadStripe,
+  type Stripe as StripeType,
+  type StripeCardElement,
+  type StripeElements,
+} from "@stripe/stripe-js";
 import { Modal } from "@/components/ui/Modal";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
@@ -8,162 +14,132 @@ import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { billingService } from "@/services/billing.service";
-import type { SavePaymentMethodPayload } from "@/types";
-import { Lock, ShieldCheck, Loader2, MapPin } from "lucide-react";
-import { useZodForm } from "@/hooks/useZodForm";
-import { addCardSchema, type AddCardInput } from "@/lib/schemas/billing.schema";
-import { unmask, maskCpfCnpj, maskPhone } from "@/lib/masks";
-import { summarizeErrors } from "@/lib/form-errors";
-import { useCepLookup } from "@/hooks/useCepLookup";
-import type { CepLookupResult } from "@/lib/cep";
+import { ShieldCheck, Lock } from "lucide-react";
+
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "",
+);
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  /** Dados do titular pré-preenchidos a partir do cadastro do usuário. */
-  defaults?: Partial<
-    Pick<
-      SavePaymentMethodPayload,
-      "holderInfoName" | "holderInfoEmail" | "holderInfoCpfCnpj" | "holderInfoPhone"
-    >
-  >;
 }
 
-const FIELD_LABELS: Record<string, string> = {
-  number: "Número do cartão",
-  holderName: "Nome impresso no cartão",
-  expiry: "Validade",
-  ccv: "CCV",
-  holderInfoName: "Nome do titular",
-  holderInfoEmail: "E-mail do titular",
-  holderInfoCpfCnpj: "CPF/CNPJ",
-  holderInfoPhone: "Telefone",
-  holderInfoPostalCode: "CEP",
-  holderInfoAddressNumber: "Número do endereço",
-  holderInfoAddressComplement: "Complemento",
-};
-
-const onlyDigits = (value: string) => value.replace(/\D/g, "");
-
-function formatCardNumber(value: string): string {
-  return onlyDigits(value)
-    .slice(0, 19)
-    .replace(/(.{4})/g, "$1 ")
-    .trim();
-}
-
-function formatExpiry(value: string): string {
-  const digits = onlyDigits(value).slice(0, 4);
-  if (digits.length <= 2) return digits;
-  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-}
-
-function buildInitialValues(defaults: Props["defaults"]): AddCardInput {
-  return {
-    number: "",
-    holderName: "",
-    expiry: "",
-    ccv: "",
-    holderInfoName: defaults?.holderInfoName ?? "",
-    holderInfoEmail: defaults?.holderInfoEmail ?? "",
-    holderInfoCpfCnpj: defaults?.holderInfoCpfCnpj
-      ? maskCpfCnpj(defaults.holderInfoCpfCnpj)
-      : "",
-    holderInfoPostalCode: "",
-    holderInfoAddressNumber: "",
-    holderInfoAddressComplement: "",
-    holderInfoPhone: defaults?.holderInfoPhone
-      ? maskPhone(defaults.holderInfoPhone)
-      : "",
-  };
-}
-
-export function AddCardModal({
-  isOpen,
-  onClose,
-  onSuccess,
-  defaults = {},
-}: Props) {
+export function AddCardModal({ isOpen, onClose, onSuccess }: Props) {
   const { toast, showToast, hideToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
-  const [cepAddress, setCepAddress] = useState<CepLookupResult | null>(null);
-
-  const form = useZodForm({
-    schema: addCardSchema,
-    initialValues: buildInitialValues(defaults),
-  });
-
-  const { loading: cepLoading } = useCepLookup({
-    cep: form.values.holderInfoPostalCode,
-    enabled: isOpen,
-    onResolved: (data) => setCepAddress(data),
-    onError: (err) => {
-      setCepAddress(null);
-      if (err.code === "not_found") {
-        showToast("CEP não encontrado.", "error");
-      } else if (err.code === "network") {
-        showToast(err.message, "error");
-      }
-    },
-  });
-
-  // Atualiza valores iniciais quando defaults mudam (ex.: dados do usuário carregam tarde).
-  useEffect(() => {
-    form.reset(buildInitialValues(defaults));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    defaults.holderInfoName,
-    defaults.holderInfoEmail,
-    defaults.holderInfoCpfCnpj,
-    defaults.holderInfoPhone,
-  ]);
-
-  const onSubmit = form.handleSubmit(
-    async (data) => {
-      const expiryDigits = onlyDigits(data.expiry);
-      const expiryMonth = expiryDigits.slice(0, 2);
-      const expiryYear = `20${expiryDigits.slice(2, 4)}`;
-
-      const payload: SavePaymentMethodPayload = {
-        number: unmask(data.number),
-        holderName: data.holderName.trim(),
-        expiryMonth,
-        expiryYear,
-        ccv: data.ccv,
-        holderInfoName: data.holderInfoName.trim(),
-        holderInfoEmail: data.holderInfoEmail.trim(),
-        holderInfoCpfCnpj: unmask(data.holderInfoCpfCnpj),
-        holderInfoPostalCode: unmask(data.holderInfoPostalCode),
-        holderInfoAddressNumber: data.holderInfoAddressNumber.trim(),
-        holderInfoAddressComplement:
-          data.holderInfoAddressComplement?.trim() || undefined,
-        holderInfoPhone: data.holderInfoPhone
-          ? unmask(data.holderInfoPhone)
-          : undefined,
-      };
-
-      try {
-        setSubmitting(true);
-        await billingService.addPaymentMethod(payload);
-        showToast("Cartão cadastrado com sucesso.", "success");
-        form.reset(buildInitialValues(defaults));
-        onSuccess();
-        onClose();
-      } catch (err) {
-        showToast(getApiErrorMessage(err), "error");
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
+  const [holderName, setHolderName] = useState("");
+  const [holderNameError, setHolderNameError] = useState("");
+  const [stripe, setStripe] = useState<StripeType | null>(null);
+  const [elements, setElements] = useState<StripeElements | null>(null);
+  const [cardElement, setCardElement] = useState<StripeCardElement | null>(
+    null,
   );
+  const [cardError, setCardError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let isMounted = true;
+    stripePromise.then((s) => {
+      if (!isMounted || !s) return;
+      setStripe(s);
+      const els = s.elements({ locale: "pt-BR" });
+      setElements(els);
+      const card = els.create("card", {
+        style: {
+          base: {
+            fontSize: "14px",
+            color: "#111827",
+            fontFamily: "inherit",
+            "::placeholder": { color: "#9CA3AF" },
+          },
+          invalid: { color: "#DC2626" },
+        },
+        hidePostalCode: true,
+      });
+      setCardElement(card);
+    });
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!cardElement) return;
+    const container = document.getElementById("stripe-card-element");
+    if (container) {
+      cardElement.mount(container);
+      cardElement.on("change", (e) => {
+        setCardError(e.error?.message ?? "");
+      });
+    }
+    return () => {
+      cardElement.unmount();
+    };
+  }, [cardElement]);
 
   const handleClose = () => {
     if (submitting) return;
-    form.reset(buildInitialValues(defaults));
+    setHolderName("");
+    setHolderNameError("");
+    setCardError("");
     onClose();
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !cardElement) {
+      showToast("Stripe não carregado. Tente novamente.", "error");
+      return;
+    }
+
+    let valid = true;
+    if (!holderName.trim() || holderName.trim().length < 2) {
+      setHolderNameError("Informe o nome do titular");
+      valid = false;
+    } else {
+      setHolderNameError("");
+    }
+    if (!valid) return;
+
+    try {
+      setSubmitting(true);
+      const { paymentMethod, error } = await stripe.createPaymentMethod({
+        type: "card",
+        card: cardElement,
+        billing_details: { name: holderName.trim() },
+      });
+
+      if (error || !paymentMethod) {
+        showToast(error?.message ?? "Erro ao processar cartão.", "error");
+        return;
+      }
+
+      const card = paymentMethod.card!;
+      await billingService.addPaymentMethod({
+        paymentMethodId: paymentMethod.id,
+        holderName: holderName.trim(),
+        brand: card.brand,
+        last4: card.last4,
+        expMonth: card.exp_month,
+        expYear: card.exp_year,
+      });
+
+      showToast("Cartão cadastrado com sucesso.", "success");
+      setHolderName("");
+      onSuccess();
+      onClose();
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Suprimir variável não utilizada (elements é mantida por simetria com a API Stripe)
+  void elements;
 
   return (
     <>
@@ -173,132 +149,41 @@ export function AddCardModal({
         title="Cadastrar cartão de crédito"
         size="md"
       >
-        <form onSubmit={onSubmit} noValidate className="p-5 md:p-6 space-y-5">
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="p-5 md:p-6 space-y-5"
+        >
           <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-xl text-xs text-blue-700">
             <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
-              Os dados do cartão são enviados diretamente para o gateway
-              certificado PCI-DSS. Não armazenamos número completo nem CCV.
+              Os dados do cartão são coletados diretamente pelo Stripe (PCI-DSS
+              nível 1). Nunca passam pelo nosso servidor.
             </span>
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-gray-900">
-              Dados do cartão
-            </h4>
-            <Input
-              label="Número do cartão"
-              inputMode="numeric"
-              autoComplete="cc-number"
-              placeholder="0000 0000 0000 0000"
-              required
-              value={form.values.number}
-              onChange={(e) =>
-                form.setField("number", formatCardNumber(e.target.value))
-              }
-              error={form.errors.number}
-            />
             <Input
               label="Nome impresso no cartão"
               autoComplete="cc-name"
               placeholder="Como aparece no cartão"
               required
-              {...form.getFieldProps("holderName")}
+              value={holderName}
+              onChange={(e) => setHolderName(e.target.value)}
+              error={holderNameError}
             />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Validade"
-                inputMode="numeric"
-                autoComplete="cc-exp"
-                placeholder="MM/AA"
-                required
-                value={form.values.expiry}
-                onChange={(e) =>
-                  form.setField("expiry", formatExpiry(e.target.value))
-                }
-                error={form.errors.expiry}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Dados do cartão <span className="text-red-500">*</span>
+              </label>
+              <div
+                id="stripe-card-element"
+                className="w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition"
               />
-              <Input
-                label="CCV"
-                inputMode="numeric"
-                autoComplete="cc-csc"
-                placeholder="000"
-                maxLength={4}
-                required
-                value={form.values.ccv}
-                onChange={(e) =>
-                  form.setField("ccv", onlyDigits(e.target.value).slice(0, 4))
-                }
-                error={form.errors.ccv}
-              />
+              {cardError && (
+                <p className="mt-1 text-xs text-red-600">{cardError}</p>
+              )}
             </div>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-gray-900">
-              Dados do titular
-            </h4>
-            <Input
-              label="Nome completo"
-              required
-              {...form.getFieldProps("holderInfoName")}
-            />
-            <Input
-              label="E-mail"
-              type="email"
-              required
-              {...form.getFieldProps("holderInfoEmail")}
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="CPF/CNPJ"
-                mask="cpfCnpj"
-                required
-                {...form.getFieldProps("holderInfoCpfCnpj")}
-              />
-              <Input
-                label="Telefone"
-                type="tel"
-                mask="phone"
-                {...form.getFieldProps("holderInfoPhone")}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="relative">
-                <Input
-                  label="CEP"
-                  mask="cep"
-                  required
-                  {...form.getFieldProps("holderInfoPostalCode")}
-                />
-                {cepLoading && (
-                  <Loader2 className="absolute right-3 top-9 w-4 h-4 text-gray-400 animate-spin" />
-                )}
-              </div>
-              <Input
-                label="Número"
-                required
-                {...form.getFieldProps("holderInfoAddressNumber")}
-              />
-            </div>
-            {cepAddress && (
-              <p className="flex items-center gap-1.5 text-xs text-gray-600">
-                <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                {[
-                  cepAddress.logradouro,
-                  cepAddress.bairro,
-                  cepAddress.cidade && cepAddress.uf
-                    ? `${cepAddress.cidade} - ${cepAddress.uf}`
-                    : cepAddress.cidade || cepAddress.uf,
-                ]
-                  .filter(Boolean)
-                  .join(", ")}
-              </p>
-            )}
-            <Input
-              label="Complemento (opcional)"
-              {...form.getFieldProps("holderInfoAddressComplement")}
-            />
           </div>
 
           <div className="flex items-center gap-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
@@ -322,11 +207,7 @@ export function AddCardModal({
         </form>
       </Modal>
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
       )}
     </>
   );

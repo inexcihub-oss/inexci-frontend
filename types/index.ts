@@ -194,18 +194,12 @@ export interface Invoice {
 }
 
 export interface SavePaymentMethodPayload {
-  number: string;
+  paymentMethodId: string;
   holderName: string;
-  expiryMonth: string;
-  expiryYear: string;
-  ccv: string;
-  holderInfoName: string;
-  holderInfoEmail: string;
-  holderInfoCpfCnpj: string;
-  holderInfoPostalCode: string;
-  holderInfoAddressNumber: string;
-  holderInfoAddressComplement?: string;
-  holderInfoPhone?: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
 }
 
 export interface AuthResponse {

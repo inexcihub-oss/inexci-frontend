@@ -510,17 +510,15 @@ export function MedicalReportEditor() {
     setIsExportingPdf(true);
     try {
       const response = await api.get(
-        `/surgery-requests/${solicitacao.id}/report-pdf`,
+        `/surgery-requests/${solicitacao.id}/medical-report-pdf`,
         { responseType: "arraybuffer" },
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `laudo-${solicitacao?.protocol ?? solicitacao?.id}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        showToast("Não foi possível abrir o PDF em uma nova aba", "error");
+      }
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       showToast("Erro ao exportar PDF", "error");

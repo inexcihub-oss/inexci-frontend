@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   ClipboardList,
   Search,
@@ -40,6 +41,13 @@ interface TussProcedureModalProps {
 interface ProcedureItem {
   procedure: TussCode;
   quantity: number;
+}
+
+interface DropdownPosition {
+  top: number;
+  left: number;
+  width: number;
+  maxHeight: number;
 }
 
 // ─── Debounce (com cancel) ────────────────────────────────────────────────────
@@ -84,8 +92,11 @@ export function TussProcedureModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] =
+    useState<DropdownPosition | null>(null);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { toast, showToast, hideToast } = useToast();
@@ -134,9 +145,11 @@ export function TussProcedureModal({
   useEffect(() => {
     if (!isDropdownOpen) return;
     const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
       if (
         searchContainerRef.current &&
-        !searchContainerRef.current.contains(e.target as Node)
+        !searchContainerRef.current.contains(target) &&
+        !dropdownRef.current?.contains(target)
       ) {
         setIsDropdownOpen(false);
       }
@@ -153,7 +166,6 @@ export function TussProcedureModal({
       try {
         const results = await tussService.searchTussFromJson(term, 50);
         setSearchResults(results);
-        setIsDropdownOpen(true);
       } catch (err) {
         logger.error("Erro na busca TUSS:", err);
         setSearchResults([]);
@@ -175,7 +187,10 @@ export function TussProcedureModal({
     if (searchResults.length === 0 && !isSearching) {
       setIsSearching(true);
       try {
-        const results = await tussService.searchTussFromJson(searchTerm || "", 50);
+        const results = await tussService.searchTussFromJson(
+          searchTerm || "",
+          50,
+        );
         setSearchResults(results);
       } catch (err) {
         logger.error("Erro na busca TUSS:", err);
@@ -195,6 +210,53 @@ export function TussProcedureModal({
   const filteredResults = searchResults.filter(
     (r) => !addedTussCodes.has(r.tussCode),
   );
+
+  const updateDropdownPosition = useCallback(() => {
+    if (!isDropdownOpen || !searchContainerRef.current) return;
+
+    const rect = searchContainerRef.current.getBoundingClientRect();
+    const viewportPadding = 8;
+    const desiredMaxHeight = 288;
+
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+
+    const openUpward = spaceBelow < 180 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(
+      120,
+      Math.min(desiredMaxHeight, openUpward ? spaceAbove : spaceBelow),
+    );
+
+    const top = openUpward
+      ? Math.max(viewportPadding, rect.top - maxHeight - 4)
+      : rect.bottom + 4;
+
+    setDropdownPosition({
+      top,
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+    });
+  }, [isDropdownOpen]);
+
+  useEffect(() => {
+    if (!isDropdownOpen || !isOpen) {
+      setDropdownPosition(null);
+      return;
+    }
+
+    updateDropdownPosition();
+
+    const handleViewportChange = () => updateDropdownPosition();
+
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [isDropdownOpen, isOpen, updateDropdownPosition]);
 
   const handleSelectProcedure = (procedure: TussCode) => {
     if (addedTussCodes.has(procedure.tussCode)) {
@@ -229,7 +291,9 @@ export function TussProcedureModal({
     const parsed = parseInt(raw, 10);
     const value = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
     setProcedures((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, quantity: value } : item)),
+      prev.map((item, i) =>
+        i === index ? { ...item, quantity: value } : item,
+      ),
     );
   };
 
@@ -279,7 +343,9 @@ export function TussProcedureModal({
   const isDragging = dragY > 0;
   const overlayOpacity = isDragging ? Math.max(0.2, 1 - dragY / 300) : 1;
 
-  const showDropdown = isDropdownOpen && (isSearching || filteredResults.length > 0);
+  const showDropdown =
+    isDropdownOpen &&
+    (isSearching || filteredResults.length > 0 || searchTerm.trim().length > 0);
 
   return (
     <>
@@ -369,40 +435,6 @@ export function TussProcedureModal({
                     </button>
                   )}
                 </div>
-
-                {showDropdown && (
-                  <div className="absolute z-60 top-full left-0 right-0 mt-1 bg-white border border-neutral-100 rounded-xl shadow-lg max-h-72 overflow-y-auto">
-                    {isSearching ? (
-                      <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-500">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Buscando procedimentos...
-                      </div>
-                    ) : filteredResults.length === 0 ? (
-                      <div className="py-6 text-center text-sm text-gray-500">
-                        Nenhum procedimento encontrado
-                      </div>
-                    ) : (
-                      filteredResults.map((procedure) => (
-                        <button
-                          key={procedure.id}
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            handleSelectProcedure(procedure);
-                          }}
-                          className="w-full text-left px-3 py-2.5 hover:bg-primary-50 transition-colors border-b border-neutral-100 last:border-b-0 flex items-start gap-2"
-                        >
-                          <span className="ds-badge-sm bg-primary-50 text-primary-700 shrink-0 mt-0.5 font-mono">
-                            {procedure.tussCode}
-                          </span>
-                          <span className="text-sm text-gray-900 leading-snug">
-                            {procedure.name}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Lista de procedimentos selecionados */}
@@ -471,12 +503,54 @@ export function TussProcedureModal({
         </div>
       </div>
 
+      {showDropdown &&
+        dropdownPosition &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed z-[70] bg-white border border-neutral-100 rounded-xl shadow-lg overflow-y-auto"
+            style={{
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              width: dropdownPosition.width,
+              maxHeight: dropdownPosition.maxHeight,
+            }}
+          >
+            {isSearching ? (
+              <div className="flex items-center justify-center gap-2 py-6 text-sm text-gray-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Buscando procedimentos...
+              </div>
+            ) : filteredResults.length === 0 ? (
+              <div className="py-6 text-center text-sm text-gray-500">
+                Nenhum procedimento encontrado
+              </div>
+            ) : (
+              filteredResults.map((procedure) => (
+                <button
+                  key={procedure.id}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelectProcedure(procedure);
+                  }}
+                  className="w-full text-left px-3 py-2.5 hover:bg-primary-50 transition-colors border-b border-neutral-100 last:border-b-0 flex items-start gap-2"
+                >
+                  <span className="ds-badge-sm bg-primary-50 text-primary-700 shrink-0 mt-0.5 font-mono">
+                    {procedure.tussCode}
+                  </span>
+                  <span className="text-sm text-gray-900 leading-snug">
+                    {procedure.name}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>,
+          document.body,
+        )}
+
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
       )}
     </>
   );
@@ -495,8 +569,8 @@ function EmptyState() {
           Nenhum procedimento selecionado
         </h3>
         <p className="ds-caption">
-          Use o campo acima para buscar e adicionar os procedimentos
-          desta cirurgia.
+          Use o campo acima para buscar e adicionar os procedimentos desta
+          cirurgia.
         </p>
       </div>
     </div>
