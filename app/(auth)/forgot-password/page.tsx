@@ -83,7 +83,11 @@ function ForgotPasswordForm() {
     setError("");
     setIsLoading(true);
     try {
-      await authService.changePassword(email, codeForm.values.code, data.password);
+      await authService.changePassword(
+        email,
+        codeForm.values.code,
+        data.password,
+      );
       setStep("success");
       setTimeout(() => router.push("/login"), 3000);
     } catch (err: unknown) {
@@ -226,7 +230,11 @@ function ForgotPasswordForm() {
 
               {/* ── Formulário: Etapa 1 — E-mail ── */}
               {step === "email" && (
-                <form onSubmit={handleSendCode} noValidate className="space-y-5">
+                <form
+                  onSubmit={handleSendCode}
+                  noValidate
+                  className="space-y-5"
+                >
                   <Input
                     id="email"
                     label="E-mail"
@@ -267,7 +275,11 @@ function ForgotPasswordForm() {
 
               {/* ── Formulário: Etapa 2 — Código ── */}
               {step === "code" && (
-                <form onSubmit={handleValidateCode} noValidate className="space-y-5">
+                <form
+                  onSubmit={handleValidateCode}
+                  noValidate
+                  className="space-y-5"
+                >
                   <OtpInput
                     label="Código de verificação"
                     required
@@ -312,7 +324,11 @@ function ForgotPasswordForm() {
 
               {/* ── Formulário: Etapa 3 — Nova senha ── */}
               {step === "password" && (
-                <form onSubmit={handleChangePassword} noValidate className="space-y-5">
+                <form
+                  onSubmit={handleChangePassword}
+                  noValidate
+                  className="space-y-5"
+                >
                   <PasswordInput
                     id="password"
                     label="Nova senha"
