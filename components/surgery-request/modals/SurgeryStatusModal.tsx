@@ -7,6 +7,7 @@ import {
 } from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -192,7 +193,7 @@ export function SurgeryStatusModal({
   const [newTime, setNewTime] = useState("10:00");
   const [sections, setSections] = useState<DocSection[]>(mkSections);
   const [isSaving, setIsSaving] = useState(false);
-  const { showToast } = useToast();
+  const { toast, showToast, hideToast } = useToast();
 
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -492,6 +493,7 @@ export function SurgeryStatusModal({
                         fileRefs.current[sec.key] = el;
                       }}
                       type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                       multiple={sec.multiple}
                       className="hidden"
                       onChange={(e) => {
@@ -736,6 +738,10 @@ export function SurgeryStatusModal({
           </>
         )}
       </div>
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
     </div>
   );
 }

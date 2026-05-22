@@ -33,6 +33,9 @@ export const POST_SURGERY_DOCUMENT_TYPES = [
 
 export type DocumentTypeEntry = { key: string; label: string };
 
+const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024;
+const FILE_SIZE_ERROR_MESSAGE = "O arquivo deve ter no máximo 1MB.";
+
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 interface DocumentUploadModalProps {
@@ -78,6 +81,7 @@ function DocumentUploadModalContent({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropzoneRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const typeButtonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState({
@@ -126,8 +130,8 @@ function DocumentUploadModalContent({
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 1 * 1024 * 1024) {
-        setError("O arquivo deve ter no máximo 1MB.");
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setError(FILE_SIZE_ERROR_MESSAGE);
         event.target.value = "";
         return;
       }
@@ -161,8 +165,8 @@ function DocumentUploadModalContent({
 
     const file = e.dataTransfer.files?.[0];
     if (file) {
-      if (file.size > 1 * 1024 * 1024) {
-        setError("O arquivo deve ter no máximo 1MB.");
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setError(FILE_SIZE_ERROR_MESSAGE);
         return;
       }
       setSelectedFile(file);
@@ -218,6 +222,11 @@ function DocumentUploadModalContent({
     return documentTypes.find((t) => t.key === key)?.label ?? key;
   };
 
+  useEffect(() => {
+    if (!error) return;
+    contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [error]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
@@ -243,7 +252,10 @@ function DocumentUploadModalContent({
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-4 md:p-6 space-y-3 md:space-y-4 overflow-y-auto">
+        <div
+          ref={contentRef}
+          className="flex-1 p-4 md:p-6 space-y-3 md:space-y-4 overflow-y-auto"
+        >
           {error && (
             <div className="bg-red-50 text-red-700 p-3 rounded-xl text-xs md:text-sm">
               {error}
@@ -260,6 +272,7 @@ function DocumentUploadModalContent({
             className={`
               border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors
               ${isDragging ? "border-teal-500 bg-teal-50" : "border-gray-300 hover:border-gray-400"}
+              ${error === FILE_SIZE_ERROR_MESSAGE ? "border-red-400 bg-red-50/40" : ""}
               ${selectedFile ? "bg-gray-50" : ""}
             `}
           >
@@ -306,6 +319,15 @@ function DocumentUploadModalContent({
               className="hidden"
             />
           </div>
+          <p
+            className={`text-xs ${
+              error === FILE_SIZE_ERROR_MESSAGE
+                ? "text-red-700"
+                : "text-gray-500"
+            }`}
+          >
+            Formatos aceitos: PDF, JPG, JPEG, PNG, DOC e DOCX (máx. 1MB).
+          </p>
 
           {/* Tipo do documento */}
           <div className="space-y-2">
