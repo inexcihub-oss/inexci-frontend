@@ -40,8 +40,9 @@ import {
 
 interface TemplateOpmeItem {
   name?: string;
+  brand?: string;
   manufacturers?: string[];
-  suppliers?: string[];
+  suppliers?: string[] | { id: string; name: string }[];
   quantity?: number;
 }
 
@@ -284,16 +285,54 @@ export function CreateSurgeryRequestWizard({
           let opmeCreated = 0;
           for (const item of opmeItems) {
             try {
-              const supplierNames = (item.suppliers || [])
-                .filter((s: string) => s?.trim())
-                .map((s: string) => s.trim());
+              const supplierEntries = (item.suppliers || []).map(
+                (supplier: unknown) => {
+                  if (typeof supplier === "string") {
+                    return { id: "", name: supplier.trim() };
+                  }
+
+                  const id = String(
+                    (supplier as { id?: unknown })?.id ?? "",
+                  ).trim();
+                  const name = String(
+                    (supplier as { name?: unknown })?.name ?? "",
+                  ).trim();
+
+                  return { id, name };
+                },
+              );
+
+              const supplierIds = Array.from(
+                new Set(
+                  supplierEntries
+                    .map((entry) => entry.id)
+                    .filter((id) => id.length > 0),
+                ),
+              );
+
+              const supplierNames = Array.from(
+                new Set(
+                  supplierEntries
+                    .filter((entry) => !entry.id && entry.name)
+                    .map((entry) => entry.name),
+                ),
+              );
+
               await opmeService.create({
                 surgeryRequestId: requestId,
                 name: item.name ?? "",
-                brand:
-                  (item.manufacturers || [])
-                    .filter((m: string) => m?.trim())
-                    .join(", ") || undefined,
+                brand: (() => {
+                  if (item.manufacturers?.length) {
+                    return item.manufacturers
+                      .filter((m) => m?.trim())
+                      .join(", ");
+                  }
+                  if (item.brand?.trim()) {
+                    return item.brand.trim();
+                  }
+                  return undefined;
+                })(),
+                supplierIds: supplierIds.length > 0 ? supplierIds : undefined,
                 supplierNames:
                   supplierNames.length > 0 ? supplierNames : undefined,
                 quantity: item.quantity || 1,
@@ -321,9 +360,7 @@ export function CreateSurgeryRequestWizard({
               await tussService.addProcedures({
                 surgeryRequestId: requestId,
                 procedures: tussItems.map((item) => ({
-                  procedureId: String(
-                    item.procedureId || item.tussCode || "",
-                  ),
+                  procedureId: String(item.procedureId || item.tussCode || ""),
                   tussCode: item.tussCode ?? "",
                   name: item.name ?? "",
                   quantity: item.quantity || 1,
@@ -334,6 +371,13 @@ export function CreateSurgeryRequestWizard({
             }
           }
         }
+      }
+
+      // Incrementar contador de uso do template
+      if (activeTemplate?.id) {
+        surgeryRequestService
+          .incrementTemplateUsage(activeTemplate.id)
+          .catch(() => {});
       }
 
       setLoading(false);

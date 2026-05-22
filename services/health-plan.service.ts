@@ -129,4 +129,9 @@ export const healthPlanService = {
   async delete(healthPlanId: string): Promise<void> {
     await api.delete(`/health_plans/${healthPlanId}`);
   },
+
+  async deleteMany(healthPlanIds: string[]): Promise<void> {
+    if (!healthPlanIds.length) return;
+    await api.post("/health_plans/bulk-delete", { ids: healthPlanIds });
+  },
 };

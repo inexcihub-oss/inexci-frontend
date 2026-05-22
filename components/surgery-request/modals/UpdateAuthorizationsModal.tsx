@@ -1189,6 +1189,7 @@ function ContestFlow({
   onSubmit,
 }: ContestFlowProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
 
   // Tag input para campo Para
   const [toTags, setToTags] = React.useState<string[]>([]);
@@ -1230,7 +1231,18 @@ function ContestFlow({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
-    onAttachmentsChange([...attachments, ...Array.from(e.target.files)]);
+    const incoming = Array.from(e.target.files);
+    const valid = incoming.filter((f) => f.size <= 1 * 1024 * 1024);
+    const oversized = incoming.filter((f) => f.size > 1 * 1024 * 1024);
+    if (oversized.length > 0) {
+      showToast(
+        `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 1MB`,
+        "error",
+      );
+    }
+    if (valid.length > 0) {
+      onAttachmentsChange([...attachments, ...valid]);
+    }
     e.target.value = "";
   };
 

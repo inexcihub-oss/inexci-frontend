@@ -812,7 +812,7 @@ export function ProcedureSideSheet({
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 bg-white">
+          <div className="sticky bottom-0 flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 bg-white rounded-b-2xl">
             <button onClick={onClose} className="ds-btn-outline">
               Fechar
             </button>
@@ -821,13 +821,6 @@ export function ProcedureSideSheet({
                 const raw = (procedure as any)._raw;
                 if (raw) {
                   onClose();
-                  // Incrementa uso e notifica
-                  surgeryRequestService
-                    .incrementTemplateUsage(procedure.id)
-                    .then(() => {
-                      onTemplateUpdated?.();
-                    })
-                    .catch(() => {});
                   onUseTemplate?.(raw);
                 }
               }}

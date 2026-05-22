@@ -216,7 +216,17 @@ export function SurgeryStatusModal({
 
   const addFiles = (key: string, fl: FileList | null) => {
     if (!fl || fl.length === 0) return;
-    const incoming: UploadFile[] = Array.from(fl).map((f) => ({
+    const allFiles = Array.from(fl);
+    const valid = allFiles.filter((f) => f.size <= 1 * 1024 * 1024);
+    const oversized = allFiles.filter((f) => f.size > 1 * 1024 * 1024);
+    if (oversized.length > 0) {
+      showToast(
+        `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 1MB`,
+        "error",
+      );
+    }
+    if (valid.length === 0) return;
+    const incoming: UploadFile[] = valid.map((f) => ({
       id: genId(),
       file: f,
       progress: 0,

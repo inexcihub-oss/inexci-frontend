@@ -187,9 +187,7 @@ export default function PacientesPage() {
   const handleBulkDeleteConfirm = async () => {
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
-      await Promise.all(
-        selectedPatients.map((p) => patientService.delete(p.id)),
-      );
+      await patientService.deleteMany(selectedPatients.map((p) => p.id));
       setPatients((prev) =>
         prev.filter((p) => !selectedPatients.some((sp) => sp.id === p.id)),
       );

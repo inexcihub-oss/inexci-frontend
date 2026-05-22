@@ -368,6 +368,11 @@ export interface SurgeryRequestTemplate {
   [key: string]: unknown;
 }
 
+export interface IncrementTemplateUsageResponse {
+  id: string;
+  usageCount: number;
+}
+
 // ─── Serviço ──────────────────────────────────────────────────────────────────
 
 export const surgeryRequestService = {
@@ -715,6 +720,12 @@ export const surgeryRequestService = {
     await api.delete(`/surgery-requests/templates/${id}`);
   },
 
+  /** Deleta templates de solicitação em lote */
+  async deleteTemplates(ids: string[]): Promise<void> {
+    if (!ids.length) return;
+    await api.post("/surgery-requests/templates/bulk-delete", { ids });
+  },
+
   /** Atualiza um template de solicitação */
   async updateTemplate(
     id: string,
@@ -728,8 +739,10 @@ export const surgeryRequestService = {
   },
 
   /** Incrementa o contador de uso de um template */
-  async incrementTemplateUsage(id: string): Promise<SurgeryRequestTemplate> {
-    const response = await api.post<SurgeryRequestTemplate>(
+  async incrementTemplateUsage(
+    id: string,
+  ): Promise<IncrementTemplateUsageResponse> {
+    const response = await api.post<IncrementTemplateUsageResponse>(
       `/surgery-requests/templates/${id}/increment-usage`,
     );
     return response.data;

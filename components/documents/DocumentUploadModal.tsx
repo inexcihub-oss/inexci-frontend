@@ -126,6 +126,11 @@ function DocumentUploadModalContent({
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > 1 * 1024 * 1024) {
+        setError("O arquivo deve ter no máximo 1MB.");
+        event.target.value = "";
+        return;
+      }
       setSelectedFile(file);
       // Auto-preencher nome com o nome do arquivo (sem extensão) apenas se o campo estiver vazio
       if (!documentName.trim()) {
@@ -156,6 +161,10 @@ function DocumentUploadModalContent({
 
     const file = e.dataTransfer.files?.[0];
     if (file) {
+      if (file.size > 1 * 1024 * 1024) {
+        setError("O arquivo deve ter no máximo 1MB.");
+        return;
+      }
       setSelectedFile(file);
       // Auto-preencher nome com o nome do arquivo (sem extensão) apenas se o campo estiver vazio
       if (!documentName.trim()) {

@@ -129,7 +129,7 @@ export default function HospitaisPage() {
     const ids = selectedItems.map((item) => item.id);
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
-      await Promise.all(ids.map((id) => hospitalService.delete(id)));
+      await hospitalService.deleteMany(ids);
       setHospitals((prev) => prev.filter((h) => !ids.includes(h.id)));
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });

@@ -129,7 +129,7 @@ export default function FornecedoresPage() {
     const ids = selectedItems.map((item) => item.id);
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
-      await Promise.all(ids.map((id) => supplierService.delete(id)));
+      await supplierService.deleteMany(ids);
       setSuppliers((prev) => prev.filter((s) => !ids.includes(s.id)));
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });

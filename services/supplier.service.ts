@@ -134,4 +134,9 @@ export const supplierService = {
   async delete(supplierId: string): Promise<void> {
     await api.delete(`/suppliers/${supplierId}`);
   },
+
+  async deleteMany(supplierIds: string[]): Promise<void> {
+    if (!supplierIds.length) return;
+    await api.post("/suppliers/bulk-delete", { ids: supplierIds });
+  },
 };

@@ -517,7 +517,7 @@ export function ConfirmReceiptModal({
                       Anexos
                     </span>
                     <span className="text-[10px] md:text-xs text-neutral-400">
-                      PDF, JPG, PNG até 10MB
+                      PDF, JPG, PNG até 1MB
                     </span>
                   </div>
                 </div>
@@ -676,7 +676,7 @@ export function ConfirmReceiptModal({
                         Anexar documento
                       </span>
                       <span className="text-[10px] md:text-xs text-neutral-400">
-                        PDF, JPG, PNG até 10MB
+                        PDF, JPG, PNG até 1MB
                       </span>
                     </div>
                   </div>

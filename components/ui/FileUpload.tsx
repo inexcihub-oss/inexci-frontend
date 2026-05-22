@@ -44,7 +44,18 @@ export function FileUpload({
       return;
     }
 
-    setSelectedFiles((prev) => [...prev, ...files]);
+    // Validar tamanho máximo de 1MB por arquivo
+    const valid = files.filter((f) => f.size <= 1 * 1024 * 1024);
+    const oversized = files.filter((f) => f.size > 1 * 1024 * 1024);
+    if (oversized.length > 0) {
+      showToast(
+        `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 1MB`,
+        "error",
+      );
+    }
+    if (valid.length === 0) return;
+
+    setSelectedFiles((prev) => [...prev, ...valid]);
   };
 
   const removeFile = (index: number) => {

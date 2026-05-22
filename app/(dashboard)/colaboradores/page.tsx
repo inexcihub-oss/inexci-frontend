@@ -134,7 +134,7 @@ export default function ColaboradoresPage() {
     const ids = selectedItems.map((item) => item.id);
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
-      await Promise.all(ids.map((id) => collaboratorService.delete(id)));
+      await collaboratorService.deleteMany(ids);
       setCollaborators((prev) => prev.filter((c) => !ids.includes(c.id)));
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });

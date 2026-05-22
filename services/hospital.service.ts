@@ -119,4 +119,9 @@ export const hospitalService = {
   async delete(hospitalId: string): Promise<void> {
     await api.delete(`/hospitals/${hospitalId}`);
   },
+
+  async deleteMany(hospitalIds: string[]): Promise<void> {
+    if (!hospitalIds.length) return;
+    await api.post("/hospitals/bulk-delete", { ids: hospitalIds });
+  },
 };

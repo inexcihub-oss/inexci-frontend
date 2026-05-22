@@ -439,8 +439,20 @@ export function MedicalReportEditor() {
         if (imagesInputRef.current) imagesInputRef.current.value = "";
         return;
       }
+      const validFiles = files.filter((f) => f.size <= 1 * 1024 * 1024);
+      const oversized = files.filter((f) => f.size > 1 * 1024 * 1024);
+      if (oversized.length > 0) {
+        showToast(
+          `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 1MB`,
+          "error",
+        );
+      }
+      if (!validFiles.length) {
+        if (imagesInputRef.current) imagesInputRef.current.value = "";
+        return;
+      }
       setIsUploadingImages(true);
-      const initialItems: UploadItem[] = files.map((f) => ({
+      const initialItems: UploadItem[] = validFiles.map((f) => ({
         id: `img-${Date.now()}-${f.name}`,
         name: f.name,
         size: f.size,
@@ -448,8 +460,8 @@ export function MedicalReportEditor() {
       }));
       setImageUploadItems(initialItems);
       try {
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
+        for (let i = 0; i < validFiles.length; i++) {
+          const file = validFiles[i];
           const itemId = initialItems[i].id;
           await documentService.upload({
             surgeryRequestId: solicitacao.id,
@@ -525,7 +537,7 @@ export function MedicalReportEditor() {
     } finally {
       setIsExportingPdf(false);
     }
-  }, [solicitacao?.id, solicitacao?.protocol, showToast]);
+  }, [solicitacao?.id, showToast]);
 
   // ── Classes utilitárias ───────────────────────────────────────────────────
 

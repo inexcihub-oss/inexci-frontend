@@ -33,6 +33,12 @@ export interface PendencySummaryFull {
   canAdvance: boolean;
 }
 
+export interface BatchPendencySummary {
+  pending: number;
+  total: number;
+  canAdvance: boolean;
+}
+
 export const pendencyService = {
   /**
    * Validação dinâmica - calcula pendências baseadas nos dados atuais
@@ -51,9 +57,7 @@ export const pendencyService = {
    */
   async getBatchSummary(
     surgeryRequestIds: string[],
-  ): Promise<
-    Record<string, { pending: number; completed: number; total: number }>
-  > {
+  ): Promise<Record<string, BatchPendencySummary>> {
     if (surgeryRequestIds.length === 0) return {};
 
     const response = await api.get(

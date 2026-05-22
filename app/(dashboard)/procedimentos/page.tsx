@@ -45,7 +45,7 @@ function templateToModel(t: any): ProcedureModel {
       ? new Date(t.createdAt).toLocaleDateString("pt-BR")
       : "—",
     createdBy: t.doctor?.name || "Você",
-    usageCount: t.usage_count ?? 0,
+    usageCount: t.usageCount ?? t.usage_count ?? 0,
     documents: (data.requiredDocuments || []).map((d: any, i: number) => ({
       id: String(i),
       type: d.type || d,
@@ -55,8 +55,19 @@ function templateToModel(t: any): ProcedureModel {
       id: String(i),
       name: o.name,
       quantity: o.quantity || 1,
-      manufacturers: o.manufacturers || (o.brand ? [o.brand] : []),
-      suppliers: o.suppliers || (o.distributor ? [o.distributor] : []),
+      manufacturers: o.manufacturers?.length
+        ? o.manufacturers
+        : o.brand
+          ? o.brand
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean)
+          : [],
+      suppliers: (o.suppliers || (o.distributor ? [o.distributor] : []))
+        .map((s: unknown) =>
+          typeof s === "string" ? s : ((s as any)?.name ?? ""),
+        )
+        .filter(Boolean),
     })),
     tussItems: (data.tussItems || data.procedures || []).map(
       (p: any, i: number) => ({
@@ -183,8 +194,8 @@ export default function ProcedimentosPage() {
   const handleBulkDeleteConfirm = async () => {
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
-      await Promise.all(
-        selectedItems.map((p) => surgeryRequestService.deleteTemplate(p.id)),
+      await surgeryRequestService.deleteTemplates(
+        selectedItems.map((p) => p.id),
       );
       showToast(
         `${selectedItems.length} modelo(s) excluído(s) com sucesso`,

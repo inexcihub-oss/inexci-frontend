@@ -150,4 +150,9 @@ export const patientService = {
   async delete(patientId: string): Promise<void> {
     await api.delete(`/patients/${patientId}`);
   },
+
+  async deleteMany(patientIds: string[]): Promise<void> {
+    if (!patientIds.length) return;
+    await api.post("/patients/bulk-delete", { ids: patientIds });
+  },
 };

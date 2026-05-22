@@ -363,7 +363,7 @@ function ConfiguracoesPageInner() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [user]);
 
   // Carregar configurações de notificação
   useEffect(() => {

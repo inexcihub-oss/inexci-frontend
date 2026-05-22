@@ -224,6 +224,13 @@ export const collaboratorService = {
     await api.delete(`/users/collaborators/${collaboratorId}`);
   },
 
+  async deleteMany(collaboratorIds: string[]): Promise<void> {
+    if (!collaboratorIds.length) return;
+    await api.post("/users/collaborators/bulk-delete", {
+      ids: collaboratorIds,
+    });
+  },
+
   /**
    * Busca os médicos que pertencem à equipe do administrador da conta.
    * O próprio administrador é excluído da lista (currentUserId).

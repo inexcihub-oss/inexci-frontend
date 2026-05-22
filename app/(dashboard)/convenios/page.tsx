@@ -129,7 +129,7 @@ export default function ConveniosPage() {
     const ids = selectedItems.map((item) => item.id);
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
-      await Promise.all(ids.map((id) => healthPlanService.delete(id)));
+      await healthPlanService.deleteMany(ids);
       setHealthPlans((prev) => prev.filter((hp) => !ids.includes(hp.id)));
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
