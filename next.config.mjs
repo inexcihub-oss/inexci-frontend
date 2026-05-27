@@ -14,11 +14,11 @@ const isProd = process.env.NODE_ENV === "production";
 const cspDirectives = isProd
   ? [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https:",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "connect-src 'self' https: https://www.google-analytics.com https://analytics.google.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

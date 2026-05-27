@@ -1,4 +1,6 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
+import plugin from "tailwindcss/plugin";
 
 /**
  * INEXCI Design System - Tailwind CSS Configuration
@@ -9,10 +11,12 @@ import type { Config } from "tailwindcss";
  * @see https://tailwindcss.com/docs/configuration
  */
 const config: Config = {
+  darkMode: ["class"],
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./styles/**/*.css",
   ],
   theme: {
     /**
@@ -42,6 +46,32 @@ const config: Config = {
        * purple: Cores para elementos especiais/status
        */
       colors: {
+        // Landing page CSS variable tokens (shadcn/ui style)
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
         // Marca Principal - Teal/Turquesa
         primary: {
           50: "#e6f9f8",
@@ -199,6 +229,27 @@ const config: Config = {
       fontFamily: {
         urbanist: ["Urbanist", "sans-serif"],
         gotham: ["Gotham", "sans-serif"],
+        // Landing page fonts
+        heading: [
+          "var(--font-manrope)",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Inter",
+          "sans-serif",
+        ],
+        body: [
+          "var(--font-inter)",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Inter",
+          "sans-serif",
+        ],
       },
       /**
        * Border Radius
@@ -245,6 +296,15 @@ const config: Config = {
           from: { transform: "translateX(100%)", opacity: "0" },
           to: { transform: "translateX(0)", opacity: "1" },
         },
+        // Landing page accordion animations
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
       },
       animation: {
         "slide-up": "slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
@@ -252,10 +312,43 @@ const config: Config = {
         "fade-in": "fade-in 0.2s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
         "slide-in-right": "slide-in-right 0.3s ease-out",
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
     },
   },
-  plugins: [],
+  plugins: [
+    tailwindcssAnimate,
+    plugin(function ({ addUtilities }) {
+      const utils: Record<string, unknown> = {
+        ".text-h1": { fontSize: "32px" },
+        ".text-h2": { fontSize: "26px" },
+        ".text-h3": { fontSize: "20px" },
+        ".text-body": { fontSize: "16px" },
+        ".text-small": { fontSize: "13px" },
+      };
+      const md = {
+        "@screen md": {
+          ".text-h1": { fontSize: "44px" },
+          ".text-h2": { fontSize: "32px" },
+          ".text-h3": { fontSize: "24px" },
+          ".text-body": { fontSize: "17px" },
+          ".text-small": { fontSize: "14px" },
+        },
+      };
+      const lg = {
+        "@screen lg": {
+          ".text-h1": { fontSize: "56px" },
+          ".text-h2": { fontSize: "40px" },
+          ".text-h3": { fontSize: "28px" },
+          ".text-body": { fontSize: "18px" },
+          ".text-small": { fontSize: "15px" },
+        },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      addUtilities({ ...utils, ...md, ...lg } as any);
+    }),
+  ],
 };
 
 export default config;
