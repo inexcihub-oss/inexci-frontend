@@ -123,19 +123,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const storedUser = authService.getCurrentUser();
-      setUser(storedUser);
-      setLoading(false);
 
-      if (storedUser) {
+      if (!storedUser) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const currentUser = await authService.me();
+        setUser(currentUser);
         await refreshConsents();
-        if (storedUser.role === "admin") {
+        if (currentUser.role === "admin") {
           await refreshSubscription();
         }
+      } catch (error) {
+        logger.warn("Sessão inválida detectada na inicialização:", error);
+        await authService.logout();
+        setUser(null);
+        setConsents(null);
+        setSubscription(null);
+        if (!window.location.pathname.includes("/login")) {
+          router.replace("/login");
+        }
+      } finally {
+        setLoading(false);
       }
     };
 
     loadUser();
-  }, [refreshConsents, refreshSubscription]);
+  }, [refreshConsents, refreshSubscription, router]);
 
   const login = useCallback(
     async (email: string, password: string) => {
