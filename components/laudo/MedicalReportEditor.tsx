@@ -439,11 +439,11 @@ export function MedicalReportEditor() {
         if (imagesInputRef.current) imagesInputRef.current.value = "";
         return;
       }
-      const validFiles = files.filter((f) => f.size <= 1 * 1024 * 1024);
-      const oversized = files.filter((f) => f.size > 1 * 1024 * 1024);
+      const validFiles = files.filter((f) => f.size <= 5 * 1024 * 1024);
+      const oversized = files.filter((f) => f.size > 5 * 1024 * 1024);
       if (oversized.length > 0) {
         showToast(
-          `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 1MB`,
+          `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 5MB`,
           "error",
         );
       }

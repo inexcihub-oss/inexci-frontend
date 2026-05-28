@@ -280,11 +280,11 @@ export function SendRequestModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const incoming = Array.from(e.target.files);
-      const valid = incoming.filter((f) => f.size <= 1 * 1024 * 1024);
-      const oversized = incoming.filter((f) => f.size > 1 * 1024 * 1024);
+      const valid = incoming.filter((f) => f.size <= 5 * 1024 * 1024);
+      const oversized = incoming.filter((f) => f.size > 5 * 1024 * 1024);
       if (oversized.length > 0) {
         showToast(
-          `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 1MB`,
+          `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 5MB`,
           "error",
         );
       }

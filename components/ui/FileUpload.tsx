@@ -82,12 +82,12 @@ export function FileUpload({
       );
     }
 
-    // Validar tamanho máximo de 1MB por arquivo
-    const valid = acceptedFiles.filter((f) => f.size <= 1 * 1024 * 1024);
-    const oversized = acceptedFiles.filter((f) => f.size > 1 * 1024 * 1024);
+    // Validar tamanho máximo de 5MB por arquivo
+    const valid = acceptedFiles.filter((f) => f.size <= 5 * 1024 * 1024);
+    const oversized = acceptedFiles.filter((f) => f.size > 5 * 1024 * 1024);
     if (oversized.length > 0) {
       showToast(
-        `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 1MB`,
+        `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 5MB`,
         "error",
       );
     }
