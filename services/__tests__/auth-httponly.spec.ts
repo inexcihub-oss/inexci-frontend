@@ -78,6 +78,39 @@ describe("Auth — tokens sensíveis não devem estar no localStorage", () => {
     expect(localStorage.removeItem).not.toHaveBeenCalledWith("refresh_token");
   });
 
+  it("authService.login deve limpar chaves legadas token e token_timestamp do localStorage", async () => {
+    const api = (await import("@/lib/api")).default;
+    (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        user: { id: "1", name: "Test", email: "a@b.com", role: "admin" },
+        access_token: "jwt-123",
+        refresh_token: "rt-ignored",
+      },
+    });
+
+    // Simula chaves legadas presentes
+    localStorage.setItem("token", "old-jwt-value");
+    localStorage.setItem("token_timestamp", "1234567890");
+
+    const { authService } = await import("@/services/auth.service");
+    await authService.login({ email: "a@b.com", password: "123" });
+
+    expect(localStorage.removeItem).toHaveBeenCalledWith("token");
+    expect(localStorage.removeItem).toHaveBeenCalledWith("token_timestamp");
+  });
+
+  it("authService.getCurrentUser deve limpar chaves legadas ao ser chamado", async () => {
+    localStorage.setItem("token", "old-jwt");
+    localStorage.setItem("token_timestamp", "999");
+    localStorage.setItem("user", JSON.stringify({ id: "1", email: "a@b.com" }));
+
+    const { authService } = await import("@/services/auth.service");
+    authService.getCurrentUser();
+
+    expect(localStorage.removeItem).toHaveBeenCalledWith("token");
+    expect(localStorage.removeItem).toHaveBeenCalledWith("token_timestamp");
+  });
+
   it("authService.login NÃO deve armazenar access_token nem refresh_token no localStorage", async () => {
     // Mock the api post to return auth data
     const api = (await import("@/lib/api")).default;

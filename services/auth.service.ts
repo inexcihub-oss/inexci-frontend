@@ -21,6 +21,10 @@ export const authService = {
     if (typeof window !== "undefined" && data.access_token && data.user) {
       setAccessToken(data.access_token);
 
+      // Remove chaves legadas de versão anterior que armazenava token no localStorage
+      localStorage.removeItem("token");
+      localStorage.removeItem("token_timestamp");
+
       // refresh_token agora é enviado via cookie httpOnly pelo backend
 
       // Remove dados sensíveis antes de armazenar
@@ -100,6 +104,10 @@ export const authService = {
    */
   getCurrentUser(): User | null {
     if (typeof window === "undefined") return null;
+
+    // Remove chaves legadas na primeira leitura após atualização de versão
+    localStorage.removeItem("token");
+    localStorage.removeItem("token_timestamp");
 
     try {
       const userStr = localStorage.getItem("user");

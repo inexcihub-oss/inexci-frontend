@@ -12,6 +12,7 @@ import React, {
 import { logger } from "@/lib/logger";
 import { User, SubscriptionDetail } from "@/types";
 import { authService } from "@/services/auth.service";
+import { clearAccessToken } from "@/lib/auth-token";
 import { consentService } from "@/services/consent.service";
 import { billingService } from "@/services/billing.service";
 import type { ConsentStatus, ConsentType } from "@/types/consent.types";
@@ -123,15 +124,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
+        // Captura o ID armazenado ANTES de chamar me(), pois me() sobrescreve o localStorage
+        const storedUserId = authService.getCurrentUser()?.id ?? null;
+
         const currentUser = await authService.me();
+
+        // Detecta contaminação de sessão: o cookie de refresh pertence a outro usuário
+        if (storedUserId && storedUserId !== currentUser.id) {
+          logger.warn(
+            "[auth] Mismatch de sessão detectado — limpando sessão local e redirecionando para login",
+          );
+          clearAccessToken();
+          localStorage.removeItem("user");
+          setUser(null);
+          setConsents(null);
+          setSubscription(null);
+          router.push("/login");
+          return;
+        }
+
         setUser(currentUser);
         await refreshConsents();
         if (currentUser.role === "admin") {
           await refreshSubscription();
         }
       } catch (error) {
+        // Para erros de autenticação (401/403), o interceptor do axios já chamou
+        // forceLogout() que limpou o token e o localStorage. Apenas sincroniza o estado React.
+        // Não chama authService.logout() para evitar um ciclo de requests desnecessários.
         logger.warn("Sessão inválida detectada na inicialização:", error);
-        await authService.logout();
         setUser(null);
         setConsents(null);
         setSubscription(null);

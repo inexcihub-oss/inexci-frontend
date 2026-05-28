@@ -99,7 +99,8 @@ api.interceptors.response.use(
     const isAuthRoute =
       originalRequest?.url?.includes("/auth/login") ||
       originalRequest?.url?.includes("/auth/register") ||
-      originalRequest?.url?.includes("/auth/refresh");
+      originalRequest?.url?.includes("/auth/refresh") ||
+      originalRequest?.url?.includes("/auth/logout");
 
     if (
       error.response?.status === 401 &&
