@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshConsents = useCallback(async () => {
     if (typeof window === "undefined") return;
-    if (!localStorage.getItem("token")) {
+    if (!user) {
       setConsents(null);
       return;
     }
@@ -83,11 +83,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
     consentsRequestRef.current = promise;
     return promise;
-  }, []);
+  }, [user]);
 
   const refreshSubscription = useCallback(async () => {
     if (typeof window === "undefined") return;
-    if (!localStorage.getItem("token")) {
+    if (!user) {
       setSubscription(null);
       return;
     }
@@ -110,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
     subscriptionRequestRef.current = promise;
     return promise;
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (initialLoadRef.current) return;
@@ -118,13 +118,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const loadUser = async () => {
       if (typeof window === "undefined") {
-        setLoading(false);
-        return;
-      }
-
-      const storedUser = authService.getCurrentUser();
-
-      if (!storedUser) {
         setLoading(false);
         return;
       }
@@ -142,9 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setConsents(null);
         setSubscription(null);
-        if (!window.location.pathname.includes("/login")) {
-          router.replace("/login");
-        }
       } finally {
         setLoading(false);
       }

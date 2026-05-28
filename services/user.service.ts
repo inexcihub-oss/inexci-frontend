@@ -48,6 +48,7 @@ export interface UpdateProfileData {
 let profileCache: { data: UserProfileResponse; expiresAt: number } | null =
   null;
 let profileInFlight: Promise<UserProfileResponse> | null = null;
+const disableProfileCache = process.env.NODE_ENV === "test";
 
 function invalidateProfileCache() {
   profileCache = null;
@@ -81,6 +82,11 @@ export const userService = {
    * Busca o perfil do usuário logado
    */
   async getProfile(): Promise<UserProfileResponse> {
+    if (disableProfileCache) {
+      const response = await api.get<UserProfileResponse>("/users/profile");
+      return response.data;
+    }
+
     const now = Date.now();
 
     if (profileCache && profileCache.expiresAt > now) {

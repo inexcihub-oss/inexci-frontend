@@ -53,7 +53,7 @@ vi.mock("axios", () => {
   };
 });
 
-describe("Auth — refresh_token não deve estar no localStorage", () => {
+describe("Auth — tokens sensíveis não devem estar no localStorage", () => {
   beforeEach(() => {
     localStorageMock.clear();
     vi.clearAllMocks();
@@ -67,21 +67,18 @@ describe("Auth — refresh_token não deve estar no localStorage", () => {
     const api = (await import("@/lib/api")).default;
     (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
 
-    localStorage.setItem("token", "test-token");
     localStorage.setItem("user", JSON.stringify({ id: "1", email: "a@b.com" }));
 
     await authService.logout();
 
-    // Deve remover token e user
-    expect(localStorage.removeItem).toHaveBeenCalledWith("token");
+    // Deve remover user
     expect(localStorage.removeItem).toHaveBeenCalledWith("user");
-    expect(localStorage.removeItem).toHaveBeenCalledWith("token_timestamp");
 
     // NÃO deve tentar remover refresh_token
     expect(localStorage.removeItem).not.toHaveBeenCalledWith("refresh_token");
   });
 
-  it("authService.login NÃO deve armazenar refresh_token no localStorage", async () => {
+  it("authService.login NÃO deve armazenar access_token nem refresh_token no localStorage", async () => {
     // Mock the api post to return auth data
     const api = (await import("@/lib/api")).default;
     (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -95,15 +92,16 @@ describe("Auth — refresh_token não deve estar no localStorage", () => {
     const { authService } = await import("@/services/auth.service");
     await authService.login({ email: "a@b.com", password: "123" });
 
-    // Deve armazenar token e user
-    expect(localStorage.setItem).toHaveBeenCalledWith("token", "jwt-123");
-
-    // NÃO deve armazenar refresh_token
+    // NÃO deve armazenar access_token nem refresh_token
     const allSetCalls = (localStorage.setItem as ReturnType<typeof vi.fn>).mock
       .calls;
+    const tokenCalls = allSetCalls.filter(
+      (call: string[]) => call[0] === "access_token" || call[0] === "token",
+    );
     const refreshCalls = allSetCalls.filter(
       (call: string[]) => call[0] === "refresh_token",
     );
+    expect(tokenCalls).toHaveLength(0);
     expect(refreshCalls).toHaveLength(0);
   });
 });

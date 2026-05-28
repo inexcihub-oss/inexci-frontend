@@ -6,6 +6,32 @@ import { uploadService } from "@/services/upload.service";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { useToast } from "@/hooks/useToast";
 
+function isFileAccepted(file: File, acceptedFileTypes: string): boolean {
+  const pattern = acceptedFileTypes.trim();
+  if (!pattern || pattern === "*") return true;
+
+  const accepted = pattern
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (accepted.length === 0) return true;
+
+  const fileType = (file.type || "").toLowerCase();
+  const fileName = file.name.toLowerCase();
+
+  return accepted.some((rule) => {
+    if (rule.startsWith(".")) {
+      return fileName.endsWith(rule);
+    }
+    if (rule.endsWith("/*")) {
+      const prefix = rule.slice(0, -1);
+      return fileType.startsWith(prefix);
+    }
+    return fileType === rule;
+  });
+}
+
 interface FileUploadProps {
   onUploadComplete?: (
     files: Array<{ url: string; path: string; originalName: string }>,
@@ -44,9 +70,21 @@ export function FileUpload({
       return;
     }
 
+    // Validar tipo/extensão de arquivo
+    const acceptedFiles = files.filter((f) =>
+      isFileAccepted(f, acceptedFileTypes),
+    );
+    const rejectedByType = files.length - acceptedFiles.length;
+    if (rejectedByType > 0) {
+      showToast(
+        `${rejectedByType} arquivo(s) ignorado(s): tipo não permitido`,
+        "error",
+      );
+    }
+
     // Validar tamanho máximo de 1MB por arquivo
-    const valid = files.filter((f) => f.size <= 1 * 1024 * 1024);
-    const oversized = files.filter((f) => f.size > 1 * 1024 * 1024);
+    const valid = acceptedFiles.filter((f) => f.size <= 1 * 1024 * 1024);
+    const oversized = acceptedFiles.filter((f) => f.size > 1 * 1024 * 1024);
     if (oversized.length > 0) {
       showToast(
         `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 1MB`,

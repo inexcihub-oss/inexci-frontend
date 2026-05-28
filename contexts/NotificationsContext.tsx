@@ -11,6 +11,7 @@ import {
 import { io, Socket } from "socket.io-client";
 import { Notification } from "@/services/notification.service";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAccessToken } from "@/lib/auth-token";
 
 interface NotificationsContextValue {
   unreadCount: number;
@@ -51,8 +52,7 @@ export function NotificationsProvider({
       return;
     }
 
-    const token =
-      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const token = getAccessToken();
 
     if (!token) return;
 

@@ -20,6 +20,7 @@ const cspDirectives = isProd
       "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https: https://www.google-analytics.com https://analytics.google.com",
       "frame-ancestors 'none'",
+      "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
     ]
@@ -31,12 +32,15 @@ const cspDirectives = isProd
       "font-src 'self' data:",
       "connect-src 'self' https: http://localhost:* ws://localhost:*",
       "frame-ancestors 'none'",
+      "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
     ];
 
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
+  productionBrowserSourceMaps: false,
   images: {
     domains: ["localhost", "nuxgxpsofrcaumfvhqbh.supabase.co"],
   },
@@ -79,6 +83,18 @@ const nextConfig = {
           {
             key: "Content-Security-Policy",
             value: cspDirectives.join("; "),
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "same-site",
+          },
+          {
+            key: "Origin-Agent-Cluster",
+            value: "?1",
           },
           // HSTS: ativado apenas em produção para não interferir no dev local (HTTP)
           // max-age=63072000 = 2 anos; includeSubDomains protege subdomínios

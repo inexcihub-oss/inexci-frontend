@@ -237,7 +237,11 @@ export function PrivacySection() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {publicPath && (
-                      <Link href={publicPath} target="_blank">
+                      <Link
+                        href={publicPath}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <Button variant="ghost" size="sm">
                           <ExternalLink className="w-3.5 h-3.5 mr-1" />
                           Abrir página

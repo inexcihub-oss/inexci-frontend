@@ -29,6 +29,15 @@ function sanitizeCsvField(value: string): string {
   return value;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ── Colunas essenciais ─────────────────────────────────────────────────────────
 
 interface ExportRow {
@@ -117,21 +126,23 @@ export function exportToPdf(requests: SurgeryRequest[]): void {
   };
 
   const priorityBadge = (p: string) => {
+    const safeLabel = escapeHtml(p);
     const c = priorityConfig[p] ?? {
       bg: "#f3f4f6",
       text: "#374151",
       icon: "•",
     };
-    return `<span class="badge" style="background:${c.bg};color:${c.text}">${c.icon} ${p}</span>`;
+    return `<span class="badge" style="background:${c.bg};color:${c.text}">${c.icon} ${safeLabel}</span>`;
   };
 
   const statusBadge = (s: string) => {
+    const safeLabel = escapeHtml(s);
     const c = statusConfig[s] ?? {
       bg: "#F3F4F6",
       text: "#374151",
       dot: "#9CA3AF",
     };
-    return `<span class="badge" style="background:${c.bg};color:${c.text}"><span class="dot" style="background:${c.dot}"></span>${s}</span>`;
+    return `<span class="badge" style="background:${c.bg};color:${c.text}"><span class="dot" style="background:${c.dot}"></span>${safeLabel}</span>`;
   };
 
   const countByStatus = (statuses: string[]) =>
@@ -143,15 +154,15 @@ export function exportToPdf(requests: SurgeryRequest[]): void {
     .map(
       (r, i) => `
     <tr class="${i % 2 === 0 ? "even" : "odd"}">
-      <td class="cell proto">${r.protocolo}</td>
-      <td class="cell">${r.paciente}</td>
-      <td class="cell proc">${r.procedimento}</td>
-      <td class="cell">${r.medico}</td>
-      <td class="cell">${r.convenio}</td>
+      <td class="cell proto">${escapeHtml(r.protocolo)}</td>
+      <td class="cell">${escapeHtml(r.paciente)}</td>
+      <td class="cell proc">${escapeHtml(r.procedimento)}</td>
+      <td class="cell">${escapeHtml(r.medico)}</td>
+      <td class="cell">${escapeHtml(r.convenio)}</td>
       <td class="cell center">${priorityBadge(r.prioridade)}</td>
       <td class="cell center">${statusBadge(r.status)}</td>
-      <td class="cell center">${r.pendencias}</td>
-      <td class="cell date">${r.criadoEm}</td>
+      <td class="cell center">${escapeHtml(r.pendencias)}</td>
+      <td class="cell date">${escapeHtml(r.criadoEm)}</td>
     </tr>`,
     )
     .join("");

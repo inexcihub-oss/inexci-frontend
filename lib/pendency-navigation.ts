@@ -242,7 +242,16 @@ export function executePendencyNavigation(
 
     case "external":
       if (typeof window !== "undefined") {
-        window.open(action.target, "_blank");
+        try {
+          const parsed = new URL(action.target, window.location.origin);
+          const isHttp =
+            parsed.protocol === "http:" || parsed.protocol === "https:";
+          if (isHttp) {
+            window.open(parsed.toString(), "_blank", "noopener,noreferrer");
+          }
+        } catch {
+          // Ignora URL inválida
+        }
       }
       break;
   }

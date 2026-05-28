@@ -20,13 +20,14 @@ const TITLE_BY_SLUG: Record<string, string> = {
 };
 
 interface PageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const canonical = SLUG_ALIAS[params.slug];
+  const { slug } = await params;
+  const canonical = SLUG_ALIAS[slug];
   if (!canonical) return { title: "Documento não encontrado · Inexci" };
   return {
     title: `${TITLE_BY_SLUG[canonical]} · Inexci`,
@@ -34,8 +35,9 @@ export async function generateMetadata({
   };
 }
 
-export default function LegalDocumentPage({ params }: PageProps) {
-  const canonical = SLUG_ALIAS[params.slug];
+export default async function LegalDocumentPage({ params }: PageProps) {
+  const { slug } = await params;
+  const canonical = SLUG_ALIAS[slug];
   if (!canonical) notFound();
 
   return (

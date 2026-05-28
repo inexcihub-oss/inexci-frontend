@@ -1,11 +1,11 @@
 import api from "@/lib/api";
-import {
-  AuthResponse,
-  LoginCredentials,
-  RegisterData,
-  User,
-} from "@/types";
+import { AuthResponse, LoginCredentials, RegisterData, User } from "@/types";
 import { clearAvatarCache } from "@/lib/avatar-cache";
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from "@/lib/auth-token";
 
 /**
  * Serviço de autenticação
@@ -17,10 +17,9 @@ export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const { data } = await api.post<AuthResponse>("/auth/login", credentials);
 
-    // Armazena token e usuário (sanitizado)
+    // Armazena token apenas em memória e usuário (sanitizado) no localStorage
     if (typeof window !== "undefined" && data.access_token && data.user) {
-      localStorage.setItem("token", data.access_token);
-      localStorage.setItem("token_timestamp", Date.now().toString());
+      setAccessToken(data.access_token);
 
       // refresh_token agora é enviado via cookie httpOnly pelo backend
 
@@ -83,8 +82,7 @@ export const authService = {
       if (currentUser?.id) {
         clearAvatarCache(currentUser.id);
       }
-      localStorage.removeItem("token");
-      localStorage.removeItem("token_timestamp");
+      clearAccessToken();
       localStorage.removeItem("user");
     }
   },
@@ -94,7 +92,7 @@ export const authService = {
    */
   isAuthenticated(): boolean {
     if (typeof window === "undefined") return false;
-    return !!localStorage.getItem("token");
+    return !!getAccessToken();
   },
 
   /**
@@ -120,7 +118,7 @@ export const authService = {
     } catch (error) {
       // Limpa dados corrompidos ou inválidos
       localStorage.removeItem("user");
-      localStorage.removeItem("token");
+      clearAccessToken();
       return null;
     }
   },

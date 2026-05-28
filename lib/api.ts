@@ -1,8 +1,22 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { logger, setRequestId } from "./logger";
+import { clearAccessToken, getAccessToken, setAccessToken } from "./auth-token";
+
+function resolveApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (envUrl) return envUrl;
+
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:3000";
+  }
+
+  // Em produção, nunca usar localhost como fallback para evitar vazamento
+  // acidental de token para serviços locais do usuário.
+  return "";
+}
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
+  baseURL: resolveApiBaseUrl(),
   headers: {
     "Content-Type": "application/json",
     // Pula a página de aviso do ngrok-free quando a API é exposta via túnel
@@ -10,6 +24,12 @@ const api = axios.create({
   },
   withCredentials: true,
 });
+
+if (process.env.NODE_ENV === "production" && !api.defaults.baseURL) {
+  logger.warn(
+    "[api] NEXT_PUBLIC_API_URL não configurada em produção; usando requisições relativas ao domínio atual.",
+  );
+}
 
 function generateRequestId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -35,8 +55,7 @@ function processQueue(error: unknown, token: string | null = null) {
 
 function forceLogout() {
   if (typeof window !== "undefined") {
-    localStorage.removeItem("token");
-    localStorage.removeItem("token_timestamp");
+    clearAccessToken();
     localStorage.removeItem("user");
     if (!window.location.pathname.includes("/login")) {
       window.location.href = "/login";
@@ -47,11 +66,9 @@ function forceLogout() {
 // ── Request interceptor ──────────────────────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     if (!config.headers["X-Request-Id"]) {
       config.headers["X-Request-Id"] = generateRequestId();
@@ -70,9 +87,9 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
-    const responseRequestId = error.response?.headers?.[
-      "x-request-id"
-    ] as string | undefined;
+    const responseRequestId = error.response?.headers?.["x-request-id"] as
+      | string
+      | undefined;
     if (responseRequestId) setRequestId(responseRequestId);
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
@@ -118,8 +135,7 @@ api.interceptors.response.use(
 
         const newToken = data.access_token;
 
-        localStorage.setItem("token", newToken);
-        localStorage.setItem("token_timestamp", Date.now().toString());
+        setAccessToken(newToken);
 
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         processQueue(null, newToken);

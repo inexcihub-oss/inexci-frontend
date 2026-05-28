@@ -35,6 +35,21 @@ export type DocumentTypeEntry = { key: string; label: string };
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024;
 const FILE_SIZE_ERROR_MESSAGE = "O arquivo deve ter no máximo 1MB.";
+const ALLOWED_DOCUMENT_EXTENSIONS = [
+  ".pdf",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".doc",
+  ".docx",
+];
+const FILE_TYPE_ERROR_MESSAGE =
+  "Formato inválido. Envie apenas PDF, JPG, JPEG, PNG, DOC ou DOCX.";
+
+function hasAllowedDocumentExtension(fileName: string): boolean {
+  const lowerName = fileName.toLowerCase();
+  return ALLOWED_DOCUMENT_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+}
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -130,6 +145,11 @@ function DocumentUploadModalContent({
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (!hasAllowedDocumentExtension(file.name)) {
+        setError(FILE_TYPE_ERROR_MESSAGE);
+        event.target.value = "";
+        return;
+      }
       if (file.size > MAX_FILE_SIZE_BYTES) {
         setError(FILE_SIZE_ERROR_MESSAGE);
         event.target.value = "";
@@ -165,6 +185,10 @@ function DocumentUploadModalContent({
 
     const file = e.dataTransfer.files?.[0];
     if (file) {
+      if (!hasAllowedDocumentExtension(file.name)) {
+        setError(FILE_TYPE_ERROR_MESSAGE);
+        return;
+      }
       if (file.size > MAX_FILE_SIZE_BYTES) {
         setError(FILE_SIZE_ERROR_MESSAGE);
         return;
