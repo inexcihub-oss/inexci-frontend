@@ -65,9 +65,14 @@ export function middleware(request: NextRequest) {
   // Domínio de landing (inexci.com.br) em produção:
   // rotas da plataforma → redireciona para app.inexci.com.br mantendo o path
   if (!isAppDomain && isProd && isPlatformPath(pathname)) {
-    const appUrl = new URL(request.url);
-    appUrl.hostname = `app.${appUrl.hostname}`;
-    return NextResponse.redirect(appUrl, { status: 301 });
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (appBaseUrl) {
+      const appUrl = new URL(
+        request.nextUrl.pathname + request.nextUrl.search,
+        appBaseUrl,
+      );
+      return NextResponse.redirect(appUrl, { status: 301 });
+    }
   }
 
   // Domínio da plataforma (app.inexci.com.br):
