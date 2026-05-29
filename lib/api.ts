@@ -53,11 +53,22 @@ function processQueue(error: unknown, token: string | null = null) {
   failedQueue = [];
 }
 
+const PUBLIC_AUTH_PATHS = [
+  "/login",
+  "/cadastro",
+  "/forgot-password",
+  "/confirmar-email",
+  "/primeiro-acesso",
+];
+
 function forceLogout() {
   if (typeof window !== "undefined") {
     clearAccessToken();
     localStorage.removeItem("user");
-    if (!window.location.pathname.includes("/login")) {
+    const isPublicPath = PUBLIC_AUTH_PATHS.some((p) =>
+      window.location.pathname.startsWith(p),
+    );
+    if (!isPublicPath) {
       window.location.href = "/login";
     }
   }
