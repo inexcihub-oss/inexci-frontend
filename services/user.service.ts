@@ -12,6 +12,7 @@ export interface UserProfileResponse {
   name: string;
   email: string;
   phone?: string;
+  cpf?: string;
   document?: string;
   birthDate?: string;
   gender?: string;

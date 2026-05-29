@@ -31,6 +31,9 @@ import Image from "next/image";
 import { NewSurgeryRequestButton } from "@/components/billing/NewSurgeryRequestButton";
 import PageContainer from "@/components/PageContainer";
 import { getInitials, includesIgnoreCase } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { availableDoctorsService } from "@/services/available-doctors.service";
+import { NoActiveDoctorModal } from "@/components/surgery-request/NoActiveDoctorModal";
 
 const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "pendente", title: "Pendente", status: "Pendente", cards: [] },
@@ -51,8 +54,15 @@ const INITIAL_COLUMNS: KanbanColumn[] = [
 
 export default function ProcedimentosCirurgicos() {
   const router = useRouter();
+  const { isAdmin } = useAuth();
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+  const [isNoActiveDoctorModalOpen, setIsNoActiveDoctorModalOpen] =
+    useState(false);
+  const [hasActiveDoctors, setHasActiveDoctors] = useState<boolean | null>(
+    null,
+  );
+  const [checkingActiveDoctors, setCheckingActiveDoctors] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,6 +79,38 @@ export default function ProcedimentosCirurgicos() {
   }));
 
   const debouncedSearch = useDebounce(searchTerm, 300);
+
+  const hasActiveStatus = (status?: string) =>
+    String(status ?? "").toLowerCase() === "active";
+
+  const ensureAdminHasActiveDoctor = useCallback(async (): Promise<boolean> => {
+    if (!isAdmin) return true;
+    if (hasActiveDoctors !== null) return hasActiveDoctors;
+
+    setCheckingActiveDoctors(true);
+    try {
+      const doctors = await availableDoctorsService.getDoctorsForAccount();
+      const hasAtLeastOneActive = doctors.some((doctor) =>
+        hasActiveStatus(doctor.status),
+      );
+      setHasActiveDoctors(hasAtLeastOneActive);
+      return hasAtLeastOneActive;
+    } catch {
+      // Não bloquear por falha transitória de rede
+      return true;
+    } finally {
+      setCheckingActiveDoctors(false);
+    }
+  }, [hasActiveDoctors, isAdmin]);
+
+  const handleOpenNewRequest = useCallback(async () => {
+    const canOpen = await ensureAdminHasActiveDoctor();
+    if (!canOpen) {
+      setIsNoActiveDoctorModalOpen(true);
+      return;
+    }
+    setIsNewRequestOpen(true);
+  }, [ensureAdminHasActiveDoctor]);
 
   // Fechar dropdown de exportação ao clicar fora
   useEffect(() => {
@@ -559,8 +601,9 @@ export default function ProcedimentosCirurgicos() {
 
           {/* New Request Button */}
           <NewSurgeryRequestButton
-            onClick={() => setIsNewRequestOpen(true)}
+            onClick={handleOpenNewRequest}
             variant="primary"
+            disabled={checkingActiveDoctors}
             className="flex-1 sm:flex-none h-9 lg:h-11 text-xs lg:text-sm"
           >
             <span className="lg:hidden">+ Solicitação</span>
@@ -639,6 +682,15 @@ export default function ProcedimentosCirurgicos() {
         availableHealthPlans={availableHealthPlans}
         availableProcedures={availableProcedures}
         availableDoctors={availableDoctors}
+      />
+
+      <NoActiveDoctorModal
+        isOpen={isNoActiveDoctorModalOpen}
+        onClose={() => setIsNoActiveDoctorModalOpen(false)}
+        onGoToCollaborators={() => {
+          setIsNoActiveDoctorModalOpen(false);
+          router.push("/colaboradores");
+        }}
       />
     </PageContainer>
   );

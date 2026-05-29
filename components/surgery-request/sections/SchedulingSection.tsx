@@ -71,6 +71,23 @@ export function SchedulingSection({
     (solicitacao?.scheduling?.confirmedDate as string | null | undefined) ??
     null;
 
+  const backendSelectedIndexRaw =
+    typeof solicitacao?.selectedDateIndex === "number"
+      ? solicitacao.selectedDateIndex
+      : typeof solicitacao?.scheduling?.selectedDateIndex === "number"
+        ? solicitacao.scheduling.selectedDateIndex
+        : null;
+
+  const backendSelectedIndex =
+    backendSelectedIndexRaw !== null &&
+    backendSelectedIndexRaw >= 0 &&
+    backendSelectedIndexRaw <= 2
+      ? backendSelectedIndexRaw
+      : null;
+
+  const activeSelectedIndex =
+    pendingSelectedIndex !== null ? pendingSelectedIndex : backendSelectedIndex;
+
   // Índice confirmado pelo backend (usado apenas para referência)
   // A seleção pendente do usuário vem via prop pendingSelectedIndex
 
@@ -117,7 +134,7 @@ export function SchedulingSection({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {dateOptions.map((date, index) => {
-                const isSelected = pendingSelectedIndex === index;
+                const isSelected = activeSelectedIndex === index;
                 return (
                   <div
                     key={index}
@@ -130,9 +147,16 @@ export function SchedulingSection({
                   >
                     {/* Cabeçalho do card */}
                     <div className="flex items-center justify-between px-2.5 py-2.5 bg-white border-b border-neutral-100">
-                      <span className="text-sm font-semibold text-black/50 leading-5 flex-1">
-                        {ORDINALS[index]} Opção
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-semibold text-black/50 leading-5">
+                          {ORDINALS[index]} Opção
+                        </span>
+                        {backendSelectedIndex === index && (
+                          <p className="text-[11px] text-teal-700 font-semibold mt-0.5">
+                            Escolhida pelo paciente
+                          </p>
+                        )}
+                      </div>
                       {/* Radio button */}
                       {isSelected ? (
                         /* Checked */

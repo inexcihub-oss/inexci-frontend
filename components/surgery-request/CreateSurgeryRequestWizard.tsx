@@ -160,6 +160,17 @@ export function CreateSurgeryRequestWizard({
     setModalState("patient-select");
   };
 
+  const handleProcedureDeleted = (deletedId: string) => {
+    if (selectedProcedure?.id === deletedId) {
+      setSelectedProcedure(null);
+      setSelectedPatient(null);
+      setSelectedDoctor(null);
+      setSelectedHealthPlan(null);
+      setSelectedHospital(null);
+      setModalState("procedure-select");
+    }
+  };
+
   const handlePatientSelected = (patient: Patient) => {
     setSelectedPatient(patient);
     setModalState("doctor-select");
@@ -976,6 +987,7 @@ export function CreateSurgeryRequestWizard({
                   <ProcedureSelectionContent
                     onSelect={handleProcedureSelected}
                     onCreateNew={() => setModalState("procedure-create")}
+                    onDeleteSelected={handleProcedureDeleted}
                     onNewItemCreated={(callback: (item: Procedure) => void) => {
                       setAddProcedureToList(() => callback);
                     }}

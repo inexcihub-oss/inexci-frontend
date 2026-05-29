@@ -340,6 +340,8 @@ export interface SurgeryRequestDetail {
   healthPlanId: string | number | null;
   hasOpme: boolean | null;
   surgeryDate: string | null;
+  dateOptions?: string[];
+  selectedDateIndex?: number | null;
   surgeryPerformedAt: string | null;
   diagnosis: string | null;
   medicalReport: string | null;

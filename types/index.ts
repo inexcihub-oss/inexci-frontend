@@ -50,6 +50,7 @@ export interface AvailableDoctor {
   crm: string;
   crmState: string;
   specialty?: string;
+  status?: "pending" | "active" | "inactive" | string;
 }
 
 // ─── Doctor Summary (tipo canônico para médicos) ─────────────────────────────

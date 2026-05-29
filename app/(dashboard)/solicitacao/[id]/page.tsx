@@ -639,6 +639,20 @@ export default function SolicitacaoDetalhePage() {
     }
   }, [params.id]);
 
+  useEffect(() => {
+    if (!solicitacao) return;
+    const index =
+      typeof solicitacao.selectedDateIndex === "number"
+        ? solicitacao.selectedDateIndex
+        : typeof solicitacao.scheduling?.selectedDateIndex === "number"
+          ? solicitacao.scheduling.selectedDateIndex
+          : null;
+
+    if (index !== null && index >= 0 && index <= 2) {
+      setPendingDateIndex(index);
+    }
+  }, [solicitacao]);
+
   // ── Atividades ──────────────────────────────────────────────────────────────
   const fetchActivities = useCallback(async () => {
     if (!params.id) return;
@@ -824,7 +838,11 @@ export default function SolicitacaoDetalhePage() {
     action: string,
     previousStatusNum: number,
   ) => {
-    if (isPreRealizadaStatus(previousStatusNum) && action !== "surgeryStatus") {
+    if (
+      isPreRealizadaStatus(previousStatusNum) &&
+      action !== "surgeryStatus" &&
+      action !== "updateAuthorizations"
+    ) {
       setCompletedActionStatus({
         previous:
           STATUS_NUMBER_TO_STRING[previousStatusNum] ??
@@ -1703,10 +1721,8 @@ export default function SolicitacaoDetalhePage() {
         onClose={() => setIsUpdateAuthorizationsModalOpen(false)}
         solicitacao={solicitacao}
         onSuccess={() => {
-          const prevStatus = solicitacao.status;
           handleUpdateProcedure();
           setIsUpdateAuthorizationsModalOpen(false);
-          showPostTransitionNotification("updateAuthorizations", prevStatus);
         }}
         onClose2={() => setIsUpdateAuthorizationsModalOpen(false)}
       />

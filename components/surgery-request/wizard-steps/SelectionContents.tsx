@@ -2,11 +2,16 @@
 
 import React, { memo, useState, useEffect } from "react";
 import Image from "next/image";
+import { Trash2 } from "lucide-react";
 import { Procedure } from "@/services/procedure.service";
 import { Patient } from "@/services/patient.service";
 import { Hospital } from "@/services/hospital.service";
 import { HealthPlan } from "@/services/health-plan.service";
 import { AvailableDoctor } from "@/types";
+import { getApiErrorMessage } from "@/lib/http-error";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
+import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import {
   surgeryRequestService,
   SurgeryRequestTemplate,
@@ -16,12 +21,14 @@ export const ProcedureSelectionContent = memo(
   function ProcedureSelectionContent({
     onSelect,
     onCreateNew,
+    onDeleteSelected,
     onNewItemCreated,
     selectedItemId,
     isActive,
   }: {
     onSelect: (item: Procedure) => void;
     onCreateNew: () => void;
+    onDeleteSelected?: (id: string) => void;
     onNewItemCreated: (registerFn: (item: Procedure) => void) => void;
     selectedItemId?: string | number | null;
     isActive?: boolean;
@@ -30,6 +37,10 @@ export const ProcedureSelectionContent = memo(
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
     const [hasLoaded, setHasLoaded] = useState(false);
+    const [procedureToDelete, setProcedureToDelete] =
+      useState<Procedure | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const { toast, showToast, hideToast } = useToast();
 
     const loadProcedures = async () => {
       setLoading(true);
@@ -66,65 +77,135 @@ export const ProcedureSelectionContent = memo(
       p.name.toLowerCase().includes(searchTerm.toLowerCase()),
     );
 
+    const handleConfirmDelete = async () => {
+      if (!procedureToDelete) return;
+
+      setIsDeleting(true);
+      try {
+        const { procedureService } =
+          await import("@/services/procedure.service");
+        await procedureService.delete(procedureToDelete.id);
+
+        setProcedures((prev) =>
+          prev.filter((procedure) => procedure.id !== procedureToDelete.id),
+        );
+
+        if (selectedItemId === procedureToDelete.id) {
+          onDeleteSelected?.(procedureToDelete.id);
+        }
+
+        showToast("Procedimento excluído com sucesso.", "success");
+        setProcedureToDelete(null);
+      } catch (error) {
+        showToast(
+          getApiErrorMessage(error, "Erro ao excluir procedimento."),
+          "error",
+        );
+      } finally {
+        setIsDeleting(false);
+      }
+    };
+
     return (
-      <div className="p-4 md:p-6">
-        <div className="flex gap-3 mb-4">
-          <div className="flex-1 relative">
-            <Image
-              src="/icons/search.svg"
-              alt="Buscar"
-              width={20}
-              height={20}
-              className="absolute left-3 top-1/2 -translate-y-1/2"
-            />
-            <input
-              type="text"
-              placeholder="Procedimento"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs md:text-sm text-gray-900 placeholder:text-gray-400"
-            />
-          </div>
-          <button
-            onClick={onCreateNew}
-            className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
-          >
-            Novo
-          </button>
-        </div>
-        <div className="border-t border-gray-200">
-          {loading ? (
-            <div className="text-center py-8 text-gray-500">Carregando...</div>
-          ) : filteredProcedures.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              Nenhum procedimento encontrado
+      <>
+        <div className="p-4 md:p-6">
+          <div className="flex gap-3 mb-4">
+            <div className="flex-1 relative">
+              <Image
+                src="/icons/search.svg"
+                alt="Buscar"
+                width={20}
+                height={20}
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+              />
+              <input
+                type="text"
+                placeholder="Procedimento"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs md:text-sm text-gray-900 placeholder:text-gray-400"
+              />
             </div>
-          ) : (
-            filteredProcedures.map((procedure) => {
-              const isSelected = selectedItemId === procedure.id;
-              return (
-                <button
-                  type="button"
-                  key={procedure.id}
-                  onClick={() => onSelect(procedure)}
-                  className="w-full flex items-center justify-between px-4 py-5 text-left cursor-pointer transition-colors hover:bg-gray-50 border-b border-gray-200"
-                >
-                  <span className="text-xs md:text-sm text-gray-900">
-                    {procedure.name}
-                  </span>
+            <button
+              onClick={onCreateNew}
+              className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
+            >
+              Novo
+            </button>
+          </div>
+          <div className="border-t border-gray-200">
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">
+                Carregando...
+              </div>
+            ) : filteredProcedures.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Nenhum procedimento encontrado
+              </div>
+            ) : (
+              filteredProcedures.map((procedure) => {
+                const isSelected = selectedItemId === procedure.id;
+                return (
                   <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? "border-teal-500" : "border-gray-300"}`}
+                    key={procedure.id}
+                    className="w-full flex items-center gap-2 px-4 py-4 text-left transition-colors hover:bg-gray-50 border-b border-gray-200"
                   >
-                    {isSelected && (
-                      <div className="w-3 h-3 rounded-full bg-teal-500" />
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => onSelect(procedure)}
+                      className="flex-1 flex items-center justify-between text-left"
+                    >
+                      <span className="text-xs md:text-sm text-gray-900">
+                        {procedure.name}
+                      </span>
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? "border-teal-500" : "border-gray-300"}`}
+                      >
+                        {isSelected && (
+                          <div className="w-3 h-3 rounded-full bg-teal-500" />
+                        )}
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProcedureToDelete(procedure);
+                      }}
+                      aria-label={`Excluir ${procedure.name}`}
+                      className="h-8 w-8 rounded-lg border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 flex items-center justify-center transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                </button>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
+
+        <ConfirmDeleteModal
+          isOpen={Boolean(procedureToDelete)}
+          title="Excluir procedimento"
+          description="Tem certeza que deseja excluir este procedimento do catálogo da sua clínica?"
+          itemName={procedureToDelete?.name}
+          onCancel={() => {
+            if (isDeleting) return;
+            setProcedureToDelete(null);
+          }}
+          onConfirm={handleConfirmDelete}
+          loading={isDeleting}
+        />
+
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={hideToast}
+          />
+        )}
+      </>
     );
   },
 );

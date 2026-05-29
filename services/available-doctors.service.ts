@@ -5,6 +5,7 @@ import { AvailableDoctor } from "@/types";
 interface BackendDoctorRecord {
   id: string;
   name: string;
+  status?: string;
   doctorProfile?: {
     crm?: string;
     crmState?: string;
@@ -38,6 +39,7 @@ export const availableDoctorsService = {
       crm: user.doctorProfile?.crm ?? "",
       crmState: user.doctorProfile?.crmState ?? "",
       specialty: user.doctorProfile?.specialty ?? undefined,
+      status: user.status,
     }));
   },
 };

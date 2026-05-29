@@ -26,7 +26,9 @@ import { ProcedureSideSheet } from "@/components/procedures/ProcedureSideSheet";
 import { NewProcedureModelModal } from "@/components/procedures/NewProcedureModelModal";
 import { ProcedureModel } from "@/components/procedures/types";
 import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
+import { NoActiveDoctorModal } from "@/components/surgery-request/NoActiveDoctorModal";
 import { surgeryRequestService } from "@/services/surgery-request.service";
+import { availableDoctorsService } from "@/services/available-doctors.service";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -93,11 +95,36 @@ export default function ProcedimentosPage() {
   const [isSideSheetOpen, setIsSideSheetOpen] = useState(false);
   const [isNewModelModalOpen, setIsNewModelModalOpen] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isNoActiveDoctorModalOpen, setIsNoActiveDoctorModalOpen] =
+    useState(false);
+  const [hasActiveDoctors, setHasActiveDoctors] = useState<boolean | null>(
+    null,
+  );
   const [wizardTemplate, setWizardTemplate] = useState<any>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState({});
   const { showToast } = useToast();
   const { canCreateSurgeryRequest, blockReason, isAdmin } = useAuth();
+
+  const hasActiveStatus = (status?: string) =>
+    String(status ?? "").toLowerCase() === "active";
+
+  const ensureAdminHasActiveDoctor = useCallback(async (): Promise<boolean> => {
+    if (!isAdmin) return true;
+    if (hasActiveDoctors !== null) return hasActiveDoctors;
+
+    try {
+      const doctors = await availableDoctorsService.getDoctorsForAccount();
+      const hasAtLeastOneActive = doctors.some((doctor) =>
+        hasActiveStatus(doctor.status),
+      );
+      setHasActiveDoctors(hasAtLeastOneActive);
+      return hasAtLeastOneActive;
+    } catch {
+      // Não bloquear por falha transitória de rede
+      return true;
+    }
+  }, [hasActiveDoctors, isAdmin]);
 
   // Modal de exclusão individual
   const [deleteModal, setDeleteModal] = useState<{
@@ -512,8 +539,15 @@ export default function ProcedimentosPage() {
             if (isAdmin) router.push("/configuracoes?tab=plan");
             return;
           }
-          setWizardTemplate(template);
-          setIsWizardOpen(true);
+          void (async () => {
+            const canOpen = await ensureAdminHasActiveDoctor();
+            if (!canOpen) {
+              setIsNoActiveDoctorModalOpen(true);
+              return;
+            }
+            setWizardTemplate(template);
+            setIsWizardOpen(true);
+          })();
         }}
         onTemplateUpdated={loadTemplates}
       />
@@ -557,6 +591,15 @@ export default function ProcedimentosPage() {
         onConfirm={handleBulkDeleteConfirm}
         onCancel={handleBulkDeleteCancel}
         loading={bulkDeleteModal.loading}
+      />
+
+      <NoActiveDoctorModal
+        isOpen={isNoActiveDoctorModalOpen}
+        onClose={() => setIsNoActiveDoctorModalOpen(false)}
+        onGoToCollaborators={() => {
+          setIsNoActiveDoctorModalOpen(false);
+          router.push("/colaboradores");
+        }}
       />
     </PageContainer>
   );

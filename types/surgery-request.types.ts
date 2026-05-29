@@ -195,6 +195,7 @@ export interface ReceiptInfo {
 export interface SchedulingInfo {
   dateOptions?: string[];
   confirmedDate?: string | null;
+  selectedDateIndex?: number | null;
   [key: string]: unknown;
 }
 

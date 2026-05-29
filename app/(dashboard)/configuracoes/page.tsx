@@ -33,7 +33,8 @@ import { clearAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import type { DoctorHeader } from "@/types/doctor-header.types";
 import dynamic from "next/dynamic";
 const BillingSection = dynamic(
-  () => import("@/components/billing/BillingSection").then((m) => m.BillingSection),
+  () =>
+    import("@/components/billing/BillingSection").then((m) => m.BillingSection),
   { ssr: false },
 );
 import { removeBackground } from "@/lib/utils";
@@ -304,7 +305,7 @@ function ConfiguracoesPageInner() {
           name: profileData.name || "",
           email: profileData.email || "",
           phone: maskPhone(profileData.phone || ""),
-          document: maskCpf(profileData.document || ""),
+          document: maskCpf(profileData.cpf || profileData.document || ""),
           birthDate: profileData.birthDate
             ? new Date(profileData.birthDate).toISOString().split("T")[0]
             : "",
@@ -554,7 +555,7 @@ function ConfiguracoesPageInner() {
       await userService.updateProfile({
         name: profile.name.trim(),
         phone: phoneDigits || undefined,
-        document: documentDigits || undefined,
+        cpf: documentDigits || undefined,
         birthDate: profile.birthDate || undefined,
         gender: profile.gender || undefined,
         ...(avatarFile
@@ -1495,7 +1496,10 @@ function ConfiguracoesPageInner() {
           <div className="flex-1 min-w-0">
             {activeTab === "profile" && renderProfileTab()}
             {activeTab === "notifications" && renderNotificationsTab()}
-            {activeTab === "plan" && isAdmin && BILLING_TAB_ENABLED && renderPlanTab()}
+            {activeTab === "plan" &&
+              isAdmin &&
+              BILLING_TAB_ENABLED &&
+              renderPlanTab()}
             {activeTab === "security" && renderSecurityTab()}
             {activeTab === "header" && profile.isDoctor && renderHeaderTab()}
             {activeTab === "privacy" && renderPrivacyTab()}
