@@ -12,7 +12,9 @@ import React, {
 import { logger } from "@/lib/logger";
 import { User, SubscriptionDetail } from "@/types";
 import { authService } from "@/services/auth.service";
-import { clearAccessToken } from "@/lib/auth-token";
+import { clearAccessToken, getAccessToken, setAccessToken } from "@/lib/auth-token";
+import axios from "axios";
+import api from "@/lib/api";
 import { consentService } from "@/services/consent.service";
 import { billingService } from "@/services/billing.service";
 import type { ConsentStatus, ConsentType } from "@/types/consent.types";
@@ -126,6 +128,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
+        // Se não há token em memória (reload de página), faz refresh proativo para
+        // evitar o ciclo 401 → refresh → retry no /me.
+        if (!getAccessToken()) {
+          try {
+            const { data } = await axios.post(
+              `${api.defaults.baseURL}/auth/refresh`,
+              {},
+              { withCredentials: true, headers: { "ngrok-skip-browser-warning": "true" } },
+            );
+            setAccessToken(data.access_token);
+          } catch {
+            // Cookie de refresh ausente ou expirado — sessão inválida.
+            setUser(null);
+            setConsents(null);
+            setSubscription(null);
+            setLoading(false);
+            return;
+          }
+        }
+
         // Captura o ID armazenado ANTES de chamar me(), pois me() sobrescreve o localStorage
         const storedUserId = authService.getCurrentUser()?.id ?? null;
 

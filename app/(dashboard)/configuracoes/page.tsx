@@ -31,7 +31,11 @@ import { uploadService } from "@/services/upload.service";
 import { doctorHeaderService } from "@/services/doctor-header.service";
 import { clearAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import type { DoctorHeader } from "@/types/doctor-header.types";
-import { BillingSection } from "@/components/billing/BillingSection";
+import dynamic from "next/dynamic";
+const BillingSection = dynamic(
+  () => import("@/components/billing/BillingSection").then((m) => m.BillingSection),
+  { ssr: false },
+);
 import { removeBackground } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
