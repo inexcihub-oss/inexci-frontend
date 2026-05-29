@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const isProd = process.env.NODE_ENV === "production";
 
 /**
@@ -42,10 +47,25 @@ const nextConfig = {
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
   images: {
-    domains: ["localhost", "nuxgxpsofrcaumfvhqbh.supabase.co"],
+    remotePatterns: [
+      {
+        protocol: "http",
+        hostname: "localhost",
+      },
+      {
+        protocol: "https",
+        hostname: "localhost",
+      },
+      {
+        protocol: "https",
+        hostname: "nuxgxpsofrcaumfvhqbh.supabase.co",
+      },
+    ],
   },
   // Necessário para builds standalone do Docker
   output: "standalone",
+  // Evita inferência incorreta do root quando há múltiplos lockfiles no workspace
+  outputFileTracingRoot: path.resolve(__dirname),
   eslint: {
     ignoreDuringBuilds: true,
   },
