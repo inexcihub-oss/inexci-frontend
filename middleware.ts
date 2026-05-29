@@ -1,14 +1,42 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// Rotas exclusivas da plataforma (app.inexci.com.br)
+const PLATFORM_PREFIXES = [
+  "/login",
+  "/cadastro",
+  "/forgot-password",
+  "/confirmar-email",
+  "/primeiro-acesso",
+  "/dashboard",
+  "/solicitacoes-cirurgicas",
+  "/solicitacao",
+  "/agenda",
+  "/pacientes",
+  "/hospitais",
+  "/convenios",
+  "/fornecedores",
+  "/procedimentos",
+  "/colaboradores",
+  "/notificacoes",
+  "/configuracoes",
+  "/upload-teste",
+];
+
+function isPlatformPath(pathname: string): boolean {
+  return PLATFORM_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(p + "/"),
+  );
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "";
   const normalizedHost = hostname.split(":")[0].toLowerCase();
+  const isProd = process.env.NODE_ENV === "production";
 
   const isAppDomain =
     normalizedHost.startsWith("app.") ||
-    // Docker/local dev: allow override via env
     process.env.FORCE_APP_DOMAIN === "true";
 
   // robots.txt por domínio:
@@ -34,8 +62,16 @@ export function middleware(request: NextRequest) {
     );
   }
 
-  // App domain: redirect root to login
-  // The landing page at "/" is the default; platform starts at /login
+  // Domínio de landing (inexci.com.br) em produção:
+  // rotas da plataforma → redireciona para app.inexci.com.br mantendo o path
+  if (!isAppDomain && isProd && isPlatformPath(pathname)) {
+    const appUrl = new URL(request.url);
+    appUrl.hostname = `app.${appUrl.hostname}`;
+    return NextResponse.redirect(appUrl, { status: 301 });
+  }
+
+  // Domínio da plataforma (app.inexci.com.br):
+  // raiz → redireciona para login
   if (isAppDomain && pathname === "/") {
     return NextResponse.redirect(new URL("/login", request.url));
   }
