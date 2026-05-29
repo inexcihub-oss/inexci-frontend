@@ -20,7 +20,7 @@ import { ptBR } from "date-fns/locale";
 export default function MobileHeaderActions() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout } = useAuth();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -36,11 +36,6 @@ export default function MobileHeaderActions() {
     isNotificationsOpen,
   );
   useClickOutside(userMenuRef, () => setIsUserMenuOpen(false), isUserMenuOpen);
-
-  // Fetch fresh user data (ensures avatar_url is available)
-  useEffect(() => {
-    updateUser().catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resolve avatar URL
   useEffect(() => {

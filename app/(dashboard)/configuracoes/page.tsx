@@ -195,6 +195,8 @@ function NotificationItem({
   );
 }
 
+const BILLING_TAB_ENABLED = false;
+
 function ConfiguracoesPageInner() {
   const { user, updateUser, isAdmin } = useAuth();
   const { toast, showToast, hideToast } = useToast();
@@ -1454,7 +1456,7 @@ function ConfiguracoesPageInner() {
                 icon={Bell}
                 label="Notificações"
               />
-              {isAdmin && (
+              {isAdmin && BILLING_TAB_ENABLED && (
                 <TabButton
                   active={activeTab === "plan"}
                   onClick={() => setActiveTab("plan")}
@@ -1489,7 +1491,7 @@ function ConfiguracoesPageInner() {
           <div className="flex-1 min-w-0">
             {activeTab === "profile" && renderProfileTab()}
             {activeTab === "notifications" && renderNotificationsTab()}
-            {activeTab === "plan" && isAdmin && renderPlanTab()}
+            {activeTab === "plan" && isAdmin && BILLING_TAB_ENABLED && renderPlanTab()}
             {activeTab === "security" && renderSecurityTab()}
             {activeTab === "header" && profile.isDoctor && renderHeaderTab()}
             {activeTab === "privacy" && renderPrivacyTab()}

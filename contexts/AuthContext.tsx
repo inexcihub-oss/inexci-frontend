@@ -30,7 +30,7 @@ interface AuthContextData {
   // Billing
   subscription: SubscriptionDetail | null;
   subscriptionLoading: boolean;
-  refreshSubscription: () => Promise<void>;
+  refreshSubscription: (forUser?: User | null) => Promise<void>;
   /** True quando a assinatura permite criar/enviar novas solicita\u00e7\u00f5es. */
   canCreateSurgeryRequest: boolean;
   isInTrial: boolean;
@@ -42,7 +42,7 @@ interface AuthContextData {
   register: (userData: import("@/types").RegisterData) => Promise<void>;
   logout: () => void;
   updateUser: () => Promise<void>;
-  refreshConsents: () => Promise<void>;
+  refreshConsents: (forUser?: User | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData | undefined>(undefined);
@@ -61,9 +61,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const subscriptionRequestRef = useRef<Promise<void> | null>(null);
   const initialLoadRef = useRef(false);
 
-  const refreshConsents = useCallback(async () => {
+  const refreshConsents = useCallback(async (forUser?: User | null) => {
     if (typeof window === "undefined") return;
-    if (!user) {
+    const effectiveUser = forUser !== undefined ? forUser : user;
+    if (!effectiveUser) {
       setConsents(null);
       return;
     }
@@ -86,9 +87,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return promise;
   }, [user]);
 
-  const refreshSubscription = useCallback(async () => {
+  const refreshSubscription = useCallback(async (forUser?: User | null) => {
     if (typeof window === "undefined") return;
-    if (!user) {
+    const effectiveUser = forUser !== undefined ? forUser : user;
+    if (!effectiveUser) {
       setSubscription(null);
       return;
     }
@@ -144,9 +146,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(currentUser);
-        await refreshConsents();
+        await refreshConsents(currentUser);
         if (currentUser.role === "admin") {
-          await refreshSubscription();
+          await refreshSubscription(currentUser);
         }
       } catch (error) {
         // Para erros de autenticação (401/403), o interceptor do axios já chamou
@@ -169,9 +171,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const response = await authService.login({ email, password });
         setUser(response.user);
-        await refreshConsents();
+        await refreshConsents(response.user);
         if (response.user?.role === "admin") {
-          await refreshSubscription();
+          await refreshSubscription(response.user);
         }
         router.push("/solicitacoes-cirurgicas");
       } catch (error) {
