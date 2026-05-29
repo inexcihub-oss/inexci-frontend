@@ -1141,7 +1141,7 @@ export default function SolicitacaoDetalhePage() {
           </header>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none pb-[calc(84px+env(safe-area-inset-bottom,0px))] lg:pb-2.5">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none pb-2.5">
             <div className="px-4 lg:px-6 pt-4 pb-4 space-y-4">
               {/* Patient Card */}
               <div
