@@ -41,7 +41,7 @@ export function OpmeTab() {
 
   // has_opme: null = não informado | true = tem OPME | false = sem OPME
   const hasOpme: boolean | null = solicitacao.hasOpme ?? null;
-  const isReadOnly = statusNum >= 2;
+  const isReadOnly = statusNum >= 3;
 
   const handleEdit = (opme: OpmeItem) => {
     setEditingOpme(opme);
@@ -218,7 +218,8 @@ export function OpmeTab() {
           {filteredOpmeItems.length > 0 ? (
             filteredOpmeItems.map((material: any) => {
               const manufacturers = splitList(material.brand);
-              const suppliers: { id: string; name: string }[] = material.suppliers ?? [];
+              const suppliers: { id: string; name: string }[] =
+                material.suppliers ?? [];
               const expanded = isExpanded(material.id);
               const isFullyAuthorized =
                 showColorCoding &&

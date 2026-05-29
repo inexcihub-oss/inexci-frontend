@@ -74,7 +74,7 @@ export default function DashboardLayoutInner({
           <BillingStatusBanner />
 
           {/* Conteúdo principal com padding para bottom nav no mobile */}
-          <main className="flex-1 overflow-hidden pb-16 lg:pb-0">
+          <main className="flex-1 overflow-hidden pb-[calc(64px+env(safe-area-inset-bottom,0px))] lg:pb-0">
             <ConsentGate>{children}</ConsentGate>
           </main>
         </div>

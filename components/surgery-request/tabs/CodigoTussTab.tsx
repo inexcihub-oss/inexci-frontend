@@ -90,12 +90,12 @@ export function CodigoTussTab() {
           />
         </div>
 
-        {/* Botão Novo Procedimento — desabilitado a partir do status Enviada (2) */}
+        {/* Botão Novo Procedimento — desabilitado a partir de Em Análise (3) */}
         <button
           onClick={() => setIsModalOpen(true)}
-          disabled={statusNum >= 2}
+          disabled={statusNum >= 3}
           className={`ds-btn-inline ${
-            statusNum >= 2 ? "text-gray-400 cursor-not-allowed opacity-60" : ""
+            statusNum >= 3 ? "text-gray-400 cursor-not-allowed opacity-60" : ""
           }`}
         >
           Novo Procedimento
@@ -178,7 +178,7 @@ export function CodigoTussTab() {
                   </span>
                 )}
 
-                {!showAuthorizationColumn && statusNum < 2 && (
+                {!showAuthorizationColumn && (
                   /* Botões Edit e Delete — posicionados absolutamente à direita */
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     <button
