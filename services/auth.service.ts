@@ -123,7 +123,7 @@ export const authService = {
       }
 
       return user;
-    } catch (error) {
+    } catch (_error) {
       // Limpa dados corrompidos ou inválidos
       localStorage.removeItem("user");
       clearAccessToken();

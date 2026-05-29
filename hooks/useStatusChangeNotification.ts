@@ -30,9 +30,16 @@ export function useStatusChangeNotification({
   onStatusChange,
 }: StatusChangeNotificationOptions) {
   const previousStatus = useRef<number>(currentStatus);
+  const previousRequestId = useRef<string | number>(surgeryRequestId);
   const { showSuccess } = useToast();
 
   useEffect(() => {
+    if (previousRequestId.current !== surgeryRequestId) {
+      previousRequestId.current = surgeryRequestId;
+      previousStatus.current = currentStatus;
+      return;
+    }
+
     // Só notificar se o status mudou e não é a primeira renderização
     if (
       previousStatus.current !== currentStatus &&
@@ -46,7 +53,7 @@ export function useStatusChangeNotification({
     }
 
     previousStatus.current = currentStatus;
-  }, [currentStatus, onStatusChange, showSuccess]);
+  }, [currentStatus, onStatusChange, showSuccess, surgeryRequestId]);
 
   return {
     previousStatus: previousStatus.current,

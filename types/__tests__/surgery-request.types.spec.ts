@@ -3,10 +3,6 @@ import type {
   Doctor,
   SurgeryRequest,
   PriorityLevel,
-  Pendency,
-  PendenciesSummary,
-  KanbanColumn,
-  Patient,
   SurgeryRequestStatus,
 } from "../surgery-request.types";
 
