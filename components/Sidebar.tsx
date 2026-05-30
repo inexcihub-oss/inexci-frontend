@@ -166,7 +166,7 @@ export default function Sidebar({
       )}
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-60 lg:relative lg:inset-auto lg:z-10 flex flex-col h-full bg-white px-2 transition-all duration-300 ${
+        className={`fixed inset-y-0 left-0 z-50 w-60 lg:relative lg:inset-auto lg:z-40 flex flex-col h-full bg-white px-2 transition-all duration-300 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0 ${isCollapsed ? "lg:w-16" : "lg:w-60"}`}
       >

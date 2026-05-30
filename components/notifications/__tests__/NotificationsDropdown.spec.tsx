@@ -47,8 +47,7 @@ vi.mock("@/services/notification.service", () => ({
 let mockUnreadCount = 2;
 const mockSetUnreadCount = vi.fn(
   (next: number | ((prev: number) => number)) => {
-    mockUnreadCount =
-      typeof next === "function" ? next(mockUnreadCount) : next;
+    mockUnreadCount = typeof next === "function" ? next(mockUnreadCount) : next;
   },
 );
 vi.mock("@/hooks/useNotifications", () => ({
@@ -110,7 +109,7 @@ describe("NotificationsDropdown", () => {
   it("renderiza o badge com contagem de não lidas", async () => {
     render(<NotificationsDropdown />);
     await waitFor(() => {
-      expect(screen.getByText("2")).toBeInTheDocument();
+      expect(screen.getAllByText("2")).toHaveLength(2);
     });
   });
 

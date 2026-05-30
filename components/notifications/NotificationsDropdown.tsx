@@ -2,7 +2,10 @@
 
 import { useState, useRef } from "react";
 import { Bell, X, Check, Loader2 } from "lucide-react";
-import { notificationService, Notification } from "@/services/notification.service";
+import {
+  notificationService,
+  Notification,
+} from "@/services/notification.service";
 import { useClickOutside } from "@/hooks";
 import { useNotifications } from "@/hooks/useNotifications";
 import { cn } from "@/lib/utils";
@@ -107,23 +110,30 @@ export default function NotificationsDropdown({
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative w-full" ref={dropdownRef}>
       <button
         onClick={handleOpen}
         className={cn(
-          "relative flex items-center gap-3 px-3 py-3 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px]",
+          "relative flex w-full items-center gap-3 px-3 py-3 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px]",
           isCollapsed ? "justify-center" : "",
         )}
         title={isCollapsed ? "Notificações" : undefined}
       >
-        <Bell className="w-5 h-5 text-neutral-900" />
+        <span className="relative inline-flex shrink-0">
+          <Bell className="w-5 h-5 text-neutral-900" />
+          {unreadCount > 0 && (
+            <span className="hidden lg:flex absolute -top-1 -right-2 items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-red-500 rounded-full">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </span>
         {!isCollapsed && (
           <span className="text-xs md:text-sm font-semibold text-neutral-900">
             Notificações
           </span>
         )}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-red-500 rounded-full">
+          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-bold text-white bg-red-500 rounded-full lg:hidden">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}

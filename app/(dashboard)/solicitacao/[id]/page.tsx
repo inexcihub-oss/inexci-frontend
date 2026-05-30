@@ -156,55 +156,24 @@ function AvatarOrInitials({
 
 // ── Componente de Item de Atividade ───────────────────────────────────────────
 function ActivityItem({ activity }: { activity: Activity }) {
-  const isComment = activity.type === "comment";
-  const isStatusChange = activity.type === "status_change";
   const isPdfGenerated = activity.type === "pdf_generated";
+  const hasActor = Boolean(activity.user);
 
   return (
     <div className="flex items-start gap-3 px-4 py-3 border-b border-neutral-100 last:border-b-0">
       {/* Avatar / Ícone */}
       <div className="flex-shrink-0 mt-0.5">
-        {isComment && activity.user ? (
+        {hasActor && activity.user ? (
           <AvatarOrInitials user={activity.user} size={28} />
         ) : (
-          <div
-            className={`w-7 h-7 rounded-full flex items-center justify-center ${isPdfGenerated ? "bg-red-50" : "bg-gray-100"}`}
-          >
-            {isStatusChange ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                  stroke="#6b7280"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            ) : isPdfGenerated ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                  stroke="#ef4444"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M14 2V8H20M9 13H15M9 17H12"
-                  stroke="#ef4444"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M13 16H12V12H11M12 8H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                  stroke="#6b7280"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            )}
+          <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-100">
+            <Image
+              src="/brand/icon.png"
+              alt="Inexci"
+              width={16}
+              height={16}
+              className="rounded-sm"
+            />
           </div>
         )}
       </div>
