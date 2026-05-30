@@ -25,7 +25,7 @@ export interface Collaborator {
 }
 
 export interface Doctor extends DoctorSummary {
-  avatarUrl?: string | null;
+  avatarUrl?: string;
   gender?: string;
   birthDate?: string;
   document?: string;
@@ -100,7 +100,7 @@ function toDoctor(user: BackendUserRecord): Doctor {
   return {
     id: user.id,
     name: user.name,
-    avatarUrl: user.avatarUrl,
+    avatarUrl: user.avatarUrl ?? undefined,
     email: user.email,
     phone: user.phone,
     gender: user.gender,
