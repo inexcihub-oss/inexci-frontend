@@ -24,9 +24,33 @@ interface NewCollaboratorModalProps {
 }
 
 const BRAZILIAN_STATES = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS",
-  "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC",
-  "SP", "SE", "TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ];
 
 const FIELD_LABELS: Record<string, string> = {
@@ -112,6 +136,7 @@ export function NewCollaboratorModal({
           ...(data.isDoctor &&
             data.crm &&
             data.crm.trim() && {
+              isDoctor: true,
               crm: data.crm.trim(),
               crmState: data.crmState || undefined,
               specialty: data.specialty?.trim() || undefined,
@@ -195,7 +220,9 @@ export function NewCollaboratorModal({
                   className={inputClass}
                 />
                 {form.errors.name && (
-                  <span className="text-xs text-red-500">{form.errors.name}</span>
+                  <span className="text-xs text-red-500">
+                    {form.errors.name}
+                  </span>
                 )}
               </div>
               <div className="flex flex-col gap-1.5">
@@ -236,9 +263,7 @@ export function NewCollaboratorModal({
                 type="button"
                 role="switch"
                 aria-checked={form.values.isDoctor}
-                onClick={() =>
-                  form.setField("isDoctor", !form.values.isDoctor)
-                }
+                onClick={() => form.setField("isDoctor", !form.values.isDoctor)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
                   form.values.isDoctor ? "bg-teal-500" : "bg-gray-200"
                 }`}
@@ -269,7 +294,9 @@ export function NewCollaboratorModal({
                       className={inputClass}
                     />
                     {form.errors.crm && (
-                      <span className="text-xs text-red-500">{form.errors.crm}</span>
+                      <span className="text-xs text-red-500">
+                        {form.errors.crm}
+                      </span>
                     )}
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -299,14 +326,14 @@ export function NewCollaboratorModal({
                 <div className="flex flex-col gap-1.5">
                   <label className={labelClass}>
                     Especialidade{" "}
-                    <span className="text-gray-400 font-normal">(opcional)</span>
+                    <span className="text-gray-400 font-normal">
+                      (opcional)
+                    </span>
                   </label>
                   <input
                     type="text"
                     value={form.values.specialty}
-                    onChange={(e) =>
-                      form.setField("specialty", e.target.value)
-                    }
+                    onChange={(e) => form.setField("specialty", e.target.value)}
                     placeholder="Ex: Ortopedia, Cardiologia..."
                     className={inputClass}
                   />

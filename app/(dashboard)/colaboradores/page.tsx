@@ -9,6 +9,8 @@ import {
 import { logger } from "@/lib/logger";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone } from "@/lib/formatters";
+import { uploadService } from "@/services/upload.service";
+import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -38,6 +40,9 @@ export default function ColaboradoresPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [resolvedAvatarUrls, setResolvedAvatarUrls] = useState<
+    Record<string, string>
+  >({});
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
@@ -58,6 +63,54 @@ export default function ColaboradoresPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveAvatars = async () => {
+      const resolvedEntries = await Promise.all(
+        collaborators.map(async (collaborator) => {
+          const raw = collaborator.avatarUrl?.trim();
+          if (!raw) return null;
+
+          if (raw.startsWith("http://") || raw.startsWith("https://")) {
+            setAvatarCache(collaborator.id, raw, raw);
+            return [collaborator.id, raw] as const;
+          }
+
+          const cached = getAvatarCache(collaborator.id, raw);
+          if (cached) {
+            return [collaborator.id, cached] as const;
+          }
+
+          try {
+            const signedUrl = await uploadService.getSignedUrl(raw);
+            setAvatarCache(collaborator.id, raw, signedUrl);
+            return [collaborator.id, signedUrl] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+
+      const nextMap: Record<string, string> = {};
+      resolvedEntries.forEach((entry) => {
+        if (!entry) return;
+        const [id, url] = entry;
+        nextMap[id] = url;
+      });
+
+      setResolvedAvatarUrls(nextMap);
+    };
+
+    resolveAvatars();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [collaborators]);
 
   const loadData = async () => {
     setLoading(true);
@@ -175,11 +228,26 @@ export default function ColaboradoresPage() {
             router.push(`/colaboradores/assistente/${row.original.id}`)
           }
         >
-          <div
-            className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(row.original.id)}`}
-          >
-            {getInitials(row.original.name)}
-          </div>
+          {resolvedAvatarUrls[row.original.id] ? (
+            <img
+              src={resolvedAvatarUrls[row.original.id]}
+              alt={row.original.name}
+              className="w-8 h-8 flex-shrink-0 rounded-lg object-cover"
+              onError={() =>
+                setResolvedAvatarUrls((prev) => {
+                  const next = { ...prev };
+                  delete next[row.original.id];
+                  return next;
+                })
+              }
+            />
+          ) : (
+            <div
+              className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(row.original.id)}`}
+            >
+              {getInitials(row.original.name)}
+            </div>
+          )}
           <span
             className="text-xs font-semibold text-black hover:text-primary-600"
             title={row.original.name}

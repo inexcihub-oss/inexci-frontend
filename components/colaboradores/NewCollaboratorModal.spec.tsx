@@ -159,8 +159,14 @@ describe("NewCollaboratorModal", () => {
 
     render(<NewCollaboratorModal {...defaultProps} />);
 
-    await userEvent.type(screen.getByPlaceholderText("Nome completo"), "Maria Silva");
-    await userEvent.type(screen.getByPlaceholderText("(21) 98765-4321"), "21987654321");
+    await userEvent.type(
+      screen.getByPlaceholderText("Nome completo"),
+      "Maria Silva",
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("(21) 98765-4321"),
+      "21987654321",
+    );
     await userEvent.type(
       screen.getByPlaceholderText("colaborador@mail.com"),
       "maria@email.com",
@@ -237,7 +243,7 @@ describe("NewCollaboratorModal", () => {
 
     const callArgs = (collaboratorService.create as ReturnType<typeof vi.fn>)
       .mock.calls[0][0];
-    expect(callArgs).not.toHaveProperty("isDoctor");
+    expect(callArgs).toHaveProperty("isDoctor", true);
     expect(callArgs).not.toHaveProperty("is_doctor");
   });
 });
@@ -311,6 +317,7 @@ describe("NewCollaboratorModal — defaultIsDoctor", () => {
         expect.objectContaining({
           name: "Dr. João Silva",
           email: "joao@email.com",
+          isDoctor: true,
           crm: "999888",
           crmState: "RJ",
         }),

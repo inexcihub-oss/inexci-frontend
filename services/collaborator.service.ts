@@ -5,6 +5,7 @@ import { DoctorProfile, DoctorSummary } from "@/types";
 export interface Collaborator {
   id: string;
   name: string;
+  avatarUrl?: string | null;
   email?: string;
   phone?: string;
   gender?: string;
@@ -24,6 +25,7 @@ export interface Collaborator {
 }
 
 export interface Doctor extends DoctorSummary {
+  avatarUrl?: string | null;
   gender?: string;
   birthDate?: string;
   document?: string;
@@ -51,6 +53,7 @@ export interface CreateCollaboratorPayload {
 interface BackendUserRecord {
   id: string;
   name: string;
+  avatarUrl?: string | null;
   email?: string;
   phone?: string;
   gender?: string;
@@ -73,6 +76,7 @@ function toCollaborator(user: BackendUserRecord): Collaborator {
   return {
     id: user.id,
     name: user.name,
+    avatarUrl: user.avatarUrl,
     email: user.email,
     phone: user.phone,
     gender: user.gender,
@@ -96,6 +100,7 @@ function toDoctor(user: BackendUserRecord): Doctor {
   return {
     id: user.id,
     name: user.name,
+    avatarUrl: user.avatarUrl,
     email: user.email,
     phone: user.phone,
     gender: user.gender,
