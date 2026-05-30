@@ -16,6 +16,8 @@ import { logger } from "@/lib/logger";
 
 interface DoctorAccessSectionProps {
   collaboratorId: string;
+  collaboratorIsDoctor?: boolean;
+  collaboratorName?: string;
 }
 
 // ── SearchableMultiSelect ────────────────────────────────────────────────────
@@ -23,6 +25,7 @@ interface SearchableMultiSelectProps {
   options: AvailableDoctor[];
   selected: string[];
   onToggle: (id: string) => void;
+  lockedSelectedIds?: string[];
   placeholder?: string;
 }
 
@@ -30,6 +33,7 @@ function SearchableMultiSelect({
   options,
   selected,
   onToggle,
+  lockedSelectedIds = [],
   placeholder = "Buscar médico...",
 }: SearchableMultiSelectProps) {
   const [query, setQuery] = useState("");
@@ -156,23 +160,25 @@ function SearchableMultiSelect({
               className="inline-flex items-center gap-1 text-xs bg-teal-50 text-teal-700 border border-teal-200 rounded-full pl-2.5 pr-1.5 py-1"
             >
               {opt.name}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggle(opt.id);
-                }}
-                className="w-3.5 h-3.5 flex items-center justify-center rounded-full hover:bg-teal-200 transition-colors"
-              >
-                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                  <path
-                    d="M7 1L1 7M1 1l6 6"
-                    stroke="currentColor"
-                    strokeWidth="1.3"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
+              {!lockedSelectedIds.includes(opt.id) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggle(opt.id);
+                  }}
+                  className="w-3.5 h-3.5 flex items-center justify-center rounded-full hover:bg-teal-200 transition-colors"
+                >
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                    <path
+                      d="M7 1L1 7M1 1l6 6"
+                      stroke="currentColor"
+                      strokeWidth="1.3"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              )}
             </span>
           ))}
         </div>
@@ -255,6 +261,8 @@ function SearchableMultiSelect({
 // ── DoctorAccessSection ──────────────────────────────────────────────────────
 export function DoctorAccessSection({
   collaboratorId,
+  collaboratorIsDoctor = false,
+  collaboratorName,
 }: DoctorAccessSectionProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -263,6 +271,35 @@ export function DoctorAccessSection({
   const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
   const [originalSelectedIds, setOriginalSelectedIds] = useState<string[]>([]);
   const { toast, showToast, hideToast } = useToast();
+
+  const mandatoryDoctorIds = useMemo(
+    () => (collaboratorIsDoctor ? [collaboratorId] : []),
+    [collaboratorId, collaboratorIsDoctor],
+  );
+
+  const ensureMandatoryDoctorsSelected = useCallback(
+    (ids: string[]) => Array.from(new Set([...ids, ...mandatoryDoctorIds])),
+    [mandatoryDoctorIds],
+  );
+
+  const doctorsWithSelf = useMemo(() => {
+    if (!collaboratorIsDoctor) return accountDoctors;
+
+    const hasSelfInList = accountDoctors.some(
+      (doctor) => doctor.id === collaboratorId,
+    );
+    if (hasSelfInList) return accountDoctors;
+
+    return [
+      {
+        id: collaboratorId,
+        name: collaboratorName?.trim() || "Este médico",
+        crm: "",
+        crmState: "",
+      },
+      ...accountDoctors,
+    ];
+  }, [accountDoctors, collaboratorId, collaboratorIsDoctor, collaboratorName]);
 
   const isDirty =
     selectedDoctorIds.length !== originalSelectedIds.length ||
@@ -283,21 +320,27 @@ export function DoctorAccessSection({
         .filter((a) => a.status === "active")
         .map((a) => a.doctorUserId);
 
-      setSelectedDoctorIds(activeIds);
-      setOriginalSelectedIds(activeIds);
+      const normalizedActiveIds = ensureMandatoryDoctorsSelected(activeIds);
+
+      setSelectedDoctorIds(normalizedActiveIds);
+      setOriginalSelectedIds(normalizedActiveIds);
     } catch (error) {
       logger.error("Erro ao carregar dados de acesso:", error);
       showToast("Erro ao carregar dados de acesso a médicos.", "error");
     } finally {
       setLoading(false);
     }
-  }, [collaboratorId, showToast]);
+  }, [collaboratorId, ensureMandatoryDoctorsSelected, showToast]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const toggleDoctor = (doctorId: string) => {
+    if (mandatoryDoctorIds.includes(doctorId)) {
+      return;
+    }
+
     setSelectedDoctorIds((prev) =>
       prev.includes(doctorId)
         ? prev.filter((id) => id !== doctorId)
@@ -308,11 +351,14 @@ export function DoctorAccessSection({
   const handleSave = async () => {
     setSaving(true);
     try {
+      const normalizedSelectedIds =
+        ensureMandatoryDoctorsSelected(selectedDoctorIds);
       await userDoctorAccessService.setAccessForUser(
         collaboratorId,
-        selectedDoctorIds,
+        normalizedSelectedIds,
       );
-      setOriginalSelectedIds([...selectedDoctorIds]);
+      setSelectedDoctorIds(normalizedSelectedIds);
+      setOriginalSelectedIds([...normalizedSelectedIds]);
       showToast("Acessos atualizados com sucesso!", "success");
     } catch (error) {
       logger.error("Erro ao salvar acessos:", error);
@@ -357,9 +403,10 @@ export function DoctorAccessSection({
         </p>
 
         <SearchableMultiSelect
-          options={accountDoctors}
+          options={doctorsWithSelf}
           selected={selectedDoctorIds}
           onToggle={toggleDoctor}
+          lockedSelectedIds={mandatoryDoctorIds}
           placeholder="Buscar médico..."
         />
 

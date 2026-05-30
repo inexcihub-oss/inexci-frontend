@@ -755,7 +755,11 @@ export default function AssistenteDetalhePage() {
         )}
 
         {/* Seção: Acesso a Médicos */}
-        <DoctorAccessSection collaboratorId={params.id} />
+        <DoctorAccessSection
+          collaboratorId={params.id}
+          collaboratorIsDoctor={isDoctor}
+          collaboratorName={formData.name}
+        />
 
         {/* Seção: Acesso e Segurança */}
         <CollaboratorActionsSection
