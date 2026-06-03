@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   surgeryRequestService,
   AcceptAuthorizationPayload,
@@ -145,10 +145,11 @@ export function UpdateAuthorizationsModal({
   const [scheduleDates, setScheduleDates] = useState<
     Array<{ date: string; time: string }>
   >([
-    { date: "", time: "00:00" },
-    { date: "", time: "00:00" },
-    { date: "", time: "00:00" },
+    { date: "", time: "" },
+    { date: "", time: "" },
+    { date: "", time: "" },
   ]);
+  const [scheduleAttempted, setScheduleAttempted] = useState(false);
 
   const [showContest, setShowContest] = useState(false);
   const [contestStep, setContestStep] = useState<ContestStep>(1);
@@ -158,6 +159,7 @@ export function UpdateAuthorizationsModal({
     to: "",
     subject: `Contestação de autorizações - ${solicitacao?.patient?.name ?? ""}`,
     message: "",
+    cc: "",
   });
   const [contestAttachments, setContestAttachments] = useState<File[]>([]);
 
@@ -172,13 +174,15 @@ export function UpdateAuthorizationsModal({
       to: "",
       subject: `Contestação de autorizações - ${solicitacao?.patient?.name ?? ""}`,
       message: "",
+      cc: "",
     });
     setContestAttachments([]);
     setScheduleDates([
-      { date: "", time: "00:00" },
-      { date: "", time: "00:00" },
-      { date: "", time: "00:00" },
+      { date: "", time: "" },
+      { date: "", time: "" },
+      { date: "", time: "" },
     ]);
+    setScheduleAttempted(false);
     setTussAuth(
       (solicitacao?.tussItems ?? []).map((p) => ({
         id: p.id,
@@ -224,9 +228,15 @@ export function UpdateAuthorizationsModal({
     }));
 
   const handleAccept = async () => {
-    const hasDate = scheduleDates.every((d) => d.date.trim() !== "");
-    if (!hasDate) {
-      showToast("Preencha as 3 opções de data para o agendamento.", "error");
+    const allFilled = scheduleDates.every(
+      (d) => d.date.trim() !== "" && d.time.trim() !== "",
+    );
+    if (!allFilled) {
+      setScheduleAttempted(true);
+      showToast(
+        "Preencha a data e o horário em todas as 3 opções de agendamento.",
+        "error",
+      );
       return;
     }
     setIsSaving(true);
@@ -242,13 +252,10 @@ export function UpdateAuthorizationsModal({
       );
 
       // 2. Aceitar autorizacao e propor datas
-      const validDates = scheduleDates
-        .filter((d) => d.date.trim() !== "")
-        .map((d) => {
-          const time = d.time || "00:00";
-          const datetime = `${d.date}T${time}:00`;
-          return new Date(datetime).toISOString();
-        });
+      const validDates = scheduleDates.map((d) => {
+        const datetime = `${d.date}T${d.time}:00`;
+        return new Date(datetime).toISOString();
+      });
       const payload: AcceptAuthorizationPayload = {
         dateOptions: validDates,
       };
@@ -306,6 +313,7 @@ export function UpdateAuthorizationsModal({
           to: contestEmail.to,
           subject: contestEmail.subject,
           message: contestEmail.message,
+          ...(contestEmail.cc && { cc: contestEmail.cc }),
         }),
       };
       await surgeryRequestService.contestAuthorization(solicitacao.id, payload);
@@ -404,6 +412,7 @@ export function UpdateAuthorizationsModal({
             emailForm={contestEmail}
             attachments={contestAttachments}
             isSaving={isSaving}
+            surgeryRequestId={solicitacao.id}
             onReasonChange={setContestReason}
             onMethodChange={setContestMethod}
             onEmailChange={(field, val) =>
@@ -528,9 +537,10 @@ export function UpdateAuthorizationsModal({
             <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
               <div className="flex items-center gap-3 p-3 md:p-4 bg-blue-50 rounded-xl">
                 <p className="text-sm md:text-base text-blue-600 leading-normal">
-                  O médico responsável pela solicitação deve selecionar como
-                  deseja prosseguir com a solicitação com base nos itens
-                  autorizados.
+                  Revise os itens autorizados pelo convênio e escolha como
+                  prosseguir: aceite para propor datas de agendamento, conteste
+                  se as autorizações estiverem incorretas ou encerre a
+                  solicitação.
                 </p>
               </div>
               {tussAuth.length > 0 && (
@@ -696,14 +706,23 @@ export function UpdateAuthorizationsModal({
                     },
                   ] as const
                 ).map(({ label, sublabel, color }, index) => {
-                  const filled = scheduleDates[index].date !== "";
+                  const dateVal = scheduleDates[index].date;
+                  const timeVal = scheduleDates[index].time;
+                  const filled = dateVal !== "" && timeVal !== "";
+                  const dateError =
+                    scheduleAttempted && dateVal === "";
+                  const timeError =
+                    scheduleAttempted && timeVal === "";
+                  const hasError = dateError || timeError;
                   return (
                     <div
                       key={index}
                       className={`rounded-2xl border p-4 flex flex-col gap-3 transition-colors duration-200 ${
-                        filled
-                          ? "border-primary-200 bg-primary-50/30"
-                          : "border-neutral-100 bg-white"
+                        hasError
+                          ? "border-red-300 bg-red-50/30"
+                          : filled
+                            ? "border-primary-200 bg-primary-50/30"
+                            : "border-neutral-100 bg-white"
                       }`}
                     >
                       {/* Cabeçalho do card */}
@@ -744,8 +763,8 @@ export function UpdateAuthorizationsModal({
                       {/* Campos data e hora lado a lado */}
                       <div className="grid grid-cols-2 gap-2.5">
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-medium text-gray-500">
-                            Data
+                          <label className={`text-xs font-medium ${dateError ? "text-red-500" : "text-gray-500"}`}>
+                            Data{dateError && " *"}
                           </label>
                           <input
                             type="date"
@@ -758,12 +777,15 @@ export function UpdateAuthorizationsModal({
                               };
                               setScheduleDates(next);
                             }}
-                            className="ds-input"
+                            className={`ds-input ${dateError ? "border-red-400 focus:ring-red-400" : ""}`}
                           />
+                          {dateError && (
+                            <p className="text-xs text-red-500">Obrigatório</p>
+                          )}
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs font-medium text-gray-500">
-                            Horário
+                          <label className={`text-xs font-medium ${timeError ? "text-red-500" : "text-gray-500"}`}>
+                            Horário{timeError && " *"}
                           </label>
                           <input
                             type="time"
@@ -776,8 +798,11 @@ export function UpdateAuthorizationsModal({
                               };
                               setScheduleDates(next);
                             }}
-                            className="ds-input"
+                            className={`ds-input ${timeError ? "border-red-400 focus:ring-red-400" : ""}`}
                           />
+                          {timeError && (
+                            <p className="text-xs text-red-500">Obrigatório</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1161,12 +1186,13 @@ interface ContestFlowProps {
   step: ContestStep;
   reason: string;
   method: ContestMethod;
-  emailForm: { to: string; subject: string; message: string };
+  emailForm: { to: string; subject: string; message: string; cc: string };
   attachments: File[];
   isSaving: boolean;
+  surgeryRequestId: string | number;
   onReasonChange: (v: string) => void;
   onMethodChange: (v: ContestMethod) => void;
-  onEmailChange: (field: "to" | "subject" | "message", v: string) => void;
+  onEmailChange: (field: "to" | "subject" | "message" | "cc", v: string) => void;
   onAttachmentsChange: (files: File[]) => void;
   onNext: () => void;
   onBack: () => void;
@@ -1180,6 +1206,7 @@ function ContestFlow({
   emailForm,
   attachments,
   isSaving,
+  surgeryRequestId,
   onReasonChange,
   onMethodChange,
   onEmailChange,
@@ -1195,6 +1222,21 @@ function ContestFlow({
   const [toTags, setToTags] = React.useState<string[]>([]);
   const [toInput, setToInput] = React.useState("");
   const [formTouched, setFormTouched] = React.useState(false);
+
+  // CC
+  const [ccOptions, setCcOptions] = React.useState<
+    Array<{ id: string; name: string; email: string }>
+  >([]);
+  const [ccSelected, setCcSelected] = React.useState<string[]>([]);
+
+  useEffect(() => {
+    if (step === 3 && method === "email") {
+      surgeryRequestService
+        .getCcRecipients(surgeryRequestId)
+        .then(setCcOptions)
+        .catch(() => {});
+    }
+  }, [step, method, surgeryRequestId]);
 
   const addToTag = (email: string) => {
     const trimmed = email.trim().replace(/[;,]$/, "");
@@ -1419,6 +1461,38 @@ function ContestFlow({
                 </p>
               )}
             </div>
+            {ccOptions.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <label className="ds-label mb-0">Cópia (CC):</label>
+                <div className="flex flex-col gap-1 px-3 py-2 rounded-xl border border-neutral-100 bg-white">
+                  {ccOptions.map((opt) => (
+                    <label
+                      key={opt.id}
+                      className="flex items-center gap-2 cursor-pointer select-none py-0.5"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={ccSelected.includes(opt.email)}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...ccSelected, opt.email]
+                            : ccSelected.filter((em) => em !== opt.email);
+                          setCcSelected(next);
+                          onEmailChange("cc", next.join(";"));
+                        }}
+                        className="w-4 h-4 rounded border-gray-300 text-teal-600 accent-teal-600 cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs md:text-sm text-gray-900 truncate">
+                        {opt.name}
+                      </span>
+                      <span className="text-xs text-gray-400 truncate">
+                        {opt.email}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex flex-col gap-1.5">
               <label className="ds-label mb-0">Assunto:</label>
               <input

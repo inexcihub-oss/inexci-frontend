@@ -199,6 +199,7 @@ export interface ContestAuthorizationPayload {
   to?: string;
   subject?: string;
   message?: string;
+  cc?: string;
   attachments?: string[];
 }
 

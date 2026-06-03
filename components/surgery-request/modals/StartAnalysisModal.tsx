@@ -27,8 +27,10 @@ export function StartAnalysisModal({
   surgeryRequestId,
   onSuccess,
 }: StartAnalysisModalProps) {
+  const getToday = () => new Date().toISOString().split("T")[0];
+  const today = getToday();
   const [requestNumber, setRequestNumber] = useState("");
-  const [receivedAt, setReceivedAt] = useState("");
+  const [receivedAt, setReceivedAt] = useState(getToday);
   const [quotation1Number, setQuotation1Number] = useState("");
   const [quotation1ReceivedAt, setQuotation1ReceivedAt] = useState("");
   const [quotation2Number, setQuotation2Number] = useState("");
@@ -43,7 +45,7 @@ export function StartAnalysisModal({
   const handleClose = () => {
     if (isSaving) return;
     setRequestNumber("");
-    setReceivedAt("");
+    setReceivedAt(getToday());
     setQuotation1Number("");
     setQuotation1ReceivedAt("");
     setQuotation2Number("");
@@ -237,6 +239,7 @@ export function StartAnalysisModal({
                 <input
                   type="date"
                   value={receivedAt}
+                  max={today}
                   onChange={(e) => setReceivedAt(e.target.value)}
                   disabled={isSaving}
                   className={`${inputClass} ${attempted && !receivedAt ? "border-red-400 focus:ring-red-400" : ""}`}

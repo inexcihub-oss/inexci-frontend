@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,10 +18,6 @@ import { Button } from "@/components/ui";
 import { step1Schema, step2Schema } from "@/lib/schemas/cadastro.schema";
 import { unmask } from "@/lib/masks";
 import type { SubscriptionPlan } from "@/types";
-import type {
-  Stripe as StripeType,
-  StripeCardElement,
-} from "@stripe/stripe-js";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 
 const TOTAL_STEPS = 3;
@@ -102,17 +98,6 @@ export default function CadastroPage() {
   const [selectedSlug, setSelectedSlug] = useState<string>(DEFAULT_PLAN_SLUG);
   const [billingPeriod, setBillingPeriod] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
 
-  // ─── Stripe ───────────────────────────────────────────────────────────────
-  const [cardElement, setCardElement] = useState<StripeCardElement | null>(
-    null,
-  );
-  const [stripeLoaded, setStripeLoaded] = useState(false);
-  const [cardHolderName, setCardHolderName] = useState("");
-  const [cardHolderNameError, setCardHolderNameError] = useState("");
-  const [cardError, setCardError] = useState("");
-  const stripeRef = useRef<StripeType | null>(null);
-  const cardElementRef = useRef<StripeCardElement | null>(null);
-
   const [error, setError] = useState("");
   const [errorType, setErrorType] = useState<
     "" | "email_active" | "email_pending" | "generic"
@@ -160,65 +145,9 @@ export default function CadastroPage() {
       .finally(() => setPlansLoading(false));
   }, [currentStep, plans.length]);
 
-  // Carrega Stripe quando um plano pago é selecionado na etapa 3
-  useEffect(() => {
-    if (currentStep !== 3 || selectedIsTrialPlan) {
-      if (selectedIsTrialPlan) {
-        setCardElement(null);
-        setStripeLoaded(false);
-        stripeRef.current = null;
-        cardElementRef.current = null;
-      }
-      return;
-    }
-    let cancelled = false;
-    import("@stripe/stripe-js").then(({ loadStripe }) => {
-      loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "").then(
-        (s) => {
-          if (cancelled || !s) return;
-          stripeRef.current = s;
-          const els = s.elements({ locale: "pt-BR" });
-          const card = els.create("card", {
-            style: {
-              base: {
-                fontSize: "14px",
-                color: "#111827",
-                fontFamily: "inherit",
-                "::placeholder": { color: "#9CA3AF" },
-              },
-              invalid: { color: "#DC2626" },
-            },
-            hidePostalCode: true,
-          });
-          cardElementRef.current = card;
-          setCardElement(card);
-          setStripeLoaded(true);
-        },
-      );
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [currentStep, selectedIsTrialPlan]);
 
-  // Monta/desmonta o CardElement no DOM
-  useEffect(() => {
-    if (!cardElement) return;
-    const container = document.getElementById("stripe-card-element-signup");
-    if (container && container.childNodes.length === 0) {
-      cardElement.mount(container);
-      cardElement.on("change", (e) => {
-        setCardError(e.error?.message ?? "");
-      });
-    }
-    return () => {
-      try {
-        cardElement.unmount();
-      } catch {
-        // ignore se não estava montado
-      }
-    };
-  }, [cardElement]);
+
+
 
   const handleStep1Change = (field: keyof Step1Data, value: string) => {
     setStep1((prev) => ({ ...prev, [field]: value }));
@@ -302,54 +231,6 @@ export default function CadastroPage() {
     setIsLoading(true);
     try {
       const phoneDigits = unmask(step1.phone);
-
-      type PaymentFields = {
-        paymentMethodId?: string;
-        cardBrand?: string;
-        cardLast4?: string;
-        cardHolderName?: string;
-        cardExpMonth?: number;
-        cardExpYear?: number;
-      };
-      let paymentFields: PaymentFields = {};
-
-      if (!selectedIsTrialPlan) {
-        if (!cardHolderName.trim() || cardHolderName.trim().length < 2) {
-          setCardHolderNameError("Informe o nome impresso no cartão");
-          setIsLoading(false);
-          return;
-        }
-        const s = stripeRef.current;
-        const ce = cardElementRef.current;
-        if (!s || !ce) {
-          setError(
-            "Formulário de pagamento não carregado. Aguarde e tente novamente.",
-          );
-          setIsLoading(false);
-          return;
-        }
-        const { paymentMethod, error: stripeError } =
-          await s.createPaymentMethod({
-            type: "card",
-            card: ce,
-            billing_details: { name: cardHolderName.trim() },
-          });
-        if (stripeError || !paymentMethod) {
-          setError(stripeError?.message ?? "Erro ao processar cartão.");
-          setIsLoading(false);
-          return;
-        }
-        const card = paymentMethod.card!;
-        paymentFields = {
-          paymentMethodId: paymentMethod.id,
-          cardBrand: card.brand,
-          cardLast4: card.last4,
-          cardHolderName: cardHolderName.trim(),
-          cardExpMonth: card.exp_month,
-          cardExpYear: card.exp_year,
-        };
-      }
-
       await register({
         name: step1.name,
         email: step1.email,
@@ -362,7 +243,6 @@ export default function CadastroPage() {
           specialty: step2.specialty || undefined,
         }),
         planSlug: selectedSlug || undefined,
-        ...paymentFields,
       });
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -390,11 +270,7 @@ export default function CadastroPage() {
         billingPeriod={billingPeriod}
         onBillingPeriodChange={handleBillingPeriodChange}
         selectedIsTrialPlan={selectedIsTrialPlan}
-        stripeLoaded={stripeLoaded}
-        cardHolderName={cardHolderName}
-        onCardHolderNameChange={setCardHolderName}
-        cardHolderNameError={cardHolderNameError}
-        cardError={cardError}
+
         onBack={handleBack}
         onSubmit={handleSubmit}
         isLoading={isLoading}
@@ -559,11 +435,7 @@ interface PlanStepLayoutProps {
   billingPeriod: "MONTHLY" | "YEARLY";
   onBillingPeriodChange: (p: "MONTHLY" | "YEARLY") => void;
   selectedIsTrialPlan: boolean;
-  stripeLoaded: boolean;
-  cardHolderName: string;
-  onCardHolderNameChange: (v: string) => void;
-  cardHolderNameError: string;
-  cardError: string;
+
   onBack: () => void;
   onSubmit: () => void;
   isLoading: boolean;
@@ -579,11 +451,7 @@ function PlanStepLayout({
   billingPeriod,
   onBillingPeriodChange,
   selectedIsTrialPlan,
-  stripeLoaded,
-  cardHolderName,
-  onCardHolderNameChange,
-  cardHolderNameError,
-  cardError,
+
   onBack,
   onSubmit,
   isLoading,
@@ -658,11 +526,7 @@ function PlanStepLayout({
           onSelectPlan={onSelectPlan}
           billingPeriod={billingPeriod}
           onBillingPeriodChange={onBillingPeriodChange}
-          stripeLoaded={stripeLoaded}
-          cardHolderName={cardHolderName}
-          onCardHolderNameChange={onCardHolderNameChange}
-          cardHolderNameError={cardHolderNameError}
-          cardError={cardError}
+
         />
 
         {/* Erro */}

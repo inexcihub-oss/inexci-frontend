@@ -3,6 +3,7 @@
 import {
   Briefcase,
   Building2,
+  Check,
   Crown,
   type LucideIcon,
   Sparkles,
@@ -18,15 +19,10 @@ import { PlanCard, type PlanCardTheme } from "@/components/cadastro/PlanCard";
 /** @deprecated Use BRAZILIAN_STATES from @/lib/options */
 export { BRAZILIAN_STATES as brazilianStates } from "@/lib/options";
 
-/**
- * Metadata visual por slug de plano: \u00edcone, tema de cores, features extras.
- * Mantemos aqui (e n\u00e3o no backend) porque s\u00e3o decis\u00f5es puramente de design.
- */
 export interface PlanPresentation {
   icon: LucideIcon;
   theme: PlanCardTheme;
   highlight?: boolean;
-  features: string[];
 }
 
 const SHARED_FEATURES = [
@@ -41,74 +37,63 @@ const SHARED_FEATURES = [
 export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
   starter: {
     icon: Sparkles,
-    features: SHARED_FEATURES,
     theme: {
-      accent: "bg-teal-500 hover:bg-teal-600",
-      iconBg: "bg-teal-500",
-      iconColor: "text-white",
-      checkColor: "text-teal-500",
-      ringBorder: "border-teal-500",
-      selectedBg: "bg-teal-50/40",
+      headerGradient: "from-teal-400 to-emerald-600",
+      ring: "border-teal-500",
+      ctaBg: "bg-teal-500",
       priceColor: "text-teal-600",
+      dotColor: "bg-teal-500",
+      glowShadow: "shadow-teal-200",
+      badgeBg: "bg-teal-500",
     },
   },
   essencial: {
     icon: Briefcase,
-    features: SHARED_FEATURES,
     theme: {
-      accent: "bg-blue-500 hover:bg-blue-600",
-      iconBg: "bg-blue-500",
-      iconColor: "text-white",
-      checkColor: "text-blue-500",
-      ringBorder: "border-blue-500",
-      selectedBg: "bg-blue-50/40",
+      headerGradient: "from-blue-500 to-indigo-600",
+      ring: "border-blue-500",
+      ctaBg: "bg-blue-500",
       priceColor: "text-blue-600",
+      dotColor: "bg-blue-500",
+      glowShadow: "shadow-blue-200",
+      badgeBg: "bg-blue-500",
     },
   },
   profissional: {
     icon: Crown,
     highlight: true,
-    features: SHARED_FEATURES,
     theme: {
-      accent: "bg-purple-600 hover:bg-purple-700",
-      iconBg: "bg-purple-600",
-      iconColor: "text-white",
-      checkColor: "text-purple-600",
-      ringBorder: "border-purple-500",
-      selectedBg: "bg-purple-50/50",
+      headerGradient: "from-violet-600 to-fuchsia-600",
+      ring: "border-purple-500",
+      ctaBg: "bg-purple-600",
       priceColor: "text-purple-600",
-      highlightGradient: "from-white via-purple-50/40 to-fuchsia-50/40",
+      dotColor: "bg-purple-500",
+      glowShadow: "shadow-purple-200",
+      badgeBg: "bg-purple-600",
     },
   },
   avancado: {
     icon: Building2,
-    features: SHARED_FEATURES,
     theme: {
-      accent: "bg-indigo-600 hover:bg-indigo-700",
-      iconBg: "bg-indigo-600",
-      iconColor: "text-white",
-      checkColor: "text-indigo-600",
-      ringBorder: "border-indigo-500",
-      selectedBg: "bg-indigo-50/40",
+      headerGradient: "from-indigo-600 to-blue-700",
+      ring: "border-indigo-500",
+      ctaBg: "bg-indigo-600",
       priceColor: "text-indigo-600",
+      dotColor: "bg-indigo-500",
+      glowShadow: "shadow-indigo-200",
+      badgeBg: "bg-indigo-600",
     },
   },
   enterprise: {
     icon: Building2,
-    features: [
-      ...SHARED_FEATURES,
-      "SLA dedicado e gerente de conta",
-      "Integrações personalizadas",
-      "Auditoria avançada e compliance",
-    ],
     theme: {
-      accent: "bg-gray-800 hover:bg-gray-900",
-      iconBg: "bg-gray-800",
-      iconColor: "text-white",
-      checkColor: "text-gray-600",
-      ringBorder: "border-gray-700",
-      selectedBg: "bg-gray-50/60",
+      headerGradient: "from-gray-700 to-slate-900",
+      ring: "border-gray-700",
+      ctaBg: "bg-gray-800",
       priceColor: "text-gray-700",
+      dotColor: "bg-gray-500",
+      glowShadow: "shadow-gray-300",
+      badgeBg: "bg-gray-800",
     },
   },
 };
@@ -119,7 +104,6 @@ function getPresentation(slug: string): PlanPresentation {
   return (
     PLAN_PRESENTATION[baseSlug] ?? {
       icon: Sparkles,
-      features: [],
       theme: PLAN_PRESENTATION.starter.theme,
     }
   );
@@ -434,7 +418,7 @@ function ProfileCard({
   );
 }
 
-// ─── Etapa 3 — Sele\u00e7\u00e3o de plano ──────────────────────────────────────────────
+// ─── Etapa 3 — Seleção de plano ────────────────────────────────────────────────
 
 interface Step3PlanProps {
   plans: SubscriptionPlan[];
@@ -443,11 +427,6 @@ interface Step3PlanProps {
   onSelectPlan: (slug: string) => void;
   billingPeriod: "MONTHLY" | "YEARLY";
   onBillingPeriodChange: (p: "MONTHLY" | "YEARLY") => void;
-  stripeLoaded: boolean;
-  cardHolderName: string;
-  onCardHolderNameChange: (v: string) => void;
-  cardHolderNameError: string;
-  cardError: string;
 }
 
 export function Step3Plan({
@@ -457,18 +436,23 @@ export function Step3Plan({
   onSelectPlan,
   billingPeriod,
   onBillingPeriodChange,
-  stripeLoaded,
-  cardHolderName,
-  onCardHolderNameChange,
-  cardHolderNameError,
-  cardError,
 }: Step3PlanProps) {
-  // Enterprise é sempre exibido (sem versão anual separada)
   const enterprisePlan = plans.find((p) => p.slug === "enterprise");
   const sortedPlans = [...plans]
     .filter((p) => p.slug !== "enterprise" && p.billingPeriod === billingPeriod)
     .sort((a, b) => a.sortOrder - b.sortOrder);
-  const selectedPlan = [...plans].find((p) => p.slug === selectedSlug);
+  const allPlans = [...sortedPlans, ...(enterprisePlan ? [enterprisePlan] : [])];
+
+  const gridColsClass: Record<number, string> = {
+    1: "sm:grid-cols-1",
+    2: "sm:grid-cols-2",
+    3: "sm:grid-cols-3",
+    4: "sm:grid-cols-2 xl:grid-cols-4",
+    5: "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5",
+  };
+  const colClass =
+    gridColsClass[allPlans.length] ??
+    "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
 
   return (
     <div className="space-y-6">
@@ -503,7 +487,6 @@ export function Step3Plan({
         </div>
       </div>
 
-      {/* Grid de planos */}
       {plansLoading ? (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
           <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
@@ -511,41 +494,47 @@ export function Step3Plan({
         </div>
       ) : sortedPlans.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
-          Não foi possível carregar os planos no momento. Sua conta será criada
-          no plano Starter com 30 dias grátis e você poderá mudar depois.
+          Não foi possível carregar os planos. Sua conta será criada no plano
+          Starter com 30 dias grátis e você poderá fazer upgrade depois.
         </div>
       ) : (
         <>
           {/* Mobile: carrossel */}
           <div className="sm:hidden -mx-4 px-4">
             <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {[...sortedPlans, ...(enterprisePlan ? [enterprisePlan] : [])].map((plan) => {
+              {allPlans.map((plan) => {
                 const presentation = getPresentation(plan.slug);
                 return (
                   <div
                     key={plan.id}
-                    className="snap-center shrink-0 w-[78vw] max-w-[280px]"
+                    className="snap-center shrink-0 w-[72vw] max-w-[260px]"
                   >
                     <PlanCard
                       plan={plan}
-                      features={presentation.features}
                       icon={presentation.icon}
                       theme={presentation.theme}
                       highlight={presentation.highlight}
                       selected={plan.slug === selectedSlug}
-                      onSelect={plan.slug === "enterprise" ? () => {} : () => onSelectPlan(plan.slug)}
+                      onSelect={
+                        plan.slug === "enterprise"
+                          ? () => {}
+                          : () => onSelectPlan(plan.slug)
+                      }
                     />
                   </div>
                 );
               })}
             </div>
-            {/* Indicadores de paginação */}
             <div className="flex justify-center gap-1.5 mt-2">
-              {[...sortedPlans, ...(enterprisePlan ? [enterprisePlan] : [])].map((plan) => (
+              {allPlans.map((plan) => (
                 <button
                   key={plan.id}
                   type="button"
-                  onClick={plan.slug === "enterprise" ? () => {} : () => onSelectPlan(plan.slug)}
+                  onClick={
+                    plan.slug === "enterprise"
+                      ? () => {}
+                      : () => onSelectPlan(plan.slug)
+                  }
                   className={`h-1.5 rounded-full transition-all ${
                     plan.slug === selectedSlug
                       ? "w-4 bg-teal-500"
@@ -557,104 +546,53 @@ export function Step3Plan({
             </div>
           </div>
 
-          {/* Tablet/Desktop: grid */}
-          <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-5 items-stretch">
-            {[...sortedPlans, ...(enterprisePlan ? [enterprisePlan] : [])].map((plan) => {
+          {/* Tablet/Desktop: grid dinâmico */}
+          <div className={`hidden sm:grid gap-5 items-stretch ${colClass}`}>
+            {allPlans.map((plan) => {
               const presentation = getPresentation(plan.slug);
               return (
                 <PlanCard
                   key={plan.id}
                   plan={plan}
-                  features={presentation.features}
                   icon={presentation.icon}
                   theme={presentation.theme}
                   highlight={presentation.highlight}
                   selected={plan.slug === selectedSlug}
-                  onSelect={plan.slug === "enterprise" ? () => {} : () => onSelectPlan(plan.slug)}
+                  onSelect={
+                    plan.slug === "enterprise"
+                      ? () => {}
+                      : () => onSelectPlan(plan.slug)
+                  }
                 />
               );
             })}
           </div>
 
-          {/* Formulário de cartão — apenas para planos pagos */}
-          {selectedPlan && !selectedPlan.isTrialDefault && selectedPlan.slug !== "enterprise" && (
-            <StripeCardSection
-              stripeLoaded={stripeLoaded}
-              holderName={cardHolderName}
-              onHolderNameChange={onCardHolderNameChange}
-              holderNameError={cardHolderNameError}
-              cardError={cardError}
-            />
-          )}
+          {/* Features compartilhadas */}
+          <SharedFeaturesSection />
         </>
       )}
     </div>
   );
 }
 
-// ─── Formulário Stripe inline ─────────────────────────────────────────────────
-
-interface StripeCardSectionProps {
-  stripeLoaded: boolean;
-  holderName: string;
-  onHolderNameChange: (v: string) => void;
-  holderNameError: string;
-  cardError: string;
-}
-
-export function StripeCardSection({
-  stripeLoaded,
-  holderName,
-  onHolderNameChange,
-  holderNameError,
-  cardError,
-}: StripeCardSectionProps) {
+function SharedFeaturesSection() {
   return (
-    <div className="max-w-2xl mx-auto mt-2 p-5 bg-white rounded-2xl border border-gray-200 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-900 mb-4">
-        Dados do cartão de crédito
-      </h3>
-      <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-xl text-xs text-blue-700 mb-4">
-        <span>
-          Dados coletados diretamente pelo Stripe (PCI-DSS nível 1). Nunca
-          passam pelo nosso servidor.
-        </span>
-      </div>
-      <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nome impresso no cartão <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={holderName}
-            onChange={(e) => onHolderNameChange(e.target.value)}
-            placeholder="Como aparece no cartão"
-            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition"
-            autoComplete="cc-name"
-          />
-          {holderNameError && (
-            <p className="mt-1 text-xs text-red-600">{holderNameError}</p>
-          )}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Dados do cartão <span className="text-red-500">*</span>
-          </label>
-          {stripeLoaded ? (
-            <div
-              id="stripe-card-element-signup"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-sm focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500 transition"
-            />
-          ) : (
-            <div className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-400">
-              Carregando...
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4 text-center">
+        Incluído em todos os planos
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2.5">
+        {SHARED_FEATURES.map((feature) => (
+          <div key={feature} className="flex items-start gap-2">
+            <div className="w-4 h-4 rounded-full bg-teal-50 flex items-center justify-center shrink-0 mt-0.5">
+              <Check className="w-2.5 h-2.5 text-teal-500" strokeWidth={3} />
             </div>
-          )}
-          {cardError && (
-            <p className="mt-1 text-xs text-red-600">{cardError}</p>
-          )}
-        </div>
+            <span className="text-[11px] text-gray-600 leading-tight">
+              {feature}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
