@@ -187,6 +187,14 @@ export default function ProcedimentosCirurgicos() {
                 const mm = (d.getMonth() + 1).toString().padStart(2, "0");
                 return `${dd}/${mm}/${d.getFullYear()}`;
               })(),
+              lastStatusChangedAt:
+                record.lastStatusChangedAt ??
+                record.last_status_changed_at ??
+                undefined,
+              updatedAt:
+                record.updatedAt && !Number.isNaN(Date.parse(record.updatedAt))
+                  ? record.updatedAt
+                  : record.createdAt,
               status,
               healthPlan: record.healthPlan?.name || "",
               hasIncompletePayment: record.hasIncompletePayment === true,
@@ -194,12 +202,27 @@ export default function ProcedimentosCirurgicos() {
           },
         );
 
+        const getSortTime = (request: SurgeryRequest) => {
+          const updatedMs = request.updatedAt
+            ? Date.parse(request.updatedAt)
+            : Number.NaN;
+          if (!Number.isNaN(updatedMs)) return updatedMs;
+
+          const [day, month, year] = request.createdAt.split("/").map(Number);
+          const createdMs = new Date(
+            year,
+            (month || 1) - 1,
+            day || 1,
+          ).getTime();
+          return Number.isNaN(createdMs) ? 0 : createdMs;
+        };
+
         // Organizar os cards nas colunas corretas
         const newColumns = INITIAL_COLUMNS.map((column) => ({
           ...column,
-          cards: mappedRequests.filter(
-            (request) => request.status === column.status,
-          ),
+          cards: mappedRequests
+            .filter((request) => request.status === column.status)
+            .sort((a, b) => getSortTime(b) - getSortTime(a)),
         }));
 
         setColumns(newColumns);

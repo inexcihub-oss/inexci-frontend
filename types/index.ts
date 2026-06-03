@@ -87,9 +87,8 @@ export interface RegisterData {
   specialty?: string;
   /**
    * Slug do plano selecionado no cadastro (`starter`, `essencial`,
-   * `profissional`, `enterprise`, ou `free-trial`). Quando omitido, o
-   * backend usa o plano default. Em ambos os casos, a conta começa com
-   * 30 dias de trial sem cartão.
+   * `profissional`, `avancado`, `enterprise`). Quando omitido, usa o
+   * plano default (starter — 30 dias grátis sem cartão).
    */
   planSlug?: string;
 }
@@ -108,6 +107,7 @@ export interface SubscriptionPlan {
   billingPeriod: BillingPeriod;
   surgeryRequestQuota: number; // -1 = ilimitado
   sortOrder: number;
+  isTrialDefault: boolean;
 }
 
 export type SubscriptionStatus =

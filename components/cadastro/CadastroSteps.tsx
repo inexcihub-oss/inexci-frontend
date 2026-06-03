@@ -29,15 +29,19 @@ export interface PlanPresentation {
   features: string[];
 }
 
+const SHARED_FEATURES = [
+  "Médicos e colaboradores ilimitados",
+  "Kanban e gestão de solicitações cirúrgicas",
+  "Assistente de IA via WhatsApp",
+  "Notificações por e-mail e WhatsApp",
+  "Relatórios e exportação CSV/PDF",
+  "Suporte por chat e e-mail",
+];
+
 export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
   starter: {
     icon: Sparkles,
-    features: [
-      "1 médico cadastrado",
-      "Equipe de até 2 colaboradores",
-      "Suporte por e-mail",
-      "Notificações por WhatsApp",
-    ],
+    features: SHARED_FEATURES,
     theme: {
       accent: "bg-teal-500 hover:bg-teal-600",
       iconBg: "bg-teal-500",
@@ -50,13 +54,7 @@ export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
   },
   essencial: {
     icon: Briefcase,
-    features: [
-      "Médicos ilimitados",
-      "Colaboradores ilimitados",
-      "Templates de procedimentos",
-      "Notificações por e-mail e WhatsApp",
-      "Relatórios e exportação CSV/PDF",
-    ],
+    features: SHARED_FEATURES,
     theme: {
       accent: "bg-blue-500 hover:bg-blue-600",
       iconBg: "bg-blue-500",
@@ -70,13 +68,7 @@ export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
   profissional: {
     icon: Crown,
     highlight: true,
-    features: [
-      "Tudo do Essencial",
-      "Assistente de IA via WhatsApp",
-      "Transcrição de áudios médicos",
-      "Suporte prioritário",
-      "Onboarding guiado da equipe",
-    ],
+    features: SHARED_FEATURES,
     theme: {
       accent: "bg-purple-600 hover:bg-purple-700",
       iconBg: "bg-purple-600",
@@ -88,15 +80,9 @@ export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
       highlightGradient: "from-white via-purple-50/40 to-fuchsia-50/40",
     },
   },
-  enterprise: {
+  avancado: {
     icon: Building2,
-    features: [
-      "Tudo do Profissional",
-      "SLA dedicado e gerente de conta",
-      "Integrações personalizadas",
-      "Treinamento exclusivo da equipe",
-      "Auditoria avançada e compliance",
-    ],
+    features: SHARED_FEATURES,
     theme: {
       accent: "bg-indigo-600 hover:bg-indigo-700",
       iconBg: "bg-indigo-600",
@@ -107,11 +93,31 @@ export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
       priceColor: "text-indigo-600",
     },
   },
+  enterprise: {
+    icon: Building2,
+    features: [
+      ...SHARED_FEATURES,
+      "SLA dedicado e gerente de conta",
+      "Integrações personalizadas",
+      "Auditoria avançada e compliance",
+    ],
+    theme: {
+      accent: "bg-gray-800 hover:bg-gray-900",
+      iconBg: "bg-gray-800",
+      iconColor: "text-white",
+      checkColor: "text-gray-600",
+      ringBorder: "border-gray-700",
+      selectedBg: "bg-gray-50/60",
+      priceColor: "text-gray-700",
+    },
+  },
 };
 
 function getPresentation(slug: string): PlanPresentation {
+  // Annual plans (slug ending in -anual) use the base tier presentation
+  const baseSlug = slug.endsWith("-anual") ? slug.slice(0, -6) : slug;
   return (
-    PLAN_PRESENTATION[slug] ?? {
+    PLAN_PRESENTATION[baseSlug] ?? {
       icon: Sparkles,
       features: [],
       theme: PLAN_PRESENTATION.starter.theme,
@@ -433,12 +439,15 @@ function ProfileCard({
 interface Step3PlanProps {
   plans: SubscriptionPlan[];
   plansLoading: boolean;
-  /** Slug do plano selecionado. */
   selectedSlug: string;
   onSelectPlan: (slug: string) => void;
-  /** Quando true, exibe selo "Free Trial" no card e oculta o pre\u00e7o. */
-  trialMode: boolean;
-  onToggleTrialMode: (value: boolean) => void;
+  billingPeriod: "MONTHLY" | "YEARLY";
+  onBillingPeriodChange: (p: "MONTHLY" | "YEARLY") => void;
+  stripeLoaded: boolean;
+  cardHolderName: string;
+  onCardHolderNameChange: (v: string) => void;
+  cardHolderNameError: string;
+  cardError: string;
 }
 
 export function Step3Plan({
@@ -446,39 +455,50 @@ export function Step3Plan({
   plansLoading,
   selectedSlug,
   onSelectPlan,
-  trialMode,
-  onToggleTrialMode,
+  billingPeriod,
+  onBillingPeriodChange,
+  stripeLoaded,
+  cardHolderName,
+  onCardHolderNameChange,
+  cardHolderNameError,
+  cardError,
 }: Step3PlanProps) {
+  // Enterprise é sempre exibido (sem versão anual separada)
+  const enterprisePlan = plans.find((p) => p.slug === "enterprise");
   const sortedPlans = [...plans]
-    .filter((p) => p.slug !== "free-trial")
+    .filter((p) => p.slug !== "enterprise" && p.billingPeriod === billingPeriod)
     .sort((a, b) => a.sortOrder - b.sortOrder);
+  const selectedPlan = [...plans].find((p) => p.slug === selectedSlug);
 
   return (
     <div className="space-y-6">
-      {/* Toggle Free Trial vs Preços */}
+      {/* Toggle Mensal / Anual */}
       <div className="flex justify-center">
         <div className="inline-flex bg-white border border-gray-200 rounded-full p-1 shadow-sm">
           <button
             type="button"
-            onClick={() => onToggleTrialMode(true)}
+            onClick={() => onBillingPeriodChange("MONTHLY")}
             className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all ${
-              trialMode
+              billingPeriod === "MONTHLY"
                 ? "bg-teal-500 text-white shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            Free Trial
+            Mensal
           </button>
           <button
             type="button"
-            onClick={() => onToggleTrialMode(false)}
+            onClick={() => onBillingPeriodChange("YEARLY")}
             className={`px-4 py-1.5 text-xs font-semibold rounded-full transition-all ${
-              !trialMode
-                ? "bg-gray-900 text-white shadow-sm"
+              billingPeriod === "YEARLY"
+                ? "bg-teal-500 text-white shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            Ver preços
+            Anual
+            <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-700">
+              -2 meses
+            </span>
           </button>
         </div>
       </div>
@@ -492,14 +512,14 @@ export function Step3Plan({
       ) : sortedPlans.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
           Não foi possível carregar os planos no momento. Sua conta será criada
-          em modo Free Trial e você poderá escolher um plano depois.
+          no plano Starter com 30 dias grátis e você poderá mudar depois.
         </div>
       ) : (
         <>
           {/* Mobile: carrossel */}
           <div className="sm:hidden -mx-4 px-4">
             <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {sortedPlans.map((plan) => {
+              {[...sortedPlans, ...(enterprisePlan ? [enterprisePlan] : [])].map((plan) => {
                 const presentation = getPresentation(plan.slug);
                 return (
                   <div
@@ -513,8 +533,7 @@ export function Step3Plan({
                       theme={presentation.theme}
                       highlight={presentation.highlight}
                       selected={plan.slug === selectedSlug}
-                      onSelect={() => onSelectPlan(plan.slug)}
-                      trialMode={trialMode}
+                      onSelect={plan.slug === "enterprise" ? () => {} : () => onSelectPlan(plan.slug)}
                     />
                   </div>
                 );
@@ -522,11 +541,11 @@ export function Step3Plan({
             </div>
             {/* Indicadores de paginação */}
             <div className="flex justify-center gap-1.5 mt-2">
-              {sortedPlans.map((plan) => (
+              {[...sortedPlans, ...(enterprisePlan ? [enterprisePlan] : [])].map((plan) => (
                 <button
                   key={plan.id}
                   type="button"
-                  onClick={() => onSelectPlan(plan.slug)}
+                  onClick={plan.slug === "enterprise" ? () => {} : () => onSelectPlan(plan.slug)}
                   className={`h-1.5 rounded-full transition-all ${
                     plan.slug === selectedSlug
                       ? "w-4 bg-teal-500"
@@ -539,8 +558,8 @@ export function Step3Plan({
           </div>
 
           {/* Tablet/Desktop: grid */}
-          <div className="hidden sm:grid sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5 items-stretch">
-            {sortedPlans.map((plan) => {
+          <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-5 items-stretch">
+            {[...sortedPlans, ...(enterprisePlan ? [enterprisePlan] : [])].map((plan) => {
               const presentation = getPresentation(plan.slug);
               return (
                 <PlanCard
@@ -551,14 +570,92 @@ export function Step3Plan({
                   theme={presentation.theme}
                   highlight={presentation.highlight}
                   selected={plan.slug === selectedSlug}
-                  onSelect={() => onSelectPlan(plan.slug)}
-                  trialMode={trialMode}
+                  onSelect={plan.slug === "enterprise" ? () => {} : () => onSelectPlan(plan.slug)}
                 />
               );
             })}
           </div>
+
+          {/* Formulário de cartão — apenas para planos pagos */}
+          {selectedPlan && !selectedPlan.isTrialDefault && selectedPlan.slug !== "enterprise" && (
+            <StripeCardSection
+              stripeLoaded={stripeLoaded}
+              holderName={cardHolderName}
+              onHolderNameChange={onCardHolderNameChange}
+              holderNameError={cardHolderNameError}
+              cardError={cardError}
+            />
+          )}
         </>
       )}
+    </div>
+  );
+}
+
+// ─── Formulário Stripe inline ─────────────────────────────────────────────────
+
+interface StripeCardSectionProps {
+  stripeLoaded: boolean;
+  holderName: string;
+  onHolderNameChange: (v: string) => void;
+  holderNameError: string;
+  cardError: string;
+}
+
+export function StripeCardSection({
+  stripeLoaded,
+  holderName,
+  onHolderNameChange,
+  holderNameError,
+  cardError,
+}: StripeCardSectionProps) {
+  return (
+    <div className="max-w-2xl mx-auto mt-2 p-5 bg-white rounded-2xl border border-gray-200 shadow-sm">
+      <h3 className="text-sm font-semibold text-gray-900 mb-4">
+        Dados do cartão de crédito
+      </h3>
+      <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-xl text-xs text-blue-700 mb-4">
+        <span>
+          Dados coletados diretamente pelo Stripe (PCI-DSS nível 1). Nunca
+          passam pelo nosso servidor.
+        </span>
+      </div>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Nome impresso no cartão <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={holderName}
+            onChange={(e) => onHolderNameChange(e.target.value)}
+            placeholder="Como aparece no cartão"
+            className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none transition"
+            autoComplete="cc-name"
+          />
+          {holderNameError && (
+            <p className="mt-1 text-xs text-red-600">{holderNameError}</p>
+          )}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Dados do cartão <span className="text-red-500">*</span>
+          </label>
+          {stripeLoaded ? (
+            <div
+              id="stripe-card-element-signup"
+              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-3 text-sm focus-within:border-teal-500 focus-within:ring-1 focus-within:ring-teal-500 transition"
+            />
+          ) : (
+            <div className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-400">
+              Carregando...
+            </div>
+          )}
+          {cardError && (
+            <p className="mt-1 text-xs text-red-600">{cardError}</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

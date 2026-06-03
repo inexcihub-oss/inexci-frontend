@@ -9,3 +9,4 @@ export {
 export { useSwipeToClose } from "./useSwipeToClose";
 export { useNotifications } from "./useNotifications";
 export { useRequireAiConsent } from "./useRequireAiConsent";
+export { useDoctorHeaderEditor } from "./useDoctorHeaderEditor";

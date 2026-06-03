@@ -26,7 +26,6 @@ import { differenceInDays, parse } from "date-fns";
 // Stale tier configuration
 type StaleTier = {
   minDays: number;
-  label: string;
   bg: string;
   text: string;
   dot: string;
@@ -34,21 +33,18 @@ type StaleTier = {
 const STALE_TIERS: StaleTier[] = [
   {
     minDays: 15,
-    label: "Há mais de 15 dias neste status",
     bg: "bg-red-50",
     text: "text-red-700",
     dot: "bg-red-500",
   },
   {
     minDays: 7,
-    label: "Há 7 dias neste status",
     bg: "bg-orange-50",
     text: "text-orange-700",
     dot: "bg-orange-500",
   },
   {
     minDays: 3,
-    label: "Há 3 dias neste status",
     bg: "bg-yellow-50",
     text: "text-yellow-700",
     dot: "bg-yellow-500",
@@ -63,14 +59,14 @@ const TERMINAL_STATUSES: SurgeryRequestStatus[] = [
 ];
 
 function getStaleTier(
-  createdAt: string,
+  referenceDate: string,
   status: SurgeryRequestStatus,
 ): (StaleTier & { days: number }) | null {
   if (TERMINAL_STATUSES.includes(status)) return null;
   try {
-    const date = createdAt.includes("/")
-      ? parse(createdAt, "dd/MM/yyyy", new Date())
-      : new Date(createdAt);
+    const date = referenceDate.includes("/")
+      ? parse(referenceDate, "dd/MM/yyyy", new Date())
+      : new Date(referenceDate);
     const days = differenceInDays(new Date(), date);
     const tier = STALE_TIERS.find((t) => days >= t.minDays);
     return tier ? { ...tier, days } : null;
@@ -468,7 +464,11 @@ export const ProcedureCard = memo<ProcedureCardProps>(
 
         {/* Stale Badge */}
         {(() => {
-          const tier = getStaleTier(procedure.createdAt, procedure.status);
+          const staleReferenceAt =
+            procedure.lastStatusChangedAt ??
+            procedure.updatedAt ??
+            procedure.createdAt;
+          const tier = getStaleTier(staleReferenceAt, procedure.status);
           if (!tier) return null;
           return (
             <div
@@ -476,7 +476,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
               title={`Parada há ${tier.days} dia${tier.days !== 1 ? "s" : ""}`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${tier.dot}`} />⏰{" "}
-              {tier.label}
+              {`Há ${tier.days} dias neste status`}
             </div>
           );
         })()}

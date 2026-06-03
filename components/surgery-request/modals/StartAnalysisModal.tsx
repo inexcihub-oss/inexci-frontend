@@ -195,8 +195,10 @@ export function StartAnalysisModal({
           {/* Alert informativo — apenas desktop */}
           <div className="hidden md:flex items-center gap-3 p-3 md:p-4 bg-blue-50 rounded-xl">
             <p className="text-sm md:text-base text-blue-600 leading-normal">
-              Para indicar que sua solicitação está em análise, preencha o
-              número da solicitação e a data de recebimento.
+              Este protocolo corresponde ao número gerado pela operadora do
+              convênio no momento em que a solicitação enviada pelo hospital foi
+              recebida. Isso indica que o processo foi protocolado e encontra-se
+              em análise pela operadora.
             </p>
           </div>
 

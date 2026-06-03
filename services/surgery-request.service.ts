@@ -160,6 +160,7 @@ export interface SimpleSurgeryRequestPayload {
 
 export interface UpdateBasicDataPayload {
   priority?: number;
+  doctorId?: string;
 }
 
 // ─── Payloads de transição de status ──────────────────────────────────────────
@@ -169,6 +170,7 @@ export interface SendPayload {
   to?: string;
   subject?: string;
   message?: string;
+  cc?: string;
   notifyPatient?: boolean;
 }
 
@@ -271,6 +273,9 @@ export interface SurgeryRequestListItem {
   protocol: string | null;
   priority: number;
   createdAt: string;
+  lastStatusChangedAt?: string | null;
+  last_status_changed_at?: string | null;
+  updatedAt?: string;
   surgeryDate: string | null;
   patient: { id: string; name: string } | null;
   doctor: { id: string; name: string } | null;
@@ -472,6 +477,15 @@ export const surgeryRequestService = {
     const response = await api.post(
       `/surgery-requests/${requestId}/send`,
       data,
+    );
+    return response.data;
+  },
+
+  async getCcRecipients(
+    requestId: string | number,
+  ): Promise<Array<{ id: string; name: string; email: string }>> {
+    const response = await api.get(
+      `/surgery-requests/${requestId}/cc-recipients`,
     );
     return response.data;
   },

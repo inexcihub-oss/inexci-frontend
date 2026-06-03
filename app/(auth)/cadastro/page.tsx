@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,10 @@ import { Button } from "@/components/ui";
 import { step1Schema, step2Schema } from "@/lib/schemas/cadastro.schema";
 import { unmask } from "@/lib/masks";
 import type { SubscriptionPlan } from "@/types";
+import type {
+  Stripe as StripeType,
+  StripeCardElement,
+} from "@stripe/stripe-js";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 
 const TOTAL_STEPS = 3;
@@ -51,18 +55,18 @@ const STEP_HERO: Record<
 
 const STEP_BENEFITS: Record<number, { icon: string; text: string }[]> = {
   1: [
-    { icon: "\u{1F512}", text: "Dados protegidos com criptografia" },
-    { icon: "\u26A1", text: "Configuração em minutos" },
-    { icon: "\u{1F193}", text: "30 dias grátis sem cartão de crédito" },
+    { icon: "🔒", text: "Dados protegidos com criptografia" },
+    { icon: "⚡", text: "Configuração em minutos" },
+    { icon: "🆓", text: "Starter com 30 dias grátis sem cartão" },
   ],
   2: [
-    { icon: "\u{1FA7A}", text: "Médicos criam solicitações cirúrgicas" },
-    { icon: "\u{1F465}", text: "Gestores adicionam médicos à equipe" },
-    { icon: "\u{1F4CB}", text: "Kanban inteligente para todos os perfis" },
+    { icon: "🩺", text: "Médicos criam solicitações cirúrgicas" },
+    { icon: "👥", text: "Gestores adicionam médicos à equipe" },
+    { icon: "📋", text: "Kanban inteligente para todos os perfis" },
   ],
 };
 
-const DEFAULT_PLAN_SLUG = "profissional";
+const DEFAULT_PLAN_SLUG = "starter";
 
 export default function CadastroPage() {
   const { register } = useAuth();
@@ -92,17 +96,50 @@ export default function CadastroPage() {
     Partial<Record<keyof Step2Data, string>>
   >({});
 
-  // ─── Etapa 3 ──────────────────────────────────────────────────────────────
+  // ─── Etapa 3 — planos ────────────────────────────────────────────────────
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState<string>(DEFAULT_PLAN_SLUG);
-  const [trialMode, setTrialMode] = useState<boolean>(false);
+  const [billingPeriod, setBillingPeriod] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
+
+  // ─── Stripe ───────────────────────────────────────────────────────────────
+  const [cardElement, setCardElement] = useState<StripeCardElement | null>(
+    null,
+  );
+  const [stripeLoaded, setStripeLoaded] = useState(false);
+  const [cardHolderName, setCardHolderName] = useState("");
+  const [cardHolderNameError, setCardHolderNameError] = useState("");
+  const [cardError, setCardError] = useState("");
+  const stripeRef = useRef<StripeType | null>(null);
+  const cardElementRef = useRef<StripeCardElement | null>(null);
 
   const [error, setError] = useState("");
   const [errorType, setErrorType] = useState<
     "" | "email_active" | "email_pending" | "generic"
   >("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const selectedIsTrialPlan =
+    plans.find((p) => p.slug === selectedSlug)?.isTrialDefault ?? true;
+
+  const handleBillingPeriodChange = (period: "MONTHLY" | "YEARLY") => {
+    setBillingPeriod(period);
+    // Mapeia o slug selecionado para o equivalente no outro período
+    // Convenção: slug anual = slug mensal + "-anual"
+    if (period === "YEARLY") {
+      const annualSlug = selectedSlug.endsWith("-anual")
+        ? selectedSlug
+        : `${selectedSlug}-anual`;
+      const exists = plans.some((p) => p.slug === annualSlug);
+      if (exists) setSelectedSlug(annualSlug);
+    } else {
+      const monthlySlug = selectedSlug.endsWith("-anual")
+        ? selectedSlug.slice(0, -6)
+        : selectedSlug;
+      const exists = plans.some((p) => p.slug === monthlySlug);
+      if (exists) setSelectedSlug(monthlySlug);
+    }
+  };
 
   // Carrega planos quando entrar na etapa 3
   useEffect(() => {
@@ -113,16 +150,75 @@ export default function CadastroPage() {
       .then((data) => {
         setPlans(data);
         const hasDefault = data.some((p) => p.slug === DEFAULT_PLAN_SLUG);
-        if (!hasDefault) {
-          const firstPaid = data.find((p) => p.slug !== "free-trial");
-          if (firstPaid) setSelectedSlug(firstPaid.slug);
+        if (!hasDefault && data.length > 0) {
+          setSelectedSlug(data[0].slug);
         }
       })
       .catch(() => {
-        // Silencioso — sem planos, o backend cai no plano default em Free Trial
+        // Silencioso — sem planos, o backend usa o plano default (starter)
       })
       .finally(() => setPlansLoading(false));
   }, [currentStep, plans.length]);
+
+  // Carrega Stripe quando um plano pago é selecionado na etapa 3
+  useEffect(() => {
+    if (currentStep !== 3 || selectedIsTrialPlan) {
+      if (selectedIsTrialPlan) {
+        setCardElement(null);
+        setStripeLoaded(false);
+        stripeRef.current = null;
+        cardElementRef.current = null;
+      }
+      return;
+    }
+    let cancelled = false;
+    import("@stripe/stripe-js").then(({ loadStripe }) => {
+      loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "").then(
+        (s) => {
+          if (cancelled || !s) return;
+          stripeRef.current = s;
+          const els = s.elements({ locale: "pt-BR" });
+          const card = els.create("card", {
+            style: {
+              base: {
+                fontSize: "14px",
+                color: "#111827",
+                fontFamily: "inherit",
+                "::placeholder": { color: "#9CA3AF" },
+              },
+              invalid: { color: "#DC2626" },
+            },
+            hidePostalCode: true,
+          });
+          cardElementRef.current = card;
+          setCardElement(card);
+          setStripeLoaded(true);
+        },
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentStep, selectedIsTrialPlan]);
+
+  // Monta/desmonta o CardElement no DOM
+  useEffect(() => {
+    if (!cardElement) return;
+    const container = document.getElementById("stripe-card-element-signup");
+    if (container && container.childNodes.length === 0) {
+      cardElement.mount(container);
+      cardElement.on("change", (e) => {
+        setCardError(e.error?.message ?? "");
+      });
+    }
+    return () => {
+      try {
+        cardElement.unmount();
+      } catch {
+        // ignore se não estava montado
+      }
+    };
+  }, [cardElement]);
 
   const handleStep1Change = (field: keyof Step1Data, value: string) => {
     setStep1((prev) => ({ ...prev, [field]: value }));
@@ -206,6 +302,54 @@ export default function CadastroPage() {
     setIsLoading(true);
     try {
       const phoneDigits = unmask(step1.phone);
+
+      type PaymentFields = {
+        paymentMethodId?: string;
+        cardBrand?: string;
+        cardLast4?: string;
+        cardHolderName?: string;
+        cardExpMonth?: number;
+        cardExpYear?: number;
+      };
+      let paymentFields: PaymentFields = {};
+
+      if (!selectedIsTrialPlan) {
+        if (!cardHolderName.trim() || cardHolderName.trim().length < 2) {
+          setCardHolderNameError("Informe o nome impresso no cartão");
+          setIsLoading(false);
+          return;
+        }
+        const s = stripeRef.current;
+        const ce = cardElementRef.current;
+        if (!s || !ce) {
+          setError(
+            "Formulário de pagamento não carregado. Aguarde e tente novamente.",
+          );
+          setIsLoading(false);
+          return;
+        }
+        const { paymentMethod, error: stripeError } =
+          await s.createPaymentMethod({
+            type: "card",
+            card: ce,
+            billing_details: { name: cardHolderName.trim() },
+          });
+        if (stripeError || !paymentMethod) {
+          setError(stripeError?.message ?? "Erro ao processar cartão.");
+          setIsLoading(false);
+          return;
+        }
+        const card = paymentMethod.card!;
+        paymentFields = {
+          paymentMethodId: paymentMethod.id,
+          cardBrand: card.brand,
+          cardLast4: card.last4,
+          cardHolderName: cardHolderName.trim(),
+          cardExpMonth: card.exp_month,
+          cardExpYear: card.exp_year,
+        };
+      }
+
       await register({
         name: step1.name,
         email: step1.email,
@@ -218,6 +362,7 @@ export default function CadastroPage() {
           specialty: step2.specialty || undefined,
         }),
         planSlug: selectedSlug || undefined,
+        ...paymentFields,
       });
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -235,7 +380,6 @@ export default function CadastroPage() {
   };
 
   // A etapa 3 usa um layout dedicado em tela cheia (sem painel direito)
-  // pra acomodar os 4 cards de plano sem precisar de scroll lateral.
   if (currentStep === 3) {
     return (
       <PlanStepLayout
@@ -243,8 +387,14 @@ export default function CadastroPage() {
         plansLoading={plansLoading}
         selectedSlug={selectedSlug}
         onSelectPlan={setSelectedSlug}
-        trialMode={trialMode}
-        onToggleTrialMode={setTrialMode}
+        billingPeriod={billingPeriod}
+        onBillingPeriodChange={handleBillingPeriodChange}
+        selectedIsTrialPlan={selectedIsTrialPlan}
+        stripeLoaded={stripeLoaded}
+        cardHolderName={cardHolderName}
+        onCardHolderNameChange={setCardHolderName}
+        cardHolderNameError={cardHolderNameError}
+        cardError={cardError}
         onBack={handleBack}
         onSubmit={handleSubmit}
         isLoading={isLoading}
@@ -406,8 +556,14 @@ interface PlanStepLayoutProps {
   plansLoading: boolean;
   selectedSlug: string;
   onSelectPlan: (slug: string) => void;
-  trialMode: boolean;
-  onToggleTrialMode: (value: boolean) => void;
+  billingPeriod: "MONTHLY" | "YEARLY";
+  onBillingPeriodChange: (p: "MONTHLY" | "YEARLY") => void;
+  selectedIsTrialPlan: boolean;
+  stripeLoaded: boolean;
+  cardHolderName: string;
+  onCardHolderNameChange: (v: string) => void;
+  cardHolderNameError: string;
+  cardError: string;
   onBack: () => void;
   onSubmit: () => void;
   isLoading: boolean;
@@ -420,8 +576,14 @@ function PlanStepLayout({
   plansLoading,
   selectedSlug,
   onSelectPlan,
-  trialMode,
-  onToggleTrialMode,
+  billingPeriod,
+  onBillingPeriodChange,
+  selectedIsTrialPlan,
+  stripeLoaded,
+  cardHolderName,
+  onCardHolderNameChange,
+  cardHolderNameError,
+  cardError,
   onBack,
   onSubmit,
   isLoading,
@@ -429,19 +591,16 @@ function PlanStepLayout({
   errorType,
 }: PlanStepLayoutProps) {
   const selectedPlan = plans.find((p) => p.slug === selectedSlug);
-  const ctaLabel = trialMode
+  const ctaLabel = selectedIsTrialPlan
     ? "Começar 30 dias grátis"
-    : "Continuar e criar conta";
+    : "Assinar agora";
 
   return (
     /*
      * Layout: o wrapper é o próprio container de scroll (h-screen + overflow-y-auto).
-     * Necessário porque o `body` global tem `overflow: hidden`, então `min-h-screen`
-     * sozinho não permite rolagem. Com este wrapper rolando, o footer `sticky bottom-0`
-     * gruda corretamente na base da viewport sem cobrir os cards.
      */
     <div className="flex flex-col h-screen overflow-y-auto bg-gray-50">
-      {/* Decorações de fundo — pointer-events-none para não bloquear interação */}
+      {/* Decorações de fundo */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden -z-0">
         <div className="absolute -top-40 -right-32 w-[360px] sm:w-[520px] h-[360px] sm:h-[520px] bg-purple-200 rounded-full filter blur-3xl opacity-40" />
         <div className="absolute top-1/3 -left-40 w-[280px] sm:w-[420px] h-[280px] sm:h-[420px] bg-teal-200 rounded-full filter blur-3xl opacity-30" />
@@ -475,11 +634,14 @@ function PlanStepLayout({
             Etapa 3 de 3 — Seu plano
           </span>
           <h1 className="mt-3 text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 tracking-tight font-urbanist">
-            Sem cartão. Sem compromisso.
+            {selectedIsTrialPlan
+              ? "Starter grátis por 30 dias. Sem cartão."
+              : "Escolha o plano ideal para você."}
           </h1>
           <p className="mt-2 text-xs sm:text-sm text-gray-500 px-2">
-            Comece com 30 dias grátis em qualquer plano. Cancele quando quiser,
-            sem multa.
+            {selectedIsTrialPlan
+              ? "Comece no Starter sem cartão. Faça upgrade quando quiser, sem multa."
+              : "Planos pagos iniciam a cobrança imediatamente. Cancele quando quiser."}
           </p>
         </div>
 
@@ -488,14 +650,19 @@ function PlanStepLayout({
           <PlanStepProgress current={3} total={TOTAL_STEPS} />
         </div>
 
-        {/* Cards de plano */}
+        {/* Cards de plano + formulário de cartão */}
         <Step3Plan
           plans={plans}
           plansLoading={plansLoading}
           selectedSlug={selectedSlug}
           onSelectPlan={onSelectPlan}
-          trialMode={trialMode}
-          onToggleTrialMode={onToggleTrialMode}
+          billingPeriod={billingPeriod}
+          onBillingPeriodChange={onBillingPeriodChange}
+          stripeLoaded={stripeLoaded}
+          cardHolderName={cardHolderName}
+          onCardHolderNameChange={onCardHolderNameChange}
+          cardHolderNameError={cardHolderNameError}
+          cardError={cardError}
         />
 
         {/* Erro */}
@@ -523,29 +690,25 @@ function PlanStepLayout({
         )}
       </div>
 
-      {/* Footer — parte do fluxo normal da página */}
+      {/* Footer */}
       <div className="w-full bg-gray-50/90 backdrop-blur-sm border-t border-gray-200/60 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-        {/* Linha principal: info do plano + botões */}
         <div className="max-w-7xl mx-auto flex items-center gap-3">
-          {/* Ícone — oculto no mobile para economizar espaço */}
           <div className="hidden sm:flex w-9 h-9 rounded-xl bg-teal-50 items-center justify-center shrink-0">
             <ShieldCheck className="w-4 h-4 text-teal-600" />
           </div>
 
-          {/* Info do plano selecionado */}
           <div className="min-w-0 flex-1">
             <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
               Plano selecionado:{" "}
               <span className="text-teal-600">{selectedPlan?.name ?? "—"}</span>
             </p>
             <p className="text-[11px] text-gray-500 truncate">
-              {trialMode
+              {selectedIsTrialPlan
                 ? "Trial de 30 dias gratuito · Sem cartão agora"
-                : "Trial de 30 dias antes da primeira cobrança"}
+                : "Cobrança imediata · Cancele quando quiser"}
             </p>
           </div>
 
-          {/* Botões */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
@@ -577,7 +740,6 @@ function PlanStepLayout({
           </div>
         </div>
 
-        {/* Garantias — em linha no desktop, compactas no mobile */}
         <div className="max-w-7xl mx-auto mt-2.5 flex items-center justify-center gap-3 sm:gap-6 text-[10px] sm:text-[11px] text-gray-400">
           <span className="inline-flex items-center gap-1">
             🔒 <span className="hidden xs:inline">Pagamento seguro</span>
@@ -590,7 +752,10 @@ function PlanStepLayout({
           </span>
           <span className="text-gray-300">·</span>
           <span className="inline-flex items-center gap-1">
-            🎁 <span>30 dias grátis</span>
+            🎁{" "}
+            <span>
+              {selectedIsTrialPlan ? "30 dias grátis" : "Stripe PCI-DSS"}
+            </span>
           </span>
         </div>
       </div>

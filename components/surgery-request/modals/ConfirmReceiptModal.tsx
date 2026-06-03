@@ -568,7 +568,7 @@ export function ConfirmReceiptModal({
                   type="text"
                   value={
                     process.env.NEXT_PUBLIC_MAIL_FROM_ADDRESS ||
-                    "noreply@inexci.com.br"
+                    "no-reply@mg.inexci.com.br"
                   }
                   disabled
                   readOnly

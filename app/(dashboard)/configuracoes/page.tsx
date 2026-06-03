@@ -28,9 +28,7 @@ import api from "@/lib/api";
 import { userService } from "@/services/user.service";
 import { notificationService } from "@/services/notification.service";
 import { uploadService } from "@/services/upload.service";
-import { doctorHeaderService } from "@/services/doctor-header.service";
 import { clearAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
-import type { DoctorHeader } from "@/types/doctor-header.types";
 import dynamic from "next/dynamic";
 const BillingSection = dynamic(
   () =>
@@ -38,8 +36,8 @@ const BillingSection = dynamic(
   { ssr: false },
 );
 import { removeBackground } from "@/lib/utils";
-import { sanitizeHtml } from "@/lib/sanitize-html";
-import { RichTextEditor } from "@/components/shared/RichTextEditor";
+import { DoctorHeaderEditor } from "@/components/shared/DoctorHeaderEditor";
+import { useDoctorHeaderEditor } from "@/hooks/useDoctorHeaderEditor";
 import {
   User,
   Camera,
@@ -274,20 +272,26 @@ function ConfiguracoesPageInner() {
     {},
   );
 
-  // Estados do cabeçalho customizado
-  const [loadingHeader, setLoadingHeader] = useState(false);
-  const [currentHeader, setCurrentHeader] = useState<DoctorHeader | null>(null);
-  const [headerLogoPreview, setHeaderLogoPreview] = useState<string | null>(
-    null,
-  );
-  const [headerLogoFile, setHeaderLogoFile] = useState<File | null>(null);
-  const [headerLogoDeleted, setHeaderLogoDeleted] = useState(false);
-  const [headerLogoPosition, setHeaderLogoPosition] = useState<
-    "left" | "center" | "right"
-  >("left");
-  const [headerContentHtml, setHeaderContentHtml] = useState<string>("");
-  const [savingHeader, setSavingHeader] = useState(false);
-  const headerLogoInputRef = useRef<HTMLInputElement>(null);
+  const {
+    loadingHeader,
+    savingHeader,
+    currentHeader,
+    headerLogoPreview,
+    headerLogoPosition,
+    headerContentHtml,
+    headerLogoInputRef,
+    setHeaderLogoPosition,
+    setHeaderContentHtml,
+    handleHeaderLogoChange,
+    handleDeleteHeaderLogo,
+    handleSaveHeader,
+    handleDeleteHeader,
+  } = useDoctorHeaderEditor({
+    enabled: !!profile.isDoctor,
+    mode: "self",
+    showToast,
+    formatError: (error, fallback) => getApiErrorMessage(error, fallback),
+  });
 
   // Carregar dados do usuário
   useEffect(() => {
@@ -396,43 +400,6 @@ function ConfiguracoesPageInner() {
 
     loadNotificationSettings();
   }, []);
-
-  // Carregar cabeçalho customizado
-  useEffect(() => {
-    if (!profile.isDoctor) return;
-    const loadHeader = async () => {
-      setLoadingHeader(true);
-      try {
-        const header = await doctorHeaderService.get();
-        setCurrentHeader(header);
-        if (header) {
-          setHeaderLogoPosition(header.logoPosition);
-          setHeaderContentHtml(header.contentHtml || "");
-          if (header.logoUrl) {
-            const logoUrl = header.logoUrl;
-            if (
-              logoUrl.startsWith("http://") ||
-              logoUrl.startsWith("https://")
-            ) {
-              setHeaderLogoPreview(logoUrl);
-            } else {
-              try {
-                const signed = await uploadService.getSignedUrl(logoUrl);
-                setHeaderLogoPreview(signed);
-              } catch {
-                setHeaderLogoPreview(null);
-              }
-            }
-          }
-        }
-      } catch {
-        // silencia erro
-      } finally {
-        setLoadingHeader(false);
-      }
-    };
-    loadHeader();
-  }, [profile.isDoctor]);
 
   // Handlers de upload
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -681,283 +648,25 @@ function ConfiguracoesPageInner() {
     }
   };
 
-  // Handlers do cabeçalho
-  const handleHeaderLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      showToast("A logo deve ter no máximo 2MB", "error");
-      return;
-    }
-    setHeaderLogoFile(file);
-    setHeaderLogoDeleted(false);
-    const reader = new FileReader();
-    reader.onloadend = () => setHeaderLogoPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleDeleteHeaderLogo = () => {
-    setHeaderLogoFile(null);
-    setHeaderLogoPreview(null);
-    setHeaderLogoDeleted(true);
-    if (headerLogoInputRef.current) headerLogoInputRef.current.value = "";
-  };
-
-  const handleSaveHeader = async () => {
-    setSavingHeader(true);
-    try {
-      let logoPath: string | null = currentHeader?.logoUrl ?? null;
-
-      if (headerLogoFile) {
-        const result = await uploadService.uploadSingle(
-          headerLogoFile,
-          "headers",
-        );
-        logoPath = result.data.path;
-      } else if (headerLogoDeleted) {
-        logoPath = null;
-      }
-
-      const saved = await doctorHeaderService.upsert({
-        logoUrl: logoPath,
-        logoPosition: headerLogoPosition,
-        contentHtml: headerContentHtml || null,
-      });
-      setCurrentHeader(saved);
-      setHeaderLogoDeleted(false);
-      setHeaderLogoFile(null);
-      showToast("Cabeçalho salvo com sucesso!", "success");
-    } catch (error) {
-      showToast(getApiErrorMessage(error, "Erro ao salvar cabeçalho"), "error");
-    } finally {
-      setSavingHeader(false);
-    }
-  };
-
-  const handleDeleteHeader = async () => {
-    setSavingHeader(true);
-    try {
-      await doctorHeaderService.remove();
-      setCurrentHeader(null);
-      setHeaderLogoPreview(null);
-      setHeaderLogoFile(null);
-      setHeaderLogoDeleted(false);
-      setHeaderLogoPosition("left");
-      setHeaderContentHtml("");
-      showToast("Cabeçalho removido com sucesso!", "success");
-    } catch (error) {
-      showToast(
-        getApiErrorMessage(error, "Erro ao remover cabeçalho"),
-        "error",
-      );
-    } finally {
-      setSavingHeader(false);
-    }
-  };
-
   // Render da aba de Cabeçalho
-  const renderHeaderTab = () => {
-    if (loadingHeader) {
-      return (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-6">
-        {/* Upload da logo */}
-        <Card className="border border-gray-200 rounded-2xl">
-          <CardHeader className="p-6 pb-4">
-            <h3 className="text-base font-semibold text-gray-900">
-              Logo do Cabeçalho
-            </h3>
-            <p className="text-sm text-gray-500">
-              Imagem exibida no topo dos documentos (PNG, JPG). Máximo 2MB.
-            </p>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            <div className="flex items-center gap-6">
-              <div className="w-32 h-16 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden">
-                {headerLogoPreview ? (
-                  <img
-                    src={headerLogoPreview}
-                    alt="Logo"
-                    className="max-h-14 max-w-28 object-contain"
-                  />
-                ) : (
-                  <LayoutTemplate className="w-8 h-8 text-gray-300" />
-                )}
-              </div>
-              <div className="flex-1 space-y-2">
-                <div className="flex gap-2 flex-wrap">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => headerLogoInputRef.current?.click()}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Fazer upload
-                  </Button>
-                  {headerLogoPreview && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={handleDeleteHeaderLogo}
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      Remover logo
-                    </Button>
-                  )}
-                </div>
-                <input
-                  ref={headerLogoInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/jpg"
-                  onChange={handleHeaderLogoChange}
-                  className="hidden"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Posição da logo */}
-        <Card className="border border-gray-200 rounded-2xl">
-          <CardHeader className="p-6 pb-4">
-            <h3 className="text-base font-semibold text-gray-900">
-              Posição da Logo
-            </h3>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            <div className="flex gap-3">
-              <button
-                onClick={() => setHeaderLogoPosition("left")}
-                className={cn(
-                  "flex-1 py-3 px-4 rounded-xl border text-sm font-medium transition-all",
-                  headerLogoPosition === "left"
-                    ? "bg-primary-50 border-primary-500 text-primary-700"
-                    : "border-gray-200 text-gray-600 hover:border-gray-300",
-                )}
-              >
-                ← Esquerda
-              </button>
-              <button
-                onClick={() => setHeaderLogoPosition("center")}
-                className={cn(
-                  "flex-1 py-3 px-4 rounded-xl border text-sm font-medium transition-all",
-                  headerLogoPosition === "center"
-                    ? "bg-primary-50 border-primary-500 text-primary-700"
-                    : "border-gray-200 text-gray-600 hover:border-gray-300",
-                )}
-              >
-                Centro
-              </button>
-              <button
-                onClick={() => setHeaderLogoPosition("right")}
-                className={cn(
-                  "flex-1 py-3 px-4 rounded-xl border text-sm font-medium transition-all",
-                  headerLogoPosition === "right"
-                    ? "bg-primary-50 border-primary-500 text-primary-700"
-                    : "border-gray-200 text-gray-600 hover:border-gray-300",
-                )}
-              >
-                Direita →
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Conteúdo texto livre */}
-        <Card className="border border-gray-200 rounded-2xl">
-          <CardHeader className="p-6 pb-4">
-            <h3 className="text-base font-semibold text-gray-900">
-              Texto do Cabeçalho
-            </h3>
-            <p className="text-sm text-gray-500">
-              Nome da clínica, endereço, telefone, especialidade, registros,
-              etc.
-            </p>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            <RichTextEditor
-              value={headerContentHtml}
-              onChange={setHeaderContentHtml}
-              placeholder="Digite o texto do cabeçalho..."
-            />
-          </CardContent>
-        </Card>
-
-        {/* Pré-visualização */}
-        {(headerLogoPreview || headerContentHtml) && (
-          <Card className="border border-gray-200 rounded-2xl">
-            <CardHeader className="p-6 pb-4">
-              <h3 className="text-base font-semibold text-gray-900">
-                Pré-visualização
-              </h3>
-              <p className="text-sm text-gray-500">
-                Como o cabeçalho aparecerá nos documentos
-              </p>
-            </CardHeader>
-            <CardContent className="p-6 pt-0">
-              <div className={cn("flex flex-col gap-2")}>
-                {headerLogoPreview && (
-                  <div
-                    className={cn(
-                      "flex",
-                      headerLogoPosition === "right"
-                        ? "justify-end"
-                        : headerLogoPosition === "center"
-                          ? "justify-center"
-                          : "justify-start",
-                    )}
-                  >
-                    <img
-                      src={headerLogoPreview}
-                      alt="Logo"
-                      className="max-h-20 max-w-48 object-contain flex-shrink-0"
-                    />
-                  </div>
-                )}
-                {headerContentHtml && (
-                  <div
-                    className="text-xs text-gray-700 leading-relaxed text-center"
-                    dangerouslySetInnerHTML={{
-                      __html: sanitizeHtml(headerContentHtml),
-                    }}
-                  />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Botões de ação */}
-        <div className="flex gap-3 flex-wrap">
-          <Button
-            onClick={handleSaveHeader}
-            isLoading={savingHeader}
-            className="min-h-[44px] rounded-xl"
-          >
-            Salvar Alterações
-          </Button>
-          {currentHeader && (
-            <Button
-              variant="outline"
-              onClick={handleDeleteHeader}
-              isLoading={savingHeader}
-              className="min-h-[44px] rounded-xl text-red-600 border-red-200 hover:bg-red-50"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Remover cabeçalho
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  };
+  const renderHeaderTab = () => (
+    <DoctorHeaderEditor
+      loading={loadingHeader}
+      saving={savingHeader}
+      currentHeader={currentHeader}
+      logoPreview={headerLogoPreview}
+      logoPosition={headerLogoPosition}
+      contentHtml={headerContentHtml}
+      logoInputRef={headerLogoInputRef}
+      onLogoChange={handleHeaderLogoChange}
+      onDeleteLogo={handleDeleteHeaderLogo}
+      onLogoPositionChange={setHeaderLogoPosition}
+      onContentHtmlChange={setHeaderContentHtml}
+      onSave={handleSaveHeader}
+      onDeleteHeader={handleDeleteHeader}
+      saveLabel="Salvar Alterações"
+    />
+  );
 
   // Render da aba de Perfil
   const renderProfileTab = () => {

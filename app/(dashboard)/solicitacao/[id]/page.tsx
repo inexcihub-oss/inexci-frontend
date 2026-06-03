@@ -18,8 +18,10 @@ import {
 import { DynamicPendencyList } from "@/components/pendencies";
 import {
   EditablePriority,
+  EditableDoctor,
   StatusBadge,
 } from "@/components/surgery-request/EditableFields";
+import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { MedicalReportEditor } from "@/components/laudo/MedicalReportEditor";
 import { SendRequestModal } from "@/components/surgery-request/SendRequestModal";
 import { PrimaryActionButton } from "@/components/surgery-request/PrimaryActionButton";
@@ -532,6 +534,8 @@ export default function SolicitacaoDetalhePage() {
   const [isConfirmReceiptModalOpen, setIsConfirmReceiptModalOpen] =
     useState(false);
   const [isCloseRequestModalOpen, setIsCloseRequestModalOpen] = useState(false);
+
+  const { data: availableDoctors = [] } = useAvailableDoctors();
 
   // Estado de exportação de PDF da solicitação
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -1287,25 +1291,18 @@ export default function SolicitacaoDetalhePage() {
                         Médico
                       </span>
                     </div>
-                    <div className="inline-flex items-center gap-2 h-7 px-3 rounded-md border border-gray-200 bg-gray-50 text-xs max-w-[210px]">
+                    <div className="flex items-center min-h-[28px]">
                       {solicitacao.doctor ? (
-                        <>
-                          <span className="w-5 h-5 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600">
-                            {solicitacao.doctor.name
-                              .split(" ")
-                              .slice(0, 2)
-                              .map((n: string) => n[0])
-                              .join("")
-                              .toUpperCase()}
-                          </span>
-                          <span className="min-w-0 max-w-[150px] sm:max-w-[160px] truncate text-left text-gray-700">
-                            {solicitacao.doctor.name}
-                          </span>
-                        </>
+                        <EditableDoctor
+                          currentDoctorId={solicitacao.doctor.id}
+                          currentDoctorName={solicitacao.doctor.name}
+                          surgeryRequestId={solicitacao.id}
+                          availableDoctors={availableDoctors}
+                          onUpdate={handleUpdateProcedure}
+                          disabled={solicitacao.status !== 1}
+                        />
                       ) : (
-                        <span className="flex-1 min-w-0 truncate text-left text-gray-400">
-                          —
-                        </span>
+                        <span className="text-xs text-gray-400">—</span>
                       )}
                     </div>
                   </div>

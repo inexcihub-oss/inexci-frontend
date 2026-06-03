@@ -28,6 +28,7 @@ import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import PageContainer from "@/components/PageContainer";
 import Button from "@/components/ui/Button";
+import NotificationActorAvatar from "@/components/notifications/NotificationActorAvatar";
 
 const NOTIFICATION_TYPES = [
   { value: "", label: "Todos os tipos" },
@@ -91,6 +92,24 @@ const getConfig = (type: string): NotificationConfig =>
 
 const getTypeLabel = (type: string) =>
   NOTIFICATION_TYPES.find((t) => t.value === type)?.label ?? type;
+
+const getActorMetadata = (notification: Notification) => {
+  const metadata = notification.metadata;
+  if (!metadata || typeof metadata !== "object") return null;
+
+  const actorId =
+    typeof metadata.actorId === "string" ? metadata.actorId : undefined;
+  const actorName =
+    typeof metadata.actorName === "string" ? metadata.actorName : undefined;
+  const actorAvatarUrl =
+    typeof metadata.actorAvatarUrl === "string"
+      ? metadata.actorAvatarUrl
+      : null;
+
+  if (!actorId && !actorName && !actorAvatarUrl) return null;
+
+  return { actorId, actorName, actorAvatarUrl };
+};
 
 export default function NotificacoesPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -252,6 +271,7 @@ export default function NotificacoesPage() {
             {notifications.map((notification) => {
               const config = getConfig(notification.type);
               const Icon = config.icon;
+              const actor = getActorMetadata(notification);
               return (
                 <div
                   key={notification.id}
@@ -266,14 +286,23 @@ export default function NotificacoesPage() {
                   )}
 
                   {/* Type icon */}
-                  <div
-                    className={cn(
-                      "shrink-0 mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center",
-                      config.bg,
-                    )}
-                  >
-                    <Icon className={cn("w-4 h-4", config.text)} />
-                  </div>
+                  {notification.type === "action_by_user" && actor ? (
+                    <NotificationActorAvatar
+                      actorId={actor.actorId}
+                      actorName={actor.actorName}
+                      actorAvatarUrl={actor.actorAvatarUrl}
+                      className="mt-0.5"
+                    />
+                  ) : (
+                    <div
+                      className={cn(
+                        "shrink-0 mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center",
+                        config.bg,
+                      )}
+                    >
+                      <Icon className={cn("w-4 h-4", config.text)} />
+                    </div>
+                  )}
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
@@ -330,10 +359,10 @@ export default function NotificacoesPage() {
                       </span>
                       <span className="text-gray-300 text-[10px]">·</span>
                       <span className="text-[11px] text-gray-400 tabular-nums">
-                        {formatDistanceToNow(
-                          new Date(notification.createdAt),
-                          { addSuffix: true, locale: ptBR },
-                        )}
+                        {formatDistanceToNow(new Date(notification.createdAt), {
+                          addSuffix: true,
+                          locale: ptBR,
+                        })}
                       </span>
                     </div>
                   </div>

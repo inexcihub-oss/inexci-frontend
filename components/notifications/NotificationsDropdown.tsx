@@ -13,6 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import { logger } from "@/lib/logger";
+import NotificationActorAvatar from "@/components/notifications/NotificationActorAvatar";
 
 interface NotificationsDropdownProps {
   isCollapsed?: boolean;
@@ -109,6 +110,43 @@ export default function NotificationsDropdown({
     }
   };
 
+  const getActorMetadata = (notification: Notification) => {
+    const metadata = notification.metadata;
+    if (!metadata || typeof metadata !== "object") return null;
+
+    const actorId =
+      typeof metadata.actorId === "string" ? metadata.actorId : undefined;
+    const actorName =
+      typeof metadata.actorName === "string" ? metadata.actorName : undefined;
+    const actorAvatarUrl =
+      typeof metadata.actorAvatarUrl === "string"
+        ? metadata.actorAvatarUrl
+        : null;
+
+    if (!actorId && !actorName && !actorAvatarUrl) return null;
+
+    return { actorId, actorName, actorAvatarUrl };
+  };
+
+  const renderNotificationIndicator = (notification: Notification) => {
+    if (notification.type === "action_by_user") {
+      const actor = getActorMetadata(notification);
+      if (actor) {
+        return (
+          <NotificationActorAvatar
+            actorId={actor.actorId}
+            actorName={actor.actorName}
+            actorAvatarUrl={actor.actorAvatarUrl}
+          />
+        );
+      }
+    }
+
+    return (
+      <span className="text-lg">{getNotificationIcon(notification.type)}</span>
+    );
+  };
+
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <button
@@ -176,9 +214,7 @@ export default function NotificationsDropdown({
                     )}
                   >
                     <div className="flex gap-3">
-                      <span className="text-lg">
-                        {getNotificationIcon(notification.type)}
-                      </span>
+                      {renderNotificationIndicator(notification)}
                       <div className="flex-1 min-w-0">
                         {notification.link ? (
                           <Link

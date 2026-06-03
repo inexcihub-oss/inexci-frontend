@@ -39,8 +39,6 @@ interface PlanCardProps {
   highlight?: boolean;
   selected: boolean;
   onSelect: () => void;
-  /** Mostra "30 dias grátis" no lugar do preço quando true. */
-  trialMode?: boolean;
 }
 
 export function PlanCard({
@@ -51,7 +49,6 @@ export function PlanCard({
   highlight = false,
   selected,
   onSelect,
-  trialMode = false,
 }: PlanCardProps) {
   return (
     <button
@@ -111,27 +108,50 @@ export function PlanCard({
 
         {/* Preço */}
         <div className="mb-4 pb-4 border-b border-gray-100">
-          {trialMode ? (
+          {plan.priceCents === 0 && plan.surgeryRequestQuota === -1 ? (
+            /* Enterprise */
+            <>
+              <p className={`text-2xl font-extrabold ${theme.priceColor}`}>
+                Sob consulta
+              </p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Fale com nossa equipe comercial
+              </p>
+            </>
+          ) : plan.isTrialDefault ? (
+            /* Starter mensal — trial */
             <>
               <p className={`text-2xl font-extrabold ${theme.priceColor}`}>
                 30 dias grátis
               </p>
               <p className="text-[11px] text-gray-500 mt-1">
-                Sem cartão · Cancele quando quiser
+                Depois {formatPriceCents(plan.priceCents, plan.currency)}/mês · Sem cartão agora
+              </p>
+            </>
+          ) : plan.billingPeriod === "YEARLY" ? (
+            /* Plano anual — mostra equivalente mensal */
+            <>
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-extrabold text-gray-900">
+                  {formatPriceCents(Math.round(plan.priceCents / 12), plan.currency)}
+                </span>
+                <span className="text-xs text-gray-500">/mês</span>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Cobrado {formatPriceCents(plan.priceCents, plan.currency)}/ano · 2 meses grátis
               </p>
             </>
           ) : (
+            /* Plano mensal pago */
             <>
               <div className="flex items-baseline gap-1">
                 <span className="text-3xl font-extrabold text-gray-900">
                   {formatPriceCents(plan.priceCents, plan.currency)}
                 </span>
-                <span className="text-xs text-gray-500">
-                  {plan.billingPeriod === "MONTHLY" ? "/mês" : "/ano"}
-                </span>
+                <span className="text-xs text-gray-500">/mês</span>
               </div>
               <p className="text-[11px] text-gray-500 mt-1">
-                Trial de 30 dias incluso · Sem cartão agora
+                Cobrança imediata · Cancele quando quiser
               </p>
             </>
           )}
@@ -163,15 +183,24 @@ export function PlanCard({
         </ul>
 
         {/* CTA */}
-        <div
-          className={`mt-5 w-full rounded-xl py-2.5 text-xs font-semibold text-center transition-all ${
-            selected
-              ? `${theme.accent} text-white shadow-md`
-              : "bg-gray-50 text-gray-700 group-hover:bg-gray-100 border border-gray-200"
-          }`}
-        >
-          {selected ? "Plano selecionado" : "Selecionar plano"}
-        </div>
+        {plan.priceCents === 0 && plan.surgeryRequestQuota === -1 ? (
+          <a
+            href="mailto:contato@inexci.com.br"
+            className={`mt-5 w-full rounded-xl py-2.5 text-xs font-semibold text-center block ${theme.accent} text-white shadow-md`}
+          >
+            Vamos conversar
+          </a>
+        ) : (
+          <div
+            className={`mt-5 w-full rounded-xl py-2.5 text-xs font-semibold text-center transition-all ${
+              selected
+                ? `${theme.accent} text-white shadow-md`
+                : "bg-gray-50 text-gray-700 group-hover:bg-gray-100 border border-gray-200"
+            }`}
+          >
+            {selected ? "Plano selecionado" : "Selecionar plano"}
+          </div>
+        )}
       </div>
     </button>
   );

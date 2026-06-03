@@ -9,6 +9,7 @@ import {
   PRIORITY,
 } from "@/types/surgery-request.types";
 import { logger } from "@/lib/logger";
+import { AvailableDoctor } from "@/types";
 
 // Ícone de chevron para dropdown
 const ChevronDownIcon = ({ className }: { className?: string }) => (
@@ -145,6 +146,200 @@ const priorityStyles: Record<
     hoverBg: "hover:bg-chip-urgente-hover",
   },
 };
+
+interface EditableDoctorProps {
+  currentDoctorId: string | number;
+  currentDoctorName: string;
+  surgeryRequestId: string | number;
+  availableDoctors: AvailableDoctor[];
+  onUpdate?: () => void;
+  disabled?: boolean;
+}
+
+export function EditableDoctor({
+  currentDoctorId,
+  currentDoctorName,
+  surgeryRequestId,
+  availableDoctors,
+  onUpdate,
+  disabled = false,
+}: EditableDoctorProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | number>(currentDoctorId);
+  const [selectedName, setSelectedName] = useState(currentDoctorName);
+  const [isLoading, setIsLoading] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [portalStyle, setPortalStyle] = useState<React.CSSProperties>({});
+
+  const canEdit = !disabled && availableDoctors.length > 1;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target) &&
+        (!menuRef.current || !menuRef.current.contains(target))
+      ) {
+        setIsEditing(false);
+      }
+    };
+    if (isEditing) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isEditing]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    const updatePortalPosition = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const minWidth = Math.max(180, rect.width);
+      const viewportPadding = 8;
+      const left = Math.max(
+        viewportPadding,
+        Math.min(rect.left, window.innerWidth - minWidth - viewportPadding),
+      );
+      setPortalStyle({
+        position: "fixed",
+        left,
+        top: rect.bottom + 4,
+        minWidth,
+        zIndex: 80,
+      });
+    };
+
+    updatePortalPosition();
+    window.addEventListener("resize", updatePortalPosition);
+    window.addEventListener("scroll", updatePortalPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePortalPosition);
+      window.removeEventListener("scroll", updatePortalPosition, true);
+    };
+  }, [isEditing]);
+
+  const handleSelect = async (doctor: AvailableDoctor) => {
+    if (doctor.id === selectedId) {
+      setIsEditing(false);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await surgeryRequestService.updateBasicData(surgeryRequestId, {
+        doctorId: doctor.id,
+      });
+      setSelectedId(doctor.id);
+      setSelectedName(doctor.name);
+      onUpdate?.();
+    } catch (error) {
+      logger.error("Erro ao atualizar médico:", error);
+    } finally {
+      setIsLoading(false);
+      setIsEditing(false);
+    }
+  };
+
+  const initials = selectedName
+    .split(" ")
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
+
+  if (!canEdit) {
+    return (
+      <div className="inline-flex items-center gap-2 h-7 px-3 rounded-md border border-gray-200 bg-gray-50 text-xs max-w-[210px]">
+        <span className="w-5 h-5 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600">
+          {initials}
+        </span>
+        <span className="min-w-0 max-w-[150px] sm:max-w-[160px] truncate text-left text-gray-700">
+          {selectedName}
+        </span>
+      </div>
+    );
+  }
+
+  const menu = (
+    <div
+      ref={menuRef}
+      style={portalStyle}
+      className="bg-white rounded-xl shadow-lg border border-gray-200 py-1 animate-in fade-in duration-150"
+    >
+      {availableDoctors.map((doctor) => {
+        const isSelected = doctor.id === selectedId;
+        const dInitials = doctor.name
+          .split(" ")
+          .slice(0, 2)
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase();
+        return (
+          <button
+            key={doctor.id}
+            onClick={() => handleSelect(doctor)}
+            className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors ${
+              isSelected
+                ? "bg-gray-50 font-semibold"
+                : "hover:bg-gray-50 font-medium"
+            }`}
+          >
+            <span className="w-5 h-5 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600">
+              {dInitials}
+            </span>
+            <span className="flex-1 min-w-0 truncate text-gray-700">
+              {doctor.name}
+            </span>
+            {isSelected && (
+              <svg
+                className="w-3.5 h-3.5 text-teal-600 flex-shrink-0"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        ref={triggerRef}
+        onClick={() => setIsEditing(!isEditing)}
+        disabled={isLoading}
+        className={`inline-flex items-center gap-2 h-7 px-3 rounded-md border text-xs transition-all duration-150 max-w-[210px] ${
+          isEditing
+            ? "border-teal-400 bg-white ring-2 ring-offset-1 ring-teal-500"
+            : "border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-white"
+        }`}
+      >
+        <span className="w-5 h-5 flex-shrink-0 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600">
+          {isLoading ? "…" : initials}
+        </span>
+        <span className="min-w-0 max-w-[120px] sm:max-w-[130px] truncate text-left text-gray-700">
+          {selectedName}
+        </span>
+        <ChevronDownIcon
+          className={`w-3.5 h-3.5 flex-shrink-0 text-gray-400 transition-transform ${isEditing ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {isEditing && createPortal(menu, document.body)}
+    </div>
+  );
+}
 
 interface EditablePriorityProps {
   initialValue: PriorityLevel;

@@ -52,6 +52,12 @@ export function SendRequestModal({
   const [emailInput, setEmailInput] = useState("");
   const [emailFormTouched, setEmailFormTouched] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
+
+  // CC state
+  const [ccOptions, setCcOptions] = useState<
+    Array<{ id: string; name: string; email: string }>
+  >([]);
+  const [ccSelected, setCcSelected] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { showToast } = useToast();
@@ -84,6 +90,8 @@ export function SendRequestModal({
       setEmailInput("");
       setEmailFormTouched(false);
       setAttachments([]);
+      setCcSelected([]);
+      setCcOptions([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, solicitacao?.id]);
@@ -184,6 +192,10 @@ export function SendRequestModal({
         await handleDownload();
       } else {
         setCurrentStep(3);
+        surgeryRequestService
+          .getCcRecipients(solicitacao.id)
+          .then(setCcOptions)
+          .catch(() => {});
       }
     } else if (currentStep === 3) {
       await handleSendEmail();
@@ -240,6 +252,7 @@ export function SendRequestModal({
         to: recipients,
         subject: emailSubject,
         message: emailMessage,
+        cc: ccSelected.length > 0 ? ccSelected.join(";") : undefined,
       });
       setCurrentStep(4);
     } catch {
@@ -425,7 +438,7 @@ export function SendRequestModal({
             type="text"
             value={
               process.env.NEXT_PUBLIC_MAIL_FROM_ADDRESS ||
-              "noreply@inexci.com.br"
+              "no-reply@mg.inexci.com.br"
             }
             disabled
             readOnly
@@ -483,6 +496,42 @@ export function SendRequestModal({
             </p>
           )}
         </div>
+
+        {/* CC */}
+        {ccOptions.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label className="ds-label mb-0">Cópia (CC):</label>
+            <div className="flex flex-col gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white">
+              {ccOptions.map((opt) => (
+                <label
+                  key={opt.id}
+                  className="flex items-center gap-2 cursor-pointer select-none py-0.5"
+                >
+                  <input
+                    type="checkbox"
+                    checked={ccSelected.includes(opt.email)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setCcSelected((prev) => [...prev, opt.email]);
+                      } else {
+                        setCcSelected((prev) =>
+                          prev.filter((em) => em !== opt.email),
+                        );
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-gray-300 text-teal-600 accent-teal-600 cursor-pointer shrink-0"
+                  />
+                  <span className="text-xs md:text-sm text-gray-900 truncate">
+                    {opt.name}
+                  </span>
+                  <span className="text-xs text-gray-400 truncate">
+                    {opt.email}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Assunto */}
         <div className="flex flex-col gap-1">

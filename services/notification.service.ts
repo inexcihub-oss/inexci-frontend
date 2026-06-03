@@ -22,6 +22,13 @@ export interface UpdateNotificationSettingsData {
   weeklyReport?: boolean;
 }
 
+export interface NotificationMetadata {
+  actorId?: string;
+  actorName?: string;
+  actorAvatarUrl?: string | null;
+  [key: string]: unknown;
+}
+
 export interface Notification {
   id: string;
   userId: string;
@@ -30,7 +37,7 @@ export interface Notification {
   message: string;
   read: boolean;
   link?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: NotificationMetadata;
   createdAt: string;
 }
 

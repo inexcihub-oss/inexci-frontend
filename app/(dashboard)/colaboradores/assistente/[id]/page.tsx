@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
@@ -30,9 +30,12 @@ import { GENDER_OPTIONS, STATE_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
-import { ChevronRight, Upload, X, Loader2 } from "lucide-react";
+import { ChevronRight, Upload, X, Loader2, Settings2 } from "lucide-react";
 import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 import { CollaboratorActionsSection } from "@/components/colaboradores/CollaboratorActionsSection";
+import { DoctorHeaderEditor } from "@/components/shared/DoctorHeaderEditor";
+import { useDoctorHeaderEditor } from "@/hooks/useDoctorHeaderEditor";
+import { Modal } from "@/components/ui/Modal";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { maskCep, maskCpf, maskPhone, unmask } from "@/lib/masks";
 import { isValidCpf } from "@/lib/validators";
@@ -56,10 +59,35 @@ export default function AssistenteDetalhePage() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signatureDeleted, setSignatureDeleted] = useState(false);
   const [isProcessingSignature, setIsProcessingSignature] = useState(false);
+  const [isScConfigModalOpen, setIsScConfigModalOpen] = useState(false);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const { toast, showToast, hideToast } = useToast();
 
   const isDoctor = collaborator?.isDoctor === true;
+  const handleCloseScConfigModal = useCallback(() => {
+    setIsScConfigModalOpen(false);
+  }, []);
+
+  const {
+    loadingHeader,
+    savingHeader,
+    currentHeader,
+    headerLogoPreview,
+    headerLogoPosition,
+    headerContentHtml,
+    headerLogoInputRef,
+    setHeaderLogoPosition,
+    setHeaderContentHtml,
+    handleHeaderLogoChange,
+    handleDeleteHeaderLogo,
+    handleSaveHeader,
+    handleDeleteHeader,
+  } = useDoctorHeaderEditor({
+    enabled: isDoctor,
+    mode: "byUserId",
+    targetUserId: collaborator?.id,
+    showToast,
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -150,15 +178,7 @@ export default function AssistenteDetalhePage() {
       setFormData(fd);
       setOriginalData(fd);
 
-      // Carregar assinatura do médico
-      if (dp?.signatureUrl) {
-        try {
-          const signedUrl = await uploadService.getSignedUrl(dp.signatureUrl);
-          setSignaturePreview(signedUrl);
-        } catch {
-          // ignora erro ao carregar assinatura
-        }
-      }
+      setSignaturePreview(dp?.signatureUrl ?? null);
     } catch (error) {
       logger.error("Erro ao carregar colaborador:", error);
     } finally {
@@ -648,29 +668,128 @@ export default function AssistenteDetalhePage() {
                 options={STATE_UF_OPTIONS}
               />
             </div>
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={handleCancel}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSave}
-                isLoading={saving}
-                disabled={!isDirty}
-              >
-                Salvar alterações
-              </Button>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={cn(
+                    "text-xs px-2.5 py-1 rounded-full border",
+                    signaturePreview
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200",
+                  )}
+                >
+                  Assinatura: {signaturePreview ? "configurada" : "pendente"}
+                </span>
+                <span
+                  className={cn(
+                    "text-xs px-2.5 py-1 rounded-full border",
+                    currentHeader &&
+                      (currentHeader.logoUrl || currentHeader.contentHtml)
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200",
+                  )}
+                >
+                  Cabeçalho:{" "}
+                  {currentHeader &&
+                  (currentHeader.logoUrl || currentHeader.contentHtml)
+                    ? "configurado"
+                    : "pendente"}
+                </span>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:justify-end gap-2 w-full md:w-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsScConfigModalOpen(true)}
+                  className="w-full sm:w-auto"
+                >
+                  <Settings2 className="w-4 h-4 mr-2" />
+                  Configurar solicitação
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  className="w-full sm:w-auto"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  isLoading={saving}
+                  disabled={!isDirty}
+                  className="w-full sm:w-auto"
+                >
+                  Salvar alterações
+                </Button>
+              </div>
             </div>
           </FormSection>
         )}
 
-        {/* Seção: Assinatura do Médico (somente médicos) */}
-        {isDoctor && (
-          <FormSection title="Assinatura do Médico">
-            <p className="text-sm text-gray-500 mb-4">
-              Faça upload da assinatura do médico para documentos e laudos.
-            </p>
+        {/* Seção: Acesso a Médicos */}
+        <DoctorAccessSection
+          collaboratorId={params.id}
+          collaboratorIsDoctor={isDoctor}
+          collaboratorName={formData.name}
+        />
+
+        {/* Seção: Acesso e Segurança */}
+        <CollaboratorActionsSection
+          collaboratorId={params.id}
+          currentStatus={collaboratorStatus}
+          onStatusChange={setCollaboratorStatus}
+        />
+      </DetailPageLayout>
+
+      {isDoctor && (
+        <Modal
+          isOpen={isScConfigModalOpen}
+          onClose={handleCloseScConfigModal}
+          title="Configurações da solicitação"
+          size="lg"
+        >
+          <div className="p-4 md:p-6 space-y-6">
+            <div className="space-y-2">
+              <h3 className="text-sm md:text-base font-semibold text-gray-900">
+                Cabeçalho da SC
+              </h3>
+              <p className="text-xs md:text-sm text-gray-500">
+                Configure logo e texto do cabeçalho dos documentos do médico.
+              </p>
+            </div>
+
+            <DoctorHeaderEditor
+              loading={loadingHeader}
+              saving={savingHeader}
+              currentHeader={currentHeader}
+              logoPreview={headerLogoPreview}
+              logoPosition={headerLogoPosition}
+              contentHtml={headerContentHtml}
+              logoInputRef={headerLogoInputRef}
+              onLogoChange={handleHeaderLogoChange}
+              onDeleteLogo={handleDeleteHeaderLogo}
+              onLogoPositionChange={setHeaderLogoPosition}
+              onContentHtmlChange={setHeaderContentHtml}
+              onSave={handleSaveHeader}
+              onDeleteHeader={handleDeleteHeader}
+              saveLabel="Salvar cabeçalho"
+              showActions={false}
+            />
+
+            <div className="pt-2 border-t border-neutral-100" />
+
+            <div className="space-y-2">
+              <h3 className="text-sm md:text-base font-semibold text-gray-900">
+                Assinatura da SC
+              </h3>
+              <p className="text-xs md:text-sm text-gray-500">
+                Faça upload da assinatura usada nos documentos e laudos do
+                médico.
+              </p>
+            </div>
+
             {isProcessingSignature ? (
-              <div className="flex items-center justify-center gap-3 border-2 border-dashed border-gray-300 rounded-xl p-8">
+              <div className="flex items-center justify-center gap-3 border-2 border-dashed border-gray-300 rounded-xl p-6 md:p-8">
                 <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
                 <p className="text-sm text-gray-500">
                   Processando assinatura...
@@ -682,7 +801,7 @@ export default function AssistenteDetalhePage() {
                   !isProcessingSignature && signatureInputRef.current?.click()
                 }
                 className={cn(
-                  "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
+                  "border-2 border-dashed rounded-xl p-6 md:p-8 text-center cursor-pointer transition-all",
                   signaturePreview
                     ? "border-primary-300 bg-primary-50"
                     : "border-gray-300 hover:border-primary-400 hover:bg-gray-50",
@@ -722,28 +841,26 @@ export default function AssistenteDetalhePage() {
                 )}
               </div>
             )}
+
             {(signatureFile || signatureDeleted) && !isProcessingSignature && (
-              <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <p className="text-xs text-amber-600 flex items-center gap-1">
                   <span>⚠</span>{" "}
                   {signatureDeleted
                     ? "Remoção pendente — salve para confirmar."
                     : "Assinatura ainda não salva — salve para confirmar."}
                 </p>
-                <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={handleCancel}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleSaveSignature}
-                    isLoading={saving}
-                  >
-                    Salvar assinatura
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  onClick={handleSaveSignature}
+                  isLoading={saving}
+                  className="w-full md:w-auto"
+                >
+                  Salvar assinatura
+                </Button>
               </div>
             )}
+
             <input
               ref={signatureInputRef}
               type="file"
@@ -751,23 +868,32 @@ export default function AssistenteDetalhePage() {
               onChange={handleSignatureChange}
               className="hidden"
             />
-          </FormSection>
-        )}
 
-        {/* Seção: Acesso a Médicos */}
-        <DoctorAccessSection
-          collaboratorId={params.id}
-          collaboratorIsDoctor={isDoctor}
-          collaboratorName={formData.name}
-        />
+            <div className="pt-2 border-t border-neutral-100" />
 
-        {/* Seção: Acesso e Segurança */}
-        <CollaboratorActionsSection
-          collaboratorId={params.id}
-          currentStatus={collaboratorStatus}
-          onStatusChange={setCollaboratorStatus}
-        />
-      </DetailPageLayout>
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+              <Button variant="outline" onClick={handleCloseScConfigModal}>
+                Fechar
+              </Button>
+              {currentHeader && (
+                <Button
+                  variant="outline"
+                  onClick={handleDeleteHeader}
+                  isLoading={savingHeader}
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Remover cabeçalho
+                </Button>
+              )}
+              <Button onClick={handleSaveHeader} isLoading={savingHeader}>
+                Salvar cabeçalho
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {toast && (
         <Toast
           message={toast.message}
