@@ -155,21 +155,15 @@ function ConfirmarEmailContent() {
                 )}
               </div>
               <div className="space-y-3">
-                {user ? (
-                  <Button
-                    onClick={() => router.push("/dashboard")}
-                    className="w-full text-sm font-semibold min-h-[48px]"
-                  >
-                    Ir para o painel
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={() => router.push("/login")}
-                    className="w-full text-sm font-semibold min-h-[48px]"
-                  >
-                    Fazer login
-                  </Button>
-                )}
+                {/* A confirmação é por token e independe de qualquer sessão
+                    ativa no navegador. Sempre encaminha para o login para evitar
+                    exibir/assumir o usuário errado (contaminação de sessão). */}
+                <Button
+                  onClick={() => router.push("/login")}
+                  className="w-full text-sm font-semibold min-h-[48px]"
+                >
+                  Fazer login
+                </Button>
               </div>
             </div>
           )}

@@ -23,6 +23,8 @@ import { useRouter } from "next/navigation";
 interface AuthContextData {
   user: User | null;
   loading: boolean;
+  /** True quando há uma sessão resolvida em memória (usuário carregado). */
+  isAuthenticated: boolean;
   isDoctor: boolean;
   isAdmin: boolean;
   accountId: string | null;
@@ -49,7 +51,11 @@ interface AuthContextData {
 
 const AuthContext = createContext<AuthContextData | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [consents, setConsents] = useState<ConsentStatus | null>(null);
@@ -129,7 +135,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         // Se não há token em memória (reload de página), faz refresh proativo para
-        // evitar o ciclo 401 → refresh → retry no /me.
+        // evitar o ciclo 401 → refresh → retry no /me. Isso resolve a sessão real
+        // (válida ou não) em qualquer rota — inclusive nas públicas, onde o guard
+        // reverso depende de `isAuthenticated` para expulsar usuários já logados.
+        // Páginas sensíveis a contaminação (confirmar-email) são neutras quanto à
+        // sessão e isentas do guard, então restaurar a sessão aqui é seguro.
         if (!getAccessToken()) {
           try {
             const { data } = await axios.post(
@@ -234,6 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const isAuthenticated = useMemo(() => !!user, [user]);
   const isDoctor = useMemo(() => user?.isDoctor ?? false, [user]);
   const isAdmin = useMemo(() => user?.role === "admin", [user]);
   const accountId = useMemo(() => user?.accountId ?? null, [user]);
@@ -295,6 +306,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       loading,
+      isAuthenticated,
       isDoctor,
       isAdmin,
       accountId,
@@ -317,6 +329,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [
       user,
       loading,
+      isAuthenticated,
       isDoctor,
       isAdmin,
       accountId,

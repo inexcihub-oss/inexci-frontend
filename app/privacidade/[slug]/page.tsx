@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { LegalDocumentView } from "./LegalDocumentView";
+import { BackToAppLink } from "./BackToAppLink";
 
 const SLUG_ALIAS: Record<string, string> = {
   politica: "privacy-policy",
@@ -54,12 +55,7 @@ export default async function LegalDocumentPage({ params }: PageProps) {
             />
             <span className="text-sm font-semibold text-gray-900">Inexci</span>
           </Link>
-          <Link
-            href="/login"
-            className="text-xs text-primary-700 hover:underline"
-          >
-            Voltar para o app
-          </Link>
+          <BackToAppLink className="text-xs text-primary-700 hover:underline" />
         </div>
       </header>
 

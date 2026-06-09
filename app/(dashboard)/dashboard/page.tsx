@@ -451,6 +451,9 @@ function AreaLineChart({
     .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
     .join(" ");
   const areaPath = `${linePath} L ${points[points.length - 1].x} ${pad.top + chartH} L ${points[0].x} ${pad.top + chartH} Z`;
+  const highlightIndices = Array.from(
+    new Set([0, Math.floor(points.length / 2), points.length - 1]),
+  ).filter((idx) => idx >= 0 && idx < points.length);
 
   const fmtLabel = (dateStr: string) => {
     const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -494,9 +497,9 @@ function AreaLineChart({
         strokeLinejoin="round"
       />
       {/* Pontos de destaque */}
-      {[0, Math.floor(points.length / 2), points.length - 1].map((idx) => (
+      {highlightIndices.map((idx) => (
         <circle
-          key={idx}
+          key={`highlight-${idx}`}
           cx={points[idx].x}
           cy={points[idx].y}
           r="3.5"
@@ -711,10 +714,7 @@ export default function DashboardPage() {
       // Calcular "autorizadas" = agendadas + realizadas + faturadas + finalizadas + encerradas
       // (tudo que passou da análise)
       const statusTotals = new Map(
-        dashData.surgeryRequest.totalByStatus.map((s) => [
-          s.status,
-          s.total,
-        ]),
+        dashData.surgeryRequest.totalByStatus.map((s) => [s.status, s.total]),
       );
       const totalAuthorized =
         (statusTotals.get(4) || 0) + // Em Agendamento
@@ -747,12 +747,10 @@ export default function DashboardPage() {
             color: STATUS_CHART_COLORS[label] || "#6b7280",
           };
         }),
-        byHealthPlan: dashData.surgeryRequest.totalByHealthPlan.map(
-          (item) => ({
-            name: item.healthPlanName,
-            count: item.total,
-          }),
-        ),
+        byHealthPlan: dashData.surgeryRequest.totalByHealthPlan.map((item) => ({
+          name: item.healthPlanName,
+          count: item.total,
+        })),
         byHospital: dashData.surgeryRequest.totalByHospital.map((item) => ({
           name: item.hospitalName,
           count: item.total,

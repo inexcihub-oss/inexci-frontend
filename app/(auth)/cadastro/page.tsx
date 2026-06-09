@@ -67,6 +67,9 @@ const DEFAULT_PLAN_SLUG = "starter";
 export default function CadastroPage() {
   const { register } = useAuth();
 
+  // Usuários já logados são expulsos do `/cadastro` pelo guard reverso
+  // (`RedirectIfAuthenticated`), então não há sessão para limpar aqui.
+
   const [currentStep, setCurrentStep] = useState(1);
 
   const [step1, setStep1] = useState<Step1Data>({
