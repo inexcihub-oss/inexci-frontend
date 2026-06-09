@@ -12,7 +12,11 @@ import React, {
 import { logger } from "@/lib/logger";
 import { User, SubscriptionDetail } from "@/types";
 import { authService } from "@/services/auth.service";
-import { clearAccessToken, getAccessToken, setAccessToken } from "@/lib/auth-token";
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from "@/lib/auth-token";
 import axios from "axios";
 import api from "@/lib/api";
 import { consentService } from "@/services/consent.service";
@@ -51,11 +55,7 @@ interface AuthContextData {
 
 const AuthContext = createContext<AuthContextData | undefined>(undefined);
 
-export function AuthProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [consents, setConsents] = useState<ConsentStatus | null>(null);
@@ -69,59 +69,65 @@ export function AuthProvider({
   const subscriptionRequestRef = useRef<Promise<void> | null>(null);
   const initialLoadRef = useRef(false);
 
-  const refreshConsents = useCallback(async (forUser?: User | null) => {
-    if (typeof window === "undefined") return;
-    const effectiveUser = forUser !== undefined ? forUser : user;
-    if (!effectiveUser) {
-      setConsents(null);
-      return;
-    }
-    if (consentsRequestRef.current) {
-      return consentsRequestRef.current;
-    }
-    setConsentsLoading(true);
-    const promise = (async () => {
-      try {
-        const status = await consentService.getStatus();
-        setConsents(status);
-      } catch (error) {
-        logger.error("Erro ao carregar consentimentos:", error);
-      } finally {
-        setConsentsLoading(false);
-        consentsRequestRef.current = null;
+  const refreshConsents = useCallback(
+    async (forUser?: User | null) => {
+      if (typeof window === "undefined") return;
+      const effectiveUser = forUser !== undefined ? forUser : user;
+      if (!effectiveUser) {
+        setConsents(null);
+        return;
       }
-    })();
-    consentsRequestRef.current = promise;
-    return promise;
-  }, [user]);
+      if (consentsRequestRef.current) {
+        return consentsRequestRef.current;
+      }
+      setConsentsLoading(true);
+      const promise = (async () => {
+        try {
+          const status = await consentService.getStatus();
+          setConsents(status);
+        } catch (error) {
+          logger.error("Erro ao carregar consentimentos:", error);
+        } finally {
+          setConsentsLoading(false);
+          consentsRequestRef.current = null;
+        }
+      })();
+      consentsRequestRef.current = promise;
+      return promise;
+    },
+    [user],
+  );
 
-  const refreshSubscription = useCallback(async (forUser?: User | null) => {
-    if (typeof window === "undefined") return;
-    const effectiveUser = forUser !== undefined ? forUser : user;
-    if (!effectiveUser) {
-      setSubscription(null);
-      return;
-    }
-    if (subscriptionRequestRef.current) {
-      return subscriptionRequestRef.current;
-    }
-    setSubscriptionLoading(true);
-    const promise = (async () => {
-      try {
-        const detail = await billingService.getMySubscription();
-        setSubscription(detail);
-      } catch (error) {
-        // Colaboradores podem n\u00e3o ter acesso a essa rota \u2014 silencioso.
-        logger.warn("N\u00e3o foi poss\u00edvel carregar assinatura:", error);
+  const refreshSubscription = useCallback(
+    async (forUser?: User | null) => {
+      if (typeof window === "undefined") return;
+      const effectiveUser = forUser !== undefined ? forUser : user;
+      if (!effectiveUser) {
         setSubscription(null);
-      } finally {
-        setSubscriptionLoading(false);
-        subscriptionRequestRef.current = null;
+        return;
       }
-    })();
-    subscriptionRequestRef.current = promise;
-    return promise;
-  }, [user]);
+      if (subscriptionRequestRef.current) {
+        return subscriptionRequestRef.current;
+      }
+      setSubscriptionLoading(true);
+      const promise = (async () => {
+        try {
+          const detail = await billingService.getMySubscription();
+          setSubscription(detail);
+        } catch (error) {
+          // Colaboradores podem n\u00e3o ter acesso a essa rota \u2014 silencioso.
+          logger.warn("N\u00e3o foi poss\u00edvel carregar assinatura:", error);
+          setSubscription(null);
+        } finally {
+          setSubscriptionLoading(false);
+          subscriptionRequestRef.current = null;
+        }
+      })();
+      subscriptionRequestRef.current = promise;
+      return promise;
+    },
+    [user],
+  );
 
   useEffect(() => {
     if (initialLoadRef.current) return;
@@ -145,11 +151,16 @@ export function AuthProvider({
             const { data } = await axios.post(
               `${api.defaults.baseURL}/auth/refresh`,
               {},
-              { withCredentials: true, headers: { "ngrok-skip-browser-warning": "true" } },
+              {
+                withCredentials: true,
+                headers: { "ngrok-skip-browser-warning": "true" },
+              },
             );
             setAccessToken(data.access_token);
           } catch {
             // Cookie de refresh ausente ou expirado — sessão inválida.
+            clearAccessToken();
+            localStorage.removeItem("user");
             setUser(null);
             setConsents(null);
             setSubscription(null);
