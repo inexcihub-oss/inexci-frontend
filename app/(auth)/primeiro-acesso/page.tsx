@@ -35,15 +35,15 @@ function PrimeiroAcessoForm() {
     setError("");
     setIsLoading(true);
     try {
-      const valid = await authService.validateRecoveryCode(email, token);
-      if (!valid) {
+      const resetToken = await authService.validateRecoveryCode(email, token);
+      if (!resetToken) {
         setError(
           "Link inválido ou expirado. Solicite um novo convite ao administrador.",
         );
         return;
       }
 
-      await authService.changePassword(email, token, data.password);
+      await authService.changePassword(email, resetToken, data.password);
 
       // Tenta fazer login automático após ativar a conta.
       // Mostra a tela de sucesso independentemente do resultado do login.
@@ -150,7 +150,6 @@ function PrimeiroAcessoForm() {
             /* Form */
             <form
               onSubmit={handleSubmit}
-              method="post"
               noValidate
               className="space-y-5"
             >

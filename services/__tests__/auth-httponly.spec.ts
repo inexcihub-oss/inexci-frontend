@@ -111,6 +111,39 @@ describe("Auth — tokens sensíveis não devem estar no localStorage", () => {
     expect(localStorage.removeItem).toHaveBeenCalledWith("token_timestamp");
   });
 
+  it("validateRecoveryCode retorna o resetToken devolvido pelo backend", async () => {
+    const api = (await import("@/lib/api")).default;
+    (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { message: "ok", resetToken: "reset-tok-123" },
+    });
+
+    const { authService } = await import("@/services/auth.service");
+    const token = await authService.validateRecoveryCode(
+      "a@b.com",
+      "123456",
+    );
+
+    expect(token).toBe("reset-tok-123");
+    expect(api.post).toHaveBeenCalledWith(
+      "/auth/validateRecoveryPasswordCode",
+      { email: "a@b.com", code: "123456" },
+    );
+  });
+
+  it("changePassword envia o resetToken no payload", async () => {
+    const api = (await import("@/lib/api")).default;
+    (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
+
+    const { authService } = await import("@/services/auth.service");
+    await authService.changePassword("a@b.com", "reset-tok-123", "NovaSenha@1");
+
+    expect(api.post).toHaveBeenCalledWith("/auth/changePassword", {
+      email: "a@b.com",
+      resetToken: "reset-tok-123",
+      password: "NovaSenha@1",
+    });
+  });
+
   it("authService.login NÃO deve armazenar access_token nem refresh_token no localStorage", async () => {
     // Mock the api post to return auth data
     const api = (await import("@/lib/api")).default;

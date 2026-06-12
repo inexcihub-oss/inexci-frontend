@@ -39,6 +39,9 @@ function ForgotPasswordForm() {
 
   const email = emailForm.values.email;
   const validatingRef = useRef(false);
+  // Reset token de uso único emitido na validação do código (etapa 2) e exigido
+  // na troca de senha (etapa 3).
+  const [resetToken, setResetToken] = useState("");
 
   /* ── Etapa 1: solicitar código ── */
   const handleSendCode = emailForm.handleSubmit(async (data) => {
@@ -68,7 +71,8 @@ function ForgotPasswordForm() {
     setError("");
     setIsLoading(true);
     try {
-      await authService.validateRecoveryCode(email, code);
+      const token = await authService.validateRecoveryCode(email, code);
+      setResetToken(token);
       setStep("password");
     } catch (err: unknown) {
       setError(extractMessage(err) ?? "Código inválido ou expirado.");
@@ -83,11 +87,7 @@ function ForgotPasswordForm() {
     setError("");
     setIsLoading(true);
     try {
-      await authService.changePassword(
-        email,
-        codeForm.values.code,
-        data.password,
-      );
+      await authService.changePassword(email, resetToken, data.password);
       setStep("success");
       setTimeout(() => router.push("/login"), 3000);
     } catch (err: unknown) {

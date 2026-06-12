@@ -12,13 +12,9 @@ import React, {
 import { logger } from "@/lib/logger";
 import { User, SubscriptionDetail } from "@/types";
 import { authService } from "@/services/auth.service";
-import {
-  clearAccessToken,
-  getAccessToken,
-  setAccessToken,
-} from "@/lib/auth-token";
-import axios from "axios";
-import api from "@/lib/api";
+import { clearAccessToken, getAccessToken } from "@/lib/auth-token";
+import { refreshSession } from "@/lib/api";
+import { clearSessionFlag, hasSessionHint } from "@/lib/session-flag";
 import { consentService } from "@/services/consent.service";
 import { billingService } from "@/services/billing.service";
 import type { ConsentStatus, ConsentType } from "@/types/consent.types";
@@ -144,22 +140,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // evitar o ciclo 401 → refresh → retry no /me. Isso resolve a sessão real
         // (válida ou não) em qualquer rota — inclusive nas públicas, onde o guard
         // reverso depende de `isAuthenticated` para expulsar usuários já logados.
-        // Páginas sensíveis a contaminação (confirmar-email) são neutras quanto à
-        // sessão e isentas do guard, então restaurar a sessão aqui é seguro.
+        //
+        // Só dispara o refresh quando há pista de sessão prévia (`hasSessionHint`):
+        // um visitante anônimo não tem cookie de refresh e o POST garantiria um
+        // 400 ("Refresh token ausente") — puro ruído. `refreshSession` é o mesmo
+        // single-flight do interceptor, evitando corrida de rotação.
         if (!getAccessToken()) {
+          if (!hasSessionHint()) {
+            // Anônimo: nada a restaurar.
+            setUser(null);
+            setConsents(null);
+            setSubscription(null);
+            setLoading(false);
+            return;
+          }
           try {
-            const { data } = await axios.post(
-              `${api.defaults.baseURL}/auth/refresh`,
-              {},
-              {
-                withCredentials: true,
-                headers: { "ngrok-skip-browser-warning": "true" },
-              },
-            );
-            setAccessToken(data.access_token);
+            await refreshSession();
           } catch {
             // Cookie de refresh ausente ou expirado — sessão inválida.
             clearAccessToken();
+            clearSessionFlag();
             localStorage.removeItem("user");
             setUser(null);
             setConsents(null);

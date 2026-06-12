@@ -6,6 +6,7 @@ import {
   getAccessToken,
   setAccessToken,
 } from "@/lib/auth-token";
+import { clearSessionFlag, markSession } from "@/lib/session-flag";
 
 /**
  * Serviço de autenticação
@@ -20,6 +21,8 @@ export const authService = {
     // Armazena token apenas em memória e usuário (sanitizado) no localStorage
     if (typeof window !== "undefined" && data.access_token && data.user) {
       setAccessToken(data.access_token);
+      // Marca que há sessão para permitir o refresh proativo no próximo reload.
+      markSession();
 
       // Remove chaves legadas de versão anterior que armazenava token no localStorage
       localStorage.removeItem("token");
@@ -87,6 +90,7 @@ export const authService = {
         clearAvatarCache(currentUser.id);
       }
       clearAccessToken();
+      clearSessionFlag();
       localStorage.removeItem("user");
     }
   },
@@ -139,26 +143,28 @@ export const authService = {
   },
 
   /**
-   * Valida código de recuperação
+   * Valida código de recuperação e retorna o reset token de uso único,
+   * exigido na etapa de troca de senha.
    */
-  async validateRecoveryCode(email: string, code: string): Promise<boolean> {
-    await api.post("/auth/validateRecoveryPasswordCode", {
-      email,
-      code,
-    });
-    return true;
+  async validateRecoveryCode(email: string, code: string): Promise<string> {
+    const { data } = await api.post<{ message: string; resetToken: string }>(
+      "/auth/validateRecoveryPasswordCode",
+      { email, code },
+    );
+    return data.resetToken;
   },
 
   /**
-   * Altera senha do usuário
+   * Altera senha do usuário usando o reset token emitido na validação do código.
    */
   async changePassword(
     email: string,
-    _code: string,
+    resetToken: string,
     newPassword: string,
   ): Promise<void> {
     await api.post("/auth/changePassword", {
       email,
+      resetToken,
       password: newPassword,
     });
   },

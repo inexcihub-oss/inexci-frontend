@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { logger, setRequestId } from "./logger";
 import { clearAccessToken, getAccessToken, setAccessToken } from "./auth-token";
+import { clearSessionFlag } from "./session-flag";
 
 function resolveApiBaseUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -38,19 +39,38 @@ function generateRequestId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-// ── Estado do refresh ────────────────────────────────────────────────────────
-let isRefreshing = false;
-let failedQueue: {
-  resolve: (token: string) => void;
-  reject: (err: unknown) => void;
-}[] = [];
+// ── Estado do refresh (single-flight compartilhado) ──────────────────────────
+// Um único refresh em voo por vez. Tanto o interceptor de 401 quanto o refresh
+// proativo do AuthContext reaproveitam esta mesma promise, evitando a corrida
+// que rotacionava o mesmo refresh token em paralelo e derrubava a sessão.
+let refreshPromise: Promise<string> | null = null;
 
-function processQueue(error: unknown, token: string | null = null) {
-  failedQueue.forEach((prom) => {
-    if (token) prom.resolve(token);
-    else prom.reject(error);
-  });
-  failedQueue = [];
+/**
+ * Renova o access token usando o cookie httpOnly de refresh. Single-flight:
+ * chamadas concorrentes aguardam a mesma requisição. Retorna o novo access
+ * token (e o grava em memória). Lança se o refresh falhar.
+ */
+export function refreshSession(): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(
+        `${api.defaults.baseURL}/auth/refresh`,
+        {},
+        {
+          withCredentials: true,
+          headers: { "ngrok-skip-browser-warning": "true" },
+        },
+      )
+      .then(({ data }) => {
+        const token = data.access_token as string;
+        setAccessToken(token);
+        return token;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
 }
 
 const PUBLIC_AUTH_PATHS = [
@@ -64,6 +84,7 @@ const PUBLIC_AUTH_PATHS = [
 function forceLogout() {
   if (typeof window !== "undefined") {
     clearAccessToken();
+    clearSessionFlag();
     localStorage.removeItem("user");
     const isPublicPath = PUBLIC_AUTH_PATHS.some((p) =>
       window.location.pathname.startsWith(p),
@@ -118,47 +139,19 @@ api.interceptors.response.use(
       !originalRequest?._retry &&
       !isAuthRoute
     ) {
-      // Se já está fazendo refresh, enfileirar esta request
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({
-            resolve: (token: string) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              resolve(api(originalRequest));
-            },
-            reject: (err: unknown) => reject(err),
-          });
-        });
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
 
       try {
-        // Refresh token é enviado automaticamente via cookie httpOnly
-        const { data } = await axios.post(
-          `${api.defaults.baseURL}/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-            headers: { "ngrok-skip-browser-warning": "true" },
-          },
-        );
-
-        const newToken = data.access_token;
-
-        setAccessToken(newToken);
+        // Refresh token é enviado automaticamente via cookie httpOnly.
+        // `refreshSession` é single-flight: requests 401 concorrentes aguardam
+        // a mesma renovação em vez de disparar refreshes paralelos.
+        const newToken = await refreshSession();
 
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        processQueue(null, newToken);
-
         return api(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
         forceLogout();
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 
