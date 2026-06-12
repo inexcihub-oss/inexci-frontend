@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -51,10 +51,17 @@ export function RedirectIfAuthenticated({
 }) {
   const { isAuthenticated, loading } = useAuth();
   const pathname = usePathname();
+  const [hasSessionHint, setHasSessionHint] = useState(false);
 
   const isExempt = ALLOWED_WHILE_AUTHENTICATED.some((p) =>
     pathname?.startsWith(p),
   );
+
+  // Evita mismatch de hidratação: a leitura de localStorage só pode ocorrer
+  // após o mount no cliente.
+  useEffect(() => {
+    setHasSessionHint(hasLocalSessionHint());
+  }, []);
 
   useEffect(() => {
     if (loading || isExempt) return;
@@ -71,7 +78,7 @@ export function RedirectIfAuthenticated({
 
   // Sessão ainda resolvendo E há indício de login: segura o form para evitar o
   // flash antes do redirect. Sem indício, mostra o form imediatamente.
-  if (loading && hasLocalSessionHint()) return null;
+  if (loading && hasSessionHint) return null;
 
   return <>{children}</>;
 }

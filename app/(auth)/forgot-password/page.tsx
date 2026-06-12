@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, Suspense } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -437,17 +437,7 @@ function ForgotPasswordForm() {
 }
 
 export default function ForgotPasswordPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center">
-          Carregando...
-        </div>
-      }
-    >
-      <ForgotPasswordForm />
-    </Suspense>
-  );
+  return <ForgotPasswordForm />;
 }
 
 /* ── helpers ── */

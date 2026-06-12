@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui";
@@ -14,11 +14,25 @@ import { newPasswordSchema } from "@/lib/schemas/auth.schema";
 
 function PrimeiroAcessoForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { login } = useAuth();
 
-  const email = searchParams.get("email") ?? "";
-  const token = searchParams.get("token") ?? "";
+  const [query, setQuery] = useState({
+    email: "",
+    token: "",
+    ready: false,
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setQuery({
+      email: params.get("email") ?? "",
+      token: params.get("token") ?? "",
+      ready: true,
+    });
+  }, []);
+
+  const { email, token, ready } = query;
   const hasValidLink = Boolean(email && token);
 
   const [error, setError] = useState("");
@@ -71,6 +85,14 @@ function PrimeiroAcessoForm() {
       setIsLoading(false);
     }
   });
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        Carregando...
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -148,11 +170,7 @@ function PrimeiroAcessoForm() {
             </div>
           ) : (
             /* Form */
-            <form
-              onSubmit={handleSubmit}
-              noValidate
-              className="space-y-5"
-            >
+            <form onSubmit={handleSubmit} noValidate className="space-y-5">
               {/* Error Message */}
               {error && (
                 <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700 flex items-start gap-2.5">
@@ -317,15 +335,5 @@ function PrimeiroAcessoForm() {
 }
 
 export default function PrimeiroAcessoPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center">
-          Carregando...
-        </div>
-      }
-    >
-      <PrimeiroAcessoForm />
-    </Suspense>
-  );
+  return <PrimeiroAcessoForm />;
 }

@@ -7,7 +7,6 @@ const verifyEmailMock = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
-  useSearchParams: () => ({ get: () => "valid-token" }),
 }));
 
 // Mesmo com um usuário "ambiente" carregado, a página deve permanecer neutra.
@@ -29,6 +28,7 @@ vi.mock("next/image", () => ({
 describe("ConfirmarEmailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState({}, "", "/confirmar-email?token=valid-token");
   });
 
   it("sempre oferece 'Fazer login' após sucesso, ignorando a sessão ambiente", async () => {

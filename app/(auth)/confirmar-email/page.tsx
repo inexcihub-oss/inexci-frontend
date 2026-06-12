@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui";
@@ -11,7 +11,6 @@ import { useAuth } from "@/contexts/AuthContext";
 type PageState = "loading" | "success" | "error";
 
 function ConfirmarEmailContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
 
@@ -20,13 +19,20 @@ function ConfirmarEmailContent() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
-
-  const token = searchParams.get("token");
   const calledRef = useRef(false);
 
   useEffect(() => {
     if (calledRef.current) return;
     calledRef.current = true;
+
+    if (typeof window === "undefined") {
+      setState("error");
+      setErrorMessage("Não foi possível validar o link de confirmação.");
+      return;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const token = searchParams.get("token");
 
     if (!token) {
       setState("error");
@@ -55,7 +61,7 @@ function ConfirmarEmailContent() {
         setErrorMessage(msg ?? "Não foi possível confirmar seu e-mail.");
         setState("error");
       });
-  }, [token]);
+  }, []);
 
   const handleResend = async () => {
     setIsResending(true);
@@ -301,15 +307,5 @@ function ConfirmarEmailContent() {
 }
 
 export default function ConfirmarEmailPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center">
-          Carregando…
-        </div>
-      }
-    >
-      <ConfirmarEmailContent />
-    </Suspense>
-  );
+  return <ConfirmarEmailContent />;
 }
