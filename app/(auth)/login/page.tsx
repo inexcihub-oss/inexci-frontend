@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
@@ -54,12 +54,6 @@ function LoginForm() {
     }
   });
 
-  const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    void onSubmit();
-  };
-
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Left Side - Form */}
@@ -87,11 +81,7 @@ function LoginForm() {
           </div>
 
           {/* Form */}
-          <form
-            onSubmit={handleFormSubmit}
-            noValidate
-            className="mt-8 space-y-6"
-          >
+          <form onSubmit={onSubmit} noValidate className="mt-8 space-y-6">
             <div className="space-y-4">
               <Input
                 id="email"
@@ -134,8 +124,7 @@ function LoginForm() {
 
             {/* Submit Button */}
             <Button
-              type="button"
-              onClick={() => void onSubmit()}
+              type="submit"
               isLoading={isLoading}
               className="w-full text-sm font-semibold min-h-[48px]"
             >
