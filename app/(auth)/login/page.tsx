@@ -1,8 +1,7 @@
 "use client";
 
-import { FormEvent, useState, useEffect, Suspense } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button, Input } from "@/components/ui";
@@ -14,7 +13,6 @@ function LoginForm() {
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
-  const searchParams = useSearchParams();
 
   const form = useZodForm({
     schema: loginSchema,
@@ -22,12 +20,14 @@ function LoginForm() {
   });
 
   useEffect(() => {
-    if (searchParams.get("registered") === "true") {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("registered") === "true") {
       setSuccess(
         "Conta criada com sucesso! Verifique seu e-mail para confirmar o cadastro antes de fazer login.",
       );
     }
-  }, [searchParams]);
+  }, []);
 
   const onSubmit = form.handleSubmit(async (data) => {
     setError("");
@@ -263,15 +263,5 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center">
-          Carregando...
-        </div>
-      }
-    >
-      <LoginForm />
-    </Suspense>
-  );
+  return <LoginForm />;
 }
