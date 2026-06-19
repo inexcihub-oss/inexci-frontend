@@ -25,9 +25,9 @@ interface NewPatientModalProps {
 
 const FIELD_LABELS: Record<string, string> = {
   name: "Nome completo",
+  cpf: "CPF",
   phone: "Telefone",
   email: "E-mail",
-  cpf: "CPF",
   birthDate: "Data de nascimento",
   gender: "Gênero",
   healthPlanId: "Convênio",
@@ -50,9 +50,9 @@ export function NewPatientModal({
     schema: createPatientSchema,
     initialValues: {
       name: "",
+      cpf: "",
       phone: "",
       email: "",
-      cpf: "",
       birthDate: "",
       gender: "",
       healthPlanId: "",
@@ -88,9 +88,9 @@ export function NewPatientModal({
       try {
         const payload: CreatePatientPayload = {
           name: data.name.trim(),
-          phone: unmask(data.phone) || undefined,
-          email: data.email,
-          cpf: data.cpf ? unmask(data.cpf) : undefined,
+          cpf: unmask(data.cpf),
+          phone: data.phone ? unmask(data.phone) : undefined,
+          email: data.email || undefined,
           birthDate: data.birthDate || undefined,
           gender: data.gender || undefined,
           healthPlanId: data.healthPlanId || undefined,
@@ -155,29 +155,28 @@ export function NewPatientModal({
                 {...form.getFieldProps("name")}
               />
               <Input
-                label="Telefone"
-                type="tel"
-                mask="phone"
+                label="CPF"
+                mask="cpf"
                 aria-required="true"
-                placeholder="(21) 98765-4321"
-                {...form.getFieldProps("phone")}
+                placeholder="123.456.789-00"
+                {...form.getFieldProps("cpf")}
               />
             </div>
 
-            {/* Row 2: E-mail + CPF */}
+            {/* Row 2: Telefone + E-mail */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="E-mail"
-                type="email"
-                aria-required="true"
-                placeholder="paciente@mail.com"
-                {...form.getFieldProps("email")}
+                label="Telefone (opcional)"
+                type="tel"
+                mask="phone"
+                placeholder="(21) 98765-4321"
+                {...form.getFieldProps("phone")}
               />
               <Input
-                label="CPF (opcional)"
-                mask="cpf"
-                placeholder="123.456.789-00"
-                {...form.getFieldProps("cpf")}
+                label="E-mail (opcional)"
+                type="email"
+                placeholder="paciente@mail.com"
+                {...form.getFieldProps("email")}
               />
             </div>
 
@@ -221,6 +220,11 @@ export function NewPatientModal({
                 ))}
               </select>
             </div>
+
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Obs.: Não será possível notificar o paciente sem os dados de
+              telefone e e-mail.
+            </p>
 
             {/* Error message */}
             {error && (

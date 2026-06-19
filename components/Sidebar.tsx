@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
+import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
@@ -12,58 +13,91 @@ import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
 
 interface MenuItem {
+  type: "item";
   iconSrc: string;
   label: string;
   href: string;
   adminOnly?: boolean;
 }
 
-const allMenuItems: MenuItem[] = [
+interface MenuGroup {
+  type: "group";
+  iconSrc: string;
+  label: string;
+  children: MenuItem[];
+  adminOnly?: boolean;
+}
+
+type NavigationEntry = MenuItem | MenuGroup;
+
+const allMenuItems: NavigationEntry[] = [
   {
-    iconSrc: "/icons/dashboard.svg",
-    label: "Dashboard",
-    href: "/dashboard",
-  },
-  {
+    type: "item",
     iconSrc: "/icons/grid-layout.svg",
     label: "Solicitações Cirúrgicas",
     href: "/solicitacoes-cirurgicas",
   },
   {
+    type: "item",
+    iconSrc: "/icons/calendar-schedule.svg",
+    label: "Agenda",
+    href: "/agenda",
+  },
+  {
+    type: "item",
+    iconSrc: "/icons/dashboard.svg",
+    label: "Dashboard",
+    href: "/dashboard",
+  },
+  {
+    type: "item",
     iconSrc: "/icons/user-add.svg",
     label: "Pacientes",
     href: "/pacientes",
   },
   {
+    type: "item",
     iconSrc: "/icons/user-profile.svg",
     label: "Colaboradores",
     href: "/colaboradores",
     adminOnly: true,
   },
   {
-    iconSrc: "/icons/users.svg",
-    label: "Hospitais",
-    href: "/hospitais",
-  },
-  {
-    iconSrc: "/icons/document.svg",
-    label: "Convênios",
-    href: "/convenios",
-  },
-  {
-    iconSrc: "/icons/dollar-cash-circle.svg",
-    label: "Fornecedores",
-    href: "/fornecedores",
-  },
-  {
+    type: "item",
     iconSrc: "/icons/status-surgeries.svg",
     label: "Procedimentos",
     href: "/procedimentos",
   },
   {
-    iconSrc: "/icons/calendar-schedule.svg",
-    label: "Agenda",
-    href: "/agenda",
+    type: "group",
+    iconSrc: "/icons/list.svg",
+    label: "Cadastros",
+    children: [
+      {
+        type: "item",
+        iconSrc: "/icons/users.svg",
+        label: "Hospitais",
+        href: "/hospitais",
+      },
+      {
+        type: "item",
+        iconSrc: "/icons/document.svg",
+        label: "Convênios",
+        href: "/convenios",
+      },
+      {
+        type: "item",
+        iconSrc: "/icons/dollar-cash-circle.svg",
+        label: "Fornecedores",
+        href: "/fornecedores",
+      },
+      {
+        type: "item",
+        iconSrc: "/icons/user.svg",
+        label: "Fabricantes",
+        href: "/fabricantes",
+      },
+    ],
   },
 ];
 
@@ -80,6 +114,12 @@ export default function Sidebar({
   const router = useRouter();
   const { user, logout, isAdmin } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isCadastrosOpen, setIsCadastrosOpen] = useState(() =>
+    ["/hospitais", "/convenios", "/fornecedores", "/fabricantes"].some(
+      (basePath) =>
+        pathname === basePath || pathname.startsWith(`${basePath}/`),
+    ),
+  );
 
   // Resolve signed URL when user.avatarUrl changes
   useEffect(() => {
@@ -121,6 +161,22 @@ export default function Sidebar({
     return true;
   });
 
+  useEffect(() => {
+    const isCadastrosPath = [
+      "/hospitais",
+      "/convenios",
+      "/fornecedores",
+      "/fabricantes",
+    ].some(
+      (basePath) =>
+        pathname === basePath || pathname.startsWith(`${basePath}/`),
+    );
+
+    if (isCadastrosPath) {
+      setIsCadastrosOpen(true);
+    }
+  }, [pathname]);
+
   // Carregar estado do localStorage ou usar valor padrão
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -154,6 +210,9 @@ export default function Sidebar({
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
   };
+
+  const isRouteActive = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <>
@@ -233,7 +292,88 @@ export default function Sidebar({
           {/* Menu Items */}
           <div className="flex flex-col gap-1">
             {menuItems.map((item) => {
-              const isActive = pathname === item.href;
+              if (item.type === "group") {
+                const isGroupActive = item.children.some((child) =>
+                  isRouteActive(child.href),
+                );
+
+                return (
+                  <div key={item.label} className="flex flex-col gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isCollapsed) {
+                          setIsCollapsed(false);
+                          setIsCadastrosOpen(true);
+                          return;
+                        }
+                        setIsCadastrosOpen((prev) => !prev);
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 min-h-[44px] ${
+                        isGroupActive
+                          ? "bg-neutral-50"
+                          : "opacity-70 hover:bg-neutral-50 hover:opacity-100"
+                      } ${isCollapsed ? "lg:justify-center" : ""}`}
+                      title={isCollapsed ? item.label : undefined}
+                    >
+                      <Image
+                        src={item.iconSrc}
+                        alt={item.label}
+                        width={24}
+                        height={24}
+                        className="text-neutral-900 shrink-0"
+                      />
+                      <span
+                        className={`text-xs md:text-sm font-semibold text-neutral-900 flex-1 text-left ${
+                          isCollapsed ? "lg:hidden" : ""
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-neutral-500 transition-transform ${
+                          isCadastrosOpen ? "rotate-180" : ""
+                        } ${isCollapsed ? "lg:hidden" : ""}`}
+                        strokeWidth={2}
+                      />
+                    </button>
+
+                    {isCadastrosOpen && !isCollapsed && (
+                      <div className="flex flex-col gap-1 pl-3 lg:pl-4">
+                        {item.children.map((child) => {
+                          const isChildActive = isRouteActive(child.href);
+
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 min-h-[40px] ${
+                                isChildActive
+                                  ? "bg-neutral-50"
+                                  : "opacity-70 hover:bg-neutral-50 hover:opacity-100"
+                              }`}
+                              onClick={onMobileClose}
+                            >
+                              <Image
+                                src={child.iconSrc}
+                                alt={child.label}
+                                width={20}
+                                height={20}
+                                className="text-neutral-900 shrink-0"
+                              />
+                              <span className="text-xs md:text-sm font-semibold text-neutral-900">
+                                {child.label}
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              const isActive = isRouteActive(item.href);
 
               return (
                 <Link

@@ -228,7 +228,7 @@ export function EditableProcedureData({
           !readOnly && (
             <button
               onClick={handleEdit}
-              className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1 px-2.5 md:py-1.5 md:px-3 gap-2 rounded text-xs md:text-sm leading-normal"
+              className="flex items-center justify-center font-semibold text-black bg-transparent border border-neutral-100 hover:bg-gray-50 transition-colors py-1 px-2.5 md:py-1.5 md:px-3 gap-2 rounded-xl text-xs md:text-sm leading-normal"
             >
               Editar
             </button>

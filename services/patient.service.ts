@@ -46,6 +46,7 @@ export interface UpdatePatientPayload {
 
 export interface CreatePatientPayload extends UpdatePatientPayload {
   name: string;
+  cpf: string;
 }
 
 interface BackendPatient {

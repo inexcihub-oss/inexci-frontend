@@ -54,10 +54,13 @@ export function CreateHealthPlanModal({
       setLoading(true);
       setError("");
       try {
+        const phone = unmask(data.phone);
+        const email = data.email.trim();
+
         const payload: CreateHealthPlanPayload = {
           name: data.name.trim(),
-          phone: unmask(data.phone),
-          email: data.email,
+          phone: phone || undefined,
+          email: email || undefined,
         };
         const newHealthPlan = await healthPlanService.create(payload);
         onSuccess(newHealthPlan);
@@ -104,7 +107,7 @@ export function CreateHealthPlanModal({
             />
 
             <Input
-              label="Telefone"
+              label="Telefone (opcional)"
               type="tel"
               mask="phone"
               placeholder="(21) 98765-4321"
@@ -112,7 +115,7 @@ export function CreateHealthPlanModal({
             />
 
             <Input
-              label="E-mail"
+              label="E-mail (opcional)"
               type="email"
               placeholder="convenio@mail.com"
               {...form.getFieldProps("email")}

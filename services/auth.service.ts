@@ -139,7 +139,7 @@ export const authService = {
    * Solicita código de recuperação de senha
    */
   async requestPasswordReset(email: string): Promise<void> {
-    await api.post("/auth/sendRecoveryPasswordEmail", { email });
+    await api.post("/auth/sendRecoveryPasswordEmail", { email: email.trim() });
   },
 
   /**
@@ -149,7 +149,7 @@ export const authService = {
   async validateRecoveryCode(email: string, code: string): Promise<string> {
     const { data } = await api.post<{ message: string; resetToken: string }>(
       "/auth/validateRecoveryPasswordCode",
-      { email, code },
+      { email: email.trim(), code: code.trim().replace(/\s+/g, "") },
     );
     return data.resetToken;
   },
@@ -163,8 +163,8 @@ export const authService = {
     newPassword: string,
   ): Promise<void> {
     await api.post("/auth/changePassword", {
-      email,
-      resetToken,
+      email: email.trim(),
+      resetToken: resetToken.trim(),
       password: newPassword,
     });
   },

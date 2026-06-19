@@ -225,6 +225,7 @@ export interface InvoicePayload {
   invoiceProtocol: string;
   invoiceValue: number;
   invoiceSentAt: string;
+  invoiceNotes?: string;
   paymentDeadline?: string;
   setAsDefaultForHealthPlan?: boolean;
 }

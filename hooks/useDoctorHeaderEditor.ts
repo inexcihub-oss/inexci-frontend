@@ -16,6 +16,12 @@ interface UseDoctorHeaderEditorOptions {
   formatError?: (error: unknown, fallback: string) => string;
 }
 
+interface SaveHeaderOptions {
+  showSuccessToast?: boolean;
+  showErrorToast?: boolean;
+  throwOnError?: boolean;
+}
+
 export function useDoctorHeaderEditor({
   enabled,
   mode = "self",
@@ -145,7 +151,11 @@ export function useDoctorHeaderEditor({
     if (headerLogoInputRef.current) headerLogoInputRef.current.value = "";
   };
 
-  const handleSaveHeader = async () => {
+  const saveHeader = async ({
+    showSuccessToast = true,
+    showErrorToast = true,
+    throwOnError = false,
+  }: SaveHeaderOptions = {}) => {
     if (mode === "byUserId" && !targetUserId) return;
 
     setSavingHeader(true);
@@ -171,13 +181,27 @@ export function useDoctorHeaderEditor({
       setCurrentHeader(saved);
       setHeaderLogoDeleted(false);
       setHeaderLogoFile(null);
-      showToast("Cabeçalho salvo com sucesso!", "success");
+      if (showSuccessToast) {
+        showToast("Cabeçalho salvo com sucesso!", "success");
+      }
     } catch (error) {
       const fallback = "Erro ao salvar cabeçalho";
-      showToast(formatError ? formatError(error, fallback) : fallback, "error");
+      if (showErrorToast) {
+        showToast(
+          formatError ? formatError(error, fallback) : fallback,
+          "error",
+        );
+      }
+      if (throwOnError) {
+        throw error;
+      }
     } finally {
       setSavingHeader(false);
     }
+  };
+
+  const handleSaveHeader = async () => {
+    await saveHeader();
   };
 
   const handleDeleteHeader = async () => {
@@ -214,6 +238,7 @@ export function useDoctorHeaderEditor({
     handleHeaderLogoChange,
     handleDeleteHeaderLogo,
     handleSaveHeader,
+    saveHeader,
     handleDeleteHeader,
     resetHeaderState,
     reloadHeader: loadHeader,

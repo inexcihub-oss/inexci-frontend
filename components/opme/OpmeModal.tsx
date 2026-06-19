@@ -26,7 +26,12 @@ import {
   OpmeSupplier,
 } from "@/services/opme.service";
 import { logger } from "@/lib/logger";
+import { getApiErrorMessage } from "@/lib/http-error";
 import { supplierService } from "@/services/supplier.service";
+import {
+  manufacturerService,
+  Manufacturer,
+} from "@/services/manufacturer.service";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
@@ -98,8 +103,17 @@ function padSuppliers(items: SupplierOption[]): SupplierOption[] {
   ];
 }
 
-function normalizeSupplierName(name: string): string {
+function normalizeOptionName(name: string): string {
   return name.trim().toLowerCase();
+}
+
+function formatCreatedNames(names: string[]): string {
+  if (names.length <= 4) {
+    return names.join(", ");
+  }
+
+  const visible = names.slice(0, 4).join(", ");
+  return `${visible} e mais ${names.length - 4}`;
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -121,6 +135,10 @@ export function OpmeModal({
   const [availableSuppliers, setAvailableSuppliers] = useState<OpmeSupplier[]>(
     [],
   );
+  const [availableManufacturers, setAvailableManufacturers] = useState<
+    Manufacturer[]
+  >([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { toast, showToast, hideToast } = useToast();
   const handleClose = useCallback(() => {
@@ -129,22 +147,31 @@ export function OpmeModal({
     setExpandedIndex(null);
     setEditingNameIndex(null);
     setNewOpmeName("");
+    setSaveError(null);
     onClose();
   }, [isLoading, onClose]);
 
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(handleClose);
 
-  // ── Carrega fornecedores ao abrir
+  // ── Carrega listas para autocomplete ao abrir
   useEffect(() => {
     if (!isOpen) return;
-    supplierService
-      .getAll()
-      .then((list) => {
-        setAvailableSuppliers(list.map((s) => ({ id: s.id, name: s.name })));
+
+    Promise.allSettled([supplierService.getAll(), manufacturerService.getAll()])
+      .then(([suppliersResult, manufacturersResult]) => {
+        if (suppliersResult.status === "fulfilled") {
+          setAvailableSuppliers(
+            suppliersResult.value.map((s) => ({ id: s.id, name: s.name })),
+          );
+        }
+
+        if (manufacturersResult.status === "fulfilled") {
+          setAvailableManufacturers(manufacturersResult.value);
+        }
       })
       .catch(() => {
-        // Falha silenciosa: combobox segue funcionando como texto livre.
+        // Falha silenciosa: comboboxes seguem funcionando como texto livre.
       });
   }, [isOpen]);
 
@@ -154,16 +181,19 @@ export function OpmeModal({
     if (editingOpme) {
       const existingSuppliers: SupplierOption[] =
         editingOpme.suppliers?.map((s) => ({ id: s.id, name: s.name })) ?? [];
+
+      const existingManufacturers =
+        editingOpme.manufacturers?.map((m) => m.name).filter(Boolean) ??
+        (editingOpme.brand ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
       setOpmeItems([
         {
           id: editingOpme.id,
           name: editingOpme.name,
-          manufacturers: padManufacturers(
-            (editingOpme.brand ?? "")
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean),
-          ),
+          manufacturers: padManufacturers(existingManufacturers),
           suppliers: padSuppliers(existingSuppliers),
           quantity: editingOpme.quantity,
         },
@@ -368,6 +398,8 @@ export function OpmeModal({
   };
 
   const handleSave = async () => {
+    setSaveError(null);
+
     if (opmeItems.length === 0) {
       showToast("Adicione pelo menos um item OPME.", "error");
       return;
@@ -384,8 +416,13 @@ export function OpmeModal({
       return;
     }
 
+    let savingItemIndex: number | null = null;
+
     setIsLoading(true);
     try {
+      const createdSupplierNames = new Set<string>();
+      const createdManufacturerNames = new Set<string>();
+
       if (onLocalSave) {
         onLocalSave(
           opmeItems.map((item) => ({
@@ -402,7 +439,34 @@ export function OpmeModal({
         return;
       }
 
-      for (const item of opmeItems) {
+      for (const [index, item] of opmeItems.entries()) {
+        savingItemIndex = index;
+
+        const filledManufacturers = item.manufacturers
+          .map((name) => name.trim())
+          .filter(Boolean);
+        const availableManufacturerByName = new Map(
+          availableManufacturers.map((manufacturer) => [
+            normalizeOptionName(manufacturer.name),
+            manufacturer,
+          ]),
+        );
+
+        const manufacturerIds: string[] = [];
+        const manufacturerNames: string[] = [];
+
+        for (const manufacturerName of filledManufacturers) {
+          const existingManufacturer = availableManufacturerByName.get(
+            normalizeOptionName(manufacturerName),
+          );
+
+          if (existingManufacturer?.id) {
+            manufacturerIds.push(existingManufacturer.id);
+          } else {
+            manufacturerNames.push(manufacturerName);
+          }
+        }
+
         const filledSuppliers = item.suppliers.filter((s) => s.name.trim());
         const supplierIds = filledSuppliers
           .filter((s) => s.id)
@@ -414,32 +478,82 @@ export function OpmeModal({
         const data: CreateOpmeData = {
           surgeryRequestId,
           name: item.name,
-          brand:
-            item.manufacturers.filter((m) => m.trim()).join(", ") || undefined,
+          manufacturerIds:
+            manufacturerIds.length > 0
+              ? Array.from(new Set(manufacturerIds))
+              : undefined,
+          manufacturerNames:
+            manufacturerNames.length > 0
+              ? Array.from(new Set(manufacturerNames))
+              : undefined,
           supplierIds: supplierIds.length > 0 ? supplierIds : undefined,
           supplierNames: supplierNames.length > 0 ? supplierNames : undefined,
           quantity: item.quantity,
         };
 
         if (item.id) {
-          await opmeService.update({
+          const response = await opmeService.update({
             id: item.id,
             name: data.name,
-            brand: data.brand,
+            manufacturerIds: data.manufacturerIds,
+            manufacturerNames: data.manufacturerNames,
             supplierIds: data.supplierIds,
             supplierNames: data.supplierNames,
             quantity: data.quantity,
           });
+
+          response.createdSupplierNames?.forEach((name) =>
+            createdSupplierNames.add(name),
+          );
+          response.createdManufacturerNames?.forEach((name) =>
+            createdManufacturerNames.add(name),
+          );
         } else {
-          await opmeService.create(data);
+          const response = await opmeService.create(data);
+
+          response.createdSupplierNames?.forEach((name) =>
+            createdSupplierNames.add(name),
+          );
+          response.createdManufacturerNames?.forEach((name) =>
+            createdManufacturerNames.add(name),
+          );
         }
+      }
+
+      const createdSuppliers = Array.from(createdSupplierNames);
+      const createdManufacturers = Array.from(createdManufacturerNames);
+
+      if (createdSuppliers.length > 0 || createdManufacturers.length > 0) {
+        const parts: string[] = [];
+        if (createdSuppliers.length > 0) {
+          parts.push(
+            `Fornecedores criados: ${formatCreatedNames(createdSuppliers)}`,
+          );
+        }
+        if (createdManufacturers.length > 0) {
+          parts.push(
+            `Fabricantes criados: ${formatCreatedNames(createdManufacturers)}`,
+          );
+        }
+
+        showToast(parts.join(" · "), "success");
       }
 
       onSuccess();
       handleClose();
     } catch (err) {
       logger.error("Erro ao salvar OPME:", err);
-      showToast("Erro ao salvar OPME. Tente novamente.", "error");
+
+      const message = getApiErrorMessage(
+        err,
+        "Erro ao salvar OPME. Revise os dados e tente novamente.",
+      );
+
+      setSaveError(message);
+      if (savingItemIndex !== null) {
+        setExpandedIndex(savingItemIndex);
+      }
+      showToast(message, "error");
     } finally {
       setIsLoading(false);
     }
@@ -512,6 +626,12 @@ export function OpmeModal({
                 onConfirm={handleAddOpme}
               />
 
+              {saveError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+                  {saveError}
+                </div>
+              )}
+
               {opmeItems.length === 0 ? (
                 <EmptyState />
               ) : (
@@ -548,6 +668,7 @@ export function OpmeModal({
                       handleRemoveSupplier(index, fieldIndex)
                     }
                     availableSuppliers={availableSuppliers}
+                    availableManufacturers={availableManufacturers}
                   />
                 ))
               )}
@@ -680,6 +801,7 @@ interface OpmeItemCardProps {
   expanded: boolean;
   isEditingName: boolean;
   availableSuppliers: OpmeSupplier[];
+  availableManufacturers: Manufacturer[];
   onToggleExpand: () => void;
   onStartEditName: () => void;
   onFinishEditName: () => void;
@@ -701,6 +823,7 @@ function OpmeItemCard({
   expanded,
   isEditingName,
   availableSuppliers,
+  availableManufacturers,
   onToggleExpand,
   onStartEditName,
   onFinishEditName,
@@ -737,16 +860,33 @@ function OpmeItemCard({
       const selectedNames = new Set(
         item.suppliers
           .filter((_, i) => i !== fieldIndex)
-          .map((s) => normalizeSupplierName(s.name))
+          .map((s) => normalizeOptionName(s.name))
           .filter(Boolean),
       );
 
       return availableSuppliers.filter((supplier) => {
         if (selectedIds.has(supplier.id)) return false;
-        return !selectedNames.has(normalizeSupplierName(supplier.name));
+        return !selectedNames.has(normalizeOptionName(supplier.name));
       });
     },
     [item.suppliers, availableSuppliers],
+  );
+
+  const getAvailableManufacturersForIndex = useCallback(
+    (fieldIndex: number) => {
+      const selectedNames = new Set(
+        item.manufacturers
+          .filter((_, i) => i !== fieldIndex)
+          .map((name) => normalizeOptionName(name))
+          .filter(Boolean),
+      );
+
+      return availableManufacturers.filter(
+        (manufacturer) =>
+          !selectedNames.has(normalizeOptionName(manufacturer.name)),
+      );
+    },
+    [item.manufacturers, availableManufacturers],
   );
 
   const isComplete =
@@ -754,7 +894,7 @@ function OpmeItemCard({
 
   return (
     <div
-      className={`rounded-2xl border bg-white overflow-hidden transition-colors ${
+      className={`rounded-2xl border bg-white overflow-visible transition-colors ${
         expanded ? "border-primary-200" : "border-neutral-100"
       }`}
     >
@@ -888,14 +1028,13 @@ function OpmeItemCard({
           >
             {item.manufacturers.map((manufacturer, fieldIndex) => (
               <div key={fieldIndex} className="flex items-center gap-2">
-                <input
-                  type="text"
+                <ManufacturerAutocomplete
                   value={manufacturer}
-                  onChange={(e) =>
-                    onManufacturerChange(fieldIndex, e.target.value)
-                  }
+                  availableManufacturers={getAvailableManufacturersForIndex(
+                    fieldIndex,
+                  )}
+                  onChange={(val) => onManufacturerChange(fieldIndex, val)}
                   placeholder={`Fabricante ${fieldIndex + 1}`}
-                  className="ds-input flex-1"
                 />
                 <RemoveFieldButton
                   onClick={() => onRemoveManufacturer(fieldIndex)}
@@ -1196,6 +1335,132 @@ function SupplierAutocomplete({
               <Plus className="w-3.5 h-3.5" strokeWidth={2} />
               <span className="truncate">
                 Adicionar &ldquo;{query.trim()}&rdquo; como novo fornecedor
+              </span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ManufacturerAutocompleteProps {
+  value: string;
+  placeholder: string;
+  availableManufacturers: Manufacturer[];
+  onChange: (value: string) => void;
+}
+
+function ManufacturerAutocomplete({
+  value,
+  placeholder,
+  availableManufacturers,
+  onChange,
+}: ManufacturerAutocompleteProps) {
+  const [query, setQuery] = useState(value);
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+        if (query.trim() !== value) {
+          onChange(query.trim());
+        }
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [query, value, onChange]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+
+  const filtered = availableManufacturers.filter((m) =>
+    m.name.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  const matchedManufacturer = availableManufacturers.find(
+    (m) => m.name.toLowerCase() === normalizedQuery,
+  );
+
+  const handleSelect = (manufacturer: Manufacturer) => {
+    onChange(manufacturer.name);
+    setQuery(manufacturer.name);
+    setIsOpen(false);
+  };
+
+  const handleAddNew = () => {
+    const name = query.trim();
+    if (!name) return;
+    onChange(name);
+    setIsOpen(false);
+  };
+
+  const showDropdown =
+    isOpen && (filtered.length > 0 || (query.trim() && !matchedManufacturer));
+
+  return (
+    <div ref={containerRef} className="flex-1 min-w-0 relative">
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            onChange(e.target.value);
+            setIsOpen(true);
+          }}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          className={`ds-input pr-8 ${
+            matchedManufacturer ? "border-primary-300 bg-primary-50/30" : ""
+          }`}
+        />
+        {matchedManufacturer && (
+          <span
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary-500"
+            title="Fabricante cadastrado"
+            aria-hidden="true"
+          />
+        )}
+      </div>
+
+      {showDropdown && (
+        <div className="absolute z-60 top-full left-0 right-0 mt-1 bg-white border border-neutral-100 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+          {filtered.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleSelect(m);
+              }}
+              className="w-full text-left px-3 py-2.5 text-sm text-gray-900 hover:bg-primary-50 transition-colors flex items-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-primary-400 shrink-0" />
+              <span className="truncate">{m.name}</span>
+            </button>
+          ))}
+          {query.trim() && !matchedManufacturer && (
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleAddNew();
+              }}
+              className="w-full text-left px-3 py-2.5 text-sm text-primary-700 font-semibold hover:bg-primary-50 transition-colors border-t border-neutral-100 flex items-center gap-2"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2} />
+              <span className="truncate">
+                Adicionar &ldquo;{query.trim()}&rdquo; como novo fabricante
               </span>
             </button>
           )}

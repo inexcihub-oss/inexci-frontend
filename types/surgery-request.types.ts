@@ -168,6 +168,10 @@ export interface OpmeItemRef {
     id?: string | number;
     name?: string;
   }>;
+  manufacturers?: Array<{
+    id?: string | number;
+    name?: string;
+  }>;
   [key: string]: unknown;
 }
 
@@ -176,6 +180,7 @@ export interface BillingInfo {
   invoiceValue: number | null;
   invoiceProtocol: string | null;
   invoiceSentAt: string | null;
+  invoiceNotes: string | null;
   paymentDeadline: string | null;
   [key: string]: unknown;
 }

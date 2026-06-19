@@ -36,7 +36,9 @@ export default function PacienteDetalhePage() {
   const returnUrl = (() => {
     if (!rawReturnUrl) return null;
     const decoded = decodeURIComponent(rawReturnUrl);
-    return decoded.startsWith("/") && !decoded.startsWith("//") ? decoded : null;
+    return decoded.startsWith("/") && !decoded.startsWith("//")
+      ? decoded
+      : null;
   })();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -185,11 +187,16 @@ export default function PacienteDetalhePage() {
   const handleSave = async () => {
     if (!patient) return;
 
+    if (!formData.cpf.replace(/\D/g, "")) {
+      showToast("CPF é obrigatório.", "error");
+      return;
+    }
+
     setSaving(true);
     try {
       await patientService.update(patient.id, {
         name: formData.name,
-        cpf: formData.cpf || undefined,
+        cpf: formData.cpf.replace(/\D/g, ""),
         email: formData.email || undefined,
         phone: formData.phone || undefined,
         birthDate: formData.birthDate || undefined,
@@ -348,6 +355,7 @@ export default function PacienteDetalhePage() {
                 handleInputChange("cpf", e.target.value.replace(/\D/g, ""))
               }
               placeholder="000.000.000-00"
+              required
             />
             <DateInput
               label="Data de nascimento"

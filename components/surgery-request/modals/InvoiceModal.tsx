@@ -59,6 +59,7 @@ export function InvoiceModal({
   const [protocol, setProtocol] = useState("");
   const [sentAt, setSentAt] = useState(todayStr);
   const [value, setValue] = useState("");
+  const [notes, setNotes] = useState("");
   const [paymentDeadline, setPaymentDeadline] = useState("");
   const [setAsDefault, setSetAsDefault] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -84,6 +85,7 @@ export function InvoiceModal({
     setProtocol("");
     setSentAt(todayStr);
     setValue("");
+    setNotes("");
     setPaymentDeadline("");
     setSetAsDefault(false);
     setAttempted(false);
@@ -128,6 +130,7 @@ export function InvoiceModal({
         invoiceProtocol: protocol.trim(),
         invoiceValue: numericValue,
         invoiceSentAt: sentAtDate.toISOString(),
+        invoiceNotes: notes.trim() || undefined,
         paymentDeadline: paymentDeadlineISO,
         setAsDefaultForHealthPlan: setAsDefault || undefined,
       });
@@ -293,6 +296,23 @@ export function InvoiceModal({
                   className="ds-input text-xs md:text-sm disabled:opacity-50"
                 />
               </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="ds-label mb-0">
+                Observação
+                <span className="ml-1 font-normal text-gray-400">
+                  (opcional)
+                </span>
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ex: glosa parcial já discutida com o convênio"
+                rows={4}
+                disabled={isSaving}
+                className="ds-input min-h-24 text-xs md:text-sm disabled:opacity-50 resize-y"
+              />
             </div>
           </div>
 

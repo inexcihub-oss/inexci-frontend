@@ -38,6 +38,7 @@ function PrimeiroAcessoForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(null);
 
   const form = useZodForm({
     schema: newPasswordSchema,
@@ -49,15 +50,20 @@ function PrimeiroAcessoForm() {
     setError("");
     setIsLoading(true);
     try {
-      const resetToken = await authService.validateRecoveryCode(email, token);
-      if (!resetToken) {
+      const tokenToUse =
+        resetToken ?? (await authService.validateRecoveryCode(email, token));
+      if (!tokenToUse) {
         setError(
           "Link inválido ou expirado. Solicite um novo convite ao administrador.",
         );
         return;
       }
 
-      await authService.changePassword(email, resetToken, data.password);
+      if (!resetToken) {
+        setResetToken(tokenToUse);
+      }
+
+      await authService.changePassword(email, tokenToUse, data.password);
 
       // Tenta fazer login automático após ativar a conta.
       // Mostra a tela de sucesso independentemente do resultado do login.

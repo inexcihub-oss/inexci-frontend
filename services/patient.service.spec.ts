@@ -86,7 +86,7 @@ describe("patientService", () => {
 
   describe("create", () => {
     it("deve chamar POST /patients com payload", async () => {
-      const payload = { name: "Novo Paciente" };
+      const payload = { name: "Novo Paciente", cpf: "12345678900" };
       (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { id: "2", ...payload },
       });

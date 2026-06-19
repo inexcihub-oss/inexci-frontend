@@ -14,6 +14,7 @@ import { OpmeModal } from "@/components/opme/OpmeModal";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { supplierService } from "@/services/supplier.service";
+import { manufacturerService } from "@/services/manufacturer.service";
 import { procedureService, Procedure } from "@/services/procedure.service";
 
 interface ProcedureSideSheetProps {
@@ -324,6 +325,32 @@ export function ProcedureSideSheet({
       quantity: number;
     }[],
   ) => {
+    // Coleta todos os nomes de fabricantes únicos informados
+    const allManufacturerNames = [
+      ...new Set(items.flatMap((item) => item.manufacturers).filter(Boolean)),
+    ];
+
+    if (allManufacturerNames.length > 0) {
+      try {
+        // Busca fabricantes já existentes para evitar duplicatas
+        const existingManufacturers = await manufacturerService.getAll();
+        const existingNames = new Set(
+          existingManufacturers.map((m) => m.name.toLowerCase().trim()),
+        );
+
+        // Cria apenas os fabricantes que ainda não existem
+        const toCreate = allManufacturerNames.filter(
+          (name) => !existingNames.has(name.toLowerCase().trim()),
+        );
+
+        await Promise.all(
+          toCreate.map((name) => manufacturerService.create({ name })),
+        );
+      } catch (err) {
+        logger.error("Erro ao criar fabricantes:", err);
+      }
+    }
+
     // Coleta todos os nomes de fornecedores únicos informados
     const allSupplierNames = [
       ...new Set(items.flatMap((item) => item.suppliers).filter(Boolean)),

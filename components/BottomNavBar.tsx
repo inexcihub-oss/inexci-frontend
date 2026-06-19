@@ -42,6 +42,11 @@ const SHARED_OVERFLOW_ITEMS: NavItem[] = [
     label: "Fornecedores",
     href: "/fornecedores",
   },
+  {
+    iconSrc: "/icons/user.svg",
+    label: "Fabricantes",
+    href: "/fabricantes",
+  },
 ];
 
 // Itens exclusivos de admin — aparecem no overflow sheet

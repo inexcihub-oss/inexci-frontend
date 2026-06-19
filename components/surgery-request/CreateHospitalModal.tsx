@@ -107,13 +107,12 @@ export function CreateHospitalModal({
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
             <Input
               label="Hospital"
-              required
               placeholder="Nome do hospital"
               {...form.getFieldProps("name")}
             />
 
             <Input
-              label="Telefone"
+              label="Telefone (opcional)"
               type="tel"
               mask="phone"
               placeholder="(21) 98765-4321"
@@ -121,7 +120,7 @@ export function CreateHospitalModal({
             />
 
             <Input
-              label="E-mail"
+              label="E-mail (opcional)"
               type="email"
               placeholder="hospital@mail.com"
               {...form.getFieldProps("email")}
@@ -135,11 +134,7 @@ export function CreateHospitalModal({
           {/* Footer */}
           <div className="h-px bg-gray-200 flex-shrink-0" />
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
-            <button
-              type="submit"
-              disabled={loading}
-              className="ds-btn-primary"
-            >
+            <button type="submit" disabled={loading} className="ds-btn-primary">
               {loading ? "Adicionando..." : "Adicionar hospital"}
             </button>
           </div>
@@ -147,11 +142,7 @@ export function CreateHospitalModal({
       </div>
 
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
       )}
     </div>
   );

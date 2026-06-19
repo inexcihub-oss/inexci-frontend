@@ -796,6 +796,8 @@ export default function SolicitacaoDetalhePage() {
   // Modal de notificação ao paciente aparece apenas até a confirmação de data de cirurgia
   // (status anterior < 5 = "Agendada"). A partir de "Agendada" em diante, não exibe mais.
   const isPreRealizadaStatus = (status: number) => status < 5;
+  const hasPatientContact =
+    !!solicitacao?.patient?.phone || !!solicitacao?.patient?.email;
 
   // Mapa de ação → status resultante (para exibir no modal de notificação)
   const ACTION_NEXT_STATUS_MAP: Record<string, string> = {
@@ -811,6 +813,10 @@ export default function SolicitacaoDetalhePage() {
     action: string,
     previousStatusNum: number,
   ) => {
+    if (!hasPatientContact) {
+      return;
+    }
+
     if (
       isPreRealizadaStatus(previousStatusNum) &&
       action !== "surgeryStatus" &&
@@ -1642,7 +1648,7 @@ export default function SolicitacaoDetalhePage() {
 
       {/* Modal de confirmação de notificação ao paciente (pós-transição) */}
       <NotificationConfirmModal
-        isOpen={isNotificationModalOpen}
+        isOpen={isNotificationModalOpen && hasPatientContact}
         onClose={() => {
           setIsNotificationModalOpen(false);
           setCompletedActionStatus(null);

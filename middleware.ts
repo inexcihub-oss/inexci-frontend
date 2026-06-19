@@ -16,6 +16,7 @@ const PLATFORM_PREFIXES = [
   "/hospitais",
   "/convenios",
   "/fornecedores",
+  "/fabricantes",
   "/procedimentos",
   "/colaboradores",
   "/notificacoes",

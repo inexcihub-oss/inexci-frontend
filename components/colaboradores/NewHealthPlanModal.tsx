@@ -78,7 +78,7 @@ export function NewHealthPlanModal({
       setError("Nome do convênio é obrigatório.");
       return;
     }
-    if (!isValidEmail(formData.email)) {
+    if (formData.email.trim() && !isValidEmail(formData.email.trim())) {
       setEmailError("E-mail inválido");
       return;
     }
@@ -87,10 +87,13 @@ export function NewHealthPlanModal({
     setError("");
 
     try {
+      const phone = unmask(formData.phone);
+      const email = formData.email.trim();
+
       const payload: CreateHealthPlanPayload = {
         name: formData.name.trim(),
-        phone: unmask(formData.phone),
-        email: formData.email.trim(),
+        phone: phone || undefined,
+        email: email || undefined,
         cnpj: unmask(formData.cnpj) || undefined,
       };
 
@@ -162,7 +165,7 @@ export function NewHealthPlanModal({
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>CNPJ</label>
+                <label className={labelClass}>CNPJ (opcional)</label>
                 <input
                   type="text"
                   value={formData.cnpj}
@@ -176,10 +179,9 @@ export function NewHealthPlanModal({
             {/* Row 2: Telefone + E-mail */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Telefone</label>
+                <label className={labelClass}>Telefone (opcional)</label>
                 <input
                   type="tel"
-                  required
                   value={formData.phone}
                   onChange={handlePhoneChange}
                   placeholder="(21) 98765-4321"
@@ -187,10 +189,9 @@ export function NewHealthPlanModal({
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>E-mail</label>
+                <label className={labelClass}>E-mail (opcional)</label>
                 <input
                   type="email"
-                  required
                   value={formData.email}
                   onChange={handleEmailChange}
                   onBlur={handleEmailBlur}

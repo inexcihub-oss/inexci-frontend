@@ -190,9 +190,7 @@ export function NewHospitalModal({
             {/* Row 1: Nome + CNPJ */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>
-                  <span className="text-red-500 mr-0.5">*</span>Nome
-                </label>
+                <label className={labelClass}>Nome</label>
                 <input
                   type="text"
                   required
@@ -205,7 +203,7 @@ export function NewHospitalModal({
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>CNPJ</label>
+                <label className={labelClass}>CNPJ (opcional)</label>
                 <input
                   type="text"
                   value={formData.cnpj}
@@ -219,7 +217,7 @@ export function NewHospitalModal({
             {/* Row 2: Telefone + E-mail */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Telefone</label>
+                <label className={labelClass}>Telefone (opcional)</label>
                 <input
                   type="tel"
                   value={formData.phone}
@@ -229,7 +227,7 @@ export function NewHospitalModal({
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>E-mail</label>
+                <label className={labelClass}>E-mail (opcional)</label>
                 <input
                   type="email"
                   value={formData.email}
@@ -247,7 +245,7 @@ export function NewHospitalModal({
             {/* Row 3: Cidade + Estado */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Cidade</label>
+                <label className={labelClass}>Cidade (opcional)</label>
                 <input
                   type="text"
                   value={formData.city}
@@ -259,7 +257,7 @@ export function NewHospitalModal({
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Estado</label>
+                <label className={labelClass}>Estado (opcional)</label>
                 <select
                   value={formData.state}
                   onChange={(e) =>

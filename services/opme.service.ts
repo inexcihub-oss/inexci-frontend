@@ -6,12 +6,18 @@ export interface OpmeSupplier {
   name: string;
 }
 
+export interface OpmeManufacturer {
+  id: string;
+  name: string;
+}
+
 export interface OpmeItem {
   id: string;
   surgeryRequestId: string | number;
   name: string;
   brand?: string;
   suppliers: OpmeSupplier[];
+  manufacturers?: OpmeManufacturer[];
   quantity: number;
   authorizedQuantity?: number;
   createdAt: string;
@@ -21,6 +27,8 @@ export interface CreateOpmeData {
   surgeryRequestId: string | number;
   name: string;
   brand?: string;
+  manufacturerIds?: string[];
+  manufacturerNames?: string[];
   supplierIds?: string[];
   supplierNames?: string[];
   quantity: number;
@@ -30,13 +38,26 @@ export interface UpdateOpmeData {
   id: string;
   name?: string;
   brand?: string;
+  manufacturerIds?: string[];
+  manufacturerNames?: string[];
   supplierIds?: string[];
   supplierNames?: string[];
   quantity?: number;
 }
 
+export interface OpmeSaveMetadata {
+  createdSupplierNames?: string[];
+  createdManufacturerNames?: string[];
+}
+
+export type CreateOpmeResponse = OpmeItem & OpmeSaveMetadata;
+
+export interface UpdateOpmeResponse extends OpmeSaveMetadata {
+  message: string;
+}
+
 export const opmeService = {
-  async create(data: CreateOpmeData): Promise<OpmeItem> {
+  async create(data: CreateOpmeData): Promise<CreateOpmeResponse> {
     try {
       const response = await api.post("/surgery-requests/opme", data);
       return response.data;
@@ -46,7 +67,7 @@ export const opmeService = {
     }
   },
 
-  async update(data: UpdateOpmeData): Promise<OpmeItem> {
+  async update(data: UpdateOpmeData): Promise<UpdateOpmeResponse> {
     try {
       const response = await api.put("/surgery-requests/opme", data);
       return response.data;

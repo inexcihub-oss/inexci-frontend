@@ -81,6 +81,7 @@ export default function AssistenteDetalhePage() {
     handleHeaderLogoChange,
     handleDeleteHeaderLogo,
     handleSaveHeader,
+    saveHeader,
     handleDeleteHeader,
   } = useDoctorHeaderEditor({
     enabled: isDoctor,
@@ -295,31 +296,44 @@ export default function AssistenteDetalhePage() {
     }
   };
 
-  const handleSaveSignature = async () => {
+  const handleSaveScConfigurations = async () => {
     if (!collaborator?.id) return;
+
     setSaving(true);
     try {
-      let signaturePath: string | undefined = undefined;
-      if (signatureFile) {
-        const sigResult = await uploadService.uploadSingle(
-          signatureFile,
-          "signatures",
-        );
-        signaturePath = sigResult.data.path;
-      }
-      await userService.updateDoctorProfile(collaborator.id, {
-        ...(signatureFile
-          ? { signatureImageUrl: signaturePath }
-          : signatureDeleted
-            ? { signatureImageUrl: null }
-            : {}),
+      await saveHeader({
+        showSuccessToast: false,
+        showErrorToast: false,
+        throwOnError: true,
       });
-      setSignatureFile(null);
-      setSignatureDeleted(false);
-      showToast("Assinatura salva com sucesso!", "success");
+
+      if (signatureFile || signatureDeleted) {
+        let signaturePath: string | undefined = undefined;
+        if (signatureFile) {
+          const sigResult = await uploadService.uploadSingle(
+            signatureFile,
+            "signatures",
+          );
+          signaturePath = sigResult.data.path;
+        }
+
+        await userService.updateDoctorProfile(collaborator.id, {
+          ...(signatureFile
+            ? { signatureImageUrl: signaturePath }
+            : signatureDeleted
+              ? { signatureImageUrl: null }
+              : {}),
+        });
+
+        setSignatureFile(null);
+        setSignatureDeleted(false);
+      }
+
+      showToast("Configurações salvas com sucesso!", "success");
+      handleCloseScConfigModal();
     } catch (error) {
-      logger.error("Erro ao salvar assinatura:", error);
-      showToast("Erro ao salvar a assinatura.", "error");
+      logger.error("Erro ao salvar configurações da solicitação:", error);
+      showToast("Erro ao salvar configurações da solicitação.", "error");
     } finally {
       setSaving(false);
     }
@@ -843,21 +857,13 @@ export default function AssistenteDetalhePage() {
             )}
 
             {(signatureFile || signatureDeleted) && !isProcessingSignature && (
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="flex flex-col gap-3">
                 <p className="text-xs text-amber-600 flex items-center gap-1">
                   <span>⚠</span>{" "}
                   {signatureDeleted
                     ? "Remoção pendente — salve para confirmar."
                     : "Assinatura ainda não salva — salve para confirmar."}
                 </p>
-                <Button
-                  size="sm"
-                  onClick={handleSaveSignature}
-                  isLoading={saving}
-                  className="w-full md:w-auto"
-                >
-                  Salvar assinatura
-                </Button>
               </div>
             )}
 
@@ -886,8 +892,11 @@ export default function AssistenteDetalhePage() {
                   Remover cabeçalho
                 </Button>
               )}
-              <Button onClick={handleSaveHeader} isLoading={savingHeader}>
-                Salvar cabeçalho
+              <Button
+                onClick={handleSaveScConfigurations}
+                isLoading={saving || savingHeader}
+              >
+                Salvar configurações
               </Button>
             </div>
           </div>

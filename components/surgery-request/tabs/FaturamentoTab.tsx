@@ -263,6 +263,13 @@ export function FaturamentoTab() {
               {formatDate(billing.invoiceSentAt)}
             </div>
           </div>
+
+          <div className="flex flex-col gap-1 sm:col-span-2">
+            <label className="ds-label mb-0">Observação</label>
+            <div className="ds-field-readonly whitespace-pre-wrap break-words">
+              {billing.invoiceNotes?.trim() ? billing.invoiceNotes : "—"}
+            </div>
+          </div>
         </div>
       </div>
 

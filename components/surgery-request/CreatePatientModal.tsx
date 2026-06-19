@@ -23,6 +23,7 @@ interface CreatePatientModalProps {
 
 const FIELD_LABELS: Record<string, string> = {
   name: "Nome completo",
+  cpf: "CPF",
   phone: "Telefone",
   email: "E-mail",
 };
@@ -38,7 +39,7 @@ export function CreatePatientModal({
 
   const form = useZodForm({
     schema: createPatientQuickSchema,
-    initialValues: { name: "", phone: "", email: "" },
+    initialValues: { name: "", cpf: "", phone: "", email: "" },
   });
 
   const handleClose = () => {
@@ -55,8 +56,9 @@ export function CreatePatientModal({
       try {
         const payload: CreatePatientPayload = {
           name: data.name.trim(),
-          email: data.email,
-          phone: unmask(data.phone),
+          cpf: unmask(data.cpf),
+          email: data.email || undefined,
+          phone: data.phone ? unmask(data.phone) : undefined,
         };
         const newPatient = await patientService.create(payload);
         onSuccess(newPatient);
@@ -103,7 +105,14 @@ export function CreatePatientModal({
             />
 
             <Input
-              label="Telefone"
+              label="CPF"
+              mask="cpf"
+              placeholder="123.456.789-00"
+              {...form.getFieldProps("cpf")}
+            />
+
+            <Input
+              label="Telefone (opcional)"
               type="tel"
               mask="phone"
               placeholder="(21) 98765-4321"
@@ -111,11 +120,16 @@ export function CreatePatientModal({
             />
 
             <Input
-              label="E-mail"
+              label="E-mail (opcional)"
               type="email"
               placeholder="paciente@mail.com"
               {...form.getFieldProps("email")}
             />
+
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Obs.: Não será possível notificar o paciente sem os dados de
+              telefone e e-mail.
+            </p>
 
             {error && (
               <p className="text-sm text-red-500 text-center">{error}</p>
@@ -125,11 +139,7 @@ export function CreatePatientModal({
           {/* Footer */}
           <div className="h-px bg-gray-200" />
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="ds-btn-primary"
-            >
+            <button type="submit" disabled={loading} className="ds-btn-primary">
               {loading ? "Adicionando..." : "Adicionar paciente"}
             </button>
           </div>
@@ -137,11 +147,7 @@ export function CreatePatientModal({
       </div>
 
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
       )}
     </div>
   );
