@@ -31,6 +31,7 @@ import Image from "next/image";
 import { NewSurgeryRequestButton } from "@/components/billing/NewSurgeryRequestButton";
 import PageContainer from "@/components/PageContainer";
 import { getInitials, includesIgnoreCase } from "@/lib/utils";
+import { formatDateBR, getLatestActivityMs } from "@/lib/formatters";
 import { useAuth } from "@/contexts/AuthContext";
 import { availableDoctorsService } from "@/services/available-doctors.service";
 import { NoActiveDoctorModal } from "@/components/surgery-request/NoActiveDoctorModal";
@@ -167,6 +168,21 @@ export default function ProcedimentosCirurgicos() {
               };
             };
 
+            const createdAtIso = record.createdAt;
+            const lastStatusChangedAt =
+              record.lastStatusChangedAt ??
+              record.last_status_changed_at ??
+              undefined;
+            const updatedAt =
+              record.updatedAt && !Number.isNaN(Date.parse(record.updatedAt))
+                ? record.updatedAt
+                : undefined;
+            const lastActivityAt = lastStatusChangedAt
+              ? formatDateBR(lastStatusChangedAt)
+              : updatedAt
+                ? formatDateBR(updatedAt)
+                : formatDateBR(createdAtIso);
+
             return {
               id: String(record.id),
               protocol: record.protocol || "",
@@ -181,20 +197,10 @@ export default function ProcedimentosCirurgicos() {
               pendenciesCount: record.pendenciesCount || 0,
               pendenciesCompleted: 0,
               pendenciesWaiting: 0,
-              createdAt: (() => {
-                const d = new Date(record.createdAt);
-                const dd = d.getDate().toString().padStart(2, "0");
-                const mm = (d.getMonth() + 1).toString().padStart(2, "0");
-                return `${dd}/${mm}/${d.getFullYear()}`;
-              })(),
-              lastStatusChangedAt:
-                record.lastStatusChangedAt ??
-                record.last_status_changed_at ??
-                undefined,
-              updatedAt:
-                record.updatedAt && !Number.isNaN(Date.parse(record.updatedAt))
-                  ? record.updatedAt
-                  : record.createdAt,
+              createdAt: formatDateBR(createdAtIso),
+              lastActivityAt,
+              lastStatusChangedAt,
+              updatedAt,
               status,
               healthPlan: record.healthPlan?.name || "",
               hasIncompletePayment: record.hasIncompletePayment === true,
@@ -202,20 +208,12 @@ export default function ProcedimentosCirurgicos() {
           },
         );
 
-        const getSortTime = (request: SurgeryRequest) => {
-          const updatedMs = request.updatedAt
-            ? Date.parse(request.updatedAt)
-            : Number.NaN;
-          if (!Number.isNaN(updatedMs)) return updatedMs;
-
-          const [day, month, year] = request.createdAt.split("/").map(Number);
-          const createdMs = new Date(
-            year,
-            (month || 1) - 1,
-            day || 1,
-          ).getTime();
-          return Number.isNaN(createdMs) ? 0 : createdMs;
-        };
+        const getSortTime = (request: SurgeryRequest) =>
+          getLatestActivityMs(
+            request.lastStatusChangedAt,
+            request.updatedAt,
+            request.createdAt,
+          );
 
         // Organizar os cards nas colunas corretas
         const newColumns = INITIAL_COLUMNS.map((column) => ({

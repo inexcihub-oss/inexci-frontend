@@ -10,6 +10,8 @@ interface ConfirmDeleteModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
+  /** Quando true, informa que o registro será ocultado (soft delete) em vez de removido permanentemente. */
+  softDelete?: boolean;
 }
 
 export function ConfirmDeleteModal({
@@ -20,6 +22,7 @@ export function ConfirmDeleteModal({
   onConfirm,
   onCancel,
   loading = false,
+  softDelete = false,
 }: ConfirmDeleteModalProps) {
   // Fecha com ESC
   useEffect(() => {
@@ -76,7 +79,9 @@ export function ConfirmDeleteModal({
         <p className="text-xs md:text-sm text-gray-500 text-center mb-6">
           {description ?? defaultDescription}
           <br />
-          Esta ação não pode ser desfeita.
+          {softDelete
+            ? "O registro será removido das listas, mas o histórico vinculado será preservado."
+            : "Esta ação não pode ser desfeita."}
         </p>
 
         {/* Botões */}

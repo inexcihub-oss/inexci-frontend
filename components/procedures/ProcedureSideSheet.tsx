@@ -16,6 +16,7 @@ import { surgeryRequestService } from "@/services/surgery-request.service";
 import { supplierService } from "@/services/supplier.service";
 import { manufacturerService } from "@/services/manufacturer.service";
 import { procedureService, Procedure } from "@/services/procedure.service";
+import { normalizeTemplateOpmeItems } from "./normalize-template-opme";
 
 interface ProcedureSideSheetProps {
   isOpen: boolean;
@@ -153,7 +154,7 @@ export function ProcedureSideSheet({
   useEffect(() => {
     if (procedure) {
       setDocuments(procedure.documents || []);
-      setOpmeItems(procedure.opmeItems || []);
+      setOpmeItems(normalizeTemplateOpmeItems(procedure.opmeItems));
       setTussItems(procedure.tussItems || []);
       setModelName(procedure.modelName);
       setProcedureName(procedure.procedureName || "—");

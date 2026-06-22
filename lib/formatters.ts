@@ -46,6 +46,55 @@ export function formatPhone(phone: string | undefined): string {
 }
 
 /**
+ * Formata uma data ISO ou Date no padrão DD/MM/YYYY.
+ * Strings YYYY-MM-DD (ou ISO com essa data) usam a parte calendário diretamente,
+ * evitando deslocamento por fuso horário.
+ */
+export function formatDateBR(dateInput: string | Date): string {
+  if (typeof dateInput === "string") {
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) return dateInput;
+    const isoMatch = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+    }
+  }
+
+  const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  if (Number.isNaN(date.getTime())) return "-";
+  const dd = date.getDate().toString().padStart(2, "0");
+  const mm = (date.getMonth() + 1).toString().padStart(2, "0");
+  return `${dd}/${mm}/${date.getFullYear()}`;
+}
+
+/**
+ * Retorna o timestamp (ms) mais recente entre candidatos ISO ou DD/MM/YYYY.
+ */
+export function getLatestActivityMs(
+  ...values: Array<string | null | undefined>
+): number {
+  let max = 0;
+
+  for (const value of values) {
+    if (!value) continue;
+
+    const isoMs = Date.parse(value);
+    if (!Number.isNaN(isoMs)) {
+      max = Math.max(max, isoMs);
+      continue;
+    }
+
+    const parts = value.split("/").map(Number);
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      const brMs = new Date(year, (month || 1) - 1, day || 1).getTime();
+      if (!Number.isNaN(brMs)) max = Math.max(max, brMs);
+    }
+  }
+
+  return max;
+}
+
+/**
  * Formata uma data como tempo relativo (e.g. "2 dias atrás", "1 mês atrás").
  * Recebe uma string ISO ou Date.
  */

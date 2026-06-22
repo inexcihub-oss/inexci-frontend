@@ -169,10 +169,10 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
           )}
         </div>
 
-        {/* Col 7: Data de Criação - formato DD/MM/YYYY */}
+        {/* Col 7: Data da última movimentação/atualização - formato DD/MM/YYYY */}
         <div className="flex items-center px-2 shrink-0">
           <span className="text-xs md:text-sm text-neutral-200 whitespace-nowrap">
-            {request.createdAt}
+            {request.lastActivityAt}
           </span>
         </div>
 

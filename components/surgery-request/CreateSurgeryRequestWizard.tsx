@@ -20,6 +20,7 @@ import { Patient } from "@/services/patient.service";
 import { Hospital } from "@/services/hospital.service";
 import { HealthPlan } from "@/services/health-plan.service";
 import { opmeService } from "@/services/opme.service";
+import { extractTemplateOpmeItemsForCreate } from "@/components/procedures/normalize-template-opme";
 import { tussService } from "@/services/tuss.service";
 import { AvailableDoctor } from "@/types";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
@@ -37,14 +38,6 @@ import {
   DoctorSelectionContent,
   TemplateSelectionContent,
 } from "./wizard-steps/SelectionContents";
-
-interface TemplateOpmeItem {
-  name?: string;
-  brand?: string;
-  manufacturers?: string[];
-  suppliers?: string[] | { id: string; name: string }[];
-  quantity?: number;
-}
 
 interface TemplateTussItem {
   procedureId?: string | number;
@@ -219,9 +212,9 @@ export function CreateSurgeryRequestWizard({
     const data = (template.templateData || {}) as Record<string, unknown> & {
       procedure?: { id?: string } & Record<string, unknown>;
       hospital?: unknown;
-      hospital_id?: string;
-      health_plan?: unknown;
-      health_plan_id?: string;
+      hospitalId?: string;
+      healthPlan?: unknown;
+      healthPlanId?: string;
     };
     setActiveTemplate(template);
     // Pré-preencher procedimento (da tabela procedure)
@@ -238,8 +231,8 @@ export function CreateSurgeryRequestWizard({
       } as unknown as Hospital);
     }
     // Pré-preencher convênio (objeto completo salvo no template)
-    if (data.health_plan) {
-      setSelectedHealthPlan(data.health_plan as unknown as HealthPlan);
+    if (data.healthPlan) {
+      setSelectedHealthPlan(data.healthPlan as unknown as HealthPlan);
     } else if (data.healthPlanId) {
       setSelectedHealthPlan({
         id: data.healthPlanId,
@@ -291,62 +284,30 @@ export function CreateSurgeryRequestWizard({
 
         if (requestId) {
           // Adicionar OPME
-          const opmeItems =
-            (templateData.opmeItems as TemplateOpmeItem[] | undefined) || [];
+          const opmeItems = extractTemplateOpmeItemsForCreate(
+            (templateData ?? {}) as Record<string, unknown>,
+          );
           let opmeCreated = 0;
           for (const item of opmeItems) {
             try {
-              const supplierEntries = (item.suppliers || []).map(
-                (supplier: unknown) => {
-                  if (typeof supplier === "string") {
-                    return { id: "", name: supplier.trim() };
-                  }
-
-                  const id = String(
-                    (supplier as { id?: unknown })?.id ?? "",
-                  ).trim();
-                  const name = String(
-                    (supplier as { name?: unknown })?.name ?? "",
-                  ).trim();
-
-                  return { id, name };
-                },
-              );
-
-              const supplierIds = Array.from(
-                new Set(
-                  supplierEntries
-                    .map((entry) => entry.id)
-                    .filter((id) => id.length > 0),
-                ),
-              );
-
-              const supplierNames = Array.from(
-                new Set(
-                  supplierEntries
-                    .filter((entry) => !entry.id && entry.name)
-                    .map((entry) => entry.name),
-                ),
-              );
-
               await opmeService.create({
                 surgeryRequestId: requestId,
-                name: item.name ?? "",
-                brand: (() => {
-                  if (item.manufacturers?.length) {
-                    return item.manufacturers
-                      .filter((m) => m?.trim())
-                      .join(", ");
-                  }
-                  if (item.brand?.trim()) {
-                    return item.brand.trim();
-                  }
-                  return undefined;
-                })(),
-                supplierIds: supplierIds.length > 0 ? supplierIds : undefined,
+                name: item.name,
+                manufacturerIds:
+                  item.manufacturerIds.length > 0
+                    ? item.manufacturerIds
+                    : undefined,
+                manufacturerNames:
+                  item.manufacturerNames.length > 0
+                    ? item.manufacturerNames
+                    : undefined,
+                supplierIds:
+                  item.supplierIds.length > 0 ? item.supplierIds : undefined,
                 supplierNames:
-                  supplierNames.length > 0 ? supplierNames : undefined,
-                quantity: item.quantity || 1,
+                  item.supplierNames.length > 0
+                    ? item.supplierNames
+                    : undefined,
+                quantity: item.quantity,
               });
               opmeCreated++;
             } catch (e) {

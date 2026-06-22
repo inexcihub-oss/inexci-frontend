@@ -46,7 +46,6 @@ export interface Supplier {
   city?: string;
   state?: string;
   notes?: string;
-  active?: boolean;
   quotations?: SupplierQuotation[];
   suppliedSurgeryRequests?: SupplierSupplyRecord[];
   createdAt: string;

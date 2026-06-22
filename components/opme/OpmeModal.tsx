@@ -183,11 +183,7 @@ export function OpmeModal({
         editingOpme.suppliers?.map((s) => ({ id: s.id, name: s.name })) ?? [];
 
       const existingManufacturers =
-        editingOpme.manufacturers?.map((m) => m.name).filter(Boolean) ??
-        (editingOpme.brand ?? "")
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
+        editingOpme.manufacturers?.map((m) => m.name).filter(Boolean) ?? [];
 
       setOpmeItems([
         {
@@ -559,13 +555,12 @@ export function OpmeModal({
     }
   };
 
-  if (!isOpen) return null;
-
   const isDragging = dragY > 0;
   const overlayOpacity = isDragging ? Math.max(0.2, 1 - dragY / 300) : 1;
 
   return (
     <>
+      {isOpen && (
       <div
         className="fixed inset-0 z-60 flex items-end md:items-center justify-center"
         role="dialog"
@@ -723,6 +718,7 @@ export function OpmeModal({
           </div>
         </div>
       </div>
+      )}
 
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={hideToast} />

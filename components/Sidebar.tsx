@@ -63,12 +63,6 @@ const allMenuItems: NavigationEntry[] = [
     adminOnly: true,
   },
   {
-    type: "item",
-    iconSrc: "/icons/status-surgeries.svg",
-    label: "Procedimentos",
-    href: "/procedimentos",
-  },
-  {
     type: "group",
     iconSrc: "/icons/list.svg",
     label: "Cadastros",
@@ -98,6 +92,12 @@ const allMenuItems: NavigationEntry[] = [
         href: "/fabricantes",
       },
     ],
+  },
+  {
+    type: "item",
+    iconSrc: "/icons/status-surgeries.svg",
+    label: "Procedimentos",
+    href: "/procedimentos",
   },
 ];
 

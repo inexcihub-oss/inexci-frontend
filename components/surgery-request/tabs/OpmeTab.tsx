@@ -16,12 +16,15 @@ import {
 } from "lucide-react";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
 
-/** Divide uma string separada por vírgula em array de itens não-vazios (legado) */
-function splitList(value?: string | null): string[] {
-  if (!value) return [];
-  return value
-    .split(",")
-    .map((s) => s.trim())
+/** Lista de nomes de fabricantes a partir do item OPME */
+function getManufacturerNames(item: {
+  manufacturers?: Array<{ name?: string } | string>;
+}): string[] {
+  if (!item.manufacturers?.length) return [];
+  return item.manufacturers
+    .map((entry) =>
+      typeof entry === "string" ? entry.trim() : (entry.name ?? "").trim(),
+    )
     .filter(Boolean);
 }
 
@@ -75,7 +78,9 @@ export function OpmeTab() {
     return solicitacao.opmeItems.filter(
       (item: any) =>
         item.name?.toLowerCase().includes(term) ||
-        item.brand?.toLowerCase().includes(term) ||
+        getManufacturerNames(item).some((name) =>
+          name.toLowerCase().includes(term),
+        ) ||
         (item.suppliers as { name: string }[] | undefined)?.some((s) =>
           s.name.toLowerCase().includes(term),
         ),
@@ -217,7 +222,7 @@ export function OpmeTab() {
         <div className="flex-1 overflow-auto">
           {filteredOpmeItems.length > 0 ? (
             filteredOpmeItems.map((material: any) => {
-              const manufacturers = splitList(material.brand);
+              const manufacturers = getManufacturerNames(material);
               const suppliers: { id: string; name: string }[] =
                 material.suppliers ?? [];
               const expanded = isExpanded(material.id);

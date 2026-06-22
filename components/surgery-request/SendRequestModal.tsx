@@ -54,10 +54,8 @@ export function SendRequestModal({
   const [attachments, setAttachments] = useState<File[]>([]);
 
   // CC state
-  const [ccOptions, setCcOptions] = useState<
-    Array<{ id: string; name: string; email: string }>
-  >([]);
-  const [ccSelected, setCcSelected] = useState<string[]>([]);
+  const [ccTags, setCcTags] = useState<string[]>([]);
+  const [ccInput, setCcInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { showToast } = useToast();
@@ -90,8 +88,8 @@ export function SendRequestModal({
       setEmailInput("");
       setEmailFormTouched(false);
       setAttachments([]);
-      setCcSelected([]);
-      setCcOptions([]);
+      setCcTags([]);
+      setCcInput("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, solicitacao?.id]);
@@ -157,35 +155,38 @@ export function SendRequestModal({
   const canProceed = () =>
     checklist.every((item) => !item.isRequired || item.isComplete);
 
+  const saveTemplateIfRequested = async () => {
+    if (!saveAsTemplate) return;
+
+    try {
+      await surgeryRequestService.createTemplate({
+        name:
+          templateName.trim() ||
+          `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
+        templateData: {
+          procedure: solicitacao.procedure,
+          tussItems: solicitacao.tussItems,
+          opmeItems: solicitacao.opmeItems,
+          hospital: solicitacao.hospital,
+          hospitalId: solicitacao.hospitalId,
+          healthPlan: solicitacao.healthPlan,
+          healthPlanId: solicitacao.healthPlanId,
+          medicalReport: solicitacao.medicalReport,
+          requiredDocuments: (solicitacao.documents || []).map((d) => ({
+            type: d.key || "",
+            name: d.name || d.key || "",
+          })),
+        },
+      });
+      setSaveAsTemplate(false);
+      showToast("Modelo salvo com sucesso!", "success");
+    } catch {
+      showToast("Erro ao salvar modelo", "error");
+    }
+  };
+
   const handleNext = async () => {
     if (currentStep === 1) {
-      if (saveAsTemplate) {
-        try {
-          await surgeryRequestService.createTemplate({
-            name:
-              templateName.trim() ||
-              `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
-            templateData: {
-              procedure: solicitacao.procedure,
-              tussItems: solicitacao.tussItems,
-              opmeItems: solicitacao.opmeItems,
-              hospital: solicitacao.hospital,
-              hospitalId: solicitacao.hospitalId,
-              healthPlan: solicitacao.healthPlan,
-              healthPlanId: solicitacao.healthPlanId,
-              medicalReport: solicitacao.medicalReport,
-              requiredDocuments: (solicitacao.documents || []).map((d) => ({
-                type: d.key || "",
-                name: d.name || d.key || "",
-              })),
-            },
-          });
-          setSaveAsTemplate(false);
-          showToast("Modelo salvo com sucesso!", "success");
-        } catch {
-          showToast("Erro ao salvar modelo", "error");
-        }
-      }
       setCurrentStep(2);
     } else if (currentStep === 2 && sendMethod) {
       if (sendMethod === "download") {
@@ -194,7 +195,7 @@ export function SendRequestModal({
         setCurrentStep(3);
         surgeryRequestService
           .getCcRecipients(solicitacao.id)
-          .then(setCcOptions)
+          .then((opts) => setCcTags(opts.map((o) => o.email)))
           .catch(() => {});
       }
     } else if (currentStep === 3) {
@@ -227,6 +228,7 @@ export function SendRequestModal({
       link.click();
       document.body.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      await saveTemplateIfRequested();
       setCurrentStep(4);
     } catch {
       showToast("Erro ao baixar solicitação", "error");
@@ -252,8 +254,9 @@ export function SendRequestModal({
         to: recipients,
         subject: emailSubject,
         message: emailMessage,
-        cc: ccSelected.length > 0 ? ccSelected.join(";") : undefined,
+        cc: ccTags.length > 0 ? ccTags.join(";") : undefined,
       });
+      await saveTemplateIfRequested();
       setCurrentStep(4);
     } catch {
       showToast("Erro ao enviar solicitação", "error");
@@ -287,6 +290,27 @@ export function SendRequestModal({
       if (emailInput.trim()) addEmailTag(emailInput);
     } else if (e.key === "Backspace" && !emailInput && emailTags.length > 0) {
       setEmailTags((prev) => prev.slice(0, -1));
+    }
+  };
+
+  const addCcTag = (email: string) => {
+    const trimmed = email.trim().replace(/[;,]$/, "");
+    if (trimmed && !ccTags.includes(trimmed)) {
+      setCcTags((prev) => [...prev, trimmed]);
+    }
+    setCcInput("");
+  };
+
+  const removeCcTag = (tag: string) => {
+    setCcTags((prev) => prev.filter((t) => t !== tag));
+  };
+
+  const handleCcKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ";" || e.key === ",") {
+      e.preventDefault();
+      if (ccInput.trim()) addCcTag(ccInput);
+    } else if (e.key === "Backspace" && !ccInput && ccTags.length > 0) {
+      setCcTags((prev) => prev.slice(0, -1));
     }
   };
 
@@ -498,40 +522,46 @@ export function SendRequestModal({
         </div>
 
         {/* CC */}
-        {ccOptions.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <label className="ds-label mb-0">Cópia (CC):</label>
-            <div className="flex flex-col gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white">
-              {ccOptions.map((opt) => (
-                <label
-                  key={opt.id}
-                  className="flex items-center gap-2 cursor-pointer select-none py-0.5"
+        <div className="flex flex-col gap-1">
+          <label className="ds-label mb-0">Cópia (CC):</label>
+          <p className="text-xs text-gray-400">
+            Digite um e-mail e pressione Enter para adicionar
+          </p>
+          <div
+            className="flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white min-h-10 cursor-text"
+            onClick={() => document.getElementById("send-cc-input")?.focus()}
+          >
+            {ccTags.map((tag) => (
+              <span
+                key={tag}
+                className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeCcTag(tag)}
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  <input
-                    type="checkbox"
-                    checked={ccSelected.includes(opt.email)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setCcSelected((prev) => [...prev, opt.email]);
-                      } else {
-                        setCcSelected((prev) =>
-                          prev.filter((em) => em !== opt.email),
-                        );
-                      }
-                    }}
-                    className="w-4 h-4 rounded border-gray-300 text-teal-600 accent-teal-600 cursor-pointer shrink-0"
-                  />
-                  <span className="text-xs md:text-sm text-gray-900 truncate">
-                    {opt.name}
-                  </span>
-                  <span className="text-xs text-gray-400 truncate">
-                    {opt.email}
-                  </span>
-                </label>
-              ))}
-            </div>
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            <input
+              id="send-cc-input"
+              type="text"
+              value={ccInput}
+              onChange={(e) => setCcInput(e.target.value)}
+              onKeyDown={handleCcKeyDown}
+              onBlur={() => {
+                if (ccInput.trim()) addCcTag(ccInput);
+              }}
+              placeholder={
+                ccTags.length === 0 ? "exemplo@mail.com" : undefined
+              }
+              className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
+            />
           </div>
-        )}
+        </div>
 
         {/* Assunto */}
         <div className="flex flex-col gap-1">

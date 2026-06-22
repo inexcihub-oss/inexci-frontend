@@ -549,14 +549,19 @@ export function MedicalReportEditor() {
 
   // ── Progresso do Laudo ───────────────────────────────────────────────────
   const p = solicitacao?.patient;
-  const patientComplete = !!(
-    p?.name &&
-    p?.birthDate &&
-    p?.cpf &&
-    p?.phone &&
-    p?.address &&
-    p?.zipCode
-  );
+  const patientComplete = !!(p?.name && p?.cpf);
+
+  const patientDisplayFields = [
+    { label: "Nome do paciente", value: p?.name || null },
+    {
+      label: "Data de nascimento",
+      value: p?.birthDate ? formatDateBR(p.birthDate) : null,
+    },
+    { label: "CPF", value: p?.cpf ? applyCpfMask(p.cpf) : null },
+    { label: "Telefone", value: p?.phone ? applyPhoneMask(p.phone) : null },
+    { label: "Endereço", value: p?.address || null },
+    { label: "CEP", value: p?.zipCode ? applyCepMask(p.zipCode) : null },
+  ].filter((field) => field.value);
 
   const progressSteps = [
     {
@@ -707,69 +712,12 @@ export function MedicalReportEditor() {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-              {/* Nome */}
-              <div className="flex flex-col gap-1">
-                <label className="ds-label mb-0">Nome do paciente</label>
-                <div className={inputClass(false)}>
-                  {p?.name || <span className="text-gray-300">—</span>}
+              {patientDisplayFields.map((field) => (
+                <div key={field.label} className="flex flex-col gap-1">
+                  <label className="ds-label mb-0">{field.label}</label>
+                  <div className={inputClass(false)}>{field.value}</div>
                 </div>
-              </div>
-
-              {/* Data de nascimento */}
-              <div className="flex flex-col gap-1">
-                <label className="ds-label mb-0">Data de nascimento</label>
-                <div className={inputClass(false)}>
-                  {p?.birthDate ? (
-                    formatDateBR(p.birthDate)
-                  ) : (
-                    <span className="text-gray-300">—</span>
-                  )}
-                </div>
-              </div>
-
-              {/* CPF */}
-              <div className="flex flex-col gap-1">
-                <label className="ds-label mb-0">CPF</label>
-                <div className={inputClass(false)}>
-                  {p?.cpf ? (
-                    applyCpfMask(p.cpf)
-                  ) : (
-                    <span className="text-gray-300">—</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Telefone */}
-              <div className="flex flex-col gap-1">
-                <label className="ds-label mb-0">Telefone</label>
-                <div className={inputClass(false)}>
-                  {p?.phone ? (
-                    applyPhoneMask(p.phone)
-                  ) : (
-                    <span className="text-gray-300">—</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Endereço */}
-              <div className="flex flex-col gap-1">
-                <label className="ds-label mb-0">Endereço</label>
-                <div className={inputClass(false)}>
-                  {p?.address || <span className="text-gray-300">—</span>}
-                </div>
-              </div>
-
-              {/* CEP */}
-              <div className="flex flex-col gap-1">
-                <label className="ds-label mb-0">CEP</label>
-                <div className={inputClass(false)}>
-                  {p?.zipCode ? (
-                    applyCepMask(p.zipCode)
-                  ) : (
-                    <span className="text-gray-300">—</span>
-                  )}
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 

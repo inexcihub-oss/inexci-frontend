@@ -210,6 +210,7 @@ export interface ConfirmDatePayload {
 
 export interface UpdateDateOptionsPayload {
   dateOptions: string[];
+  notifyPatient?: boolean;
 }
 
 export interface ReschedulePayload {

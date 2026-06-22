@@ -17,7 +17,7 @@ export const createProcedureModelSchema = z.object({
     .min(2, "Informe o nome do modelo.")
     .max(160, "Nome muito longo."),
   procedureId: z.string().optional().or(z.literal("")),
-  procedure_name: z.string().optional().or(z.literal("")),
+  procedureName: z.string().optional().or(z.literal("")),
 });
 
 export type CreateProcedureModelInput = z.infer<typeof createProcedureModelSchema>;

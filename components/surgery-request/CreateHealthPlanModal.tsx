@@ -55,7 +55,7 @@ export function CreateHealthPlanModal({
       setError("");
       try {
         const phone = unmask(data.phone);
-        const email = data.email.trim();
+        const email = data.email?.trim();
 
         const payload: CreateHealthPlanPayload = {
           name: data.name.trim(),

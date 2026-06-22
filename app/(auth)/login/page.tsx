@@ -12,6 +12,7 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const { login } = useAuth();
 
   const form = useZodForm({
@@ -21,15 +22,23 @@ function LoginForm() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    setIsReady(true);
+
     const params = new URLSearchParams(window.location.search);
     if (params.get("registered") === "true") {
       setSuccess(
         "Conta criada com sucesso! Verifique seu e-mail para confirmar o cadastro antes de fazer login.",
       );
     }
+
+    // Remove credenciais da barra de endereço caso o formulário tenha sido
+    // enviado nativamente (GET) antes da hidratação do React.
+    if (params.has("password") || params.has("email")) {
+      window.history.replaceState({}, "", "/login");
+    }
   }, []);
 
-  const onSubmit = form.handleSubmit(async (data) => {
+  const submitWithValidation = form.handleSubmit(async (data) => {
     setError("");
     setSuccess("");
     setIsLoading(true);
@@ -53,6 +62,16 @@ function LoginForm() {
       setIsLoading(false);
     }
   });
+
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void submitWithValidation(event);
+  };
+
+  const emailField = form.getFieldProps("email");
+  const passwordField = form.getFieldProps("password");
+  const { name: _emailName, ...emailInputProps } = emailField;
+  const { name: _passwordName, ...passwordInputProps } = passwordField;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -81,7 +100,12 @@ function LoginForm() {
           </div>
 
           {/* Form */}
-          <form onSubmit={onSubmit} noValidate className="mt-8 space-y-6">
+          <form
+            onSubmit={handleFormSubmit}
+            noValidate
+            method="post"
+            className="mt-8 space-y-6"
+          >
             <div className="space-y-4">
               <Input
                 id="email"
@@ -89,8 +113,8 @@ function LoginForm() {
                 type="email"
                 autoComplete="email"
                 required
-                {...form.getFieldProps("email")}
-                disabled={isLoading}
+                {...emailInputProps}
+                disabled={isLoading || !isReady}
                 placeholder="seu@email.com"
                 className="min-h-[48px]"
               />
@@ -101,8 +125,8 @@ function LoginForm() {
                 type="password"
                 autoComplete="current-password"
                 required
-                {...form.getFieldProps("password")}
-                disabled={isLoading}
+                {...passwordInputProps}
+                disabled={isLoading || !isReady}
                 placeholder="••••••••"
                 className="min-h-[48px]"
               />
@@ -126,6 +150,7 @@ function LoginForm() {
             <Button
               type="submit"
               isLoading={isLoading}
+              disabled={!isReady}
               className="w-full text-sm font-semibold min-h-[48px]"
             >
               Entrar

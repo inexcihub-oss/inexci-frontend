@@ -15,7 +15,6 @@ export interface OpmeItem {
   id: string;
   surgeryRequestId: string | number;
   name: string;
-  brand?: string;
   suppliers: OpmeSupplier[];
   manufacturers?: OpmeManufacturer[];
   quantity: number;
@@ -26,7 +25,6 @@ export interface OpmeItem {
 export interface CreateOpmeData {
   surgeryRequestId: string | number;
   name: string;
-  brand?: string;
   manufacturerIds?: string[];
   manufacturerNames?: string[];
   supplierIds?: string[];
@@ -37,7 +35,6 @@ export interface CreateOpmeData {
 export interface UpdateOpmeData {
   id: string;
   name?: string;
-  brand?: string;
   manufacturerIds?: string[];
   manufacturerNames?: string[];
   supplierIds?: string[];

@@ -8,7 +8,7 @@ function resolveApiBaseUrl(): string {
   if (envUrl) return envUrl;
 
   if (process.env.NODE_ENV === "development") {
-    return "http://localhost:3000";
+    return "http://localhost:3002";
   }
 
   // Em produção, nunca usar localhost como fallback para evitar vazamento

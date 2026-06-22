@@ -25,6 +25,7 @@ import { useDebounce } from "@/hooks";
 import { ProcedureSideSheet } from "@/components/procedures/ProcedureSideSheet";
 import { NewProcedureModelModal } from "@/components/procedures/NewProcedureModelModal";
 import { ProcedureModel } from "@/components/procedures/types";
+import { normalizeTemplateOpmeItems, getTemplateOpmeItemsRaw } from "@/components/procedures/normalize-template-opme";
 import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
 import { NoActiveDoctorModal } from "@/components/surgery-request/NoActiveDoctorModal";
 import { surgeryRequestService } from "@/services/surgery-request.service";
@@ -47,30 +48,15 @@ function templateToModel(t: any): ProcedureModel {
       ? new Date(t.createdAt).toLocaleDateString("pt-BR")
       : "—",
     createdBy: t.doctor?.name || "Você",
-    usageCount: t.usageCount ?? t.usage_count ?? 0,
+    usageCount: t.usageCount ?? 0,
     documents: (data.requiredDocuments || []).map((d: any, i: number) => ({
       id: String(i),
       type: d.type || d,
       name: d.name || d.type || d,
     })),
-    opmeItems: (data.opmeItems || []).map((o: any, i: number) => ({
-      id: String(i),
-      name: o.name,
-      quantity: o.quantity || 1,
-      manufacturers: o.manufacturers?.length
-        ? o.manufacturers
-        : o.brand
-          ? o.brand
-              .split(",")
-              .map((s: string) => s.trim())
-              .filter(Boolean)
-          : [],
-      suppliers: (o.suppliers || (o.distributor ? [o.distributor] : []))
-        .map((s: unknown) =>
-          typeof s === "string" ? s : ((s as any)?.name ?? ""),
-        )
-        .filter(Boolean),
-    })),
+    opmeItems: normalizeTemplateOpmeItems(
+      getTemplateOpmeItemsRaw(data as Record<string, unknown>),
+    ),
     tussItems: (data.tussItems || data.procedures || []).map(
       (p: any, i: number) => ({
         id: String(i),
@@ -383,7 +369,7 @@ export default function ProcedimentosPage() {
         name: data.modelName,
         templateData: {
           procedure: data.procedure || null,
-          procedure_name: data.procedureName,
+          procedureName: data.procedureName,
         },
       });
       setProcedures((prev) => [templateToModel(created), ...prev]);

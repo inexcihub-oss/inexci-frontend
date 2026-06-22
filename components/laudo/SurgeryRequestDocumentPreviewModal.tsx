@@ -118,13 +118,20 @@ export function SurgeryRequestDocumentPreviewModal({
       .filter(Boolean);
 
   const fabricantesText =
-    unique(opmeItems.flatMap((i) => splitList(i.brand))).join(", ") || "";
+    unique(
+      opmeItems.flatMap((item) =>
+        (item.manufacturers ?? [])
+          .map((manufacturer) => manufacturer.name?.trim())
+          .filter((name): name is string => Boolean(name)),
+      ),
+    ).join(", ") || "";
   const fornecedoresText =
     unique(
-      opmeItems.flatMap((i) => [
-        ...splitList(i.distributor),
-        ...((i.suppliers ?? []).map((s) => s.name).filter(Boolean) as string[]),
-      ]),
+      opmeItems.flatMap((item) =>
+        (item.suppliers ?? [])
+          .map((supplier) => supplier.name?.trim())
+          .filter((name): name is string => Boolean(name)),
+      ),
     ).join(", ") || "";
 
   const hospitalName = request?.hospital?.name || "";

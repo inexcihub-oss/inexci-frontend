@@ -733,7 +733,7 @@ export const TemplateSelectionContent = memo(function TemplateSelectionContent({
             const procedureName =
               td?.procedure?.name || td?.procedures?.[0]?.name;
             const hospitalName = td?.hospital?.name;
-            const healthPlanName = td?.health_plan?.name;
+            const healthPlanName = td?.healthPlan?.name;
             const meta = [hospitalName, healthPlanName]
               .filter(Boolean)
               .join(" · ");

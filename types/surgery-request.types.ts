@@ -157,8 +157,6 @@ export interface OpmeItemRef {
   unit?: string;
   authorized?: boolean | null;
   authorizedQuantity?: number | null;
-  brand?: string;
-  distributor?: string;
   selectedSupplierId?: string | null;
   selectedSupplier?: {
     id?: string | number;
@@ -230,6 +228,8 @@ export interface SurgeryRequest {
   pendenciesCompleted?: number;
   pendenciesWaiting?: number;
   createdAt: string;
+  /** Data formatada da última movimentação/atualização (exibição e ordenação). */
+  lastActivityAt: string;
   lastStatusChangedAt?: string;
   updatedAt?: string;
   status: SurgeryRequestStatus;

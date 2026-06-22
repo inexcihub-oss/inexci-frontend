@@ -439,6 +439,7 @@ export default function FabricantesPage() {
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
         loading={deleteModal.loading}
+        softDelete
       />
       <NewManufacturerModal
         isOpen={createModalOpen}
@@ -451,13 +452,14 @@ export default function FabricantesPage() {
       <ConfirmDeleteModal
         isOpen={bulkDeleteModal.open}
         title={`Excluir ${selectedItems.length} fabricante${selectedItems.length !== 1 ? "s" : ""}`}
-        description={`Tem certeza que deseja excluir ${selectedItems.length} fabricante${selectedItems.length !== 1 ? "s" : ""} selecionado${selectedItems.length !== 1 ? "s" : ""}? Esta ação não pode ser desfeita.`}
+        description={`Tem certeza que deseja excluir ${selectedItems.length} fabricante${selectedItems.length !== 1 ? "s" : ""} selecionado${selectedItems.length !== 1 ? "s" : ""}?`}
         onConfirm={handleBulkDeleteConfirm}
         onCancel={() => {
           if (!bulkDeleteModal.loading)
             setBulkDeleteModal({ open: false, loading: false });
         }}
         loading={bulkDeleteModal.loading}
+        softDelete
       />
     </PageContainer>
   );

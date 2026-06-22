@@ -488,7 +488,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
             <div className="w-5 h-5 flex items-center justify-center">
               <Image
                 src="/icons/calendar-schedule.svg"
-                alt="Data de criação"
+                alt="Data da última atualização"
                 width={20}
                 height={20}
                 style={{
@@ -501,7 +501,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
               className="text-xs font-normal"
               style={{ color: "rgba(117, 129, 149, 1)" }}
             >
-              {procedure.createdAt}
+              {procedure.lastActivityAt}
             </span>
           </div>
         </div>

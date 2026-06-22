@@ -295,13 +295,16 @@ function MaterialsTable({ opmeItems }: { opmeItems: OpmeItemRef[] }) {
       <tbody>
         {opmeItems.map((item, idx) => {
           const bg = idx % 2 === 0 ? "#f2f2f2" : "#ffffff";
-          const fabricantes = unique(splitList(item.brand)).join(", ");
-          const fornecedores = unique([
-            ...splitList(item.distributor),
-            ...((item.suppliers ?? [])
-              .map((supplier) => supplier.name)
-              .filter(Boolean) as string[]),
-          ]).join(", ");
+          const fabricantes = unique(
+            (item.manufacturers ?? [])
+              .map((manufacturer) => manufacturer.name?.trim())
+              .filter((name): name is string => Boolean(name)),
+          ).join(", ");
+          const fornecedores = unique(
+            (item.suppliers ?? [])
+              .map((supplier) => supplier.name?.trim())
+              .filter((name): name is string => Boolean(name)),
+          ).join(", ");
 
           return (
             <tr key={item.id ?? idx}>

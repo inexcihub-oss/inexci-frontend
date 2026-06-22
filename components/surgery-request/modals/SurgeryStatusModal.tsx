@@ -53,24 +53,24 @@ function mkSections(): DocSection[] {
     {
       key: "surgery_room",
       label: "Descrição cirúrgica (Folha de sala)",
-      optional: false,
-      required: true,
+      optional: true,
+      required: false,
       multiple: false,
       files: [],
     },
     {
       key: "surgery_images",
       label: "Imagens",
-      optional: false,
-      required: true,
+      optional: true,
+      required: false,
       multiple: true,
       files: [],
     },
     {
       key: "surgery_auth_document",
       label: "Documento de autorização",
-      optional: false,
-      required: true,
+      optional: true,
+      required: false,
       multiple: false,
       files: [],
     },
@@ -254,11 +254,8 @@ export function SurgeryStatusModal({
   // ── Submit: Realizada ──────────────────────────────────────────────────────
 
   const submitRealizada = async () => {
-    const missing = sections
-      .filter((s) => s.required && s.files.length === 0)
-      .map((s) => s.label);
-    if (missing.length > 0) {
-      showToast(`Anexe: ${missing.join(", ")}`, "error");
+    if (!solicitacao.surgeryDate) {
+      showToast("Data da cirurgia agendada não encontrada.", "error");
       return;
     }
     setIsSaving(true);
@@ -312,7 +309,7 @@ export function SurgeryStatusModal({
       }
 
       await surgeryRequestService.markPerformed(solicitacao.id, {
-        surgeryPerformedAt: new Date().toISOString(),
+        surgeryPerformedAt: solicitacao.surgeryDate,
       });
 
       showToast("Cirurgia marcada como Realizada!", "success");
@@ -481,8 +478,30 @@ export function SurgeryStatusModal({
           <>
             <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6">
               <p className="text-xs md:text-sm text-neutral-900">
-                Envie os documentos cirúrgicos para confirmar a realização.
+                Anexe os documentos cirúrgicos, se desejar.
               </p>
+
+              <div className="flex gap-3 bg-blue-50 border border-blue-100 rounded-2xl p-3.5">
+                <div className="shrink-0 w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-blue-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm text-blue-700 leading-relaxed">
+                  Todos os documentos inseridos aqui irão compor o documento
+                  final para faturamento.
+                </p>
+              </div>
 
               <div className="flex flex-col gap-3 md:gap-4">
                 {sections.map((sec) => (
@@ -594,7 +613,7 @@ export function SurgeryStatusModal({
                 disabled={isSaving}
                 className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isSaving ? "Enviando..." : "Enviar"}
+                {isSaving ? "Finalizando..." : "Finalizar"}
               </button>
             </div>
           </>

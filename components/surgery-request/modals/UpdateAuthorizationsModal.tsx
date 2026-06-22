@@ -10,6 +10,10 @@ import {
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import {
+  NotificationConfirmModal,
+  type NotificationChannels,
+} from "./NotificationConfirmModal";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────────────
 
@@ -150,6 +154,7 @@ export function UpdateAuthorizationsModal({
     { date: "", time: "" },
   ]);
   const [scheduleAttempted, setScheduleAttempted] = useState(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
   const [showContest, setShowContest] = useState(false);
   const [contestStep, setContestStep] = useState<ContestStep>(1);
@@ -183,6 +188,7 @@ export function UpdateAuthorizationsModal({
       { date: "", time: "" },
     ]);
     setScheduleAttempted(false);
+    setIsNotificationModalOpen(false);
     setTussAuth(
       (solicitacao?.tussItems ?? []).map((p) => ({
         id: p.id,
@@ -227,7 +233,63 @@ export function UpdateAuthorizationsModal({
       ),
     }));
 
-  const handleAccept = async () => {
+  const hasPatientContact =
+    !!solicitacao?.patient?.phone || !!solicitacao?.patient?.email;
+
+  const buildDateOptions = () =>
+    scheduleDates.map((d) => {
+      const datetime = `${d.date}T${d.time}:00`;
+      return new Date(datetime).toISOString();
+    });
+
+  const submitAcceptAuthorization = async (
+    channels: NotificationChannels | null,
+  ) => {
+    setIsSaving(true);
+    try {
+      await surgeryRequestService.authorizeQuantities(
+        solicitacao.id,
+        tussAuth.map((e) => ({
+          id: e.id,
+          authorizedQuantity: Number(e.authorizedQuantity) || 0,
+        })),
+        mapOpmeAuthorizationPayload(),
+      );
+
+      const shouldNotifySchedulingOptions =
+        channels !== null &&
+        channels.whatsapp &&
+        !!solicitacao?.patient?.phone;
+
+      const payload: AcceptAuthorizationPayload = {
+        dateOptions: buildDateOptions(),
+        ...(shouldNotifySchedulingOptions ? { notifyPatient: true } : {}),
+      };
+      await surgeryRequestService.acceptAuthorization(solicitacao.id, payload);
+
+      if (channels?.email && solicitacao?.patient?.email) {
+        try {
+          await surgeryRequestService.notify(solicitacao.id, {
+            template: "status-change-patient",
+            channels: { email: true, whatsapp: false },
+            oldStatus: 3,
+          });
+        } catch {
+          // Falha no e-mail não bloqueia o fluxo principal
+        }
+      }
+
+      showToast("Autorização aceita! Status: Em Agendamento", "success");
+      reset();
+      onSuccess();
+    } catch {
+      showToast("Erro ao aceitar autorização. Tente novamente.", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAccept = () => {
     const allFilled = scheduleDates.every(
       (d) => d.date.trim() !== "" && d.time.trim() !== "",
     );
@@ -239,35 +301,20 @@ export function UpdateAuthorizationsModal({
       );
       return;
     }
-    setIsSaving(true);
-    try {
-      // 1. Salvar quantidades autorizadas no banco antes de aceitar
-      await surgeryRequestService.authorizeQuantities(
-        solicitacao.id,
-        tussAuth.map((e) => ({
-          id: e.id,
-          authorizedQuantity: Number(e.authorizedQuantity) || 0,
-        })),
-        mapOpmeAuthorizationPayload(),
-      );
 
-      // 2. Aceitar autorizacao e propor datas
-      const validDates = scheduleDates.map((d) => {
-        const datetime = `${d.date}T${d.time}:00`;
-        return new Date(datetime).toISOString();
-      });
-      const payload: AcceptAuthorizationPayload = {
-        dateOptions: validDates,
-      };
-      await surgeryRequestService.acceptAuthorization(solicitacao.id, payload);
-      showToast("Autorização aceita! Status: Em Agendamento", "success");
-      reset();
-      onSuccess();
-    } catch {
-      showToast("Erro ao aceitar autorização. Tente novamente.", "error");
-    } finally {
-      setIsSaving(false);
+    if (hasPatientContact) {
+      setIsNotificationModalOpen(true);
+      return;
     }
+
+    void submitAcceptAuthorization(null);
+  };
+
+  const handleSchedulingNotificationConfirm = (
+    channels: NotificationChannels | null,
+  ) => {
+    setIsNotificationModalOpen(false);
+    void submitAcceptAuthorization(channels);
   };
 
   const handleContest = async () => {
@@ -353,6 +400,7 @@ export function UpdateAuthorizationsModal({
   if (!isOpen) return null;
 
   return (
+    <>
     <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
@@ -828,6 +876,20 @@ export function UpdateAuthorizationsModal({
         )}
       </div>
     </div>
+
+    <NotificationConfirmModal
+      isOpen={isNotificationModalOpen && hasPatientContact}
+      onClose={() => {
+        if (!isSaving) setIsNotificationModalOpen(false);
+      }}
+      currentStatus="Em Análise"
+      newStatus="Em Agendamento"
+      onConfirm={handleSchedulingNotificationConfirm}
+      isLoading={isSaving}
+      patientEmail={solicitacao?.patient?.email}
+      patientPhone={solicitacao?.patient?.phone}
+    />
+    </>
   );
 }
 
@@ -1224,18 +1286,21 @@ function ContestFlow({
   const [formTouched, setFormTouched] = React.useState(false);
 
   // CC
-  const [ccOptions, setCcOptions] = React.useState<
-    Array<{ id: string; name: string; email: string }>
-  >([]);
-  const [ccSelected, setCcSelected] = React.useState<string[]>([]);
+  const [ccTags, setCcTags] = React.useState<string[]>([]);
+  const [ccInput, setCcInput] = React.useState("");
 
   useEffect(() => {
     if (step === 3 && method === "email") {
       surgeryRequestService
         .getCcRecipients(surgeryRequestId)
-        .then(setCcOptions)
+        .then((opts) => {
+          const emails = opts.map((o) => o.email);
+          setCcTags(emails);
+          onEmailChange("cc", emails.join(";"));
+        })
         .catch(() => {});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onEmailChange é inline no pai
   }, [step, method, surgeryRequestId]);
 
   const addToTag = (email: string) => {
@@ -1262,6 +1327,33 @@ function ContestFlow({
       const newTags = toTags.slice(0, -1);
       setToTags(newTags);
       onEmailChange("to", newTags.join(";"));
+    }
+  };
+
+  const addCcTag = (email: string) => {
+    const trimmed = email.trim().replace(/[;,]$/, "");
+    if (trimmed && !ccTags.includes(trimmed)) {
+      const newTags = [...ccTags, trimmed];
+      setCcTags(newTags);
+      onEmailChange("cc", newTags.join(";"));
+    }
+    setCcInput("");
+  };
+
+  const removeCcTag = (tag: string) => {
+    const newTags = ccTags.filter((t) => t !== tag);
+    setCcTags(newTags);
+    onEmailChange("cc", newTags.join(";"));
+  };
+
+  const handleCcKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ";" || e.key === ",") {
+      e.preventDefault();
+      if (ccInput.trim()) addCcTag(ccInput);
+    } else if (e.key === "Backspace" && !ccInput && ccTags.length > 0) {
+      const newTags = ccTags.slice(0, -1);
+      setCcTags(newTags);
+      onEmailChange("cc", newTags.join(";"));
     }
   };
 
@@ -1461,38 +1553,60 @@ function ContestFlow({
                 </p>
               )}
             </div>
-            {ccOptions.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <label className="ds-label mb-0">Cópia (CC):</label>
-                <div className="flex flex-col gap-1 px-3 py-2 rounded-xl border border-neutral-100 bg-white">
-                  {ccOptions.map((opt) => (
-                    <label
-                      key={opt.id}
-                      className="flex items-center gap-2 cursor-pointer select-none py-0.5"
+            <div className="flex flex-col gap-1.5">
+              <label className="ds-label mb-0">Cópia (CC):</label>
+              <p className="text-xs text-gray-400">
+                Digite um e-mail e pressione Enter para adicionar
+              </p>
+              <div
+                className="flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border border-neutral-100 bg-white min-h-10 cursor-text"
+                onClick={() =>
+                  document.getElementById("contest-cc-input-update")?.focus()
+                }
+              >
+                {ccTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeCcTag(tag)}
+                      className="text-gray-500 hover:text-gray-700"
                     >
-                      <input
-                        type="checkbox"
-                        checked={ccSelected.includes(opt.email)}
-                        onChange={(e) => {
-                          const next = e.target.checked
-                            ? [...ccSelected, opt.email]
-                            : ccSelected.filter((em) => em !== opt.email);
-                          setCcSelected(next);
-                          onEmailChange("cc", next.join(";"));
-                        }}
-                        className="w-4 h-4 rounded border-gray-300 text-teal-600 accent-teal-600 cursor-pointer shrink-0"
-                      />
-                      <span className="text-xs md:text-sm text-gray-900 truncate">
-                        {opt.name}
-                      </span>
-                      <span className="text-xs text-gray-400 truncate">
-                        {opt.email}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                      <svg
+                        className="w-3 h-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                ))}
+                <input
+                  id="contest-cc-input-update"
+                  type="text"
+                  value={ccInput}
+                  onChange={(e) => setCcInput(e.target.value)}
+                  onKeyDown={handleCcKeyDown}
+                  onBlur={() => {
+                    if (ccInput.trim()) addCcTag(ccInput);
+                  }}
+                  placeholder={
+                    ccTags.length === 0 ? "exemplo@mail.com" : undefined
+                  }
+                  className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
+                />
               </div>
-            )}
+            </div>
             <div className="flex flex-col gap-1.5">
               <label className="ds-label mb-0">Assunto:</label>
               <input

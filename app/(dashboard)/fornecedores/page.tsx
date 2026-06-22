@@ -238,26 +238,6 @@ export default function FornecedoresPage() {
       ),
     },
     {
-      accessorKey: "active",
-      header: "Status",
-      size: 100,
-      meta: { className: "hidden md:table-cell" },
-      cell: ({ row }) => (
-        <span
-          className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${
-            row.original.active
-              ? "text-green-700 bg-green-50"
-              : "text-gray-500 bg-gray-100"
-          }`}
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${row.original.active ? "bg-green-500" : "bg-gray-400"}`}
-          />
-          {row.original.active ? "Ativo" : "Inativo"}
-        </span>
-      ),
-    },
-    {
       id: "actions",
       size: 50,
       enableSorting: false,
@@ -442,6 +422,7 @@ export default function FornecedoresPage() {
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
         loading={deleteModal.loading}
+        softDelete
       />
       <NewSupplierModal
         isOpen={createModalOpen}
@@ -454,13 +435,14 @@ export default function FornecedoresPage() {
       <ConfirmDeleteModal
         isOpen={bulkDeleteModal.open}
         title={`Excluir ${selectedItems.length} fornecedor${selectedItems.length !== 1 ? "es" : ""}`}
-        description={`Tem certeza que deseja excluir ${selectedItems.length} fornecedor${selectedItems.length !== 1 ? "es" : ""} selecionado${selectedItems.length !== 1 ? "s" : ""}? Esta ação não pode ser desfeita.`}
+        description={`Tem certeza que deseja excluir ${selectedItems.length} fornecedor${selectedItems.length !== 1 ? "es" : ""} selecionado${selectedItems.length !== 1 ? "s" : ""}?`}
         onConfirm={handleBulkDeleteConfirm}
         onCancel={() => {
           if (!bulkDeleteModal.loading)
             setBulkDeleteModal({ open: false, loading: false });
         }}
         loading={bulkDeleteModal.loading}
+        softDelete
       />
     </PageContainer>
   );
