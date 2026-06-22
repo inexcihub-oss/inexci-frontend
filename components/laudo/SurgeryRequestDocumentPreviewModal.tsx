@@ -111,12 +111,6 @@ export function SurgeryRequestDocumentPreviewModal({
   const procedures: TussItemRef[] = request?.tussItems ?? [];
   const opmeItems: OpmeItemRef[] = request?.opmeItems ?? [];
 
-  const splitList = (value?: string) =>
-    (value ?? "")
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean);
-
   const fabricantesText =
     unique(
       opmeItems.flatMap((item) =>

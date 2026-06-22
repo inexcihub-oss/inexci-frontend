@@ -225,12 +225,6 @@ function ProceduresTable({ procedures }: { procedures: TussItemRef[] }) {
 function MaterialsTable({ opmeItems }: { opmeItems: OpmeItemRef[] }) {
   if (!opmeItems?.length) return null;
 
-  const splitList = (value?: string) =>
-    (value ?? "")
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean);
-
   return (
     <table
       style={{
