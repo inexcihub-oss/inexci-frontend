@@ -35,7 +35,7 @@ export function BillingStatusBanner() {
       icon: XCircle,
       title: "Sua assinatura est\u00e1 suspensa",
       description:
-        "Cadastre um m\u00e9todo de pagamento ou regularize sua fatura para liberar o acesso completo.",
+        "Acesse o Portal da Stripe para regularizar seu pagamento e reativar o acesso.",
       action: "Resolver agora",
     };
   } else if (status === "canceled") {
@@ -52,9 +52,9 @@ export function BillingStatusBanner() {
       icon: AlertTriangle,
       title: "Pagamento da \u00faltima fatura falhou",
       description: pastDueSince
-        ? `Estamos tentando cobrar desde ${new Date(pastDueSince).toLocaleDateString("pt-BR")}. Atualize seu cart\u00e3o para evitar a suspens\u00e3o.`
-        : "Atualize seu cart\u00e3o para evitar a suspens\u00e3o da conta.",
-      action: "Atualizar pagamento",
+        ? `Estamos tentando cobrar desde ${new Date(pastDueSince).toLocaleDateString("pt-BR")}. Acesse o Portal da Stripe para atualizar seu m\u00e9todo de pagamento.`
+        : "Acesse o Portal da Stripe para atualizar seu m\u00e9todo de pagamento.",
+      action: "Gerenciar assinatura",
     };
   } else if (status === "trialing") {
     if (daysLeftInTrial != null && daysLeftInTrial <= 7) {
@@ -66,8 +66,8 @@ export function BillingStatusBanner() {
             ? `Seu free trial termina em ${daysLeftInTrial} dia(s)`
             : "Seu free trial termina hoje",
         description:
-          "Cadastre um cart\u00e3o para continuar usando a plataforma sem interrup\u00e7\u00e3o.",
-        action: "Cadastrar cart\u00e3o",
+          "Escolha um plano para continuar usando a plataforma sem interrup\u00e7\u00e3o.",
+        action: "Ver planos",
       };
     }
   } else if (cancelAtPeriodEnd) {

@@ -108,6 +108,7 @@ export interface SubscriptionPlan {
   surgeryRequestQuota: number; // -1 = ilimitado
   sortOrder: number;
   isTrialDefault: boolean;
+  gatewayPriceId?: string | null;
 }
 
 export type SubscriptionStatus =
@@ -121,7 +122,6 @@ export interface Subscription {
   id: string;
   status: SubscriptionStatus;
   planId: string;
-  nextPlanId: string | null;
   trialEndsAt: string | null;
   currentPeriodStart: string;
   currentPeriodEnd: string;
@@ -129,7 +129,6 @@ export interface Subscription {
   canceledAt: string | null;
   suspendedAt: string | null;
   pastDueSince: string | null;
-  defaultPaymentMethodId: string | null;
   gatewayProvider: string;
 }
 
@@ -152,55 +151,6 @@ export interface SubscriptionDetail {
   quota: QuotaSnapshot | null;
   daysLeftInTrial: number | null;
   daysUntilSuspension: number | null;
-}
-
-export interface PaymentMethod {
-  id: string;
-  brand: string;
-  last4: string;
-  holderName: string;
-  expMonth: number;
-  expYear: number;
-  isDefault: boolean;
-  createdAt: string;
-}
-
-export type InvoiceStatus =
-  | "pending"
-  | "paid"
-  | "failed"
-  | "overdue"
-  | "refunded"
-  | "canceled";
-
-export interface Invoice {
-  id: string;
-  amountCents: number;
-  currency: string;
-  status: InvoiceStatus;
-  invoiceUrl: string | null;
-  dueDate: string;
-  paidAt: string | null;
-  failedAt: string | null;
-  attemptCount: number;
-  periodStart: string;
-  periodEnd: string;
-  planSnapshot: {
-    slug: string;
-    name: string;
-    priceCents: number;
-    surgeryRequestQuota: number;
-  } | null;
-  createdAt: string;
-}
-
-export interface SavePaymentMethodPayload {
-  paymentMethodId: string;
-  holderName: string;
-  brand: string;
-  last4: string;
-  expMonth: number;
-  expYear: number;
 }
 
 export interface AuthResponse {

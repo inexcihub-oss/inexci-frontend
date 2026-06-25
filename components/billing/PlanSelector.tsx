@@ -7,25 +7,27 @@ import {
   billingPeriodLabel,
   quotaLabel,
 } from "@/lib/billing-format";
-import type { SubscriptionPlan } from "@/types";
-import { Check, Loader2 } from "lucide-react";
+import type { SubscriptionPlan, SubscriptionStatus } from "@/types";
+import { Check, Loader2, Mail } from "lucide-react";
 
 interface Props {
   plans: SubscriptionPlan[];
   currentPlanId: string | null;
-  nextPlanId: string | null;
-  onSelect: (plan: SubscriptionPlan) => void;
+  subscriptionStatus: SubscriptionStatus;
+  onCheckout: (plan: SubscriptionPlan) => void;
+  onManage: () => void;
   loading?: boolean;
-  changingPlanId?: string | null;
+  redirecting?: boolean;
 }
 
 export function PlanSelector({
   plans,
   currentPlanId,
-  nextPlanId,
-  onSelect,
+  subscriptionStatus,
+  onCheckout,
+  onManage,
   loading,
-  changingPlanId,
+  redirecting,
 }: Props) {
   if (loading) {
     return (
@@ -44,12 +46,28 @@ export function PlanSelector({
     );
   }
 
+  const goesThruCheckout =
+    subscriptionStatus === "trialing" || subscriptionStatus === "canceled";
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {plans.map((plan) => {
         const isCurrent = plan.id === currentPlanId;
-        const isNext = plan.id === nextPlanId;
-        const isChanging = changingPlanId === plan.id;
+        const isEnterprise =
+          plan.slug === "enterprise" || !plan.gatewayPriceId;
+
+        const buttonLabel = isCurrent
+          ? "Plano atual"
+          : goesThruCheckout
+            ? "Assinar este plano"
+            : "Fazer upgrade/downgrade";
+
+        const handleClick = isCurrent
+          ? undefined
+          : goesThruCheckout
+            ? () => onCheckout(plan)
+            : () => onManage();
+
         return (
           <div
             key={plan.id}
@@ -57,19 +75,12 @@ export function PlanSelector({
               "relative border rounded-2xl p-6 transition-all flex flex-col",
               isCurrent
                 ? "bg-primary-50 border-primary-500 shadow-lg shadow-primary-100"
-                : isNext
-                  ? "border-blue-300 bg-blue-50/50"
-                  : "border-gray-200",
+                : "border-gray-200",
             )}
           >
             {isCurrent && (
               <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-600 text-white text-xs font-medium px-3 py-1 rounded-full">
                 Plano atual
-              </span>
-            )}
-            {isNext && !isCurrent && (
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-medium px-3 py-1 rounded-full">
-                Próximo ciclo
               </span>
             )}
             <h3 className="text-base font-semibold text-gray-900">
@@ -100,19 +111,25 @@ export function PlanSelector({
                 <span>Notificações por e-mail e WhatsApp</span>
               </li>
             </ul>
-            <Button
-              variant={isCurrent ? "outline" : "primary"}
-              className="w-full mt-6"
-              disabled={isCurrent || isChanging}
-              isLoading={isChanging}
-              onClick={() => onSelect(plan)}
-            >
-              {isCurrent
-                ? "Plano atual"
-                : isNext
-                  ? "Agendado"
-                  : "Selecionar plano"}
-            </Button>
+
+            {isEnterprise && !isCurrent ? (
+              <a
+                href="mailto:contato@inexci.com.br"
+                className="mt-6 inline-flex items-center justify-center gap-2 w-full rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors min-h-[40px]"
+              >
+                <Mail className="w-4 h-4" />
+                Fale conosco
+              </a>
+            ) : (
+              <Button
+                variant={isCurrent ? "outline" : "primary"}
+                className="w-full mt-6"
+                disabled={isCurrent || redirecting}
+                onClick={handleClick}
+              >
+                {buttonLabel}
+              </Button>
+            )}
           </div>
         );
       })}

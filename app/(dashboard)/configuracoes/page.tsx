@@ -198,10 +198,10 @@ function NotificationItem({
   );
 }
 
-const BILLING_TAB_ENABLED = false;
+const BILLING_TAB_ENABLED = true;
 
 function ConfiguracoesPageInner() {
-  const { user, updateUser, isAdmin } = useAuth();
+  const { user, updateUser, isAdmin, refreshSubscription } = useAuth();
   const { toast, showToast, hideToast } = useToast();
   const searchParams = useSearchParams();
 
@@ -222,6 +222,23 @@ function ConfiguracoesPageInner() {
 
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    if (!checkout) return;
+    if (checkout === "success") {
+      showToast(
+        "Assinatura ativada! Pode levar alguns segundos para refletir.",
+        "success",
+      );
+      void refreshSubscription();
+      setActiveTab("plan");
+    } else if (checkout === "cancel") {
+      showToast("Checkout cancelado. Você pode assinar quando quiser.", "info");
+      setActiveTab("plan");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   // Estados do perfil
