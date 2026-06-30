@@ -59,7 +59,7 @@ export function BillingSection() {
       setRedirecting(true);
       const { url } = await billingService.openPortal();
       window.location.href = url;
-    } catch (err) {
+    } catch (_err) {
       showToast(
         "Não foi possível abrir o Portal da Stripe agora. Escolha um plano abaixo para reativar seu acesso.",
         "warning",

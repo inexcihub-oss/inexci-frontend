@@ -1057,7 +1057,7 @@ export default function NovaViaDocumentoPage() {
                       Convênio
                     </label>
                     <EntityComboboxDeferredCreate
-                      value={values.healthPlanId}
+                      value={values.healthPlanId ?? ""}
                       query={values.healthPlanName ?? ""}
                       options={healthPlanCandidates}
                       placeholder="Buscar ou criar convênio..."
@@ -1088,7 +1088,7 @@ export default function NovaViaDocumentoPage() {
                   Hospital
                 </label>
                 <EntityComboboxDeferredCreate
-                  value={values.hospitalId}
+                  value={values.hospitalId ?? ""}
                   query={values.hospitalName ?? ""}
                   options={hospitalCandidates}
                   placeholder="Buscar ou criar hospital..."
