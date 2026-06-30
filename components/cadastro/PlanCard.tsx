@@ -33,7 +33,7 @@ export function PlanCard({
   onSelect,
 }: PlanCardProps) {
   const isEnterprise = plan.priceCents === 0 && plan.surgeryRequestQuota === -1;
-  const isDisabled = !plan.isTrialDefault && !isEnterprise;
+  const isDisabled = !isEnterprise && !plan.gatewayPriceId;
 
   return (
     <div className="relative h-full flex flex-col pt-4">
@@ -106,43 +106,41 @@ export function PlanCard({
                 Fale com nossa equipe comercial
               </p>
             </>
-          ) : plan.isTrialDefault ? (
-            <>
-              <p className={`text-xl font-extrabold ${theme.priceColor}`}>
-                30 dias grátis
-              </p>
-              <p className="text-[10px] text-gray-400 mt-0.5">
-                Depois {formatPriceCents(plan.priceCents, plan.currency)}/mês ·
-                Sem cartão
-              </p>
-            </>
-          ) : plan.billingPeriod === "YEARLY" ? (
-            <>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-extrabold text-gray-900">
-                  {formatPriceCents(
-                    Math.round(plan.priceCents / 12),
-                    plan.currency
-                  )}
-                </span>
-                <span className="text-[10px] text-gray-400 ml-0.5">/mês</span>
-              </div>
-              <p className="text-[10px] text-gray-400 mt-0.5">
-                {formatPriceCents(plan.priceCents, plan.currency)}/ano · 2
-                meses grátis
-              </p>
-            </>
           ) : (
             <>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-extrabold text-gray-900">
-                  {formatPriceCents(plan.priceCents, plan.currency)}
-                </span>
-                <span className="text-[10px] text-gray-400 ml-0.5">/mês</span>
-              </div>
-              <p className="text-[10px] text-gray-400 mt-0.5">
-                Cancele quando quiser
-              </p>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full mb-2">
+                🎁 30 dias grátis
+              </span>
+              {plan.billingPeriod === "YEARLY" ? (
+                <>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-extrabold text-gray-900">
+                      {formatPriceCents(plan.priceCents, plan.currency)}
+                    </span>
+                    <span className="text-[10px] text-gray-400 ml-0.5">/ano</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    Equivale a{" "}
+                    {formatPriceCents(
+                      Math.round(plan.priceCents / 12),
+                      plan.currency
+                    )}
+                    /mês · 2 meses grátis
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-extrabold text-gray-900">
+                      {formatPriceCents(plan.priceCents, plan.currency)}
+                    </span>
+                    <span className="text-[10px] text-gray-400 ml-0.5">/mês</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    Sem cartão agora · Cobrança após o trial
+                  </p>
+                </>
+              )}
             </>
           )}
         </div>
@@ -179,7 +177,7 @@ export function PlanCard({
                     : "bg-gray-50 text-gray-500 border border-gray-100 group-hover:bg-gray-100 group-hover:text-gray-700"
               }`}
             >
-              {isDisabled ? "Em breve" : selected ? "✓ Plano selecionado" : "Selecionar plano"}
+              {isDisabled ? "Sob consulta" : selected ? "✓ Plano selecionado" : "Começar 30 dias grátis"}
             </div>
           )}
         </div>

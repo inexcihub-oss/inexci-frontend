@@ -35,6 +35,8 @@ import { formatDateBR, getLatestActivityMs } from "@/lib/formatters";
 import { useAuth } from "@/contexts/AuthContext";
 import { availableDoctorsService } from "@/services/available-doctors.service";
 import { NoActiveDoctorModal } from "@/components/surgery-request/NoActiveDoctorModal";
+import { UploadDocumentModal } from "@/components/surgery-request/UploadDocumentModal";
+import { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
 
 const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "pendente", title: "Pendente", status: "Pendente", cards: [] },
@@ -72,6 +74,7 @@ export default function ProcedimentosCirurgicos() {
   // Estado separado para dados estáticos — não é atualizado quando apenas pendenciesCount muda
   const [rawCards, setRawCards] = useState<KanbanColumn[]>(INITIAL_COLUMNS);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isUploadDocumentOpen, setIsUploadDocumentOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const { data: availableDoctorsData = [] } = useAvailableDoctors();
   const availableDoctors = availableDoctorsData.map((d) => ({
@@ -112,6 +115,18 @@ export default function ProcedimentosCirurgicos() {
     }
     setIsNewRequestOpen(true);
   }, [ensureAdminHasActiveDoctor]);
+
+  const handleUploadDocumentSuccess = useCallback(
+    (response: ExtractFromDocumentResponse) => {
+      setIsUploadDocumentOpen(false);
+      sessionStorage.setItem(
+        "sc_from_document_extraction",
+        JSON.stringify(response),
+      );
+      router.push("/solicitacoes-cirurgicas/nova-via-documento");
+    },
+    [router],
+  );
 
   // Fechar dropdown de exportação ao clicar fora
   useEffect(() => {
@@ -620,6 +635,34 @@ export default function ProcedimentosCirurgicos() {
             )}
           </div>
 
+          {/* Upload document button */}
+          <button
+            type="button"
+            onClick={() => setIsUploadDocumentOpen(true)}
+            title="Criar solicitação a partir de documento"
+            className="flex items-center gap-1.5 flex-1 sm:flex-none h-9 lg:h-11 px-3 lg:px-4 text-xs lg:text-sm font-medium rounded-xl border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="15" y2="15" />
+            </svg>
+            <span className="lg:hidden">Via doc</span>
+            <span className="hidden lg:inline">Via documento</span>
+          </button>
+
           {/* New Request Button */}
           <NewSurgeryRequestButton
             onClick={handleOpenNewRequest}
@@ -712,6 +755,12 @@ export default function ProcedimentosCirurgicos() {
           setIsNoActiveDoctorModalOpen(false);
           router.push("/colaboradores");
         }}
+      />
+
+      <UploadDocumentModal
+        isOpen={isUploadDocumentOpen}
+        onClose={() => setIsUploadDocumentOpen(false)}
+        onSuccess={handleUploadDocumentSuccess}
       />
     </PageContainer>
   );

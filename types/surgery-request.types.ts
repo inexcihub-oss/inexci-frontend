@@ -244,3 +244,150 @@ export interface KanbanColumn {
   status: SurgeryRequestStatus;
   cards: SurgeryRequest[];
 }
+
+// ── Criação de SC via documento ──────────────────────────────────────────────
+
+export type DocumentClassificationKind =
+  | "surgery_request"
+  | "medical_report"
+  | "identity_document"
+  | "invoice"
+  | "exam_result"
+  | "additional_document"
+  | "unknown";
+
+export interface ExtractedTussItem {
+  code: string;
+  description?: string;
+  qty?: number;
+}
+
+export interface ExtractedOpmeItem {
+  description: string;
+  qty?: number;
+  supplier?: string;
+  manufacturer?: string;
+}
+
+export interface ExtractedPatient {
+  name?: string;
+  cpf?: string;
+  birthDate?: string;
+  gender?: string;
+  phone?: string;
+  rg?: string;
+  /** Logradouro (rua/avenida), sem número/complemento/bairro/cidade/UF. */
+  address?: string;
+  addressNumber?: string;
+  addressComplement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+}
+
+export interface ExtractedReportSection {
+  title: string;
+  description: string;
+}
+
+export interface ExtractedFromDocument {
+  patient?: ExtractedPatient;
+  hospital?: string;
+  healthPlan?: { name?: string; planId?: string };
+  diagnosis?: string;
+  suggestedProcedureName?: string;
+  reportSections?: ExtractedReportSection[];
+  laudoText?: string;
+  doctorCRM?: string;
+  tuss?: ExtractedTussItem[];
+  cid?: string[];
+  opme?: ExtractedOpmeItem[];
+  suggestedSuppliers?: string[];
+}
+
+export interface DocumentEntityCandidate {
+  id: string;
+  name: string;
+  cpf?: string;
+}
+
+export interface ExtractFromDocumentCandidates {
+  patient: DocumentEntityCandidate[];
+  hospital: DocumentEntityCandidate[];
+  healthPlan: DocumentEntityCandidate[];
+  procedure: DocumentEntityCandidate[];
+}
+
+export interface ExtractFromDocumentResponse {
+  kind: DocumentClassificationKind;
+  confidence: number;
+  extracted: ExtractedFromDocument;
+  suggestedDocumentType: string;
+  ambiguity?: string;
+  patientCpfMissing: boolean;
+  patientMatchedByCpf: boolean;
+  candidates: ExtractFromDocumentCandidates;
+  tempStoragePath: string;
+}
+
+export interface TussItemFromDocument {
+  tussCode: string;
+  name?: string;
+  quantity?: number;
+}
+
+export interface OpmeItemFromDocument {
+  description: string;
+  qty?: number;
+  supplier?: string;
+  manufacturer?: string;
+}
+
+export interface NewPatientFromDocument {
+  name: string;
+  cpf: string;
+  birthDate?: string;
+  gender?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  addressNumber?: string;
+  addressComplement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  healthPlanNumber?: string;
+}
+
+export interface ReportSectionFromDocument {
+  title: string;
+  description?: string;
+}
+
+export interface CreateFromDocumentPayload {
+  doctorId: string;
+  patientId?: string;
+  newPatient?: NewPatientFromDocument;
+  procedureId?: string;
+  procedureName?: string;
+  hospitalId?: string;
+  hospitalName?: string;
+  healthPlanId?: string;
+  healthPlanName?: string;
+  healthPlanNumber?: string;
+  priority?: 1 | 2 | 3 | 4;
+  notes?: string;
+  sections?: ReportSectionFromDocument[];
+  tussItems?: TussItemFromDocument[];
+  opmeItems?: OpmeItemFromDocument[];
+  tempStoragePath?: string;
+  originalFileName?: string;
+}
+
+export interface CreateFromDocumentResponse {
+  id: string;
+  protocol: string;
+  warnings: string[];
+}

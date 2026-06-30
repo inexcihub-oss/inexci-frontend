@@ -32,6 +32,7 @@ const TONE_STYLES: Record<string, string> = {
 export function SubscriptionStatusCard({ detail }: Props) {
   const { subscription, plan, daysLeftInTrial } = detail;
   const status = subscription.status;
+  const isAccessBlocked = status === "canceled" || status === "suspended";
   const tone = SUBSCRIPTION_STATUS_TONE[status];
   const Icon = (() => {
     switch (status) {
@@ -52,6 +53,21 @@ export function SubscriptionStatusCard({ detail }: Props) {
   return (
     <div className="border border-gray-200 rounded-2xl bg-gradient-to-r from-primary-50 to-white">
       <CardContent className="p-6">
+        {isAccessBlocked && (
+          <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
+            <p className="text-sm font-semibold text-rose-800">
+              {status === "canceled"
+                ? "Assinatura cancelada • acesso bloqueado"
+                : "Assinatura suspensa • acesso bloqueado"}
+            </p>
+            <p className="mt-1 text-xs text-rose-700">
+              {status === "canceled"
+                ? "Para voltar a usar a plataforma, contrate um novo plano."
+                : "Regularize o pagamento para reativar a assinatura."}
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div className="flex items-start gap-4">
             <div
@@ -83,8 +99,7 @@ export function SubscriptionStatusCard({ detail }: Props) {
                 </span>
                 {subscription.cancelAtPeriodEnd && (
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200">
-                    Cancela em{" "}
-                    {formatDateBR(subscription.currentPeriodEnd)}
+                    Cancela em {formatDateBR(subscription.currentPeriodEnd)}
                   </span>
                 )}
                 {detail.nextPlan && (

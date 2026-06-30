@@ -36,6 +36,8 @@ interface TussProcedureModalProps {
   onLocalSave?: (
     items: { tussCode: string; name: string; quantity: number }[],
   ) => void;
+  /** Pré-popula os procedimentos selecionados ao abrir em modo local. */
+  initialItems?: { tussCode: string; name: string; quantity: number }[];
 }
 
 interface ProcedureItem {
@@ -85,6 +87,7 @@ export function TussProcedureModal({
   onSuccess,
   existingProcedures = [],
   onLocalSave,
+  initialItems,
 }: TussProcedureModalProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<TussCode[]>([]);
@@ -116,11 +119,25 @@ export function TussProcedureModal({
   // ── Inicializa o estado ao abrir
   useEffect(() => {
     if (!isOpen) return;
-    setProcedures([]);
+    if (initialItems && initialItems.length > 0) {
+      setProcedures(
+        initialItems.map((item) => ({
+          procedure: {
+            id: item.tussCode,
+            tussCode: item.tussCode,
+            name: item.name,
+            active: true,
+          },
+          quantity: item.quantity,
+        })),
+      );
+    } else {
+      setProcedures([]);
+    }
     setSearchTerm("");
     setSearchResults([]);
     setIsDropdownOpen(false);
-  }, [isOpen]);
+  }, [isOpen, initialItems]);
 
   // ── ESC fecha
   useEffect(() => {

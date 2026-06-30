@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronsUpDown, X } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ComboboxOption {
@@ -20,6 +20,10 @@ export interface ComboboxProps {
   disabled?: boolean;
   className?: string;
   label?: string;
+  /** Quando informado, exibe uma opção para criar um novo item a partir do texto buscado. */
+  onCreateNew?: (query: string) => void;
+  /** Nome do tipo de item usado no texto da opção "criar novo" (ex.: "convênio"). */
+  createNewLabel?: string;
 }
 
 export function Combobox({
@@ -32,6 +36,8 @@ export function Combobox({
   disabled = false,
   className,
   label,
+  onCreateNew,
+  createNewLabel = "item",
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -52,6 +58,11 @@ export function Combobox({
   }, [options, searchQuery]);
 
   const selectedOption = options.find((option) => option.value === value);
+
+  const hasExactMatch = options.some(
+    (option) =>
+      option.label.toLowerCase() === searchQuery.trim().toLowerCase(),
+  );
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -108,6 +119,12 @@ export function Combobox({
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     onValueChange?.("");
+  };
+
+  const handleCreateNew = () => {
+    onCreateNew?.(searchQuery.trim());
+    setOpen(false);
+    setSearchQuery("");
   };
 
   return (
@@ -175,33 +192,50 @@ export function Combobox({
                 />
               </div>
               <div className="max-h-60 overflow-auto p-1">
-                {filteredOptions.length === 0 ? (
+                {filteredOptions.length === 0 && !onCreateNew && (
                   <div className="py-6 text-center text-xs md:text-sm text-gray-500">
                     {emptyText}
                   </div>
-                ) : (
-                  filteredOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleSelect(option.value)}
+                )}
+                {filteredOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleSelect(option.value)}
+                    className={cn(
+                      "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-xs md:text-sm outline-none min-h-[36px] md:min-h-[44px] active:bg-neutral-100",
+                      "hover:bg-neutral-50",
+                      value === option.value
+                        ? "bg-neutral-100 text-black"
+                        : "text-gray-900",
+                    )}
+                  >
+                    <Check
                       className={cn(
-                        "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-xs md:text-sm outline-none min-h-[36px] md:min-h-[44px] active:bg-neutral-100",
-                        "hover:bg-neutral-50",
-                        value === option.value
-                          ? "bg-neutral-100 text-black"
-                          : "text-gray-900",
+                        "mr-2 h-4 w-4",
+                        value === option.value ? "opacity-100" : "opacity-0",
                       )}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === option.value ? "opacity-100" : "opacity-0",
-                        )}
-                      />
-                      <span className="truncate">{option.label}</span>
-                    </button>
-                  ))
+                    />
+                    <span className="truncate">{option.label}</span>
+                  </button>
+                ))}
+                {onCreateNew && !hasExactMatch && (
+                  <button
+                    type="button"
+                    onClick={handleCreateNew}
+                    className={cn(
+                      "flex w-full cursor-pointer select-none items-center gap-2 rounded-lg px-3 py-2.5 text-xs md:text-sm font-semibold text-primary-700 outline-none min-h-[36px] md:min-h-[44px] hover:bg-primary-50 active:bg-primary-100",
+                      filteredOptions.length > 0 &&
+                        "mt-1 border-t border-neutral-100 pt-2.5",
+                    )}
+                  >
+                    <Plus className="h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      {searchQuery.trim()
+                        ? `Adicionar "${searchQuery.trim()}" como novo ${createNewLabel}`
+                        : `Cadastrar novo ${createNewLabel}`}
+                    </span>
+                  </button>
                 )}
               </div>
             </div>,

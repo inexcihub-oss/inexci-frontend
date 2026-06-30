@@ -53,7 +53,7 @@ const STEP_BENEFITS: Record<number, { icon: string; text: string }[]> = {
   1: [
     { icon: "🔒", text: "Dados protegidos com criptografia" },
     { icon: "⚡", text: "Configuração em minutos" },
-    { icon: "🆓", text: "Starter com 30 dias grátis sem cartão" },
+    { icon: "🆓", text: "30 dias grátis em qualquer plano, sem cartão" },
   ],
   2: [
     { icon: "🩺", text: "Médicos criam solicitações cirúrgicas" },
@@ -106,9 +106,6 @@ export default function CadastroPage() {
     "" | "email_active" | "email_pending" | "generic"
   >("");
   const [isLoading, setIsLoading] = useState(false);
-
-  const selectedIsTrialPlan =
-    plans.find((p) => p.slug === selectedSlug)?.isTrialDefault ?? true;
 
   const handleBillingPeriodChange = (period: "MONTHLY" | "YEARLY") => {
     setBillingPeriod(period);
@@ -234,6 +231,7 @@ export default function CadastroPage() {
     setIsLoading(true);
     try {
       const phoneDigits = unmask(step1.phone);
+
       await register({
         name: step1.name,
         email: step1.email,
@@ -272,7 +270,6 @@ export default function CadastroPage() {
         onSelectPlan={setSelectedSlug}
         billingPeriod={billingPeriod}
         onBillingPeriodChange={handleBillingPeriodChange}
-        selectedIsTrialPlan={selectedIsTrialPlan}
 
         onBack={handleBack}
         onSubmit={handleSubmit}
@@ -437,7 +434,6 @@ interface PlanStepLayoutProps {
   onSelectPlan: (slug: string) => void;
   billingPeriod: "MONTHLY" | "YEARLY";
   onBillingPeriodChange: (p: "MONTHLY" | "YEARLY") => void;
-  selectedIsTrialPlan: boolean;
 
   onBack: () => void;
   onSubmit: () => void;
@@ -453,7 +449,6 @@ function PlanStepLayout({
   onSelectPlan,
   billingPeriod,
   onBillingPeriodChange,
-  selectedIsTrialPlan,
 
   onBack,
   onSubmit,
@@ -462,15 +457,15 @@ function PlanStepLayout({
   errorType,
 }: PlanStepLayoutProps) {
   const selectedPlan = plans.find((p) => p.slug === selectedSlug);
-  const ctaLabel = selectedIsTrialPlan
-    ? "Começar 30 dias grátis"
-    : "Assinar agora";
+  const ctaLabel = "Começar 30 dias grátis";
 
   return (
     /*
-     * Layout: o wrapper é o próprio container de scroll (h-screen + overflow-y-auto).
+     * Layout: a página não rola inteira — só a área de conteúdo (flex-1 min-h-0
+     * overflow-y-auto). O rodapé com o CTA fica fora do scroll, sempre visível,
+     * inclusive em telas baixas (notebooks, mobile).
      */
-    <div className="flex flex-col h-screen overflow-y-auto bg-gray-50">
+    <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
       {/* Decorações de fundo */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden -z-0">
         <div className="absolute -top-40 -right-32 w-[360px] sm:w-[520px] h-[360px] sm:h-[520px] bg-purple-200 rounded-full filter blur-3xl opacity-40" />
@@ -478,8 +473,8 @@ function PlanStepLayout({
         <div className="absolute -bottom-40 left-1/3 w-[400px] sm:w-[600px] h-[200px] sm:h-[300px] bg-blue-200 rounded-full filter blur-3xl opacity-30" />
       </div>
 
-      {/* Área de conteúdo */}
-      <div className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 lg:pt-8 pb-6 sm:pb-8">
+      {/* Área de conteúdo — única parte que rola (barra de rolagem escondida) */}
+      <div className="relative z-10 flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 lg:pt-8 pb-6 sm:pb-8">
         {/* Topbar */}
         <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6">
           <Image
@@ -505,14 +500,11 @@ function PlanStepLayout({
             Etapa 3 de 3 — Seu plano
           </span>
           <h1 className="mt-3 text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 tracking-tight font-urbanist">
-            {selectedIsTrialPlan
-              ? "Starter grátis por 30 dias. Sem cartão."
-              : "Escolha o plano ideal para você."}
+            30 dias grátis em qualquer plano. Sem cartão.
           </h1>
           <p className="mt-2 text-xs sm:text-sm text-gray-500 px-2">
-            {selectedIsTrialPlan
-              ? "Comece no Starter sem cartão. Faça upgrade quando quiser, sem multa."
-              : "Planos pagos iniciam a cobrança imediatamente. Cancele quando quiser."}
+            Experimente sem compromisso. Você só cadastra um cartão quando o
+            período grátis terminar.
           </p>
         </div>
 
@@ -557,8 +549,8 @@ function PlanStepLayout({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="w-full bg-gray-50/90 backdrop-blur-sm border-t border-gray-200/60 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+      {/* Footer — fixo fora da área de scroll */}
+      <div className="relative z-10 shrink-0 w-full bg-gray-50/90 backdrop-blur-sm border-t border-gray-200/60 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
         <div className="max-w-7xl mx-auto flex items-center gap-3">
           <div className="hidden sm:flex w-9 h-9 rounded-xl bg-teal-50 items-center justify-center shrink-0">
             <ShieldCheck className="w-4 h-4 text-teal-600" />
@@ -570,9 +562,7 @@ function PlanStepLayout({
               <span className="text-teal-600">{selectedPlan?.name ?? "—"}</span>
             </p>
             <p className="text-[11px] text-gray-500 truncate">
-              {selectedIsTrialPlan
-                ? "Trial de 30 dias gratuito · Sem cartão agora"
-                : "Cobrança imediata · Cancele quando quiser"}
+              Trial de 30 dias gratuito · Sem cartão agora
             </p>
           </div>
 
@@ -619,10 +609,7 @@ function PlanStepLayout({
           </span>
           <span className="text-gray-300">·</span>
           <span className="inline-flex items-center gap-1">
-            🎁{" "}
-            <span>
-              {selectedIsTrialPlan ? "30 dias grátis" : "Stripe PCI-DSS"}
-            </span>
+            🎁 <span>30 dias grátis</span>
           </span>
         </div>
       </div>

@@ -3,39 +3,25 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { billingService } from "@/services/billing.service";
 import { useAuth } from "@/contexts/AuthContext";
-import type {
-  Invoice,
-  PaymentMethod,
-  SubscriptionPlan,
-} from "@/types";
+import type { SubscriptionPlan } from "@/types";
 import { SubscriptionStatusCard } from "./SubscriptionStatusCard";
 import { QuotaUsageCard } from "./QuotaUsageCard";
 import { PlanSelector } from "./PlanSelector";
-import { PaymentMethodSection } from "./PaymentMethodSection";
-import { InvoicesList } from "./InvoicesList";
-import { Modal } from "@/components/ui/Modal";
-import { Loader2, RotateCcw, XCircle } from "lucide-react";
+import { ExternalLink, Layers, Loader2 } from "lucide-react";
 
 export function BillingSection() {
-  const { subscription, refreshSubscription, subscriptionLoading } =
-    useAuth();
+  const { subscription, subscriptionLoading, refreshSubscription } = useAuth();
   const { toast, showToast, hideToast } = useToast();
-
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
-  const [methods, setMethods] = useState<PaymentMethod[]>([]);
-  const [loadingMethods, setLoadingMethods] = useState(false);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loadingInvoices, setLoadingInvoices] = useState(false);
-  const [changingPlanId, setChangingPlanId] = useState<string | null>(null);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [resuming, setResuming] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
   const loadPlans = useCallback(async () => {
     setLoadingPlans(true);
@@ -49,86 +35,37 @@ export function BillingSection() {
     }
   }, [showToast]);
 
-  const loadMethods = useCallback(async () => {
-    setLoadingMethods(true);
-    try {
-      const data = await billingService.listPaymentMethods();
-      setMethods(data);
-    } catch (err) {
-      showToast(getApiErrorMessage(err), "error");
-    } finally {
-      setLoadingMethods(false);
-    }
-  }, [showToast]);
-
-  const loadInvoices = useCallback(async () => {
-    setLoadingInvoices(true);
-    try {
-      const { records } = await billingService.listInvoices(0, 50);
-      setInvoices(records);
-    } catch (err) {
-      showToast(getApiErrorMessage(err), "error");
-    } finally {
-      setLoadingInvoices(false);
-    }
-  }, [showToast]);
-
   useEffect(() => {
     loadPlans();
-    loadMethods();
-    loadInvoices();
-  }, [loadPlans, loadMethods, loadInvoices]);
+  }, [loadPlans]);
 
-  const handleSelectPlan = async (plan: SubscriptionPlan) => {
-    if (!subscription) return;
-    if (
-      plan.id === subscription.subscription.planId ||
-      plan.id === subscription.subscription.nextPlanId
-    ) {
-      return;
-    }
+  useEffect(() => {
+    void refreshSubscription();
+  }, [refreshSubscription]);
+
+  const handleCheckout = async (plan: SubscriptionPlan) => {
     try {
-      setChangingPlanId(plan.id);
-      await billingService.changePlan(plan.id);
-      showToast(
-        "Mudança de plano agendada para o próximo ciclo.",
-        "success",
-      );
-      await refreshSubscription();
+      setRedirecting(true);
+      const { url } = await billingService.startCheckout(plan.id);
+      window.location.href = url;
     } catch (err) {
       showToast(getApiErrorMessage(err), "error");
-    } finally {
-      setChangingPlanId(null);
+      setRedirecting(false);
     }
   };
 
-  const handleCancel = async () => {
+  const handleManage = async () => {
     try {
-      setCancelling(true);
-      await billingService.cancel();
+      setRedirecting(true);
+      const { url } = await billingService.openPortal();
+      window.location.href = url;
+    } catch (err) {
       showToast(
-        "Assinatura agendada para encerrar no fim do ciclo.",
-        "success",
+        "Não foi possível abrir o Portal da Stripe agora. Escolha um plano abaixo para reativar seu acesso.",
+        "warning",
       );
-      setShowCancelModal(false);
-      await refreshSubscription();
-    } catch (err) {
-      showToast(getApiErrorMessage(err), "error");
-    } finally {
-      setCancelling(false);
-    }
-  };
-
-  const handleResume = async () => {
-    try {
-      setResuming(true);
-      await billingService.resume();
-      showToast("Cancelamento revertido.", "success");
-      await refreshSubscription();
-    } catch (err) {
-      showToast(getApiErrorMessage(err), "error");
-    } finally {
-      setResuming(false);
+      setIsPlansModalOpen(true);
+      setRedirecting(false);
     }
   };
 
@@ -151,6 +88,10 @@ export function BillingSection() {
   }
 
   const sub = subscription.subscription;
+  const isTrialing = sub.status === "trialing";
+  const isCanceled = sub.status === "canceled";
+  const isSuspendedOrPastDue =
+    sub.status === "suspended" || sub.status === "past_due";
 
   return (
     <>
@@ -158,98 +99,83 @@ export function BillingSection() {
         <SubscriptionStatusCard detail={subscription} />
         <QuotaUsageCard quota={subscription.quota} />
 
-        <div className="flex flex-wrap gap-3">
-          {sub.cancelAtPeriodEnd ? (
-            <Button
-              variant="outline"
-              onClick={handleResume}
-              isLoading={resuming}
-              className="gap-2"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Reativar assinatura
-            </Button>
-          ) : (
-            sub.status !== "canceled" &&
-            sub.status !== "suspended" && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Resolver assinatura
+          </p>
+
+          <div className="mt-3 flex flex-wrap gap-3">
+            {isCanceled && (
+              <Button
+                onClick={() => setIsPlansModalOpen(true)}
+                className="gap-2"
+                isLoading={redirecting}
+              >
+                <Layers className="w-4 h-4" />
+                Contratar novo plano na Stripe
+              </Button>
+            )}
+
+            {isSuspendedOrPastDue && (
+              <Button
+                onClick={handleManage}
+                isLoading={redirecting}
+                className="gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Regularizar pagamento na Stripe
+              </Button>
+            )}
+
+            {!isCanceled && !isTrialing && !isSuspendedOrPastDue && (
               <Button
                 variant="outline"
-                onClick={() => setShowCancelModal(true)}
-                className="gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                onClick={handleManage}
+                isLoading={redirecting}
+                className="gap-2"
               >
-                <XCircle className="w-4 h-4" />
-                Cancelar assinatura
+                <ExternalLink className="w-4 h-4" />
+                Gerenciar assinatura na Stripe
               </Button>
-            )
-          )}
+            )}
+
+            <Button
+              variant={isCanceled ? "outline" : "ghost"}
+              onClick={() => setIsPlansModalOpen(true)}
+              className="gap-2"
+            >
+              <Layers className="w-4 h-4" />
+              {isCanceled ? "Ver todos os planos" : "Trocar plano"}
+            </Button>
+          </div>
         </div>
-
-        <div>
-          <h3 className="text-base font-semibold text-gray-900 mb-4">
-            {sub.status === "trialing"
-              ? "Escolha o plano para continuar após o trial"
-              : "Planos disponíveis"}
-          </h3>
-          <PlanSelector
-            plans={plans}
-            currentPlanId={sub.planId}
-            nextPlanId={sub.nextPlanId}
-            onSelect={handleSelectPlan}
-            loading={loadingPlans}
-            changingPlanId={changingPlanId}
-          />
-        </div>
-
-        <PaymentMethodSection
-          methods={methods}
-          loading={loadingMethods}
-          onChanged={() => {
-            loadMethods();
-            refreshSubscription();
-          }}
-        />
-
-        <InvoicesList invoices={invoices} loading={loadingInvoices} />
       </div>
 
       <Modal
-        isOpen={showCancelModal}
-        onClose={() => !cancelling && setShowCancelModal(false)}
-        title="Cancelar assinatura"
-        size="sm"
+        isOpen={isPlansModalOpen}
+        onClose={() => setIsPlansModalOpen(false)}
+        title={
+          isTrialing
+            ? "Escolha o plano para continuar após o trial"
+            : "Planos disponíveis"
+        }
+        size="xl"
       >
-        <div className="p-5 md:p-6 space-y-5">
-          <p className="text-sm text-gray-600">
-            Sua assinatura será encerrada ao final do ciclo atual (
-            {new Date(sub.currentPeriodEnd).toLocaleDateString("pt-BR")}). Até
-            lá, você continua com acesso normal. Você pode reativar a qualquer
-            momento antes do encerramento.
-          </p>
-          <div className="flex flex-col-reverse md:flex-row md:justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowCancelModal(false)}
-              disabled={cancelling}
-            >
-              Voltar
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleCancel}
-              isLoading={cancelling}
-            >
-              Confirmar cancelamento
-            </Button>
-          </div>
+        <div className="p-5 md:p-6">
+          <PlanSelector
+            plans={plans}
+            currentPlanId={sub.planId}
+            subscriptionStatus={sub.status}
+            onCheckout={handleCheckout}
+            onManage={handleManage}
+            loading={loadingPlans}
+            redirecting={redirecting}
+          />
         </div>
       </Modal>
 
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
       )}
     </>
   );

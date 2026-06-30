@@ -1,8 +1,4 @@
-import type {
-  BillingPeriod,
-  InvoiceStatus,
-  SubscriptionStatus,
-} from "@/types";
+import type { BillingPeriod, SubscriptionStatus } from "@/types";
 
 export function formatPriceCents(
   amountCents: number,
@@ -39,27 +35,6 @@ export const SUBSCRIPTION_STATUS_TONE: Record<
   active: "success",
   past_due: "warning",
   suspended: "danger",
-  canceled: "neutral",
-};
-
-export const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
-  pending: "Aguardando pagamento",
-  paid: "Paga",
-  failed: "Falhou",
-  overdue: "Vencida",
-  refunded: "Estornada",
-  canceled: "Cancelada",
-};
-
-export const INVOICE_STATUS_TONE: Record<
-  InvoiceStatus,
-  "info" | "success" | "warning" | "danger" | "neutral"
-> = {
-  pending: "info",
-  paid: "success",
-  failed: "danger",
-  overdue: "warning",
-  refunded: "neutral",
   canceled: "neutral",
 };
 

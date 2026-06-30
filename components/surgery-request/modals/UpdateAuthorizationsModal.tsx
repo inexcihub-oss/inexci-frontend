@@ -9,6 +9,7 @@ import {
 } from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
+import { getTransitionBlockError } from "@/lib/http-error";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 import {
   NotificationConfirmModal,
@@ -282,8 +283,11 @@ export function UpdateAuthorizationsModal({
       showToast("Autorização aceita! Status: Em Agendamento", "success");
       reset();
       onSuccess();
-    } catch {
-      showToast("Erro ao aceitar autorização. Tente novamente.", "error");
+    } catch (err) {
+      showToast(
+        getTransitionBlockError(err) ?? "Erro ao aceitar autorização. Tente novamente.",
+        "error",
+      );
     } finally {
       setIsSaving(false);
     }

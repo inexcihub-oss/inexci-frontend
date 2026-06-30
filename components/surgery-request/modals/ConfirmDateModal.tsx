@@ -6,6 +6,7 @@ import {
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
+import { getTransitionBlockError } from "@/lib/http-error";
 
 interface ConfirmDateModalProps {
   isOpen: boolean;
@@ -53,8 +54,11 @@ export function ConfirmDateModal({
       showToast("Data confirmada! Status alterado para Agendada.", "success");
       setSelectedIndex(null);
       onSuccess();
-    } catch {
-      showToast("Erro ao confirmar data. Tente novamente.", "error");
+    } catch (err) {
+      showToast(
+        getTransitionBlockError(err) ?? "Erro ao confirmar data. Tente novamente.",
+        "error",
+      );
     } finally {
       setIsSaving(false);
     }

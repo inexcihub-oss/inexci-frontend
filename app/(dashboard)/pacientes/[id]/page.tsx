@@ -14,6 +14,7 @@ import { ToastType } from "@/types/toast.types";
 import { patientService, Patient } from "@/services/patient.service";
 import { GENDER_OPTIONS, STATE_OPTIONS } from "@/lib/options";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
+import { HealthPlanComboboxField } from "@/components/patients/HealthPlanComboboxField";
 import {
   surgeryRequestService,
   SurgeryRequestListItem,
@@ -254,11 +255,6 @@ export default function PacienteDetalhePage() {
     );
   }
 
-  const healthPlanOptions = [
-    { value: "", label: "Selecione um convênio" },
-    ...healthPlans.map((plan) => ({ value: plan.id, label: plan.name })),
-  ];
-
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -446,13 +442,14 @@ export default function PacienteDetalhePage() {
         {/* Seção: Convênio */}
         <FormSection title="Convênio">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Select
+            <HealthPlanComboboxField
               label="Convênio"
+              healthPlans={healthPlans}
               value={formData.healthPlanId}
-              onChange={(e) =>
-                handleInputChange("healthPlanId", e.target.value)
+              onChange={(id) => handleInputChange("healthPlanId", id)}
+              onHealthPlanCreated={(plan) =>
+                setHealthPlans((prev) => [...prev, plan])
               }
-              options={healthPlanOptions}
             />
             <Input
               label="Número da carteirinha"
