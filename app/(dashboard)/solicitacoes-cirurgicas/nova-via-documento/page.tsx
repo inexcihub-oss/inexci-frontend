@@ -838,7 +838,7 @@ export default function NovaViaDocumentoPage() {
               )}
               <ProcedureCombobox
                 procedures={procedures}
-                value={values.procedureId}
+                value={values.procedureId ?? ""}
                 query={values.procedureName ?? ""}
                 onSelect={(id) => setField("procedureId", id)}
                 onQueryChange={(name) => setField("procedureName", name)}
