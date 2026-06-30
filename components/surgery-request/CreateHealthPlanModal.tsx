@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import {
   healthPlanService,
@@ -20,6 +20,8 @@ interface CreateHealthPlanModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (healthPlan: HealthPlan) => void;
+  /** Pré-preenche o nome (ex.: texto digitado em uma busca que não encontrou resultado). */
+  initialName?: string;
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -32,6 +34,7 @@ export function CreateHealthPlanModal({
   isOpen,
   onClose,
   onSuccess,
+  initialName = "",
 }: CreateHealthPlanModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +44,13 @@ export function CreateHealthPlanModal({
     schema: createHealthPlanSchema,
     initialValues: { name: "", phone: "", email: "" },
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      form.setField("name", initialName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialName]);
 
   const handleClose = () => {
     if (loading) return;

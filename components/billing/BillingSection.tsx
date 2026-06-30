@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { getApiErrorMessage } from "@/lib/http-error";
@@ -12,14 +13,15 @@ import type { SubscriptionPlan } from "@/types";
 import { SubscriptionStatusCard } from "./SubscriptionStatusCard";
 import { QuotaUsageCard } from "./QuotaUsageCard";
 import { PlanSelector } from "./PlanSelector";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Layers, Loader2 } from "lucide-react";
 
 export function BillingSection() {
-  const { subscription, subscriptionLoading } = useAuth();
+  const { subscription, subscriptionLoading, refreshSubscription } = useAuth();
   const { toast, showToast, hideToast } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
   const loadPlans = useCallback(async () => {
     setLoadingPlans(true);
@@ -36,6 +38,10 @@ export function BillingSection() {
   useEffect(() => {
     loadPlans();
   }, [loadPlans]);
+
+  useEffect(() => {
+    void refreshSubscription();
+  }, [refreshSubscription]);
 
   const handleCheckout = async (plan: SubscriptionPlan) => {
     try {
@@ -54,7 +60,11 @@ export function BillingSection() {
       const { url } = await billingService.openPortal();
       window.location.href = url;
     } catch (err) {
-      showToast(getApiErrorMessage(err), "error");
+      showToast(
+        "Não foi possível abrir o Portal da Stripe agora. Escolha um plano abaixo para reativar seu acesso.",
+        "warning",
+      );
+      setIsPlansModalOpen(true);
       setRedirecting(false);
     }
   };
@@ -79,6 +89,9 @@ export function BillingSection() {
 
   const sub = subscription.subscription;
   const isTrialing = sub.status === "trialing";
+  const isCanceled = sub.status === "canceled";
+  const isSuspendedOrPastDue =
+    sub.status === "suspended" || sub.status === "past_due";
 
   return (
     <>
@@ -86,24 +99,69 @@ export function BillingSection() {
         <SubscriptionStatusCard detail={subscription} />
         <QuotaUsageCard quota={subscription.quota} />
 
-        {!isTrialing && (
-          <Button
-            variant="outline"
-            onClick={handleManage}
-            isLoading={redirecting}
-            className="gap-2"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Gerenciar assinatura na Stripe
-          </Button>
-        )}
+        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Resolver assinatura
+          </p>
 
-        <div>
-          <h3 className="text-base font-semibold text-gray-900 mb-4">
-            {isTrialing
-              ? "Escolha o plano para continuar após o trial"
-              : "Planos disponíveis"}
-          </h3>
+          <div className="mt-3 flex flex-wrap gap-3">
+            {isCanceled && (
+              <Button
+                onClick={() => setIsPlansModalOpen(true)}
+                className="gap-2"
+                isLoading={redirecting}
+              >
+                <Layers className="w-4 h-4" />
+                Contratar novo plano na Stripe
+              </Button>
+            )}
+
+            {isSuspendedOrPastDue && (
+              <Button
+                onClick={handleManage}
+                isLoading={redirecting}
+                className="gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Regularizar pagamento na Stripe
+              </Button>
+            )}
+
+            {!isCanceled && !isTrialing && !isSuspendedOrPastDue && (
+              <Button
+                variant="outline"
+                onClick={handleManage}
+                isLoading={redirecting}
+                className="gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Gerenciar assinatura na Stripe
+              </Button>
+            )}
+
+            <Button
+              variant={isCanceled ? "outline" : "ghost"}
+              onClick={() => setIsPlansModalOpen(true)}
+              className="gap-2"
+            >
+              <Layers className="w-4 h-4" />
+              {isCanceled ? "Ver todos os planos" : "Trocar plano"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Modal
+        isOpen={isPlansModalOpen}
+        onClose={() => setIsPlansModalOpen(false)}
+        title={
+          isTrialing
+            ? "Escolha o plano para continuar após o trial"
+            : "Planos disponíveis"
+        }
+        size="xl"
+      >
+        <div className="p-5 md:p-6">
           <PlanSelector
             plans={plans}
             currentPlanId={sub.planId}
@@ -114,7 +172,7 @@ export function BillingSection() {
             redirecting={redirecting}
           />
         </div>
-      </div>
+      </Modal>
 
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={hideToast} />

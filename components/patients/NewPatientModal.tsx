@@ -10,6 +10,7 @@ import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { GENDER_OPTIONS } from "@/lib/options";
 import { DateInput } from "@/components/ui/DateInput";
 import Input from "@/components/ui/Input";
+import { HealthPlanComboboxField } from "@/components/patients/HealthPlanComboboxField";
 import { useZodForm } from "@/hooks/useZodForm";
 import { createPatientSchema } from "@/lib/schemas/patient.schema";
 import { unmask } from "@/lib/masks";
@@ -205,21 +206,15 @@ export function NewPatientModal({
             </div>
 
             {/* Row 4: Convênio (full width) */}
-            <div className="flex flex-col gap-1.5">
-              <label className={labelClass}>Convênio (opcional)</label>
-              <select
-                value={form.values.healthPlanId ?? ""}
-                onChange={(e) => form.setField("healthPlanId", e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Selecione</option>
-                {healthPlans.map((plan) => (
-                  <option key={plan.id} value={plan.id}>
-                    {plan.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <HealthPlanComboboxField
+              label="Convênio (opcional)"
+              healthPlans={healthPlans}
+              value={form.values.healthPlanId ?? ""}
+              onChange={(id) => form.setField("healthPlanId", id)}
+              onHealthPlanCreated={(plan) =>
+                setHealthPlans((prev) => [...prev, plan])
+              }
+            />
 
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               Obs.: Não será possível notificar o paciente sem os dados de

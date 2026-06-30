@@ -21,6 +21,12 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Navegadores aplicam cursor:default a <button> por padrão (diferente de <a>) */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
   html,
   body {
     height: 100%;

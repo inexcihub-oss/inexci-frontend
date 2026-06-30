@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Clock, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Clock, XCircle } from "lucide-react";
 
 /**
  * Banner global exibido no topo do dashboard quando a assinatura
@@ -111,39 +111,53 @@ export function BillingStatusBanner() {
 
   const Icon = variant.icon;
   const styles: Record<Variant["tone"], string> = {
-    info: "bg-blue-50 border-blue-200 text-blue-900",
-    warning: "bg-amber-50 border-amber-200 text-amber-900",
-    danger: "bg-red-50 border-red-200 text-red-900",
+    info: "border-blue-200/90 bg-gradient-to-r from-blue-50 via-white to-blue-50/60 text-blue-950",
+    warning:
+      "border-amber-200/90 bg-gradient-to-r from-amber-50 via-white to-amber-50/60 text-amber-950",
+    danger:
+      "border-rose-200/90 bg-gradient-to-r from-rose-50 via-white to-red-50/70 text-rose-950",
   };
   const iconColor: Record<Variant["tone"], string> = {
     info: "text-blue-500",
     warning: "text-amber-500",
-    danger: "text-red-500",
+    danger: "text-rose-500",
   };
   const buttonColor: Record<Variant["tone"], string> = {
-    info: "bg-blue-600 hover:bg-blue-700",
-    warning: "bg-amber-600 hover:bg-amber-700",
-    danger: "bg-red-600 hover:bg-red-700",
+    info: "bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-500",
+    warning: "bg-amber-600 hover:bg-amber-700 focus-visible:ring-amber-500",
+    danger: "bg-rose-600 hover:bg-rose-700 focus-visible:ring-rose-500",
   };
 
   return (
-    <div className={cn("border-b px-4 py-3", styles[variant.tone])}>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 max-w-7xl mx-auto">
+    <div className="bg-white px-3 py-3 sm:px-4 sm:py-4">
+      <div
+        className={cn(
+          "mx-auto flex w-full max-w-7xl flex-col gap-3 rounded-2xl border p-3 shadow-sm sm:p-4 md:flex-row md:items-center md:justify-between",
+          styles[variant.tone],
+        )}
+      >
         <div className="flex items-start gap-3">
-          <Icon className={cn("w-5 h-5 mt-0.5 shrink-0", iconColor[variant.tone])} />
+          <div className="mt-0.5 rounded-xl bg-white/80 p-2 shadow-sm ring-1 ring-black/5">
+            <Icon className={cn("h-5 w-5 shrink-0", iconColor[variant.tone])} />
+          </div>
           <div>
-            <p className="text-sm font-semibold">{variant.title}</p>
-            <p className="text-xs opacity-90">{variant.description}</p>
+            <p className="text-sm font-semibold sm:text-[15px]">
+              {variant.title}
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed opacity-90 sm:text-sm">
+              {variant.description}
+            </p>
           </div>
         </div>
         <Link
           href="/configuracoes?tab=plan"
           className={cn(
-            "inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-semibold text-white transition-colors min-h-[36px] whitespace-nowrap",
+            "inline-flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 md:min-h-[38px] md:w-auto",
             buttonColor[variant.tone],
           )}
         >
           {variant.action}
+          <ArrowUpRight className="h-4 w-4" />
         </Link>
       </div>
     </div>

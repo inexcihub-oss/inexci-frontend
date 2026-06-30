@@ -15,6 +15,7 @@ import {
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
+import { getTransitionBlockError } from "@/lib/http-error";
 
 interface InvoiceModalProps {
   isOpen: boolean;
@@ -140,8 +141,11 @@ export function InvoiceModal({
       );
       handleClose();
       onSuccess();
-    } catch {
-      showToast("Erro ao registrar faturamento. Tente novamente.", "error");
+    } catch (err) {
+      showToast(
+        getTransitionBlockError(err) ?? "Erro ao registrar faturamento. Tente novamente.",
+        "error",
+      );
     } finally {
       setIsSaving(false);
     }

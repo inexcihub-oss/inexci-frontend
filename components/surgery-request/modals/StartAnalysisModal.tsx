@@ -6,6 +6,7 @@ import {
   StartAnalysisPayload,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
+import { getTransitionBlockError } from "@/lib/http-error";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
 interface StartAnalysisModalProps {
@@ -101,8 +102,11 @@ export function StartAnalysisModal({
       await surgeryRequestService.startAnalysis(surgeryRequestId, payload);
       showToast("Status atualizado para Em Análise", "success");
       onSuccess();
-    } catch {
-      showToast("Erro ao atualizar status. Tente novamente.", "error");
+    } catch (err) {
+      showToast(
+        getTransitionBlockError(err) ?? "Erro ao atualizar status. Tente novamente.",
+        "error",
+      );
     } finally {
       setIsSaving(false);
     }

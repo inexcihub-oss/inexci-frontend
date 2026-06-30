@@ -218,6 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (response.user?.role === "admin") {
           await refreshSubscription(response.user);
         }
+
         router.push("/solicitacoes-cirurgicas");
       } catch (error) {
         throw error;

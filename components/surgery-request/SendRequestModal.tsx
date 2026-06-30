@@ -9,7 +9,9 @@ import {
 } from "@/services/surgery-request.service";
 import { pendencyService } from "@/services/pendency.service";
 import { useToast } from "@/hooks/useToast";
+import { getTransitionBlockError } from "@/lib/http-error";
 import { SurgeryRequestDocumentPreviewModal } from "@/components/laudo/SurgeryRequestDocumentPreviewModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SendRequestModalProps {
   isOpen: boolean;
@@ -59,6 +61,7 @@ export function SendRequestModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { showToast } = useToast();
+  const { refreshSubscription } = useAuth();
 
   const SEND_CHECKLIST_KEYS: Record<string, string> = {
     hospital: "Informações Gerais",
@@ -213,6 +216,7 @@ export function SendRequestModal({
     try {
       // Primeiro chama o endpoint de envio para mudar o status para "Enviada"
       await surgeryRequestService.send(solicitacao.id, { method: "download" });
+      await refreshSubscription();
 
       // Em seguida abre o PDF da solicitação (com documentos anexados)
       const response = await api.get(
@@ -230,8 +234,11 @@ export function SendRequestModal({
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
       await saveTemplateIfRequested();
       setCurrentStep(4);
-    } catch {
-      showToast("Erro ao baixar solicitação", "error");
+    } catch (err) {
+      showToast(
+        getTransitionBlockError(err) ?? "Erro ao baixar solicitação",
+        "error",
+      );
     } finally {
       setIsSending(false);
     }
@@ -256,10 +263,14 @@ export function SendRequestModal({
         message: emailMessage,
         cc: ccTags.length > 0 ? ccTags.join(";") : undefined,
       });
+      await refreshSubscription();
       await saveTemplateIfRequested();
       setCurrentStep(4);
-    } catch {
-      showToast("Erro ao enviar solicitação", "error");
+    } catch (err) {
+      showToast(
+        getTransitionBlockError(err) ?? "Erro ao enviar solicitação",
+        "error",
+      );
     } finally {
       setIsSending(false);
     }
@@ -555,9 +566,7 @@ export function SendRequestModal({
               onBlur={() => {
                 if (ccInput.trim()) addCcTag(ccInput);
               }}
-              placeholder={
-                ccTags.length === 0 ? "exemplo@mail.com" : undefined
-              }
+              placeholder={ccTags.length === 0 ? "exemplo@mail.com" : undefined}
               className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
             />
           </div>

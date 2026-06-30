@@ -60,6 +60,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "nuxgxpsofrcaumfvhqbh.supabase.co",
       },
+      {
+        protocol: "https",
+        hostname: "**.r2.cloudflarestorage.com",
+      },
     ],
   },
   // Necessário para builds standalone do Docker

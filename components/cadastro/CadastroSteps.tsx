@@ -98,7 +98,7 @@ export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
   },
 };
 
-function getPresentation(slug: string): PlanPresentation {
+export function getPresentation(slug: string): PlanPresentation {
   // Annual plans (slug ending in -anual) use the base tier presentation
   const baseSlug = slug.endsWith("-anual") ? slug.slice(0, -6) : slug;
   return (

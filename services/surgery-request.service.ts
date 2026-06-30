@@ -12,6 +12,9 @@ import {
   BillingInfo,
   ReceiptInfo,
   SchedulingInfo,
+  ExtractFromDocumentResponse,
+  CreateFromDocumentPayload,
+  CreateFromDocumentResponse,
 } from "@/types/surgery-request.types";
 
 // Re-exporta sub-tipos para uso nos componentes
@@ -851,6 +854,33 @@ export const surgeryRequestService = {
     const response = await api.patch(
       `/surgery-requests/${requestId}/sections/reorder`,
       { ids },
+    );
+    return response.data;
+  },
+
+  // ── Criação via documento ──────────────────────────────────────────────────
+
+  /** Envia um arquivo para extração de dados via OCR+IA. */
+  async extractFromDocument(
+    file: File,
+  ): Promise<ExtractFromDocumentResponse> {
+    const formData = new FormData();
+    formData.append("document", file);
+    const response = await api.post<ExtractFromDocumentResponse>(
+      "/surgery-requests/extract-from-document",
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return response.data;
+  },
+
+  /** Cria uma SC a partir dos dados revisados pelo usuário. */
+  async createFromDocument(
+    payload: CreateFromDocumentPayload,
+  ): Promise<CreateFromDocumentResponse> {
+    const response = await api.post<CreateFromDocumentResponse>(
+      "/surgery-requests/from-document",
+      payload,
     );
     return response.data;
   },

@@ -18,6 +18,7 @@ import {
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
+import { getTransitionBlockError } from "@/lib/http-error";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -224,8 +225,11 @@ export function ConfirmReceiptModal({
       }
       handleClose();
       onSuccess();
-    } catch {
-      showToast("Erro ao confirmar recebimento. Tente novamente.", "error");
+    } catch (err) {
+      showToast(
+        getTransitionBlockError(err) ?? "Erro ao confirmar recebimento. Tente novamente.",
+        "error",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -290,8 +294,11 @@ export function ConfirmReceiptModal({
 
       handleClose();
       onSuccess();
-    } catch {
-      showToast("Erro ao confirmar recebimento. Tente novamente.", "error");
+    } catch (err) {
+      showToast(
+        getTransitionBlockError(err) ?? "Erro ao confirmar recebimento. Tente novamente.",
+        "error",
+      );
     } finally {
       setIsSaving(false);
     }

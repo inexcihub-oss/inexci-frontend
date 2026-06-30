@@ -8,6 +8,7 @@ import {
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
+import { getTransitionBlockError } from "@/lib/http-error";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -316,8 +317,11 @@ export function SurgeryStatusModal({
       reset();
       onClose();
       onSuccess();
-    } catch {
-      showToast("Erro ao enviar documentos. Tente novamente.", "error");
+    } catch (err) {
+      showToast(
+        getTransitionBlockError(err) ?? "Erro ao enviar documentos. Tente novamente.",
+        "error",
+      );
     } finally {
       setIsSaving(false);
     }
