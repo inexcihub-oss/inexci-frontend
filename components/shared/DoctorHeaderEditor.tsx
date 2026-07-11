@@ -3,11 +3,24 @@
 import { ReactNode, RefObject } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { RichTextEditor } from "@/components/shared/RichTextEditor";
+import dynamic from "next/dynamic";
 import { DoctorHeader } from "@/types/doctor-header.types";
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { LayoutTemplate, Loader2, Upload, X } from "lucide-react";
+
+// P14: Tiptap (RichTextEditor) carregado sob demanda — mantém o Tiptap fora do
+// chunk estático da tela; só baixa quando o editor é renderizado.
+const RichTextEditor = dynamic(
+  () =>
+    import("@/components/shared/RichTextEditor").then((m) => m.RichTextEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[80px] animate-pulse rounded-lg border border-neutral-200 bg-neutral-50" />
+    ),
+  },
+);
 
 type HeaderLogoPosition = "left" | "center" | "right";
 

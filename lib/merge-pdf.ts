@@ -1,4 +1,3 @@
-import { PDFDocument } from "pdf-lib";
 import { logger } from "@/lib/logger";
 
 export interface DocumentEntry {
@@ -21,6 +20,9 @@ export interface DocumentEntry {
 export async function mergeDocumentsAsPdf(
   docs: DocumentEntry[],
 ): Promise<Blob> {
+  // Import dinâmico: mantém o pdf-lib fora do chunk estático da PosCirurgicoTab
+  // (P14) — só é baixado quando o usuário aciona a mesclagem de documentos.
+  const { PDFDocument } = await import("pdf-lib");
   const mergedPdf = await PDFDocument.create();
 
   for (const doc of docs) {

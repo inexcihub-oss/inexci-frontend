@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { X, Download, Mail, ExternalLink, CheckCircle } from "lucide-react";
+import { X, Download, Mail, ExternalLink, CheckCircle, FileText } from "lucide-react";
 import api from "@/lib/api";
 import {
   surgeryRequestService,
@@ -22,7 +22,9 @@ interface SendRequestModalProps {
 }
 
 type Step = 1 | 2 | 3 | 4;
-type SendMethod = "email" | "download" | null;
+type SendMethod = "email" | "email_source" | "download" | "document" | null;
+
+const SC_CREATION_SOURCE_KEY = "sc_creation_source";
 
 interface ChecklistItem {
   key: string;
@@ -62,6 +64,12 @@ export function SendRequestModal({
 
   const { showToast } = useToast();
   const { refreshSubscription } = useAuth();
+
+  const sourceDocument = solicitacao.documents?.find(
+    (doc) => doc.key === SC_CREATION_SOURCE_KEY && doc.uri,
+  );
+  const hasSourceDocument = !!sourceDocument;
+  const usesSourceDocumentEmail = sendMethod === "email_source";
 
   const SEND_CHECKLIST_KEYS: Record<string, string> = {
     hospital: "Informações Gerais",
@@ -135,7 +143,7 @@ export function SendRequestModal({
         {
           key: "medical_report",
           label: "Laudo",
-          isComplete: !!solicitacao.medicalReport,
+          isComplete: (solicitacao.sections?.length ?? 0) > 0,
           isRequired: true,
         },
       ]);
@@ -174,7 +182,6 @@ export function SendRequestModal({
           hospitalId: solicitacao.hospitalId,
           healthPlan: solicitacao.healthPlan,
           healthPlanId: solicitacao.healthPlanId,
-          medicalReport: solicitacao.medicalReport,
           requiredDocuments: (solicitacao.documents || []).map((d) => ({
             type: d.key || "",
             name: d.name || d.key || "",
@@ -194,6 +201,8 @@ export function SendRequestModal({
     } else if (currentStep === 2 && sendMethod) {
       if (sendMethod === "download") {
         await handleDownload();
+      } else if (sendMethod === "document") {
+        await handleConfirmWithSourceDocument();
       } else {
         setCurrentStep(3);
         surgeryRequestService
@@ -244,6 +253,24 @@ export function SendRequestModal({
     }
   };
 
+  const handleConfirmWithSourceDocument = async () => {
+    setIsSending(true);
+    try {
+      await surgeryRequestService.send(solicitacao.id, { method: "document" });
+      await refreshSubscription();
+      await saveTemplateIfRequested();
+      setCurrentStep(4);
+    } catch (err) {
+      showToast(
+        getTransitionBlockError(err) ??
+          "Erro ao confirmar envio com documento de origem",
+        "error",
+      );
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const handleSendEmail = async () => {
     const recipients = emailTags.join(";");
     if (!recipients.trim() || !emailSubject.trim()) {
@@ -262,6 +289,7 @@ export function SendRequestModal({
         subject: emailSubject,
         message: emailMessage,
         cc: ccTags.length > 0 ? ccTags.join(";") : undefined,
+        ...(usesSourceDocumentEmail ? { useSourceDocument: true } : {}),
       });
       await refreshSubscription();
       await saveTemplateIfRequested();
@@ -440,25 +468,93 @@ export function SendRequestModal({
           </div>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setSendMethod("email")}
-          className={`w-full flex items-start gap-4 p-6 rounded-xl border text-left transition-colors ${
-            sendMethod === "email"
-              ? "border-teal-500 bg-teal-50"
-              : "border-gray-200 hover:border-gray-300"
-          }`}
-        >
-          <Mail className="w-5 h-5 shrink-0 text-gray-700 mt-0.5" />
-          <div className="flex flex-col gap-1">
-            <span className="text-xs md:text-sm font-semibold text-gray-900">
-              Enviar por e-mail
-            </span>
-            <span className="text-xs md:text-sm text-gray-400">
-              Envie a solicitação diretamente para o convênio por e-mail
-            </span>
-          </div>
-        </button>
+        {hasSourceDocument ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setSendMethod("email")}
+              className={`w-full flex items-start gap-4 p-6 rounded-xl border text-left transition-colors ${
+                sendMethod === "email"
+                  ? "border-teal-500 bg-teal-50"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <Mail className="w-5 h-5 shrink-0 text-gray-700 mt-0.5" />
+              <div className="flex flex-col gap-1">
+                <span className="text-xs md:text-sm font-semibold text-gray-900">
+                  Enviar por e-mail
+                </span>
+                <span className="text-xs md:text-sm text-gray-400">
+                  Envie o PDF gerado pela plataforma (laudo, documentos, OPME e
+                  códigos TUSS) diretamente ao convênio
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSendMethod("email_source")}
+              className={`w-full flex items-start gap-4 p-6 rounded-xl border text-left transition-colors ${
+                sendMethod === "email_source"
+                  ? "border-teal-500 bg-teal-50"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <Mail className="w-5 h-5 shrink-0 text-gray-700 mt-0.5" />
+              <div className="flex flex-col gap-1">
+                <span className="text-xs md:text-sm font-semibold text-gray-900">
+                  Enviar documento de origem por e-mail
+                </span>
+                <span className="text-xs md:text-sm text-gray-400">
+                  Envia o arquivo original usado para criar esta solicitação (
+                  {sourceDocument?.name ?? "documento de origem"}) diretamente
+                  ao convênio
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSendMethod("document")}
+              className={`w-full flex items-start gap-4 p-6 rounded-xl border text-left transition-colors ${
+                sendMethod === "document"
+                  ? "border-teal-500 bg-teal-50"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <FileText className="w-5 h-5 shrink-0 text-gray-700 mt-0.5" />
+              <div className="flex flex-col gap-1">
+                <span className="text-xs md:text-sm font-semibold text-gray-900">
+                  Confirmar com documento de origem
+                </span>
+                <span className="text-xs md:text-sm text-gray-400">
+                  O documento já está na plataforma — apenas atualiza o status
+                  para Enviada, sem baixar ou enviar arquivos
+                </span>
+              </div>
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setSendMethod("email")}
+            className={`w-full flex items-start gap-4 p-6 rounded-xl border text-left transition-colors ${
+              sendMethod === "email"
+                ? "border-teal-500 bg-teal-50"
+                : "border-gray-200 hover:border-gray-300"
+            }`}
+          >
+            <Mail className="w-5 h-5 shrink-0 text-gray-700 mt-0.5" />
+            <div className="flex flex-col gap-1">
+              <span className="text-xs md:text-sm font-semibold text-gray-900">
+                Enviar por e-mail
+              </span>
+              <span className="text-xs md:text-sm text-gray-400">
+                Envie a solicitação diretamente para o convênio por e-mail
+              </span>
+            </div>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -466,6 +562,26 @@ export function SendRequestModal({
   const renderStep3 = () => (
     <div className="flex-1 overflow-y-auto min-h-0">
       <div className="flex flex-col gap-4 p-6">
+        {usesSourceDocumentEmail && sourceDocument && (
+          <div className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3">
+            <p className="text-xs md:text-sm text-teal-900">
+              O e-mail será enviado com o{" "}
+              <span className="font-semibold">documento de origem</span>{" "}
+              anexado: {sourceDocument.name}
+            </p>
+          </div>
+        )}
+
+        {sendMethod === "email" && (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+            <p className="text-xs md:text-sm text-gray-700">
+              O e-mail será enviado com o{" "}
+              <span className="font-semibold">PDF gerado pela plataforma</span>{" "}
+              (laudo, documentos, OPME e códigos TUSS).
+            </p>
+          </div>
+        )}
+
         {/* De */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">De:</label>
@@ -676,7 +792,11 @@ export function SendRequestModal({
         <span className="text-xs md:text-sm text-gray-400 text-center">
           {sendMethod === "download"
             ? "Download iniciado automaticamente"
-            : "E-mail enviado com sucesso"}
+            : sendMethod === "document"
+              ? "Solicitação confirmada com documento de origem"
+              : sendMethod === "email_source"
+                ? "Documento de origem enviado por e-mail"
+                : "E-mail enviado com sucesso"}
         </span>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-1 w-full px-4 py-4 rounded-xl bg-blue-50">
@@ -765,6 +885,8 @@ export function SendRequestModal({
               </span>
             ) : currentStep === 3 ? (
               "Enviar e-mail"
+            ) : currentStep === 2 && sendMethod === "document" ? (
+              "Confirmar envio"
             ) : (
               "Próximo"
             )}
@@ -781,7 +903,9 @@ export function SendRequestModal({
       case 2:
         return "Escolha o método de envio";
       case 3:
-        return "Enviar por e-mail";
+        return usesSourceDocumentEmail
+          ? "Enviar documento de origem por e-mail"
+          : "Enviar por e-mail";
       case 4:
         return "Solicitação enviada";
     }

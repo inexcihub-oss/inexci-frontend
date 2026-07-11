@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useRef, DragEvent, ChangeEvent } from "react";
+import { useState, useRef, DragEvent, ChangeEvent, useEffect } from "react";
 import { Upload, FileText, X, Loader2, AlertCircle } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
 import { getApiErrorMessage } from "@/lib/http-error";
+import { prefetchScFromDocumentCatalogs } from "@/lib/sc-from-document-prefetch";
 
 const ACCEPTED_MIME = [
   "application/pdf",
@@ -39,6 +40,11 @@ export function UploadDocumentModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    void prefetchScFromDocumentCatalogs();
+  }, [isOpen]);
 
   const resetState = () => {
     setFile(null);
@@ -92,9 +98,12 @@ export function UploadDocumentModal({
     setLoading(true);
     setError(null);
     try {
-      const response = await surgeryRequestService.extractFromDocument(file);
+      const [response] = await Promise.all([
+        surgeryRequestService.extractFromDocument(file),
+        prefetchScFromDocumentCatalogs(),
+      ]);
       resetState();
-      onSuccess(response);
+      onSuccess({ ...response, originalFileName: file.name });
     } catch (err: unknown) {
       setError(
         getApiErrorMessage(

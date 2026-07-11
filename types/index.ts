@@ -14,6 +14,8 @@ export interface DoctorProfile {
 
 // ─── User types ───────────────────────────────────────────────────────────────
 
+import type { ConsentStatus } from "@/types/consent.types";
+
 export interface User {
   id: string;
   name: string;
@@ -30,6 +32,8 @@ export interface User {
   adminId?: string;
   createdAt: string;
   updatedAt: string;
+  /** Embutido no `/auth/me` (item 4.4b) — evita round-trip extra no boot. */
+  consents?: ConsentStatus;
 }
 
 // ─── User Doctor Access ───────────────────────────────────────────────────────

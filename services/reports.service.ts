@@ -53,6 +53,14 @@ export interface ReportFilters {
   endDate?: string; // ISO date string
 }
 
+/** Resposta do endpoint consolidado `/reports/dashboard-full` (P13). */
+export interface DashboardFullData extends DashboardData {
+  temporalEvolution: TemporalEvolutionData[];
+  monthlyEvolution: MonthlyEvolutionData[];
+  averageCompletionTime: AverageCompletionTimeData;
+  pendingNotifications: PendingNotificationsData;
+}
+
 function buildParams(
   base: Record<string, string | number | undefined>,
   filters?: ReportFilters,
@@ -69,6 +77,21 @@ function buildParams(
 }
 
 export const reportsService = {
+  /**
+   * Dashboard consolidado (P13): 1 round-trip com todos os blocos (KPIs,
+   * evoluções, tempo médio e alertas).
+   */
+  async getDashboardFull(
+    filters?: ReportFilters,
+    days: number = 30,
+    months: number = 6,
+  ): Promise<DashboardFullData> {
+    const response = await api.get<DashboardFullData>(
+      `/reports/dashboard-full${buildParams({ days, months }, filters)}`,
+    );
+    return response.data;
+  },
+
   /**
    * Busca os dados do dashboard
    */

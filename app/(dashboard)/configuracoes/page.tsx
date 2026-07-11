@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from "@/components/PageContainer";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -203,6 +204,7 @@ const BILLING_TAB_ENABLED = true;
 function ConfiguracoesPageInner() {
   const { user, updateUser, isAdmin, subscription, refreshSubscription } =
     useAuth();
+  const queryClient = useQueryClient();
   const { toast, showToast, hideToast } = useToast();
   const searchParams = useSearchParams();
   const checkoutParam = searchParams.get("checkout");
@@ -632,6 +634,12 @@ function ConfiguracoesPageInner() {
       setAvatarFile(null);
       setSignatureFile(null);
       setSignatureDeleted(false);
+
+      if (signatureFile || signatureDeleted) {
+        await queryClient.invalidateQueries({
+          queryKey: ["surgery-request"],
+        });
+      }
 
       // Atualiza cache do avatar após salvar
       if (user?.id) {

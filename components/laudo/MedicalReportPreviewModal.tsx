@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import api from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
 import {
   surgeryRequestService,
@@ -11,10 +12,8 @@ import {
 } from "@/services/surgery-request.service";
 import {
   SurgeryRequestLaudoDocument,
-  parseMedicalReport,
-  formatCpf,
-  formatPhone,
-  formatDateBR,
+  buildLaudoPatientFields,
+  resolveDoctorSignatureUrl,
 } from "./SurgeryRequestLaudoDocument";
 
 // ─── Interface ────────────────────────────────────────────────────────────────
@@ -32,55 +31,59 @@ function removeBackground(imageUrl: string): Promise<string> {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        resolve(imageUrl);
-        return;
-      }
-      ctx.drawImage(img, 0, 0);
-      const { width, height } = canvas;
-      const imageData = ctx.getImageData(0, 0, width, height);
-      const data = imageData.data;
-
-      // ── 1. Amostra os 4 cantos para detectar a cor do fundo ──────────────
-      function cornerColor(x: number, y: number): [number, number, number] {
-        const idx = (y * width + x) * 4;
-        return [data[idx], data[idx + 1], data[idx + 2]];
-      }
-      const corners = [
-        cornerColor(0, 0),
-        cornerColor(width - 1, 0),
-        cornerColor(0, height - 1),
-        cornerColor(width - 1, height - 1),
-      ];
-      // Média dos cantos = cor dominante do fundo
-      const bgR = corners.reduce((s, c) => s + c[0], 0) / 4;
-      const bgG = corners.reduce((s, c) => s + c[1], 0) / 4;
-      const bgB = corners.reduce((s, c) => s + c[2], 0) / 4;
-
-      // ── 2. Remove pixels próximos ao fundo; suaviza a borda ──────────────
-      const tolerance = 40; // distância máxima para considerar fundo
-      const softRange = 20; // faixa de suavização
-
-      for (let i = 0; i < data.length; i += 4) {
-        const dr = data[i] - bgR;
-        const dg = data[i + 1] - bgG;
-        const db = data[i + 2] - bgB;
-        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
-
-        if (dist <= tolerance) {
-          data[i + 3] = 0;
-        } else if (dist <= tolerance + softRange) {
-          const t = (dist - tolerance) / softRange;
-          data[i + 3] = Math.round(t * data[i + 3]);
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(imageUrl);
+          return;
         }
-      }
+        ctx.drawImage(img, 0, 0);
+        const { width, height } = canvas;
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
 
-      ctx.putImageData(imageData, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
+        // ── 1. Amostra os 4 cantos para detectar a cor do fundo ──────────────
+        function cornerColor(x: number, y: number): [number, number, number] {
+          const idx = (y * width + x) * 4;
+          return [data[idx], data[idx + 1], data[idx + 2]];
+        }
+        const corners = [
+          cornerColor(0, 0),
+          cornerColor(width - 1, 0),
+          cornerColor(0, height - 1),
+          cornerColor(width - 1, height - 1),
+        ];
+        // Média dos cantos = cor dominante do fundo
+        const bgR = corners.reduce((s, c) => s + c[0], 0) / 4;
+        const bgG = corners.reduce((s, c) => s + c[1], 0) / 4;
+        const bgB = corners.reduce((s, c) => s + c[2], 0) / 4;
+
+        // ── 2. Remove pixels próximos ao fundo; suaviza a borda ──────────────
+        const tolerance = 40; // distância máxima para considerar fundo
+        const softRange = 20; // faixa de suavização
+
+        for (let i = 0; i < data.length; i += 4) {
+          const dr = data[i] - bgR;
+          const dg = data[i + 1] - bgG;
+          const db = data[i + 2] - bgB;
+          const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+
+          if (dist <= tolerance) {
+            data[i + 3] = 0;
+          } else if (dist <= tolerance + softRange) {
+            const t = (dist - tolerance) / softRange;
+            data[i + 3] = Math.round(t * data[i + 3]);
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } catch {
+        resolve(imageUrl);
+      }
     };
     img.onerror = () => resolve(imageUrl);
     img.src = imageUrl;
@@ -118,17 +121,44 @@ export function MedicalReportPreviewModal({
 }: MedicalReportPreviewModalProps) {
   const [isExporting, setIsExporting] = useState(false);
   const { showToast } = useToast();
+  const { user: currentUser } = useAuth();
+  const [latestSolicitacao, setLatestSolicitacao] =
+    useState<SurgeryRequestDetail>(solicitacao);
+  const request = latestSolicitacao ?? solicitacao;
 
   // ── Seções dinâmicas do laudo ────────────────────────────────────────────
   const [sections, setSections] = useState<ReportSection[]>([]);
 
   useEffect(() => {
+    if (!isOpen) return;
+    setLatestSolicitacao(solicitacao);
+  }, [isOpen, solicitacao]);
+
+  useEffect(() => {
     if (!isOpen || !solicitacao?.id) return;
+
+    let active = true;
     surgeryRequestService
-      .getSections(solicitacao.id)
+      .getById(solicitacao.id)
+      .then((data) => {
+        if (active) setLatestSolicitacao(data);
+      })
+      .catch(() => {
+        if (active) setLatestSolicitacao(solicitacao);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isOpen, solicitacao]);
+
+  useEffect(() => {
+    if (!isOpen || !request?.id) return;
+    surgeryRequestService
+      .getSections(request.id)
       .then(setSections)
       .catch(() => setSections([]));
-  }, [isOpen, solicitacao?.id]);
+  }, [isOpen, request?.id]);
 
   // ── Dados da assinatura do médico ────────────────────────────────────────
   const [doctorSignatureUrl, setDoctorSignatureUrl] = useState<string | null>(
@@ -150,12 +180,10 @@ export function MedicalReportPreviewModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    // Usa exclusivamente os dados do médico vinculado à solicitação.
-    // Nova estrutura: doctor = User, doctor.doctorProfile = DoctorProfile
-    // O backend já converte signature_url para URL assinada em findOne().
-    const doctor = solicitacao?.doctor;
+    const doctor = request?.doctor;
     const dp = doctor?.doctorProfile;
-    setDoctorSignatureUrl(doctor?.signatureUrl ?? dp?.signatureUrl ?? null);
+    const resolvedSignature = resolveDoctorSignatureUrl(doctor, currentUser);
+    setDoctorSignatureUrl(resolvedSignature);
     setDoctorName(doctor?.name ?? "");
     setDoctorSpecialty(dp?.specialty ?? "");
     setDoctorCrm(dp?.crm ?? "");
@@ -174,13 +202,14 @@ export function MedicalReportPreviewModal({
           }
         : null,
     );
-  }, [isOpen, solicitacao]);
+  }, [isOpen, request, currentUser]);
 
   useEffect(() => {
     if (!doctorSignatureUrl) {
       setProcessedSignatureUrl(null);
       return;
     }
+    setProcessedSignatureUrl(doctorSignatureUrl);
     removeBackground(doctorSignatureUrl)
       .then(setProcessedSignatureUrl)
       .catch(() => setProcessedSignatureUrl(doctorSignatureUrl));
@@ -189,35 +218,15 @@ export function MedicalReportPreviewModal({
   if (!isOpen) return null;
 
   // ── Dados do laudo ───────────────────────────────────────────────────────
-  const report = parseMedicalReport(solicitacao);
-  const pd = report?.patientData ?? {};
-  const patient = solicitacao?.patient;
-
-  const patientName = pd?.name || patient?.name || undefined;
-  const patientBirthDate =
-    formatDateBR(pd?.birthDate || patient?.birthDate || "") || undefined;
-  const patientRg = pd?.rg || patient?.rg || undefined;
-  const patientCpf = formatCpf(pd?.cpf || patient?.cpf || "") || undefined;
-  const patientPhone =
-    formatPhone(pd?.phone || patient?.phone || "") || undefined;
-  const patientAddress = pd?.address || patient?.address || undefined;
-  const patientZipCode =
-    pd?.zipCode || patient?.zipCode || (patient as any)?.cep || undefined;
-  const patientHealthPlan =
-    pd?.healthPlan || solicitacao?.healthPlan?.name || undefined;
-
-  // Seções dinâmicas têm prioridade; fallback para campos legados
-  const legacyHistoryAndDiagnosis =
-    sections.length === 0
-      ? report?.historyAndDiagnosis || report?.surgicalIndication || ""
-      : "";
-  const legacyConduct =
-    sections.length === 0
-      ? report?.conduct || report?.technicalJustification || ""
-      : "";
+  const patientFields = buildLaudoPatientFields({
+    patient: request?.patient,
+    healthPlan: request?.healthPlan,
+    healthPlanName: request?.healthPlanName,
+    healthPlanRegistration: request?.healthPlanRegistration,
+  });
 
   const examImages: Array<{ id: string; name: string; uri: string }> =
-    solicitacao?.documents?.filter((d: any) => d.key === "report_images") ?? [];
+    request?.documents?.filter((d: any) => d.key === "report_images") ?? [];
 
   const today = new Date().toLocaleDateString("pt-BR");
 
@@ -226,7 +235,7 @@ export function MedicalReportPreviewModal({
     setIsExporting(true);
     try {
       const response = await api.get(
-        `/surgery-requests/${solicitacao.id}/medical-report-pdf`,
+        `/surgery-requests/${request.id}/medical-report-pdf`,
         { responseType: "arraybuffer" },
       );
       const blob = new Blob([response.data], { type: "application/pdf" });
@@ -278,17 +287,8 @@ export function MedicalReportPreviewModal({
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto overscroll-contain bg-gray-100 p-5 md:p-6">
           <SurgeryRequestLaudoDocument
             today={today}
-            patientName={patientName}
-            patientBirthDate={patientBirthDate}
-            patientRg={patientRg}
-            patientCpf={patientCpf}
-            patientPhone={patientPhone}
-            patientAddress={patientAddress}
-            patientZipCode={patientZipCode}
-            patientHealthPlan={patientHealthPlan}
+            {...patientFields}
             sections={sections}
-            legacyHistoryAndDiagnosis={legacyHistoryAndDiagnosis}
-            legacyConduct={legacyConduct}
             examImages={examImages}
             doctorName={doctorName}
             doctorSpecialty={doctorSpecialty}

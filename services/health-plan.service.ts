@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api, { FETCH_ALL_TAKE } from "@/lib/api";
 import { getApiRecords } from "@/lib/api-response";
 
 export interface HealthPlan {
@@ -66,7 +66,9 @@ export const healthPlanService = {
    * Busca todos os convênios
    */
   async getAll(): Promise<HealthPlan[]> {
-    const response = await api.get("/health_plans");
+    const response = await api.get("/health_plans", {
+      params: { take: FETCH_ALL_TAKE },
+    });
     const data = getApiRecords<BackendHealthPlan>(response.data);
 
     // Mapeia os campos do backend para o frontend

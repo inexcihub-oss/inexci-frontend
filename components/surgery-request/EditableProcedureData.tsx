@@ -39,47 +39,61 @@ export function EditableProcedureData({
   // Estados para os valores do formulário
   const [formData, setFormData] = useState({
     hospitalId: solicitacao.hospital?.id?.toString() || "",
-    cidId: solicitacao.cidId || "",
-    cidDescription: solicitacao.cidDescription || "",
+    cidCode: solicitacao.cid?.code || "",
     healthPlanId: solicitacao.healthPlan?.id?.toString() || "",
     healthPlanRegistry: solicitacao.healthPlanRegistration || "",
     healthPlanType: solicitacao.healthPlanType || "",
   });
 
   // Label de exibição do CID (inclui a descrição buscada da API quando necessário)
+  const buildCidDisplayLabel = (
+    code: string | null | undefined,
+    description: string | null | undefined,
+  ) => {
+    if (!code) return "";
+    if (description) return `${code} - ${description}`;
+    return code;
+  };
+
   const [cidDisplayLabel, setCidDisplayLabel] = useState(
-    solicitacao.cid
-      ? `${solicitacao.cid.code} - ${solicitacao.cid.description}`
-      : solicitacao.cidId
-        ? solicitacao.cidId
-        : "",
+    buildCidDisplayLabel(
+      solicitacao.cid?.code,
+      solicitacao.cid?.description,
+    ),
   );
 
   // Sincroniza o label do CID quando a solicitação é atualizada
   useEffect(() => {
-    if (solicitacao.cid) {
-      setCidDisplayLabel(
-        `${solicitacao.cid.code} - ${solicitacao.cid.description}`,
-      );
-    } else if (solicitacao.cidId) {
-      // Fallback: busca na API pelo UUID
-      cidService
-        .search(solicitacao.cidId, 10)
-        .then((res) => {
-          const found = res.records.find((r) => r.id === solicitacao.cidId);
-          if (found) {
-            setCidDisplayLabel(`${found.code} - ${found.description}`);
-          } else {
-            setCidDisplayLabel(solicitacao.cidId ?? "");
-          }
-        })
-        .catch(() => {
-          setCidDisplayLabel(solicitacao.cidId ?? "");
-        });
-    } else {
+    const code = solicitacao.cid?.code;
+    const description = solicitacao.cid?.description;
+
+    if (!code) {
       setCidDisplayLabel("");
+      return;
     }
-  }, [solicitacao.cid, solicitacao.cidId]);
+
+    if (description) {
+      setCidDisplayLabel(`${code} - ${description}`);
+      return;
+    }
+
+    // Fallback: busca a descrição na API pelo código
+    cidService
+      .search(code, 10)
+      .then((res) => {
+        const found = res.records.find(
+          (r) => r.id === code || r.code === code,
+        );
+        if (found) {
+          setCidDisplayLabel(`${found.code} - ${found.description}`);
+        } else {
+          setCidDisplayLabel(code);
+        }
+      })
+      .catch(() => {
+        setCidDisplayLabel(code);
+      });
+  }, [solicitacao.cid]);
 
   // Função para buscar CIDs
   const searchCid = useCallback(async (search: string) => {
@@ -130,8 +144,7 @@ export function EditableProcedureData({
     // Resetar valores do formulário
     setFormData({
       hospitalId: solicitacao.hospital?.id?.toString() || "",
-      cidId: solicitacao.cidId || "",
-      cidDescription: solicitacao.cidDescription || "",
+      cidCode: solicitacao.cid?.code || "",
       healthPlanId: solicitacao.healthPlan?.id?.toString() || "",
       healthPlanRegistry: solicitacao.healthPlanRegistration || "",
       healthPlanType: solicitacao.healthPlanType || "",
@@ -166,9 +179,6 @@ export function EditableProcedureData({
       // Preparar dados para envio conforme DTO do backend
       const updateData: Record<string, unknown> = {
         id: solicitacao.id,
-        diagnosis: solicitacao.diagnosis || "",
-        medicalReport: solicitacao.medicalReport || "",
-        patientHistory: solicitacao.patientHistory || "",
       };
 
       // Adicionar hospital se preenchido, ou null se foi limpo
@@ -197,11 +207,8 @@ export function EditableProcedureData({
       updateData.healthPlanType = formData.healthPlanType || null;
 
       // Adicionar CID se preenchido, ou null se foi limpo
-      if (formData.cidId) {
-        updateData.cid = {
-          id: formData.cidId,
-          description: formData.cidDescription || "",
-        };
+      if (formData.cidCode) {
+        updateData.cid = { code: formData.cidCode };
       } else {
         updateData.cid = null;
       }
@@ -291,19 +298,14 @@ export function EditableProcedureData({
           {isEditing ? (
             <SelectSearch
               label="CID (Código Internacional de Doenças)"
-              value={formData.cidId}
+              value={formData.cidCode}
               initialLabel={
-                formData.cidId ? cidDisplayLabel || formData.cidId : ""
+                formData.cidCode ? cidDisplayLabel || formData.cidCode : ""
               }
-              onChange={(value, label) => {
-                // Extrair a descrição do label (formato: "código - descrição")
-                const description = label
-                  ? label.split(" - ").slice(1).join(" - ")
-                  : "";
+              onChange={(value) => {
                 setFormData({
                   ...formData,
-                  cidId: value,
-                  cidDescription: description,
+                  cidCode: value,
                 });
               }}
               onSearch={searchCid}

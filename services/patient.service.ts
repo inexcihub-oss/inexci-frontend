@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api, { FETCH_ALL_TAKE } from "@/lib/api";
 import { getApiRecords } from "@/lib/api-response";
 
 export interface Patient {
@@ -101,26 +101,61 @@ function mapBackendPatient(p: BackendPatient): Patient {
   };
 }
 
+export interface PatientListParams {
+  skip?: number;
+  take?: number;
+  search?: string;
+}
+
+export interface PatientListResult {
+  records: Patient[];
+  total: number;
+}
+
 export const patientService = {
   /**
-   * Busca todos os pacientes
+   * Listagem paginada com busca server-side (item 3.3). Usada pela tela de
+   * pacientes — não carrega a tabela inteira no navegador.
+   */
+  async list(params: PatientListParams = {}): Promise<PatientListResult> {
+    const response = await api.get("/patients", {
+      params: {
+        skip: params.skip,
+        take: params.take,
+        ...(params.search ? { search: params.search } : {}),
+      },
+    });
+    const records = getApiRecords<BackendPatient>(response.data).map(
+      mapBackendPatient,
+    );
+    const total =
+      typeof (response.data as { total?: number })?.total === "number"
+        ? (response.data as { total: number }).total
+        : records.length;
+    return { records, total };
+  },
+
+  /**
+   * Busca todos os pacientes (payload completo). Usado pelos seletores de
+   * paciente do wizard/modais que precisam da lista inteira em memória; a tela
+   * de pacientes usa `list()` paginado.
    */
   async getAll(): Promise<Patient[]> {
-    const response = await api.get("/patients");
+    const response = await api.get("/patients", {
+      params: { take: FETCH_ALL_TAKE },
+    });
     const data = getApiRecords<BackendPatient>(response.data);
     return data.map(mapBackendPatient);
   },
 
   /**
-   * Busca um paciente específico por ID
-   * Como o backend não tem endpoint getById, buscamos todos e filtramos
+   * Busca um paciente específico por ID (GET /patients/:id — item 3.2).
+   * O backend valida o acesso por owner via AccessControlService.
    */
   async getById(patientId: string): Promise<Patient | null> {
     try {
-      const response = await api.get("/patients");
-      const data = getApiRecords<BackendPatient>(response.data);
-      const patient = data.find((p) => String(p.id) === String(patientId));
-      return patient ? mapBackendPatient(patient) : null;
+      const response = await api.get<BackendPatient>(`/patients/${patientId}`);
+      return response.data ? mapBackendPatient(response.data) : null;
     } catch {
       return null;
     }

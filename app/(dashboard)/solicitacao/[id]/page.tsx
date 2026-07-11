@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { AlertTriangle } from "lucide-react";
@@ -8,11 +9,9 @@ import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
   Activity,
-  SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import {
   pendencyService,
-  ValidationResult,
   CalculatedPendency,
 } from "@/services/pendency.service";
 import { DynamicPendencyList } from "@/components/pendencies";
@@ -469,6 +468,8 @@ export default function SolicitacaoDetalhePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const id = params.id as string;
   const validTabs: TabType[] = [
     "informacoes-gerais",
     "codigo-tuss",
@@ -505,17 +506,24 @@ export default function SolicitacaoDetalhePage() {
     "pendencias" | "atividades" | "timeline"
   >("pendencias");
 
-  const [solicitacao, setSolicitacao] = useState<SurgeryRequestDetail | null>(
-    null,
-  );
-  const [loading, setLoading] = useState(true);
+  // Detalhe da SC via TanStack Query (P5/P10): 3 queries independentes
+  // (sc/pendencies/activities) com invalidação seletiva por mutação.
+  const { data: solicitacao = null, isLoading: loading } = useQuery({
+    queryKey: ["surgery-request", id],
+    queryFn: () => surgeryRequestService.getById(id),
+    enabled: !!id,
+  });
+
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
     new Set(),
   );
 
-  // Estado para validação dinâmica de pendências
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
-  const [loadingPendencies, setLoadingPendencies] = useState(false);
+  // Validação dinâmica de pendências (query separada).
+  const { data: validation = null, isFetching: loadingPendencies } = useQuery({
+    queryKey: ["surgery-request", id, "pendencies"],
+    queryFn: () => pendencyService.validate(id),
+    enabled: !!id,
+  });
 
   // Estados dos modais de ação
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
@@ -563,9 +571,12 @@ export default function SolicitacaoDetalhePage() {
     previousNumber: number;
   } | null>(null);
 
-  // Estados de atividades
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loadingActivities, setLoadingActivities] = useState(false);
+  // Atividades (query separada).
+  const { data: activities = [], isFetching: loadingActivities } = useQuery({
+    queryKey: ["surgery-request", id, "activities"],
+    queryFn: () => surgeryRequestService.getActivities(id),
+    enabled: !!id,
+  });
   const [newComment, setNewComment] = useState("");
   const [sendingComment, setSendingComment] = useState(false);
   const activitiesEndRef = useRef<HTMLDivElement>(null);
@@ -595,23 +606,6 @@ export default function SolicitacaoDetalhePage() {
     }
   }, []);
 
-  // Carregar validação de pendências (dinâmica - baseada nos dados atuais)
-  const fetchPendencies = useCallback(async () => {
-    if (!params.id) return;
-
-    setLoadingPendencies(true);
-    try {
-      const validationData = await pendencyService.validate(
-        params.id as string,
-      );
-      setValidation(validationData);
-    } catch {
-      // silently ignore
-    } finally {
-      setLoadingPendencies(false);
-    }
-  }, [params.id]);
-
   useEffect(() => {
     if (!solicitacao) return;
     const index =
@@ -626,62 +620,15 @@ export default function SolicitacaoDetalhePage() {
     }
   }, [solicitacao]);
 
-  // ── Atividades ──────────────────────────────────────────────────────────────
-  const fetchActivities = useCallback(async () => {
-    if (!params.id) return;
-    setLoadingActivities(true);
-    try {
-      const data = await surgeryRequestService.getActivities(
-        params.id as string,
-      );
-      setActivities(data);
-    } catch {
-      // silently ignore
-    } finally {
-      setLoadingActivities(false);
-    }
-  }, [params.id]);
-
-  // Carregamento inicial paralelo com renderização progressiva:
-  // solicitacao desbloqueia a página imediatamente; pendências e atividades carregam independentemente
-  useEffect(() => {
-    if (!params.id) return;
-    const id = params.id as string;
-    setLoading(true);
-    setLoadingPendencies(true);
-    setLoadingActivities(true);
-
-    surgeryRequestService
-      .getById(id)
-      .then((data) => setSolicitacao(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-
-    pendencyService
-      .validate(id)
-      .then((data) => setValidation(data))
-      .catch(() => {})
-      .finally(() => setLoadingPendencies(false));
-
-    surgeryRequestService
-      .getActivities(id)
-      .then((data) => setActivities(data))
-      .catch(() => {})
-      .finally(() => setLoadingActivities(false));
-  }, [params.id]);
-
+  // Invalida as 3 queries do detalhe após uma mutação (P5/P10): a SC muda e,
+  // com ela, pendências e atividades derivadas.
   const handleUpdateProcedure = useCallback(async () => {
-    // Recarregar os dados da solicitação após a atualização
-    try {
-      const data = await surgeryRequestService.getById(params.id as string);
-      setSolicitacao(data);
-      // Também recarregar pendências e atividades, pois podem ter mudado
-      fetchPendencies();
-      fetchActivities();
-    } catch {
-      // silently ignore
-    }
-  }, [params.id, fetchPendencies, fetchActivities]);
+    await queryClient.invalidateQueries({ queryKey: ["surgery-request", id] });
+    // Kanban e agenda usam cache (staleTime): invalida para refletir a mudança
+    // ao voltar para essas telas.
+    queryClient.invalidateQueries({ queryKey: ["surgery-requests", "kanban"] });
+    queryClient.invalidateQueries({ queryKey: ["surgery-requests", "agenda"] });
+  }, [queryClient, id]);
 
   // Rolar para o fim quando novas atividades chegam
   useEffect(() => {
@@ -699,7 +646,10 @@ export default function SolicitacaoDetalhePage() {
         params.id as string,
         text,
       );
-      setActivities((prev) => [...prev, created]);
+      queryClient.setQueryData<Activity[]>(
+        ["surgery-request", id, "activities"],
+        (prev) => [...(prev ?? []), created],
+      );
       setNewComment("");
     } catch {
       // silently ignore

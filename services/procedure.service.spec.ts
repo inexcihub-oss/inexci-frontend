@@ -8,6 +8,7 @@ vi.mock("@/lib/api", () => ({
     delete: vi.fn(),
     put: vi.fn(),
   },
+  FETCH_ALL_TAKE: 1000,
 }));
 
 import api from "@/lib/api";
@@ -26,7 +27,9 @@ describe("procedureService", () => {
 
       const result = await procedureService.getAll();
 
-      expect(api.get).toHaveBeenCalledWith("/procedures");
+      expect(api.get).toHaveBeenCalledWith("/procedures", {
+        params: { take: 1000 },
+      });
       expect(result[0].name).toBe("Artroscopia");
     });
   });

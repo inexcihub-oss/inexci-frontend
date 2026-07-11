@@ -23,7 +23,7 @@ import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { useZodForm } from "@/hooks/useZodForm";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useCepLookup } from "@/hooks/useCepLookup";
-import { unmask } from "@/lib/masks";
+import { maskCpf, unmask } from "@/lib/masks";
 import { STATE_OPTIONS } from "@/lib/options";
 import { procedureService, Procedure } from "@/services/procedure.service";
 import { hospitalService } from "@/services/hospital.service";
@@ -39,6 +39,7 @@ import {
 } from "@/types/surgery-request.types";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { useToast } from "@/hooks/useToast";
+import { readScFromDocumentCatalogPrefetch } from "@/lib/sc-from-document-prefetch";
 
 // ─── Padding de fornecedor/fabricante OPME ──────────────────────────────────
 //
@@ -114,7 +115,7 @@ const formSchema = z
     newPatientAddressComplement: z.string().optional(),
     newPatientNeighborhood: z.string().optional(),
     newPatientCity: z.string().optional(),
-    newPatientHealthPlanNumber: z.string().optional(),
+    healthPlanNumber: z.string().optional(),
     hospitalId: z.string().optional(),
     hospitalName: z.string().optional(),
     healthPlanId: z.string().optional(),
@@ -468,7 +469,7 @@ export default function NovaViaDocumentoPage() {
       newPatientAddressComplement: "",
       newPatientNeighborhood: "",
       newPatientCity: "",
-      newPatientHealthPlanNumber: "",
+      healthPlanNumber: "",
       hospitalId: "",
       hospitalName: "",
       healthPlanId: "",
@@ -507,6 +508,14 @@ export default function NovaViaDocumentoPage() {
   }, [router]);
 
   useEffect(() => {
+    const prefetched = readScFromDocumentCatalogPrefetch();
+    if (prefetched) {
+      setProcedures(prefetched.procedures);
+      setAllHospitals(prefetched.hospitals);
+      setAllHealthPlans(prefetched.healthPlans);
+      return;
+    }
+
     procedureService
       .getAll()
       .then(setProcedures)
@@ -534,13 +543,11 @@ export default function NovaViaDocumentoPage() {
     const c = extraction.candidates;
     const patch: Partial<FormValues> = {};
 
-    if (availableDoctors[0]?.id) patch.doctorId = availableDoctors[0].id;
-
     const hasPatientCandidates = (c?.patient?.length ?? 0) > 0;
     patch.patientMode = hasPatientCandidates ? "existing" : "new";
     if (c?.patient?.length === 1) patch.patientId = c.patient[0].id;
     if (e.patient?.name) patch.newPatientName = e.patient.name;
-    if (e.patient?.cpf) patch.newPatientCpf = e.patient.cpf.replace(/\D/g, "");
+    if (e.patient?.cpf) patch.newPatientCpf = maskCpf(e.patient.cpf);
     const isoDate = normalizeToIsoDate(e.patient?.birthDate);
     if (isoDate) patch.newPatientBirthDate = isoDate;
     if (e.patient?.gender) patch.newPatientGender = e.patient.gender;
@@ -555,8 +562,7 @@ export default function NovaViaDocumentoPage() {
     if (e.patient?.neighborhood)
       patch.newPatientNeighborhood = e.patient.neighborhood;
     if (e.patient?.city) patch.newPatientCity = e.patient.city;
-    if (e.healthPlan?.planId)
-      patch.newPatientHealthPlanNumber = e.healthPlan.planId;
+    if (e.healthPlan?.planId) patch.healthPlanNumber = e.healthPlan.planId;
     if (c?.procedure?.length === 1) patch.procedureId = c.procedure[0].id;
     if (c?.hospital?.length === 1) patch.hospitalId = c.hospital[0].id;
     if (e.hospital) patch.hospitalName = e.hospital;
@@ -607,7 +613,13 @@ export default function NovaViaDocumentoPage() {
       setSectionRows([{ title: "Laudo", description: e.laudoText }]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extraction, availableDoctors]);
+  }, [extraction]);
+
+  useEffect(() => {
+    if (!extraction || !availableDoctors[0]?.id) return;
+    if (values.doctorId) return;
+    setField("doctorId", availableDoctors[0].id);
+  }, [extraction, availableDoctors, setField, values.doctorId]);
 
   // ─── OPME/TUSS helpers ─────────────────────────────────────────────────────
 
@@ -663,10 +675,12 @@ export default function NovaViaDocumentoPage() {
             values.newPatientAddressComplement?.trim() || undefined,
           neighborhood: values.newPatientNeighborhood?.trim() || undefined,
           city: values.newPatientCity?.trim() || undefined,
-          healthPlanNumber:
-            values.newPatientHealthPlanNumber?.trim() || undefined,
+          healthPlanNumber: values.healthPlanNumber?.trim() || undefined,
         };
       }
+
+      const healthPlanNumber =
+        values.healthPlanNumber?.trim() || undefined;
 
       const tussPayload: TussItemFromDocument[] = tussItems
         .filter((item) => item.code.trim())
@@ -717,13 +731,13 @@ export default function NovaViaDocumentoPage() {
             ? values.healthPlanName.trim()
             : undefined,
         healthPlanNumber:
-          values.patientMode === "existing"
-            ? ext.healthPlan?.planId?.trim() || undefined
-            : undefined,
+          values.patientMode === "existing" ? healthPlanNumber : undefined,
         sections: sections.length > 0 ? sections : undefined,
         tussItems: tussPayload.length > 0 ? tussPayload : undefined,
         opmeItems: opmePayload.length > 0 ? opmePayload : undefined,
+        suggestedSuppliers: extraction.extracted?.suggestedSuppliers,
         tempStoragePath: extraction.tempStoragePath,
+        originalFileName: extraction.originalFileName,
       });
 
       sessionStorage.removeItem("sc_from_document_extraction");
@@ -1046,9 +1060,8 @@ export default function NovaViaDocumentoPage() {
               )}
             </div>
 
-            {/* Convênio — convênio (vínculo da SC) e número da carteirinha (do
-              novo paciente) ficam juntos no mesmo cartão, como na página de
-              detalhe do paciente. */}
+            {/* Convênio — convênio (vínculo da SC) e número da carteirinha ficam
+              juntos no mesmo cartão, como na página de detalhe do paciente. */}
             {showHealthPlanSection && (
               <FormSection title="Convênio">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1067,12 +1080,12 @@ export default function NovaViaDocumentoPage() {
                       onQueryChange={(name) => setField("healthPlanName", name)}
                     />
                   </div>
-                  {values.patientMode === "new" && showHealthPlanNumber && (
+                  {showHealthPlanNumber && (
                     <Input
                       label="Número da carteirinha"
-                      value={values.newPatientHealthPlanNumber}
+                      value={values.healthPlanNumber}
                       onChange={(e) =>
-                        setField("newPatientHealthPlanNumber", e.target.value)
+                        setField("healthPlanNumber", e.target.value)
                       }
                       placeholder="Número da carteirinha do convênio"
                     />

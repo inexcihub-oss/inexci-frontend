@@ -65,6 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const subscriptionRequestRef = useRef<Promise<void> | null>(null);
   const initialLoadRef = useRef(false);
 
+  const applyConsentsFromUser = useCallback((currentUser: User) => {
+    if (currentUser.consents) {
+      setConsents(currentUser.consents);
+      return true;
+    }
+    return false;
+  }, []);
+
   const refreshConsents = useCallback(
     async (forUser?: User | null) => {
       if (typeof window === "undefined") return;
@@ -189,10 +197,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(currentUser);
-        await refreshConsents(currentUser);
+        // P12 / 4.4b: consents embutidos no `/auth/me` — sem round-trip extra.
+        const consentsFromMe = applyConsentsFromUser(currentUser);
+        const consentsPromise = consentsFromMe
+          ? Promise.resolve()
+          : refreshConsents(currentUser);
         if (currentUser.role === "admin") {
-          await refreshSubscription(currentUser);
+          void refreshSubscription(currentUser);
         }
+        await consentsPromise;
       } catch (error) {
         // Para erros de autenticação (401/403), o interceptor do axios já chamou
         // forceLogout() que limpou o token e o localStorage. Apenas sincroniza o estado React.
@@ -207,24 +220,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     loadUser();
-  }, [refreshConsents, refreshSubscription, router]);
+  }, [refreshConsents, refreshSubscription, router, applyConsentsFromUser]);
 
   const login = useCallback(
     async (email: string, password: string) => {
       try {
         const response = await authService.login({ email, password });
         setUser(response.user);
-        await refreshConsents(response.user);
+        // P12 / 4.4b: usa consents do payload quando disponíveis; senão fallback de rede.
+        const consentsFromLogin = applyConsentsFromUser(response.user);
+        const consentsPromise = consentsFromLogin
+          ? Promise.resolve()
+          : refreshConsents(response.user);
         if (response.user?.role === "admin") {
-          await refreshSubscription(response.user);
+          void refreshSubscription(response.user);
         }
+        await consentsPromise;
 
         router.push("/solicitacoes-cirurgicas");
       } catch (error) {
         throw error;
       }
     },
-    [router, refreshConsents, refreshSubscription],
+    [router, refreshConsents, refreshSubscription, applyConsentsFromUser],
   );
 
   const register = useCallback(

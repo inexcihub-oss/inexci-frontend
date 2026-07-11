@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api, { FETCH_ALL_TAKE } from "@/lib/api";
 import { getApiRecords } from "@/lib/api-response";
 
 export interface Manufacturer {
@@ -53,7 +53,9 @@ function mapManufacturer(m: Record<string, unknown>): Manufacturer {
 
 export const manufacturerService = {
   async getAll(): Promise<Manufacturer[]> {
-    const response = await api.get("/manufacturers");
+    const response = await api.get("/manufacturers", {
+      params: { take: FETCH_ALL_TAKE },
+    });
     const data = getApiRecords<Record<string, unknown>>(response.data);
     return data.map(mapManufacturer);
   },

@@ -28,6 +28,18 @@ function getManufacturerNames(item: {
     .filter(Boolean);
 }
 
+const MIN_OPME_OPTIONS = 3;
+const OPME_FALLBACK_NAME = "Outros";
+
+/** Preenche slots vazios com "Outros" até o mínimo exigido pela plataforma. */
+function padOpmeDisplayNames(names: string[]): string[] {
+  const out = names.map((name) => name.trim()).filter(Boolean);
+  while (out.length < MIN_OPME_OPTIONS) {
+    out.push(OPME_FALLBACK_NAME);
+  }
+  return out;
+}
+
 export function OpmeTab() {
   const { solicitacao, statusNum, onUpdate } = useSolicitacao();
   const showAuthorizationColumn = statusNum >= 3;
@@ -222,9 +234,14 @@ export function OpmeTab() {
         <div className="flex-1 overflow-auto">
           {filteredOpmeItems.length > 0 ? (
             filteredOpmeItems.map((material: any) => {
-              const manufacturers = getManufacturerNames(material);
-              const suppliers: { id: string; name: string }[] =
-                material.suppliers ?? [];
+              const manufacturers = padOpmeDisplayNames(
+                getManufacturerNames(material),
+              );
+              const suppliers = padOpmeDisplayNames(
+                (material.suppliers ?? []).map(
+                  (s: { name?: string }) => s.name ?? "",
+                ),
+              );
               const expanded = isExpanded(material.id);
               const isFullyAuthorized =
                 showColorCoding &&
@@ -378,9 +395,9 @@ export function OpmeTab() {
                         </div>
                         {/* Itens */}
                         {suppliers.length > 0 ? (
-                          suppliers.map((s, i) => (
+                          suppliers.map((name, i) => (
                             <div
-                              key={s.id ?? i}
+                              key={i}
                               className={`flex w-full px-4 py-3 bg-gray-100 ${
                                 i < suppliers.length - 1
                                   ? "border-b border-neutral-100"
@@ -388,7 +405,7 @@ export function OpmeTab() {
                               }`}
                             >
                               <span className="text-xs text-gray-900 w-full">
-                                {s.name}
+                                {name}
                               </span>
                             </div>
                           ))

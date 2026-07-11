@@ -116,6 +116,7 @@ export interface PatientRef extends EntityRef {
   phone?: string;
   email?: string;
   rg?: string;
+  healthPlanNumber?: string;
   address?: string;
   zipCode?: string;
   cep?: string;
@@ -329,6 +330,8 @@ export interface ExtractFromDocumentResponse {
   patientMatchedByCpf: boolean;
   candidates: ExtractFromDocumentCandidates;
   tempStoragePath: string;
+  /** Nome original do arquivo enviado (preenchido no frontend após upload) */
+  originalFileName?: string;
 }
 
 export interface TussItemFromDocument {
@@ -382,6 +385,7 @@ export interface CreateFromDocumentPayload {
   sections?: ReportSectionFromDocument[];
   tussItems?: TussItemFromDocument[];
   opmeItems?: OpmeItemFromDocument[];
+  suggestedSuppliers?: string[];
   tempStoragePath?: string;
   originalFileName?: string;
 }

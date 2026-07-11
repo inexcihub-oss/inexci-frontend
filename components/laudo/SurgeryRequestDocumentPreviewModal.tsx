@@ -11,12 +11,12 @@ import {
 } from "@/services/surgery-request.service";
 import {
   SurgeryRequestLaudoDocument,
-  parseMedicalReport,
-  formatCpf,
+  buildLaudoPatientFields,
   formatPhone,
-  formatDateBR,
   unique,
+  resolveDoctorSignatureUrl,
 } from "./SurgeryRequestLaudoDocument";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SurgeryRequestDocumentPreviewModalProps {
   isOpen: boolean;
@@ -30,6 +30,7 @@ export function SurgeryRequestDocumentPreviewModal({
   solicitacao,
 }: SurgeryRequestDocumentPreviewModalProps) {
   const [isExporting, setIsExporting] = useState(false);
+  const { user: currentUser } = useAuth();
   const [signatureUrl, setSignatureUrl] = useState<string>("");
   const [sections, setSections] = useState<ReportSection[]>([]);
   const [latestSolicitacao, setLatestSolicitacao] =
@@ -53,6 +54,8 @@ export function SurgeryRequestDocumentPreviewModal({
         return "Conduta Médica";
       case "signed_report":
         return "Laudo Assinado";
+      case "sc_creation_source":
+        return "Documento de origem";
       default:
         return "Documento";
     }
@@ -60,8 +63,9 @@ export function SurgeryRequestDocumentPreviewModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    setSignatureUrl(request?.doctor?.signatureUrl ?? "");
-  }, [isOpen, request]);
+    const resolved = resolveDoctorSignatureUrl(request?.doctor, currentUser);
+    setSignatureUrl(resolved ?? "");
+  }, [isOpen, request, currentUser]);
 
   useEffect(() => {
     if (!isOpen || !solicitacao?.id) return;
@@ -91,22 +95,12 @@ export function SurgeryRequestDocumentPreviewModal({
 
   if (!isOpen) return null;
 
-  const reportData = parseMedicalReport(request);
-  const pd = reportData?.patientData ?? {};
-  const patient = request?.patient;
-
-  const patientName = pd.name || patient?.name || undefined;
-  const patientBirthDate =
-    formatDateBR(pd.birthDate || patient?.birthDate || "") || undefined;
-  const patientRg = pd.rg || patient?.rg || undefined;
-  const patientCpf = formatCpf(pd.cpf || patient?.cpf || "") || undefined;
-  const patientPhone =
-    formatPhone(pd.phone || patient?.phone || "") || undefined;
-  const patientAddress = pd.address || patient?.address || undefined;
-  const patientZipCode =
-    pd.zipCode || patient?.zipCode || (patient as any)?.cep || undefined;
-  const patientHealthPlan =
-    pd.healthPlan || request?.healthPlan?.name || undefined;
+  const patientFields = buildLaudoPatientFields({
+    patient: request?.patient,
+    healthPlan: request?.healthPlan,
+    healthPlanName: request?.healthPlanName,
+    healthPlanRegistration: request?.healthPlanRegistration,
+  });
 
   const procedures: TussItemRef[] = request?.tussItems ?? [];
   const opmeItems: OpmeItemRef[] = request?.opmeItems ?? [];
@@ -212,17 +206,8 @@ export function SurgeryRequestDocumentPreviewModal({
         <div className="flex-1 overflow-y-auto overflow-x-auto overscroll-contain bg-gray-100 p-4 md:p-6">
           <SurgeryRequestLaudoDocument
             today={today}
-            patientName={patientName}
-            patientBirthDate={patientBirthDate}
-            patientRg={patientRg}
-            patientCpf={patientCpf}
-            patientPhone={patientPhone}
-            patientAddress={patientAddress}
-            patientZipCode={patientZipCode}
-            patientHealthPlan={patientHealthPlan}
+            {...patientFields}
             sections={sections}
-            legacyHistoryAndDiagnosis={reportData.historyAndDiagnosis}
-            legacyConduct={reportData.conduct}
             examImages={examImages}
             procedures={procedures}
             opmeItems={opmeItems}

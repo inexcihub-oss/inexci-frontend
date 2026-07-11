@@ -24,6 +24,8 @@ const api = axios.create({
     "ngrok-skip-browser-warning": "true",
   },
   withCredentials: true,
+  // Evita requisições penduradas indefinidamente segurando a UI.
+  timeout: 30000,
 });
 
 if (process.env.NODE_ENV === "production" && !api.defaults.baseURL) {
@@ -31,6 +33,14 @@ if (process.env.NODE_ENV === "production" && !api.defaults.baseURL) {
     "[api] NEXT_PUBLIC_API_URL não configurada em produção; usando requisições relativas ao domínio atual.",
   );
 }
+
+/**
+ * `take` explícito para telas que carregam a lista inteira (dropdowns de
+ * referência: hospitais, convênios, fornecedores, procedimentos, fabricantes).
+ * O backend passou a aplicar defaults de paginação (take=10), então listas que
+ * precisam de todos os registros devem pedir uma página ampla explicitamente.
+ */
+export const FETCH_ALL_TAKE = 1000;
 
 function generateRequestId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {

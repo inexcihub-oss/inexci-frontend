@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { exportToCsv, exportToPdf } from "@/lib/export-surgery-requests";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
@@ -23,7 +24,6 @@ import {
   STATUS_NUMBER_TO_STRING,
   SurgeryRequestListItem,
 } from "@/services/surgery-request.service";
-import { pendencyService } from "@/services/pendency.service";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useDebounce } from "@/hooks";
 import { SearchInput } from "@/components/ui";
@@ -55,8 +55,12 @@ const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "encerrada", title: "Encerrada", status: "Encerrada", cards: [] },
 ];
 
+/** Query key do kanban — usada para invalidação após mutações (P10). */
+const KANBAN_QUERY_KEY = ["surgery-requests", "kanban"] as const;
+
 export default function ProcedimentosCirurgicos() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { isAdmin } = useAuth();
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
@@ -69,10 +73,6 @@ export default function ProcedimentosCirurgicos() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [searchTerm, setSearchTerm] = useState("");
-  const [, setLoading] = useState(true);
-  const [columns, setColumns] = useState<KanbanColumn[]>(INITIAL_COLUMNS);
-  // Estado separado para dados estáticos — não é atualizado quando apenas pendenciesCount muda
-  const [rawCards, setRawCards] = useState<KanbanColumn[]>(INITIAL_COLUMNS);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isUploadDocumentOpen, setIsUploadDocumentOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -139,157 +139,120 @@ export default function ProcedimentosCirurgicos() {
     return () => document.removeEventListener("mousedown", handler);
   }, [isExportOpen]);
 
-  const loadSurgeryRequests = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await surgeryRequestService.getAll();
+  // Kanban via TanStack Query (P10): cache + dedup; invalidação após mutações.
+  const { data: kanbanData } = useQuery({
+    queryKey: KANBAN_QUERY_KEY,
+    queryFn: () => surgeryRequestService.getKanban(),
+  });
 
-      // Mapear os dados do backend para o formato do Kanban
-      if (response && response.records && Array.isArray(response.records)) {
-        const mappedRequests: SurgeryRequest[] = response.records.map(
-          (record: SurgeryRequestListItem) => {
-            const status = STATUS_NUMBER_TO_STRING[record.status] || "Pendente";
+  const reloadKanban = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: KANBAN_QUERY_KEY });
+  }, [queryClient]);
 
-            // Obter nome do procedimento
-            const getProcedureName = () => {
-              const isIndication = record["is_indication"] as
-                | boolean
-                | undefined;
-              const indicationName = record["indication_name"] as
-                | string
-                | undefined;
-              if (isIndication && indicationName) {
-                return indicationName;
-              }
+  // Colunas derivadas dos dados do backend. `pendenciesCount` já vem calculado
+  // pelo endpoint /kanban (item 3.4) — sem round-trip extra a getBatchSummary.
+  const rawColumns = useMemo<KanbanColumn[]>(() => {
+    const records = kanbanData?.records;
+    if (!records || !Array.isArray(records)) return INITIAL_COLUMNS;
 
-              if (record.procedure?.name) {
-                return record.procedure.name;
-              }
+    const mappedRequests: SurgeryRequest[] = records.map(
+      (record: SurgeryRequestListItem) => {
+        const status = STATUS_NUMBER_TO_STRING[record.status] || "Pendente";
 
-              return "Procedimento não especificado";
-            };
+        const getProcedureName = () => {
+          const isIndication = record["is_indication"] as boolean | undefined;
+          const indicationName = record["indication_name"] as
+            | string
+            | undefined;
+          if (isIndication && indicationName) {
+            return indicationName;
+          }
+          if (record.procedure?.name) {
+            return record.procedure.name;
+          }
+          return "Procedimento não especificado";
+        };
 
-            // Obter o médico da solicitação
-            const getDoctor = () => {
-              if (record.doctor) {
-                return {
-                  id: String(record.doctor.id),
-                  name: record.doctor.name,
-                };
-              }
-              return {
-                id: "0",
-                name: "Não informado",
-              };
-            };
-
-            const createdAtIso = record.createdAt;
-            const lastStatusChangedAt =
-              record.lastStatusChangedAt ??
-              record.last_status_changed_at ??
-              undefined;
-            const updatedAt =
-              record.updatedAt && !Number.isNaN(Date.parse(record.updatedAt))
-                ? record.updatedAt
-                : undefined;
-            const lastActivityAt = lastStatusChangedAt
-              ? formatDateBR(lastStatusChangedAt)
-              : updatedAt
-                ? formatDateBR(updatedAt)
-                : formatDateBR(createdAtIso);
-
+        const getDoctor = () => {
+          if (record.doctor) {
             return {
-              id: String(record.id),
-              protocol: record.protocol || "",
-              patient: {
-                id: String(record.patient?.id ?? ""),
-                name: record.patient?.name ?? "Não informado",
-                initials: getInitials(record.patient?.name ?? ""),
-              },
-              procedureName: getProcedureName(),
-              doctor: getDoctor(),
-              priority: (record.priority as PriorityLevel) || PRIORITY.MEDIUM,
-              pendenciesCount: record.pendenciesCount || 0,
-              pendenciesCompleted: 0,
-              pendenciesWaiting: 0,
-              createdAt: formatDateBR(createdAtIso),
-              lastActivityAt,
-              lastStatusChangedAt,
-              updatedAt,
-              status,
-              healthPlan: record.healthPlan?.name || "",
-              hasIncompletePayment: record.hasIncompletePayment === true,
+              id: String(record.doctor.id),
+              name: record.doctor.name,
             };
+          }
+          return { id: "0", name: "Não informado" };
+        };
+
+        const createdAtIso = record.createdAt;
+        const lastStatusChangedAt =
+          record.lastStatusChangedAt ??
+          record.last_status_changed_at ??
+          undefined;
+        const updatedAt =
+          record.updatedAt && !Number.isNaN(Date.parse(record.updatedAt))
+            ? record.updatedAt
+            : undefined;
+        const lastActivityAt = lastStatusChangedAt
+          ? formatDateBR(lastStatusChangedAt)
+          : updatedAt
+            ? formatDateBR(updatedAt)
+            : formatDateBR(createdAtIso);
+
+        return {
+          id: String(record.id),
+          protocol: record.protocol || "",
+          patient: {
+            id: String(record.patient?.id ?? ""),
+            name: record.patient?.name ?? "Não informado",
+            initials: getInitials(record.patient?.name ?? ""),
           },
-        );
+          procedureName: getProcedureName(),
+          doctor: getDoctor(),
+          priority: (record.priority as PriorityLevel) || PRIORITY.MEDIUM,
+          pendenciesCount: record.pendenciesCount || 0,
+          pendenciesCompleted: 0,
+          pendenciesWaiting: 0,
+          createdAt: formatDateBR(createdAtIso),
+          lastActivityAt,
+          lastStatusChangedAt,
+          updatedAt,
+          status,
+          healthPlan: record.healthPlan?.name || "",
+          hasIncompletePayment: record.hasIncompletePayment === true,
+        };
+      },
+    );
 
-        const getSortTime = (request: SurgeryRequest) =>
-          getLatestActivityMs(
-            request.lastStatusChangedAt,
-            request.updatedAt,
-            request.createdAt,
-          );
+    const getSortTime = (request: SurgeryRequest) =>
+      getLatestActivityMs(
+        request.lastStatusChangedAt,
+        request.updatedAt,
+        request.createdAt,
+      );
 
-        // Organizar os cards nas colunas corretas
-        const newColumns = INITIAL_COLUMNS.map((column) => ({
-          ...column,
-          cards: mappedRequests
-            .filter((request) => request.status === column.status)
-            .sort((a, b) => getSortTime(b) - getSortTime(a)),
-        }));
+    return INITIAL_COLUMNS.map((column) => ({
+      ...column,
+      cards: mappedRequests
+        .filter((request) => request.status === column.status)
+        .sort((a, b) => getSortTime(b) - getSortTime(a)),
+    }));
+  }, [kanbanData]);
 
-        setColumns(newColumns);
-        setRawCards(newColumns);
-
-        // Atualizar pendenciesCount com o validador real (async, sem bloquear o render)
-        const allIds = mappedRequests.map((r) => r.id);
-        if (allIds.length > 0) {
-          pendencyService
-            .getBatchSummary(allIds)
-            .then((batchSummary) => {
-              setColumns((prev) =>
-                prev.map((col) => ({
-                  ...col,
-                  cards: col.cards.map((card) => {
-                    const summary = batchSummary[card.id];
-                    if (summary == null) return card;
-                    return { ...card, pendenciesCount: summary.pending };
-                  }),
-                })),
-              );
-            })
-            .catch(() => {
-              // silently ignore — contagens estimadas do backend já estão no estado
-            });
-        }
-      }
-
-      setLoading(false);
-    } catch {
-      setLoading(false);
-    }
-  }, []);
-
-  // Carregar dados do backend
-  useEffect(() => {
-    loadSurgeryRequests();
-  }, [loadSurgeryRequests]);
-
-  // Dados derivados para o modal de filtros — dependem de rawCards (não muda com pendenciesCount)
+  // Dados derivados para o modal de filtros
   const availableHealthPlans = useMemo(() => {
     const map = new Map<string, string>();
-    rawCards.forEach((col) =>
+    rawColumns.forEach((col) =>
       col.cards.forEach((card) => {
         if (card.healthPlan) map.set(card.healthPlan, card.healthPlan);
       }),
     );
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
-  }, [rawCards]);
+  }, [rawColumns]);
 
   const availableProcedures = useMemo(() => {
     const seen = new Set<string>();
     const result: { id: string; name: string }[] = [];
-    rawCards.forEach((col) =>
+    rawColumns.forEach((col) =>
       col.cards.forEach((card) => {
         const base = card.procedureName.replace(/ \+\d+$/, "");
         if (base && !seen.has(base)) {
@@ -299,15 +262,15 @@ export default function ProcedimentosCirurgicos() {
       }),
     );
     return result;
-  }, [rawCards]);
+  }, [rawColumns]);
 
   // Filtrar colunas com base na busca E nos filtros
   const filteredColumns = useMemo(() => {
     // 1. Filtrar por status: ocultar colunas cujo status não está selecionado
     let cols =
       filters.statuses.length > 0
-        ? columns.filter((col) => filters.statuses.includes(col.status))
-        : columns;
+        ? rawColumns.filter((col) => filters.statuses.includes(col.status))
+        : rawColumns;
 
     // 2. Filtrar cards
     cols = cols.map((column) => ({
@@ -425,7 +388,7 @@ export default function ProcedimentosCirurgicos() {
     }
 
     return cols;
-  }, [columns, debouncedSearch, filters]);
+  }, [rawColumns, debouncedSearch, filters]);
 
   // Obter todos os procedimentos para visualização em lista (já filtrados)
   const filteredProcedures = useMemo(() => {
@@ -640,7 +603,7 @@ export default function ProcedimentosCirurgicos() {
             type="button"
             onClick={() => setIsUploadDocumentOpen(true)}
             title="Criar solicitação a partir de documento"
-            className="flex items-center gap-1.5 flex-1 sm:flex-none h-9 lg:h-11 px-3 lg:px-4 text-xs lg:text-sm font-medium rounded-xl border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 transition-colors"
+            className="flex items-center gap-1.5 flex-1 sm:flex-none h-9 lg:h-11 px-3 lg:px-3.5 py-1.5 lg:py-2 text-xs lg:text-sm font-medium rounded-xl border border-neutral-100 bg-white text-black hover:bg-neutral-50 transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -728,8 +691,8 @@ export default function ProcedimentosCirurgicos() {
         isOpen={isNewRequestOpen}
         onClose={() => setIsNewRequestOpen(false)}
         onSuccess={() => {
-          // Recarregar dados do backend
-          loadSurgeryRequests();
+          // Invalida o cache do kanban para refletir a nova solicitação (P10).
+          reloadKanban();
         }}
       />
 

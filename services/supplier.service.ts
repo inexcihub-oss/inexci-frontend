@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api, { FETCH_ALL_TAKE } from "@/lib/api";
 import { getApiRecords } from "@/lib/api-response";
 
 export interface SupplierQuotation {
@@ -107,7 +107,9 @@ function mapSupplier(s: Record<string, unknown>): Supplier {
 
 export const supplierService = {
   async getAll(): Promise<Supplier[]> {
-    const response = await api.get("/suppliers");
+    const response = await api.get("/suppliers", {
+      params: { take: FETCH_ALL_TAKE },
+    });
     const data = getApiRecords<Record<string, unknown>>(response.data);
     return data.map(mapSupplier);
   },

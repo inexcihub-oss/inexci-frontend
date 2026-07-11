@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import PageContainer from "@/components/PageContainer";
@@ -8,13 +9,10 @@ import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { reportsService } from "@/services/reports.service";
 import type {
   ReportFilters,
-  TemporalEvolutionData,
   MonthlyEvolutionData,
-  AverageCompletionTimeData,
   PendingNotificationsData,
   DashboardData,
 } from "@/services/reports.service";
-import { logger } from "@/lib/logger";
 import { STATUS_NUMBER_TO_STRING } from "@/services/surgery-request.service";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -648,63 +646,20 @@ function HealthPlanTable({
 // COMPONENTE PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export default function DashboardPage() {
-  const [dashboard, setDashboard] = useState<ProcessedDashboard | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // ─── Filter state ────────────────────────────────────────────────────
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>(
-    DEFAULT_DASHBOARD_FILTERS,
-  );
-
-  const loadDashboard = useCallback(async (filters?: ReportFilters) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [
-        dashData,
-        evolutionData,
-        monthlyData,
-        avgTimeData,
-        notificationsData,
-      ] = await Promise.all([
-        reportsService.getDashboard(filters).catch(
-          () =>
-            ({
-              surgeryRequest: {
-                total: 0,
-                totalScheduled: 0,
-                totalPerformed: 0,
-                totalInvoicedCount: 0,
-                totalInvoicedValue: 0,
-                totalReceivedValue: 0,
-                totalByHealthPlan: [],
-                totalByStatus: [],
-                totalByHospital: [],
-              },
-            }) as DashboardData,
-        ),
-        reportsService
-          .getTemporalEvolution(30, filters)
-          .catch(() => [] as TemporalEvolutionData[]),
-        reportsService
-          .getMonthlyEvolution(6, filters)
-          .catch(() => [] as MonthlyEvolutionData[]),
-        reportsService
-          .getAverageCompletionTime(filters)
-          .catch(() => ({ averageDays: 0 }) as AverageCompletionTimeData),
-        reportsService.getPendingNotifications(filters).catch(
-          () =>
-            ({
-              total: 0,
-              pendingAnalysis: 0,
-              pendingScheduling: 0,
-            }) as PendingNotificationsData,
-        ),
-      ]);
+async function fetchDashboard(
+  filters?: ReportFilters,
+): Promise<ProcessedDashboard> {
+  // P13: 1 round-trip consolidado em vez de 5 chamadas separadas.
+  const full = await reportsService.getDashboardFull(filters);
+  const dashData: DashboardData = { surgeryRequest: full.surgeryRequest };
+  const evolutionData = full.temporalEvolution ?? [];
+  const monthlyData = full.monthlyEvolution ?? [];
+  const avgTimeData = full.averageCompletionTime ?? { averageDays: 0 };
+  const notificationsData = full.pendingNotifications ?? {
+    total: 0,
+    pendingAnalysis: 0,
+    pendingScheduling: 0,
+  };
 
       const totalInvoiced =
         Number(dashData.surgeryRequest.totalInvoicedValue) || 0;
@@ -763,27 +718,32 @@ export default function DashboardPage() {
         monthlyEvolution: monthlyData,
       };
 
-      setDashboard(processed);
-    } catch (err: unknown) {
-      logger.error("Erro ao carregar dashboard:", err);
-      const e = err as {
-        response?: { data?: { message?: string } };
-        message?: string;
-      };
-      setError(
-        e.response?.data?.message ||
-          e.message ||
-          "Erro ao carregar dados do dashboard",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  return processed;
+}
 
-  // Load on mount and when filters change
-  useEffect(() => {
-    loadDashboard(buildReportFilters(dashboardFilters));
-  }, [dashboardFilters, loadDashboard]);
+export default function DashboardPage() {
+  // ─── Filter state ────────────────────────────────────────────────────
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>(
+    DEFAULT_DASHBOARD_FILTERS,
+  );
+
+  // Dashboard via TanStack Query (P10/P13): cache + `keepPreviousData` para não
+  // piscar vazio ao trocar filtros. As chamadas internas já têm fallback próprio
+  // (`.catch`), então a query raramente rejeita.
+  const {
+    data: dashboard = null,
+    isFetching,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["reports", "dashboard", dashboardFilters],
+    queryFn: () => fetchDashboard(buildReportFilters(dashboardFilters)),
+    placeholderData: keepPreviousData,
+  });
+
+  const loading = isFetching;
+  const error = isError ? "Erro ao carregar dados do dashboard" : null;
 
   const activeFilterCount = useMemo(
     () => countActiveDashboardFilters(dashboardFilters),
@@ -872,9 +832,7 @@ export default function DashboardPage() {
               {error || "Dados não disponíveis"}
             </p>
             <button
-              onClick={() =>
-                loadDashboard(buildReportFilters(dashboardFilters))
-              }
+              onClick={() => refetch()}
               className="px-5 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
             >
               Tentar novamente

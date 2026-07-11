@@ -23,7 +23,7 @@ import { sanitizeHtml } from "@/lib/sanitize-html";
 
 // ─── Helpers (idênticos ao backend) ──────────────────────────────────────────
 
-export function digitsOnly(v: string): string {
+export function digitsOnly(v?: string | null): string {
   return v ? v.replace(/\D/g, "") : "";
 }
 
@@ -52,53 +52,287 @@ export function formatDateBR(v?: string): string {
   return v;
 }
 
+export function formatCep(v?: string): string {
+  if (!v) return "";
+  const d = digitsOnly(v).slice(0, 8);
+  if (d.length !== 8) return "";
+  return `${d.slice(0, 5)}-${d.slice(5)}`;
+}
+
+export interface LaudoPatientSource {
+  patient?: {
+    name?: string | null;
+    birthDate?: string | null;
+    rg?: string | null;
+    cpf?: string | null;
+    phone?: string | null;
+    healthPlanNumber?: string | null;
+    address?: string | null;
+    zipCode?: string | null;
+    cep?: string | null;
+  } | null;
+  healthPlan?: { name?: string | null } | null;
+  healthPlanName?: string | null;
+  healthPlanRegistration?: string | null;
+}
+
+export interface LaudoPatientFields {
+  patientName?: string;
+  patientBirthDate?: string;
+  patientRg?: string;
+  patientCpf?: string;
+  patientPhone?: string;
+  patientAddress?: string;
+  patientZipCode?: string;
+  patientHealthPlan?: string;
+  patientHealthPlanNumber?: string;
+}
+
+const filledString = (value?: string | null): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+};
+
+const filledCpf = (value?: string | null): string | undefined => {
+  const digits = digitsOnly(value).slice(0, 11);
+  if (digits.length !== 11) return undefined;
+  return formatCpf(digits);
+};
+
+const filledPhone = (value?: string | null): string | undefined => {
+  const digits = digitsOnly(value).slice(0, 11);
+  if (digits.length < 10) return undefined;
+  return formatPhone(digits);
+};
+
+const filledCep = (value?: string | null): string | undefined => {
+  const digits = digitsOnly(value).slice(0, 8);
+  if (digits.length !== 8) return undefined;
+  return formatCep(digits);
+};
+
+const filledBirthDate = (value?: string | null): string | undefined => {
+  if (!value) return undefined;
+  const formatted = formatDateBR(value);
+  return formatted || undefined;
+};
+
+export function buildLaudoPatientFields(
+  source: LaudoPatientSource,
+): LaudoPatientFields {
+  const patient = source.patient;
+  const fields: LaudoPatientFields = {};
+
+  const patientName = filledString(patient?.name);
+  if (patientName) fields.patientName = patientName;
+
+  const patientBirthDate = filledBirthDate(patient?.birthDate ?? undefined);
+  if (patientBirthDate) fields.patientBirthDate = patientBirthDate;
+
+  const patientRg = filledString(patient?.rg);
+  if (patientRg) fields.patientRg = patientRg;
+
+  const patientCpf = filledCpf(patient?.cpf);
+  if (patientCpf) fields.patientCpf = patientCpf;
+
+  const patientAddress = filledString(patient?.address);
+  if (patientAddress) fields.patientAddress = patientAddress;
+
+  const patientZipCode = filledCep(patient?.zipCode ?? patient?.cep);
+  if (patientZipCode) fields.patientZipCode = patientZipCode;
+
+  const patientPhone = filledPhone(patient?.phone);
+  if (patientPhone) fields.patientPhone = patientPhone;
+
+  const patientHealthPlan = filledString(
+    source.healthPlan?.name ?? source.healthPlanName,
+  );
+  if (patientHealthPlan) fields.patientHealthPlan = patientHealthPlan;
+
+  const patientHealthPlanNumber =
+    filledString(patient?.healthPlanNumber) ??
+    filledString(source.healthPlanRegistration);
+  if (patientHealthPlanNumber) {
+    fields.patientHealthPlanNumber = patientHealthPlanNumber;
+  }
+
+  return fields;
+}
+
+const LAUDO_PATIENT_FIELD_LABELS: Record<keyof LaudoPatientFields, string> = {
+  patientName: "Nome do paciente",
+  patientBirthDate: "Data de nascimento",
+  patientRg: "RG",
+  patientCpf: "CPF",
+  patientAddress: "Endereço",
+  patientZipCode: "CEP",
+  patientPhone: "Telefone",
+  patientHealthPlan: "Convênio",
+  patientHealthPlanNumber: "Número da carteirinha",
+};
+
+/** Rótulos curtos usados no PDF e na pré-visualização do documento. */
+const LAUDO_DOCUMENT_PATIENT_FIELD_LABELS: Record<
+  keyof LaudoPatientFields,
+  string
+> = {
+  patientName: "Nome",
+  patientBirthDate: "Data de Nascimento",
+  patientRg: "RG",
+  patientCpf: "CPF",
+  patientAddress: "Endereço",
+  patientZipCode: "CEP",
+  patientPhone: "Telefone",
+  patientHealthPlan: "Convênio",
+  patientHealthPlanNumber: "Nº da carteirinha",
+};
+
+const LAUDO_PATIENT_FIELD_ORDER: (keyof LaudoPatientFields)[] = [
+  "patientName",
+  "patientBirthDate",
+  "patientRg",
+  "patientCpf",
+  "patientPhone",
+  "patientAddress",
+  "patientZipCode",
+  "patientHealthPlan",
+  "patientHealthPlanNumber",
+];
+
+export function buildLaudoPatientDisplayFields(
+  source: LaudoPatientSource,
+): Array<{ label: string; value: string }> {
+  const fields = buildLaudoPatientFields(source);
+
+  return LAUDO_PATIENT_FIELD_ORDER.filter((key) => fields[key]).map((key) => ({
+    label: LAUDO_PATIENT_FIELD_LABELS[key],
+    value: fields[key]!,
+  }));
+}
+
+export function buildLaudoDocumentPatientRows(
+  fields: LaudoPatientFields,
+): Array<{ label: string; value: string }> {
+  return LAUDO_PATIENT_FIELD_ORDER.filter((key) => fields[key]).map((key) => ({
+    label: LAUDO_DOCUMENT_PATIENT_FIELD_LABELS[key],
+    value: fields[key]!,
+  }));
+}
+
+export function chunkPatientDisplayRows<T>(items: T[]): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += 2) {
+    rows.push(items.slice(i, i + 2));
+  }
+  return rows;
+}
+
+type DoctorSignatureSource =
+  | {
+      id?: string | number;
+      signatureUrl?: string | null;
+      doctorProfile?: { signatureUrl?: string | null } | null;
+    }
+  | null
+  | undefined;
+
+type AuthUserSignatureSource =
+  | {
+      id?: string | number;
+      doctorProfile?: { signatureUrl?: string | null } | null;
+    }
+  | null
+  | undefined;
+
+export function resolveDoctorSignatureUrl(
+  doctor: DoctorSignatureSource,
+  currentUser?: AuthUserSignatureSource,
+): string | null {
+  const url =
+    doctor?.signatureUrl ?? doctor?.doctorProfile?.signatureUrl ?? null;
+
+  if (
+    url ||
+    !currentUser?.id ||
+    !doctor?.id ||
+    String(currentUser.id) !== String(doctor.id)
+  ) {
+    return url;
+  }
+
+  return currentUser.doctorProfile?.signatureUrl ?? null;
+}
+
 export function unique<T>(arr: T[]): T[] {
   return [...new Set(arr)];
 }
 
-export function parseMedicalReport(sol: { medicalReport?: string | null }) {
-  if (!sol?.medicalReport) return {};
-  try {
-    return JSON.parse(sol.medicalReport) as {
-      patientData?: {
-        name?: string;
-        birthDate?: string;
-        rg?: string;
-        cpf?: string;
-        phone?: string;
-        address?: string;
-        zipCode?: string;
-        healthPlan?: string;
-      };
-      historyAndDiagnosis?: string;
-      surgicalIndication?: string;
-      conduct?: string;
-      technicalJustification?: string;
-    };
-  } catch {
-    return {};
-  }
-}
-
 // ─── Sub-componentes internos ─────────────────────────────────────────────────
 
-function PatientRow({ label, value }: { label: string; value?: string }) {
-  if (!value) return null;
+function PatientRow({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "baseline",
+        gap: "4px",
+        minWidth: 0,
+      }}
+    >
       <span
         style={{
           fontSize: "12px",
           fontWeight: 600,
           color: "#111111",
           whiteSpace: "nowrap",
+          flexShrink: 0,
         }}
       >
-        {label}
+        {label}:
       </span>
-      <span style={{ fontSize: "12px", fontWeight: 400, color: "#111111" }}>
+      <span
+        style={{
+          fontSize: "12px",
+          fontWeight: 400,
+          color: "#111111",
+          wordBreak: "break-word",
+        }}
+      >
         {value}
       </span>
+    </div>
+  );
+}
+
+function PatientFieldGrid({
+  rows,
+}: {
+  rows: Array<Array<{ label: string; value: string }>>;
+}) {
+  if (!rows.length) return null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+      {rows.map((row, rowIndex) => (
+        <div
+          key={rowIndex}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            columnGap: "16px",
+            alignItems: "start",
+          }}
+        >
+          {row.map((field) => (
+            <PatientRow
+              key={`${rowIndex}-${field.label}`}
+              label={field.label}
+              value={field.value}
+            />
+          ))}
+          {row.length === 1 ? <div aria-hidden="true" /> : null}
+        </div>
+      ))}
     </div>
   );
 }
@@ -455,14 +689,11 @@ export interface SurgeryRequestLaudoDocumentProps {
   patientAddress?: string;
   patientZipCode?: string;
   patientHealthPlan?: string;
+  patientHealthPlanNumber?: string;
 
   // — Conteúdo do laudo —
-  /** Seções dinâmicas (têm prioridade sobre os campos legados abaixo) */
+  /** Seções dinâmicas do laudo */
   sections: ReportSection[];
-  /** Fallback legado — exibido somente quando `sections` está vazio */
-  legacyHistoryAndDiagnosis?: string;
-  /** Fallback legado — exibido somente quando `sections` está vazio */
-  legacyConduct?: string;
 
   // — Imagens de exame —
   examImages?: Array<{ id?: string; name?: string; uri: string }>;
@@ -509,9 +740,8 @@ export function SurgeryRequestLaudoDocument({
   patientAddress,
   patientZipCode,
   patientHealthPlan,
+  patientHealthPlanNumber,
   sections,
-  legacyHistoryAndDiagnosis,
-  legacyConduct,
   examImages = [],
   procedures = [],
   opmeItems = [],
@@ -525,6 +755,20 @@ export function SurgeryRequestLaudoDocument({
   doctorSignatureUrl,
   customHeader,
 }: SurgeryRequestLaudoDocumentProps) {
+  const patientRows = chunkPatientDisplayRows(
+    buildLaudoDocumentPatientRows({
+      patientName,
+      patientBirthDate,
+      patientRg,
+      patientCpf,
+      patientPhone,
+      patientAddress,
+      patientZipCode,
+      patientHealthPlan,
+      patientHealthPlanNumber,
+    }),
+  );
+
   return (
     <div
       style={{
@@ -628,27 +872,11 @@ export function SurgeryRequestLaudoDocument({
       {/* ── Dados do Paciente ── */}
       <div style={{ marginBottom: "16px" }}>
         <SectionHeading>Dados do paciente</SectionHeading>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            rowGap: "5px",
-            columnGap: "16px",
-          }}
-        >
-          <PatientRow label="Nome:" value={patientName} />
-          <PatientRow label="Data de Nascimento:" value={patientBirthDate} />
-          <PatientRow label="RG:" value={patientRg} />
-          <PatientRow label="CPF:" value={patientCpf} />
-          <PatientRow label="Endereço:" value={patientAddress} />
-          <PatientRow label="CEP:" value={patientZipCode} />
-          <PatientRow label="Telefone:" value={patientPhone} />
-          <PatientRow label="Convênio:" value={patientHealthPlan} />
-        </div>
+        <PatientFieldGrid rows={patientRows} />
       </div>
 
       {/* ── Seções dinâmicas do laudo ── */}
-      {sections.length > 0 ? (
+      {sections.length > 0 &&
         sections.map((section) => (
           <div key={section.id} style={{ marginBottom: "16px" }}>
             <SectionHeading>
@@ -682,41 +910,7 @@ export function SurgeryRequestLaudoDocument({
               </p>
             )}
           </div>
-        ))
-      ) : (
-        <>
-          {legacyHistoryAndDiagnosis && (
-            <div style={{ marginBottom: "16px" }}>
-              <SectionHeading>Histórico e diagnóstico</SectionHeading>
-              <p
-                style={{
-                  fontSize: "12px",
-                  lineHeight: "1.333",
-                  color: "#111111",
-                  whiteSpace: "pre-line",
-                }}
-              >
-                {legacyHistoryAndDiagnosis}
-              </p>
-            </div>
-          )}
-          {legacyConduct && (
-            <div style={{ marginBottom: "16px" }}>
-              <SectionHeading>Conduta</SectionHeading>
-              <p
-                style={{
-                  fontSize: "12px",
-                  lineHeight: "1.333",
-                  color: "#111111",
-                  whiteSpace: "pre-line",
-                }}
-              >
-                {legacyConduct}
-              </p>
-            </div>
-          )}
-        </>
-      )}
+        ))}
 
       {/* ── Imagens de Exame ── */}
       {examImages.length > 0 && (

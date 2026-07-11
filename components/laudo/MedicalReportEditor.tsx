@@ -20,10 +20,24 @@ import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { doctorHeaderService } from "@/services/doctor-header.service";
 import { useToast } from "@/hooks/useToast";
 import { MedicalReportPreviewModal } from "@/components/laudo/MedicalReportPreviewModal";
-import { RichTextEditor } from "@/components/shared/RichTextEditor";
+import { buildLaudoPatientDisplayFields } from "@/components/laudo/SurgeryRequestLaudoDocument";
+import dynamic from "next/dynamic";
 import api from "@/lib/api";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import type { DoctorHeader } from "@/types/doctor-header.types";
+
+// P14: Tiptap (RichTextEditor) carregado sob demanda — fora do chunk estático
+// da rota /solicitacao/[id] (que hoje puxa ~243 kB); baixa só ao editar.
+const RichTextEditor = dynamic(
+  () =>
+    import("@/components/shared/RichTextEditor").then((m) => m.RichTextEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[80px] animate-pulse rounded-lg border border-neutral-200 bg-neutral-50" />
+    ),
+  },
+);
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -51,56 +65,22 @@ function formatDateBR(dateStr: string | undefined | null): string {
   }
 }
 
-function parseMedicalReport(sol: any): any {
-  if (!sol?.medicalReport) return {};
-  try {
-    return JSON.parse(sol.medicalReport);
-  } catch {
-    return {};
-  }
-}
-
-function buildPatientData(sol: any, parsed: any): PatientFormData {
-  const pd = parsed?.patientData;
+function buildPatientData(sol: any): PatientFormData {
   const p = sol?.patient;
   return {
-    name: pd?.name ?? p?.name ?? "",
-    birthDate: pd?.birthDate ?? formatDateBR(p?.birthDate) ?? "",
-    rg: pd?.rg ?? p?.rg ?? "",
-    cpf: pd?.cpf ?? p?.cpf ?? "",
-    phone: pd?.phone ?? p?.phone ?? "",
-    address: pd?.address ?? p?.address ?? "",
-    zipCode: pd?.zipCode ?? p?.zipCode ?? p?.cep ?? "",
-    healthPlan:
-      pd?.healthPlan ?? sol?.healthPlan?.name ?? sol?.healthPlanName ?? "",
+    name: p?.name ?? "",
+    birthDate: formatDateBR(p?.birthDate) ?? "",
+    rg: p?.rg ?? "",
+    cpf: p?.cpf ?? "",
+    phone: p?.phone ?? "",
+    address: p?.address ?? "",
+    zipCode: p?.zipCode ?? p?.cep ?? "",
+    healthPlan: sol?.healthPlan?.name ?? sol?.healthPlanName ?? "",
   };
 }
 
 function stripHtmlTags(html: string): string {
   return html.replace(/<[^>]*>/g, "").trim();
-}
-
-// Máscaras de exibição (somente formatam para mostrar ao usuário)
-function applyCpfMask(v: string): string {
-  const d = v.replace(/\D/g, "").slice(0, 11);
-  return d
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-}
-
-function applyPhoneMask(v: string): string {
-  const d = v.replace(/\D/g, "").slice(0, 11);
-  if (d.length <= 10)
-    return d.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
-}
-
-function applyCepMask(v: string): string {
-  return v
-    .replace(/\D/g, "")
-    .slice(0, 8)
-    .replace(/(\d{5})(\d)/, "$1-$2");
 }
 
 // ─── Upload helpers ──────────────────────────────────────────────────────────
@@ -255,8 +235,7 @@ export function MedicalReportEditor() {
   // ── Inicialização ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!solicitacao) return;
-    const parsed = parseMedicalReport(solicitacao);
-    setPatientData(buildPatientData(solicitacao, parsed));
+    setPatientData(buildPatientData(solicitacao));
   }, [solicitacao]);
 
   // ── Carregar sections do servidor ────────────────────────────────────────
@@ -271,13 +250,42 @@ export function MedicalReportEditor() {
   }, [solicitacao?.id]);
 
   // ── Carrega assinatura do médico ─────────────────────────────────────────
-  // Usa exclusivamente a assinatura do médico vinculado à solicitação.
-  // O backend já converte o path para URL assinada em findOne().
+  // Fonte: doctor.signatureUrl (signed URL do findOne) → doctorProfile.signatureUrl
+  // → perfil do usuário autenticado (fallback quando a SC está em cache stale).
+  const signatureRefetchAttempted = useRef(false);
   useEffect(() => {
     const doctor = solicitacao?.doctor;
-    const url: string | null = doctor?.signatureUrl ?? null;
+    const dp = doctor?.doctorProfile;
+    let url: string | null =
+      doctor?.signatureUrl ?? dp?.signatureUrl ?? null;
+
+    if (
+      !url &&
+      currentUser &&
+      doctor?.id === currentUser.id &&
+      currentUser.doctorProfile?.signatureUrl
+    ) {
+      url = currentUser.doctorProfile.signatureUrl;
+    }
+
     setSignatureUrl(url);
-  }, [solicitacao]);
+  }, [solicitacao, currentUser]);
+
+  // Recarrega a SC quando o perfil já tem assinatura mas o detalhe ainda não.
+  useEffect(() => {
+    if (signatureRefetchAttempted.current) return;
+    const doctor = solicitacao?.doctor;
+    if (!doctor || !currentUser || doctor.id !== currentUser.id) return;
+
+    const scSignature =
+      doctor.signatureUrl ?? doctor.doctorProfile?.signatureUrl;
+    const profileSignature = currentUser.doctorProfile?.signatureUrl;
+
+    if (!scSignature && profileSignature) {
+      signatureRefetchAttempted.current = true;
+      onUpdate();
+    }
+  }, [solicitacao, currentUser, onUpdate]);
 
   // ── Carrega cabeçalho do médico autenticado ──────────────────────────────
   useEffect(() => {
@@ -549,19 +557,14 @@ export function MedicalReportEditor() {
 
   // ── Progresso do Laudo ───────────────────────────────────────────────────
   const p = solicitacao?.patient;
-  const patientComplete = !!(p?.name && p?.cpf);
+  const patientComplete = !!(p?.name?.trim() && p?.cpf?.replace(/\D/g, "").length === 11);
 
-  const patientDisplayFields = [
-    { label: "Nome do paciente", value: p?.name || null },
-    {
-      label: "Data de nascimento",
-      value: p?.birthDate ? formatDateBR(p.birthDate) : null,
-    },
-    { label: "CPF", value: p?.cpf ? applyCpfMask(p.cpf) : null },
-    { label: "Telefone", value: p?.phone ? applyPhoneMask(p.phone) : null },
-    { label: "Endereço", value: p?.address || null },
-    { label: "CEP", value: p?.zipCode ? applyCepMask(p.zipCode) : null },
-  ].filter((field) => field.value);
+  const patientDisplayFields = buildLaudoPatientDisplayFields({
+    patient: p,
+    healthPlan: solicitacao?.healthPlan,
+    healthPlanName: solicitacao?.healthPlanName,
+    healthPlanRegistration: solicitacao?.healthPlanRegistration,
+  });
 
   const progressSteps = [
     {

@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api, { FETCH_ALL_TAKE } from "@/lib/api";
 import { getApiRecords } from "@/lib/api-response";
 
 export interface Hospital {
@@ -60,7 +60,9 @@ export const hospitalService = {
    * Busca todos os hospitais
    */
   async getAll(): Promise<Hospital[]> {
-    const response = await api.get("/hospitals");
+    const response = await api.get("/hospitals", {
+      params: { take: FETCH_ALL_TAKE },
+    });
     const data = getApiRecords<BackendHospital>(response.data);
 
     return data.map((h) => ({

@@ -32,10 +32,22 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   signed_report: "Laudo Assinado",
   surgery_auth_document: "Guia de Autorização",
   additional_document: "Outro Documento",
+  sc_creation_source: "Documento de origem",
 };
 
 function formatDocumentType(key: string): string {
   return DOCUMENT_TYPE_LABELS[key] ?? key ?? "Documento";
+}
+
+function formatDocumentDate(value?: string | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("pt-BR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 }
 
 // ─── Interface de props ───────────────────────────────────────────────────────
@@ -340,11 +352,7 @@ export function InformacoesGeraisTab({
                   </a>
                 </div>
                 <div className="hidden sm:block w-36 flex-shrink-0 text-xs text-gray-900">
-                  {new Date(doc.createdAt).toLocaleDateString("pt-BR", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "short",
-                  })}
+                  {formatDocumentDate(doc.createdAt)}
                 </div>
                 <div className="hidden sm:flex w-48 flex-shrink-0 items-center justify-between">
                   <span className="text-xs text-gray-900">

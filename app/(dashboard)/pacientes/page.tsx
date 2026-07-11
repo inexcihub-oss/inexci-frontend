@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { patientService, Patient } from "@/services/patient.service";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
@@ -27,11 +27,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+const PAGE_SIZE = 20;
+
 export default function PacientesPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
@@ -59,47 +63,47 @@ export default function PacientesPage() {
   // Estado do modal de novo paciente
   const [newPatientModalOpen, setNewPatientModalOpen] = useState(false);
 
-  // Debounce do termo de pesquisa para evitar re-renderizações excessivas
+  // Debounce do termo de pesquisa para evitar requisições excessivas
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  // Carrega os pacientes ao montar o componente
-  useEffect(() => {
-    loadPatients();
-  }, []);
-
-  const loadPatients = async () => {
+  const loadPatients = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await patientService.getAll();
-      setPatients(data);
+      const { records, total: totalCount } = await patientService.list({
+        skip: page * PAGE_SIZE,
+        take: PAGE_SIZE,
+        search: debouncedSearchTerm.trim() || undefined,
+      });
+      setPatients(records);
+      setTotal(totalCount);
     } catch (error) {
       logger.error("Erro ao carregar pacientes:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, debouncedSearchTerm]);
 
-  // Memoiza os pacientes filtrados para evitar recálculos desnecessários
-  const filteredPatients = useMemo(() => {
-    if (!debouncedSearchTerm) return patients;
+  // Recarrega quando a página ou a busca (debounced) mudam.
+  useEffect(() => {
+    loadPatients();
+  }, [loadPatients]);
 
-    const search = debouncedSearchTerm.toLowerCase();
-    return patients.filter((patient) => {
-      const name = patient.name.toLowerCase();
-      const email = patient.email?.toLowerCase() || "";
-      const cpf = patient.cpf?.toLowerCase() || "";
-      return (
-        name.includes(search) || email.includes(search) || cpf.includes(search)
-      );
-    });
-  }, [patients, debouncedSearchTerm]);
+  // Volta para a primeira página sempre que o termo de busca muda.
+  useEffect(() => {
+    setPage(0);
+    setRowSelection({});
+  }, [debouncedSearchTerm]);
 
   const selectedPatients = useMemo(() => {
     return Object.keys(rowSelection)
       .filter((key) => (rowSelection as Record<string, boolean>)[key])
-      .map((key) => filteredPatients[parseInt(key)])
+      .map((key) => patients[parseInt(key)])
       .filter((p): p is Patient => Boolean(p));
-  }, [rowSelection, filteredPatients]);
+  }, [rowSelection, patients]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const rangeStart = total === 0 ? 0 : page * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(total, (page + 1) * PAGE_SIZE);
 
   const getInitials = (name: string) => {
     const parts = name.split(" ");
@@ -164,10 +168,8 @@ export default function PacientesPage() {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await patientService.delete(deleteModal.patient.id);
-      setPatients((prev) =>
-        prev.filter((p) => p.id !== deleteModal.patient!.id),
-      );
       setDeleteModal({ open: false, patient: null, loading: false });
+      await loadPatients();
     } catch (error) {
       logger.error("Erro ao excluir paciente:", error);
       setDeleteModal((prev) => ({ ...prev, loading: false }));
@@ -188,11 +190,9 @@ export default function PacientesPage() {
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await patientService.deleteMany(selectedPatients.map((p) => p.id));
-      setPatients((prev) =>
-        prev.filter((p) => !selectedPatients.some((sp) => sp.id === p.id)),
-      );
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
+      await loadPatients();
     } catch (error) {
       logger.error("Erro ao excluir pacientes:", error);
       setBulkDeleteModal((prev) => ({ ...prev, loading: false }));
@@ -334,7 +334,7 @@ export default function PacientesPage() {
   ];
 
   const table = useReactTable({
-    data: filteredPatients,
+    data: patients,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -408,7 +408,7 @@ export default function PacientesPage() {
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-500">Carregando...</p>
           </div>
-        ) : filteredPatients.length === 0 ? (
+        ) : patients.length === 0 ? (
           <div className="flex items-center justify-center h-64">
             <p className="text-gray-500">Nenhum paciente encontrado</p>
           </div>
@@ -493,6 +493,38 @@ export default function PacientesPage() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+        )}
+
+        {/* Paginação server-side */}
+        {!loading && total > 0 && (
+          <div className="flex-none flex items-center justify-between gap-2 px-4 py-3 border-t border-gray-200">
+            <span className="text-xs text-gray-500">
+              Mostrando {rangeStart}–{rangeEnd} de {total}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                Anterior
+              </Button>
+              <span className="text-xs text-gray-500">
+                {page + 1} / {totalPages}
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={page + 1 >= totalPages}
+                onClick={() =>
+                  setPage((p) => Math.min(totalPages - 1, p + 1))
+                }
+              >
+                Próxima
+              </Button>
+            </div>
           </div>
         )}
       </div>

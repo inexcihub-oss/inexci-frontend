@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api, { FETCH_ALL_TAKE } from "@/lib/api";
 import { isUnauthorizedError } from "@/lib/http-error";
 
 export interface Procedure {
@@ -22,7 +22,9 @@ export const procedureService = {
    */
   async getAll(): Promise<Procedure[]> {
     try {
-      const response = await api.get("/procedures");
+      const response = await api.get("/procedures", {
+        params: { take: FETCH_ALL_TAKE },
+      });
       return response.data.records || response.data;
     } catch (error: unknown) {
       if (isUnauthorizedError(error)) {

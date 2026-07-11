@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api, { FETCH_ALL_TAKE } from "@/lib/api";
 import { Document } from "@/services/document.service";
 import {
   SurgeryRequestStatus,
@@ -169,12 +169,14 @@ export interface UpdateBasicDataPayload {
 // ─── Payloads de transição de status ──────────────────────────────────────────
 
 export interface SendPayload {
-  method: "email" | "download";
+  method: "email" | "download" | "document";
   to?: string;
   subject?: string;
   message?: string;
   cc?: string;
   notifyPatient?: boolean;
+  /** Anexa o documento de origem (`sc_creation_source`) em vez do PDF gerado. */
+  useSourceDocument?: boolean;
 }
 
 export interface StartAnalysisPayload {
@@ -342,9 +344,8 @@ export interface SurgeryRequestDetail {
     canTransition: boolean;
   } | null;
   // Campos primitivos adicionais usados por componentes
-  cidId: string | null;
-  cidDescription: string | null;
-  cid?: { id: string; code: string; description: string } | null;
+  cid: { code: string; description: string } | null;
+  healthPlanName: string | null;
   healthPlanRegistration: string | null;
   healthPlanType: string | null;
   hospitalId: string | number | null;
@@ -354,9 +355,6 @@ export interface SurgeryRequestDetail {
   dateOptions?: string[];
   selectedDateIndex?: number | null;
   surgeryPerformedAt: string | null;
-  diagnosis: string | null;
-  medicalReport: string | null;
-  patientHistory: string | null;
   [key: string]: unknown;
 }
 
@@ -391,17 +389,44 @@ export interface IncrementTemplateUsageResponse {
 export const surgeryRequestService = {
   // ── Consultas ──────────────────────────────────────────────────────────────
 
-  /** Busca todos os procedimentos cirúrgicos */
-  async getAll(): Promise<SurgeryRequestListResponse> {
-    const response =
-      await api.get<SurgeryRequestListResponse>("/surgery-requests");
+  /**
+   * Kanban (item 3.4): endpoint enxuto que já devolve os contadores de
+   * pendência calculados no backend — dispensa a chamada separada a
+   * `pendencyService.getBatchSummary` e o over-fetch de `getAll`.
+   */
+  async getKanban(): Promise<SurgeryRequestListResponse> {
+    const response = await api.get<SurgeryRequestListResponse>(
+      "/surgery-requests/kanban",
+    );
     return response.data;
   },
 
-  /** Busca cirurgias com data marcada (Agendada=5, Realizada=6, Faturada=7, Finalizada=8) */
-  async getScheduled(): Promise<SurgeryRequestListResponse> {
+  /**
+   * Busca todas as solicitações (payload completo). Ainda usado pelas páginas
+   * de detalhe de entidade (hospital/convênio/paciente/colaborador) que listam
+   * SCs vinculadas. Carrega tudo via `FETCH_ALL_TAKE` — otimização server-side
+   * dessas telas fica fora do escopo do kanban.
+   */
+  async getAll(): Promise<SurgeryRequestListResponse> {
     const response = await api.get<SurgeryRequestListResponse>(
-      "/surgery-requests?status=5,6,7,8",
+      "/surgery-requests",
+      { params: { take: FETCH_ALL_TAKE } },
+    );
+    return response.data;
+  },
+
+  /**
+   * Agenda por intervalo de data (item 3.5): busca apenas as cirurgias com
+   * `surgeryDate` dentro do período visível, em vez de carregar todas as
+   * agendadas (status 5–8).
+   */
+  async getAgenda(
+    from: string,
+    to: string,
+  ): Promise<SurgeryRequestListResponse> {
+    const response = await api.get<SurgeryRequestListResponse>(
+      "/surgery-requests/agenda",
+      { params: { from, to } },
     );
     return response.data;
   },
@@ -411,14 +436,7 @@ export const surgeryRequestService = {
     const response = await api.get<SurgeryRequestDetail>(
       `/surgery-requests/one?id=${requestId}`,
     );
-    const data = response.data as SurgeryRequestDetail & {
-      cidCode?: string | null;
-    };
-    // Backend serializa o campo como cidCode; normaliza para cidId esperado pelos componentes
-    if (data.cidCode != null && !data.cidId) {
-      data.cidId = data.cidCode;
-    }
-    return data;
+    return response.data;
   },
 
   // ── Criação e edição básica ────────────────────────────────────────────────

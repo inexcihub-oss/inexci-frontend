@@ -8,6 +8,7 @@ vi.mock("@/lib/api", () => ({
     delete: vi.fn(),
     put: vi.fn(),
   },
+  FETCH_ALL_TAKE: 1000,
 }));
 
 import api from "@/lib/api";
@@ -34,7 +35,9 @@ describe("patientService", () => {
 
       const result = await patientService.getAll();
 
-      expect(api.get).toHaveBeenCalledWith("/patients");
+      expect(api.get).toHaveBeenCalledWith("/patients", {
+        params: { take: 1000 },
+      });
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
       expect(result[0].id).toBe("1");
@@ -42,31 +45,66 @@ describe("patientService", () => {
     });
   });
 
-  describe("getById", () => {
-    it("deve buscar paciente via GET /patients com params e não buscar todos", async () => {
-      const mockData = [
-        {
-          id: "abc-123",
-          name: "Paciente Específico",
-          createdAt: "2024-01-01",
-          updatedAt: "2024-01-01",
+  describe("list", () => {
+    it("envia skip/take/search e devolve records + total", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: {
+          total: 42,
+          records: [
+            { id: "1", name: "Ana", createdAt: "2024-01-01", updatedAt: "2024-01-01" },
+          ],
         },
-      ];
+      });
+
+      const result = await patientService.list({
+        skip: 20,
+        take: 20,
+        search: "ana",
+      });
+
+      expect(api.get).toHaveBeenCalledWith("/patients", {
+        params: { skip: 20, take: 20, search: "ana" },
+      });
+      expect(result.total).toBe(42);
+      expect(result.records[0].name).toBe("Ana");
+    });
+
+    it("omite o parâmetro search quando vazio", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { total: 0, records: [] },
+      });
+
+      await patientService.list({ skip: 0, take: 20 });
+
+      expect(api.get).toHaveBeenCalledWith("/patients", {
+        params: { skip: 0, take: 20 },
+      });
+    });
+  });
+
+  describe("getById", () => {
+    it("deve buscar o paciente via GET /patients/:id", async () => {
+      const mockData = {
+        id: "abc-123",
+        name: "Paciente Específico",
+        createdAt: "2024-01-01",
+        updatedAt: "2024-01-01",
+      };
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: mockData,
       });
 
       const result = await patientService.getById("abc-123");
 
-      expect(api.get).toHaveBeenCalledWith("/patients");
+      expect(api.get).toHaveBeenCalledWith("/patients/abc-123");
       expect(result).not.toBeNull();
       expect(result?.id).toBe("abc-123");
     });
 
-    it("deve retornar null quando paciente não é encontrado", async () => {
-      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: [],
-      });
+    it("deve retornar null quando o paciente não é encontrado (404)", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error("Not found"),
+      );
 
       const result = await patientService.getById("inexistente");
 

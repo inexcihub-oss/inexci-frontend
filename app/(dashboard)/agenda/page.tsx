@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
@@ -9,6 +10,10 @@ import {
   SurgeryRequestListItem,
 } from "@/services/surgery-request.service";
 import Loading from "@/components/ui/Loading";
+import { AgendaExportModal } from "@/components/agenda/AgendaExportModal";
+import { AgendaDoctorFilter } from "@/components/agenda/AgendaDoctorFilter";
+import { filterAgendaByDoctors } from "@/lib/export-agenda";
+import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { cn } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -100,7 +105,7 @@ function toLocalDateKey(dateStr: string): string {
 // ─── Tipos internos ───────────────────────────────────────────────────────────
 
 type AgendaItem = SurgeryRequestListItem & { surgeryDate: string };
-type StatusFilter = 4 | 5 | 6 | null; // null = todos
+type StatusFilter = 5 | 6 | null; // null = todos
 
 /** Mapa de data → { total, statusPrioritário } para colorir o calendário */
 type DayEventMap = Map<string, { count: number; topStatus: number }>;
@@ -417,9 +422,6 @@ function MiniCalendar({
 
 export default function AgendaPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState<AgendaItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
 
   const today = new Date();
@@ -427,38 +429,68 @@ export default function AgendaPage() {
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [showMobileCalendar, setShowMobileCalendar] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
 
-  // ── Buscar cirurgias ────────────────────────────────────────────────────────
+  const { data: availableDoctors = [] } = useAvailableDoctors();
+  const showDoctorFilter = availableDoctors.length > 1;
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const { records } = await surgeryRequestService.getScheduled();
+  // ── Buscar cirurgias (TanStack Query — P10/P13) ─────────────────────────────
+  // Janela visível: mês corrente ± 7 dias para cobrir as células adjacentes do
+  // grid (item 3.5 — busca por intervalo de surgeryDate). `keepPreviousData`
+  // evita flash de vazio ao navegar entre meses.
+  const { data, isFetching, isError, refetch } = useQuery({
+    queryKey: ["surgery-requests", "agenda", calYear, calMonth],
+    queryFn: () => {
+      const from = new Date(calYear, calMonth, 1);
+      from.setDate(from.getDate() - 7);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(calYear, calMonth + 1, 0);
+      to.setDate(to.getDate() + 7);
+      to.setHours(23, 59, 59, 999);
+      return surgeryRequestService.getAgenda(
+        from.toISOString(),
+        to.toISOString(),
+      );
+    },
+    placeholderData: keepPreviousData,
+  });
 
-      // Filtra apenas os que possuem surgery_date preenchida
-      const agenda: AgendaItem[] = records
-        .filter(
-          (r): r is AgendaItem =>
-            typeof r.surgeryDate === "string" && r.surgeryDate.length > 0,
-        )
-        .sort(
-          (a, b) =>
-            new Date(a.surgeryDate).getTime() -
-            new Date(b.surgeryDate).getTime(),
-        );
+  const loading = isFetching;
+  const error = isError
+    ? "Não foi possível carregar a agenda. Tente novamente."
+    : null;
 
-      setItems(agenda);
-    } catch {
-      setError("Não foi possível carregar a agenda. Tente novamente.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const items = useMemo<AgendaItem[]>(() => {
+    const records = data?.records ?? [];
+    return records
+      .filter(
+        (r): r is AgendaItem =>
+          typeof r.surgeryDate === "string" && r.surgeryDate.length > 0,
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.surgeryDate).getTime() - new Date(b.surgeryDate).getTime(),
+      );
+  }, [data]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const itemsByDoctor = useMemo(
+    () => filterAgendaByDoctors(items, selectedDoctorIds),
+    [items, selectedDoctorIds],
+  );
+
+  const countByDoctorId = useMemo(() => {
+    const counts: Record<string, number> = {};
+    items.forEach((item) => {
+      const doctorId = item.doctor?.id;
+      if (!doctorId) return;
+      counts[doctorId] = (counts[doctorId] ?? 0) + 1;
+    });
+    return counts;
+  }, [items]);
+
+  const hasActiveFilters =
+    statusFilter !== null || selectedDay !== null || selectedDoctorIds.length > 0;
 
   // ── Navegar para o mês corrente ao limpar filtro de dia ────────────────────
   const handleSelectDay = useCallback((day: string | null) => {
@@ -472,10 +504,10 @@ export default function AgendaPage() {
 
   // ── Derivados ──────────────────────────────────────────────────────────────
 
-  /** Mapa data→{count, topStatus} considerando TODOS os itens (ignora filtro de status) */
+  /** Mapa data→{count, topStatus} considerando filtros de médico (ignora status/dia) */
   const dayEventMap = useMemo<DayEventMap>(() => {
     const map: DayEventMap = new Map();
-    items.forEach((i) => {
+    itemsByDoctor.forEach((i) => {
       const key = toLocalDateKey(i.surgeryDate);
       const displayStatus = DISPLAY_STATUS(i.status);
       const prev = map.get(key);
@@ -492,11 +524,11 @@ export default function AgendaPage() {
       });
     });
     return map;
-  }, [items]);
+  }, [itemsByDoctor]);
 
-  /** Itens filtrados por status e por dia */
+  /** Itens filtrados por status, médico e por dia */
   const filteredItems = useMemo(() => {
-    let result = items;
+    let result = itemsByDoctor;
     if (statusFilter !== null)
       result = result.filter((i) => DISPLAY_STATUS(i.status) === statusFilter);
     if (selectedDay)
@@ -504,7 +536,7 @@ export default function AgendaPage() {
         (i) => toLocalDateKey(i.surgeryDate) === selectedDay,
       );
     return result;
-  }, [items, statusFilter, selectedDay]);
+  }, [itemsByDoctor, statusFilter, selectedDay]);
 
   /** Agrupa por data local */
   const groupedByDate = useMemo(() => {
@@ -532,6 +564,20 @@ export default function AgendaPage() {
     } else setCalMonth((m) => m + 1);
   }, [calMonth]);
 
+  const exportDefaults = useMemo(() => {
+    if (selectedDay) {
+      return {
+        from: selectedDay,
+        to: selectedDay,
+      };
+    }
+
+    const from = `${calYear}-${(calMonth + 1).toString().padStart(2, "0")}-01`;
+    const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
+    const to = `${calYear}-${(calMonth + 1).toString().padStart(2, "0")}-${lastDay.toString().padStart(2, "0")}`;
+    return { from, to };
+  }, [selectedDay, calYear, calMonth]);
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -549,27 +595,41 @@ export default function AgendaPage() {
               />
               <h1 className="text-lg font-bold text-neutral-900">Agenda</h1>
             </div>
-            <button
-              onClick={load}
-              disabled={loading}
-              className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-800 transition-colors disabled:opacity-40"
-              title="Atualizar"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className={loading ? "animate-spin" : ""}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsExportOpen(true)}
+                className="flex items-center gap-1.5 h-9 px-3 py-1.5 border border-neutral-100 rounded-xl bg-white hover:bg-neutral-50 transition-colors"
               >
-                <polyline points="23 4 23 10 17 10" />
-                <polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
-              Atualizar
-            </button>
+                <Image
+                  src="/icons/download.svg"
+                  alt="Exportar"
+                  width={16}
+                  height={16}
+                />
+                <span className="text-xs sm:text-sm text-black">Exportar</span>
+              </button>
+              <button
+                onClick={() => refetch()}
+                disabled={loading}
+                className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-800 transition-colors disabled:opacity-40"
+                title="Atualizar"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className={loading ? "animate-spin" : ""}
+                >
+                  <polyline points="23 4 23 10 17 10" />
+                  <polyline points="1 20 1 14 7 14" />
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Atualizar
+              </button>
+            </div>
           </div>
 
           {/* Filtros de status */}
@@ -584,10 +644,10 @@ export default function AgendaPage() {
               )}
             >
               Todos
-              <span className="ml-1.5 opacity-70">{items.length}</span>
+              <span className="ml-1.5 opacity-70">{itemsByDoctor.length}</span>
             </button>
             {([5, 6] as const).map((s) => {
-              const count = items.filter(
+              const count = itemsByDoctor.filter(
                 (i) => DISPLAY_STATUS(i.status) === s,
               ).length;
               const cfg = STATUS_CONFIG[s];
@@ -606,6 +666,15 @@ export default function AgendaPage() {
               );
             })}
           </div>
+
+          {showDoctorFilter && (
+            <AgendaDoctorFilter
+              doctors={availableDoctors}
+              selectedDoctorIds={selectedDoctorIds}
+              onChange={setSelectedDoctorIds}
+              countByDoctorId={countByDoctorId}
+            />
+          )}
         </div>
 
         {/* Corpo principal */}
@@ -631,7 +700,7 @@ export default function AgendaPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-neutral-600">Total</span>
                   <span className="text-sm font-semibold text-neutral-900">
-                    {items.length}
+                    {itemsByDoctor.length}
                   </span>
                 </div>
                 {([5, 6] as const).map((s) => (
@@ -649,7 +718,7 @@ export default function AgendaPage() {
                     </div>
                     <span className="text-sm font-semibold text-neutral-700">
                       {
-                        items.filter((i) => DISPLAY_STATUS(i.status) === s)
+                        itemsByDoctor.filter((i) => DISPLAY_STATUS(i.status) === s)
                           .length
                       }
                     </span>
@@ -732,7 +801,7 @@ export default function AgendaPage() {
               <div className="flex flex-col items-center justify-center h-64 gap-3 px-4">
                 <p className="text-sm text-red-500 text-center">{error}</p>
                 <button
-                  onClick={load}
+                  onClick={() => refetch()}
                   className="text-sm text-teal-600 hover:text-teal-800 underline"
                 >
                   Tentar novamente
@@ -754,13 +823,16 @@ export default function AgendaPage() {
                     ? `Nenhuma cirurgia encontrada para ${formatDateLong(selectedDay)}.`
                     : statusFilter !== null
                       ? `Nenhuma cirurgia com status "${STATUS_CONFIG[statusFilter].label}" no momento.`
-                      : "Nenhuma cirurgia agendada no momento."}
+                      : selectedDoctorIds.length > 0
+                        ? "Nenhuma cirurgia encontrada para os médicos selecionados."
+                        : "Nenhuma cirurgia agendada no momento."}
                 </p>
-                {(selectedDay || statusFilter !== null) && (
+                {hasActiveFilters && (
                   <button
                     onClick={() => {
                       setSelectedDay(null);
                       setStatusFilter(null);
+                      setSelectedDoctorIds([]);
                     }}
                     className="text-xs text-teal-600 hover:text-teal-800 underline"
                   >
@@ -855,6 +927,16 @@ export default function AgendaPage() {
           </div>
         </div>
       </div>
+
+      <AgendaExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        defaultFrom={exportDefaults.from}
+        defaultTo={exportDefaults.to}
+        defaultStatusFilter={statusFilter}
+        availableDoctors={availableDoctors}
+        defaultDoctorIds={selectedDoctorIds}
+      />
     </PageContainer>
   );
 }
