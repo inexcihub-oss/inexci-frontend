@@ -30,10 +30,12 @@ export function CloseRequestModal({
   onSuccess,
 }: CloseRequestModalProps) {
   const [isClosing, setIsClosing] = useState(false);
+  const [reason, setReason] = useState("");
   const { showToast } = useToast();
 
   const handleClose = () => {
     if (isClosing) return;
+    setReason("");
     onClose();
   };
 
@@ -41,8 +43,12 @@ export function CloseRequestModal({
     if (isClosing) return;
     setIsClosing(true);
     try {
-      await surgeryRequestService.close(surgeryRequestId);
+      const trimmedReason = reason.trim();
+      await surgeryRequestService.close(surgeryRequestId, {
+        reason: trimmedReason || undefined,
+      });
       showToast("Solicitação encerrada com sucesso", "success");
+      setReason("");
       onSuccess();
     } catch {
       showToast("Erro ao encerrar solicitação", "error");
@@ -82,11 +88,24 @@ export function CloseRequestModal({
         </div>
 
         {/* Body */}
-        <div className="px-4 py-4 md:px-6 md:py-6">
+        <div className="px-4 py-4 md:px-6 md:py-6 space-y-4">
           <p className="text-sm md:text-base text-neutral-900 leading-relaxed">
             Essa solicitação será encerrada e movida para o status
             &ldquo;Encerrada&rdquo; como incompleta.
           </p>
+          <div>
+            <label className="ds-label block mb-1.5">
+              Motivo do encerramento (opcional)
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Descreva o motivo do encerramento para consulta futura..."
+              rows={4}
+              disabled={isClosing}
+              className="ds-textarea"
+            />
+          </div>
         </div>
 
         {/* Footer */}

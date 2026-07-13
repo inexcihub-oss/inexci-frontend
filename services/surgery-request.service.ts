@@ -355,6 +355,8 @@ export interface SurgeryRequestDetail {
   dateOptions?: string[];
   selectedDateIndex?: number | null;
   surgeryPerformedAt: string | null;
+  closedAt: string | null;
+  closedReason: string | null;
   [key: string]: unknown;
 }
 

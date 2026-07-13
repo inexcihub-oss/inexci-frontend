@@ -245,6 +245,36 @@ export function InformacoesGeraisTab({
 
   return (
     <div className="space-y-3 md:space-y-4">
+      {/* Motivo do encerramento (status 9 - Encerrada) */}
+      {statusNum === 9 && solicitacao.closedReason && (
+        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3.5 md:px-6 md:py-4">
+          <div className="flex items-center gap-2 mb-1.5">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="flex-shrink-0"
+            >
+              <circle cx="12" cy="12" r="9" stroke="#dc2626" strokeWidth="1.5" />
+              <path
+                d="M12 8V13"
+                stroke="#dc2626"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <circle cx="12" cy="16" r="0.75" fill="#dc2626" />
+            </svg>
+            <h3 className="text-xs md:text-sm font-semibold text-red-700 uppercase tracking-wide">
+              Motivo do Encerramento
+            </h3>
+          </div>
+          <p className="text-sm md:text-base font-medium text-red-900 leading-relaxed whitespace-pre-wrap">
+            {solicitacao.closedReason}
+          </p>
+        </div>
+      )}
+
       {/* Agendamento (status 4 ou 5) — aparece antes dos dados do procedimento */}
       {(statusNum === 4 || statusNum === 5) && (
         <SchedulingSection
