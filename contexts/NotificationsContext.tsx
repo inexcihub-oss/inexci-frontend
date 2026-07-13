@@ -6,18 +6,47 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { io, Socket } from "socket.io-client";
 import { Notification } from "@/services/notification.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAccessToken } from "@/lib/auth-token";
+import { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
+import {
+  BackgroundDocumentExtractionActive,
+  SC_FROM_DOCUMENT_EXTRACTION_ACTIVE_KEY,
+  SC_FROM_DOCUMENT_EXTRACTION_PENDING_ERROR_KEY,
+  SC_FROM_DOCUMENT_EXTRACTION_PENDING_KEY,
+  getScFromDocumentStorage,
+  removeScFromDocumentStorage,
+  setScFromDocumentStorage,
+} from "@/lib/sc-from-document-background";
+
+export interface SurgeryRequestChangedPayload {
+  surgeryRequestId?: string;
+  action?: "created" | "updated" | "status-updated";
+}
+
+export interface DocumentExtractionStatusPayload {
+  jobId?: string;
+  status: "processing" | "done" | "error";
+  result?: unknown;
+  message?: string;
+}
 
 interface NotificationsContextValue {
   unreadCount: number;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
   latest: Notification[];
   setLatest: React.Dispatch<React.SetStateAction<Notification[]>>;
+  onSurgeryRequestChanged: (
+    handler: (payload: SurgeryRequestChangedPayload) => void,
+  ) => () => void;
+  onDocumentExtractionStatus: (
+    handler: (payload: DocumentExtractionStatusPayload) => void,
+  ) => () => void;
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(
@@ -42,11 +71,120 @@ export function NotificationsProvider({
   children: React.ReactNode;
 }) {
   const { user } = useAuth();
+  const userId = user?.id;
   const [unreadCount, setUnreadCount] = useState(0);
   const [latest, setLatest] = useState<Notification[]>([]);
+  const surgeryRequestListenersRef = useRef(
+    new Set<(payload: SurgeryRequestChangedPayload) => void>(),
+  );
+  const extractionStatusListenersRef = useRef(
+    new Set<(payload: DocumentExtractionStatusPayload) => void>(),
+  );
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioUnlockedRef = useRef(false);
+
+  const onSurgeryRequestChanged = useCallback(
+    (handler: (payload: SurgeryRequestChangedPayload) => void) => {
+      surgeryRequestListenersRef.current.add(handler);
+      return () => {
+        surgeryRequestListenersRef.current.delete(handler);
+      };
+    },
+    [],
+  );
+
+  const onDocumentExtractionStatus = useCallback(
+    (handler: (payload: DocumentExtractionStatusPayload) => void) => {
+      extractionStatusListenersRef.current.add(handler);
+      return () => {
+        extractionStatusListenersRef.current.delete(handler);
+      };
+    },
+    [],
+  );
+
+  const playNotificationSound = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const ctx = audioContextRef.current;
+    if (!ctx || !audioUnlockedRef.current) return;
+    if (ctx.state !== "running") return;
+
+    try {
+      const first = ctx.createOscillator();
+      const firstGain = ctx.createGain();
+      first.type = "sine";
+      first.frequency.setValueAtTime(1046, ctx.currentTime);
+      firstGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      firstGain.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime + 0.01);
+      firstGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        ctx.currentTime + 0.12,
+      );
+      first.connect(firstGain);
+      firstGain.connect(ctx.destination);
+      first.start(ctx.currentTime);
+      first.stop(ctx.currentTime + 0.12);
+
+      const second = ctx.createOscillator();
+      const secondGain = ctx.createGain();
+      second.type = "sine";
+      second.frequency.setValueAtTime(1318, ctx.currentTime + 0.13);
+      secondGain.gain.setValueAtTime(0.0001, ctx.currentTime + 0.13);
+      secondGain.gain.exponentialRampToValueAtTime(
+        0.045,
+        ctx.currentTime + 0.145,
+      );
+      secondGain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        ctx.currentTime + 0.24,
+      );
+      second.connect(secondGain);
+      secondGain.connect(ctx.destination);
+      second.start(ctx.currentTime + 0.13);
+      second.stop(ctx.currentTime + 0.24);
+    } catch {
+      // Alguns navegadores podem bloquear em aba inativa.
+    }
+  }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (typeof window === "undefined") return;
+
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioContextCtor) return;
+
+    const ctx = new AudioContextCtor();
+    audioContextRef.current = ctx;
+
+    const unlock = () => {
+      if (audioUnlockedRef.current) return;
+      void ctx
+        .resume()
+        .then(() => {
+          audioUnlockedRef.current = ctx.state === "running";
+        })
+        .catch(() => {
+          audioUnlockedRef.current = false;
+        });
+    };
+
+    window.addEventListener("pointerdown", unlock, { passive: true });
+    window.addEventListener("keydown", unlock);
+
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      audioUnlockedRef.current = false;
+      audioContextRef.current = null;
+      void ctx.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!userId) {
       setUnreadCount(0);
       setLatest([]);
       return;
@@ -57,6 +195,8 @@ export function NotificationsProvider({
     if (!token) return;
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) return;
+
     const socket: Socket = io(`${apiUrl}/notifications`, {
       auth: { token },
       transports: ["websocket"],
@@ -69,16 +209,88 @@ export function NotificationsProvider({
     socket.on("notification:new", (notification: Notification) => {
       setUnreadCount((prev) => prev + 1);
       setLatest((prev) => [notification, ...prev].slice(0, 10));
+      playNotificationSound();
     });
+
+    socket.on(
+      "surgery-request:changed",
+      (payload: SurgeryRequestChangedPayload) => {
+        surgeryRequestListenersRef.current.forEach((listener) => {
+          listener(payload);
+        });
+      },
+    );
+
+    socket.on(
+      "document-extraction:status",
+      (payload: DocumentExtractionStatusPayload) => {
+        if (payload?.jobId) {
+          const active =
+            getScFromDocumentStorage<BackgroundDocumentExtractionActive>(
+              SC_FROM_DOCUMENT_EXTRACTION_ACTIVE_KEY,
+            );
+
+          if (active) {
+            try {
+              if (active.jobId === payload.jobId) {
+                if (payload.status === "done" && payload.result) {
+                  const result = payload.result as ExtractFromDocumentResponse;
+                  setScFromDocumentStorage(
+                    SC_FROM_DOCUMENT_EXTRACTION_PENDING_KEY,
+                    {
+                      ...result,
+                      originalFileName:
+                        result.originalFileName || active.fileName,
+                    },
+                  );
+                  removeScFromDocumentStorage(
+                    SC_FROM_DOCUMENT_EXTRACTION_PENDING_ERROR_KEY,
+                  );
+                }
+
+                if (payload.status === "error") {
+                  setScFromDocumentStorage(
+                    SC_FROM_DOCUMENT_EXTRACTION_PENDING_ERROR_KEY,
+                    payload.message ||
+                      "Não foi possível concluir a análise do documento.",
+                  );
+                }
+
+                if (payload.status === "done" || payload.status === "error") {
+                  removeScFromDocumentStorage(
+                    SC_FROM_DOCUMENT_EXTRACTION_ACTIVE_KEY,
+                  );
+                }
+              }
+            } catch {
+              removeScFromDocumentStorage(
+                SC_FROM_DOCUMENT_EXTRACTION_ACTIVE_KEY,
+              );
+            }
+          }
+        }
+
+        extractionStatusListenersRef.current.forEach((listener) => {
+          listener(payload);
+        });
+      },
+    );
 
     return () => {
       socket.disconnect();
     };
-  }, [user]);
+  }, [playNotificationSound, userId]);
 
   const value = useMemo<NotificationsContextValue>(
-    () => ({ unreadCount, setUnreadCount, latest, setLatest }),
-    [unreadCount, latest],
+    () => ({
+      unreadCount,
+      setUnreadCount,
+      latest,
+      setLatest,
+      onSurgeryRequestChanged,
+      onDocumentExtractionStatus,
+    }),
+    [onDocumentExtractionStatus, onSurgeryRequestChanged, unreadCount, latest],
   );
 
   return (
@@ -106,6 +318,8 @@ const inertContext: NotificationsContextValue = {
   setUnreadCount: noop as React.Dispatch<React.SetStateAction<number>>,
   latest: [],
   setLatest: noop as React.Dispatch<React.SetStateAction<Notification[]>>,
+  onSurgeryRequestChanged: () => noop,
+  onDocumentExtractionStatus: () => noop,
 };
 
 /**

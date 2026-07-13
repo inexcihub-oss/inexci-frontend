@@ -383,4 +383,36 @@
       bottom: auto;
     }
   }
+
+  @keyframes fb-skeleton-shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .fb-skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: #e5e7eb;
+  }
+
+  .fb-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0),
+      rgba(255, 255, 255, 0.6),
+      rgba(255, 255, 255, 0)
+    );
+    animation: fb-skeleton-shimmer 1.2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fb-skeleton::after {
+      animation: none;
+    }
+  }
 }

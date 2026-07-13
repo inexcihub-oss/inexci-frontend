@@ -26,6 +26,11 @@ export interface NotificationMetadata {
   actorId?: string;
   actorName?: string;
   actorAvatarUrl?: string | null;
+  category?: string;
+  jobId?: string;
+  status?: "processing" | "done" | "error" | string;
+  documentName?: string;
+  fileName?: string;
   [key: string]: unknown;
 }
 

@@ -124,3 +124,44 @@ export function formatTimeAgo(dateInput: string | Date): string {
     return minutes === 1 ? "1 minuto atrás" : `${minutes} minutos atrás`;
   return "agora";
 }
+
+/**
+ * Converte datas vindas da API para Date de forma segura para fuso horário.
+ * Quando a string vem sem timezone (ex.: "2026-07-13T15:40:00"),
+ * assume UTC para evitar deslocamentos indevidos no cliente (ex.: +3h no Brasil).
+ */
+export function parseApiDate(dateInput: string | Date): Date {
+  if (dateInput instanceof Date) return dateInput;
+
+  const value = String(dateInput).trim();
+  if (!value) return new Date(NaN);
+
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
+  if (hasTimezone) return new Date(value);
+
+  return new Date(`${value}Z`);
+}
+
+/**
+ * Variante para labels relativas de tempo (ex.: "há 2 min").
+ * Corrige casos em que o backend salva timestamp UTC mas o cliente
+ * recebe horário "adiantado" exatamente no offset local (ex.: +3h).
+ */
+export function parseApiDateForRelative(dateInput: string | Date): Date {
+  const parsed = parseApiDate(dateInput);
+  if (Number.isNaN(parsed.getTime())) return parsed;
+
+  const now = Date.now();
+  const diff = parsed.getTime() - now;
+  if (diff <= 0) return parsed;
+
+  const offsetMs = new Date().getTimezoneOffset() * 60 * 1000;
+  const skewMs = Math.abs(offsetMs);
+  const toleranceMs = 30 * 1000;
+
+  if (Math.abs(diff - skewMs) <= toleranceMs) {
+    return new Date(parsed.getTime() + offsetMs);
+  }
+
+  return parsed;
+}

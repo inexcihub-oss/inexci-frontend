@@ -12,6 +12,7 @@ import {
   FileText,
   AlertTriangle,
   FileWarning,
+  FileSearch,
   User,
   Clock,
   Info,
@@ -23,12 +24,14 @@ import {
   Notification,
 } from "@/services/notification.service";
 import { cn } from "@/lib/utils";
+import { parseApiDateForRelative } from "@/lib/formatters";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import PageContainer from "@/components/PageContainer";
 import Button from "@/components/ui/Button";
 import NotificationActorAvatar from "@/components/notifications/NotificationActorAvatar";
+import { clearScFromDocumentStorage } from "@/lib/sc-from-document-background";
 
 const NOTIFICATION_TYPES = [
   { value: "", label: "Todos os tipos" },
@@ -93,6 +96,31 @@ const getConfig = (type: string): NotificationConfig =>
 const getTypeLabel = (type: string) =>
   NOTIFICATION_TYPES.find((t) => t.value === type)?.label ?? type;
 
+const isDocumentExtractionNotification = (notification: Notification) => {
+  const metadata = notification.metadata;
+  if (metadata && typeof metadata === "object") {
+    const category =
+      typeof metadata.category === "string" ? metadata.category : undefined;
+    if (category === "document_extraction") return true;
+  }
+
+  return /análise de documento/i.test(notification.title || "");
+};
+
+const getDocumentName = (notification: Notification): string | null => {
+  const metadata = notification.metadata;
+  if (!metadata || typeof metadata !== "object") return null;
+
+  const documentName =
+    typeof metadata.documentName === "string"
+      ? metadata.documentName
+      : typeof metadata.fileName === "string"
+        ? metadata.fileName
+        : null;
+
+  return documentName?.trim() || null;
+};
+
 const getActorMetadata = (notification: Notification) => {
   const metadata = notification.metadata;
   if (!metadata || typeof metadata !== "object") return null;
@@ -146,11 +174,18 @@ export default function NotificacoesPage() {
     loadNotifications();
   }, [loadNotifications]);
 
-  const handleMarkAsRead = async (notificationId: string) => {
+  const clearDocumentExtractionCacheIfNeeded = (notification: Notification) => {
+    if (isDocumentExtractionNotification(notification)) {
+      clearScFromDocumentStorage();
+    }
+  };
+
+  const handleMarkAsRead = async (notification: Notification) => {
     try {
-      await notificationService.markAsRead(notificationId);
+      await notificationService.markAsRead(notification.id);
+      clearDocumentExtractionCacheIfNeeded(notification);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
+        prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
@@ -161,6 +196,9 @@ export default function NotificacoesPage() {
   const handleMarkAllAsRead = async () => {
     try {
       await notificationService.markAllAsRead();
+      if (notifications.some(isDocumentExtractionNotification)) {
+        clearScFromDocumentStorage();
+      }
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
@@ -168,13 +206,14 @@ export default function NotificacoesPage() {
     }
   };
 
-  const handleDelete = async (notificationId: string) => {
+  const handleDelete = async (notification: Notification) => {
     try {
-      await notificationService.deleteNotification(notificationId);
+      await notificationService.deleteNotification(notification.id);
+      clearDocumentExtractionCacheIfNeeded(notification);
       const wasUnread = notifications.find(
-        (n) => n.id === notificationId && !n.read,
+        (n) => n.id === notification.id && !n.read,
       );
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
       if (wasUnread) setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       logger.error("Erro ao remover notificação:", error);
@@ -269,7 +308,13 @@ export default function NotificacoesPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {notifications.map((notification) => {
-              const config = getConfig(notification.type);
+              const config = isDocumentExtractionNotification(notification)
+                ? {
+                    icon: FileSearch,
+                    bg: "bg-cyan-50",
+                    text: "text-cyan-700",
+                  }
+                : getConfig(notification.type);
               const Icon = config.icon;
               const actor = getActorMetadata(notification);
               return (
@@ -310,8 +355,9 @@ export default function NotificacoesPage() {
                       <Link
                         href={notification.link}
                         onClick={() => {
+                          clearDocumentExtractionCacheIfNeeded(notification);
                           if (!notification.read)
-                            handleMarkAsRead(notification.id);
+                            handleMarkAsRead(notification);
                         }}
                         className="block"
                       >
@@ -328,6 +374,11 @@ export default function NotificacoesPage() {
                         <p className="ds-caption mt-0.5 line-clamp-2">
                           {notification.message}
                         </p>
+                        {getDocumentName(notification) && (
+                          <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                            Documento: {getDocumentName(notification)}
+                          </p>
+                        )}
                       </Link>
                     ) : (
                       <>
@@ -344,6 +395,11 @@ export default function NotificacoesPage() {
                         <p className="ds-caption mt-0.5 line-clamp-2">
                           {notification.message}
                         </p>
+                        {getDocumentName(notification) && (
+                          <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                            Documento: {getDocumentName(notification)}
+                          </p>
+                        )}
                       </>
                     )}
 
@@ -355,14 +411,19 @@ export default function NotificacoesPage() {
                           config.text,
                         )}
                       >
-                        {getTypeLabel(notification.type)}
+                        {isDocumentExtractionNotification(notification)
+                          ? "Análise de documento"
+                          : getTypeLabel(notification.type)}
                       </span>
                       <span className="text-gray-300 text-[10px]">·</span>
                       <span className="text-[11px] text-gray-400 tabular-nums">
-                        {formatDistanceToNow(new Date(notification.createdAt), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
+                        {formatDistanceToNow(
+                          parseApiDateForRelative(notification.createdAt),
+                          {
+                            addSuffix: true,
+                            locale: ptBR,
+                          },
+                        )}
                       </span>
                     </div>
                   </div>
@@ -371,7 +432,7 @@ export default function NotificacoesPage() {
                   <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     {!notification.read && (
                       <button
-                        onClick={() => handleMarkAsRead(notification.id)}
+                        onClick={() => handleMarkAsRead(notification)}
                         className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
                         title="Marcar como lida"
                       >
@@ -379,7 +440,7 @@ export default function NotificacoesPage() {
                       </button>
                     )}
                     <button
-                      onClick={() => handleDelete(notification.id)}
+                      onClick={() => handleDelete(notification)}
                       className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                       title="Remover"
                     >

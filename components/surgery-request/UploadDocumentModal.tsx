@@ -1,13 +1,21 @@
 "use client";
 
 import { useState, useRef, DragEvent, ChangeEvent, useEffect } from "react";
-import { Upload, FileText, X, Loader2, AlertCircle } from "lucide-react";
+import { Upload, FileText, X, Loader2, AlertCircle, Info } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import { surgeryRequestService } from "@/services/surgery-request.service";
-import { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
+import {
+  ExtractFromDocumentResponse,
+  ExtractFromDocumentJobStatusResponse,
+} from "@/types/surgery-request.types";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { prefetchScFromDocumentCatalogs } from "@/lib/sc-from-document-prefetch";
+import {
+  DocumentExtractionStatusPayload,
+  useNotificationsContext,
+} from "@/contexts/NotificationsContext";
+import { BackgroundDocumentExtractionActive } from "@/lib/sc-from-document-background";
 
 const ACCEPTED_MIME = [
   "application/pdf",
@@ -17,6 +25,12 @@ const ACCEPTED_MIME = [
   "image/webp",
 ];
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const POLLING_TIMEOUT_MS = 90000;
+const USER_CANCELLED_SIGNAL = "__DOC_EXTRACTION_CANCELLED_BY_USER__";
+const DEFAULT_ANALYSIS_ERROR_MESSAGE =
+  "Não conseguimos concluir a análise do documento. Revise a qualidade do arquivo e tente novamente.";
+const TIMEOUT_ERROR_MESSAGE =
+  "A análise está demorando mais que o esperado. Feche este modal e tente novamente com o mesmo arquivo.";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -28,18 +42,32 @@ interface UploadDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (response: ExtractFromDocumentResponse) => void;
+  onBackgroundProcessingStart?: (
+    data: BackgroundDocumentExtractionActive,
+  ) => void;
+  onBackgroundProcessingReady?: (response: ExtractFromDocumentResponse) => void;
+  onBackgroundProcessingError?: (message: string) => void;
 }
 
 export function UploadDocumentModal({
   isOpen,
   onClose,
   onSuccess,
+  onBackgroundProcessingStart,
+  onBackgroundProcessingReady,
+  onBackgroundProcessingError,
 }: UploadDocumentModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { onDocumentExtractionStatus } = useNotificationsContext();
   const inputRef = useRef<HTMLInputElement>(null);
+  const extractionCancelledRef = useRef(false);
+  const abortPendingWaitRef = useRef<(() => void) | null>(null);
+  const keepTrackingInBackgroundRef = useRef(false);
+  const queuedBackgroundJobRef =
+    useRef<BackgroundDocumentExtractionActive | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -50,10 +78,23 @@ export function UploadDocumentModal({
     setFile(null);
     setError(null);
     setLoading(false);
+    extractionCancelledRef.current = true;
+    abortPendingWaitRef.current?.();
+    abortPendingWaitRef.current = null;
+    keepTrackingInBackgroundRef.current = false;
+    queuedBackgroundJobRef.current = null;
   };
 
   const handleClose = () => {
-    if (loading) return;
+    if (loading) {
+      keepTrackingInBackgroundRef.current = true;
+      if (queuedBackgroundJobRef.current) {
+        onBackgroundProcessingStart?.(queuedBackgroundJobRef.current);
+      }
+      onClose();
+      return;
+    }
+
     resetState();
     onClose();
   };
@@ -97,24 +138,131 @@ export function UploadDocumentModal({
     if (!file) return;
     setLoading(true);
     setError(null);
+    extractionCancelledRef.current = false;
+
     try {
-      const [response] = await Promise.all([
-        surgeryRequestService.extractFromDocument(file),
-        prefetchScFromDocumentCatalogs(),
-      ]);
+      const queued = await surgeryRequestService.extractFromDocument(file);
+      queuedBackgroundJobRef.current = {
+        jobId: queued.jobId,
+        fileName: file.name,
+        startedAt: Date.now(),
+      };
+      void prefetchScFromDocumentCatalogs();
+
+      const response = await waitForExtractionResult(queued.jobId);
+
+      if (keepTrackingInBackgroundRef.current) {
+        const responseWithFile = { ...response, originalFileName: file.name };
+        resetState();
+        onBackgroundProcessingReady?.(responseWithFile);
+        return;
+      }
+
       resetState();
       onSuccess({ ...response, originalFileName: file.name });
     } catch (err: unknown) {
-      setError(
-        getApiErrorMessage(
-          err,
-          "Não foi possível analisar o documento. Verifique a qualidade do arquivo e tente novamente.",
-        ),
-      );
+      if (err instanceof Error && err.message === USER_CANCELLED_SIGNAL) {
+        return;
+      }
+
+      if (keepTrackingInBackgroundRef.current) {
+        const message = getApiErrorMessage(err, DEFAULT_ANALYSIS_ERROR_MESSAGE);
+        resetState();
+        onBackgroundProcessingError?.(message);
+        return;
+      }
+
+      setError(getApiErrorMessage(err, DEFAULT_ANALYSIS_ERROR_MESSAGE));
     } finally {
-      setLoading(false);
+      if (!extractionCancelledRef.current) {
+        setLoading(false);
+      }
     }
   };
+
+  const resolveTerminalStatus = (
+    status: ExtractFromDocumentJobStatusResponse,
+  ): ExtractFromDocumentResponse | null => {
+    if (status.status === "done") return status.result;
+    if (status.status === "error") {
+      throw new Error(
+        status.message ||
+          "Não foi possível processar o documento neste momento. Tente novamente.",
+      );
+    }
+    return null;
+  };
+
+  const waitForExtractionResult = async (
+    jobId: string,
+  ): Promise<ExtractFromDocumentResponse> => {
+    const firstStatus =
+      await surgeryRequestService.getExtractFromDocumentStatus(jobId);
+    const firstResult = resolveTerminalStatus(firstStatus);
+    if (firstResult) return firstResult;
+
+    return await new Promise<ExtractFromDocumentResponse>((resolve, reject) => {
+      let unsubscribeStatus = () => {};
+
+      const finalize = () => {
+        unsubscribeStatus();
+        clearTimeout(timeoutId);
+        abortPendingWaitRef.current = null;
+      };
+
+      abortPendingWaitRef.current = () => {
+        finalize();
+        reject(new Error(USER_CANCELLED_SIGNAL));
+      };
+
+      const handleStatusEvent = (payload: DocumentExtractionStatusPayload) => {
+        if (payload?.jobId !== jobId) return;
+
+        try {
+          const result = resolveTerminalStatus(
+            payload as ExtractFromDocumentJobStatusResponse,
+          );
+          if (result) {
+            finalize();
+            resolve(result);
+          }
+        } catch (err) {
+          finalize();
+          reject(err);
+        }
+      };
+
+      const timeoutId = setTimeout(() => {
+        finalize();
+        reject(new Error(TIMEOUT_ERROR_MESSAGE));
+      }, POLLING_TIMEOUT_MS);
+
+      unsubscribeStatus = onDocumentExtractionStatus(handleStatusEvent);
+
+      void (async () => {
+        try {
+          const liveStatus =
+            await surgeryRequestService.getExtractFromDocumentStatus(jobId);
+          const liveResult = resolveTerminalStatus(liveStatus);
+          if (liveResult) {
+            finalize();
+            resolve(liveResult);
+          }
+        } catch (err) {
+          finalize();
+          reject(err);
+        }
+      })();
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      extractionCancelledRef.current = true;
+      abortPendingWaitRef.current?.();
+      abortPendingWaitRef.current = null;
+    };
+  }, []);
 
   return (
     <Modal
@@ -125,8 +273,8 @@ export function UploadDocumentModal({
     >
       <div className="p-5 md:p-6 space-y-5">
         <p className="text-sm text-gray-600 leading-relaxed">
-          Envie um PDF, laudo ou imagem. A plataforma extrai os dados via IA e
-          permite que você revise antes de criar a solicitação.
+          Envie um PDF, laudo ou imagem. Vamos extrair os dados automaticamente
+          e você poderá revisar tudo antes de criar a solicitação.
         </p>
 
         {/* Área de drop */}
@@ -211,7 +359,24 @@ export function UploadDocumentModal({
         {error && (
           <div className="flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
+            <div>
+              <p className="font-medium">Não foi possível concluir a análise</p>
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+
+        {loading && (
+          <div className="flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
+            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">Análise em andamento</p>
+              <p>
+                Isso pode levar até 1-2 minutos. Se preferir, clique em Fechar
+                para continuar navegando. Quando terminar, você receberá uma
+                notificação no sininho.
+              </p>
+            </div>
           </div>
         )}
 
@@ -219,29 +384,28 @@ export function UploadDocumentModal({
         <div className="flex flex-col sm:flex-row gap-2.5 sm:justify-end">
           <Button
             type="button"
-            variant="secondary"
-            onClick={handleClose}
-            disabled={loading}
-            className="w-full sm:w-auto"
-          >
-            Cancelar
-          </Button>
-
-          <Button
-            type="button"
             variant="primary"
             onClick={handleSubmit}
             disabled={!file || loading}
-            className="w-full sm:w-auto min-w-[140px]"
+            className="order-1 sm:order-2 w-full sm:w-auto min-w-[140px]"
           >
             {loading ? (
               <span className="flex items-center gap-2 justify-center">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Analisando...
+                Analisando documento
               </span>
             ) : (
               "Analisar documento"
             )}
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleClose}
+            className="order-2 sm:order-1 w-full sm:w-auto"
+          >
+            {loading ? "Fechar" : "Cancelar"}
           </Button>
         </div>
       </div>

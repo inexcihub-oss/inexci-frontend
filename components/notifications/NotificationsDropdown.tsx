@@ -14,6 +14,8 @@ import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import { logger } from "@/lib/logger";
 import NotificationActorAvatar from "@/components/notifications/NotificationActorAvatar";
+import { parseApiDateForRelative } from "@/lib/formatters";
+import { clearScFromDocumentStorage } from "@/lib/sc-from-document-background";
 
 interface NotificationsDropdownProps {
   isCollapsed?: boolean;
@@ -50,11 +52,43 @@ export default function NotificationsDropdown({
     }
   };
 
-  const handleMarkAsRead = async (notificationId: string) => {
+  const isDocumentExtractionNotification = (notification: Notification) => {
+    const metadata = notification.metadata;
+    if (metadata && typeof metadata === "object") {
+      const category =
+        typeof metadata.category === "string" ? metadata.category : undefined;
+      if (category === "document_extraction") return true;
+    }
+
+    return /análise de documento/i.test(notification.title || "");
+  };
+
+  const getDocumentName = (notification: Notification): string | null => {
+    const metadata = notification.metadata;
+    if (!metadata || typeof metadata !== "object") return null;
+
+    const documentName =
+      typeof metadata.documentName === "string"
+        ? metadata.documentName
+        : typeof metadata.fileName === "string"
+          ? metadata.fileName
+          : null;
+
+    return documentName?.trim() || null;
+  };
+
+  const clearDocumentExtractionCacheIfNeeded = (notification: Notification) => {
+    if (isDocumentExtractionNotification(notification)) {
+      clearScFromDocumentStorage();
+    }
+  };
+
+  const handleMarkAsRead = async (notification: Notification) => {
     try {
-      await notificationService.markAsRead(notificationId);
+      await notificationService.markAsRead(notification.id);
+      clearDocumentExtractionCacheIfNeeded(notification);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
+        prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
@@ -65,6 +99,9 @@ export default function NotificationsDropdown({
   const handleMarkAllAsRead = async () => {
     try {
       await notificationService.markAllAsRead();
+      if (notifications.some(isDocumentExtractionNotification)) {
+        clearScFromDocumentStorage();
+      }
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
@@ -72,13 +109,14 @@ export default function NotificationsDropdown({
     }
   };
 
-  const handleDelete = async (notificationId: string) => {
+  const handleDelete = async (notification: Notification) => {
     try {
-      await notificationService.deleteNotification(notificationId);
+      await notificationService.deleteNotification(notification.id);
+      clearDocumentExtractionCacheIfNeeded(notification);
       const wasUnread = notifications.find(
-        (n) => n.id === notificationId && !n.read,
+        (n) => n.id === notification.id && !n.read,
       );
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
       if (wasUnread) {
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
@@ -91,7 +129,10 @@ export default function NotificationsDropdown({
     return link.replace(/\/solicitac[^\\/]*\//, "/solicitacao/");
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (notification: Notification) => {
+    if (isDocumentExtractionNotification(notification)) return "📑";
+
+    const type = notification.type;
     switch (type) {
       case "new_surgery_request":
         return "🔔";
@@ -142,9 +183,7 @@ export default function NotificationsDropdown({
       }
     }
 
-    return (
-      <span className="text-lg">{getNotificationIcon(notification.type)}</span>
-    );
+    return <span className="text-lg">{getNotificationIcon(notification)}</span>;
   };
 
   return (
@@ -220,8 +259,11 @@ export default function NotificationsDropdown({
                           <Link
                             href={normalizeNotificationLink(notification.link)}
                             onClick={() => {
+                              clearDocumentExtractionCacheIfNeeded(
+                                notification,
+                              );
                               if (!notification.read) {
-                                handleMarkAsRead(notification.id);
+                                handleMarkAsRead(notification);
                               }
                               setIsOpen(false);
                             }}
@@ -233,6 +275,11 @@ export default function NotificationsDropdown({
                             <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">
                               {notification.message}
                             </p>
+                            {getDocumentName(notification) && (
+                              <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                                Documento: {getDocumentName(notification)}
+                              </p>
+                            )}
                           </Link>
                         ) : (
                           <>
@@ -242,11 +289,16 @@ export default function NotificationsDropdown({
                             <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">
                               {notification.message}
                             </p>
+                            {getDocumentName(notification) && (
+                              <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                                Documento: {getDocumentName(notification)}
+                              </p>
+                            )}
                           </>
                         )}
                         <p className="text-xs text-gray-400 mt-1">
                           {formatDistanceToNow(
-                            new Date(notification.createdAt),
+                            parseApiDateForRelative(notification.createdAt),
                             {
                               addSuffix: true,
                               locale: ptBR,
@@ -257,7 +309,7 @@ export default function NotificationsDropdown({
                       <div className="flex gap-1">
                         {!notification.read && (
                           <button
-                            onClick={() => handleMarkAsRead(notification.id)}
+                            onClick={() => handleMarkAsRead(notification)}
                             className="p-2 text-gray-400 hover:text-primary-600 rounded-lg hover:bg-gray-100 active:scale-[0.95] transition-all"
                             title="Marcar como lida"
                           >
@@ -265,7 +317,7 @@ export default function NotificationsDropdown({
                           </button>
                         )}
                         <button
-                          onClick={() => handleDelete(notification.id)}
+                          onClick={() => handleDelete(notification)}
                           className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 active:scale-[0.95] transition-all"
                           title="Remover"
                         >

@@ -49,6 +49,7 @@ import { SolicitacaoProvider } from "@/contexts/SolicitacaoContext";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import { uploadService } from "@/services/upload.service";
+import FacebookSkeleton from "@/components/ui/FacebookSkeleton";
 
 type TabType =
   | "informacoes-gerais"
@@ -508,7 +509,11 @@ export default function SolicitacaoDetalhePage() {
 
   // Detalhe da SC via TanStack Query (P5/P10): 3 queries independentes
   // (sc/pendencies/activities) com invalidação seletiva por mutação.
-  const { data: solicitacao = null, isLoading: loading } = useQuery({
+  const {
+    data: solicitacao = null,
+    isLoading: loading,
+    isFetching,
+  } = useQuery({
     queryKey: ["surgery-request", id],
     queryFn: () => surgeryRequestService.getById(id),
     enabled: !!id,
@@ -881,10 +886,14 @@ export default function SolicitacaoDetalhePage() {
     }
   };
 
-  if (loading || !solicitacao) {
+  if (!solicitacao && (loading || isFetching)) {
+    return <FacebookSkeleton variant="details" />;
+  }
+
+  if (!solicitacao) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-gray-500">Carregando...</div>
+        <div className="text-gray-500">Solicitação não encontrada.</div>
       </div>
     );
   }

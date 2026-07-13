@@ -12,7 +12,8 @@ import {
   BillingInfo,
   ReceiptInfo,
   SchedulingInfo,
-  ExtractFromDocumentResponse,
+  ExtractFromDocumentQueuedResponse,
+  ExtractFromDocumentJobStatusResponse,
   CreateFromDocumentPayload,
   CreateFromDocumentResponse,
 } from "@/types/surgery-request.types";
@@ -883,13 +884,23 @@ export const surgeryRequestService = {
   /** Envia um arquivo para extração de dados via OCR+IA. */
   async extractFromDocument(
     file: File,
-  ): Promise<ExtractFromDocumentResponse> {
+  ): Promise<ExtractFromDocumentQueuedResponse> {
     const formData = new FormData();
     formData.append("document", file);
-    const response = await api.post<ExtractFromDocumentResponse>(
+    const response = await api.post<ExtractFromDocumentQueuedResponse>(
       "/surgery-requests/extract-from-document",
       formData,
       { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return response.data;
+  },
+
+  /** Consulta o status do job assíncrono de extração do documento. */
+  async getExtractFromDocumentStatus(
+    jobId: string,
+  ): Promise<ExtractFromDocumentJobStatusResponse> {
+    const response = await api.get<ExtractFromDocumentJobStatusResponse>(
+      `/surgery-requests/extract-from-document/${jobId}`,
     );
     return response.data;
   },

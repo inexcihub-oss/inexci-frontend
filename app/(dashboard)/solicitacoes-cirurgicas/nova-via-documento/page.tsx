@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   ArrowLeft,
@@ -40,6 +41,11 @@ import {
 import { getApiErrorMessage } from "@/lib/http-error";
 import { useToast } from "@/hooks/useToast";
 import { readScFromDocumentCatalogPrefetch } from "@/lib/sc-from-document-prefetch";
+import {
+  SC_FROM_DOCUMENT_EXTRACTION_KEY,
+  getScFromDocumentStorage,
+  removeScFromDocumentStorage,
+} from "@/lib/sc-from-document-background";
 
 // ─── Padding de fornecedor/fabricante OPME ──────────────────────────────────
 //
@@ -428,6 +434,7 @@ function EntityComboboxDeferredCreate({
 
 export default function NovaViaDocumentoPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   const [extraction, setExtraction] =
@@ -493,18 +500,30 @@ export default function NovaViaDocumentoPage() {
     },
   });
 
-  // Carrega extraction do sessionStorage
+  // Carrega extraction do localStorage com TTL
   useEffect(() => {
-    const raw = sessionStorage.getItem("sc_from_document_extraction");
-    if (!raw) {
+    const parsed =
+      getScFromDocumentStorage<ExtractFromDocumentResponse>(
+        SC_FROM_DOCUMENT_EXTRACTION_KEY,
+      ) ??
+      (() => {
+        const legacyRaw = sessionStorage.getItem(
+          SC_FROM_DOCUMENT_EXTRACTION_KEY,
+        );
+        if (!legacyRaw) return null;
+        try {
+          return JSON.parse(legacyRaw) as ExtractFromDocumentResponse;
+        } catch {
+          return null;
+        }
+      })();
+
+    if (!parsed) {
       router.replace("/solicitacoes-cirurgicas");
       return;
     }
-    try {
-      setExtraction(JSON.parse(raw) as ExtractFromDocumentResponse);
-    } catch {
-      router.replace("/solicitacoes-cirurgicas");
-    }
+
+    setExtraction(parsed);
   }, [router]);
 
   useEffect(() => {
@@ -679,8 +698,7 @@ export default function NovaViaDocumentoPage() {
         };
       }
 
-      const healthPlanNumber =
-        values.healthPlanNumber?.trim() || undefined;
+      const healthPlanNumber = values.healthPlanNumber?.trim() || undefined;
 
       const tussPayload: TussItemFromDocument[] = tussItems
         .filter((item) => item.code.trim())
@@ -740,7 +758,10 @@ export default function NovaViaDocumentoPage() {
         originalFileName: extraction.originalFileName,
       });
 
-      sessionStorage.removeItem("sc_from_document_extraction");
+      removeScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_KEY);
+      await queryClient.invalidateQueries({
+        queryKey: ["surgery-requests", "kanban"],
+      });
 
       if (result.warnings.length > 0) {
         showToast(

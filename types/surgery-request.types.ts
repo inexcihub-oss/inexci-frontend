@@ -334,6 +334,16 @@ export interface ExtractFromDocumentResponse {
   originalFileName?: string;
 }
 
+export interface ExtractFromDocumentQueuedResponse {
+  jobId: string;
+  status: "processing";
+}
+
+export type ExtractFromDocumentJobStatusResponse =
+  | { status: "processing" }
+  | { status: "done"; result: ExtractFromDocumentResponse }
+  | { status: "error"; message?: string };
+
 export interface TussItemFromDocument {
   tussCode: string;
   name?: string;

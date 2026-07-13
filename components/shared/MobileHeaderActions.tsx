@@ -16,6 +16,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn, getInitials, getAvatarColor } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseApiDateForRelative } from "@/lib/formatters";
+import { clearScFromDocumentStorage } from "@/lib/sc-from-document-background";
 
 export default function MobileHeaderActions() {
   const pathname = usePathname();
@@ -84,11 +86,43 @@ export default function MobileHeaderActions() {
     }
   };
 
-  const handleMarkAsRead = async (notificationId: string) => {
+  const isDocumentExtractionNotification = (notification: Notification) => {
+    const metadata = notification.metadata;
+    if (metadata && typeof metadata === "object") {
+      const category =
+        typeof metadata.category === "string" ? metadata.category : undefined;
+      if (category === "document_extraction") return true;
+    }
+
+    return /análise de documento/i.test(notification.title || "");
+  };
+
+  const getDocumentName = (notification: Notification): string | null => {
+    const metadata = notification.metadata;
+    if (!metadata || typeof metadata !== "object") return null;
+
+    const documentName =
+      typeof metadata.documentName === "string"
+        ? metadata.documentName
+        : typeof metadata.fileName === "string"
+          ? metadata.fileName
+          : null;
+
+    return documentName?.trim() || null;
+  };
+
+  const clearDocumentExtractionCacheIfNeeded = (notification: Notification) => {
+    if (isDocumentExtractionNotification(notification)) {
+      clearScFromDocumentStorage();
+    }
+  };
+
+  const handleMarkAsRead = async (notification: Notification) => {
     try {
-      await notificationService.markAsRead(notificationId);
+      await notificationService.markAsRead(notification.id);
+      clearDocumentExtractionCacheIfNeeded(notification);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
+        prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
@@ -99,6 +133,9 @@ export default function MobileHeaderActions() {
   const handleMarkAllAsRead = async () => {
     try {
       await notificationService.markAllAsRead();
+      if (notifications.some(isDocumentExtractionNotification)) {
+        clearScFromDocumentStorage();
+      }
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
@@ -106,20 +143,24 @@ export default function MobileHeaderActions() {
     }
   };
 
-  const handleDelete = async (notificationId: string) => {
+  const handleDelete = async (notification: Notification) => {
     try {
-      await notificationService.deleteNotification(notificationId);
+      await notificationService.deleteNotification(notification.id);
+      clearDocumentExtractionCacheIfNeeded(notification);
       const wasUnread = notifications.find(
-        (n) => n.id === notificationId && !n.read,
+        (n) => n.id === notification.id && !n.read,
       );
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
       if (wasUnread) setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       logger.error("Erro ao remover notificação:", error);
     }
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (notification: Notification) => {
+    if (isDocumentExtractionNotification(notification)) return "📑";
+
+    const type = notification.type;
     switch (type) {
       case "new_surgery_request":
         return "🔔";
@@ -211,7 +252,7 @@ export default function MobileHeaderActions() {
                         )}
                       >
                         <span className="text-base mt-0.5 shrink-0">
-                          {getNotificationIcon(notification.type)}
+                          {getNotificationIcon(notification)}
                         </span>
                         <div className="flex-1 min-w-0">
                           <p
@@ -224,9 +265,14 @@ export default function MobileHeaderActions() {
                           >
                             {notification.message}
                           </p>
+                          {getDocumentName(notification) && (
+                            <p className="text-[11px] text-neutral-500 mt-0.5 truncate">
+                              Documento: {getDocumentName(notification)}
+                            </p>
+                          )}
                           <p className="text-[11px] text-neutral-400 mt-0.5">
                             {formatDistanceToNow(
-                              new Date(notification.createdAt),
+                              parseApiDateForRelative(notification.createdAt),
                               {
                                 addSuffix: true,
                                 locale: ptBR,
@@ -237,7 +283,7 @@ export default function MobileHeaderActions() {
                         <div className="flex items-center gap-0.5 shrink-0">
                           {!notification.read && (
                             <button
-                              onClick={() => handleMarkAsRead(notification.id)}
+                              onClick={() => handleMarkAsRead(notification)}
                               className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-primary-50 transition-colors"
                               title="Marcar como lida"
                             >
@@ -245,7 +291,7 @@ export default function MobileHeaderActions() {
                             </button>
                           )}
                           <button
-                            onClick={() => handleDelete(notification.id)}
+                            onClick={() => handleDelete(notification)}
                             className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors"
                             title="Remover"
                           >

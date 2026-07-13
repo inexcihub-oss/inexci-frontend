@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { exportToCsv, exportToPdf } from "@/lib/export-surgery-requests";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { SurgeryRequestList } from "@/components/procedures/SurgeryRequestList";
@@ -27,16 +27,24 @@ import {
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useDebounce } from "@/hooks";
 import { SearchInput } from "@/components/ui";
+import FacebookSkeleton from "@/components/ui/FacebookSkeleton";
 import Image from "next/image";
 import { NewSurgeryRequestButton } from "@/components/billing/NewSurgeryRequestButton";
 import PageContainer from "@/components/PageContainer";
 import { getInitials, includesIgnoreCase } from "@/lib/utils";
 import { formatDateBR, getLatestActivityMs } from "@/lib/formatters";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotificationsContext } from "@/contexts/NotificationsContext";
 import { availableDoctorsService } from "@/services/available-doctors.service";
 import { NoActiveDoctorModal } from "@/components/surgery-request/NoActiveDoctorModal";
 import { UploadDocumentModal } from "@/components/surgery-request/UploadDocumentModal";
 import { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
+import {
+  SC_FROM_DOCUMENT_EXTRACTION_KEY,
+  setScFromDocumentStorage,
+} from "@/lib/sc-from-document-background";
 
 const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "pendente", title: "Pendente", status: "Pendente", cards: [] },
@@ -60,8 +68,11 @@ const KANBAN_QUERY_KEY = ["surgery-requests", "kanban"] as const;
 
 export default function ProcedimentosCirurgicos() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const { onSurgeryRequestChanged } = useNotificationsContext();
+  const userId = user?.id;
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
   const [isNoActiveDoctorModalOpen, setIsNoActiveDoctorModalOpen] =
@@ -75,6 +86,7 @@ export default function ProcedimentosCirurgicos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isUploadDocumentOpen, setIsUploadDocumentOpen] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
   const exportRef = useRef<HTMLDivElement>(null);
   const { data: availableDoctorsData = [] } = useAvailableDoctors();
   const availableDoctors = availableDoctorsData.map((d) => ({
@@ -83,6 +95,7 @@ export default function ProcedimentosCirurgicos() {
   }));
 
   const debouncedSearch = useDebounce(searchTerm, 300);
+  const docExtractionJobId = searchParams.get("docExtractionJobId");
 
   const hasActiveStatus = (status?: string) =>
     String(status ?? "").toLowerCase() === "active";
@@ -119,14 +132,64 @@ export default function ProcedimentosCirurgicos() {
   const handleUploadDocumentSuccess = useCallback(
     (response: ExtractFromDocumentResponse) => {
       setIsUploadDocumentOpen(false);
-      sessionStorage.setItem(
-        "sc_from_document_extraction",
-        JSON.stringify(response),
-      );
+      setScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_KEY, response);
       router.push("/solicitacoes-cirurgicas/nova-via-documento");
     },
     [router],
   );
+
+  useEffect(() => {
+    if (!docExtractionJobId) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const status =
+          await surgeryRequestService.getExtractFromDocumentStatus(
+            docExtractionJobId,
+          );
+
+        if (cancelled) return;
+
+        if (status.status === "done") {
+          setScFromDocumentStorage(
+            SC_FROM_DOCUMENT_EXTRACTION_KEY,
+            status.result,
+          );
+          router.replace("/solicitacoes-cirurgicas/nova-via-documento");
+          return;
+        }
+
+        if (status.status === "error") {
+          showToast(
+            status.message ||
+              "Não foi possível concluir a análise do documento. Tente novamente.",
+            "error",
+          );
+          router.replace("/solicitacoes-cirurgicas");
+          return;
+        }
+
+        showToast(
+          "A análise do documento ainda está em andamento. Você receberá uma notificação quando concluir.",
+          "info",
+        );
+        router.replace("/solicitacoes-cirurgicas");
+      } catch {
+        if (cancelled) return;
+        showToast(
+          "Não foi possível recuperar a análise do documento agora. Tente novamente.",
+          "error",
+        );
+        router.replace("/solicitacoes-cirurgicas");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [docExtractionJobId, router, showToast]);
 
   // Fechar dropdown de exportação ao clicar fora
   useEffect(() => {
@@ -140,14 +203,28 @@ export default function ProcedimentosCirurgicos() {
   }, [isExportOpen]);
 
   // Kanban via TanStack Query (P10): cache + dedup; invalidação após mutações.
-  const { data: kanbanData } = useQuery({
+  const { data: kanbanData, isFetching } = useQuery({
     queryKey: KANBAN_QUERY_KEY,
     queryFn: () => surgeryRequestService.getKanban(),
+    refetchOnMount: "always",
   });
 
   const reloadKanban = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: KANBAN_QUERY_KEY });
   }, [queryClient]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const unsubscribe = onSurgeryRequestChanged((payload) => {
+      if (!payload?.surgeryRequestId) return;
+      queryClient.invalidateQueries({ queryKey: KANBAN_QUERY_KEY });
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [onSurgeryRequestChanged, queryClient, userId]);
 
   // Colunas derivadas dos dados do backend. `pendenciesCount` já vem calculado
   // pelo endpoint /kanban (item 3.4) — sem round-trip extra a getBatchSummary.
@@ -155,86 +232,84 @@ export default function ProcedimentosCirurgicos() {
     const records = kanbanData?.records;
     if (!records || !Array.isArray(records)) return INITIAL_COLUMNS;
 
-    const mappedRequests: SurgeryRequest[] = records.map(
-      (record: SurgeryRequestListItem) => {
-        const status = STATUS_NUMBER_TO_STRING[record.status] || "Pendente";
+    const mappedRequests = records.map((record: SurgeryRequestListItem) => {
+      const status = STATUS_NUMBER_TO_STRING[record.status] || "Pendente";
 
-        const getProcedureName = () => {
-          const isIndication = record["is_indication"] as boolean | undefined;
-          const indicationName = record["indication_name"] as
-            | string
-            | undefined;
-          if (isIndication && indicationName) {
-            return indicationName;
-          }
-          if (record.procedure?.name) {
-            return record.procedure.name;
-          }
-          return "Procedimento não especificado";
-        };
+      const getProcedureName = () => {
+        const isIndication = record["is_indication"] as boolean | undefined;
+        const indicationName = record["indication_name"] as string | undefined;
+        if (isIndication && indicationName) {
+          return indicationName;
+        }
+        if (record.procedure?.name) {
+          return record.procedure.name;
+        }
+        return "Procedimento não especificado";
+      };
 
-        const getDoctor = () => {
-          if (record.doctor) {
-            return {
-              id: String(record.doctor.id),
-              name: record.doctor.name,
-            };
-          }
-          return { id: "0", name: "Não informado" };
-        };
+      const getDoctor = () => {
+        if (record.doctor) {
+          return {
+            id: String(record.doctor.id),
+            name: record.doctor.name,
+          };
+        }
+        return { id: "0", name: "Não informado" };
+      };
 
-        const createdAtIso = record.createdAt;
-        const lastStatusChangedAt =
-          record.lastStatusChangedAt ??
-          record.last_status_changed_at ??
-          undefined;
-        const updatedAt =
-          record.updatedAt && !Number.isNaN(Date.parse(record.updatedAt))
-            ? record.updatedAt
-            : undefined;
-        const lastActivityAt = lastStatusChangedAt
-          ? formatDateBR(lastStatusChangedAt)
-          : updatedAt
-            ? formatDateBR(updatedAt)
-            : formatDateBR(createdAtIso);
+      const createdAtIso = record.createdAt;
+      const lastStatusChangedAt =
+        record.lastStatusChangedAt ??
+        record.last_status_changed_at ??
+        undefined;
+      const updatedAt =
+        record.updatedAt && !Number.isNaN(Date.parse(record.updatedAt))
+          ? record.updatedAt
+          : undefined;
+      const lastActivityAt = lastStatusChangedAt
+        ? formatDateBR(lastStatusChangedAt)
+        : updatedAt
+          ? formatDateBR(updatedAt)
+          : formatDateBR(createdAtIso);
 
-        return {
-          id: String(record.id),
-          protocol: record.protocol || "",
-          patient: {
-            id: String(record.patient?.id ?? ""),
-            name: record.patient?.name ?? "Não informado",
-            initials: getInitials(record.patient?.name ?? ""),
-          },
-          procedureName: getProcedureName(),
-          doctor: getDoctor(),
-          priority: (record.priority as PriorityLevel) || PRIORITY.MEDIUM,
-          pendenciesCount: record.pendenciesCount || 0,
-          pendenciesCompleted: 0,
-          pendenciesWaiting: 0,
-          createdAt: formatDateBR(createdAtIso),
-          lastActivityAt,
-          lastStatusChangedAt,
-          updatedAt,
-          status,
-          healthPlan: record.healthPlan?.name || "",
-          hasIncompletePayment: record.hasIncompletePayment === true,
-        };
-      },
-    );
+      const request: SurgeryRequest = {
+        id: String(record.id),
+        protocol: record.protocol || "",
+        patient: {
+          id: String(record.patient?.id ?? ""),
+          name: record.patient?.name ?? "Não informado",
+          initials: getInitials(record.patient?.name ?? ""),
+        },
+        procedureName: getProcedureName(),
+        doctor: getDoctor(),
+        priority: (record.priority as PriorityLevel) || PRIORITY.MEDIUM,
+        pendenciesCount: record.pendenciesCount || 0,
+        pendenciesCompleted: 0,
+        pendenciesWaiting: 0,
+        createdAt: formatDateBR(createdAtIso),
+        lastActivityAt,
+        lastStatusChangedAt,
+        updatedAt,
+        status,
+        healthPlan: record.healthPlan?.name || "",
+        hasIncompletePayment: record.hasIncompletePayment === true,
+      };
 
-    const getSortTime = (request: SurgeryRequest) =>
-      getLatestActivityMs(
-        request.lastStatusChangedAt,
-        request.updatedAt,
-        request.createdAt,
+      const sortTime = getLatestActivityMs(
+        lastStatusChangedAt,
+        updatedAt,
+        createdAtIso,
       );
+
+      return { request, sortTime };
+    });
 
     return INITIAL_COLUMNS.map((column) => ({
       ...column,
       cards: mappedRequests
-        .filter((request) => request.status === column.status)
-        .sort((a, b) => getSortTime(b) - getSortTime(a)),
+        .filter((entry) => entry.request.status === column.status)
+        .sort((a, b) => b.sortTime - a.sortTime)
+        .map((entry) => entry.request),
     }));
   }, [kanbanData]);
 
@@ -401,6 +476,10 @@ export default function ProcedimentosCirurgicos() {
     },
     [router],
   );
+
+  if (!kanbanData && isFetching) {
+    return <FacebookSkeleton variant="list" />;
+  }
 
   return (
     <PageContainer>
@@ -603,7 +682,7 @@ export default function ProcedimentosCirurgicos() {
             type="button"
             onClick={() => setIsUploadDocumentOpen(true)}
             title="Criar solicitação a partir de documento"
-            className="flex items-center gap-1.5 flex-1 sm:flex-none h-9 lg:h-11 px-3 lg:px-3.5 py-1.5 lg:py-2 text-xs lg:text-sm font-medium rounded-xl border border-neutral-100 bg-white text-black hover:bg-neutral-50 transition-colors"
+            className="relative flex items-center gap-1.5 flex-1 sm:flex-none h-9 lg:h-11 px-3 lg:px-3.5 py-1.5 lg:py-2 text-xs lg:text-sm font-medium rounded-xl border border-neutral-100 bg-white text-black hover:bg-neutral-50 transition-colors"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -725,6 +804,10 @@ export default function ProcedimentosCirurgicos() {
         onClose={() => setIsUploadDocumentOpen(false)}
         onSuccess={handleUploadDocumentSuccess}
       />
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
     </PageContainer>
   );
 }
