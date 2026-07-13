@@ -5,6 +5,8 @@ export const SC_FROM_DOCUMENT_EXTRACTION_ACTIVE_KEY =
   "sc_from_document_extraction_active";
 export const SC_FROM_DOCUMENT_EXTRACTION_PENDING_ERROR_KEY =
   "sc_from_document_extraction_pending_error";
+export const SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY =
+  "sc_from_document_extraction_foreground";
 
 const STORAGE_ENVELOPE_VERSION = 1;
 const DEFAULT_TTL_MS = 2 * 60 * 60 * 1000; // 2h
@@ -20,12 +22,17 @@ const SC_FROM_DOCUMENT_KEYS = [
   SC_FROM_DOCUMENT_EXTRACTION_PENDING_KEY,
   SC_FROM_DOCUMENT_EXTRACTION_ACTIVE_KEY,
   SC_FROM_DOCUMENT_EXTRACTION_PENDING_ERROR_KEY,
+  SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY,
 ] as const;
 
 export interface BackgroundDocumentExtractionActive {
   jobId: string;
   fileName: string;
   startedAt: number;
+}
+
+export interface BackgroundDocumentExtractionForeground {
+  jobId: string;
 }
 
 function isBrowser(): boolean {

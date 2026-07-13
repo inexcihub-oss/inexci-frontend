@@ -10,13 +10,18 @@ import {
   useState,
 } from "react";
 import { io, Socket } from "socket.io-client";
-import { Notification } from "@/services/notification.service";
+import {
+  Notification,
+  notificationService,
+} from "@/services/notification.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAccessToken } from "@/lib/auth-token";
 import { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
 import {
   BackgroundDocumentExtractionActive,
+  BackgroundDocumentExtractionForeground,
   SC_FROM_DOCUMENT_EXTRACTION_ACTIVE_KEY,
+  SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY,
   SC_FROM_DOCUMENT_EXTRACTION_PENDING_ERROR_KEY,
   SC_FROM_DOCUMENT_EXTRACTION_PENDING_KEY,
   getScFromDocumentStorage,
@@ -115,7 +120,7 @@ export function NotificationsProvider({
       first.type = "sine";
       first.frequency.setValueAtTime(1046, ctx.currentTime);
       firstGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-      firstGain.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime + 0.01);
+      firstGain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.01);
       firstGain.gain.exponentialRampToValueAtTime(
         0.0001,
         ctx.currentTime + 0.12,
@@ -131,7 +136,7 @@ export function NotificationsProvider({
       second.frequency.setValueAtTime(1318, ctx.currentTime + 0.13);
       secondGain.gain.setValueAtTime(0.0001, ctx.currentTime + 0.13);
       secondGain.gain.exponentialRampToValueAtTime(
-        0.045,
+        0.075,
         ctx.currentTime + 0.145,
       );
       secondGain.gain.exponentialRampToValueAtTime(
@@ -184,6 +189,44 @@ export function NotificationsProvider({
   }, []);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const stripUnreadPrefix = (title: string) =>
+      title.replace(/^\(\d+\+?\)\s*/, "");
+
+    const applyUnreadTitle = () => {
+      const baseTitle = stripUnreadPrefix(document.title);
+      const nextTitle =
+        unreadCount > 0
+          ? `(${unreadCount > 99 ? "99+" : unreadCount}) ${baseTitle}`
+          : baseTitle;
+
+      if (document.title !== nextTitle) {
+        document.title = nextTitle;
+      }
+    };
+
+    applyUnreadTitle();
+
+    const titleElement = document.querySelector("title");
+    if (!titleElement) return;
+
+    const observer = new MutationObserver(() => {
+      applyUnreadTitle();
+    });
+
+    observer.observe(titleElement, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [unreadCount]);
+
+  useEffect(() => {
     if (!userId) {
       setUnreadCount(0);
       setLatest([]);
@@ -203,10 +246,60 @@ export function NotificationsProvider({
     });
 
     socket.on("notification:unread-count", (payload: { count: number }) => {
-      setUnreadCount(Math.max(0, payload?.count ?? 0));
+      const nextCount = Math.max(0, payload?.count ?? 0);
+      const foreground =
+        getScFromDocumentStorage<BackgroundDocumentExtractionForeground>(
+          SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY,
+        );
+
+      setUnreadCount((prev) => {
+        if (foreground && nextCount > prev) {
+          // Enquanto o modal de extração estiver aberto, evita subir contador
+          // por causa da notificação de conclusão da própria extração.
+          return prev;
+        }
+        return nextCount;
+      });
     });
 
     socket.on("notification:new", (notification: Notification) => {
+      const metadata = notification.metadata;
+      const category =
+        metadata &&
+        typeof metadata === "object" &&
+        typeof metadata.category === "string"
+          ? metadata.category
+          : null;
+      const notificationJobId =
+        metadata &&
+        typeof metadata === "object" &&
+        typeof metadata.jobId === "string"
+          ? metadata.jobId
+          : null;
+
+      const isDocumentExtractionNotification =
+        category === "document_extraction" ||
+        /análise de documento/i.test(notification.title || "") ||
+        /análise do documento/i.test(notification.message || "") ||
+        /docExtractionJobId=/.test(notification.link || "") ||
+        /nova-via-documento/.test(notification.link || "");
+
+      if (isDocumentExtractionNotification) {
+        const foreground =
+          getScFromDocumentStorage<BackgroundDocumentExtractionForeground>(
+            SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY,
+          );
+
+        if (foreground) {
+          if (!notificationJobId || foreground.jobId === notificationJobId) {
+            void notificationService.markAsRead(notification.id).catch(() => {
+              // Silencia erro de rede — aqui é apenas best effort.
+            });
+            return;
+          }
+        }
+      }
+
       setUnreadCount((prev) => prev + 1);
       setLatest((prev) => [notification, ...prev].slice(0, 10));
       playNotificationSound();

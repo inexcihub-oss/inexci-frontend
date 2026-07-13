@@ -40,6 +40,7 @@ import {
 } from "@/types/surgery-request.types";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { useToast } from "@/hooks/useToast";
+import FacebookSkeleton from "@/components/ui/FacebookSkeleton";
 import { readScFromDocumentCatalogPrefetch } from "@/lib/sc-from-document-prefetch";
 import {
   SC_FROM_DOCUMENT_EXTRACTION_KEY,
@@ -781,13 +782,7 @@ export default function NovaViaDocumentoPage() {
   });
 
   if (!extraction) {
-    return (
-      <PageContainer>
-        <div className="flex items-center justify-center h-40">
-          <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
-        </div>
-      </PageContainer>
-    );
+    return <FacebookSkeleton variant="documentForm" />;
   }
 
   const doctorOptions = availableDoctors.map((d) => ({

@@ -15,7 +15,13 @@ import {
   DocumentExtractionStatusPayload,
   useNotificationsContext,
 } from "@/contexts/NotificationsContext";
-import { BackgroundDocumentExtractionActive } from "@/lib/sc-from-document-background";
+import {
+  BackgroundDocumentExtractionActive,
+  BackgroundDocumentExtractionForeground,
+  SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY,
+  removeScFromDocumentStorage,
+  setScFromDocumentStorage,
+} from "@/lib/sc-from-document-background";
 
 const ACCEPTED_MIME = [
   "application/pdf",
@@ -83,11 +89,13 @@ export function UploadDocumentModal({
     abortPendingWaitRef.current = null;
     keepTrackingInBackgroundRef.current = false;
     queuedBackgroundJobRef.current = null;
+    removeScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY);
   };
 
   const handleClose = () => {
     if (loading) {
       keepTrackingInBackgroundRef.current = true;
+      removeScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY);
       if (queuedBackgroundJobRef.current) {
         onBackgroundProcessingStart?.(queuedBackgroundJobRef.current);
       }
@@ -142,6 +150,10 @@ export function UploadDocumentModal({
 
     try {
       const queued = await surgeryRequestService.extractFromDocument(file);
+      setScFromDocumentStorage<BackgroundDocumentExtractionForeground>(
+        SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY,
+        { jobId: queued.jobId },
+      );
       queuedBackgroundJobRef.current = {
         jobId: queued.jobId,
         fileName: file.name,

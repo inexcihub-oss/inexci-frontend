@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import PageContainer from "@/components/PageContainer";
 
-type FacebookSkeletonVariant = "list" | "details";
+type FacebookSkeletonVariant = "list" | "details" | "documentForm";
 
 interface FacebookSkeletonProps {
   variant?: FacebookSkeletonVariant;
@@ -131,13 +131,93 @@ function ListSkeleton() {
   );
 }
 
+function DocumentFormSkeleton() {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        <div className="flex items-start gap-3">
+          <SkeletonBlock className="h-9 w-9 rounded-xl shrink-0" />
+          <div className="flex-1 space-y-2">
+            <SkeletonBlock className="h-6 w-56" />
+            <SkeletonBlock className="h-4 w-full max-w-md" />
+            <SkeletonBlock className="h-3 w-64" />
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <SkeletonBlock className="h-4 w-40" />
+            <SkeletonBlock className="h-11 w-full" />
+          </div>
+
+          <div className="space-y-2">
+            <SkeletonBlock className="h-4 w-24" />
+            <SkeletonBlock className="h-11 w-full" />
+          </div>
+
+          <div className="rounded-2xl border border-neutral-100 bg-white p-4 space-y-3">
+            <SkeletonBlock className="h-4 w-28" />
+            <SkeletonBlock className="h-10 w-48 rounded-lg" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <SkeletonBlock className="h-10 w-full rounded-lg" />
+              <SkeletonBlock className="h-10 w-full rounded-lg" />
+              <SkeletonBlock className="h-10 w-full rounded-lg" />
+              <SkeletonBlock className="h-10 w-full rounded-lg" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-neutral-100 bg-white p-4 space-y-2.5">
+              <SkeletonBlock className="h-4 w-28" />
+              <SkeletonBlock className="h-10 w-full rounded-lg" />
+            </div>
+            <div className="rounded-2xl border border-neutral-100 bg-white p-4 space-y-2.5">
+              <SkeletonBlock className="h-4 w-28" />
+              <SkeletonBlock className="h-10 w-full rounded-lg" />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-neutral-100 bg-white p-4 space-y-3">
+            <SkeletonBlock className="h-4 w-36" />
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border border-neutral-100 p-3 space-y-2"
+              >
+                <SkeletonBlock className="h-3 w-32" />
+                <SkeletonBlock className="h-10 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+
+          <div className="sticky bottom-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-t border-neutral-100 p-3 -mx-4 sm:mx-0 sm:rounded-xl sm:border">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <SkeletonBlock className="h-10 w-full sm:w-28 rounded-xl" />
+              <SkeletonBlock className="h-10 w-full sm:w-40 rounded-xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FacebookSkeleton({
   variant = "list",
   className,
 }: FacebookSkeletonProps) {
+  const content =
+    variant === "details" ? (
+      <DetailsSkeleton />
+    ) : variant === "documentForm" ? (
+      <DocumentFormSkeleton />
+    ) : (
+      <ListSkeleton />
+    );
+
   return (
     <PageContainer className={cn(className)}>
-      {variant === "details" ? <DetailsSkeleton /> : <ListSkeleton />}
+      {content}
       <span className="sr-only">Carregando conteúdo...</span>
     </PageContainer>
   );
