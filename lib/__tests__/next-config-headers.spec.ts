@@ -104,4 +104,8 @@ describe("next.config.mjs — HSTS em produção (validação estática)", () =>
     // Verifica que HSTS está dentro de um bloco condicional isProd
     expect(configSource).toMatch(/isProd[\s\S]*Strict-Transport-Security/);
   });
+
+  it("CSP de produção deve permitir WebSocket seguro (wss)", () => {
+    expect(configSource).toContain('"wss:"');
+  });
 });

@@ -11,6 +11,18 @@ const withBundleAnalyzer = bundleAnalyzer({
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const isProd = process.env.NODE_ENV === "production";
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+const socketOriginFromApiUrl = (() => {
+  if (!apiUrl) return null;
+  try {
+    const parsed = new URL(apiUrl);
+    const socketProtocol = parsed.protocol === "https:" ? "wss:" : "ws:";
+    return `${socketProtocol}//${parsed.host}`;
+  } catch {
+    return null;
+  }
+})();
 
 /**
  * Content-Security-Policy por ambiente:
@@ -28,7 +40,17 @@ const cspDirectives = isProd
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https: https://www.google-analytics.com https://analytics.google.com",
+      [
+        "connect-src",
+        "'self'",
+        "https:",
+        "wss:",
+        "https://www.google-analytics.com",
+        "https://analytics.google.com",
+        socketOriginFromApiUrl,
+      ]
+        .filter(Boolean)
+        .join(" "),
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",
