@@ -3,6 +3,7 @@
 import React, { memo, useState, useEffect } from "react";
 import Image from "next/image";
 import { Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Procedure } from "@/services/procedure.service";
 import { Patient } from "@/services/patient.service";
 import { Hospital } from "@/services/hospital.service";
@@ -12,6 +13,12 @@ import { getApiErrorMessage } from "@/lib/http-error";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
+import { useProcedures, PROCEDURES_QUERY_KEY } from "@/hooks/useProcedures";
+import { useHospitals, HOSPITALS_QUERY_KEY } from "@/hooks/useHospitals";
+import {
+  useHealthPlans,
+  HEALTH_PLANS_QUERY_KEY,
+} from "@/hooks/useHealthPlans";
 import {
   surgeryRequestService,
   SurgeryRequestTemplate,
@@ -33,40 +40,23 @@ export const ProcedureSelectionContent = memo(
     selectedItemId?: string | number | null;
     isActive?: boolean;
   }) {
-    const [procedures, setProcedures] = useState<Procedure[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [hasLoaded, setHasLoaded] = useState(false);
     const [procedureToDelete, setProcedureToDelete] =
       useState<Procedure | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const { toast, showToast, hideToast } = useToast();
-
-    const loadProcedures = async () => {
-      setLoading(true);
-      try {
-        const { procedureService } =
-          await import("@/services/procedure.service");
-        const data = await procedureService.getAll();
-        setProcedures(Array.isArray(data) ? data : []);
-        setHasLoaded(true);
-      } catch {
-        setProcedures([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    useEffect(() => {
-      if (isActive && !hasLoaded) {
-        loadProcedures();
-      }
-    }, [isActive, hasLoaded]);
+    const queryClient = useQueryClient();
+    const { data: procedures = [], isLoading: loading } = useProcedures({
+      enabled: isActive,
+    });
 
     useEffect(() => {
       if (onNewItemCreated) {
         const handleNewItem = (item: Procedure) => {
-          setProcedures((prev) => [item, ...prev]);
+          queryClient.setQueryData<Procedure[]>(
+            PROCEDURES_QUERY_KEY,
+            (prev = []) => [item, ...prev],
+          );
         };
         onNewItemCreated(handleNewItem);
       }
@@ -86,8 +76,10 @@ export const ProcedureSelectionContent = memo(
           await import("@/services/procedure.service");
         await procedureService.delete(procedureToDelete.id);
 
-        setProcedures((prev) =>
-          prev.filter((procedure) => procedure.id !== procedureToDelete.id),
+        queryClient.setQueryData<Procedure[]>(
+          PROCEDURES_QUERY_KEY,
+          (prev = []) =>
+            prev.filter((procedure) => procedure.id !== procedureToDelete.id),
         );
 
         if (selectedItemId === procedureToDelete.id) {
@@ -339,35 +331,19 @@ export const HospitalSelectionContent = memo(function HospitalSelectionContent({
   selectedItemId?: string | number | null;
   isActive?: boolean;
 }) {
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
-
-  const loadHospitals = async () => {
-    setLoading(true);
-    try {
-      const { hospitalService } = await import("@/services/hospital.service");
-      const data = await hospitalService.getAll();
-      setHospitals(Array.isArray(data) ? data : []);
-      setHasLoaded(true);
-    } catch {
-      setHospitals([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isActive && !hasLoaded) {
-      loadHospitals();
-    }
-  }, [isActive, hasLoaded]);
+  const queryClient = useQueryClient();
+  const { data: hospitals = [], isLoading: loading } = useHospitals({
+    enabled: isActive,
+  });
 
   useEffect(() => {
     if (onNewItemCreated) {
       const handleNewItem = (item: Hospital) => {
-        setHospitals((prev) => [item, ...prev]);
+        queryClient.setQueryData<Hospital[]>(
+          HOSPITALS_QUERY_KEY,
+          (prev = []) => [item, ...prev],
+        );
       };
       onNewItemCreated(handleNewItem);
     }
@@ -462,36 +438,19 @@ export const HealthPlanSelectionContent = memo(
     selectedItemId?: string | number | null;
     isActive?: boolean;
   }) {
-    const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [hasLoaded, setHasLoaded] = useState(false);
-
-    const loadHealthPlans = async () => {
-      setLoading(true);
-      try {
-        const { healthPlanService } =
-          await import("@/services/health-plan.service");
-        const data = await healthPlanService.getAll();
-        setHealthPlans(Array.isArray(data) ? data : []);
-        setHasLoaded(true);
-      } catch {
-        setHealthPlans([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    useEffect(() => {
-      if (isActive && !hasLoaded) {
-        loadHealthPlans();
-      }
-    }, [isActive, hasLoaded]);
+    const queryClient = useQueryClient();
+    const { data: healthPlans = [], isLoading: loading } = useHealthPlans({
+      enabled: isActive,
+    });
 
     useEffect(() => {
       if (onNewItemCreated) {
         const handleNewItem = (item: HealthPlan) => {
-          setHealthPlans((prev) => [item, ...prev]);
+          queryClient.setQueryData<HealthPlan[]>(
+            HEALTH_PLANS_QUERY_KEY,
+            (prev = []) => [item, ...prev],
+          );
         };
         onNewItemCreated(handleNewItem);
       }

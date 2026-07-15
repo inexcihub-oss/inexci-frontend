@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { supplierService, Supplier } from "@/services/supplier.service";
+import { useSuppliers, SUPPLIERS_QUERY_KEY } from "@/hooks/useSuppliers";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import PageContainer from "@/components/PageContainer";
@@ -30,9 +32,9 @@ import {
 
 export default function FornecedoresPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const { data: suppliers = [], isLoading: loading } = useSuppliers();
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
@@ -49,22 +51,6 @@ export default function FornecedoresPage() {
   }>({ open: false, loading: false });
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const data = await supplierService.getAll();
-      setSuppliers(data);
-    } catch (error) {
-      logger.error("Error loading suppliers:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredSuppliers = useMemo(() => {
     if (!debouncedSearchTerm) return suppliers;
@@ -112,7 +98,9 @@ export default function FornecedoresPage() {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await supplierService.delete(deleteModal.id);
-      setSuppliers((prev) => prev.filter((s) => s.id !== deleteModal.id));
+      queryClient.setQueryData<Supplier[]>(SUPPLIERS_QUERY_KEY, (prev = []) =>
+        prev.filter((s) => s.id !== deleteModal.id),
+      );
       setDeleteModal({ open: false, id: null, name: null, loading: false });
     } catch (error) {
       logger.error("Erro ao excluir:", error);
@@ -130,7 +118,9 @@ export default function FornecedoresPage() {
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await supplierService.deleteMany(ids);
-      setSuppliers((prev) => prev.filter((s) => !ids.includes(s.id)));
+      queryClient.setQueryData<Supplier[]>(SUPPLIERS_QUERY_KEY, (prev = []) =>
+        prev.filter((s) => !ids.includes(s.id)),
+      );
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
     } catch (error) {
@@ -428,7 +418,7 @@ export default function FornecedoresPage() {
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onSuccess={() => {
-          loadData();
+          queryClient.invalidateQueries({ queryKey: SUPPLIERS_QUERY_KEY });
           setCreateModalOpen(false);
         }}
       />

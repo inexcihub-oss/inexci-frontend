@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Combobox } from "@/components/ui";
 import { SelectSearch } from "@/components/ui/SelectSearch";
-import { hospitalService } from "@/services/hospital.service";
-import { healthPlanService } from "@/services/health-plan.service";
+import { useHospitals } from "@/hooks/useHospitals";
+import { useHealthPlans } from "@/hooks/useHealthPlans";
 import {
   surgeryRequestService,
   SurgeryRequestDetail,
@@ -28,13 +28,25 @@ export function EditableProcedureData({
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
 
-  // Estados para as opções dos selects
-  const [hospitals, setHospitals] = useState<
-    Array<{ value: string; label: string }>
-  >([]);
-  const [healthPlans, setHealthPlans] = useState<
-    Array<{ value: string; label: string }>
-  >([]);
+  // Opções dos selects (cadastros estáveis — cacheados via TanStack Query)
+  const { data: hospitalsData, isError: hospitalsError } = useHospitals({
+    enabled: isEditing,
+  });
+  const { data: healthPlansData, isError: healthPlansError } = useHealthPlans({
+    enabled: isEditing,
+  });
+  const hospitals = useMemo(
+    () => (hospitalsData ?? []).map((h) => ({ value: h.id.toString(), label: h.name })),
+    [hospitalsData],
+  );
+  const healthPlans = useMemo(
+    () =>
+      (healthPlansData ?? []).map((hp) => ({
+        value: hp.id.toString(),
+        label: hp.name,
+      })),
+    [healthPlansData],
+  );
 
   // Estados para os valores do formulário
   const [formData, setFormData] = useState({
@@ -104,36 +116,12 @@ export function EditableProcedureData({
     }));
   }, []);
 
-  // Carregar dados dos selects
+  // Erro ao carregar opções dos selects (dados em si vêm do cache via hooks acima)
   useEffect(() => {
-    const loadSelectData = async () => {
-      try {
-        // Carregar hospitais
-        const hospitalsData = await hospitalService.getAll();
-        setHospitals(
-          hospitalsData.map((h) => ({
-            value: h.id.toString(),
-            label: h.name,
-          })),
-        );
-
-        // Carregar planos de saúde
-        const healthPlansData = await healthPlanService.getAll();
-        setHealthPlans(
-          healthPlansData.map((hp) => ({
-            value: hp.id.toString(),
-            label: hp.name,
-          })),
-        );
-      } catch {
-        showToast("Erro ao carregar opções de seleção", "error");
-      }
-    };
-
-    if (isEditing) {
-      loadSelectData();
+    if (isEditing && (hospitalsError || healthPlansError)) {
+      showToast("Erro ao carregar opções de seleção", "error");
     }
-  }, [isEditing, showToast]);
+  }, [isEditing, hospitalsError, healthPlansError, showToast]);
 
   const handleEdit = () => {
     setIsEditing(true);

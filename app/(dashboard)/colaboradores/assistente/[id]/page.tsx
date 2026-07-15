@@ -143,6 +143,14 @@ export default function AssistenteDetalhePage() {
 
   const loadData = async () => {
     setLoading(true);
+    // Disparadas em paralelo com o getById do colaborador — nenhuma das duas
+    // depende dele (filtros são feitos em memória). `.catch(noop)` evita
+    // unhandled rejection quando a função retorna cedo (colaborador não
+    // encontrado) antes de serem consumidas mais abaixo.
+    const patientsPromise = patientService.getAll();
+    const surgeryPromise = surgeryRequestService.getAll();
+    patientsPromise.catch(() => {});
+    surgeryPromise.catch(() => {});
     try {
       const collab = await collaboratorService.getById(params.id);
 
@@ -189,7 +197,7 @@ export default function AssistenteDetalhePage() {
     // Carregar últimos pacientes
     setLoadingPatients(true);
     try {
-      const patients = await patientService.getAll();
+      const patients = await patientsPromise;
       // Ordenar por mais recente e pegar os 5 primeiros
       const sorted = [...patients]
         .sort(
@@ -207,7 +215,7 @@ export default function AssistenteDetalhePage() {
     // Carregar últimas solicitações (para médicos)
     setLoadingRequests(true);
     try {
-      const response = await surgeryRequestService.getAll();
+      const response = await surgeryPromise;
       if (response?.records && Array.isArray(response.records)) {
         const doctorRequests = response.records
           .filter((r: any) => String(r.doctorId) === String(params.id))

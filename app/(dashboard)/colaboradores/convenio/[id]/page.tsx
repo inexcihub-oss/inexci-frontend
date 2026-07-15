@@ -92,6 +92,11 @@ export default function ConvenioDetalhePage() {
 
   const loadData = async () => {
     setLoading(true);
+    // Disparada em paralelo com o getById abaixo (não depende de
+    // healthPlanData — o filtro por convênio é feito em memória).
+    // `.catch(noop)` evita unhandled rejection em retorno antecipado.
+    const surgeryPromise = surgeryRequestService.getAll();
+    surgeryPromise.catch(() => {});
     try {
       const healthPlanData = await healthPlanService.getById(params.id);
 
@@ -141,7 +146,7 @@ export default function ConvenioDetalhePage() {
       // Buscar solicitações cirúrgicas deste convênio
       setLoadingSurgeries(true);
       try {
-        const surgeryData = await surgeryRequestService.getAll();
+        const surgeryData = await surgeryPromise;
         const filtered = (surgeryData.records ?? []).filter(
           (r: any) =>
             String(r.healthPlanId) === String(healthPlanData.id) ||

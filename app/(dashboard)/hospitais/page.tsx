@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { hospitalService, Hospital } from "@/services/hospital.service";
+import { useHospitals, HOSPITALS_QUERY_KEY } from "@/hooks/useHospitals";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import PageContainer from "@/components/PageContainer";
@@ -30,9 +32,9 @@ import {
 
 export default function HospitaisPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const { data: hospitals = [], isLoading: loading } = useHospitals();
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
@@ -49,22 +51,6 @@ export default function HospitaisPage() {
   }>({ open: false, loading: false });
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const data = await hospitalService.getAll();
-      setHospitals(data);
-    } catch (error) {
-      logger.error("Error loading hospitals:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredHospitals = useMemo(() => {
     if (!debouncedSearchTerm) return hospitals;
@@ -112,7 +98,9 @@ export default function HospitaisPage() {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await hospitalService.delete(deleteModal.id);
-      setHospitals((prev) => prev.filter((h) => h.id !== deleteModal.id));
+      queryClient.setQueryData<Hospital[]>(HOSPITALS_QUERY_KEY, (prev = []) =>
+        prev.filter((h) => h.id !== deleteModal.id),
+      );
       setDeleteModal({ open: false, id: null, name: null, loading: false });
     } catch (error) {
       logger.error("Erro ao excluir:", error);
@@ -130,7 +118,9 @@ export default function HospitaisPage() {
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await hospitalService.deleteMany(ids);
-      setHospitals((prev) => prev.filter((h) => !ids.includes(h.id)));
+      queryClient.setQueryData<Hospital[]>(HOSPITALS_QUERY_KEY, (prev = []) =>
+        prev.filter((h) => !ids.includes(h.id)),
+      );
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
     } catch (error) {
@@ -432,7 +422,7 @@ export default function HospitaisPage() {
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onSuccess={() => {
-          loadData();
+          queryClient.invalidateQueries({ queryKey: HOSPITALS_QUERY_KEY });
           setCreateModalOpen(false);
         }}
       />

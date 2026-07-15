@@ -107,6 +107,12 @@ export default function PacienteDetalhePage() {
   const loadData = async () => {
     setLoading(true);
     setLoadingSurgeries(true);
+    // Disparada junto com o Promise.all abaixo (não depende de patientData —
+    // o filtro por paciente é feito em memória) em vez de esperar o bloco
+    // anterior terminar. `.catch(noop)` evita unhandled rejection caso a
+    // função retorne cedo (paciente não encontrado) antes do await abaixo.
+    const surgeryPromise = surgeryRequestService.getAll();
+    surgeryPromise.catch(() => {});
     try {
       const [patientData, healthPlansData] = await Promise.all([
         patientService.getById(params.id),
@@ -124,7 +130,7 @@ export default function PacienteDetalhePage() {
 
       // Busca solicitações cirúrgicas deste paciente
       try {
-        const surgeryData = await surgeryRequestService.getAll();
+        const surgeryData = await surgeryPromise;
         const filtered = (surgeryData.records ?? []).filter(
           (r) => r.patient?.id === patientData.id,
         );

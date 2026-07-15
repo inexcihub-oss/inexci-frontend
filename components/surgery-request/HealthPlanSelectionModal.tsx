@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Search, Plus } from "lucide-react";
-import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
+import { HealthPlan } from "@/services/health-plan.service";
+import { useHealthPlans } from "@/hooks/useHealthPlans";
 
 interface HealthPlanSelectionModalProps {
   isOpen: boolean;
@@ -18,27 +19,10 @@ export function HealthPlanSelectionModal({
   onSelectHealthPlan,
   onCreateNew,
 }: HealthPlanSelectionModalProps) {
-  const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      loadHealthPlans();
-    }
-  }, [isOpen]);
-
-  const loadHealthPlans = async () => {
-    setLoading(true);
-    try {
-      const data = await healthPlanService.getAll();
-      setHealthPlans(data);
-    } catch {
-      // Error handled silently
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: healthPlans = [], isLoading: loading } = useHealthPlans({
+    enabled: isOpen,
+  });
 
   const filteredHealthPlans = healthPlans.filter((healthPlan) =>
     healthPlan.name.toLowerCase().includes(searchTerm.toLowerCase()),

@@ -90,6 +90,11 @@ export default function HospitalDetalhePage() {
 
   const loadData = async () => {
     setLoading(true);
+    // Disparada em paralelo com o getById abaixo (não depende de hospitalData
+    // — o filtro por hospital é feito em memória). `.catch(noop)` evita
+    // unhandled rejection caso a função retorne cedo (hospital não encontrado).
+    const surgeryPromise = surgeryRequestService.getAll();
+    surgeryPromise.catch(() => {});
     try {
       const hospitalData = await hospitalService.getById(params.id);
 
@@ -133,7 +138,7 @@ export default function HospitalDetalhePage() {
       // Buscar solicitações cirúrgicas deste hospital
       setLoadingSurgeries(true);
       try {
-        const surgeryData = await surgeryRequestService.getAll();
+        const surgeryData = await surgeryPromise;
         const filtered = (surgeryData.records ?? []).filter(
           (r: any) =>
             String(r.hospitalId) === String(hospitalData.id) ||

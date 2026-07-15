@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Search, Plus } from "lucide-react";
-import { procedureService, Procedure } from "@/services/procedure.service";
+import { Procedure } from "@/services/procedure.service";
+import { useProcedures } from "@/hooks/useProcedures";
 
 interface ProcedureSelectionModalProps {
   isOpen: boolean;
@@ -18,27 +19,10 @@ export function ProcedureSelectionModal({
   onSelectProcedure,
   onCreateNew,
 }: ProcedureSelectionModalProps) {
-  const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      loadProcedures();
-    }
-  }, [isOpen]);
-
-  const loadProcedures = async () => {
-    setLoading(true);
-    try {
-      const data = await procedureService.getAll();
-      setProcedures(data);
-    } catch {
-      // Error handled silently
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: procedures = [], isLoading: loading } = useProcedures({
+    enabled: isOpen,
+  });
 
   const filteredProcedures = procedures.filter((procedure) =>
     procedure.name.toLowerCase().includes(searchTerm.toLowerCase()),

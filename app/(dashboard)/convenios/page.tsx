@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
+import {
+  useHealthPlans,
+  HEALTH_PLANS_QUERY_KEY,
+} from "@/hooks/useHealthPlans";
 import { formatCNPJ, formatPhone } from "@/lib/formatters";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import PageContainer from "@/components/PageContainer";
@@ -30,9 +35,9 @@ import {
 
 export default function ConveniosPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
+  const { data: healthPlans = [], isLoading: loading } = useHealthPlans();
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
@@ -49,22 +54,6 @@ export default function ConveniosPage() {
   }>({ open: false, loading: false });
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const data = await healthPlanService.getAll();
-      setHealthPlans(data);
-    } catch (error) {
-      logger.error("Error loading health plans:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredHealthPlans = useMemo(() => {
     if (!debouncedSearchTerm) return healthPlans;
@@ -112,7 +101,10 @@ export default function ConveniosPage() {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await healthPlanService.delete(deleteModal.id);
-      setHealthPlans((prev) => prev.filter((hp) => hp.id !== deleteModal.id));
+      queryClient.setQueryData<HealthPlan[]>(
+        HEALTH_PLANS_QUERY_KEY,
+        (prev = []) => prev.filter((hp) => hp.id !== deleteModal.id),
+      );
       setDeleteModal({ open: false, id: null, name: null, loading: false });
     } catch (error) {
       logger.error("Erro ao excluir:", error);
@@ -130,7 +122,10 @@ export default function ConveniosPage() {
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await healthPlanService.deleteMany(ids);
-      setHealthPlans((prev) => prev.filter((hp) => !ids.includes(hp.id)));
+      queryClient.setQueryData<HealthPlan[]>(
+        HEALTH_PLANS_QUERY_KEY,
+        (prev = []) => prev.filter((hp) => !ids.includes(hp.id)),
+      );
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
     } catch (error) {
@@ -413,7 +408,7 @@ export default function ConveniosPage() {
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onSuccess={() => {
-          loadData();
+          queryClient.invalidateQueries({ queryKey: HEALTH_PLANS_QUERY_KEY });
           setCreateModalOpen(false);
         }}
       />

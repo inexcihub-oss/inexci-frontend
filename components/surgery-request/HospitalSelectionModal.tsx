@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Search, Plus } from "lucide-react";
-import { hospitalService, Hospital } from "@/services/hospital.service";
+import { Hospital } from "@/services/hospital.service";
+import { useHospitals } from "@/hooks/useHospitals";
 
 interface HospitalSelectionModalProps {
   isOpen: boolean;
@@ -18,27 +19,10 @@ export function HospitalSelectionModal({
   onSelectHospital,
   onCreateNew,
 }: HospitalSelectionModalProps) {
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      loadHospitals();
-    }
-  }, [isOpen]);
-
-  const loadHospitals = async () => {
-    setLoading(true);
-    try {
-      const data = await hospitalService.getAll();
-      setHospitals(data);
-    } catch {
-      // Error handled silently
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: hospitals = [], isLoading: loading } = useHospitals({
+    enabled: isOpen,
+  });
 
   const filteredHospitals = hospitals.filter((hospital) =>
     hospital.name.toLowerCase().includes(searchTerm.toLowerCase()),
