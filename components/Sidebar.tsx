@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
@@ -464,6 +464,17 @@ export default function Sidebar({
               <span className="text-xs md:text-sm font-semibold text-neutral-900 truncate">
                 {getDisplayName(user?.name || "Usuário")}
               </span>
+              {user?.role === "collaborator" && user?.account?.ownerName && (
+                <span
+                  className="mt-0.5 flex items-center gap-1 text-[11px] leading-tight text-teal-600 truncate"
+                  title={`Você faz parte da equipe de ${user.account.ownerName}`}
+                >
+                  <Users className="w-3 h-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">
+                    Equipe de {user.account.ownerName}
+                  </span>
+                </span>
+              )}
             </div>
             <button
               onClick={toggleMenu}

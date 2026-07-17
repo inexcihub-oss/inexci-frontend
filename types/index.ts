@@ -30,6 +30,15 @@ export interface User {
   emailVerified?: boolean;
   doctorProfile?: DoctorProfile;
   adminId?: string;
+  /**
+   * Conta (tenant) à qual o usuário pertence. Presente apenas quando o usuário
+   * não é o dono da própria conta (ex.: colaboradores), permitindo exibir "de
+   * quem" é a equipe. `null`/ausente para admins.
+   */
+  account?: {
+    ownerName: string;
+    ownerIsDoctor: boolean;
+  } | null;
   createdAt: string;
   updatedAt: string;
   /** Embutido no `/auth/me` (item 4.4b) — evita round-trip extra no boot. */

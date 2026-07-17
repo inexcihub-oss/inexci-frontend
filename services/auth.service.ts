@@ -46,6 +46,20 @@ export const authService = {
   },
 
   /**
+   * Checa antecipadamente a disponibilidade de um e-mail no fluxo de cadastro,
+   * evitando que o usuário percorra todas as etapas (inclusive a de plano) para
+   * só então descobrir que o e-mail já tem conta ou convite pendente.
+   */
+  async checkEmail(
+    email: string,
+  ): Promise<{ status: "available" | "pending_invite" | "registered" }> {
+    const { data } = await api.post<{
+      status: "available" | "pending_invite" | "registered";
+    }>("/auth/check-email", { email: email.trim() });
+    return data;
+  },
+
+  /**
    * Realiza registro de novo usuário
    */
   async register(userData: RegisterData): Promise<AuthResponse> {

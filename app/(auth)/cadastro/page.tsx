@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { billingService } from "@/services/billing.service";
+import { authService } from "@/services/auth.service";
 import {
   StepIndicator,
   Step1PersonalData,
@@ -196,7 +197,7 @@ export default function CadastroPage() {
     return null;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setError("");
     setErrorType("");
 
@@ -205,6 +206,32 @@ export default function CadastroPage() {
       if (err) {
         setError(err);
         return;
+      }
+
+      // Detecção antecipada: barra logo aqui e-mails que já têm conta ativa ou
+      // convite de colaborador pendente, evitando que o usuário percorra a
+      // etapa de perfil e a de seleção de plano para só então tomar o erro.
+      setIsLoading(true);
+      try {
+        const { status } = await authService.checkEmail(step1.email);
+        if (status === "registered") {
+          setError(
+            "Este e-mail já está cadastrado. Faça login ou recupere sua senha.",
+          );
+          setErrorType("email_active");
+          return;
+        }
+        if (status === "pending_invite") {
+          setError(
+            "Este e-mail já tem um convite pendente. Verifique sua caixa de entrada e use o link para criar sua senha.",
+          );
+          setErrorType("email_pending");
+          return;
+        }
+      } catch {
+        // Falha na checagem não deve travar o cadastro — o submit final revalida.
+      } finally {
+        setIsLoading(false);
       }
     }
     if (currentStep === 2) {
@@ -365,6 +392,8 @@ export default function CadastroPage() {
             <Button
               type="button"
               onClick={handleNext}
+              isLoading={isLoading}
+              disabled={isLoading}
               className="flex-1 text-sm font-semibold min-h-[48px]"
             >
               Continuar

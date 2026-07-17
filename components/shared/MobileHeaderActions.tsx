@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Bell, Settings, X, Check, Loader2, LogOut } from "lucide-react";
+import { Bell, Settings, X, Check, Loader2, LogOut, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -379,6 +379,17 @@ export default function MobileHeaderActions() {
                   <p className="text-xs text-neutral-400 truncate mt-0.5">
                     {user.email}
                   </p>
+                )}
+                {user?.role === "collaborator" && user?.account?.ownerName && (
+                  <span
+                    className="mt-1.5 flex items-center gap-1 text-[11px] leading-tight text-teal-600"
+                    title={`Você faz parte da equipe de ${user.account.ownerName}`}
+                  >
+                    <Users className="w-3 h-3 shrink-0" aria-hidden="true" />
+                    <span className="truncate">
+                      Equipe de {user.account.ownerName}
+                    </span>
+                  </span>
                 )}
               </div>
               {/* Logout */}
