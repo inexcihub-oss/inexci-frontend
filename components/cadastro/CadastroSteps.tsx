@@ -495,7 +495,7 @@ export function Step3Plan({
       ) : sortedPlans.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
           Não foi possível carregar os planos. Sua conta será criada no plano
-          Starter com 30 dias grátis e você poderá fazer upgrade depois.
+          Starter com 15 dias grátis e você poderá fazer upgrade depois.
         </div>
       ) : (
         <>

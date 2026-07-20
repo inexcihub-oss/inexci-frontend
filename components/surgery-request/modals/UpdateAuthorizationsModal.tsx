@@ -238,10 +238,9 @@ export function UpdateAuthorizationsModal({
     !!solicitacao?.patient?.phone || !!solicitacao?.patient?.email;
 
   const buildDateOptions = () =>
-    scheduleDates.map((d) => {
-      const datetime = `${d.date}T${d.time}:00`;
-      return new Date(datetime).toISOString();
-    });
+    scheduleDates
+      .filter((d) => d.date.trim() !== "" && d.time.trim() !== "")
+      .map((d) => new Date(`${d.date}T${d.time}:00`).toISOString());
 
   const submitAcceptAuthorization = async (
     channels: NotificationChannels | null,
@@ -262,9 +261,12 @@ export function UpdateAuthorizationsModal({
         channels.whatsapp &&
         !!solicitacao?.patient?.phone;
 
+      const dateOptions = buildDateOptions();
       const payload: AcceptAuthorizationPayload = {
-        dateOptions: buildDateOptions(),
-        ...(shouldNotifySchedulingOptions ? { notifyPatient: true } : {}),
+        ...(dateOptions.length > 0 ? { dateOptions } : {}),
+        ...(shouldNotifySchedulingOptions && dateOptions.length > 0
+          ? { notifyPatient: true }
+          : {}),
       };
       await surgeryRequestService.acceptAuthorization(solicitacao.id, payload);
 
@@ -294,19 +296,22 @@ export function UpdateAuthorizationsModal({
   };
 
   const handleAccept = () => {
-    const allFilled = scheduleDates.every(
-      (d) => d.date.trim() !== "" && d.time.trim() !== "",
+    // Datas são opcionais aqui — podem ser definidas depois, já em Agendamento.
+    // Mas cada opção iniciada precisa ter data E horário juntos.
+    const hasPartial = scheduleDates.some(
+      (d) => (d.date.trim() !== "") !== (d.time.trim() !== ""),
     );
-    if (!allFilled) {
+    if (hasPartial) {
       setScheduleAttempted(true);
       showToast(
-        "Preencha a data e o horário em todas as 3 opções de agendamento.",
+        "Preencha data e horário juntos em cada opção, ou deixe a opção vazia.",
         "error",
       );
       return;
     }
 
-    if (hasPatientContact) {
+    // Sem datas escolhidas: não há o que notificar ao paciente — segue direto.
+    if (hasPatientContact && buildDateOptions().length > 0) {
       setIsNotificationModalOpen(true);
       return;
     }
@@ -729,10 +734,12 @@ export function UpdateAuthorizationsModal({
                   </svg>
                 </div>
                 <p className="text-sm text-blue-700 leading-relaxed">
-                  Informe{" "}
-                  <strong className="font-semibold">exatamente 3 opções</strong>{" "}
-                  de data e horário. Todas são obrigatórias. O paciente
-                  escolherá a que melhor se encaixa na sua agenda.
+                  Informe até{" "}
+                  <strong className="font-semibold">3 opções</strong> de data e
+                  horário. Elas são{" "}
+                  <strong className="font-semibold">opcionais</strong> — você
+                  pode defini-las depois, já em Agendamento. O paciente escolherá
+                  a que melhor se encaixa na sua agenda.
                 </p>
               </div>
 
@@ -761,10 +768,11 @@ export function UpdateAuthorizationsModal({
                   const dateVal = scheduleDates[index].date;
                   const timeVal = scheduleDates[index].time;
                   const filled = dateVal !== "" && timeVal !== "";
+                  // Só é erro a opção parcial (uma metade preenchida sem a outra).
                   const dateError =
-                    scheduleAttempted && dateVal === "";
+                    scheduleAttempted && dateVal === "" && timeVal !== "";
                   const timeError =
-                    scheduleAttempted && timeVal === "";
+                    scheduleAttempted && timeVal === "" && dateVal !== "";
                   const hasError = dateError || timeError;
                   return (
                     <div

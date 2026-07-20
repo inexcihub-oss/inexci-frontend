@@ -105,8 +105,8 @@ export function EditDateOptionsModal({
   };
 
   const handleSubmit = () => {
-    if (validDates.length < 3) {
-      showToast("Informe as 3 opções de data obrigatórias.", "error");
+    if (validDates.length < 1) {
+      showToast("Informe pelo menos 1 data.", "error");
       return;
     }
 
@@ -159,14 +159,20 @@ export function EditDateOptionsModal({
           <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
             <p className="text-sm text-gray-500">
               Atualize as opções de data disponíveis para a realização da
-              cirurgia. As <strong>3 datas são obrigatórias</strong>.
+              cirurgia. Pelo menos <strong>1 data é obrigatória</strong>.
             </p>
             <div className="space-y-4">
               {dateOptions.map((date, index) => (
                 <div key={index} className="space-y-1.5">
                   <label className="block ds-label mb-0">
                     Data {index + 1}
-                    <span className="text-red-500 ml-0.5">*</span>
+                    {index === 0 ? (
+                      <span className="text-red-500 ml-0.5">*</span>
+                    ) : (
+                      <span className="text-gray-400 ml-1 text-xs font-normal">
+                        (opcional)
+                      </span>
+                    )}
                   </label>
                   <input
                     type="datetime-local"

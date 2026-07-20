@@ -279,6 +279,7 @@ export function CreateSurgeryRequestWizard({
       const newRequest = await surgeryRequestService.createSimple(payload);
 
       // Pré-popular OPME e TUSS do template, se existirem
+      let opmeSkipped = 0;
       if (templateData) {
         const requestId = newRequest.id;
 
@@ -289,6 +290,17 @@ export function CreateSurgeryRequestWizard({
           );
           let opmeCreated = 0;
           for (const item of opmeItems) {
+            // O backend exige no mínimo 3 fabricantes e 3 fornecedores por item.
+            // Itens de modelo incompletos são pulados aqui para evitar 400 e
+            // devem ser completados manualmente na solicitação.
+            const manufacturerCount =
+              item.manufacturerIds.length + item.manufacturerNames.length;
+            const supplierCount =
+              item.supplierIds.length + item.supplierNames.length;
+            if (manufacturerCount < 3 || supplierCount < 3) {
+              opmeSkipped++;
+              continue;
+            }
             try {
               await opmeService.create({
                 surgeryRequestId: requestId,
@@ -312,6 +324,7 @@ export function CreateSurgeryRequestWizard({
               opmeCreated++;
             } catch (e) {
               logger.warn("Erro ao adicionar OPME do template:", e);
+              opmeSkipped++;
             }
           }
 
@@ -359,7 +372,10 @@ export function CreateSurgeryRequestWizard({
       // Mostrar toast após fechar o modal
       setTimeout(() => {
         setToast({
-          message: "Solicitação cirúrgica criada com sucesso!",
+          message:
+            opmeSkipped > 0
+              ? `Solicitação criada. ${opmeSkipped} item(ns) OPME do modelo estava(m) incompleto(s) (mín. 3 fabricantes e 3 fornecedores) e não foram adicionados — complete-os na solicitação.`
+              : "Solicitação cirúrgica criada com sucesso!",
           type: "success",
         });
       }, 100);

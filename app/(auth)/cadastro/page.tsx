@@ -54,7 +54,7 @@ const STEP_BENEFITS: Record<number, { icon: string; text: string }[]> = {
   1: [
     { icon: "🔒", text: "Dados protegidos com criptografia" },
     { icon: "⚡", text: "Configuração em minutos" },
-    { icon: "🆓", text: "30 dias grátis em qualquer plano, sem cartão" },
+    { icon: "🆓", text: "15 dias grátis em qualquer plano, sem cartão" },
   ],
   2: [
     { icon: "🩺", text: "Médicos criam solicitações cirúrgicas" },
@@ -486,7 +486,7 @@ function PlanStepLayout({
   errorType,
 }: PlanStepLayoutProps) {
   const selectedPlan = plans.find((p) => p.slug === selectedSlug);
-  const ctaLabel = "Começar 30 dias grátis";
+  const ctaLabel = "Começar 15 dias grátis";
 
   return (
     /*
@@ -529,7 +529,7 @@ function PlanStepLayout({
             Etapa 3 de 3 — Seu plano
           </span>
           <h1 className="mt-3 text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 tracking-tight font-urbanist">
-            30 dias grátis em qualquer plano. Sem cartão.
+            15 dias grátis em qualquer plano. Sem cartão.
           </h1>
           <p className="mt-2 text-xs sm:text-sm text-gray-500 px-2">
             Experimente sem compromisso. Você só cadastra um cartão quando o
@@ -591,7 +591,7 @@ function PlanStepLayout({
               <span className="text-teal-600">{selectedPlan?.name ?? "—"}</span>
             </p>
             <p className="text-[11px] text-gray-500 truncate">
-              Trial de 30 dias gratuito · Sem cartão agora
+              Trial de 15 dias gratuito · Sem cartão agora
             </p>
           </div>
 
@@ -638,7 +638,7 @@ function PlanStepLayout({
           </span>
           <span className="text-gray-300">·</span>
           <span className="inline-flex items-center gap-1">
-            🎁 <span>30 dias grátis</span>
+            🎁 <span>15 dias grátis</span>
           </span>
         </div>
       </div>

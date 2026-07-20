@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   Paperclip,
@@ -17,9 +17,13 @@ import {
   surgeryRequestService,
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
+import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import { getTransitionBlockError } from "@/lib/http-error";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+
+const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png";
+const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024; // 5MB (limite do backend)
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -155,9 +159,44 @@ export function ConfirmReceiptModal({
     }
   };
 
+  // Anexos (etapa 1: comprovante de recebimento / etapa 2: documento de contestação)
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [contestFile, setContestFile] = useState<File | null>(null);
+  const receiptFileRef = useRef<HTMLInputElement>(null);
+  const contestFileRef = useRef<HTMLInputElement>(null);
+
   const [isSaving, setIsSaving] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const { showToast } = useToast();
+
+  const handlePickFile = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (f: File | null) => void,
+  ) => {
+    const f = e.target.files?.[0];
+    e.target.value = ""; // permite re-selecionar o mesmo arquivo
+    if (!f) return;
+    if (f.size > ATTACHMENT_MAX_BYTES) {
+      showToast("Arquivo muito grande. O máximo permitido é 5MB.", "error");
+      return;
+    }
+    setter(f);
+  };
+
+  // Sobe o anexo vinculado à SC. Falha não bloqueia (status já mudou).
+  const uploadAttachment = async (file: File, key: string) => {
+    try {
+      await documentService.upload({
+        surgeryRequestId: solicitacao.id,
+        key,
+        name: file.name,
+        file,
+        folder: DOCUMENT_FOLDERS.PRE_SURGERY,
+      });
+    } catch {
+      showToast("O anexo não pôde ser enviado.", "error");
+    }
+  };
 
   // ── Billing data ──
   const billing = solicitacao?.billing;
@@ -190,6 +229,8 @@ export function ConfirmReceiptModal({
     setContestFormTouched(false);
     setContestSubject("");
     setContestMessage("");
+    setReceiptFile(null);
+    setContestFile(null);
     setAttempted(false);
     onClose();
   };
@@ -223,6 +264,8 @@ export function ConfirmReceiptModal({
           "success",
         );
       }
+      if (receiptFile)
+        await uploadAttachment(receiptFile, "comprovante-recebimento");
       handleClose();
       onSuccess();
     } catch (err) {
@@ -292,6 +335,8 @@ export function ConfirmReceiptModal({
         );
       }
 
+      if (contestFile)
+        await uploadAttachment(contestFile, "documento-contestacao");
       handleClose();
       onSuccess();
     } catch (err) {
@@ -515,22 +560,46 @@ export function ConfirmReceiptModal({
 
               {/* Attachments */}
               <div className="flex items-center justify-between gap-3 p-3.5 border border-dashed border-neutral-200 bg-neutral-50 rounded-xl">
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 flex items-center justify-center bg-white border border-neutral-200 rounded-lg shrink-0">
                     <Paperclip className="w-4 h-4 text-neutral-500" />
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs md:text-sm font-medium text-neutral-700">
-                      Anexos
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs md:text-sm font-medium text-neutral-700 truncate">
+                      {receiptFile ? receiptFile.name : "Anexos"}
                     </span>
                     <span className="text-[10px] md:text-xs text-neutral-400">
                       PDF, JPG, PNG até 5MB
                     </span>
                   </div>
                 </div>
-                <button type="button" className="ds-btn-outline">
-                  Selecionar
-                </button>
+                <input
+                  ref={receiptFileRef}
+                  type="file"
+                  className="sr-only"
+                  accept={ATTACHMENT_ACCEPT}
+                  onChange={(e) => handlePickFile(e, setReceiptFile)}
+                  disabled={isSaving}
+                />
+                {receiptFile ? (
+                  <button
+                    type="button"
+                    onClick={() => setReceiptFile(null)}
+                    disabled={isSaving}
+                    className="ds-btn-outline disabled:opacity-50 shrink-0"
+                  >
+                    Remover
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => receiptFileRef.current?.click()}
+                    disabled={isSaving}
+                    className="ds-btn-outline disabled:opacity-50 shrink-0"
+                  >
+                    Selecionar
+                  </button>
+                )}
               </div>
             </div>
 
@@ -674,22 +743,46 @@ export function ConfirmReceiptModal({
                   Documento de contestação
                 </label>
                 <div className="flex items-center justify-between gap-3 p-3.5 border border-dashed border-neutral-200 bg-neutral-50 rounded-xl">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 flex items-center justify-center bg-white border border-neutral-200 rounded-lg shrink-0">
                       <Paperclip className="w-4 h-4 text-neutral-500" />
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs md:text-sm font-medium text-neutral-700">
-                        Anexar documento
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs md:text-sm font-medium text-neutral-700 truncate">
+                        {contestFile ? contestFile.name : "Anexar documento"}
                       </span>
                       <span className="text-[10px] md:text-xs text-neutral-400">
                         PDF, JPG, PNG até 5MB
                       </span>
                     </div>
                   </div>
-                  <button type="button" className="ds-btn-outline">
-                    Selecionar
-                  </button>
+                  <input
+                    ref={contestFileRef}
+                    type="file"
+                    className="sr-only"
+                    accept={ATTACHMENT_ACCEPT}
+                    onChange={(e) => handlePickFile(e, setContestFile)}
+                    disabled={isSaving}
+                  />
+                  {contestFile ? (
+                    <button
+                      type="button"
+                      onClick={() => setContestFile(null)}
+                      disabled={isSaving}
+                      className="ds-btn-outline disabled:opacity-50 shrink-0"
+                    >
+                      Remover
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => contestFileRef.current?.click()}
+                      disabled={isSaving}
+                      className="ds-btn-outline disabled:opacity-50 shrink-0"
+                    >
+                      Selecionar
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

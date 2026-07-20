@@ -2,12 +2,15 @@
 
 import React, { memo } from "react";
 import Image from "next/image";
+import { Info } from "lucide-react";
 import { ProcedureCard } from "./ProcedureCard";
 import {
   SurgeryRequest,
   SurgeryRequestStatus,
+  STATUS_DESCRIPTIONS,
 } from "@/types/surgery-request.types";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 interface KanbanColumnProps {
   columnId: string;
@@ -46,6 +49,16 @@ export const KanbanColumn = memo<KanbanColumnProps>(
             className="flex-shrink-0"
           />
           <h2 className="ds-section-title leading-normal">{title}</h2>
+          <Tooltip
+            position="bottom"
+            content={STATUS_DESCRIPTIONS[status]}
+            className="whitespace-normal w-64 text-left font-normal leading-snug"
+          >
+            <Info
+              className="w-4 h-4 text-gray-400 hover:text-gray-600"
+              aria-label={`O que significa "${title}"`}
+            />
+          </Tooltip>
           <div className="flex items-center justify-center min-w-6 h-6 px-1.5 bg-white border border-gray-200 rounded-full">
             <span className="text-xs font-semibold text-gray-900 leading-none">
               {count}

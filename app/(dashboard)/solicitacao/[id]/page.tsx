@@ -28,6 +28,7 @@ import { StartAnalysisModal } from "@/components/surgery-request/modals/StartAna
 import { UpdateAuthorizationsModal } from "@/components/surgery-request/modals/UpdateAuthorizationsModal";
 import { EditDateOptionsModal } from "@/components/surgery-request/modals/EditDateOptionsModal";
 import { RescheduleModal } from "@/components/surgery-request/modals/RescheduleModal";
+import { DefineSurgeryDateModal } from "@/components/surgery-request/modals/DefineSurgeryDateModal";
 import { SurgeryStatusModal } from "@/components/surgery-request/modals/SurgeryStatusModal";
 import { InvoiceModal } from "@/components/surgery-request/modals/InvoiceModal";
 import { ConfirmReceiptModal } from "@/components/surgery-request/modals/ConfirmReceiptModal";
@@ -39,6 +40,12 @@ import { OpmeTab } from "@/components/surgery-request/tabs/OpmeTab";
 import { PosCirurgicoTab } from "@/components/surgery-request/tabs/PosCirurgicoTab";
 import { FaturamentoTab } from "@/components/surgery-request/tabs/FaturamentoTab";
 import { CloseRequestModal } from "@/components/surgery-request/modals/CloseRequestModal";
+import { ConsentTermWarningModal } from "@/components/surgery-request/modals/ConsentTermWarningModal";
+import {
+  DocumentUploadModal,
+  DocumentTypeEntry,
+} from "@/components/documents/DocumentUploadModal";
+import { DOCUMENT_FOLDERS } from "@/services/document.service";
 import {
   NotificationConfirmModal,
   NotificationChannels,
@@ -465,6 +472,10 @@ function StatusTimeline({
   );
 }
 
+const CONSENT_TERM_DOCUMENT_TYPES: readonly DocumentTypeEntry[] = [
+  { key: "consent_term", label: "Termo de Consentimento" },
+];
+
 export default function SolicitacaoDetalhePage() {
   const params = useParams();
   const router = useRouter();
@@ -538,9 +549,12 @@ export default function SolicitacaoDetalhePage() {
     useState(false);
   const [pendingDateIndex, setPendingDateIndex] = useState<number | null>(null);
   const [_isSavingDate, setIsSavingDate] = useState(false);
+  const [showConsentWarning, setShowConsentWarning] = useState(false);
+  const [showConsentUpload, setShowConsentUpload] = useState(false);
   const [isEditDateOptionsModalOpen, setIsEditDateOptionsModalOpen] =
     useState(false);
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+  const [isDefineDateModalOpen, setIsDefineDateModalOpen] = useState(false);
   const [isSurgeryStatusModalOpen, setIsSurgeryStatusModalOpen] =
     useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -807,8 +821,25 @@ export default function SolicitacaoDetalhePage() {
     setCompletedActionStatus(null);
   };
 
-  const handleConfirmDate = async () => {
-    if (pendingDateIndex === null) {
+  const handleConfirmDate = async (skipConsentCheck = false) => {
+    const dateOptions =
+      solicitacao?.scheduling?.dateOptions ?? solicitacao?.dateOptions ?? [];
+    // Sem datas propostas nem seleção pendente: nada a confirmar ainda.
+    if (dateOptions.length > 0 && pendingDateIndex === null) {
+      return;
+    }
+    // Aviso não-bloqueante: termo de consentimento assinado ainda não anexado.
+    const hasConsentTerm = solicitacao?.documents?.some(
+      (d) => d.key === "consent_term",
+    );
+    if (!skipConsentCheck && !hasConsentTerm) {
+      setShowConsentWarning(true);
+      return;
+    }
+    setShowConsentWarning(false);
+    // Sem datas propostas: abre o modal para digitar data e hora nesta etapa.
+    if (dateOptions.length === 0) {
+      setIsDefineDateModalOpen(true);
       return;
     }
     setIsSavingDate(true);
@@ -1669,6 +1700,17 @@ export default function SolicitacaoDetalhePage() {
         }}
       />
 
+      {/* Modal Definir Data (status 4 sem datas propostas → Agendada) */}
+      <DefineSurgeryDateModal
+        isOpen={isDefineDateModalOpen}
+        onClose={() => setIsDefineDateModalOpen(false)}
+        solicitacao={solicitacao}
+        onSuccess={() => {
+          handleUpdateProcedure();
+          setIsDefineDateModalOpen(false);
+        }}
+      />
+
       {/* Modal Reagendar (status 5, sem transição) */}
       <RescheduleModal
         isOpen={isRescheduleModalOpen}
@@ -1721,6 +1763,31 @@ export default function SolicitacaoDetalhePage() {
         onSuccess={() => {
           handleUpdateProcedure();
           setIsCloseRequestModalOpen(false);
+        }}
+      />
+
+      {/* Aviso: termo de consentimento não anexado ao confirmar agendamento */}
+      <ConsentTermWarningModal
+        isOpen={showConsentWarning}
+        isLoading={_isSavingDate}
+        onClose={() => setShowConsentWarning(false)}
+        onConfirm={() => handleConfirmDate(true)}
+        onAttach={() => {
+          setShowConsentWarning(false);
+          setShowConsentUpload(true);
+        }}
+      />
+
+      {/* Upload do termo de consentimento direto pelo aviso */}
+      <DocumentUploadModal
+        isOpen={showConsentUpload}
+        onClose={() => setShowConsentUpload(false)}
+        surgeryRequestId={solicitacao.id}
+        documentTypes={CONSENT_TERM_DOCUMENT_TYPES}
+        folder={DOCUMENT_FOLDERS.PRE_SURGERY}
+        onSuccess={() => {
+          setShowConsentUpload(false);
+          handleUpdateProcedure();
         }}
       />
     </PageContainer>

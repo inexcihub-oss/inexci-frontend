@@ -39,6 +39,7 @@ interface AgendaExportRow {
   medico: string;
   hospital: string;
   convenio: string;
+  fornecedor: string;
   status: string;
   protocolo: string;
 }
@@ -76,6 +77,7 @@ const HEADERS: { key: keyof AgendaExportRow; label: string }[] = [
   { key: "medico", label: "Médico" },
   { key: "hospital", label: "Hospital" },
   { key: "convenio", label: "Convênio" },
+  { key: "fornecedor", label: "Fornecedor" },
   { key: "status", label: "Status" },
   { key: "protocolo", label: "Protocolo" },
 ];
@@ -173,6 +175,7 @@ function mapToRows(items: AgendaExportItem[]): AgendaExportRow[] {
     medico: item.doctor?.name ? `Dr. ${item.doctor.name}` : "—",
     hospital: item.hospital?.name ?? "—",
     convenio: item.healthPlan?.name ?? "—",
+    fornecedor: item.suppliers ? String(item.suppliers) : "—",
     status: getAgendaStatusLabel(item.status),
     protocolo: item.protocol ? `#${item.protocol}` : "—",
   }));
@@ -289,6 +292,7 @@ export function exportAgendaToPdf(
           <td class="cell">${escapeHtml(row.medico)}</td>
           <td class="cell">${escapeHtml(row.hospital)}</td>
           <td class="cell">${escapeHtml(row.convenio)}</td>
+          <td class="cell">${escapeHtml(row.fornecedor)}</td>
           <td class="cell center">${statusBadge(row.status)}</td>
           <td class="cell proto">${escapeHtml(row.protocolo)}</td>
         </tr>`,
@@ -316,6 +320,7 @@ export function exportAgendaToPdf(
               <th>Médico</th>
               <th>Hospital</th>
               <th>Convênio</th>
+              <th>Fornecedor</th>
               <th>Status</th>
               <th>Protocolo</th>
             </tr>

@@ -194,8 +194,8 @@ export interface StartAnalysisPayload {
 }
 
 export interface AcceptAuthorizationPayload {
-  /** Exatamente 3 datas ISO no formato YYYY-MM-DDTHH:mm:ss */
-  dateOptions: string[];
+  /** Datas opcionais (até 3) ISO no formato YYYY-MM-DDTHH:mm:ss */
+  dateOptions?: string[];
   notifyPatient?: boolean;
 }
 
@@ -295,6 +295,7 @@ export interface SurgeryRequestListItem {
   procedure: { id: string; name: string } | null;
   tussProcedure: { id: string; description: string } | null;
   procedureName?: string;
+  suppliers?: string | null;
   pendenciesCount?: number;
   hasIncompletePayment?: boolean;
   [key: string]: unknown;

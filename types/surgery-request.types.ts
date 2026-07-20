@@ -37,6 +37,28 @@ export type SurgeryRequestStatus =
   | "Finalizada" // 8
   | "Encerrada"; // 9
 
+// Legendas explicativas de cada status (exibidas em tooltip no kanban e na lista)
+export const STATUS_DESCRIPTIONS: Record<SurgeryRequestStatus, string> = {
+  Pendente:
+    "Neste status a solicitação ainda não foi recepcionada pelo hospital/convênio. Finalize ou informe o recebimento para avançar.",
+  Enviada:
+    "O hospital/convênio já recebeu sua solicitação. Acompanhe e busque o número da solicitação junto ao convênio e a data em que foi gerado.",
+  "Em Análise":
+    "Sua solicitação encontra-se em análise. O prazo de 21 dias úteis para resposta do convênio/hospital inicia-se a partir da data de geração do protocolo junto ao convênio. Atualize o que foi autorizado em relação a códigos e OPME para avançar.",
+  "Em Agendamento":
+    "As solicitações neste status estão aptas para agendamento. Confirme a data e o horário para avançar.",
+  Agendada:
+    "Todas as suas cirurgias agendadas estão neste status. Informe o status da cirurgia para seguir (Realizada, Cancelada ou Reagendada).",
+  Realizada:
+    "Suas cirurgias realizadas encontram-se neste status. Indique os dados de faturamento para avançar.",
+  Faturada:
+    "Status de todas as cirurgias faturadas. Inclua as informações de faturamento para avançar.",
+  Finalizada:
+    "Neste status sua solicitação concluiu o fluxo de uma solicitação cirúrgica.",
+  Encerrada:
+    "Solicitação encerrada. O fluxo foi interrompido antes da finalização.",
+};
+
 // Interface para pendência
 export interface Pendency {
   id: string;

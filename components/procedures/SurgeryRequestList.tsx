@@ -8,13 +8,16 @@ import {
   ChevronRight,
   MoreHorizontal,
   AlertTriangle,
+  Info,
 } from "lucide-react";
 import {
   SurgeryRequest,
   SurgeryRequestStatus,
   PriorityLevel,
   PRIORITY_LABELS,
+  STATUS_DESCRIPTIONS,
 } from "@/types/surgery-request.types";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 import { cn } from "@/lib/utils";
 
@@ -239,6 +242,19 @@ const StatusGroup = memo<StatusGroupProps>(
           <span className="text-sm md:text-base font-semibold text-black">
             {status}
           </span>
+
+          {/* Legenda do Status */}
+          <Tooltip
+            content={STATUS_DESCRIPTIONS[status]}
+            position="bottom"
+            className="whitespace-normal w-64 text-left font-normal leading-snug"
+          >
+            <Info
+              className="w-4 h-4 text-neutral-400 hover:text-neutral-600"
+              aria-label={`O que significa "${status}"`}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Tooltip>
 
           {/* Contador */}
           <div className="flex items-center justify-center w-6 h-6 bg-white border border-neutral-100 rounded-full">

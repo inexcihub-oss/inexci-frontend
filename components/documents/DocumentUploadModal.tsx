@@ -20,6 +20,7 @@ export const PRE_SURGERY_DOCUMENT_TYPES = [
   { key: "clinical_history", label: "Histórico Clínico" },
   { key: "medical_conduct", label: "Conduta Médica" },
   { key: "signed_report", label: "Laudo Assinado" },
+  { key: "consent_term", label: "Termo de Consentimento" },
   { key: "surgery_auth_document", label: "Guia de Autorização" },
   { key: "additional_document", label: "Outros" },
 ] as const;

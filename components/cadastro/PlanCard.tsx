@@ -109,7 +109,7 @@ export function PlanCard({
           ) : (
             <>
               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full mb-2">
-                🎁 30 dias grátis
+                🎁 15 dias grátis
               </span>
               {plan.billingPeriod === "YEARLY" ? (
                 <>
@@ -177,7 +177,7 @@ export function PlanCard({
                     : "bg-gray-50 text-gray-500 border border-gray-100 group-hover:bg-gray-100 group-hover:text-gray-700"
               }`}
             >
-              {isDisabled ? "Sob consulta" : selected ? "✓ Plano selecionado" : "Começar 30 dias grátis"}
+              {isDisabled ? "Sob consulta" : selected ? "✓ Plano selecionado" : "Começar 15 dias grátis"}
             </div>
           )}
         </div>
