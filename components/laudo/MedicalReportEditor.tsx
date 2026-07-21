@@ -18,12 +18,15 @@ import {
 } from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { doctorHeaderService } from "@/services/doctor-header.service";
+import { userService } from "@/services/user.service";
+import { uploadService } from "@/services/upload.service";
 import { useToast } from "@/hooks/useToast";
 import { MedicalReportPreviewModal } from "@/components/laudo/MedicalReportPreviewModal";
 import { buildLaudoPatientDisplayFields } from "@/components/laudo/SurgeryRequestLaudoDocument";
 import dynamic from "next/dynamic";
 import api from "@/lib/api";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { removeBackground } from "@/lib/utils";
 import type { DoctorHeader } from "@/types/doctor-header.types";
 
 // P14: Tiptap (RichTextEditor) carregado sob demanda — fora do chunk estático
@@ -180,6 +183,8 @@ export function MedicalReportEditor() {
   const [isDeletingDocId, setIsDeletingDocId] = useState<string | null>(null);
   const [imageUploadItems, setImageUploadItems] = useState<UploadItem[]>([]);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
   const [doctorHeader, setDoctorHeader] = useState<
     DoctorHeader | null | undefined
   >(undefined);
@@ -286,6 +291,59 @@ export function MedicalReportEditor() {
       onUpdate();
     }
   }, [solicitacao, currentUser, onUpdate]);
+
+  // Upload inline da assinatura do médico (próprio médico ou colaborador vinculado).
+  const handleSignatureUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = ""; // permite reenviar o mesmo arquivo
+      const doctorId = solicitacao?.doctor?.id;
+      if (!file || !doctorId) return;
+
+      if (file.size > 2 * 1024 * 1024) {
+        showToast("A assinatura deve ter no máximo 2MB", "error");
+        return;
+      }
+
+      setIsUploadingSignature(true);
+      try {
+        const processed = await removeBackground(file);
+        const { data } = await uploadService.uploadSingle(
+          processed,
+          "signatures",
+        );
+        await userService.updateDoctorProfile(String(doctorId), {
+          signatureImageUrl: data.path,
+        });
+        showToast("Assinatura adicionada com sucesso!", "success");
+        onUpdate();
+      } catch {
+        showToast("Erro ao adicionar assinatura.", "error");
+      } finally {
+        setIsUploadingSignature(false);
+      }
+    },
+    [solicitacao?.doctor?.id, onUpdate, showToast],
+  );
+
+  // Remove a assinatura cadastrada do médico (próprio ou vinculado).
+  const handleSignatureDelete = useCallback(async () => {
+    const doctorId = solicitacao?.doctor?.id;
+    if (!doctorId) return;
+
+    setIsUploadingSignature(true);
+    try {
+      await userService.updateDoctorProfile(String(doctorId), {
+        signatureImageUrl: null,
+      });
+      showToast("Assinatura removida.", "success");
+      onUpdate();
+    } catch {
+      showToast("Erro ao remover assinatura.", "error");
+    } finally {
+      setIsUploadingSignature(false);
+    }
+  }, [solicitacao?.doctor?.id, onUpdate, showToast]);
 
   // ── Carrega cabeçalho do médico autenticado ──────────────────────────────
   useEffect(() => {
@@ -1291,9 +1349,16 @@ export function MedicalReportEditor() {
                 <span className="flex-1 text-xs md:text-sm font-semibold text-gray-900 truncate">
                   Assinatura
                 </span>
-                <div className="w-20 sm:w-32 h-2 bg-gray-100 rounded-full overflow-hidden flex-shrink-0">
-                  <div className="h-full w-full bg-teal-600 rounded-full" />
-                </div>
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    disabled={isUploadingSignature}
+                    onClick={handleSignatureDelete}
+                    className="flex-shrink-0 px-3 py-1.5 text-xs md:text-sm text-red-600 rounded-lg cursor-pointer hover:bg-red-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isUploadingSignature ? "Removendo..." : "Remover"}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full py-3 px-4 sm:pl-4 sm:pr-2 bg-gray-100 border border-dashed border-gray-200 rounded-xl">
@@ -1303,30 +1368,41 @@ export function MedicalReportEditor() {
                     : solicitacao?.doctor &&
                         currentUser &&
                         solicitacao.doctor.id !== currentUser.id
-                      ? `O médico ${solicitacao.doctor.name} ainda não possui assinatura cadastrada. Acesse o perfil dele para adicionar.`
+                      ? `O médico ${solicitacao.doctor.name} ainda não possui assinatura cadastrada. Adicione-a aqui para incluí-la no laudo.`
                       : "Nenhuma assinatura configurada. Adicione sua assinatura nas configurações para incluí-la no laudo."}
                 </p>
-                {!isReadOnly && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (
-                        solicitacao?.doctor &&
-                        currentUser &&
-                        solicitacao.doctor.id !== currentUser.id
-                      ) {
-                        router.push(
-                          `/colaboradores/assistente/${solicitacao.doctor.id}`,
-                        );
-                      } else {
-                        router.push("/configuracoes");
-                      }
-                    }}
-                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-xl text-xs md:text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
-                  >
-                    Adicionar assinatura
-                  </button>
-                )}
+                {!isReadOnly &&
+                  (solicitacao?.doctor &&
+                  currentUser &&
+                  solicitacao.doctor.id !== currentUser.id ? (
+                    <>
+                      <input
+                        ref={signatureInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleSignatureUpload}
+                      />
+                      <button
+                        type="button"
+                        disabled={isUploadingSignature}
+                        onClick={() => signatureInputRef.current?.click()}
+                        className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-xl text-xs md:text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {isUploadingSignature
+                          ? "Enviando..."
+                          : "Adicionar assinatura"}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/configuracoes")}
+                      className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 shadow-sm rounded-xl text-xs md:text-sm text-gray-900 cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      Adicionar assinatura
+                    </button>
+                  ))}
               </div>
             )}
           </div>

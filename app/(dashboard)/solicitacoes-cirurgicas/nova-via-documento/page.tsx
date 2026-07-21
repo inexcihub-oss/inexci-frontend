@@ -129,13 +129,6 @@ const formSchema = z
     healthPlanName: z.string().optional(),
   })
   .superRefine((data, ctx) => {
-    if (!data.procedureId && !data.procedureName?.trim()) {
-      ctx.addIssue({
-        path: ["procedureId"],
-        code: z.ZodIssueCode.custom,
-        message: "Selecione ou informe o procedimento",
-      });
-    }
     if (data.patientMode === "existing" && !data.patientId) {
       ctx.addIssue({
         path: ["patientId"],
@@ -858,7 +851,8 @@ export default function NovaViaDocumentoPage() {
             {/* Procedimento */}
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">
-                Procedimento <span className="text-red-500">*</span>
+                Procedimento{" "}
+                <span className="text-neutral-400 font-normal">(opcional)</span>
               </label>
               {ext.suggestedProcedureName && (
                 <p className="text-xs text-neutral-500 mb-1.5">
