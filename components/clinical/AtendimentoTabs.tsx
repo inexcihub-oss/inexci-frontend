@@ -70,6 +70,18 @@ function initials(name: string): string {
 }
 
 /**
+ * A SC é criada best-effort depois de finalizar: quando a tentativa imediata
+ * falha, a resposta vem sem `surgeryRequestId` e o backend retoma sozinho. A
+ * mensagem precisa refletir o que de fato aconteceu.
+ */
+function finalizeMessage(record: ClinicalRecord): string {
+  if (!record.surgicalIndication) return "Atendimento finalizado.";
+  return record.surgeryRequestId
+    ? "Atendimento finalizado. Solicitação cirúrgica criada."
+    : "Atendimento finalizado. A solicitação cirúrgica está sendo criada.";
+}
+
+/**
  * Casca da tela de atendimento: header fixo, barra de abas e o conteúdo ativo.
  * É a dona do estado da ficha (por isso trocar de aba nunca perde o que foi
  * digitado) e das ações de salvar/finalizar. Nada é enviado ao servidor sem
@@ -143,6 +155,7 @@ export function AtendimentoTabs({
       diagnosis: fields.diagnosis,
       conduct: fields.conduct,
       cidCodes: fields.cidCodes,
+      surgicalIndication: fields.surgicalIndication,
     };
     if (record) {
       return clinicalRecordService.update(record.id, payload);
@@ -180,7 +193,7 @@ export function AtendimentoTabs({
       const done = await clinicalRecordService.finalize(saved.id);
       setRecord(done);
       setBaseline(fields);
-      showSuccess("Atendimento finalizado.");
+      showSuccess(finalizeMessage(done));
     } catch (err) {
       showError(getApiErrorMessage(err, "Não foi possível finalizar."));
     } finally {
@@ -346,6 +359,7 @@ export function AtendimentoTabs({
                 fields={fields}
                 onFieldChange={handleFieldChange}
                 readOnly={finalized}
+                surgeryRequestId={record?.surgeryRequestId ?? null}
               />
 
               {!finalized && (

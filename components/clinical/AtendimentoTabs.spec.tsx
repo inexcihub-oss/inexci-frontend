@@ -313,6 +313,127 @@ describe("AtendimentoTabs", () => {
     confirmSpy.mockRestore();
   });
 
+  it("envia o marcador de paciente cirúrgico ao salvar", async () => {
+    const user = userEvent.setup();
+    (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+      recordFixture({ surgicalIndication: true }),
+    );
+    renderTabs();
+
+    await user.click(screen.getByRole("checkbox", { name: "Paciente cirúrgico" }));
+    const saveButtons = screen.getAllByRole("button", {
+      name: /Salvar rascunho/i,
+    });
+    await user.click(saveButtons[0]);
+
+    await waitFor(() => {
+      expect(clinicalRecordService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ surgicalIndication: true }),
+      );
+    });
+  });
+
+  it("confirma a SC criada ao finalizar com o marcador ligado", async () => {
+    const user = userEvent.setup();
+    (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+      recordFixture({ surgicalIndication: true }),
+    );
+    (
+      clinicalRecordService.finalize as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(
+      recordFixture({
+        surgicalIndication: true,
+        surgeryRequestId: "sc-1",
+        finalizedAt: "2026-07-29T19:00:00.000Z",
+      }),
+    );
+    renderTabs();
+
+    await user.click(screen.getByRole("checkbox", { name: "Paciente cirúrgico" }));
+    await user.click(screen.getByRole("button", { name: "Finalizar" }));
+
+    expect(
+      await screen.findByText(/Solicitação cirúrgica criada/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Abrir solicitação/i }),
+    ).toHaveAttribute("href", "/solicitacao/sc-1");
+  });
+
+  // Quando a criação inline falha, o backend responde sem surgeryRequestId e o
+  // sweeper retoma — a UI precisa dizer isso em vez de fingir que deu certo.
+  it("avisa que a SC está em criação quando o backend não devolve o id", async () => {
+    const user = userEvent.setup();
+    (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+      recordFixture({ surgicalIndication: true }),
+    );
+    (
+      clinicalRecordService.finalize as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(
+      recordFixture({
+        surgicalIndication: true,
+        surgeryRequestId: null,
+        finalizedAt: "2026-07-29T19:00:00.000Z",
+      }),
+    );
+    renderTabs();
+
+    await user.click(screen.getByRole("checkbox", { name: "Paciente cirúrgico" }));
+    await user.click(screen.getByRole("button", { name: "Finalizar" }));
+
+    // Texto exato de cada um: o toast e o aviso do card compartilham a frase
+    // "está sendo criada", e uma regex casaria com os dois.
+    expect(
+      await screen.findByText(
+        "Atendimento finalizado. A solicitação cirúrgica está sendo criada.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "A solicitação está sendo criada e aparecerá em Solicitações em instantes.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Abrir solicitação/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("não menciona solicitação ao finalizar sem o marcador", async () => {
+    const user = userEvent.setup();
+    (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+      recordFixture(),
+    );
+    (
+      clinicalRecordService.finalize as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(
+      recordFixture({ finalizedAt: "2026-07-29T19:00:00.000Z" }),
+    );
+    renderTabs();
+
+    await user.click(screen.getByRole("button", { name: "Finalizar" }));
+
+    expect(
+      await screen.findByText("Atendimento finalizado."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Solicitação cirúrgica/i)).not.toBeInTheDocument();
+  });
+
+  it("mantém o marcador visível e travado em ficha finalizada", () => {
+    renderTabs(
+      recordFixture({
+        surgicalIndication: true,
+        surgeryRequestId: "sc-1",
+        finalizedAt: "2026-07-29T19:00:00.000Z",
+      }),
+    );
+
+    expect(screen.getByRole("checkbox", { name: "Paciente cirúrgico" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Paciente cirúrgico" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
+
   it("sai da tela ao confirmar a saída com alterações pendentes", async () => {
     const user = userEvent.setup();
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
