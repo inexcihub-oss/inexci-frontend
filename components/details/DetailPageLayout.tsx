@@ -28,7 +28,7 @@ interface DetailPageLayoutProps {
   /** Conteúdo da sidebar direita */
   sidebarContent?: ReactNode;
   /** Ícone da sidebar quando fechada */
-  sidebarIcon?: "users" | "history" | "info";
+  sidebarIcon?: "users" | "history" | "info" | "calendar";
 }
 
 export function DetailPageLayout({
@@ -76,6 +76,32 @@ export function DetailPageLayout({
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
+            />
+          </svg>
+        );
+      case "calendar":
+        return (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <rect
+              x="3"
+              y="5"
+              width="18"
+              height="16"
+              rx="2"
+              stroke="#111111"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M3 10H21M8 3V6M16 3V6"
+              stroke="#111111"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M7.5 14H9M11.5 14H13M15.5 14H17M7.5 17.5H9M11.5 17.5H13"
+              stroke="#111111"
+              strokeWidth="1.5"
+              strokeLinecap="round"
             />
           </svg>
         );

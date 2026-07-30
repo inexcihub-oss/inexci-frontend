@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui";
 import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
@@ -17,7 +17,7 @@ import {
   STATUS_NUMBER_TO_STRING,
   STATUS_COLORS,
 } from "@/services/surgery-request.service";
-import { ChevronRight, Plus, CalendarDays, Stethoscope } from "lucide-react";
+import { ChevronRight, CalendarDays, Stethoscope } from "lucide-react";
 
 const APPOINTMENT_BADGE: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 text-blue-700",
@@ -61,38 +61,28 @@ function surgeryAt(surgery: SurgeryRequestListItem): number {
  * Consultas e cirurgias do paciente na sidebar, em ordem cronológica (passadas
  * e futuras). Consulta abre o modal de detalhe (status + atendimento);
  * cirurgia navega para a solicitação.
+ *
+ * A criação de consulta vive na página (botão "Nova consulta"), que também é
+ * dona da lista de consultas — aqui só exibimos e pedimos recarga via
+ * `onReload` depois de editar/mudar status/excluir.
  */
 export function PatientTimelineSidebar({
-  patientId,
-  patientName,
+  appointments,
+  loadingAppointments,
   surgeries,
   loadingSurgeries,
+  onReload,
 }: {
-  patientId: string;
-  patientName: string;
+  appointments: Appointment[];
+  loadingAppointments: boolean;
   surgeries: SurgeryRequestListItem[];
   loadingSurgeries: boolean;
+  onReload: () => void;
 }) {
   const router = useRouter();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newOpen, setNewOpen] = useState(false);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [busy, setBusy] = useState(false);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    appointmentService
-      .getByPatient(patientId)
-      .then(setAppointments)
-      .catch(() => setAppointments([]))
-      .finally(() => setLoading(false));
-  }, [patientId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const entries = useMemo<TimelineEntry[]>(() => {
     const merged: TimelineEntry[] = [
@@ -118,7 +108,7 @@ export function PatientTimelineSidebar({
     try {
       await appointmentService.updateStatus(selected.id, status);
       setSelected(null);
-      load();
+      onReload();
     } finally {
       setBusy(false);
     }
@@ -130,13 +120,13 @@ export function PatientTimelineSidebar({
     try {
       await appointmentService.delete(selected.id);
       setSelected(null);
-      load();
+      onReload();
     } finally {
       setBusy(false);
     }
   };
 
-  const isLoading = loading || loadingSurgeries;
+  const isLoading = loadingAppointments || loadingSurgeries;
 
   return (
     <div className="flex flex-col h-full">
@@ -145,19 +135,9 @@ export function PatientTimelineSidebar({
         <h3 className="text-sm font-semibold text-gray-900">
           Consultas e cirurgias
         </h3>
-        <div className="flex items-center gap-2">
-          {!isLoading && (
-            <span className="text-xs text-gray-400">{entries.length}</span>
-          )}
-          <button
-            onClick={() => setNewOpen(true)}
-            title="Nova consulta"
-            aria-label="Nova consulta"
-            className="w-8 h-8 flex items-center justify-center border border-neutral-100 rounded-lg shadow-sm hover:bg-teal-50 active:scale-[0.95] transition-all"
-          >
-            <Plus className="w-4 h-4 text-gray-700" />
-          </button>
-        </div>
+        {!isLoading && (
+          <span className="text-xs text-gray-400">{entries.length}</span>
+        )}
       </div>
 
       {/* Itens */}
@@ -263,19 +243,11 @@ export function PatientTimelineSidebar({
         )}
       </div>
 
-      <NewAppointmentModal
-        isOpen={newOpen}
-        onClose={() => setNewOpen(false)}
-        onSaved={load}
-        defaultPatientId={patientId}
-        defaultPatientLabel={patientName}
-      />
-
       {editing && (
         <NewAppointmentModal
           isOpen
           onClose={() => setEditing(null)}
-          onSaved={load}
+          onSaved={onReload}
           appointment={editing}
         />
       )}

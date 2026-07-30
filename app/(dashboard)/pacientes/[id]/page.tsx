@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
@@ -18,16 +18,18 @@ import { HealthPlanComboboxField } from "@/components/patients/HealthPlanCombobo
 import { PatientClinicalTimeline } from "@/components/clinical/PatientClinicalTimeline";
 import { PatientDocuments } from "@/components/clinical/PatientDocuments";
 import { PatientTimelineSidebar } from "@/components/clinical/PatientTimelineSidebar";
+import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
 import {
   surgeryRequestService,
   SurgeryRequestListItem,
 } from "@/services/surgery-request.service";
+import { appointmentService, Appointment } from "@/services/appointment.service";
 import { logger } from "@/lib/logger";
 import { formatCPF, formatPhone } from "@/lib/formatters";
 import { useToast } from "@/hooks/useToast";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { maskCep } from "@/lib/masks";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 
 export default function PacienteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -49,6 +51,9 @@ export default function PacienteDetalhePage() {
     SurgeryRequestListItem[]
   >([]);
   const [loadingSurgeries, setLoadingSurgeries] = useState(true);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
+  const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
 
   // Form state
@@ -99,10 +104,25 @@ export default function PacienteDetalhePage() {
     },
   });
 
+  /** Consultas do paciente — vive na página porque o botão "Nova consulta"
+   * também está aqui; a sidebar apenas consome e pede recarga. */
+  const loadAppointments = useCallback(() => {
+    setLoadingAppointments(true);
+    appointmentService
+      .getByPatient(params.id)
+      .then(setAppointments)
+      .catch(() => setAppointments([]))
+      .finally(() => setLoadingAppointments(false));
+  }, [params.id]);
+
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
+
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
 
   const loadData = async () => {
     setLoading(true);
@@ -263,10 +283,11 @@ export default function PacienteDetalhePage() {
 
   const sidebarContent = (
     <PatientTimelineSidebar
-      patientId={patient.id}
-      patientName={patient.name}
+      appointments={appointments}
+      loadingAppointments={loadingAppointments}
       surgeries={surgeryRequests}
       loadingSurgeries={loadingSurgeries}
+      onReload={loadAppointments}
     />
   );
 
@@ -277,9 +298,20 @@ export default function PacienteDetalhePage() {
         backHref="/pacientes"
         itemName={patient.name}
         itemSubtitle="Paciente"
-        sidebarIcon="history"
+        sidebarIcon="calendar"
         sidebarContent={sidebarContent}
       >
+        {/* Ação principal do paciente */}
+        <div className="flex justify-end">
+          <button
+            onClick={() => setIsNewAppointmentOpen(true)}
+            className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+          >
+            <Plus className="w-4 h-4" strokeWidth={2.2} />
+            <span className="text-xs font-semibold">Nova consulta</span>
+          </button>
+        </div>
+
         {/* Seção: Prontuário */}
         <FormSection title="Prontuário">
           <PatientClinicalTimeline patientId={patient.id} />
@@ -434,6 +466,14 @@ export default function PacienteDetalhePage() {
           </Button>
         </div>
       </DetailPageLayout>
+
+      <NewAppointmentModal
+        isOpen={isNewAppointmentOpen}
+        onClose={() => setIsNewAppointmentOpen(false)}
+        onSaved={loadAppointments}
+        defaultPatientId={patient.id}
+        defaultPatientLabel={patient.name}
+      />
 
       {toast && (
         <Toast
