@@ -15,22 +15,32 @@ interface NavItem {
 
 // Itens sempre visíveis na barra inferior
 const PRIMARY_ITEMS: NavItem[] = [
-  { iconSrc: "/icons/dashboard.svg", label: "Dashboard", href: "/dashboard" },
+  {
+    iconSrc: "/icons/stethoscope.svg",
+    label: "Atendimento",
+    href: "/atendimento",
+  },
+  {
+    iconSrc: "/icons/calendar-schedule.svg",
+    label: "Agenda",
+    href: "/agenda",
+  },
   {
     iconSrc: "/icons/grid-layout.svg",
     label: "Solicitações",
     href: "/solicitacoes-cirurgicas",
   },
   { iconSrc: "/icons/user-add.svg", label: "Pacientes", href: "/pacientes" },
+];
+
+// Itens compartilhados com todos da conta (admin, colaborador e médico)
+const SHARED_OVERFLOW_ITEMS: NavItem[] = [
+  { iconSrc: "/icons/dashboard.svg", label: "Dashboard", href: "/dashboard" },
   {
     iconSrc: "/icons/status-surgeries.svg",
     label: "Procedimentos",
     href: "/procedimentos",
   },
-];
-
-// Itens compartilhados com todos da conta (admin, colaborador e médico)
-const SHARED_OVERFLOW_ITEMS: NavItem[] = [
   { iconSrc: "/icons/users.svg", label: "Hospitais", href: "/hospitais" },
   {
     iconSrc: "/icons/document.svg",
@@ -51,11 +61,6 @@ const SHARED_OVERFLOW_ITEMS: NavItem[] = [
 
 // Itens exclusivos de admin — aparecem no overflow sheet
 const ADMIN_ONLY_OVERFLOW_ITEMS: NavItem[] = [
-  {
-    iconSrc: "/icons/calendar-schedule.svg",
-    label: "Agenda",
-    href: "/agenda",
-  },
   {
     iconSrc: "/icons/user-profile.svg",
     label: "Colaboradores",

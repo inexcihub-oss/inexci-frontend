@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import ReactDOM from "react-dom";
 import { X, AlertCircle } from "lucide-react";
 
 interface DeleteDocumentModalProps {
@@ -19,12 +20,15 @@ export function DeleteDocumentModal({
   isDeleting,
 }: DeleteDocumentModalProps) {
   if (!isOpen) return null;
+  if (typeof window === "undefined") return null;
 
   const handleConfirm = () => {
     onConfirm();
   };
 
-  return (
+  // Portal no body: inline, o wrapper fixed herdaria o `margin-top` do
+  // `space-y-*` do container pai.
+  return ReactDOM.createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
@@ -113,6 +117,7 @@ export function DeleteDocumentModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

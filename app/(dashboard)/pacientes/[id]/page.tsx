@@ -15,19 +15,19 @@ import { patientService, Patient } from "@/services/patient.service";
 import { GENDER_OPTIONS, STATE_OPTIONS } from "@/lib/options";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { HealthPlanComboboxField } from "@/components/patients/HealthPlanComboboxField";
+import { PatientClinicalTimeline } from "@/components/clinical/PatientClinicalTimeline";
+import { PatientDocuments } from "@/components/clinical/PatientDocuments";
+import { PatientTimelineSidebar } from "@/components/clinical/PatientTimelineSidebar";
 import {
   surgeryRequestService,
   SurgeryRequestListItem,
-  STATUS_NUMBER_TO_STRING,
-  STATUS_COLORS,
 } from "@/services/surgery-request.service";
 import { logger } from "@/lib/logger";
 import { formatCPF, formatPhone } from "@/lib/formatters";
-import { formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/useToast";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { maskCep } from "@/lib/masks";
-import { ChevronRight, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function PacienteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -262,74 +262,12 @@ export default function PacienteDetalhePage() {
   }
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Histórico de cirurgias
-        </h3>
-        {!loadingSurgeries && (
-          <span className="text-xs text-gray-400">
-            {surgeryRequests.length}
-          </span>
-        )}
-      </div>
-
-      {/* Lista de cirurgias */}
-      <div className="flex-1 overflow-y-auto">
-        {loadingSurgeries ? (
-          <div className="flex items-center justify-center py-8">
-            <Spinner size="sm" />
-          </div>
-        ) : surgeryRequests.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-xs text-gray-400">
-              Nenhuma solicitação encontrada.
-            </p>
-          </div>
-        ) : (
-          surgeryRequests.map((surgery) => {
-            const statusLabel =
-              STATUS_NUMBER_TO_STRING[surgery.status] ?? "Pendente";
-            const colors = STATUS_COLORS[statusLabel] ?? {
-              bg: "bg-gray-50",
-              text: "text-gray-600",
-              border: "border-gray-200",
-            };
-            const procedureName =
-              (surgery as any).procedureName ||
-              surgery.procedure?.name ||
-              surgery.tussProcedure?.description ||
-              "Procedimento não especificado";
-            const date = surgery.createdAt
-              ? formatDate(surgery.createdAt)
-              : "—";
-            return (
-              <div
-                key={surgery.id}
-                onClick={() => router.push(`/solicitacao/${surgery.id}`)}
-                className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
-              >
-                <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
-                  <span className="text-xs font-semibold text-gray-900 truncate">
-                    {procedureName}
-                  </span>
-                  <span className="text-xs text-gray-500">{date}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`text-xs px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}
-                  >
-                    {statusLabel}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
+    <PatientTimelineSidebar
+      patientId={patient.id}
+      patientName={patient.name}
+      surgeries={surgeryRequests}
+      loadingSurgeries={loadingSurgeries}
+    />
   );
 
   return (
@@ -339,8 +277,17 @@ export default function PacienteDetalhePage() {
         backHref="/pacientes"
         itemName={patient.name}
         itemSubtitle="Paciente"
+        sidebarIcon="history"
         sidebarContent={sidebarContent}
       >
+        {/* Seção: Prontuário */}
+        <FormSection title="Prontuário">
+          <PatientClinicalTimeline patientId={patient.id} />
+        </FormSection>
+
+        {/* Seção: Documentos e exames (card próprio, com ação no header) */}
+        <PatientDocuments patientId={patient.id} />
+
         {/* Seção: Informações pessoais */}
         <FormSection title="Informações pessoais">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -487,6 +434,7 @@ export default function PacienteDetalhePage() {
           </Button>
         </div>
       </DetailPageLayout>
+
       {toast && (
         <Toast
           message={toast.message}

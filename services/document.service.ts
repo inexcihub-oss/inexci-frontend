@@ -67,3 +67,70 @@ export const documentService = {
     });
   },
 };
+
+// ── Documentos por paciente (exames/anexos do prontuário) ─────────────────────
+
+export interface PatientDocument {
+  id: string;
+  patientId: string;
+  clinicalRecordId: string | null;
+  type: string;
+  key: string;
+  name: string;
+  uri: string;
+  path?: string;
+  createdAt: string;
+}
+
+export interface UploadPatientDocumentData {
+  patientId: string;
+  clinicalRecordId?: string;
+  type?: string;
+  key: string;
+  name: string;
+  file: File;
+  folder?: DocumentFolder;
+  onUploadProgress?: (pct: number) => void;
+}
+
+export const patientDocumentService = {
+  async list(patientId: string): Promise<PatientDocument[]> {
+    const response = await api.get<PatientDocument[]>(
+      "/clinical-records/documents",
+      { params: { patientId } },
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  async upload(data: UploadPatientDocumentData): Promise<PatientDocument> {
+    const formData = new FormData();
+    formData.append("patientId", data.patientId);
+    if (data.clinicalRecordId)
+      formData.append("clinicalRecordId", data.clinicalRecordId);
+    if (data.type) formData.append("type", data.type);
+    formData.append("key", data.key);
+    formData.append("name", data.name);
+    formData.append("document", data.file);
+    formData.append("folder", data.folder ?? DOCUMENT_FOLDERS.PRE_SURGERY);
+
+    const response = await api.post(
+      "/clinical-records/documents",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          if (data.onUploadProgress && progressEvent.total) {
+            data.onUploadProgress(
+              Math.round((progressEvent.loaded / progressEvent.total) * 100),
+            );
+          }
+        },
+      },
+    );
+    return response.data;
+  },
+
+  async delete(data: { id: string; key: string }): Promise<void> {
+    await api.delete("/clinical-records/documents", { data });
+  },
+};

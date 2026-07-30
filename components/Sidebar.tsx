@@ -33,15 +33,21 @@ type NavigationEntry = MenuItem | MenuGroup;
 const allMenuItems: NavigationEntry[] = [
   {
     type: "item",
-    iconSrc: "/icons/grid-layout.svg",
-    label: "Solicitações Cirúrgicas",
-    href: "/solicitacoes-cirurgicas",
+    iconSrc: "/icons/stethoscope.svg",
+    label: "Atendimento",
+    href: "/atendimento",
   },
   {
     type: "item",
     iconSrc: "/icons/calendar-schedule.svg",
     label: "Agenda",
     href: "/agenda",
+  },
+  {
+    type: "item",
+    iconSrc: "/icons/grid-layout.svg",
+    label: "Solicitações Cirúrgicas",
+    href: "/solicitacoes-cirurgicas",
   },
   {
     type: "item",

@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import {
   patientService,
   CreatePatientPayload,
+  Patient,
 } from "@/services/patient.service";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { GENDER_OPTIONS } from "@/lib/options";
@@ -21,7 +22,8 @@ import { Toast } from "@/components/ui/Toast";
 interface NewPatientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  /** Recebe o paciente recém-criado (para seleção automática em outros fluxos). */
+  onSuccess: (patient: Patient) => void;
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -96,8 +98,8 @@ export function NewPatientModal({
           gender: data.gender || undefined,
           healthPlanId: data.healthPlanId || undefined,
         };
-        await patientService.create(payload);
-        onSuccess();
+        const created = await patientService.create(payload);
+        onSuccess(created);
         form.reset();
         onClose();
       } catch (err) {

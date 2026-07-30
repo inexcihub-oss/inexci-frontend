@@ -107,7 +107,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         className={`relative bg-white w-full ${sizeClasses[size]} flex flex-col
-          rounded-t-3xl md:rounded-2xl
+          rounded-t-3xl md:rounded-2xl overflow-hidden
           max-h-[92vh] md:max-h-[85vh]
           animate-slide-up md:animate-scale-in
           md:mx-4

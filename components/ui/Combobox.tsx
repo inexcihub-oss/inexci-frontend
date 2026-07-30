@@ -43,8 +43,11 @@ export function Combobox({
   const [searchQuery, setSearchQuery] = React.useState("");
   const [dropdownPosition, setDropdownPosition] = React.useState({
     top: 0,
+    bottom: 0,
     left: 0,
     width: 0,
+    maxHeight: 320,
+    openUp: false,
   });
   const containerRef = React.useRef<HTMLDivElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
@@ -90,10 +93,18 @@ export function Combobox({
       const updatePosition = () => {
         if (buttonRef.current) {
           const rect = buttonRef.current.getBoundingClientRect();
+          const margin = 8;
+          const spaceBelow = window.innerHeight - rect.bottom - margin;
+          const spaceAbove = rect.top - margin;
+          // Abre para cima quando não cabe embaixo e há mais espaço em cima.
+          const openUp = spaceBelow < 300 && spaceAbove > spaceBelow;
           setDropdownPosition({
-            top: rect.bottom,
+            top: rect.bottom + 4,
+            bottom: window.innerHeight - rect.top + 4,
             left: rect.left,
             width: rect.width,
+            maxHeight: Math.max(180, (openUp ? spaceAbove : spaceBelow) - 4),
+            openUp,
           });
         }
       };
@@ -174,12 +185,15 @@ export function Combobox({
               ref={dropdownRef}
               style={{
                 position: "fixed",
-                top: `${dropdownPosition.top}px`,
+                ...(dropdownPosition.openUp
+                  ? { bottom: `${dropdownPosition.bottom}px` }
+                  : { top: `${dropdownPosition.top}px` }),
                 left: `${dropdownPosition.left}px`,
                 width: `${dropdownPosition.width}px`,
+                maxHeight: `${dropdownPosition.maxHeight}px`,
                 zIndex: 9999,
               }}
-              className="mt-1 rounded-xl border border-neutral-100 bg-white shadow-lg"
+              className="flex flex-col overflow-hidden rounded-xl border border-neutral-100 bg-white shadow-lg"
             >
               <div className="p-2">
                 <input
@@ -191,7 +205,7 @@ export function Combobox({
                   autoFocus
                 />
               </div>
-              <div className="max-h-60 overflow-auto p-1">
+              <div className="flex-1 overflow-auto p-1">
                 {filteredOptions.length === 0 && !onCreateNew && (
                   <div className="py-6 text-center text-xs md:text-sm text-gray-500">
                     {emptyText}
