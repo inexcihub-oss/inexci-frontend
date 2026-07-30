@@ -104,7 +104,11 @@ export function NewAppointmentModal({
     const to = new Date(parsed);
     to.setHours(23, 59, 59, 999);
     appointmentService
-      .getAgenda(from.toISOString(), to.toISOString(), doctorId)
+      .getAgenda({
+        from: from.toISOString(),
+        to: to.toISOString(),
+        doctorId,
+      })
       .then((list) => {
         if (!active) return;
         setDayAppointments(

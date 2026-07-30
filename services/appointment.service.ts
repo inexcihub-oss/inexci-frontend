@@ -87,16 +87,32 @@ export type UpdateAppointmentPayload = Partial<
   >
 >;
 
+/**
+ * Recorte da agenda. `from`/`to` são opcionais e independentes: a agenda passa
+ * as duas, a aba "Próximas" só o início (não tem teto) e a aba "Realizadas"
+ * nenhuma (todo o histórico, filtrado por status).
+ */
+export interface AgendaQuery {
+  from?: string;
+  to?: string;
+  doctorId?: string;
+  /** Status aceitos. Sem isso, vêm todos. */
+  status?: AppointmentStatus[];
+  /** Ordem por horário — `DESC` nas listas de passado. */
+  order?: "ASC" | "DESC";
+}
+
 export const appointmentService = {
-  /** Consultas dentro de um intervalo de datas (agenda). */
-  async getAgenda(
-    from: string,
-    to: string,
-    doctorId?: string,
-  ): Promise<Appointment[]> {
-    const response = await api.get("/appointments", {
-      params: { from, to, ...(doctorId ? { doctorId } : {}) },
-    });
+  /** Consultas da agenda, opcionalmente recortadas por data e status. */
+  async getAgenda(query: AgendaQuery = {}): Promise<Appointment[]> {
+    const params: Record<string, string> = {};
+    if (query.from) params.from = query.from;
+    if (query.to) params.to = query.to;
+    if (query.doctorId) params.doctorId = query.doctorId;
+    if (query.status?.length) params.status = query.status.join(",");
+    if (query.order) params.order = query.order;
+
+    const response = await api.get("/appointments", { params });
     return getApiRecords<BackendAppointment>(response.data).map(mapAppointment);
   },
 

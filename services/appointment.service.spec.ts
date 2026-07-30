@@ -36,11 +36,11 @@ describe("appointmentService", () => {
         data: { total: 1, records: [mockAppt] },
       });
 
-      const result = await appointmentService.getAgenda(
-        "2026-08-01",
-        "2026-08-31",
-        "d1",
-      );
+      const result = await appointmentService.getAgenda({
+        from: "2026-08-01",
+        to: "2026-08-31",
+        doctorId: "d1",
+      });
 
       expect(api.get).toHaveBeenCalledWith("/appointments", {
         params: { from: "2026-08-01", to: "2026-08-31", doctorId: "d1" },
@@ -55,10 +55,36 @@ describe("appointmentService", () => {
         data: [mockAppt],
       });
 
-      await appointmentService.getAgenda("2026-08-01", "2026-08-31");
+      await appointmentService.getAgenda({
+        from: "2026-08-01",
+        to: "2026-08-31",
+      });
 
       expect(api.get).toHaveBeenCalledWith("/appointments", {
         params: { from: "2026-08-01", to: "2026-08-31" },
+      });
+    });
+
+    it("envia status como lista separada por vírgula e a ordem", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: [] });
+
+      await appointmentService.getAgenda({
+        status: ["scheduled", "confirmed"],
+        order: "DESC",
+      });
+
+      expect(api.get).toHaveBeenCalledWith("/appointments", {
+        params: { status: "scheduled,confirmed", order: "DESC" },
+      });
+    });
+
+    it("omite from/to quando a janela é aberta (lista sem limite de data)", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: [] });
+
+      await appointmentService.getAgenda({ status: ["completed"] });
+
+      expect(api.get).toHaveBeenCalledWith("/appointments", {
+        params: { status: "completed" },
       });
     });
   });

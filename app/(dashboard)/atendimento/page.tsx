@@ -27,17 +27,13 @@ import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
+import { MONTHS, WEEKDAYS_SHORT, dateKey, hhmm, isToday } from "@/lib/calendar";
 import {
-  MONTHS,
-  WEEKDAYS_SHORT,
-  addDays,
-  dateKey,
-  hhmm,
-  isToday,
-  startOfDay,
-} from "@/lib/calendar";
-
-type HubTab = "today" | "upcoming" | "done";
+  HUB_EMPTY_DESCRIPTION,
+  HUB_TABS,
+  HubTab,
+  hubTabQuery,
+} from "@/lib/atendimento-hub";
 
 const STATUS_BADGE: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 text-blue-700 border-blue-200",
@@ -46,44 +42,6 @@ const STATUS_BADGE: Record<AppointmentStatus, string> = {
   cancelled: "bg-red-50 text-red-600 border-red-200",
   no_show: "bg-amber-50 text-amber-700 border-amber-200",
 };
-
-const TABS: { key: HubTab; label: string }[] = [
-  { key: "today", label: "Hoje" },
-  { key: "upcoming", label: "Próximas" },
-  { key: "done", label: "Realizadas" },
-];
-
-/** Intervalo de datas + como filtrar/ordenar por aba. */
-function tabRange(tab: HubTab): {
-  from: Date;
-  to: Date;
-  keep: (a: Appointment) => boolean;
-  desc: boolean;
-} {
-  const today = startOfDay(new Date());
-  if (tab === "today") {
-    return {
-      from: today,
-      to: addDays(today, 1),
-      keep: (a) => a.status !== "cancelled",
-      desc: false,
-    };
-  }
-  if (tab === "upcoming") {
-    return {
-      from: addDays(today, 1),
-      to: addDays(today, 31),
-      keep: (a) => a.status === "scheduled" || a.status === "confirmed",
-      desc: false,
-    };
-  }
-  return {
-    from: addDays(today, -30),
-    to: addDays(today, 1),
-    keep: (a) => a.status === "completed",
-    desc: true,
-  };
-}
 
 export default function AtendimentoHubPage() {
   const router = useRouter();
@@ -106,23 +64,30 @@ export default function AtendimentoHubPage() {
     return m;
   }, [doctors]);
 
-  const { from, to, keep, desc } = useMemo(() => tabRange(tab), [tab]);
-  const fromISO = from.toISOString();
-  const toISO = to.toISOString();
+  // O recorte de cada aba (janela de datas + status + ordem) é resolvido no
+  // servidor; aqui só agrupamos por dia.
+  const tabQuery = useMemo(() => hubTabQuery(tab), [tab]);
+  const { from, to, status, order } = tabQuery;
 
   const query = useQuery({
-    queryKey: ["appointments", "hub", fromISO, toISO],
-    queryFn: () => appointmentService.getAgenda(fromISO, toISO),
+    queryKey: [
+      "appointments",
+      "hub",
+      from ?? null,
+      to ?? null,
+      status.join(","),
+      order,
+    ],
+    queryFn: () => appointmentService.getAgenda(tabQuery),
     placeholderData: keepPreviousData,
   });
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["appointments"] });
 
-  // Filtra por aba + médico, ordena e agrupa por dia.
+  // Filtra por médico, ordena e agrupa por dia.
   const groups = useMemo(() => {
     const list = (query.data ?? [])
-      .filter(keep)
       .filter(
         (a) =>
           selectedDoctorIds.length === 0 ||
@@ -131,7 +96,7 @@ export default function AtendimentoHubPage() {
       .sort((a, b) => {
         const diff =
           new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
-        return desc ? -diff : diff;
+        return order === "DESC" ? -diff : diff;
       });
 
     const byDay = new Map<string, Appointment[]>();
@@ -142,17 +107,17 @@ export default function AtendimentoHubPage() {
       else byDay.set(key, [a]);
     }
     return Array.from(byDay.entries());
-  }, [query.data, keep, desc, selectedDoctorIds]);
+  }, [query.data, order, selectedDoctorIds]);
 
   const total = groups.reduce((n, [, arr]) => n + arr.length, 0);
 
   const countByDoctorId = useMemo(() => {
     const m: Record<string, number> = {};
-    (query.data ?? []).filter(keep).forEach((a) => {
+    (query.data ?? []).forEach((a) => {
       m[a.doctorId] = (m[a.doctorId] ?? 0) + 1;
     });
     return m;
-  }, [query.data, keep]);
+  }, [query.data]);
 
   // ── Mutations (usadas pelo modal de detalhe) ────────────────────────────────
   const statusMutation = useMutation({
@@ -225,7 +190,7 @@ export default function AtendimentoHubPage() {
           {/* Abas + filtro de médico */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center bg-neutral-100 rounded-lg p-0.5">
-              {TABS.map((t) => (
+              {HUB_TABS.map((t) => (
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key)}
@@ -284,13 +249,7 @@ export default function AtendimentoHubPage() {
             <EmptyState
               icon={<Stethoscope className="w-10 h-10" />}
               title="Nenhuma consulta"
-              description={
-                tab === "today"
-                  ? "Não há consultas para hoje."
-                  : tab === "upcoming"
-                    ? "Não há consultas nos próximos 30 dias."
-                    : "Nenhuma consulta realizada nos últimos 30 dias."
-              }
+              description={HUB_EMPTY_DESCRIPTION[tab]}
               action={
                 <button
                   onClick={() => setNewModal({})}

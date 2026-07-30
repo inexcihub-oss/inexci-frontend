@@ -102,7 +102,8 @@ export default function AgendaPage() {
   });
   const appointmentsQuery = useQuery({
     queryKey: ["appointments", "agenda", fromISO, toISO],
-    queryFn: () => appointmentService.getAgenda(fromISO, toISO),
+    queryFn: () =>
+      appointmentService.getAgenda({ from: fromISO, to: toISO }),
     placeholderData: keepPreviousData,
   });
 
