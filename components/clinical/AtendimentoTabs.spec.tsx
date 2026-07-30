@@ -232,6 +232,64 @@ describe("AtendimentoTabs", () => {
     });
   });
 
+  it("não duplica a ficha ao tentar novamente após finalize() falhar", async () => {
+    const user = userEvent.setup();
+    const created = {
+      id: "r-1",
+      doctorId: "d-1",
+      patientId: "p-1",
+      appointmentId: "a-1",
+      anamnesis: "Dor lombar",
+      physicalExam: null,
+      diagnosis: null,
+      cidCodes: [],
+      conduct: null,
+      finalizedAt: null,
+      createdAt: "2026-07-29T18:00:00.000Z",
+      updatedAt: "2026-07-29T18:00:00.000Z",
+    };
+    (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+      created,
+    );
+    // finalize() falha na primeira tentativa (rede, timeout...); persist() já
+    // rodou e criou a ficha no servidor antes desse erro.
+    (clinicalRecordService.finalize as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("Falha de rede"),
+    );
+    (clinicalRecordService.update as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...created,
+      anamnesis: "Dor lombar",
+    });
+
+    renderTabs();
+
+    await user.type(screen.getByLabelText(/Queixa principal/i), "Dor lombar");
+    await user.click(screen.getByRole("button", { name: "Finalizar" }));
+
+    // O erro de finalize() é mostrado ao médico (getApiErrorMessage usa a
+    // própria mensagem do Error quando não é um AxiosError)...
+    await screen.findByText(/Falha de rede/i);
+    // ...e a ficha já criada foi registrada no estado (regressão testada aqui):
+    // create() só deve ter sido chamado uma vez, mesmo após a retentativa abaixo.
+    expect(clinicalRecordService.create).toHaveBeenCalledTimes(1);
+
+    // Retentativa: "Salvar rascunho" (existem duas cópias do botão no DOM —
+    // desktop/mobile — ver comentário nos testes anteriores).
+    const saveButtons = screen.getAllByRole("button", {
+      name: /Salvar rascunho/i,
+    });
+    await user.click(saveButtons[0]);
+
+    await waitFor(() => {
+      expect(clinicalRecordService.update).toHaveBeenCalledWith(
+        "r-1",
+        expect.objectContaining({ anamnesis: "Dor lombar" }),
+      );
+    });
+    // O ponto central da regressão: create() nunca é chamado de novo.
+    expect(clinicalRecordService.create).toHaveBeenCalledTimes(1);
+  });
+
   it("em ficha finalizada esconde as ações e mantém as demais abas", () => {
     renderTabs({
       id: "r-1",

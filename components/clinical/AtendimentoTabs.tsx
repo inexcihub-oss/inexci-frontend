@@ -173,6 +173,10 @@ export function AtendimentoTabs({
     setFinalizing(true);
     try {
       const saved = await persist();
+      // Registra a ficha assim que persistida, antes de chamar finalize():
+      // se finalize() falhar (rede, timeout), o record local já aponta para
+      // a ficha criada e uma nova tentativa vai atualizar, não duplicar.
+      setRecord(saved);
       const done = await clinicalRecordService.finalize(saved.id);
       setRecord(done);
       setBaseline(fields);
