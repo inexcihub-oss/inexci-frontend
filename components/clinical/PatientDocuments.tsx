@@ -15,9 +15,14 @@ import {
 import { useToast } from "@/hooks/useToast";
 import { logger } from "@/lib/logger";
 
-const DOCUMENT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
-  PRE_SURGERY_DOCUMENT_TYPES.map((t) => [t.key, t.label]),
-);
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  ...Object.fromEntries(PRE_SURGERY_DOCUMENT_TYPES.map((t) => [t.key, t.label])),
+  // Emitidos pelo sistema a partir da ficha — não aparecem no upload manual,
+  // mas precisam de rótulo na listagem.
+  prescription: "Receita",
+  medical_certificate: "Atestado médico",
+  exam_referral: "Solicitação de exames",
+};
 
 function formatDocumentType(key: string): string {
   return DOCUMENT_TYPE_LABELS[key] ?? key ?? "Documento";
@@ -41,9 +46,12 @@ function formatDocumentDate(value?: string | null): string {
 export function PatientDocuments({
   patientId,
   clinicalRecordId,
+  refreshKey,
 }: {
   patientId: string;
   clinicalRecordId?: string;
+  /** Muda quando um documento é emitido fora desta aba, forçando o recarregamento. */
+  refreshKey?: number;
 }) {
   const { showToast } = useToast();
   const [documents, setDocuments] = useState<PatientDocument[]>([]);
@@ -64,7 +72,7 @@ export function PatientDocuments({
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const handleDelete = async () => {
     if (!documentToDelete) return;

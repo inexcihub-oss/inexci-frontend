@@ -40,6 +40,59 @@ export type UpdateClinicalRecordPayload = Omit<
   "patientId" | "doctorId" | "appointmentId"
 >;
 
+/** Tipos de documento emitidos no atendimento (também usados nas rotas). */
+export type ClinicalDocumentKind =
+  | "prescription"
+  | "medical-certificate"
+  | "exam-referral";
+
+/** Documento emitido a partir da ficha (PDF já gravado como documento). */
+export interface GeneratedClinicalDocument {
+  id: string;
+  name: string;
+  key: string;
+  type: string;
+  /** URL assinada, pronta para abrir. */
+  uri: string;
+  createdAt: string;
+}
+
+export interface PrescriptionItem {
+  name: string;
+  quantity?: string;
+  instructions?: string;
+}
+
+export interface PrescriptionPayload {
+  clinicalRecordId: string;
+  items: PrescriptionItem[];
+  notes?: string;
+}
+
+export interface MedicalCertificatePayload {
+  clinicalRecordId: string;
+  restDays?: number;
+  startDate?: string;
+  /** Reaproveita o CID da ficha quando `cid` não é informado. */
+  includeCid?: boolean;
+  /** CID escolhido para este atestado; tem precedência sobre `includeCid`. */
+  cid?: ClinicalCidCode;
+  observations?: string;
+}
+
+export interface ExamReferralItem {
+  name: string;
+  tussCode?: string;
+  observation?: string;
+}
+
+export interface ExamReferralPayload {
+  clinicalRecordId: string;
+  exams: ExamReferralItem[];
+  clinicalIndication?: string;
+  cidCodes?: ClinicalCidCode[];
+}
+
 export const clinicalRecordService = {
   /** Linha do tempo de atendimentos do paciente (mais recentes primeiro). */
   async getByPatient(patientId: string): Promise<ClinicalRecord[]> {
@@ -95,5 +148,57 @@ export const clinicalRecordService = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`/clinical-records/${id}`);
+  },
+
+  /** Emite a receita e devolve o documento já gravado no prontuário. */
+  async generatePrescription(
+    payload: PrescriptionPayload,
+  ): Promise<GeneratedClinicalDocument> {
+    const response = await api.post<GeneratedClinicalDocument>(
+      "/clinical-records/documents/prescription",
+      payload,
+    );
+    return response.data;
+  },
+
+  /** Emite o atestado médico. */
+  async generateMedicalCertificate(
+    payload: MedicalCertificatePayload,
+  ): Promise<GeneratedClinicalDocument> {
+    const response = await api.post<GeneratedClinicalDocument>(
+      "/clinical-records/documents/medical-certificate",
+      payload,
+    );
+    return response.data;
+  },
+
+  /** Emite o encaminhamento (solicitação) de exames. */
+  async generateExamReferral(
+    payload: ExamReferralPayload,
+  ): Promise<GeneratedClinicalDocument> {
+    const response = await api.post<GeneratedClinicalDocument>(
+      "/clinical-records/documents/exam-referral",
+      payload,
+    );
+    return response.data;
+  },
+
+  /**
+   * HTML do documento exatamente como será emitido, sem gravar nada — o médico
+   * confere antes de assumir o documento. É HTML (e não PDF) porque a prévia
+   * serve para olhar na tela: gerar o PDF a cada clique custaria segundos.
+   */
+  async previewDocument(
+    kind: ClinicalDocumentKind,
+    payload:
+      | PrescriptionPayload
+      | MedicalCertificatePayload
+      | ExamReferralPayload,
+  ): Promise<string> {
+    const response = await api.post<{ html: string }>(
+      `/clinical-records/documents/${kind}/preview`,
+      payload,
+    );
+    return response.data.html;
   },
 };

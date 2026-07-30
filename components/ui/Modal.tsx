@@ -24,6 +24,14 @@ export function Modal({
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(onClose);
 
+  // O foco inicial e o trap não podem depender da identidade do `onClose`:
+  // quem consome o modal costuma passar uma arrow function nova a cada render,
+  // o que fazia o efeito rodar a cada tecla digitada e devolver o foco ao
+  // primeiro elemento (o botão de fechar) — digitar um espaço acabava
+  // "clicando" nele e fechando o modal no meio do preenchimento.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -51,7 +59,7 @@ export function Modal({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -77,7 +85,7 @@ export function Modal({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

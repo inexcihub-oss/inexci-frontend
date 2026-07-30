@@ -55,4 +55,114 @@ describe("clinicalRecordService", () => {
     expect(api.post).toHaveBeenCalledWith("/clinical-records/cr1/finalize", {});
     expect(result.finalizedAt).toBe("2026-08-02");
   });
+
+  describe("documentos emitidos no atendimento", () => {
+    const generated = {
+      id: "doc1",
+      name: "Receita — 30/07/2026",
+      key: "prescription",
+      type: "prescription",
+      uri: "https://r2/receita.pdf",
+      createdAt: "2026-07-30",
+    };
+
+    it("generatePrescription envia a ficha e os medicamentos", async () => {
+      (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: generated,
+      });
+
+      const result = await clinicalRecordService.generatePrescription({
+        clinicalRecordId: "cr1",
+        items: [{ name: "Dipirona 500mg", instructions: "1 cp 6/6h" }],
+      });
+
+      expect(api.post).toHaveBeenCalledWith(
+        "/clinical-records/documents/prescription",
+        {
+          clinicalRecordId: "cr1",
+          items: [{ name: "Dipirona 500mg", instructions: "1 cp 6/6h" }],
+        },
+      );
+      expect(result.uri).toBe("https://r2/receita.pdf");
+    });
+
+    it("generateMedicalCertificate envia os dias de afastamento", async () => {
+      (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { ...generated, key: "medical_certificate" },
+      });
+
+      await clinicalRecordService.generateMedicalCertificate({
+        clinicalRecordId: "cr1",
+        restDays: 3,
+        includeCid: true,
+      });
+
+      expect(api.post).toHaveBeenCalledWith(
+        "/clinical-records/documents/medical-certificate",
+        { clinicalRecordId: "cr1", restDays: 3, includeCid: true },
+      );
+    });
+
+    it("previewDocument devolve o HTML do documento sem emitir", async () => {
+      (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { html: "<html>previa</html>" },
+      });
+
+      const html = await clinicalRecordService.previewDocument("prescription", {
+        clinicalRecordId: "cr1",
+        items: [{ name: "Dipirona 500mg" }],
+      });
+
+      expect(api.post).toHaveBeenCalledWith(
+        "/clinical-records/documents/prescription/preview",
+        { clinicalRecordId: "cr1", items: [{ name: "Dipirona 500mg" }] },
+      );
+      expect(html).toBe("<html>previa</html>");
+    });
+
+    it("previewDocument usa o endpoint de cada tipo de documento", async () => {
+      (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { html: "<html>previa</html>" },
+      });
+
+      await clinicalRecordService.previewDocument("medical-certificate", {
+        clinicalRecordId: "cr1",
+        restDays: 2,
+      });
+      expect(api.post).toHaveBeenLastCalledWith(
+        "/clinical-records/documents/medical-certificate/preview",
+        expect.anything(),
+      );
+
+      await clinicalRecordService.previewDocument("exam-referral", {
+        clinicalRecordId: "cr1",
+        exams: [{ name: "Hemograma" }],
+      });
+      expect(api.post).toHaveBeenLastCalledWith(
+        "/clinical-records/documents/exam-referral/preview",
+        expect.anything(),
+      );
+    });
+
+    it("generateExamReferral envia os exames solicitados", async () => {
+      (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { ...generated, key: "exam_referral" },
+      });
+
+      await clinicalRecordService.generateExamReferral({
+        clinicalRecordId: "cr1",
+        exams: [{ name: "Hemograma completo" }],
+        clinicalIndication: "Anemia a esclarecer",
+      });
+
+      expect(api.post).toHaveBeenCalledWith(
+        "/clinical-records/documents/exam-referral",
+        {
+          clinicalRecordId: "cr1",
+          exams: [{ name: "Hemograma completo" }],
+          clinicalIndication: "Anemia a esclarecer",
+        },
+      );
+    });
+  });
 });

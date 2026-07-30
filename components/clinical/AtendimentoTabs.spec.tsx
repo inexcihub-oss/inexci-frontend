@@ -53,10 +53,23 @@ vi.mock("@/services/clinical-record.service", () => ({
     create: vi.fn(),
     update: vi.fn(),
     finalize: vi.fn(),
+    generatePrescription: vi.fn(),
+    generateMedicalCertificate: vi.fn(),
+    generateExamReferral: vi.fn(),
+  },
+}));
+
+vi.mock("@/services/clinical-record-template.service", () => ({
+  clinicalRecordTemplateService: {
+    getAll: vi.fn().mockResolvedValue([]),
+    create: vi.fn(),
+    apply: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
 import { clinicalRecordService } from "@/services/clinical-record.service";
+import { clinicalRecordTemplateService } from "@/services/clinical-record-template.service";
 import { AtendimentoTabs } from "./AtendimentoTabs";
 
 const patient = {
@@ -432,6 +445,156 @@ describe("AtendimentoTabs", () => {
       "aria-checked",
       "true",
     );
+  });
+
+  describe("modelos de anamnese", () => {
+    it("escreve o modelo aplicado nos campos da ficha", async () => {
+      const user = userEvent.setup();
+      (
+        clinicalRecordTemplateService.getAll as ReturnType<typeof vi.fn>
+      ).mockResolvedValue([
+        {
+          id: "tpl-1",
+          doctorId: "d-1",
+          name: "Lombalgia",
+          specialty: null,
+          anamnesis: "<p>Dor lombar há 3 meses</p>",
+          physicalExam: null,
+          diagnosis: null,
+          conduct: null,
+          cidCodes: null,
+          usageCount: 1,
+          createdAt: "2026-07-30",
+          updatedAt: "2026-07-30",
+        },
+      ]);
+      (
+        clinicalRecordTemplateService.apply as ReturnType<typeof vi.fn>
+      ).mockImplementation(async () => ({
+        id: "tpl-1",
+        doctorId: "d-1",
+        name: "Lombalgia",
+        specialty: null,
+        anamnesis: "<p>Dor lombar há 3 meses</p>",
+        physicalExam: null,
+        diagnosis: null,
+        conduct: null,
+        cidCodes: null,
+        usageCount: 2,
+        createdAt: "2026-07-30",
+        updatedAt: "2026-07-30",
+      }));
+      renderTabs();
+
+      await user.click(await screen.findByText("Lombalgia"));
+
+      await waitFor(() =>
+        expect(
+          (screen.getByLabelText(/Queixa principal/i) as HTMLTextAreaElement)
+            .value,
+        ).toBe("<p>Dor lombar há 3 meses</p>"),
+      );
+      // Aplicar não grava nada: o médico ainda precisa salvar.
+      expect(clinicalRecordService.update).not.toHaveBeenCalled();
+      expect(clinicalRecordService.create).not.toHaveBeenCalled();
+    });
+
+    it("não oferece modelos em atendimento finalizado", async () => {
+      (
+        clinicalRecordTemplateService.getAll as ReturnType<typeof vi.fn>
+      ).mockResolvedValue([]);
+      renderTabs(recordFixture({ finalizedAt: "2026-07-29T19:00:00.000Z" }));
+
+      expect(
+        screen.queryByRole("button", { name: /salvar como modelo/i }),
+      ).toBeNull();
+    });
+  });
+
+  describe("documentos do atendimento", () => {
+    it("persiste a ficha antes de emitir quando ela ainda não existe", async () => {
+      const user = userEvent.setup();
+      (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+        recordFixture({ id: "r-nova" }),
+      );
+      (
+        clinicalRecordService.generatePrescription as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
+        id: "doc-1",
+        name: "Receita",
+        key: "prescription",
+        type: "prescription",
+        uri: "https://r2/receita.pdf",
+        createdAt: "2026-07-30",
+      });
+      vi.stubGlobal("open", vi.fn());
+      renderTabs();
+
+      await user.click(screen.getByRole("button", { name: /receita/i }));
+      await user.type(screen.getByLabelText(/medicamento/i), "Dipirona");
+      await user.click(screen.getByRole("button", { name: /emitir/i }));
+
+      await waitFor(() => expect(clinicalRecordService.create).toHaveBeenCalled());
+      expect(clinicalRecordService.generatePrescription).toHaveBeenCalledWith(
+        expect.objectContaining({ clinicalRecordId: "r-nova" }),
+      );
+    });
+
+    it("salva as alterações pendentes antes de emitir, para o CID entrar no documento", async () => {
+      const user = userEvent.setup();
+      (clinicalRecordService.update as ReturnType<typeof vi.fn>).mockResolvedValue(
+        recordFixture(),
+      );
+      (
+        clinicalRecordService.generateMedicalCertificate as ReturnType<
+          typeof vi.fn
+        >
+      ).mockResolvedValue({
+        id: "doc-2",
+        name: "Atestado",
+        key: "medical_certificate",
+        type: "medical_certificate",
+        uri: "https://r2/atestado.pdf",
+        createdAt: "2026-07-30",
+      });
+      vi.stubGlobal("open", vi.fn());
+      renderTabs(recordFixture());
+
+      await user.type(screen.getByLabelText(/Queixa principal/i), "Dor lombar");
+      await user.click(screen.getByRole("button", { name: /atestado/i }));
+      await user.click(screen.getByRole("button", { name: /emitir/i }));
+
+      await waitFor(() => expect(clinicalRecordService.update).toHaveBeenCalled());
+      expect(
+        clinicalRecordService.generateMedicalCertificate,
+      ).toHaveBeenCalledWith(expect.objectContaining({ clinicalRecordId: "r-1" }));
+    });
+
+    it("não reenvia a ficha finalizada ao emitir um documento", async () => {
+      const user = userEvent.setup();
+      (
+        clinicalRecordService.generatePrescription as ReturnType<typeof vi.fn>
+      ).mockResolvedValue({
+        id: "doc-3",
+        name: "Receita",
+        key: "prescription",
+        type: "prescription",
+        uri: "https://r2/receita.pdf",
+        createdAt: "2026-07-30",
+      });
+      vi.stubGlobal("open", vi.fn());
+      renderTabs(recordFixture({ finalizedAt: "2026-07-29T19:00:00.000Z" }));
+
+      await user.click(screen.getByRole("button", { name: /receita/i }));
+      await user.type(screen.getByLabelText(/medicamento/i), "Dipirona");
+      await user.click(screen.getByRole("button", { name: /emitir/i }));
+
+      await waitFor(() =>
+        expect(clinicalRecordService.generatePrescription).toHaveBeenCalled(),
+      );
+      expect(clinicalRecordService.update).not.toHaveBeenCalled();
+      expect(clinicalRecordService.create).not.toHaveBeenCalled();
+    });
   });
 
   it("sai da tela ao confirmar a saída com alterações pendentes", async () => {

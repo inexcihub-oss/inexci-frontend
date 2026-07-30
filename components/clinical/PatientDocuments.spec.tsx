@@ -62,4 +62,44 @@ describe("PatientDocuments", () => {
     expect(await screen.findByText("hemograma.jpg")).toBeInTheDocument();
     expect(screen.queryByText("Desta consulta")).not.toBeInTheDocument();
   });
+
+  it("nomeia os documentos emitidos no atendimento", async () => {
+    (patientDocumentService.list as ReturnType<typeof vi.fn>).mockResolvedValue([
+      doc({ id: "doc-1", name: "Receita — 30/07/2026", key: "prescription" }),
+      doc({
+        id: "doc-2",
+        name: "Atestado — 30/07/2026",
+        key: "medical_certificate",
+      }),
+      doc({
+        id: "doc-3",
+        name: "Solicitação de exames — 30/07/2026",
+        key: "exam_referral",
+      }),
+    ]);
+
+    render(<PatientDocuments patientId="p-1" />);
+
+    expect(await screen.findByText("Receita")).toBeInTheDocument();
+    expect(screen.getByText("Atestado médico")).toBeInTheDocument();
+    expect(screen.getByText("Solicitação de exames")).toBeInTheDocument();
+  });
+
+  // A aba Documentos fica montada depois da primeira visita: sem este gatilho,
+  // um documento emitido na aba Atendimento só apareceria ao recarregar.
+  it("recarrega a lista quando um documento novo é emitido", async () => {
+    (patientDocumentService.list as ReturnType<typeof vi.fn>).mockResolvedValue([
+      doc({ id: "doc-1" }),
+    ]);
+
+    const { rerender } = render(
+      <PatientDocuments patientId="p-1" refreshKey={0} />,
+    );
+    expect(await screen.findByText("hemograma.jpg")).toBeInTheDocument();
+    expect(patientDocumentService.list).toHaveBeenCalledTimes(1);
+
+    rerender(<PatientDocuments patientId="p-1" refreshKey={1} />);
+
+    expect(patientDocumentService.list).toHaveBeenCalledTimes(2);
+  });
 });

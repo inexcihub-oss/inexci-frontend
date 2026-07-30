@@ -10,6 +10,8 @@ import {
   fichaFieldsFrom,
 } from "@/components/clinical/AtendimentoFicha";
 import { PatientHistoryTab } from "@/components/clinical/PatientHistoryTab";
+import { ClinicalDocumentActions } from "@/components/clinical/ClinicalDocumentActions";
+import { ClinicalTemplateActions } from "@/components/clinical/ClinicalTemplateActions";
 import { PatientDocuments } from "@/components/clinical/PatientDocuments";
 import { PatientRegistrationForm } from "@/components/patients/PatientRegistrationForm";
 import {
@@ -121,6 +123,7 @@ export function AtendimentoTabs({
   );
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [documentsVersion, setDocumentsVersion] = useState(0);
 
   const finalized = !!record?.finalizedAt;
   const isDirty =
@@ -166,6 +169,20 @@ export function AtendimentoTabs({
       appointmentId: appointment.id,
       ...payload,
     });
+  };
+
+  /**
+   * Devolve o id da ficha para emitir um documento, persistindo antes o que
+   * estiver pendente — o PDF é montado no servidor a partir da ficha gravada,
+   * então um CID recém-digitado só entra no documento depois de salvo. Ficha
+   * finalizada é imutável: não há o que salvar, só emitir.
+   */
+  const ensureRecordId = async (): Promise<string> => {
+    if (record && (finalized || !isDirty)) return record.id;
+    const saved = await persist();
+    setRecord(saved);
+    setBaseline(fields);
+    return saved.id;
   };
 
   const handleSave = async () => {
@@ -355,11 +372,39 @@ export function AtendimentoTabs({
                 </div>
               )}
 
+              {!finalized && (
+                <ClinicalTemplateActions
+                  doctorId={appointment.doctorId}
+                  fields={fields}
+                  onApply={(template) =>
+                    setFields((prev) => ({
+                      ...prev,
+                      anamnesis: template.anamnesis ?? "",
+                      physicalExam: template.physicalExam ?? "",
+                      diagnosis: template.diagnosis ?? "",
+                      conduct: template.conduct ?? "",
+                      cidCodes: template.cidCodes ?? [],
+                    }))
+                  }
+                />
+              )}
+
               <AtendimentoFicha
                 fields={fields}
                 onFieldChange={handleFieldChange}
                 readOnly={finalized}
                 surgeryRequestId={record?.surgeryRequestId ?? null}
+              />
+
+              <ClinicalDocumentActions
+                ensureRecordId={ensureRecordId}
+                cidCodes={fields.cidCodes}
+                onEmitted={(document) => {
+                  showSuccess(`${document.name} emitido.`);
+                  // A aba Documentos já pode estar montada — sem isto, o
+                  // documento recém-emitido só apareceria ao recarregar.
+                  setDocumentsVersion((v) => v + 1);
+                }}
               />
 
               {!finalized && (
@@ -412,6 +457,7 @@ export function AtendimentoTabs({
               <PatientDocuments
                 patientId={patient.id}
                 clinicalRecordId={record?.id}
+                refreshKey={documentsVersion}
               />
             </div>
           )}
