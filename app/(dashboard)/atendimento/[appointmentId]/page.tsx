@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
 import { Spinner } from "@/components/ui";
-import { AtendimentoFicha } from "@/components/clinical/AtendimentoFicha";
+import { AtendimentoTabs } from "@/components/clinical/AtendimentoTabs";
 import { appointmentService, Appointment } from "@/services/appointment.service";
 import { patientService, Patient } from "@/services/patient.service";
 import {
@@ -68,7 +68,7 @@ export default function AtendimentoPage() {
 
   return (
     <PageContainer>
-      <AtendimentoFicha
+      <AtendimentoTabs
         patient={patient}
         appointment={appointment}
         initialRecord={record}
