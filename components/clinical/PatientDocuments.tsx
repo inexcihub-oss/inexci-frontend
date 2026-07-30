@@ -153,6 +153,11 @@ export function PatientDocuments({
                   >
                     {doc.name}
                   </a>
+                  {clinicalRecordId && doc.clinicalRecordId === clinicalRecordId && (
+                    <span className="shrink-0 text-[11px] font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-2 py-0.5">
+                      Desta consulta
+                    </span>
+                  )}
                 </div>
                 <div className="hidden sm:block w-36 flex-shrink-0 text-xs text-gray-900">
                   {formatDocumentDate(doc.createdAt)}
