@@ -80,7 +80,32 @@ const appointment = {
   cancellationReason: null,
 };
 
-function renderTabs(record: Parameters<typeof AtendimentoTabs>[0]["initialRecord"] = null) {
+type Record_ = NonNullable<
+  Parameters<typeof AtendimentoTabs>[0]["initialRecord"]
+>;
+
+/** Ficha persistida padrão; `over` sobrescreve o que o teste precisa variar. */
+function recordFixture(over: Partial<Record_> = {}): Record_ {
+  return {
+    id: "r-1",
+    doctorId: "d-1",
+    patientId: "p-1",
+    appointmentId: "a-1",
+    anamnesis: null,
+    physicalExam: null,
+    diagnosis: null,
+    cidCodes: [],
+    conduct: null,
+    surgicalIndication: false,
+    surgeryRequestId: null,
+    finalizedAt: null,
+    createdAt: "2026-07-29T18:00:00.000Z",
+    updatedAt: "2026-07-29T18:00:00.000Z",
+    ...over,
+  };
+}
+
+function renderTabs(record: Record_ | null = null) {
   return render(
     <AtendimentoTabs
       patient={patient}
@@ -151,20 +176,9 @@ describe("AtendimentoTabs", () => {
 
   it("mostra o indicador de não salvo ao editar e o esconde após salvar", async () => {
     const user = userEvent.setup();
-    (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue({
-      id: "r-1",
-      doctorId: "d-1",
-      patientId: "p-1",
-      appointmentId: "a-1",
-      anamnesis: "Dor lombar",
-      physicalExam: null,
-      diagnosis: null,
-      cidCodes: [],
-      conduct: null,
-      finalizedAt: null,
-      createdAt: "2026-07-29T18:00:00.000Z",
-      updatedAt: "2026-07-29T18:00:00.000Z",
-    });
+    (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+      recordFixture({ anamnesis: "Dor lombar" }),
+    );
     renderTabs();
 
     expect(screen.queryByText(/Alterações não salvas/i)).not.toBeInTheDocument();
@@ -198,20 +212,7 @@ describe("AtendimentoTabs", () => {
 
   it("atualiza registro existente em vez de criar outro", async () => {
     const user = userEvent.setup();
-    const existing = {
-      id: "r-1",
-      doctorId: "d-1",
-      patientId: "p-1",
-      appointmentId: "a-1",
-      anamnesis: "Inicial",
-      physicalExam: null,
-      diagnosis: null,
-      cidCodes: [],
-      conduct: null,
-      finalizedAt: null,
-      createdAt: "2026-07-29T18:00:00.000Z",
-      updatedAt: "2026-07-29T18:00:00.000Z",
-    };
+    const existing = recordFixture({ anamnesis: "Inicial" });
     (clinicalRecordService.update as ReturnType<typeof vi.fn>).mockResolvedValue(
       existing,
     );
@@ -235,20 +236,7 @@ describe("AtendimentoTabs", () => {
 
   it("não duplica a ficha ao tentar novamente após finalize() falhar", async () => {
     const user = userEvent.setup();
-    const created = {
-      id: "r-1",
-      doctorId: "d-1",
-      patientId: "p-1",
-      appointmentId: "a-1",
-      anamnesis: "Dor lombar",
-      physicalExam: null,
-      diagnosis: null,
-      cidCodes: [],
-      conduct: null,
-      finalizedAt: null,
-      createdAt: "2026-07-29T18:00:00.000Z",
-      updatedAt: "2026-07-29T18:00:00.000Z",
-    };
+    const created = recordFixture({ anamnesis: "Dor lombar" });
     (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
       created,
     );
@@ -292,20 +280,12 @@ describe("AtendimentoTabs", () => {
   });
 
   it("em ficha finalizada esconde as ações e mantém as demais abas", () => {
-    renderTabs({
-      id: "r-1",
-      doctorId: "d-1",
-      patientId: "p-1",
-      appointmentId: "a-1",
-      anamnesis: "<p>Fechada</p>",
-      physicalExam: null,
-      diagnosis: null,
-      cidCodes: [],
-      conduct: null,
-      finalizedAt: "2026-07-29T19:00:00.000Z",
-      createdAt: "2026-07-29T18:00:00.000Z",
-      updatedAt: "2026-07-29T19:00:00.000Z",
-    });
+    renderTabs(
+      recordFixture({
+        anamnesis: "<p>Fechada</p>",
+        finalizedAt: "2026-07-29T19:00:00.000Z",
+      }),
+    );
 
     expect(
       screen.queryByRole("button", { name: /Salvar rascunho/i }),
