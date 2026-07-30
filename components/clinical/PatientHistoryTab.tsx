@@ -94,10 +94,14 @@ export function PatientHistoryTab({
   const [records, setRecords] = useState<ClinicalRecord[]>([]);
   const [surgeries, setSurgeries] = useState<SurgeryRequestListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setError(false);
     (async () => {
       try {
         const [appts, recs, scs] = await Promise.all([
@@ -111,6 +115,7 @@ export function PatientHistoryTab({
         setSurgeries(scs.records ?? []);
       } catch (err) {
         logger.error("Erro ao carregar histórico do paciente:", err);
+        if (active) setError(true);
       } finally {
         if (active) setLoading(false);
       }
@@ -118,7 +123,7 @@ export function PatientHistoryTab({
     return () => {
       active = false;
     };
-  }, [patientId]);
+  }, [patientId, reloadToken]);
 
   const entries = useMemo<Entry[]>(() => {
     const byAppointment = new Map<string, ClinicalRecord>();
@@ -159,6 +164,22 @@ export function PatientHistoryTab({
     return (
       <div className="flex items-center justify-center py-8">
         <Spinner size="sm" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8 text-center">
+        <p className="text-sm text-red-600">
+          Não foi possível carregar o histórico do paciente.
+        </p>
+        <button
+          onClick={() => setReloadToken((t) => t + 1)}
+          className="text-sm font-semibold text-teal-700 hover:underline min-h-[44px] px-3"
+        >
+          Tentar novamente
+        </button>
       </div>
     );
   }

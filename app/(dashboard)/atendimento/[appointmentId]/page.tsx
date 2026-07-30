@@ -23,6 +23,7 @@ export default function AtendimentoPage() {
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
     (async () => {
       try {
         const appt = await appointmentService.getById(params.appointmentId);
@@ -69,6 +70,7 @@ export default function AtendimentoPage() {
   return (
     <PageContainer>
       <AtendimentoTabs
+        key={params.appointmentId}
         patient={patient}
         appointment={appointment}
         initialRecord={record}

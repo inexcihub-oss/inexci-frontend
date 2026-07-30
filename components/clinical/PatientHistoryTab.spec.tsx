@@ -203,4 +203,41 @@ describe("PatientHistoryTab", () => {
       await screen.findByText(/Nenhuma consulta ou cirurgia anterior/i),
     ).toBeInTheDocument();
   });
+
+  it("mostra mensagem de erro (não de vazio) quando alguma chamada falha", async () => {
+    mocked(surgeryRequestService.getAll).mockRejectedValue(
+      new Error("Falha de rede"),
+    );
+
+    render(
+      <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
+    );
+
+    expect(
+      await screen.findByText(/Não foi possível carregar o histórico/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Nenhuma consulta ou cirurgia anterior/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("refaz as chamadas ao clicar em Tentar novamente e renderiza a timeline após sucesso", async () => {
+    const user = userEvent.setup();
+    mocked(surgeryRequestService.getAll)
+      .mockRejectedValueOnce(new Error("Falha de rede"))
+      .mockResolvedValueOnce({ total: 1, records: [surgery] });
+
+    render(
+      <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: /Tentar novamente/i }),
+    );
+
+    expect(
+      await screen.findByText(/Artroscopia de joelho/),
+    ).toBeInTheDocument();
+    expect(surgeryRequestService.getAll).toHaveBeenCalledTimes(2);
+  });
 });

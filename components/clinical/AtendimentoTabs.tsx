@@ -202,7 +202,16 @@ export function AtendimentoTabs({
       <header className="shrink-0 border-b border-neutral-100 bg-white">
         <div className="flex items-center gap-3 px-4 lg:px-6 py-3">
           <button
-            onClick={() => router.back()}
+            onClick={() => {
+              if (
+                isDirty &&
+                !window.confirm(
+                  "Há alterações não salvas no atendimento. Sair mesmo assim?",
+                )
+              )
+                return;
+              router.back();
+            }}
             className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors shrink-0"
             aria-label="Voltar"
           >

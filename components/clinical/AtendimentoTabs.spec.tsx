@@ -3,10 +3,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const replace = vi.fn();
+const back = vi.fn();
 let searchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace, back: vi.fn(), push: vi.fn() }),
+  useRouter: () => ({ replace, back, push: vi.fn() }),
   useSearchParams: () => searchParams,
   usePathname: () => "/atendimento/a-1",
 }));
@@ -314,5 +315,35 @@ describe("AtendimentoTabs", () => {
     // "finalizado" e é uma correspondência legítima e distinta do badge.
     expect(screen.getByText("Finalizado")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Cadastro" })).toBeInTheDocument();
+  });
+
+  it("pede confirmação ao clicar em Voltar com alterações pendentes e respeita o cancelamento", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderTabs();
+
+    await user.type(screen.getByLabelText(/Queixa principal/i), "Dor lombar");
+    await user.click(screen.getByRole("button", { name: "Voltar" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      "Há alterações não salvas no atendimento. Sair mesmo assim?",
+    );
+    expect(back).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it("sai da tela ao confirmar a saída com alterações pendentes", async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderTabs();
+
+    await user.type(screen.getByLabelText(/Queixa principal/i), "Dor lombar");
+    await user.click(screen.getByRole("button", { name: "Voltar" }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(back).toHaveBeenCalledTimes(1);
+
+    confirmSpy.mockRestore();
   });
 });
