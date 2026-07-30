@@ -115,4 +115,37 @@ describe("surgeryRequestService.getAll", () => {
       params: { take: 1000 },
     });
   });
+
+  it("envia hospitalId, healthPlanId e doctorId quando informados", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { total: 0, records: [] },
+    });
+
+    await surgeryRequestService.getAll({
+      hospitalId: "h-1",
+      healthPlanId: "hp-1",
+      doctorId: "d-1",
+    });
+
+    expect(api.get).toHaveBeenCalledWith("/surgery-requests", {
+      params: {
+        take: 1000,
+        hospitalId: "h-1",
+        healthPlanId: "hp-1",
+        doctorId: "d-1",
+      },
+    });
+  });
+
+  it("omite as chaves dos filtros ausentes", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { total: 0, records: [] },
+    });
+
+    await surgeryRequestService.getAll({ hospitalId: "h-1" });
+
+    expect(api.get).toHaveBeenCalledWith("/surgery-requests", {
+      params: { take: 1000, hospitalId: "h-1" },
+    });
+  });
 });

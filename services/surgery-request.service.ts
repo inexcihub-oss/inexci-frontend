@@ -407,21 +407,25 @@ export const surgeryRequestService = {
 
   /**
    * Busca solicitações (payload completo). Usado pelas páginas de detalhe de
-   * entidade (hospital/convênio/paciente/colaborador) e pela aba Histórico do
-   * atendimento. Com `patientId`, o filtro é aplicado no backend — sem ele,
+   * entidade (paciente/hospital/convênio/colaborador) e pela aba Histórico do
+   * atendimento. Todo filtro informado é aplicado no backend — sem nenhum,
    * carrega tudo via `FETCH_ALL_TAKE`.
    */
   async getAll(params?: {
     patientId?: string;
+    hospitalId?: string;
+    healthPlanId?: string;
+    doctorId?: string;
   }): Promise<SurgeryRequestListResponse> {
+    const filters: Record<string, string> = {};
+    if (params?.patientId) filters.patientId = params.patientId;
+    if (params?.hospitalId) filters.hospitalId = params.hospitalId;
+    if (params?.healthPlanId) filters.healthPlanId = params.healthPlanId;
+    if (params?.doctorId) filters.doctorId = params.doctorId;
+
     const response = await api.get<SurgeryRequestListResponse>(
       "/surgery-requests",
-      {
-        params: {
-          take: FETCH_ALL_TAKE,
-          ...(params?.patientId ? { patientId: params.patientId } : {}),
-        },
-      },
+      { params: { take: FETCH_ALL_TAKE, ...filters } },
     );
     return response.data;
   },
