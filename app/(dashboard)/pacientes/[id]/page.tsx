@@ -4,17 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
-import Input from "@/components/ui/Input";
-import { DateInput } from "@/components/ui/DateInput";
-import Select from "@/components/ui/Select";
-import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { patientService, Patient } from "@/services/patient.service";
-import { GENDER_OPTIONS, STATE_OPTIONS } from "@/lib/options";
-import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
-import { HealthPlanComboboxField } from "@/components/patients/HealthPlanComboboxField";
+import { PatientRegistrationForm } from "@/components/patients/PatientRegistrationForm";
 import { PatientClinicalTimeline } from "@/components/clinical/PatientClinicalTimeline";
 import { PatientDocuments } from "@/components/clinical/PatientDocuments";
 import { PatientTimelineSidebar } from "@/components/clinical/PatientTimelineSidebar";
@@ -25,11 +19,8 @@ import {
 } from "@/services/surgery-request.service";
 import { appointmentService, Appointment } from "@/services/appointment.service";
 import { logger } from "@/lib/logger";
-import { formatCPF, formatPhone } from "@/lib/formatters";
 import { useToast } from "@/hooks/useToast";
-import { useCepLookup } from "@/hooks/useCepLookup";
-import { maskCep } from "@/lib/masks";
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 export default function PacienteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -44,9 +35,7 @@ export default function PacienteDetalhePage() {
       : null;
   })();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [surgeryRequests, setSurgeryRequests] = useState<
     SurgeryRequestListItem[]
   >([]);
@@ -55,54 +44,6 @@ export default function PacienteDetalhePage() {
   const [loadingAppointments, setLoadingAppointments] = useState(true);
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
-
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    cpf: "",
-    email: "",
-    phone: "",
-    birthDate: "",
-    gender: "",
-    address: "",
-    addressNumber: "",
-    addressComplement: "",
-    neighborhood: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    healthPlanId: "",
-    healthPlanNumber: "",
-    healthPlanType: "",
-    medicalNotes: "",
-  });
-  const [originalData, setOriginalData] = useState<typeof formData | null>(
-    null,
-  );
-  const isDirty =
-    originalData !== null &&
-    JSON.stringify(formData) !== JSON.stringify(originalData);
-
-  const { loading: cepLoading } = useCepLookup({
-    cep: formData.zipCode,
-    enabled: !!patient,
-    onResolved: (data) => {
-      setFormData((prev) => ({
-        ...prev,
-        address: data.logradouro,
-        neighborhood: data.bairro,
-        city: data.cidade,
-        state: data.uf,
-      }));
-    },
-    onError: (err) => {
-      if (err.code === "not_found") {
-        showToast("CEP não encontrado.", "error");
-      } else if (err.code === "network") {
-        showToast(err.message, "error");
-      }
-    },
-  });
 
   /** Consultas do paciente — vive na página porque o botão "Nova consulta"
    * também está aqui; a sidebar apenas consome e pede recarga. */
@@ -127,137 +68,28 @@ export default function PacienteDetalhePage() {
   const loadData = async () => {
     setLoading(true);
     setLoadingSurgeries(true);
-    // Disparada junto com o Promise.all abaixo (não depende de patientData —
-    // o filtro por paciente é feito em memória) em vez de esperar o bloco
-    // anterior terminar. `.catch(noop)` evita unhandled rejection caso a
-    // função retorne cedo (paciente não encontrado) antes do await abaixo.
-    const surgeryPromise = surgeryRequestService.getAll();
-    surgeryPromise.catch(() => {});
     try {
-      const [patientData, healthPlansData] = await Promise.all([
+      const [patientData, surgeryData] = await Promise.all([
         patientService.getById(params.id),
-        healthPlanService.getAll(),
+        surgeryRequestService
+          .getAll({ patientId: params.id })
+          .catch(() => ({ total: 0, records: [] })),
       ]);
 
       if (!patientData) {
         logger.error("Paciente não encontrado");
         setLoading(false);
+        setLoadingSurgeries(false);
         return;
       }
 
       setPatient(patientData);
-      setHealthPlans(healthPlansData);
-
-      // Busca solicitações cirúrgicas deste paciente
-      try {
-        const surgeryData = await surgeryPromise;
-        const filtered = (surgeryData.records ?? []).filter(
-          (r) => r.patient?.id === patientData.id,
-        );
-        setSurgeryRequests(filtered);
-      } catch {
-        setSurgeryRequests([]);
-      } finally {
-        setLoadingSurgeries(false);
-      }
-
-      // Preenche o formulário
-      setFormData({
-        name: patientData.name || "",
-        cpf: patientData.cpf || "",
-        email: patientData.email || "",
-        phone: patientData.phone || "",
-        birthDate: patientData.birthDate || "",
-        gender: patientData.gender || "",
-        address: patientData.address || "",
-        addressNumber: patientData.addressNumber || "",
-        addressComplement: patientData.addressComplement || "",
-        neighborhood: patientData.neighborhood || "",
-        city: patientData.city || "",
-        state: patientData.state || "",
-        zipCode: maskCep(patientData.zipCode || ""),
-        healthPlanId: patientData.healthPlanId || "",
-        healthPlanNumber: patientData.healthPlanNumber || "",
-        healthPlanType: patientData.healthPlanType || "",
-        medicalNotes: patientData.medicalNotes || "",
-      });
-      setOriginalData({
-        name: patientData.name || "",
-        cpf: patientData.cpf || "",
-        email: patientData.email || "",
-        phone: patientData.phone || "",
-        birthDate: patientData.birthDate || "",
-        gender: patientData.gender || "",
-        address: patientData.address || "",
-        addressNumber: patientData.addressNumber || "",
-        addressComplement: patientData.addressComplement || "",
-        neighborhood: patientData.neighborhood || "",
-        city: patientData.city || "",
-        state: patientData.state || "",
-        zipCode: maskCep(patientData.zipCode || ""),
-        healthPlanId: patientData.healthPlanId || "",
-        healthPlanNumber: patientData.healthPlanNumber || "",
-        healthPlanType: patientData.healthPlanType || "",
-        medicalNotes: patientData.medicalNotes || "",
-      });
+      setSurgeryRequests(surgeryData.records ?? []);
     } catch (error) {
       logger.error("Erro ao carregar paciente:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = async () => {
-    if (!patient) return;
-
-    if (!formData.cpf.replace(/\D/g, "")) {
-      showToast("CPF é obrigatório.", "error");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await patientService.update(patient.id, {
-        name: formData.name,
-        cpf: formData.cpf.replace(/\D/g, ""),
-        email: formData.email || undefined,
-        phone: formData.phone || undefined,
-        birthDate: formData.birthDate || undefined,
-        gender: formData.gender || undefined,
-        address: formData.address || undefined,
-        addressNumber: formData.addressNumber || undefined,
-        addressComplement: formData.addressComplement || undefined,
-        neighborhood: formData.neighborhood || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
-        zipCode: formData.zipCode.replace(/\D/g, "") || undefined,
-        healthPlanId: formData.healthPlanId || undefined,
-        healthPlanNumber: formData.healthPlanNumber || undefined,
-        healthPlanType: formData.healthPlanType || undefined,
-        medicalNotes: formData.medicalNotes || undefined,
-      });
-      setOriginalData(formData);
-      showToast("Paciente atualizado com sucesso!", "success");
-      if (returnUrl) {
-        setTimeout(() => router.push(returnUrl), 800);
-      }
-    } catch (error) {
-      logger.error("Erro ao salvar:", error);
-      showToast("Erro ao salvar as alterações.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (isDirty && originalData) {
-      setFormData(originalData);
-    } else {
-      router.push(returnUrl ?? "/pacientes");
+      setLoadingSurgeries(false);
     }
   };
 
@@ -320,151 +152,17 @@ export default function PacienteDetalhePage() {
         {/* Seção: Documentos e exames (card próprio, com ação no header) */}
         <PatientDocuments patientId={patient.id} />
 
-        {/* Seção: Informações pessoais */}
-        <FormSection title="Informações pessoais">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input
-              label="Nome completo"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              required
-            />
-            <Input
-              label="CPF"
-              value={formatCPF(formData.cpf)}
-              onChange={(e) =>
-                handleInputChange("cpf", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="000.000.000-00"
-              required
-            />
-            <DateInput
-              label="Data de nascimento"
-              value={formData.birthDate}
-              onChange={(v) => handleInputChange("birthDate", v)}
-            />
-            <Select
-              label="Gênero"
-              value={formData.gender}
-              onChange={(e) => handleInputChange("gender", e.target.value)}
-              options={GENDER_OPTIONS}
-            />
-            <Input
-              label="Telefone"
-              value={formatPhone(formData.phone)}
-              onChange={(e) =>
-                handleInputChange("phone", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="(00) 00000-0000"
-            />
-            <Input
-              label="E-mail"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-            />
-          </div>
-        </FormSection>
-
-        {/* Seção: Endereço */}
-        <FormSection title="Endereço">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="relative">
-              <Input
-                label="CEP"
-                mask="cep"
-                value={formData.zipCode}
-                onChange={(e) => handleInputChange("zipCode", e.target.value)}
-                placeholder="00000-000"
-              />
-              {cepLoading && (
-                <Loader2 className="absolute right-3 top-9 w-4 h-4 text-gray-400 animate-spin" />
-              )}
-            </div>
-            <Select
-              label="Estado"
-              value={formData.state}
-              onChange={(e) => handleInputChange("state", e.target.value)}
-              options={STATE_OPTIONS}
-            />
-            <div className="md:col-span-2">
-              <Input
-                label="Logradouro"
-                value={formData.address}
-                onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="Rua / Avenida / Travessa"
-              />
-            </div>
-            <Input
-              label="Número"
-              value={formData.addressNumber}
-              onChange={(e) =>
-                handleInputChange("addressNumber", e.target.value)
-              }
-            />
-            <Input
-              label="Complemento"
-              value={formData.addressComplement}
-              onChange={(e) =>
-                handleInputChange("addressComplement", e.target.value)
-              }
-            />
-            <Input
-              label="Bairro"
-              value={formData.neighborhood}
-              onChange={(e) =>
-                handleInputChange("neighborhood", e.target.value)
-              }
-            />
-            <Input
-              label="Cidade"
-              value={formData.city}
-              onChange={(e) => handleInputChange("city", e.target.value)}
-            />
-          </div>
-        </FormSection>
-
-        {/* Seção: Convênio */}
-        <FormSection title="Convênio">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <HealthPlanComboboxField
-              label="Convênio"
-              healthPlans={healthPlans}
-              value={formData.healthPlanId}
-              onChange={(id) => handleInputChange("healthPlanId", id)}
-              onHealthPlanCreated={(plan) =>
-                setHealthPlans((prev) => [...prev, plan])
-              }
-            />
-            <Input
-              label="Número da carteirinha"
-              value={formData.healthPlanNumber}
-              onChange={(e) =>
-                handleInputChange("healthPlanNumber", e.target.value)
-              }
-              placeholder="Número do convênio"
-            />
-          </div>
-        </FormSection>
-
-        {/* Botão de salvar */}
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            className="min-h-[44px] rounded-xl"
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSave}
-            isLoading={saving}
-            disabled={!isDirty}
-            className="min-h-[44px] rounded-xl"
-          >
-            Salvar alterações
-          </Button>
-        </div>
+        <PatientRegistrationForm
+          patient={patient}
+          onSaved={(saved) => {
+            setPatient(saved);
+            showToast("Paciente atualizado com sucesso!", "success");
+            if (returnUrl) {
+              setTimeout(() => router.push(returnUrl), 800);
+            }
+          }}
+          onCancel={() => router.push(returnUrl ?? "/pacientes")}
+        />
       </DetailPageLayout>
 
       <NewAppointmentModal
