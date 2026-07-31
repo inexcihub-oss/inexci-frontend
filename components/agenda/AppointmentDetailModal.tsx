@@ -2,6 +2,7 @@
 
 import { Modal } from "@/components/ui/Modal";
 import { SpinnerButton } from "@/components/shared/ModalFooter";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Appointment,
   AppointmentStatus,
@@ -78,12 +79,16 @@ export function AppointmentDetailModal({
   onChangeStatus,
   onDelete,
 }: Props) {
-  // Consulta realizada também abre a ficha (leitura do prontuário); apenas
-  // cancelada/faltou não têm atendimento.
+  const { isDoctor } = useAuth();
+
+  // Atender é ato do médico; quem agenda não abre a ficha. A consulta já
+  // realizada abre para todos (leitura do prontuário) — só cancelada/faltou
+  // não têm atendimento nenhum.
   const canAttend =
-    appointment.status === "scheduled" ||
-    appointment.status === "confirmed" ||
-    appointment.status === "completed";
+    appointment.status === "completed" ||
+    (isDoctor &&
+      (appointment.status === "scheduled" ||
+        appointment.status === "confirmed"));
   const actions = QUICK[appointment.status];
 
   return (

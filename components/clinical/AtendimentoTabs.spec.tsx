@@ -59,6 +59,11 @@ vi.mock("@/services/clinical-record.service", () => ({
   },
 }));
 
+let authState = { isDoctor: true };
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => authState,
+}));
+
 vi.mock("@/services/clinical-record-template.service", () => ({
   clinicalRecordTemplateService: {
     getAll: vi.fn().mockResolvedValue([]),
@@ -132,6 +137,7 @@ describe("AtendimentoTabs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     searchParams = new URLSearchParams();
+    authState = { isDoctor: true };
   });
 
   it("abre na aba Atendimento com as seções clínicas", () => {
@@ -594,6 +600,61 @@ describe("AtendimentoTabs", () => {
       );
       expect(clinicalRecordService.update).not.toHaveBeenCalled();
       expect(clinicalRecordService.create).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Atender é ato do médico. Secretária e assistente continuam entrando na
+   * tela — precisam do histórico, do cadastro e dos exames anexados — mas em
+   * leitura: sem salvar, sem finalizar e sem emitir documento com o CRM e a
+   * assinatura do médico.
+   */
+  describe("usuário não-médico", () => {
+    beforeEach(() => {
+      authState = { isDoctor: false };
+    });
+
+    it("esconde salvar, finalizar e a emissão de documentos", () => {
+      renderTabs();
+
+      expect(
+        screen.queryByRole("button", { name: /Salvar rascunho/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Finalizar/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /receita/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Salvar como modelo/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("explica por que a ficha está travada e mantém a ficha em leitura", () => {
+      renderTabs(recordFixture({ anamnesis: "<p>Dor lombar</p>" }));
+
+      expect(
+        screen.getByText(/Apenas médicos podem registrar/i),
+      ).toBeInTheDocument();
+      // Em leitura a ficha troca o editor pelo conteúdo renderizado.
+      expect(
+        screen.queryByLabelText(/Queixa principal/i),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Dor lombar")).toBeInTheDocument();
+    });
+
+    it("mantém as demais abas acessíveis", async () => {
+      const user = userEvent.setup();
+      renderTabs(recordFixture());
+
+      await user.click(screen.getByRole("tab", { name: "Histórico" }));
+      expect(
+        screen.getByText("Consultas e cirurgias anteriores"),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("tab", { name: "Documentos" }));
+      expect(screen.getByText("Documentos e exames")).toBeInTheDocument();
     });
   });
 

@@ -23,6 +23,7 @@ import {
   clinicalRecordService,
   ClinicalRecord,
 } from "@/services/clinical-record.service";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { formatCPF, formatPhone } from "@/lib/formatters";
@@ -33,6 +34,7 @@ import {
   Tag,
   Phone,
   IdCard,
+  Lock,
   ShieldCheck,
 } from "lucide-react";
 
@@ -101,6 +103,7 @@ export function AtendimentoTabs({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isDoctor } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
 
   const tabFromUrl = searchParams.get("tab");
@@ -126,8 +129,11 @@ export function AtendimentoTabs({
   const [documentsVersion, setDocumentsVersion] = useState(0);
 
   const finalized = !!record?.finalizedAt;
+  // Registrar o atendimento é ato do médico: secretária e assistente abrem a
+  // tela pelo histórico, pelo cadastro e pelos exames, mas em leitura.
+  const readOnly = finalized || !isDoctor;
   const isDirty =
-    !finalized && JSON.stringify(fields) !== JSON.stringify(baseline);
+    !readOnly && JSON.stringify(fields) !== JSON.stringify(baseline);
 
   // Aviso do navegador ao fechar/recarregar com alterações pendentes.
   useEffect(() => {
@@ -282,7 +288,7 @@ export function AtendimentoTabs({
             </p>
           </div>
 
-          {!finalized && (
+          {!readOnly && (
             <div className="hidden sm:flex items-center gap-2 shrink-0">
               <Button
                 variant="outline"
@@ -372,7 +378,17 @@ export function AtendimentoTabs({
                 </div>
               )}
 
-              {!finalized && (
+              {!finalized && !isDoctor && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-200 text-neutral-700 text-sm">
+                  <Lock className="w-5 h-5 shrink-0 text-neutral-400" />
+                  <span>
+                    Apenas médicos podem registrar o atendimento. Você está
+                    vendo a ficha em modo leitura.
+                  </span>
+                </div>
+              )}
+
+              {!readOnly && (
                 <ClinicalTemplateActions
                   doctorId={appointment.doctorId}
                   fields={fields}
@@ -392,22 +408,26 @@ export function AtendimentoTabs({
               <AtendimentoFicha
                 fields={fields}
                 onFieldChange={handleFieldChange}
-                readOnly={finalized}
+                readOnly={readOnly}
                 surgeryRequestId={record?.surgeryRequestId ?? null}
               />
 
-              <ClinicalDocumentActions
-                ensureRecordId={ensureRecordId}
-                cidCodes={fields.cidCodes}
-                onEmitted={(document) => {
-                  showSuccess(`${document.name} emitido.`);
-                  // A aba Documentos já pode estar montada — sem isto, o
-                  // documento recém-emitido só apareceria ao recarregar.
-                  setDocumentsVersion((v) => v + 1);
-                }}
-              />
+              {/* Receita, atestado e pedido de exame saem com o CRM e a
+                  assinatura do médico da consulta — só ele emite. */}
+              {isDoctor && (
+                <ClinicalDocumentActions
+                  ensureRecordId={ensureRecordId}
+                  cidCodes={fields.cidCodes}
+                  onEmitted={(document) => {
+                    showSuccess(`${document.name} emitido.`);
+                    // A aba Documentos já pode estar montada — sem isto, o
+                    // documento recém-emitido só apareceria ao recarregar.
+                    setDocumentsVersion((v) => v + 1);
+                  }}
+                />
+              )}
 
-              {!finalized && (
+              {!readOnly && (
                 <div className="sm:hidden flex flex-col-reverse gap-3 pt-1 pb-4">
                   <Button
                     variant="outline"
