@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Permission } from "@/lib/permissions";
+
+// Usuário simulado com Solicitações concedida — é o eixo que decide se o link
+// "Abrir solicitação" aparece na timeline.
+let authState = { can: (p: Permission) => p === Permission.SOLICITACOES };
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => authState,
+}));
 
 vi.mock("@/services/appointment.service", async () => {
   const actual = await vi.importActual<
@@ -87,6 +95,7 @@ const surgery = {
 describe("PatientHistoryTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    authState = { can: (p) => p === Permission.SOLICITACOES };
     mocked(appointmentService.getByPatient).mockResolvedValue([
       pastAppointment,
       noShowAppointment,
@@ -164,6 +173,27 @@ describe("PatientHistoryTab", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
+  /**
+   * O card da cirurgia é a ponte deliberada da timeline e deve continuar
+   * visível mesmo sem Solicitações — só o link para o detalhe (que o guard de
+   * rota devolveria) não faz sentido.
+   */
+  it("mantém o card da cirurgia mas esconde o link para quem não tem Solicitações", async () => {
+    authState = { can: () => false };
+    const user = userEvent.setup();
+    render(
+      <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: /Artroscopia de joelho/ }),
+    );
+
+    expect(
+      screen.queryByRole("link", { name: /Abrir solicitação/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("mostra ficha avulsa como atendimento sem consulta", async () => {
     mocked(appointmentService.getByPatient).mockResolvedValue([
       currentAppointment,
@@ -205,7 +235,7 @@ describe("PatientHistoryTab", () => {
   });
 
   it("mostra mensagem de erro (não de vazio) quando alguma chamada falha", async () => {
-    mocked(surgeryRequestService.getAll).mockRejectedValue(
+    mocked(appointmentService.getByPatient).mockRejectedValue(
       new Error("Falha de rede"),
     );
 
@@ -223,9 +253,13 @@ describe("PatientHistoryTab", () => {
 
   it("refaz as chamadas ao clicar em Tentar novamente e renderiza a timeline após sucesso", async () => {
     const user = userEvent.setup();
-    mocked(surgeryRequestService.getAll)
+    mocked(appointmentService.getByPatient)
       .mockRejectedValueOnce(new Error("Falha de rede"))
-      .mockResolvedValueOnce({ total: 1, records: [surgery] });
+      .mockResolvedValueOnce([
+        pastAppointment,
+        noShowAppointment,
+        currentAppointment,
+      ]);
 
     render(
       <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
@@ -238,6 +272,29 @@ describe("PatientHistoryTab", () => {
     expect(
       await screen.findByText(/Artroscopia de joelho/),
     ).toBeInTheDocument();
-    expect(surgeryRequestService.getAll).toHaveBeenCalledTimes(2);
+    expect(appointmentService.getByPatient).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * Tarefa 17, ponto 3: a busca de cirurgias é isolada com `.catch()` — se
+   * falhar sozinha (ex.: colaborador sem acesso a algum médico do paciente),
+   * a aba de Histórico não pode cair inteira. Só a seção de cirurgias some.
+   */
+  it("degrada graciosamente quando só a busca de cirurgias falha", async () => {
+    mocked(surgeryRequestService.getAll).mockRejectedValue(
+      new Error("Sem acesso"),
+    );
+
+    render(
+      <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /Primeira consulta/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Artroscopia de joelho/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Não foi possível carregar o histórico/i),
+    ).not.toBeInTheDocument();
   });
 });

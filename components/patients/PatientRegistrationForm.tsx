@@ -16,6 +16,8 @@ import { useCepLookup } from "@/hooks/useCepLookup";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { logger } from "@/lib/logger";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 
 interface FormData {
   name: string;
@@ -75,6 +77,8 @@ export function PatientRegistrationForm({
   onSaved: (patient: Patient) => void;
   onCancel?: () => void;
 }) {
+  const { can } = useAuth();
+  const podeAdministrarCadastros = can(Permission.ADMINISTRACAO);
   const [formData, setFormData] = useState<FormData>(() =>
     formDataFrom(patient),
   );
@@ -272,6 +276,7 @@ export function PatientRegistrationForm({
             onHealthPlanCreated={(plan) =>
               setHealthPlans((prev) => [...prev, plan])
             }
+            canCreate={podeAdministrarCadastros}
           />
           <Input
             label="Número da carteirinha"

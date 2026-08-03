@@ -4,6 +4,7 @@ import {
   emailSchema,
   phoneSchema,
 } from "./shared";
+import { Permission } from "@/lib/permissions";
 
 export const createCollaboratorSchema = z
   .object({
@@ -14,6 +15,7 @@ export const createCollaboratorSchema = z
     crm: z.string().optional().or(z.literal("")),
     crmState: z.string().optional().or(z.literal("")),
     specialty: z.string().optional().or(z.literal("")),
+    permissions: z.array(z.nativeEnum(Permission)).default([]),
   })
   .superRefine((data, ctx) => {
     if (data.isDoctor) {

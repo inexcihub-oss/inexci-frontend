@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui";
+import { Toast } from "@/components/ui/Toast";
 import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
 import { AppointmentDetailModal } from "@/components/agenda/AppointmentDetailModal";
 import {
@@ -17,6 +18,11 @@ import {
   STATUS_NUMBER_TO_STRING,
   STATUS_COLORS,
 } from "@/services/surgery-request.service";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
+import { useToast } from "@/hooks/useToast";
+import { getApiErrorMessage } from "@/lib/http-error";
+import { cn } from "@/lib/utils";
 import { ChevronRight, CalendarDays, Stethoscope } from "lucide-react";
 
 const APPOINTMENT_BADGE: Record<AppointmentStatus, string> = {
@@ -80,6 +86,9 @@ export function PatientTimelineSidebar({
   onReload: () => void;
 }) {
   const router = useRouter();
+  const { can } = useAuth();
+  const podeVerSolicitacoes = can(Permission.SOLICITACOES);
+  const { toast, showError, hideToast } = useToast();
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [busy, setBusy] = useState(false);
@@ -109,6 +118,10 @@ export function PatientTimelineSidebar({
       await appointmentService.updateStatus(selected.id, status);
       setSelected(null);
       onReload();
+    } catch (error) {
+      showError(
+        getApiErrorMessage(error, "Não foi possível atualizar a consulta."),
+      );
     } finally {
       setBusy(false);
     }
@@ -121,6 +134,10 @@ export function PatientTimelineSidebar({
       await appointmentService.delete(selected.id);
       setSelected(null);
       onReload();
+    } catch (error) {
+      showError(
+        getApiErrorMessage(error, "Não foi possível excluir a consulta."),
+      );
     } finally {
       setBusy(false);
     }
@@ -208,8 +225,17 @@ export function PatientTimelineSidebar({
             return (
               <div
                 key={entry.id}
-                onClick={() => router.push(`/solicitacao/${surgery.id}`)}
-                className="flex items-center gap-2.5 px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
+                onClick={
+                  podeVerSolicitacoes
+                    ? () => router.push(`/solicitacao/${surgery.id}`)
+                    : undefined
+                }
+                className={cn(
+                  "flex items-center gap-2.5 px-4 py-3.5 border-b border-gray-100 transition-colors min-h-[44px]",
+                  podeVerSolicitacoes
+                    ? "hover:bg-gray-50 cursor-pointer active:bg-gray-100"
+                    : "cursor-default",
+                )}
               >
                 <span
                   className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0"
@@ -235,7 +261,9 @@ export function PatientTimelineSidebar({
                   >
                     {statusLabel}
                   </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                  {podeVerSolicitacoes && (
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  )}
                 </div>
               </div>
             );
@@ -265,6 +293,10 @@ export function PatientTimelineSidebar({
           onChangeStatus={handleChangeStatus}
           onDelete={handleDelete}
         />
+      )}
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
       )}
     </div>
   );

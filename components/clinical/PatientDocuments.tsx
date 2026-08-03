@@ -14,6 +14,8 @@ import {
 } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import { logger } from "@/lib/logger";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   ...Object.fromEntries(PRE_SURGERY_DOCUMENT_TYPES.map((t) => [t.key, t.label])),
@@ -53,6 +55,12 @@ export function PatientDocuments({
   /** Muda quando um documento é emitido fora desta aba, forçando o recarregamento. */
   refreshKey?: number;
 }) {
+  const { can } = useAuth();
+  // `GET/POST/DELETE /clinical-records/documents` exigem Atendimento na
+  // classe do controller — não é só upload/exclusão, a própria listagem
+  // falha sem a permissão. Sem ela não há nada legítimo para buscar, então a
+  // seção nem tenta.
+  const podeAtendimento = can(Permission.ATENDIMENTO);
   const { showToast } = useToast();
   const [documents, setDocuments] = useState<PatientDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,13 +70,17 @@ export function PatientDocuments({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const load = useCallback(() => {
+    if (!podeAtendimento) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     patientDocumentService
       .list(patientId)
       .then(setDocuments)
       .catch(() => setDocuments([]))
       .finally(() => setLoading(false));
-  }, [patientId]);
+  }, [patientId, podeAtendimento]);
 
   useEffect(() => {
     load();
@@ -92,6 +104,8 @@ export function PatientDocuments({
       setIsDeleting(false);
     }
   };
+
+  if (!podeAtendimento) return null;
 
   return (
     <>

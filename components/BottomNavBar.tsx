@@ -6,40 +6,52 @@ import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { Permission } from "@/lib/permissions";
 
 interface NavItem {
   iconSrc: string;
   label: string;
   href: string;
+  permission?: Permission;
 }
 
-// Itens sempre visíveis na barra inferior
+// Itens sempre visíveis na barra inferior (Pacientes fica sem `permission`:
+// leitura é transversal a toda a conta)
 const PRIMARY_ITEMS: NavItem[] = [
   {
     iconSrc: "/icons/stethoscope.svg",
     label: "Atendimento",
     href: "/atendimento",
+    permission: Permission.ATENDIMENTO,
   },
   {
     iconSrc: "/icons/calendar-schedule.svg",
     label: "Agenda",
     href: "/agenda",
+    permission: Permission.AGENDA,
   },
   {
     iconSrc: "/icons/grid-layout.svg",
     label: "Solicitações",
     href: "/solicitacoes-cirurgicas",
+    permission: Permission.SOLICITACOES,
   },
   { iconSrc: "/icons/user-add.svg", label: "Pacientes", href: "/pacientes" },
 ];
 
-// Itens compartilhados com todos da conta (admin, colaborador e médico)
-const SHARED_OVERFLOW_ITEMS: NavItem[] = [
-  { iconSrc: "/icons/dashboard.svg", label: "Dashboard", href: "/dashboard" },
+// Itens do overflow sheet — os sem `permission` são transversais a toda a conta
+const OVERFLOW_ITEMS: NavItem[] = [
+  {
+    iconSrc: "/icons/dashboard.svg",
+    label: "Dashboard",
+    href: "/dashboard",
+    permission: Permission.SOLICITACOES,
+  },
   {
     iconSrc: "/icons/status-surgeries.svg",
     label: "Procedimentos",
     href: "/procedimentos",
+    permission: Permission.SOLICITACOES,
   },
   { iconSrc: "/icons/users.svg", label: "Hospitais", href: "/hospitais" },
   {
@@ -57,33 +69,40 @@ const SHARED_OVERFLOW_ITEMS: NavItem[] = [
     label: "Fabricantes",
     href: "/fabricantes",
   },
-];
-
-// Itens exclusivos de admin — aparecem no overflow sheet
-const ADMIN_ONLY_OVERFLOW_ITEMS: NavItem[] = [
   {
     iconSrc: "/icons/user-profile.svg",
     label: "Colaboradores",
     href: "/colaboradores",
+    permission: Permission.ADMINISTRACAO,
   },
 ];
 
 export default function BottomNavBar() {
   const pathname = usePathname();
-  const { isAdmin } = useAuth();
+  const { can } = useAuth();
   const [overflowOpen, setOverflowOpen] = useState(false);
 
   const closeOverflow = () => setOverflowOpen(false);
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(closeOverflow);
 
-  const overflowItems = useMemo(
-    () =>
-      isAdmin
-        ? [...ADMIN_ONLY_OVERFLOW_ITEMS, ...SHARED_OVERFLOW_ITEMS]
-        : SHARED_OVERFLOW_ITEMS,
-    [isAdmin],
+  const primaryItems = useMemo(
+    () => PRIMARY_ITEMS.filter((item) => !item.permission || can(item.permission)),
+    [can],
   );
+
+  const overflowItems = useMemo(
+    () => OVERFLOW_ITEMS.filter((item) => !item.permission || can(item.permission)),
+    [can],
+  );
+
+  // Com a lista cheia (4 itens + "Mais"), a barra ocupa a largura toda —
+  // igual ao comportamento original, sem limite de largura por item. Só
+  // agrupa ao centro (com limite por item) quando sobram poucos itens
+  // (ex.: colaborador com permissão só de Agenda), senão os ícones esticam
+  // até preencher telas largas (a barra some só a partir do breakpoint lg).
+  const totalSlots = primaryItems.length + (overflowItems.length > 0 ? 1 : 0);
+  const isSparse = totalSlots > 0 && totalSlots <= 3;
 
   // Fecha o overflow ao navegar
   useEffect(() => {
@@ -111,8 +130,10 @@ export default function BottomNavBar() {
         className="fixed bottom-0 left-0 right-0 z-[70] lg:hidden bg-white/95 backdrop-blur-lg border-t border-neutral-100"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <div className="flex items-center justify-around px-1 h-16">
-          {PRIMARY_ITEMS.map((item) => {
+        <div
+          className={`flex items-center px-1 h-16 ${isSparse ? "justify-center" : "justify-around"}`}
+        >
+          {primaryItems.map((item) => {
             const active = isActive(item.href);
             return (
               <Link
@@ -120,6 +141,7 @@ export default function BottomNavBar() {
                 href={item.href}
                 className={`
                   relative flex flex-col items-center justify-center gap-0.5 flex-1
+                  ${isSparse ? "max-w-[130px]" : ""}
                   py-1.5 rounded-2xl transition-all duration-200
                   min-h-[44px] min-w-[44px]
                   ${active ? "text-primary-600" : "text-neutral-200 hover:text-neutral-900"}
@@ -162,6 +184,7 @@ export default function BottomNavBar() {
               onClick={() => setOverflowOpen((v) => !v)}
               className={`
                 relative flex flex-col items-center justify-center gap-0.5 flex-1
+                ${isSparse ? "max-w-[130px]" : ""}
                 py-1.5 rounded-2xl transition-all duration-200
                 min-h-[44px] min-w-[44px]
                 ${overflowActive || overflowOpen ? "text-primary-600" : "text-neutral-200 hover:text-neutral-900"}

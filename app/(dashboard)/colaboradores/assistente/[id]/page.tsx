@@ -33,12 +33,15 @@ import { ToastType } from "@/types/toast.types";
 import { ChevronRight, Upload, X, Loader2, Settings2 } from "lucide-react";
 import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 import { CollaboratorActionsSection } from "@/components/colaboradores/CollaboratorActionsSection";
+import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
 import { DoctorHeaderEditor } from "@/components/shared/DoctorHeaderEditor";
 import { useDoctorHeaderEditor } from "@/hooks/useDoctorHeaderEditor";
 import { Modal } from "@/components/ui/Modal";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { maskCep, maskCpf, maskPhone, unmask } from "@/lib/masks";
 import { isValidCpf } from "@/lib/validators";
+import { Permission } from "@/lib/permissions";
+import { buildCollaboratorUpdatePayload } from "@/lib/collaborator-update";
 
 export default function AssistenteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -108,6 +111,7 @@ export default function AssistenteDetalhePage() {
     specialty: "",
     crm: "",
     crmState: "",
+    permissions: [] as Permission[],
   });
   const [originalData, setOriginalData] = useState<typeof formData | null>(
     null,
@@ -185,6 +189,11 @@ export default function AssistenteDetalhePage() {
         specialty: dp?.specialty || "",
         crm: dp?.crm || "",
         crmState: dp?.crmState || "",
+        // `grantedPermissions` (crua), não `permissions` (efetiva): semear
+        // com a efetiva regravaria o bônus de médico (Agenda/Atendimento/
+        // Solicitações) como concessão real — desmarcar "é médico" depois
+        // não voltaria a tirá-las (I2 do PLANO-PERMISSOES-COLABORADORES).
+        permissions: collab.grantedPermissions ?? [],
       };
       setFormData(fd);
       setOriginalData(fd);
@@ -233,6 +242,10 @@ export default function AssistenteDetalhePage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handlePermissionsChange = (permissions: Permission[]) => {
+    setFormData((prev) => ({ ...prev, permissions }));
+  };
+
   const handleSave = async () => {
     if (!collaborator) return;
 
@@ -251,8 +264,13 @@ export default function AssistenteDetalhePage() {
     }
 
     const normalizedEmail = formData.email.trim();
-    const currentEmail = (collaborator.email ?? "").trim();
-    const emailChanged = normalizedEmail !== currentEmail;
+    const collaboratorUpdatePayload = buildCollaboratorUpdatePayload(
+      {
+        email: (collaborator.email ?? "").trim(),
+        permissions: originalData?.permissions ?? [],
+      },
+      { email: normalizedEmail, permissions: formData.permissions },
+    );
 
     setSaving(true);
     try {
@@ -270,10 +288,11 @@ export default function AssistenteDetalhePage() {
         state: formData.state || undefined,
       });
 
-      if (emailChanged) {
-        await collaboratorService.update(collaborator.id, {
-          email: normalizedEmail,
-        });
+      if (collaboratorUpdatePayload) {
+        await collaboratorService.update(
+          collaborator.id,
+          collaboratorUpdatePayload,
+        );
       }
 
       // Se for médico, salvar dados profissionais
@@ -747,6 +766,23 @@ export default function AssistenteDetalhePage() {
             </div>
           </FormSection>
         )}
+
+        {/* Seção: Permissões de acesso */}
+        <FormSection title="Permissões de acesso">
+          <PermissionsSection
+            value={formData.permissions}
+            isDoctor={isDoctor}
+            onChange={handlePermissionsChange}
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={handleCancel}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} isLoading={saving} disabled={!isDirty}>
+              Salvar alterações
+            </Button>
+          </div>
+        </FormSection>
 
         {/* Seção: Acesso a Médicos */}
         <DoctorAccessSection

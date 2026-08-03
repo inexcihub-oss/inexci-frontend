@@ -19,6 +19,7 @@ import { consentService } from "@/services/consent.service";
 import { billingService } from "@/services/billing.service";
 import type { ConsentStatus, ConsentType } from "@/types/consent.types";
 import { useRouter } from "next/navigation";
+import { Permission } from "@/lib/permissions";
 
 interface AuthContextData {
   user: User | null;
@@ -28,6 +29,8 @@ interface AuthContextData {
   isDoctor: boolean;
   isAdmin: boolean;
   accountId: string | null;
+  permissions: Permission[];
+  can: (permission: Permission) => boolean;
   consents: ConsentStatus | null;
   pendingConsents: ConsentType[];
   consentsLoading: boolean;
@@ -278,6 +281,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isDoctor = useMemo(() => user?.isDoctor ?? false, [user]);
   const isAdmin = useMemo(() => user?.role === "admin", [user]);
   const accountId = useMemo(() => user?.accountId ?? null, [user]);
+  const permissions = useMemo<Permission[]>(
+    () => user?.permissions ?? [],
+    [user],
+  );
+  const can = useCallback(
+    (permission: Permission) => permissions.includes(permission),
+    [permissions],
+  );
   const pendingConsents = useMemo<ConsentType[]>(
     () => consents?.pendingRequired ?? [],
     [consents],
@@ -340,6 +351,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isDoctor,
       isAdmin,
       accountId,
+      permissions,
+      can,
       consents,
       pendingConsents,
       consentsLoading,
@@ -363,6 +376,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isDoctor,
       isAdmin,
       accountId,
+      permissions,
+      can,
       consents,
       pendingConsents,
       consentsLoading,

@@ -30,6 +30,8 @@ import { CalendarTimeGrid } from "@/components/agenda/CalendarTimeGrid";
 import { CalendarMonthView } from "@/components/agenda/CalendarMonthView";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useToast } from "@/hooks/useToast";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
 import {
@@ -55,6 +57,10 @@ export default function AgendaPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast, showSuccess, showError, hideToast } = useToast();
+  const { can } = useAuth();
+  // Cirurgias vêm de `GET /surgery-requests/agenda`, que exige Solicitações —
+  // um eixo diferente de Agenda. Quem só tem Agenda enxerga só as consultas.
+  const podeVerCirurgias = can(Permission.SOLICITACOES);
 
   const [view, setView] = useState<CalView>("week");
   const [anchor, setAnchor] = useState<Date>(() => new Date());
@@ -99,6 +105,7 @@ export default function AgendaPage() {
     queryKey: ["surgery-requests", "agenda", fromISO, toISO],
     queryFn: () => surgeryRequestService.getAgenda(fromISO, toISO),
     placeholderData: keepPreviousData,
+    enabled: podeVerCirurgias,
   });
   const appointmentsQuery = useQuery({
     queryKey: ["appointments", "agenda", fromISO, toISO],
@@ -107,13 +114,21 @@ export default function AgendaPage() {
     placeholderData: keepPreviousData,
   });
 
-  const loading = surgeriesQuery.isFetching || appointmentsQuery.isFetching;
-  const isError = surgeriesQuery.isError || appointmentsQuery.isError;
+  // `enabled: false` livra a busca inicial de 403, mas `refetch()` ignora
+  // `enabled` (dispara a chamada de qualquer jeito) — por isso a query de
+  // cirurgias também precisa sair de `loading`/`isError` explicitamente
+  // quando falta a permissão, e `refetchAll` não pode chamar
+  // `surgeriesQuery.refetch()` nesse caso.
+  const loading =
+    appointmentsQuery.isFetching ||
+    (podeVerCirurgias && surgeriesQuery.isFetching);
+  const isError =
+    appointmentsQuery.isError || (podeVerCirurgias && surgeriesQuery.isError);
 
   const refetchAll = useCallback(() => {
-    surgeriesQuery.refetch();
+    if (podeVerCirurgias) surgeriesQuery.refetch();
     appointmentsQuery.refetch();
-  }, [surgeriesQuery, appointmentsQuery]);
+  }, [podeVerCirurgias, surgeriesQuery, appointmentsQuery]);
 
   const invalidateAppointments = () =>
     queryClient.invalidateQueries({ queryKey: ["appointments", "agenda"] });
@@ -236,7 +251,9 @@ export default function AgendaPage() {
   const KIND_TABS: { key: KindFilter; label: string; count: number }[] = [
     { key: "all", label: "Tudo", count: counts.all },
     { key: "appointment", label: "Consultas", count: counts.appointment },
-    { key: "surgery", label: "Cirurgias", count: counts.surgery },
+    ...(podeVerCirurgias
+      ? [{ key: "surgery" as const, label: "Cirurgias", count: counts.surgery }]
+      : []),
   ];
 
   const VIEW_TABS: { key: CalView; label: string }[] = [
@@ -309,17 +326,19 @@ export default function AgendaPage() {
               <span className="text-xs font-semibold hidden sm:inline">Nova consulta</span>
             </button>
 
-            <button
-              onClick={() => setIsExportOpen(true)}
-              className="flex items-center justify-center w-8 h-8 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors shrink-0"
-              title="Exportar"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-            </button>
+            {podeVerCirurgias && (
+              <button
+                onClick={() => setIsExportOpen(true)}
+                className="flex items-center justify-center w-8 h-8 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors shrink-0"
+                title="Exportar"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+            )}
 
             <button
               onClick={refetchAll}

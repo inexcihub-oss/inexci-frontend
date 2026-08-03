@@ -17,6 +17,8 @@ import { supplierService } from "@/services/supplier.service";
 import { manufacturerService } from "@/services/manufacturer.service";
 import { procedureService, Procedure } from "@/services/procedure.service";
 import { normalizeTemplateOpmeItems } from "./normalize-template-opme";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 
 interface ProcedureSideSheetProps {
   isOpen: boolean;
@@ -130,6 +132,12 @@ export function ProcedureSideSheet({
   onUseTemplate,
   onTemplateUpdated,
 }: ProcedureSideSheetProps) {
+  const { can } = useAuth();
+  // Editar um modelo é `PATCH /surgery-requests/templates/:id`, que herda a
+  // permissão de classe do controller de solicitações (Solicitações), não
+  // Administração — por isso o eixo aqui é diferente do das outras telas de
+  // cadastro básico.
+  const podeEditarModelo = can(Permission.SOLICITACOES);
   const [documents, setDocuments] = useState<ProcedureDocument[]>([]);
   const [opmeItems, setOpmeItems] = useState<ProcedureOpmeItem[]>([]);
   const [tussItems, setTussItems] = useState<ProcedureTussItem[]>([]);
@@ -412,7 +420,7 @@ export function ProcedureSideSheet({
         <div className="relative bg-white rounded-t-3xl md:rounded-2xl shadow-xl w-full md:max-w-2xl flex flex-col max-h-[92vh] md:max-h-[90vh] md:mx-4 mobile-sheet-offset">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
-            {isEditingName ? (
+            {isEditingName && podeEditarModelo ? (
               <div className="flex items-center gap-2 flex-1 mr-4">
                 <input
                   ref={nameInputRef}
@@ -440,12 +448,14 @@ export function ProcedureSideSheet({
                 <h2 className="text-lg font-semibold text-gray-900">
                   {modelName}
                 </h2>
-                <button
-                  onClick={() => setIsEditingName(true)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
+                {podeEditarModelo && (
+                  <button
+                    onClick={() => setIsEditingName(true)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             )}
             <button
@@ -526,23 +536,25 @@ export function ProcedureSideSheet({
                     )}
                   </div>
 
-                  <button
-                    onClick={() => {
-                      if (isSavingProcedure) return;
-                      setIsEditingProcedure((prev) => !prev);
-                      setProcedureSearch(
-                        procedureName === "—" ? "" : procedureName,
-                      );
-                    }}
-                    className="p-1 rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
-                    disabled={isSavingProcedure}
-                  >
-                    {isSavingProcedure ? (
-                      <Loader2 className="w-5 h-5 text-neutral-500 animate-spin" />
-                    ) : (
-                      <IconEdit className="w-6 h-6 text-neutral-900" />
-                    )}
-                  </button>
+                  {podeEditarModelo && (
+                    <button
+                      onClick={() => {
+                        if (isSavingProcedure) return;
+                        setIsEditingProcedure((prev) => !prev);
+                        setProcedureSearch(
+                          procedureName === "—" ? "" : procedureName,
+                        );
+                      }}
+                      className="p-1 rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
+                      disabled={isSavingProcedure}
+                    >
+                      {isSavingProcedure ? (
+                        <Loader2 className="w-5 h-5 text-neutral-500 animate-spin" />
+                      ) : (
+                        <IconEdit className="w-6 h-6 text-neutral-900" />
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -580,12 +592,14 @@ export function ProcedureSideSheet({
                     Documentos e exames
                   </h3>
                 </div>
-                <button
-                  onClick={() => setIsAddDocModalOpen(true)}
-                  className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  Adicionar
-                </button>
+                {podeEditarModelo && (
+                  <button
+                    onClick={() => setIsAddDocModalOpen(true)}
+                    className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Adicionar
+                  </button>
+                )}
               </div>
 
               {hasDocuments ? (
@@ -611,12 +625,14 @@ export function ProcedureSideSheet({
                           {doc.name}
                         </span>
                       </div>
-                      <button
-                        onClick={() => handleRemoveDocument(doc.id)}
-                        className="flex items-center gap-2 text-neutral-500 hover:text-red-500 transition-colors"
-                      >
-                        <IconTrash className="w-5 h-5" />
-                      </button>
+                      {podeEditarModelo && (
+                        <button
+                          onClick={() => handleRemoveDocument(doc.id)}
+                          className="flex items-center gap-2 text-neutral-500 hover:text-red-500 transition-colors"
+                        >
+                          <IconTrash className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -631,12 +647,14 @@ export function ProcedureSideSheet({
                       para esse procedimento
                     </span>
                   </div>
-                  <button
-                    onClick={() => setIsAddDocModalOpen(true)}
-                    className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    Adicionar
-                  </button>
+                  {podeEditarModelo && (
+                    <button
+                      onClick={() => setIsAddDocModalOpen(true)}
+                      className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                    >
+                      Adicionar
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -649,12 +667,14 @@ export function ProcedureSideSheet({
                     OPME (Órteses, Próteses e Materiais Especiais)
                   </h3>
                 </div>
-                <button
-                  onClick={() => setIsOpmeModalOpen(true)}
-                  className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  Editar
-                </button>
+                {podeEditarModelo && (
+                  <button
+                    onClick={() => setIsOpmeModalOpen(true)}
+                    className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Editar
+                  </button>
+                )}
               </div>
 
               {hasOpme ? (
@@ -759,12 +779,14 @@ export function ProcedureSideSheet({
                       procedimento
                     </span>
                   </div>
-                  <button
-                    onClick={() => setIsOpmeModalOpen(true)}
-                    className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    Adicionar
-                  </button>
+                  {podeEditarModelo && (
+                    <button
+                      onClick={() => setIsOpmeModalOpen(true)}
+                      className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                    >
+                      Adicionar
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -777,12 +799,14 @@ export function ProcedureSideSheet({
                     Procedimentos e Códigos TUSS
                   </h3>
                 </div>
-                <button
-                  onClick={() => setIsTussModalOpen(true)}
-                  className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  Editar
-                </button>
+                {podeEditarModelo && (
+                  <button
+                    onClick={() => setIsTussModalOpen(true)}
+                    className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Editar
+                  </button>
+                )}
               </div>
 
               {hasTuss ? (
@@ -811,9 +835,11 @@ export function ProcedureSideSheet({
                       <span className="text-xs text-gray-900">
                         {item.quantity}
                       </span>
-                      <button className="flex items-center gap-2 text-neutral-500 hover:text-red-500 transition-colors">
-                        <IconTrash className="w-5 h-5" />
-                      </button>
+                      {podeEditarModelo && (
+                        <button className="flex items-center gap-2 text-neutral-500 hover:text-red-500 transition-colors">
+                          <IconTrash className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -828,12 +854,14 @@ export function ProcedureSideSheet({
                       procedimento
                     </span>
                   </div>
-                  <button
-                    onClick={() => setIsTussModalOpen(true)}
-                    className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    Adicionar
-                  </button>
+                  {podeEditarModelo && (
+                    <button
+                      onClick={() => setIsTussModalOpen(true)}
+                      className="px-3 py-1.5 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                    >
+                      Adicionar
+                    </button>
+                  )}
                 </div>
               )}
             </div>

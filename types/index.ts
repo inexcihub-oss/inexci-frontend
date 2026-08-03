@@ -15,6 +15,7 @@ export interface DoctorProfile {
 // ─── User types ───────────────────────────────────────────────────────────────
 
 import type { ConsentStatus } from "@/types/consent.types";
+import { Permission } from "@/lib/permissions";
 
 export interface User {
   id: string;
@@ -27,6 +28,8 @@ export interface User {
   accountId: string;
   avatarUrl?: string | null;
   isDoctor: boolean;
+  /** Permissão **efetiva**, já derivada no backend. */
+  permissions?: Permission[];
   emailVerified?: boolean;
   doctorProfile?: DoctorProfile;
   adminId?: string;

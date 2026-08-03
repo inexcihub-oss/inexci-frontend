@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import { CreateProcedureModal } from "./CreateProcedureModal";
 import { CreatePatientModal } from "./CreatePatientModal";
 import { CreateHospitalModal } from "./CreateHospitalModal";
@@ -72,6 +74,8 @@ export function CreateSurgeryRequestWizard({
   onSuccess,
   initialTemplate,
 }: CreateSurgeryRequestWizardProps) {
+  const { can } = useAuth();
+  const podeAdministrarCadastros = can(Permission.ADMINISTRACAO);
   const [modalState, setModalState] = useState<ModalState>("none");
   const [loading, setLoading] = useState(false);
   const [isClosing, _setIsClosing] = useState(false);
@@ -970,6 +974,7 @@ export function CreateSurgeryRequestWizard({
                     }}
                     selectedItemId={selectedProcedure?.id}
                     isActive={modalState === "procedure-select"}
+                    canCreate={podeAdministrarCadastros}
                   />
                 )}
                 {modalState === "patient-select" && (
@@ -993,6 +998,7 @@ export function CreateSurgeryRequestWizard({
                     }}
                     selectedItemId={selectedHospital?.id}
                     isActive={modalState === "hospital-select"}
+                    canCreate={podeAdministrarCadastros}
                   />
                 )}
                 {modalState === "healthplan-select" && (
@@ -1007,6 +1013,7 @@ export function CreateSurgeryRequestWizard({
                     }}
                     selectedItemId={selectedHealthPlan?.id}
                     isActive={modalState === "healthplan-select"}
+                    canCreate={podeAdministrarCadastros}
                   />
                 )}
                 {modalState === "doctor-select" && (

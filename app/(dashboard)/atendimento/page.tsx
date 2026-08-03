@@ -24,6 +24,8 @@ import {
   APPOINTMENT_STATUS_LABELS,
 } from "@/services/appointment.service";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
@@ -47,6 +49,8 @@ export default function AtendimentoHubPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast, showSuccess, showError, hideToast } = useToast();
+  const { can } = useAuth();
+  const podeAgenda = can(Permission.AGENDA);
 
   const [tab, setTab] = useState<HubTab>("today");
   const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
@@ -173,18 +177,20 @@ export default function AtendimentoHubPage() {
               </span>
             )}
 
-            <button
-              onClick={() => setNewModal({})}
-              className="ml-auto flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span className="text-xs font-semibold hidden sm:inline">
-                Nova consulta
-              </span>
-            </button>
+            {podeAgenda && (
+              <button
+                onClick={() => setNewModal({})}
+                className="ml-auto flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                <span className="text-xs font-semibold hidden sm:inline">
+                  Nova consulta
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Abas + filtro de médico */}
@@ -206,13 +212,15 @@ export default function AtendimentoHubPage() {
               ))}
             </div>
 
-            <button
-              onClick={() => router.push("/agenda")}
-              className="h-8 px-3 rounded-lg border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors shrink-0 flex items-center gap-1.5"
-            >
-              <CalendarDays className="w-3.5 h-3.5" />
-              Ver agenda
-            </button>
+            {podeAgenda && (
+              <button
+                onClick={() => router.push("/agenda")}
+                className="h-8 px-3 rounded-lg border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors shrink-0 flex items-center gap-1.5"
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                Ver agenda
+              </button>
+            )}
 
             {doctors.length > 1 && (
               <div className="sm:ml-auto">
@@ -251,12 +259,14 @@ export default function AtendimentoHubPage() {
               title="Nenhuma consulta"
               description={HUB_EMPTY_DESCRIPTION[tab]}
               action={
-                <button
-                  onClick={() => setNewModal({})}
-                  className="h-9 px-4 rounded-lg bg-teal-700 text-white text-xs font-semibold hover:bg-teal-800 transition-colors"
-                >
-                  Nova consulta
-                </button>
+                podeAgenda ? (
+                  <button
+                    onClick={() => setNewModal({})}
+                    className="h-9 px-4 rounded-lg bg-teal-700 text-white text-xs font-semibold hover:bg-teal-800 transition-colors"
+                  >
+                    Nova consulta
+                  </button>
+                ) : undefined
               }
             />
           ) : (

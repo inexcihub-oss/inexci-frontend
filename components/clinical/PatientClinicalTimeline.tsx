@@ -7,6 +7,8 @@ import {
   ClinicalRecord,
 } from "@/services/clinical-record.service";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import { FileText, ChevronDown } from "lucide-react";
 
 function formatDate(iso: string): string {
@@ -27,11 +29,23 @@ function stripHtml(html: string | null): string {
 
 /** Fichas de atendimento do paciente (prontuário), expansíveis e read-only. */
 export function PatientClinicalTimeline({ patientId }: { patientId: string }) {
+  const { can } = useAuth();
+  // `GET /clinical-records` também exige Atendimento na classe do
+  // controller — sem a permissão não há prontuário legítimo para mostrar, e
+  // "renderizar vazio" mentiria (pareceria que o paciente não tem
+  // atendimento nenhum). Melhor a seção nem existir para esse usuário; quem
+  // monta o card em volta (`pacientes/[id]/page.tsx`) também não renderiza o
+  // título nesse caso.
+  const podeAtendimento = can(Permission.ATENDIMENTO);
   const [records, setRecords] = useState<ClinicalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!podeAtendimento) {
+      setLoading(false);
+      return;
+    }
     let active = true;
     clinicalRecordService
       .getByPatient(patientId)
@@ -41,7 +55,9 @@ export function PatientClinicalTimeline({ patientId }: { patientId: string }) {
     return () => {
       active = false;
     };
-  }, [patientId]);
+  }, [patientId, podeAtendimento]);
+
+  if (!podeAtendimento) return null;
 
   if (loading) {
     return (

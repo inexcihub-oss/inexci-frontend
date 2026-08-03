@@ -21,6 +21,8 @@ import {
 } from "@/services/surgery-request.service";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { logger } from "@/lib/logger";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import {
   CalendarDays,
   ChevronDown,
@@ -90,6 +92,8 @@ export function PatientHistoryTab({
   patientId: string;
   currentAppointmentId: string;
 }) {
+  const { can } = useAuth();
+  const podeVerSolicitacoes = can(Permission.SOLICITACOES);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [records, setRecords] = useState<ClinicalRecord[]>([]);
   const [surgeries, setSurgeries] = useState<SurgeryRequestListItem[]>([]);
@@ -107,7 +111,16 @@ export function PatientHistoryTab({
         const [appts, recs, scs] = await Promise.all([
           appointmentService.getByPatient(patientId),
           clinicalRecordService.getByPatient(patientId),
-          surgeryRequestService.getAll({ patientId }),
+          // Isolado do try/catch geral: se a busca de cirurgias falhar (ex.:
+          // colaborador sem acesso a algum médico), a aba de Histórico não
+          // pode cair inteira — só a seção de cirurgias fica vazia.
+          surgeryRequestService.getAll({ patientId }).catch((err) => {
+            logger.warn(
+              "Erro ao carregar cirurgias do histórico do paciente:",
+              err,
+            );
+            return { total: 0, records: [] as SurgeryRequestListItem[] };
+          }),
         ]);
         if (!active) return;
         setAppointments(appts);
@@ -223,15 +236,17 @@ export function PatientHistoryTab({
                 </span>
               }
             >
-              <a
-                href={`/solicitacao/${entry.surgery.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-700 hover:underline"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Abrir solicitação
-              </a>
+              {podeVerSolicitacoes && (
+                <a
+                  href={`/solicitacao/${entry.surgery.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-700 hover:underline"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Abrir solicitação
+                </a>
+              )}
             </EntryCard>
           );
         }

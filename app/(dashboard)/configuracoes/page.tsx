@@ -204,6 +204,10 @@ const BILLING_TAB_ENABLED = true;
 function ConfiguracoesPageInner() {
   const { user, updateUser, isAdmin, subscription, refreshSubscription } =
     useAuth();
+  // `accountId` é o `ownerId` exposto no DTO: iguais significa dono da conta.
+  // O backend recusa checkout/portal do Stripe para quem não é dono — sem
+  // esse filtro a aba oferece um botão que sempre falha.
+  const ehDono = !!user && user.id === user.accountId;
   const queryClient = useQueryClient();
   const { toast, showToast, hideToast } = useToast();
   const searchParams = useSearchParams();
@@ -222,6 +226,7 @@ function ConfiguracoesPageInner() {
 
   const initialTab = (): SettingsTab => {
     const tab = searchParams.get("tab");
+    if (tab === "plan" && !ehDono) return "profile";
     if (
       tab === "header" ||
       tab === "profile" ||
@@ -1262,7 +1267,7 @@ function ConfiguracoesPageInner() {
                 icon={Bell}
                 label="Notificações"
               />
-              {isAdmin && BILLING_TAB_ENABLED && (
+              {isAdmin && ehDono && BILLING_TAB_ENABLED && (
                 <TabButton
                   active={activeTab === "plan"}
                   onClick={() => setActiveTab("plan")}
@@ -1299,6 +1304,7 @@ function ConfiguracoesPageInner() {
             {activeTab === "notifications" && renderNotificationsTab()}
             {activeTab === "plan" &&
               isAdmin &&
+              ehDono &&
               BILLING_TAB_ENABLED &&
               renderPlanTab()}
             {activeTab === "security" && renderSecurityTab()}

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Permission } from "@/lib/permissions";
 
 vi.mock("@/services/patient.service", () => ({
   patientService: { update: vi.fn() },
@@ -8,6 +9,13 @@ vi.mock("@/services/patient.service", () => ({
 
 vi.mock("@/services/health-plan.service", () => ({
   healthPlanService: { getAll: vi.fn().mockResolvedValue([]) },
+}));
+
+// Usuário simulado com Administração concedida por padrão — o cadastro
+// inline de convênio (grupo 1 do mapa de permissões) é exercido à parte.
+let authState = { can: (p: Permission) => p === Permission.ADMINISTRACAO };
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => authState,
 }));
 
 import { patientService } from "@/services/patient.service";
@@ -72,7 +80,10 @@ async function renderForm(
 }
 
 describe("PatientRegistrationForm", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState = { can: (p) => p === Permission.ADMINISTRACAO };
+  });
 
   it("preenche os campos com os dados do paciente", async () => {
     await renderForm({ onSaved: vi.fn() });
@@ -130,5 +141,20 @@ describe("PatientRegistrationForm", () => {
 
     expect(patientService.update).not.toHaveBeenCalled();
     expect(await screen.findByText(/CPF é obrigatório/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Grupo 1 do mapa de permissões: cadastrar convênio na hora exige
+   * Administração. Sem ela, o formulário não pode travar o colaborador sem
+   * saída — a opção de criar some do combobox e uma dica explica o motivo,
+   * em vez de deixar o clique terminar em 403.
+   */
+  it("orienta a pedir a um administrador quando falta Administração para cadastrar convênio", async () => {
+    authState = { can: () => false };
+    await renderForm({ onSaved: vi.fn() });
+
+    expect(
+      screen.getByText(/Peça a um administrador da conta para cadastrá-lo/i),
+    ).toBeInTheDocument();
   });
 });

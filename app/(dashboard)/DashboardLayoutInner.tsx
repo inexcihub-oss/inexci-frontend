@@ -10,6 +10,7 @@ import Sidebar from "@/components/Sidebar";
 import BottomNavBar from "@/components/BottomNavBar";
 import MobileHeaderActions from "@/components/shared/MobileHeaderActions";
 import { ConsentGate } from "@/components/privacy/ConsentGate";
+import { PermissionRouteGuard } from "@/components/PermissionRouteGuard";
 import { BillingStatusBanner } from "@/components/billing/BillingStatusBanner";
 import Image from "next/image";
 import { ArrowRight, LockKeyhole } from "lucide-react";
@@ -97,7 +98,9 @@ export default function DashboardLayoutInner({
 
           {/* Conteúdo principal */}
           <main className="flex-1 overflow-hidden">
-            <ConsentGate>{children}</ConsentGate>
+            <PermissionRouteGuard>
+              <ConsentGate>{children}</ConsentGate>
+            </PermissionRouteGuard>
           </main>
 
           {/* Espaçador reservado para a barra inferior no mobile */}

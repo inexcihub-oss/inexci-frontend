@@ -20,6 +20,8 @@ import {
 import { appointmentService, Appointment } from "@/services/appointment.service";
 import { logger } from "@/lib/logger";
 import { useToast } from "@/hooks/useToast";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import { Plus } from "lucide-react";
 
 export default function PacienteDetalhePage() {
@@ -44,6 +46,13 @@ export default function PacienteDetalhePage() {
   const [loadingAppointments, setLoadingAppointments] = useState(true);
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
+  const { can } = useAuth();
+  const podeAgenda = can(Permission.AGENDA);
+  // Prontuário e documentos exigem Atendimento no backend (`ATENDIMENTO`
+  // na classe de `clinical-records` e `clinical-records/documents`,
+  // inclusive no GET) — sem a permissão não há nada legítimo para buscar,
+  // então a seção nem monta.
+  const podeAtendimento = can(Permission.ATENDIMENTO);
 
   /** Consultas do paciente — vive na página porque o botão "Nova consulta"
    * também está aqui; a sidebar apenas consome e pede recarga. */
@@ -134,22 +143,28 @@ export default function PacienteDetalhePage() {
         sidebarContent={sidebarContent}
       >
         {/* Ação principal do paciente */}
-        <div className="flex justify-end">
-          <button
-            onClick={() => setIsNewAppointmentOpen(true)}
-            className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
-          >
-            <Plus className="w-4 h-4" strokeWidth={2.2} />
-            <span className="text-xs font-semibold">Nova consulta</span>
-          </button>
-        </div>
+        {podeAgenda && (
+          <div className="flex justify-end">
+            <button
+              onClick={() => setIsNewAppointmentOpen(true)}
+              className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.2} />
+              <span className="text-xs font-semibold">Nova consulta</span>
+            </button>
+          </div>
+        )}
 
-        {/* Seção: Prontuário */}
-        <FormSection title="Prontuário">
-          <PatientClinicalTimeline patientId={patient.id} />
-        </FormSection>
+        {/* Seção: Prontuário — some inteira sem Atendimento, em vez de
+            mostrar um título com nada embaixo. */}
+        {podeAtendimento && (
+          <FormSection title="Prontuário">
+            <PatientClinicalTimeline patientId={patient.id} />
+          </FormSection>
+        )}
 
-        {/* Seção: Documentos e exames (card próprio, com ação no header) */}
+        {/* Seção: Documentos e exames (card próprio, com ação no header).
+            O componente já se esconde sozinho sem Atendimento. */}
         <PatientDocuments patientId={patient.id} />
 
         <PatientRegistrationForm

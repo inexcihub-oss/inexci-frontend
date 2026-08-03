@@ -9,6 +9,8 @@ import {
   ClinicalCidCode,
 } from "@/services/clinical-record.service";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import {
   ClipboardList,
   Stethoscope,
@@ -153,6 +155,8 @@ export function IndicacaoCirurgicaCard({
   readOnly: boolean;
   surgeryRequestId: string | null;
 }) {
+  const { can } = useAuth();
+  const podeVerSolicitacoes = can(Permission.SOLICITACOES);
   return (
     <SectionCard
       icon={<Scissors className="w-4 h-4" />}
@@ -181,13 +185,19 @@ export function IndicacaoCirurgicaCard({
       {readOnly && checked && (
         <div className="mt-3">
           {surgeryRequestId ? (
-            <Link
-              href={`/solicitacao/${surgeryRequestId}`}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-700 hover:text-teal-800"
-            >
-              Abrir solicitação
-              <ArrowUpRight className="w-4 h-4" />
-            </Link>
+            podeVerSolicitacoes ? (
+              <Link
+                href={`/solicitacao/${surgeryRequestId}`}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-teal-700 hover:text-teal-800"
+              >
+                Abrir solicitação
+                <ArrowUpRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <p className="text-sm text-neutral-500">
+                Uma solicitação cirúrgica foi criada para este paciente.
+              </p>
+            )
           ) : (
             <p className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
               A solicitação está sendo criada e aparecerá em Solicitações em

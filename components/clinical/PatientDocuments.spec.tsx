@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { Permission } from "@/lib/permissions";
+
+// Atendimento concedido por padrão — a ausência da permissão é o próprio
+// mecanismo testado mais abaixo.
+let authState = { can: (p: Permission) => p === Permission.ATENDIMENTO };
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => authState,
+}));
 
 vi.mock("@/services/document.service", async () => {
   const actual = await vi.importActual<
@@ -36,7 +44,10 @@ const doc = (over: Record<string, unknown>) => ({
 });
 
 describe("PatientDocuments", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState = { can: (p) => p === Permission.ATENDIMENTO };
+  });
 
   it("marca apenas os documentos anexados nesta consulta", async () => {
     (patientDocumentService.list as ReturnType<typeof vi.fn>).mockResolvedValue([
@@ -101,5 +112,19 @@ describe("PatientDocuments", () => {
     rerender(<PatientDocuments patientId="p-1" refreshKey={1} />);
 
     expect(patientDocumentService.list).toHaveBeenCalledTimes(2);
+  });
+
+  /**
+   * `GET/POST/DELETE /clinical-records/documents` exigem Atendimento na
+   * classe do controller — inclusive a listagem, não só upload/exclusão.
+   * Sem a permissão a seção nem tenta buscar (evita um 403 silencioso que
+   * pareceria "nenhum documento anexado").
+   */
+  it("não renderiza nem busca documentos para quem não tem Atendimento", () => {
+    authState = { can: () => false };
+    const { container } = render(<PatientDocuments patientId="p-1" />);
+
+    expect(container).toBeEmptyDOMElement();
+    expect(patientDocumentService.list).not.toHaveBeenCalled();
   });
 });

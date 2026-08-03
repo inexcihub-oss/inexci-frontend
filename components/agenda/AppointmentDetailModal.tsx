@@ -3,6 +3,7 @@
 import { Modal } from "@/components/ui/Modal";
 import { SpinnerButton } from "@/components/shared/ModalFooter";
 import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import {
   Appointment,
   AppointmentStatus,
@@ -79,7 +80,7 @@ export function AppointmentDetailModal({
   onChangeStatus,
   onDelete,
 }: Props) {
-  const { isDoctor } = useAuth();
+  const { isDoctor, can } = useAuth();
 
   // Atender é ato do médico; quem agenda não abre a ficha. A consulta já
   // realizada abre para todos (leitura do prontuário) — só cancelada/faltou
@@ -89,7 +90,10 @@ export function AppointmentDetailModal({
     (isDoctor &&
       (appointment.status === "scheduled" ||
         appointment.status === "confirmed"));
-  const actions = QUICK[appointment.status];
+  // Mexer na consulta (status, editar, excluir) é ato de quem tem Agenda —
+  // eixo diferente de `isDoctor`, que só decide o botão de atendimento acima.
+  const podeAgenda = can(Permission.AGENDA);
+  const actions = podeAgenda ? QUICK[appointment.status] : [];
 
   return (
     <Modal isOpen onClose={onClose} title="Consulta" size="sm">
@@ -151,23 +155,29 @@ export function AppointmentDetailModal({
         className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 px-4 md:px-6 py-3 md:py-4 border-t border-neutral-100 sticky bottom-0 bg-white"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        <SpinnerButton
-          variant="secondary"
-          onClick={onDelete}
-          disabled={busy}
-          className="w-full sm:w-auto !text-red-600 hover:!bg-red-50 !border-red-200"
-        >
-          Excluir
-        </SpinnerButton>
-        <div className="flex flex-col sm:flex-row gap-2">
+        {podeAgenda ? (
           <SpinnerButton
             variant="secondary"
-            onClick={onEdit}
+            onClick={onDelete}
             disabled={busy}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto !text-red-600 hover:!bg-red-50 !border-red-200"
           >
-            Editar
+            Excluir
           </SpinnerButton>
+        ) : (
+          <span />
+        )}
+        <div className="flex flex-col sm:flex-row gap-2">
+          {podeAgenda && (
+            <SpinnerButton
+              variant="secondary"
+              onClick={onEdit}
+              disabled={busy}
+              className="w-full sm:w-auto"
+            >
+              Editar
+            </SpinnerButton>
+          )}
           {canAttend && (
             <SpinnerButton
               variant="primary"

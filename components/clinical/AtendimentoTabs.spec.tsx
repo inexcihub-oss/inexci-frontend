@@ -59,7 +59,14 @@ vi.mock("@/services/clinical-record.service", () => ({
   },
 }));
 
-let authState = { isDoctor: true };
+import { Permission } from "@/lib/permissions";
+
+// `can` concede tudo por padrão — os testes deste arquivo focam no eixo
+// `isDoctor`; a permissão Solicitações é exercida à parte, mais abaixo.
+let authState: { isDoctor: boolean; can: (p: Permission) => boolean } = {
+  isDoctor: true,
+  can: () => true,
+};
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
@@ -137,7 +144,7 @@ describe("AtendimentoTabs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     searchParams = new URLSearchParams();
-    authState = { isDoctor: true };
+    authState = { isDoctor: true, can: () => true };
   });
 
   it("abre na aba Atendimento com as seções clínicas", () => {
@@ -379,6 +386,42 @@ describe("AtendimentoTabs", () => {
     ).toHaveAttribute("href", "/solicitacao/sc-1");
   });
 
+  /**
+   * O link para o detalhe da SC exige a permissão Solicitações — eixo
+   * diferente de `isDoctor`. Sem ela, o card continua avisando que a SC foi
+   * criada, mas sem um link que o guard de rota devolveria de qualquer jeito.
+   */
+  it("esconde o link da SC para quem não tem a permissão Solicitações", async () => {
+    authState = {
+      isDoctor: true,
+      can: (p) => p !== Permission.SOLICITACOES,
+    };
+    const user = userEvent.setup();
+    (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+      recordFixture({ surgicalIndication: true }),
+    );
+    (
+      clinicalRecordService.finalize as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(
+      recordFixture({
+        surgicalIndication: true,
+        surgeryRequestId: "sc-1",
+        finalizedAt: "2026-07-29T19:00:00.000Z",
+      }),
+    );
+    renderTabs();
+
+    await user.click(screen.getByRole("checkbox", { name: "Paciente cirúrgico" }));
+    await user.click(screen.getByRole("button", { name: "Finalizar" }));
+
+    expect(
+      await screen.findByText(/Solicitação cirúrgica criada/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Abrir solicitação/i }),
+    ).not.toBeInTheDocument();
+  });
+
   // Quando a criação inline falha, o backend responde sem surgeryRequestId e o
   // sweeper retoma — a UI precisa dizer isso em vez de fingir que deu certo.
   it("avisa que a SC está em criação quando o backend não devolve o id", async () => {
@@ -611,7 +654,7 @@ describe("AtendimentoTabs", () => {
    */
   describe("usuário não-médico", () => {
     beforeEach(() => {
-      authState = { isDoctor: false };
+      authState = { isDoctor: false, can: () => true };
     });
 
     it("esconde salvar, finalizar e a emissão de documentos", () => {

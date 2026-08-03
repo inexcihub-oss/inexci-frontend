@@ -14,6 +14,8 @@ import { isValidEmail } from "@/lib/validators";
 import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
+import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
+import { PROFILE_PRESETS } from "@/lib/permissions";
 
 interface NewCollaboratorModalProps {
   isOpen: boolean;
@@ -85,6 +87,9 @@ export function NewCollaboratorModal({
       crm: "",
       crmState: "",
       specialty: "",
+      // Nasce com o perfil completo: é o comportamento de hoje (sem o
+      // bloco de permissões, todo colaborador tinha acesso a tudo).
+      permissions: PROFILE_PRESETS.completo,
     },
   });
 
@@ -104,6 +109,7 @@ export function NewCollaboratorModal({
       crm: "",
       crmState: "",
       specialty: "",
+      permissions: PROFILE_PRESETS.completo,
     });
     setEmailError("");
     setError("");
@@ -133,6 +139,7 @@ export function NewCollaboratorModal({
           name: data.name.trim(),
           email: data.email.trim(),
           phone: unmask(data.phone),
+          permissions: data.permissions,
           ...(data.isDoctor &&
             data.crm &&
             data.crm.trim() && {
@@ -152,6 +159,7 @@ export function NewCollaboratorModal({
           crm: "",
           crmState: "",
           specialty: "",
+          permissions: PROFILE_PRESETS.completo,
         });
         setEmailError("");
         setError("");
@@ -340,6 +348,13 @@ export function NewCollaboratorModal({
                 </div>
               </div>
             )}
+
+            {/* Permissões */}
+            <PermissionsSection
+              value={form.values.permissions ?? []}
+              isDoctor={!!form.values.isDoctor}
+              onChange={(p) => form.setField("permissions", p)}
+            />
 
             {error && (
               <p className="text-sm text-red-500 text-center">{error}</p>

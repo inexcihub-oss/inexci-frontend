@@ -87,6 +87,44 @@ describe("collaboratorService", () => {
     });
   });
 
+  describe("getById", () => {
+    /**
+     * I2 (revisão final `feat/modulo-atendimento`): a tela de edição precisa
+     * de `grantedPermissions` (a coluna crua), não só `permissions`
+     * (efetiva) — por isso `getById` usa a rota gated por `ADMINISTRACAO`
+     * (`/users/collaborators/:id`), não a genérica `/users/one`.
+     */
+    it("deve chamar GET /users/collaborators/:id (não /users/one)", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { id: "c-1", name: "Colaborador 1" },
+      });
+
+      await collaboratorService.getById("c-1");
+
+      expect(api.get).toHaveBeenCalledWith("/users/collaborators/c-1");
+    });
+
+    it("mapeia `grantedPermissions` do backend para o Collaborator", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: {
+          id: "c-1",
+          name: "Colaborador 1",
+          permissions: ["agenda", "atendimento", "solicitacoes"],
+          grantedPermissions: [],
+        },
+      });
+
+      const result = await collaboratorService.getById("c-1");
+
+      expect(result?.permissions).toEqual([
+        "agenda",
+        "atendimento",
+        "solicitacoes",
+      ]);
+      expect(result?.grantedPermissions).toEqual([]);
+    });
+  });
+
   describe("update", () => {
     it("deve chamar PATCH /users/collaborators/:id", async () => {
       const payload = { name: "Novo Nome" };

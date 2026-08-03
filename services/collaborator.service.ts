@@ -1,6 +1,7 @@
 import api from "@/lib/api";
 import { getApiRecords } from "@/lib/api-response";
 import { DoctorProfile, DoctorSummary } from "@/types";
+import { Permission } from "@/lib/permissions";
 
 export interface Collaborator {
   id: string;
@@ -20,6 +21,18 @@ export interface Collaborator {
   status?: string;
   isDoctor?: boolean;
   doctorProfile?: DoctorProfile;
+  /** Permissão **efetiva**, já derivada no backend (inclui as travadas do médico). Só para EXIBIR. */
+  permissions?: Permission[];
+  /**
+   * Permissão **crua** (o que foi de fato concedido, sem o bônus de médico).
+   * É este campo que deve semear um formulário de edição e voltar no PATCH —
+   * usar `permissions` (efetiva) para isso regravaria como concessão real o
+   * que só valia por causa de `doctor_profile` (I2 do
+   * PLANO-PERMISSOES-COLABORADORES). Só vem preenchido em respostas de
+   * rotas de gestão de colaborador (`ADMINISTRACAO`); nunca em `/auth/me`
+   * ou `/users/profile`.
+   */
+  grantedPermissions?: Permission[];
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +61,7 @@ export interface CreateCollaboratorPayload {
   crm?: string;
   crmState?: string;
   specialty?: string;
+  permissions?: Permission[];
 }
 
 interface BackendUserRecord {
@@ -68,6 +82,8 @@ interface BackendUserRecord {
   status?: string;
   isDoctor?: boolean;
   doctorProfile?: DoctorProfile;
+  permissions?: Permission[];
+  grantedPermissions?: Permission[];
   createdAt: string;
   updatedAt: string;
 }
@@ -91,6 +107,8 @@ function toCollaborator(user: BackendUserRecord): Collaborator {
     status: user.status,
     isDoctor: user.isDoctor || !!user.doctorProfile,
     doctorProfile: user.doctorProfile || undefined,
+    permissions: user.permissions,
+    grantedPermissions: user.grantedPermissions,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -130,12 +148,19 @@ export const collaboratorService = {
   },
 
   /**
-   * Busca um colaborador específico por ID
+   * Busca um colaborador específico por ID, para a tela de edição do admin.
+   *
+   * Usa `GET /users/collaborators/:id` (gated por `ADMINISTRACAO`), não
+   * `GET /users/one` (rota genérica, sem gate de permissão, compartilhada
+   * com o autoatendimento e a visão do médico sobre seus colaboradores) —
+   * só a primeira devolve `grantedPermissions` (a coluna crua, necessária
+   * para editar sem regravar o bônus de médico como concessão real; ver I2
+   * do PLANO-PERMISSOES-COLABORADORES).
    */
   async getById(collaboratorId: string): Promise<Collaborator | null> {
-    const response = await api.get<BackendUserRecord>(`/users/one`, {
-      params: { id: collaboratorId },
-    });
+    const response = await api.get<BackendUserRecord>(
+      `/users/collaborators/${collaboratorId}`,
+    );
     return toCollaborator(response.data);
   },
 
