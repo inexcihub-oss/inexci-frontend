@@ -75,14 +75,12 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   images: {
     remotePatterns: [
-      {
-        protocol: "http",
-        hostname: "localhost",
-      },
-      {
-        protocol: "https",
-        hostname: "localhost",
-      },
+      ...(isProd
+        ? []
+        : [
+            { protocol: "http", hostname: "localhost" },
+            { protocol: "https", hostname: "localhost" },
+          ]),
       {
         protocol: "https",
         hostname: "nuxgxpsofrcaumfvhqbh.supabase.co",

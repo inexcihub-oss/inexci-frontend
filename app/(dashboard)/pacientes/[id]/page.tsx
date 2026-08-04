@@ -19,6 +19,7 @@ import {
 } from "@/services/surgery-request.service";
 import { appointmentService, Appointment } from "@/services/appointment.service";
 import { logger } from "@/lib/logger";
+import { resolverReturnUrl } from "@/lib/safe-return-url";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
@@ -31,10 +32,9 @@ export default function PacienteDetalhePage() {
   const rawReturnUrl = searchParams.get("returnUrl");
   const returnUrl = (() => {
     if (!rawReturnUrl) return null;
+    if (typeof window === "undefined") return null;
     const decoded = decodeURIComponent(rawReturnUrl);
-    return decoded.startsWith("/") && !decoded.startsWith("//")
-      ? decoded
-      : null;
+    return resolverReturnUrl(decoded, window.location.origin);
   })();
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState<Patient | null>(null);

@@ -12,6 +12,7 @@ const PLATFORM_PREFIXES = [
   "/solicitacoes-cirurgicas",
   "/solicitacao",
   "/agenda",
+  "/atendimento",
   "/pacientes",
   "/hospitais",
   "/convenios",
@@ -21,7 +22,6 @@ const PLATFORM_PREFIXES = [
   "/colaboradores",
   "/notificacoes",
   "/configuracoes",
-  "/upload-teste",
 ];
 
 function isPlatformPath(pathname: string): boolean {
