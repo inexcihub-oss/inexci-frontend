@@ -828,6 +828,7 @@ export function SurgeryRequestLaudoDocument({
                 lineHeight: "1.4",
                 color: "#111",
               }}
+              // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
               dangerouslySetInnerHTML={{
                 __html: sanitizeHtml(customHeader.contentHtml),
               }}
@@ -881,6 +882,7 @@ export function SurgeryRequestLaudoDocument({
           <div key={section.id} style={{ marginBottom: "16px" }}>
             <SectionHeading>
               <span
+                // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
                 dangerouslySetInnerHTML={{
                   __html: sanitizeHtml(section.title),
                 }}
@@ -894,6 +896,7 @@ export function SurgeryRequestLaudoDocument({
                   color: "#111111",
                   whiteSpace: "pre-line",
                 }}
+                // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
                 dangerouslySetInnerHTML={{
                   __html: sanitizeHtml(section.description),
                 }}

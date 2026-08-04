@@ -247,6 +247,7 @@ function EditorField({
     return (
       <div
         className="prose prose-sm max-w-none rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-800 min-h-[60px]"
+        // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
         dangerouslySetInnerHTML={{
           __html: value
             ? sanitizeHtml(value)

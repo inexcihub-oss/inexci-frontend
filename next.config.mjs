@@ -38,9 +38,6 @@ const nextConfig = {
   output: "standalone",
   // Evita inferência incorreta do root quando há múltiplos lockfiles no workspace
   outputFileTracingRoot: path.resolve(__dirname),
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   async redirects() {
     return [
       {

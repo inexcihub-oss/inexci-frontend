@@ -157,6 +157,7 @@ function RecordBlock({ title, html }: { title: string; html: string | null }) {
       </p>
       <div
         className="prose prose-sm max-w-none text-sm text-neutral-800"
+        // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
         dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
       />
     </div>

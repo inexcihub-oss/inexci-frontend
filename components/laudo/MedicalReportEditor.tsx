@@ -977,6 +977,7 @@ export function MedicalReportEditor() {
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div
                             className="font-semibold text-gray-900 break-words prose prose-sm max-w-none min-w-0"
+                            // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
                             dangerouslySetInnerHTML={{
                               __html: sanitizeHtml(section.title),
                             }}
@@ -1022,6 +1023,7 @@ export function MedicalReportEditor() {
                         {section.description ? (
                           <div
                             className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                            // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
                             dangerouslySetInnerHTML={{
                               __html: sanitizeHtml(section.description),
                             }}

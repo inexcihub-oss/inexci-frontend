@@ -130,6 +130,7 @@ export default async function LandingLayout({
               fbq('track', 'PageView');`}
           </Script>
           <noscript
+            // eslint-disable-next-line react/no-danger -- markup estático (pixel de analytics), não deriva de input do usuário
             dangerouslySetInnerHTML={{
               __html: `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1356643639391905&ev=PageView&noscript=1" />`,
             }}

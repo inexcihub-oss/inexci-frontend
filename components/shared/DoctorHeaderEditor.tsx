@@ -228,6 +228,7 @@ export function DoctorHeaderEditor({
               {contentHtml && (
                 <div
                   className="text-xs text-gray-700 leading-relaxed text-center"
+                  // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
                   dangerouslySetInnerHTML={{
                     __html: sanitizeHtml(contentHtml),
                   }}

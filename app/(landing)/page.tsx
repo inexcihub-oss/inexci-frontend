@@ -19,6 +19,7 @@ export default async function LandingPage() {
       <script
         type="application/ld+json"
         nonce={nonce}
+        // eslint-disable-next-line react/no-danger -- JSON-LD via JSON.stringify de dados estáticos, não deriva de input do usuário
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
@@ -33,6 +34,7 @@ export default async function LandingPage() {
       <script
         type="application/ld+json"
         nonce={nonce}
+        // eslint-disable-next-line react/no-danger -- JSON-LD via JSON.stringify de dados estáticos, não deriva de input do usuário
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
@@ -52,6 +54,7 @@ export default async function LandingPage() {
       <script
         type="application/ld+json"
         nonce={nonce}
+        // eslint-disable-next-line react/no-danger -- JSON-LD via JSON.stringify de dados estáticos, não deriva de input do usuário
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
