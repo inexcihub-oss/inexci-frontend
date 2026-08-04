@@ -35,4 +35,16 @@ describe("CSP", () => {
     expect(connectSrc).toContain("google-analytics.com");
     expect(imgSrc).toContain("facebook.com");
   });
+
+  it("producao (isDev=false) nao inclui unsafe-eval", () => {
+    const csp = montarCsp("abc123", "https://api.inexci.com.br", false, false);
+    const scriptSrc = csp.split(";").find((d) => d.trim().startsWith("script-src"));
+    expect(scriptSrc).not.toContain("unsafe-eval");
+  });
+
+  it("dev (isDev=true) inclui unsafe-eval para o Fast Refresh do Next", () => {
+    const csp = montarCsp("abc123", "https://api.inexci.com.br", false, true);
+    const scriptSrc = csp.split(";").find((d) => d.trim().startsWith("script-src"));
+    expect(scriptSrc).toContain("'unsafe-eval'");
+  });
 });

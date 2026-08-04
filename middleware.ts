@@ -97,7 +97,7 @@ export function middleware(request: NextRequest) {
   // sem domínio dedicado): é a landing pública, que precisa dos domínios de
   // analytics na CSP. O dashboard nunca recebe essa política mais ampla.
   const isLanding = !isAppDomain && !isPlatformPath(pathname);
-  const csp = montarCsp(nonce, apiOrigin, isLanding);
+  const csp = montarCsp(nonce, apiOrigin, isLanding, !isProd);
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);

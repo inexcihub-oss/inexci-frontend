@@ -22,6 +22,7 @@ export function montarCsp(
   nonce: string,
   apiOrigin: string,
   isLanding = false,
+  isDev = false,
 ): string {
   const wsOrigin = apiOrigin.replace(/^http/, "ws");
   const connectSrc = ["'self'", apiOrigin, wsOrigin];
@@ -30,9 +31,16 @@ export function montarCsp(
     connectSrc.push(...LANDING_CONNECT_SRC);
     imgSrc.push(...LANDING_IMG_SRC);
   }
+  // O Fast Refresh do Next (yarn dev) usa eval() internamente para aplicar
+  // hot updates — sem 'unsafe-eval' o bundle inteiro falha ao avaliar no
+  // navegador (EvalError), deixando a página inerte. Só em dev: o build de
+  // producao (yarn build && start) não usa esse runtime e não precisa disso.
+  const scriptSrc = isDev
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     `img-src ${imgSrc.join(" ")}`,
     "font-src 'self' data:",
