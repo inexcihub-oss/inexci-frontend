@@ -28,6 +28,13 @@ describe("CSP", () => {
     expect(csp).not.toContain("facebook.com");
   });
 
+  it("connect-src sempre libera o ViaCEP (usado no dashboard, nao so na landing)", () => {
+    const dashboard = montarCsp("abc123", "https://api.inexci.com.br", false);
+    const landing = montarCsp("abc123", "https://api.inexci.com.br", true);
+    expect(dashboard).toContain("https://viacep.com.br");
+    expect(landing).toContain("https://viacep.com.br");
+  });
+
   it("landing (isLanding=true) libera analytics em connect-src e img-src", () => {
     const csp = montarCsp("abc123", "https://api.inexci.com.br", true);
     const connectSrc = csp.split(";").find((d) => d.trim().startsWith("connect-src"));

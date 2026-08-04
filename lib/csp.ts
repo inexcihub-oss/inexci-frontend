@@ -25,7 +25,10 @@ export function montarCsp(
   isDev = false,
 ): string {
   const wsOrigin = apiOrigin.replace(/^http/, "ws");
-  const connectSrc = ["'self'", apiOrigin, wsOrigin];
+  // ViaCEP: usado no dashboard (lib/cep.ts) para autocompletar endereço a
+  // partir do CEP em formulários de paciente/colaborador/cabeçalho — não é
+  // exclusivo da landing, por isso entra sempre, não só sob isLanding.
+  const connectSrc = ["'self'", apiOrigin, wsOrigin, "https://viacep.com.br"];
   const imgSrc = ["'self'", "data:", "blob:", "https://*.r2.cloudflarestorage.com"];
   if (isLanding) {
     connectSrc.push(...LANDING_CONNECT_SRC);
