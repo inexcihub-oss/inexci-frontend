@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { montarCsp } from "./lib/csp";
 
 // Rotas exclusivas da plataforma (app.inexci.com.br)
 const PLATFORM_PREFIXES = [
@@ -82,7 +83,24 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const response = NextResponse.next();
+  // CSP com nonce por requisição: antes a política estática (next.config.mjs)
+  // usava 'unsafe-inline' em script-src, deixando o DOMPurify como única
+  // barreira contra XSS. O nonce é gerado aqui (único ponto com acesso à
+  // requisição) e propagado tanto para o Next.js (via header da própria
+  // requisição, para os scripts que o framework injeta automaticamente)
+  // quanto para o navegador (via header da resposta).
+  const nonce = crypto.randomUUID().replace(/-/g, "");
+  const apiOrigin = new URL(
+    process.env.NEXT_PUBLIC_API_URL ?? "https://api.inexci.com.br",
+  ).origin;
+  const csp = montarCsp(nonce, apiOrigin);
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("Content-Security-Policy", csp);
 
   // Impede indexação do app por mecanismos de busca.
   if (isAppDomain) {

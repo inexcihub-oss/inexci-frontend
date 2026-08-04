@@ -51,26 +51,17 @@ describe("next.config.mjs — Security Headers (dev/test)", () => {
     expect(h!.value).toContain("microphone=()");
   });
 
-  it("deve incluir Content-Security-Policy com default-src e frame-ancestors", () => {
+  // A Content-Security-Policy deixou de ser estática em next.config.mjs e
+  // passou a ser emitida com nonce por requisição pelo middleware (ver
+  // `lib/csp.ts`, `middleware.ts` e `middleware-csp.test.ts`).
+  it("NÃO deve incluir Content-Security-Policy (movida para o middleware)", () => {
     const h = headers.find((h) => h.key === "Content-Security-Policy");
-    expect(h).toBeDefined();
-    expect(h!.value).toContain("default-src 'self'");
-    expect(h!.value).toContain("frame-ancestors 'none'");
+    expect(h).toBeUndefined();
   });
 
   it("NÃO deve incluir HSTS fora de produção", () => {
     const h = headers.find((h) => h.key === "Strict-Transport-Security");
     expect(h).toBeUndefined();
-  });
-
-  it("CSP em dev/test deve conter unsafe-eval (HMR)", () => {
-    const csp = headers.find((h) => h.key === "Content-Security-Policy");
-    expect(csp!.value).toContain("unsafe-eval");
-  });
-
-  it("CSP em dev/test deve permitir WebSocket local", () => {
-    const csp = headers.find((h) => h.key === "Content-Security-Policy");
-    expect(csp!.value).toContain("ws://localhost:*");
   });
 });
 
@@ -103,9 +94,5 @@ describe("next.config.mjs — HSTS em produção (validação estática)", () =>
   it("deve ser condicionado a isProd (não ativar em dev)", () => {
     // Verifica que HSTS está dentro de um bloco condicional isProd
     expect(configSource).toMatch(/isProd[\s\S]*Strict-Transport-Security/);
-  });
-
-  it("CSP de produção deve permitir WebSocket seguro (wss)", () => {
-    expect(configSource).toContain('"wss:"');
   });
 });
