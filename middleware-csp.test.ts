@@ -21,4 +21,18 @@ describe("CSP", () => {
     // 'https:' generico permitia exfiltrar para qualquer host.
     expect(connectSrc).not.toMatch(/\shttps:(\s|$)/);
   });
+
+  it("dashboard (isLanding=false) nao recebe dominios de analytics", () => {
+    const csp = montarCsp("abc123", "https://api.inexci.com.br", false);
+    expect(csp).not.toContain("google-analytics.com");
+    expect(csp).not.toContain("facebook.com");
+  });
+
+  it("landing (isLanding=true) libera analytics em connect-src e img-src", () => {
+    const csp = montarCsp("abc123", "https://api.inexci.com.br", true);
+    const connectSrc = csp.split(";").find((d) => d.trim().startsWith("connect-src"));
+    const imgSrc = csp.split(";").find((d) => d.trim().startsWith("img-src"));
+    expect(connectSrc).toContain("google-analytics.com");
+    expect(imgSrc).toContain("facebook.com");
+  });
 });

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Manrope, Inter } from "next/font/google";
 import Script from "next/script";
 import "@/styles/landing.css";
@@ -103,16 +104,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function LandingLayout({
+export default async function LandingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // next/script com strategy="afterInteractive" injeta o script via JS, então
+  // strict-dynamic o cobre — mas passar o nonce explícito remove qualquer
+  // ambiguidade e é a forma documentada pelo Next para esse caso.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <>
       {isProd && (
         <>
-          <Script id="meta-pixel" strategy="afterInteractive">
+          <Script id="meta-pixel" strategy="afterInteractive" nonce={nonce}>
             {`!function(f,b,e,v,n,t,s)
               {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
               n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -132,8 +137,9 @@ export default function LandingLayout({
           <Script
             src="https://www.googletagmanager.com/gtag/js?id=G-WFVTEKGRHC"
             strategy="afterInteractive"
+            nonce={nonce}
           />
-          <Script id="ga4-init" strategy="afterInteractive">
+          <Script id="ga4-init" strategy="afterInteractive" nonce={nonce}>
             {`
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
