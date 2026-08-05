@@ -56,7 +56,12 @@ vi.mock("@/services/clinical-record.service", () => ({
     generatePrescription: vi.fn(),
     generateMedicalCertificate: vi.fn(),
     generateExamReferral: vi.fn(),
+    previewDocument: vi.fn(),
   },
+}));
+
+vi.mock("@/services/health-plan.service", () => ({
+  healthPlanService: { getById: vi.fn() },
 }));
 
 import { Permission } from "@/lib/permissions";
@@ -82,6 +87,7 @@ vi.mock("@/services/clinical-record-template.service", () => ({
 
 import { clinicalRecordService } from "@/services/clinical-record.service";
 import { clinicalRecordTemplateService } from "@/services/clinical-record-template.service";
+import { healthPlanService } from "@/services/health-plan.service";
 import { AtendimentoTabs } from "./AtendimentoTabs";
 
 const patient = {
@@ -130,10 +136,13 @@ function recordFixture(over: Partial<Record_> = {}): Record_ {
   };
 }
 
-function renderTabs(record: Record_ | null = null) {
+function renderTabs(
+  record: Record_ | null = null,
+  over: Partial<typeof patient> = {},
+) {
   return render(
     <AtendimentoTabs
-      patient={patient}
+      patient={{ ...patient, ...over }}
       appointment={appointment}
       initialRecord={record}
     />,
@@ -145,6 +154,12 @@ describe("AtendimentoTabs", () => {
     vi.clearAllMocks();
     searchParams = new URLSearchParams();
     authState = { isDoctor: true, can: () => true };
+    (healthPlanService.getById as ReturnType<typeof vi.fn>).mockResolvedValue(
+      null,
+    );
+    (
+      clinicalRecordService.previewDocument as ReturnType<typeof vi.fn>
+    ).mockResolvedValue("<html><body>previa</body></html>");
   });
 
   it("abre na aba Atendimento com as seções clínicas", () => {
@@ -619,6 +634,29 @@ describe("AtendimentoTabs", () => {
       ).toHaveBeenCalledWith(expect.objectContaining({ clinicalRecordId: "r-1" }));
     });
 
+    /**
+     * D-11: pré-visualizar não pode criar ficha. Num atendimento sem ficha
+     * nenhuma, "Visualizar" gravava um `ClinicalRecord` vazio — e a consulta
+     * passava a ter ficha vinculada, o que impede excluí-la.
+     */
+    it("não cria a ficha ao apenas pré-visualizar", async () => {
+      const user = userEvent.setup();
+      renderTabs();
+
+      await user.click(screen.getByRole("button", { name: /receita/i }));
+      await user.type(screen.getByLabelText(/medicamento/i), "Dipirona");
+      await user.click(screen.getByRole("button", { name: /visualizar/i }));
+
+      await waitFor(() =>
+        expect(clinicalRecordService.previewDocument).toHaveBeenCalledWith(
+          "prescription",
+          expect.objectContaining({ patientId: "p-1", doctorId: "d-1" }),
+        ),
+      );
+      expect(clinicalRecordService.create).not.toHaveBeenCalled();
+      expect(clinicalRecordService.update).not.toHaveBeenCalled();
+    });
+
     it("não reenvia a ficha finalizada ao emitir um documento", async () => {
       const user = userEvent.setup();
       (
@@ -644,6 +682,52 @@ describe("AtendimentoTabs", () => {
       expect(clinicalRecordService.update).not.toHaveBeenCalled();
       expect(clinicalRecordService.create).not.toHaveBeenCalled();
     });
+  });
+
+  /**
+   * D-08: o card mostrava `healthPlanType` — a acomodação (Apartamento /
+   * Enfermaria) — sob o rótulo "Convênio". O nome do plano vem do cadastro de
+   * convênios, resolvido pelo `healthPlanId` do paciente.
+   */
+  describe("card de convênio", () => {
+    it("mostra o nome do convênio, não a acomodação", async () => {
+      (healthPlanService.getById as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "hp-1",
+        name: "Unimed Paulistana",
+        createdAt: "2026-01-01",
+        updatedAt: "2026-01-01",
+      });
+      renderTabs(null, {
+        healthPlanId: "hp-1",
+        healthPlanType: "Apartamento",
+      });
+
+      expect(
+        await screen.findByText("Unimed Paulistana"),
+      ).toBeInTheDocument();
+      expect(healthPlanService.getById).toHaveBeenCalledWith("hp-1");
+      // A acomodação vira informação secundária, nunca o valor do card.
+      expect(screen.getByText(/· Apartamento/)).toBeInTheDocument();
+    });
+
+    it("mostra um traço quando o paciente não tem convênio", () => {
+      renderTabs(null, { healthPlanType: "Apartamento" });
+
+      expect(healthPlanService.getById).not.toHaveBeenCalled();
+      expect(screen.queryByText("Apartamento")).not.toBeInTheDocument();
+    });
+  });
+
+  /**
+   * D-10: a data saía de um `capitalize` de CSS, que subia a inicial de cada
+   * palavra ("Quarta-Feira, 05 De Agosto Às 14:30").
+   */
+  it("capitaliza só a inicial da data do atendimento", () => {
+    renderTabs();
+
+    expect(
+      screen.getByText(/^Quarta-feira, 29 de julho às \d{2}:\d{2}/),
+    ).toBeInTheDocument();
   });
 
   /**

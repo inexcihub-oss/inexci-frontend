@@ -15,6 +15,7 @@ import {
   clinicalRecordService,
   ClinicalCidCode,
   ClinicalDocumentKind,
+  ClinicalDocumentTarget,
   GeneratedClinicalDocument,
 } from "@/services/clinical-record.service";
 import { getApiErrorMessage } from "@/lib/http-error";
@@ -68,22 +69,31 @@ function toReferralItem(row: ItemRow) {
  * de exames. O PDF é gerado no servidor e já entra na aba Documentos — aqui só
  * abrimos o arquivo pronto em outra aba para o médico imprimir ou enviar.
  *
- * "Visualizar" gera o mesmo PDF sem gravar nada, para o médico conferir antes
- * de assumir o documento; só "Emitir" registra no prontuário.
+ * **Emitir** persiste a ficha antes (`ensureRecordId`): o documento é um
+ * registro do atendimento, e o PDF sai da ficha gravada — inclusive de um CID
+ * recém-digitado. Quem sabe resolver isso é a casca do atendimento.
  *
- * `ensureRecordId` resolve a ficha: ela pode ainda não existir (atendimento
- * novo) ou ter alterações não salvas que o documento precisa enxergar (o CID,
- * por exemplo). Quem sabe disso é a casca do atendimento.
+ * **Visualizar** não grava nada, nem a ficha. O servidor monta o mesmo HTML a
+ * partir do paciente e dos campos que estão na tela. Antes, a prévia também
+ * chamava `ensureRecordId` e criava um prontuário vazio só porque o médico
+ * quis conferir a receita — o banner "nada foi salvo" mentia, e a consulta
+ * ficava com ficha vinculada (logo, não excluível).
  */
 export function ClinicalDocumentActions({
   ensureRecordId,
   onEmitted,
   cidCodes,
+  patientId,
+  doctorId,
 }: {
   ensureRecordId: () => Promise<string>;
   onEmitted: (document: GeneratedClinicalDocument) => void;
-  /** CIDs da ficha — servem de sugestão inicial para o atestado. */
+  /** CIDs da ficha — sugestão inicial do atestado e base da prévia. */
   cidCodes: ClinicalCidCode[];
+  /** Paciente do atendimento; é o que a prévia usa no lugar da ficha. */
+  patientId: string;
+  /** Médico que assina o documento. */
+  doctorId: string;
 }) {
   const [openKind, setOpenKind] = useState<DocumentKind | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -130,11 +140,11 @@ export function ClinicalDocumentActions({
 
   const filledRows = rows.filter((row) => row.name.trim());
 
-  /** Payload do documento aberto, ou `null` quando falta algo obrigatório. */
-  const buildPayload = (clinicalRecordId: string) => {
+  /** Payload do documento aberto, montado sobre o alvo (ficha ou paciente). */
+  const buildPayload = (target: ClinicalDocumentTarget) => {
     if (openKind === "prescription") {
       return {
-        clinicalRecordId,
+        ...target,
         items: filledRows.map(toPayloadItem),
         notes: notes.trim() || undefined,
       };
@@ -142,7 +152,7 @@ export function ClinicalDocumentActions({
     if (openKind === "certificate") {
       const days = Number(restDays);
       return {
-        clinicalRecordId,
+        ...target,
         restDays: Number.isFinite(days) && days > 0 ? days : undefined,
         startDate: startDate || undefined,
         includeCid: includeCid || undefined,
@@ -151,11 +161,22 @@ export function ClinicalDocumentActions({
       };
     }
     return {
-      clinicalRecordId,
+      ...target,
       exams: filledRows.map(toReferralItem),
       clinicalIndication: notes.trim() || undefined,
     };
   };
+
+  /**
+   * Alvo da prévia: o paciente e os CIDs que estão na tela — nunca a ficha,
+   * que a prévia não pode criar nem alterar. A receita não imprime CID, então
+   * não os manda (o payload é validado em modo estrito no servidor).
+   */
+  const previewTarget = (): ClinicalDocumentTarget => ({
+    patientId,
+    doctorId,
+    ...(openKind !== "prescription" && cidCodes.length ? { cidCodes } : {}),
+  });
 
   /** Valida o mínimo comum a emitir e pré-visualizar. */
   const isIncomplete = (): boolean => {
@@ -176,10 +197,9 @@ export function ClinicalDocumentActions({
 
     setPreviewing(true);
     try {
-      const clinicalRecordId = await ensureRecordId();
       const html = await clinicalRecordService.previewDocument(
         API_KIND[openKind!],
-        buildPayload(clinicalRecordId) as never,
+        buildPayload(previewTarget()) as never,
       );
       setPreviewHtml(html);
     } catch (err) {
@@ -196,7 +216,7 @@ export function ClinicalDocumentActions({
     setSubmitting(true);
     try {
       const clinicalRecordId = await ensureRecordId();
-      const payload = buildPayload(clinicalRecordId);
+      const payload = buildPayload({ clinicalRecordId });
 
       let document: GeneratedClinicalDocument;
       if (openKind === "prescription") {

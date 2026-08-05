@@ -29,10 +29,11 @@ function appointmentFixture(status: AppointmentStatus): Appointment {
   } as unknown as Appointment;
 }
 
-function renderModal(status: AppointmentStatus) {
+function renderModal(status: AppointmentStatus, doctorName?: string) {
   return render(
     <AppointmentDetailModal
       appointment={appointmentFixture(status)}
+      doctorName={doctorName}
       onClose={vi.fn()}
       onEdit={vi.fn()}
       onStartAttendance={vi.fn()}
@@ -45,6 +46,35 @@ function renderModal(status: AppointmentStatus) {
 describe("AppointmentDetailModal", () => {
   beforeEach(() => {
     authState = { isDoctor: true, can: (p) => p === Permission.AGENDA };
+  });
+
+  /**
+   * D-07: o nome do médico costuma vir cadastrado com o tratamento, e o modal
+   * prefixava "Dr(a)." de novo — "Dr(a). Dr. Carlos Mendonça".
+   */
+  it("não duplica o tratamento do médico", () => {
+    renderModal("confirmed", "Dr. Carlos Mendonça");
+
+    expect(screen.getByText("Dr. Carlos Mendonça")).toBeInTheDocument();
+    expect(screen.queryByText(/Dr\(a\)\. Dr\./)).not.toBeInTheDocument();
+  });
+
+  it("prefixa o tratamento quando o nome não o tem", () => {
+    renderModal("confirmed", "Carlos Mendonça");
+
+    expect(screen.getByText("Dr(a). Carlos Mendonça")).toBeInTheDocument();
+  });
+
+  /**
+   * D-10: a data vinha de um `capitalize` de CSS, que subia a inicial de cada
+   * palavra ("Quarta-Feira, 29 De Julho").
+   */
+  it("capitaliza só a inicial da data", () => {
+    renderModal("confirmed");
+
+    expect(
+      screen.getByText(/^Quarta-feira, 29 de julho · \d{2}:\d{2}/),
+    ).toBeInTheDocument();
   });
 
   it("oferece iniciar o atendimento para o médico", () => {

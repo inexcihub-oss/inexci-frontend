@@ -7,6 +7,23 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
+const CONSULTA = {
+  id: "a-1",
+  doctorId: "d-1",
+  patientId: "p-1",
+  type: "return" as const,
+  status: "confirmed" as const,
+  scheduledAt: "2026-08-03T13:00:00.000Z",
+  durationMinutes: 30,
+  notes: null,
+  cancellationReason: null,
+  patient: { id: "p-1", name: "Ana Beatriz" },
+};
+
+const { getAgendaPage } = vi.hoisted(() => ({
+  getAgendaPage: vi.fn(),
+}));
+
 vi.mock("@/services/appointment.service", async () => {
   const actual = await vi.importActual<
     typeof import("@/services/appointment.service")
@@ -14,20 +31,7 @@ vi.mock("@/services/appointment.service", async () => {
   return {
     ...actual,
     appointmentService: {
-      getAgenda: vi.fn().mockResolvedValue([
-        {
-          id: "a-1",
-          doctorId: "d-1",
-          patientId: "p-1",
-          type: "return",
-          status: "confirmed",
-          scheduledAt: "2026-08-03T13:00:00.000Z",
-          durationMinutes: 30,
-          notes: null,
-          cancellationReason: null,
-          patient: { id: "p-1", name: "Ana Beatriz" },
-        },
-      ]),
+      getAgendaPage: getAgendaPage,
     },
   };
 });
@@ -65,6 +69,7 @@ describe("AtendimentoHubPage — gating por Agenda", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authState = { can: (p) => p === Permission.AGENDA };
+    getAgendaPage.mockResolvedValue({ records: [CONSULTA], total: 1 });
   });
 
   it("esconde 'Nova consulta' e 'Ver agenda' para quem só tem Atendimento", async () => {
@@ -90,5 +95,35 @@ describe("AtendimentoHubPage — gating por Agenda", () => {
     expect(
       screen.getByRole("button", { name: /Ver agenda/i }),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * D-15: o backend corta a lista num teto por requisição. A aba "Realizadas"
+ * é a única sem janela de datas, então é a que pode encostar nele — e antes
+ * `total` vinha igual ao tamanho da página, tornando o corte invisível.
+ */
+describe("AtendimentoHubPage — aviso de lista cortada", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState = { can: (p) => p === Permission.AGENDA };
+  });
+
+  it("avisa quando o total do servidor é maior que os registros recebidos", async () => {
+    getAgendaPage.mockResolvedValue({ records: [CONSULTA], total: 1103 });
+    renderPage();
+
+    expect(await screen.findByText("Ana Beatriz")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Mostrando as 1 consultas mais recentes de 1103/i),
+    ).toBeInTheDocument();
+  });
+
+  it("não avisa quando a lista veio inteira", async () => {
+    getAgendaPage.mockResolvedValue({ records: [CONSULTA], total: 1 });
+    renderPage();
+
+    expect(await screen.findByText("Ana Beatriz")).toBeInTheDocument();
+    expect(screen.queryByText(/mais recentes de/i)).not.toBeInTheDocument();
   });
 });

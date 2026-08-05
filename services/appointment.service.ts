@@ -102,9 +102,23 @@ export interface AgendaQuery {
   order?: "ASC" | "DESC";
 }
 
+/**
+ * Resposta da agenda. `total` é a contagem real no banco; `records` pode vir
+ * cortado pelo teto do backend (1000 itens). `total > records.length` é o
+ * único sinal de que a lista está incompleta — a aba "Realizadas", que não
+ * tem janela de datas, é a que pode encostar nesse teto.
+ */
+export interface AgendaPage {
+  records: Appointment[];
+  total: number;
+}
+
 export const appointmentService = {
-  /** Consultas da agenda, opcionalmente recortadas por data e status. */
-  async getAgenda(query: AgendaQuery = {}): Promise<Appointment[]> {
+  /**
+   * Consultas da agenda com a contagem real. Use quando for preciso saber se
+   * a lista veio cortada; para só listar, `getAgenda` basta.
+   */
+  async getAgendaPage(query: AgendaQuery = {}): Promise<AgendaPage> {
     const params: Record<string, string> = {};
     if (query.from) params.from = query.from;
     if (query.to) params.to = query.to;
@@ -113,7 +127,24 @@ export const appointmentService = {
     if (query.order) params.order = query.order;
 
     const response = await api.get("/appointments", { params });
-    return getApiRecords<BackendAppointment>(response.data).map(mapAppointment);
+    const records = getApiRecords<BackendAppointment>(response.data).map(
+      mapAppointment,
+    );
+    const total = (response.data as { total?: number } | undefined)?.total;
+
+    return {
+      records,
+      // Backend antigo (ou resposta em array puro) não manda `total`: cair
+      // para `records.length` mantém a desigualdade falsa, ou seja, nenhum
+      // aviso de corte — nunca um aviso inventado.
+      total: typeof total === "number" ? total : records.length,
+    };
+  },
+
+  /** Consultas da agenda, opcionalmente recortadas por data e status. */
+  async getAgenda(query: AgendaQuery = {}): Promise<Appointment[]> {
+    const { records } = await this.getAgendaPage(query);
+    return records;
   },
 
   /** Histórico completo de consultas de um paciente (aba Consultas / timeline). */

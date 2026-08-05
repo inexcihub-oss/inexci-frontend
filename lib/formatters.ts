@@ -165,3 +165,33 @@ export function parseApiDateForRelative(dateInput: string | Date): Date {
 
   return parsed;
 }
+
+/**
+ * Reconhece um nome que já vem com tratamento médico ("Dr. Carlos",
+ * "Dra. Ana", "Dr(a). Paulo"). O ponto é opcional e o espaço é obrigatório —
+ * sem ele, "Drauzio" seria confundido com "Dra".
+ */
+const DOCTOR_TITLE_PREFIX = /^(dr|dra|dr\(a\))\.?\s/i;
+
+/**
+ * Nome do médico com o tratamento na frente, sem duplicar o que já existe.
+ *
+ * Muito cadastro guarda o nome já como "Dr. Carlos Mendonça"; prefixar às
+ * cegas mostrava "Dr(a). Dr. Carlos Mendonça" na tela.
+ */
+export function formatDoctorName(name: string | null | undefined): string {
+  const trimmed = (name ?? "").trim();
+  if (!trimmed) return "";
+  return DOCTOR_TITLE_PREFIX.test(trimmed) ? trimmed : `Dr(a). ${trimmed}`;
+}
+
+/**
+ * Deixa só a primeira letra maiúscula.
+ *
+ * Datas em pt-BR vinham de um `capitalize` de CSS, que capitaliza cada palavra
+ * e produzia "Quarta-Feira, 05 De Agosto Às 14:00"; o correto é
+ * "Quarta-feira, 05 de agosto às 14:00".
+ */
+export function capitalizeFirst(text: string): string {
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
