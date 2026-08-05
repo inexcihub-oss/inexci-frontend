@@ -350,11 +350,14 @@ export function NewCollaboratorModal({
             )}
 
             {/* Permissões */}
-            <PermissionsSection
-              value={form.values.permissions ?? []}
-              isDoctor={!!form.values.isDoctor}
-              onChange={(p) => form.setField("permissions", p)}
-            />
+            <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 md:pt-5">
+              <h3 className="ds-section-title">Permissões de acesso</h3>
+              <PermissionsSection
+                value={form.values.permissions ?? []}
+                isDoctor={!!form.values.isDoctor}
+                onChange={(p) => form.setField("permissions", p)}
+              />
+            </div>
 
             {error && (
               <p className="text-sm text-red-500 text-center">{error}</p>

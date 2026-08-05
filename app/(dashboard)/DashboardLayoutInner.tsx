@@ -20,15 +20,20 @@ export default function DashboardLayoutInner({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading, isAdmin, subscription } = useAuth();
+  const { user, loading, isAccountOwner, subscription } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const subscriptionStatus = subscription?.subscription.status;
   const isPlanPage = pathname.startsWith("/configuracoes");
+  // Só o dono da conta: o overlay oferece "Escolher plano"/"Regularizar", e a
+  // aba de plano só existe para ele — para um admin delegado o CTA levava a
+  // uma tela que o redireciona de volta, prendendo-o num beco sem saída. Quem
+  // não é dono descobre o bloqueio no ponto da ação (`BillingLimitModal`),
+  // que manda procurar o administrador da conta.
   const shouldBlockDashboard =
-    isAdmin &&
+    isAccountOwner &&
     !isPlanPage &&
     (subscriptionStatus === "canceled" || subscriptionStatus === "suspended");
 

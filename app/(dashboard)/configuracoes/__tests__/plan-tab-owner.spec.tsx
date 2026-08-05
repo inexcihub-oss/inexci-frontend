@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 let authState: {
   user: { id: string; accountId: string; role: "admin" | "collaborator" } | null;
-  isAdmin: boolean;
+  isAccountOwner: boolean;
   subscription: unknown;
   updateUser: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
@@ -72,7 +72,7 @@ describe("Configurações — aba de plano visível só para o dono da conta", (
   beforeEach(() => {
     authState = {
       user: null,
-      isAdmin: true,
+      isAccountOwner: false,
       subscription: null,
       updateUser: vi.fn(),
       refreshSubscription: vi.fn(),
@@ -81,6 +81,7 @@ describe("Configurações — aba de plano visível só para o dono da conta", (
 
   it("esconde a aba de plano de um admin que não é dono da conta", async () => {
     authState.user = { id: "user-2", accountId: "user-1", role: "admin" };
+    authState.isAccountOwner = false;
 
     renderPage();
 
@@ -93,6 +94,7 @@ describe("Configurações — aba de plano visível só para o dono da conta", (
 
   it("mostra a aba de plano para o dono da conta (id === accountId)", async () => {
     authState.user = { id: "user-1", accountId: "user-1", role: "admin" };
+    authState.isAccountOwner = true;
 
     renderPage();
 

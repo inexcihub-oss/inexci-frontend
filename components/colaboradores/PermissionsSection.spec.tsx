@@ -62,6 +62,20 @@ describe("PermissionsSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("marca com o selo 'Fixa' as três áreas travadas do médico", () => {
+    render(<PermissionsSection value={[]} isDoctor onChange={vi.fn()} />);
+
+    expect(screen.getAllByText("Fixa")).toHaveLength(3);
+  });
+
+  it("não mostra selo de área fixa para quem não é médico", () => {
+    render(
+      <PermissionsSection value={[]} isDoctor={false} onChange={vi.fn()} />,
+    );
+
+    expect(screen.queryByText("Fixa")).not.toBeInTheDocument();
+  });
+
   it("deixa administração livre para o médico", () => {
     render(<PermissionsSection value={[]} isDoctor onChange={vi.fn()} />);
 

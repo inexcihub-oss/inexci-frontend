@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { resolveHome } from "@/lib/permissions";
 
 /**
  * Rotas de `(auth)` que permanecem acessíveis mesmo com uma sessão ativa. Apenas
@@ -12,9 +13,6 @@ import { useAuth } from "@/contexts/AuthContext";
  * quem está deslogado — um usuário autenticado é redirecionado para o dashboard.
  */
 const ALLOWED_WHILE_AUTHENTICATED = ["/confirmar-email"];
-
-/** Destino quando um usuário já autenticado tenta abrir uma tela de auth. */
-const AUTHENTICATED_HOME = "/solicitacoes-cirurgicas";
 
 /**
  * Indício local de sessão (sem request). Usado apenas para decidir se devemos
@@ -43,13 +41,18 @@ function hasLocalSessionHint(): boolean {
  * árvore continua montando a tela de auth). O full reload recarrega a árvore
  * correta do servidor e elimina o desync. Só ocorre para sessão de fato válida
  * (`isAuthenticated` = `/me` ok), então não há risco de loop com o dashboard.
+ *
+ * O destino sai de `resolveHome(permissions)`, não de uma constante: o antigo
+ * `/solicitacoes-cirurgicas` fixo mandava quem não tem a área para uma rota
+ * proibida — e, por ser navegação dura, cada ida e volta custava um reload
+ * inteiro, o que podia estourar o limite de redirecionamentos do navegador.
  */
 export function RedirectIfAuthenticated({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, permissions } = useAuth();
   const pathname = usePathname();
   const [hasSessionHint, setHasSessionHint] = useState(false);
 
@@ -66,9 +69,9 @@ export function RedirectIfAuthenticated({
   useEffect(() => {
     if (loading || isExempt) return;
     if (isAuthenticated && typeof window !== "undefined") {
-      window.location.replace(AUTHENTICATED_HOME);
+      window.location.replace(resolveHome(permissions));
     }
-  }, [isAuthenticated, loading, isExempt]);
+  }, [isAuthenticated, loading, isExempt, permissions]);
 
   // Confirmar-email permanece sempre acessível (confirmação por token).
   if (isExempt) return <>{children}</>;

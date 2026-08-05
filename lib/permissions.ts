@@ -61,14 +61,23 @@ export function permissionForRoute(pathname: string): Permission | null {
 
 /**
  * Para onde mandar quem não tem Solicitações — o /dashboard deixa de servir
- * como destino padrão de todo mundo.
+ * como destino padrão de todo mundo. Administração fecha a lista: é a única
+ * área do admin delegado, que antes caía em /configuracoes por não ter
+ * entrada aqui.
  */
 export const HOME_ORDER: { permission: Permission; href: string }[] = [
   { permission: Permission.ATENDIMENTO, href: "/atendimento" },
   { permission: Permission.AGENDA, href: "/agenda" },
   { permission: Permission.SOLICITACOES, href: "/dashboard" },
+  { permission: Permission.ADMINISTRACAO, href: "/colaboradores" },
 ];
 
+/**
+ * Único lugar que decide a "casa" de um usuário. Login, guard reverso das telas
+ * de auth e `PermissionRouteGuard` chamam esta função — antes cada um tinha o
+ * seu próprio destino fixo (`/solicitacoes-cirurgicas`), o que mandava todo
+ * usuário sem `solicitacoes` para uma rota proibida antes de ser devolvido.
+ */
 export function resolveHome(permissions: Permission[]): string {
   if (permissions.includes(Permission.SOLICITACOES)) return "/dashboard";
   const destino = HOME_ORDER.find(({ permission }) =>

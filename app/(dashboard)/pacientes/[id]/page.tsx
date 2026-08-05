@@ -55,15 +55,25 @@ export default function PacienteDetalhePage() {
   const podeAtendimento = can(Permission.ATENDIMENTO);
 
   /** Consultas do paciente — vive na página porque o botão "Nova consulta"
-   * também está aqui; a sidebar apenas consome e pede recarga. */
+   * também está aqui; a sidebar apenas consome e pede recarga.
+   *
+   * `GET /appointments/patient/:id` exige Agenda **ou** Atendimento. Sem
+   * nenhuma das duas a chamada volta 403 garantido (quem só tem Solicitações,
+   * por exemplo) — o `.catch` escondia o erro, mas a requisição saía a cada
+   * abertura de paciente e sujava o console. */
   const loadAppointments = useCallback(() => {
+    if (!podeAgenda && !podeAtendimento) {
+      setAppointments([]);
+      setLoadingAppointments(false);
+      return;
+    }
     setLoadingAppointments(true);
     appointmentService
       .getByPatient(params.id)
       .then(setAppointments)
       .catch(() => setAppointments([]))
       .finally(() => setLoadingAppointments(false));
-  }, [params.id]);
+  }, [params.id, podeAgenda, podeAtendimento]);
 
   useEffect(() => {
     loadData();

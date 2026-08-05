@@ -19,7 +19,8 @@ import { consentService } from "@/services/consent.service";
 import { billingService } from "@/services/billing.service";
 import type { ConsentStatus, ConsentType } from "@/types/consent.types";
 import { useRouter } from "next/navigation";
-import { Permission } from "@/lib/permissions";
+import { Permission, resolveHome } from "@/lib/permissions";
+import type { BillingBlockReason } from "@/lib/http-error";
 
 interface AuthContextData {
   user: User | null;
@@ -28,6 +29,12 @@ interface AuthContextData {
   isAuthenticated: boolean;
   isDoctor: boolean;
   isAdmin: boolean;
+  /**
+   * True apenas para o **dono** da conta (`user.id === user.accountId`).
+   * Um admin delegado tem `isAdmin`, mas não gerencia assinatura, plano nem
+   * pagamento — só ele vê a aba de plano e os CTAs de upgrade.
+   */
+  isAccountOwner: boolean;
   accountId: string | null;
   permissions: Permission[];
   can: (permission: Permission) => boolean;
@@ -44,6 +51,12 @@ interface AuthContextData {
   isSuspended: boolean;
   /** Motivo do bloqueio (para tooltip). null se n\u00e3o estiver bloqueado. */
   blockReason: string | null;
+  /**
+   * Mesmo bloqueio em forma de c\u00f3digo, alinhado ao `reason` do HTTP 402 do
+   * backend \u2014 permite avisar antes da chamada com a mesma c\u00f3pia do aviso
+   * p\u00f3s-erro. null se n\u00e3o estiver bloqueado.
+   */
+  blockReasonCode: BillingBlockReason | null;
   // Auth
   login: (email: string, password: string) => Promise<void>;
   register: (userData: import("@/types").RegisterData) => Promise<void>;
@@ -240,7 +253,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         await consentsPromise;
 
-        router.push("/solicitacoes-cirurgicas");
+        // A casa depende das áreas liberadas: mandar todo mundo para
+        // /solicitacoes-cirurgicas fazia quem não tem `solicitacoes` entrar
+        // numa rota proibida e ser devolvido pelo `PermissionRouteGuard`.
+        router.push(resolveHome(response.user?.permissions ?? []));
       } catch (error) {
         throw error;
       }
@@ -281,6 +297,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isDoctor = useMemo(() => user?.isDoctor ?? false, [user]);
   const isAdmin = useMemo(() => user?.role === "admin", [user]);
   const accountId = useMemo(() => user?.accountId ?? null, [user]);
+  const isAccountOwner = useMemo(
+    () => !!user && user.role === "admin" && user.id === user.accountId,
+    [user],
+  );
   const permissions = useMemo<Permission[]>(
     () => user?.permissions ?? [],
     [user],
@@ -311,19 +331,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * 2. Suspensa/cancelada: bloqueia
    * 3. Cota saturada: bloqueia
    */
-  const { canCreateSurgeryRequest, blockReason } = useMemo<{
+  const { canCreateSurgeryRequest, blockReason, blockReasonCode } = useMemo<{
     canCreateSurgeryRequest: boolean;
     blockReason: string | null;
+    blockReasonCode: BillingBlockReason | null;
   }>(() => {
-    if (!subscription) {
-      return { canCreateSurgeryRequest: true, blockReason: null };
-    }
+    const liberado = {
+      canCreateSurgeryRequest: true,
+      blockReason: null,
+      blockReasonCode: null,
+    };
+    if (!subscription) return liberado;
+
     const { status } = subscription.subscription;
     if (status === "suspended") {
       return {
         canCreateSurgeryRequest: false,
         blockReason:
           "Sua assinatura est\u00e1 suspensa. Cadastre um m\u00e9todo de pagamento ou regularize sua fatura para continuar.",
+        blockReasonCode: "subscription_suspended",
       };
     }
     if (status === "canceled") {
@@ -331,6 +357,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         canCreateSurgeryRequest: false,
         blockReason:
           "Sua assinatura foi cancelada. Contrate um plano para continuar.",
+        blockReasonCode: "subscription_canceled",
       };
     }
     const quota = subscription.quota;
@@ -338,9 +365,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return {
         canCreateSurgeryRequest: false,
         blockReason: `Voc\u00ea atingiu o limite de ${quota.limit} solicita\u00e7\u00f5es deste ciclo. Fa\u00e7a upgrade para continuar.`,
+        blockReasonCode: "quota_exceeded",
       };
     }
-    return { canCreateSurgeryRequest: true, blockReason: null };
+    return liberado;
   }, [subscription]);
 
   const value = useMemo(
@@ -350,6 +378,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated,
       isDoctor,
       isAdmin,
+      isAccountOwner,
       accountId,
       permissions,
       can,
@@ -363,6 +392,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isInTrial,
       isSuspended,
       blockReason,
+      blockReasonCode,
       login,
       register,
       logout,
@@ -375,6 +405,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated,
       isDoctor,
       isAdmin,
+      isAccountOwner,
       accountId,
       permissions,
       can,
@@ -388,6 +419,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isInTrial,
       isSuspended,
       blockReason,
+      blockReasonCode,
       login,
       register,
       logout,

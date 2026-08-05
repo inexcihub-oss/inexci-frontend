@@ -48,6 +48,21 @@ describe("resolveHome", () => {
     expect(resolveHome([Permission.AGENDA])).toBe("/agenda");
   });
 
+  it("manda o admin delegado para colaboradores", () => {
+    // Antes ADMINISTRACAO não tinha entrada em HOME_ORDER e caía no fallback
+    // `/configuracoes` — a única área do usuário ficava de fora da casa dele.
+    expect(resolveHome([Permission.ADMINISTRACAO])).toBe("/colaboradores");
+  });
+
+  it("prioriza a área de trabalho sobre Administração", () => {
+    expect(resolveHome([Permission.AGENDA, Permission.ADMINISTRACAO])).toBe(
+      "/agenda",
+    );
+    expect(
+      resolveHome([Permission.ATENDIMENTO, Permission.ADMINISTRACAO]),
+    ).toBe("/atendimento");
+  });
+
   it("cai em configurações quando não há área nenhuma", () => {
     expect(resolveHome([])).toBe("/configuracoes");
   });

@@ -9,7 +9,13 @@ import {
 } from "@/services/surgery-request.service";
 import { pendencyService } from "@/services/pendency.service";
 import { useToast } from "@/hooks/useToast";
-import { getTransitionBlockError } from "@/lib/http-error";
+import {
+  getApiErrorMessage,
+  getBillingBlockError,
+  getTransitionBlockError,
+  type BillingBlockError,
+} from "@/lib/http-error";
+import { BillingLimitModal } from "@/components/billing/BillingLimitModal";
 import { SurgeryRequestDocumentPreviewModal } from "@/components/laudo/SurgeryRequestDocumentPreviewModal";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -48,6 +54,9 @@ export function SendRequestModal({
   const [isSending, setIsSending] = useState(false);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [isDocumentPreviewOpen, setIsDocumentPreviewOpen] = useState(false);
+  const [billingBlock, setBillingBlock] = useState<BillingBlockError | null>(
+    null,
+  );
 
   // Email form state
   const [emailSubject, setEmailSubject] = useState("");
@@ -63,7 +72,7 @@ export function SendRequestModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { showToast } = useToast();
-  const { refreshSubscription } = useAuth();
+  const { refreshSubscription, blockReason, blockReasonCode } = useAuth();
 
   const sourceDocument = solicitacao.documents?.find(
     (doc) => doc.key === SC_CREATION_SOURCE_KEY && doc.uri,
@@ -101,6 +110,18 @@ export function SendRequestModal({
       setAttachments([]);
       setCcTags([]);
       setCcInput("");
+      // Quando a assinatura já é conhecida e bloqueia o envio, avisa de
+      // saída em vez de deixar o usuário percorrer o wizard para tomar um
+      // 402 no final. O backend continua sendo a autoridade — este é só o
+      // atalho para quem tem a assinatura carregada em memória.
+      setBillingBlock(
+        blockReasonCode
+          ? {
+              reason: blockReasonCode,
+              message: blockReason ?? "Assinatura não permite o envio.",
+            }
+          : null,
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, solicitacao?.id]);
@@ -163,6 +184,22 @@ export function SendRequestModal({
 
   if (!isOpen) return null;
 
+  // O bloqueio comercial substitui o wizard: com a cota estourada (ou a
+  // assinatura suspensa), nenhum dos métodos de envio vai passar, então não
+  // faz sentido manter os passos atrás do aviso.
+  if (billingBlock) {
+    return (
+      <BillingLimitModal
+        isOpen
+        block={billingBlock}
+        onClose={() => {
+          setBillingBlock(null);
+          onClose();
+        }}
+      />
+    );
+  }
+
   const canProceed = () =>
     checklist.every((item) => !item.isRequired || item.isComplete);
 
@@ -220,6 +257,20 @@ export function SendRequestModal({
     else if (currentStep === 3) setCurrentStep(2);
   };
 
+  /**
+   * Bloqueio comercial (HTTP 402) tem tratamento próprio: abre o aviso com o
+   * caminho de upgrade em vez do toast genérico. Retorna true quando assumiu
+   * o erro, para o chamador parar por aí.
+   */
+  const handleBillingError = (err: unknown): boolean => {
+    const block = getBillingBlockError(err);
+    if (!block) return false;
+    setBillingBlock(block);
+    // Sincroniza a cota exibida no aviso com o que o servidor acabou de dizer.
+    void refreshSubscription();
+    return true;
+  };
+
   const handleDownload = async () => {
     setIsSending(true);
     try {
@@ -244,8 +295,10 @@ export function SendRequestModal({
       await saveTemplateIfRequested();
       setCurrentStep(4);
     } catch (err) {
+      if (handleBillingError(err)) return;
       showToast(
-        getTransitionBlockError(err) ?? "Erro ao baixar solicitação",
+        getTransitionBlockError(err) ??
+          getApiErrorMessage(err, "Erro ao baixar solicitação"),
         "error",
       );
     } finally {
@@ -261,9 +314,13 @@ export function SendRequestModal({
       await saveTemplateIfRequested();
       setCurrentStep(4);
     } catch (err) {
+      if (handleBillingError(err)) return;
       showToast(
         getTransitionBlockError(err) ??
-          "Erro ao confirmar envio com documento de origem",
+          getApiErrorMessage(
+            err,
+            "Erro ao confirmar envio com documento de origem",
+          ),
         "error",
       );
     } finally {
@@ -295,8 +352,10 @@ export function SendRequestModal({
       await saveTemplateIfRequested();
       setCurrentStep(4);
     } catch (err) {
+      if (handleBillingError(err)) return;
       showToast(
-        getTransitionBlockError(err) ?? "Erro ao enviar solicitação",
+        getTransitionBlockError(err) ??
+          getApiErrorMessage(err, "Erro ao enviar solicitação"),
         "error",
       );
     } finally {

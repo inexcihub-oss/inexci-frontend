@@ -28,6 +28,7 @@ import { ProcedureModel } from "@/components/procedures/types";
 import { normalizeTemplateOpmeItems, getTemplateOpmeItemsRaw } from "@/components/procedures/normalize-template-opme";
 import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
 import { NoActiveDoctorModal } from "@/components/surgery-request/NoActiveDoctorModal";
+import { BillingLimitModal } from "@/components/billing/BillingLimitModal";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { availableDoctorsService } from "@/services/available-doctors.service";
 import { useToast } from "@/hooks/useToast";
@@ -95,7 +96,9 @@ export default function ProcedimentosPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState({});
   const { showToast } = useToast();
-  const { canCreateSurgeryRequest, blockReason, isAdmin, can } = useAuth();
+  const { canCreateSurgeryRequest, blockReason, blockReasonCode, isAdmin, can } =
+    useAuth();
+  const [isBillingBlockOpen, setIsBillingBlockOpen] = useState(false);
   // Os "modelos" desta página são `SurgeryRequestTemplate` — o backend
   // (`POST/PATCH/DELETE /surgery-requests/templates/*`) herda a permissão de
   // classe do controller de solicitações cirúrgicas (`Permission.SOLICITACOES`),
@@ -497,8 +500,10 @@ export default function ProcedimentosPage() {
         procedure={selectedProcedure}
         onUseTemplate={(template) => {
           if (!canCreateSurgeryRequest) {
-            if (blockReason) showToast(blockReason, "error");
-            if (isAdmin) router.push("/configuracoes?tab=plan");
+            // Aviso com caminho de upgrade para o dono da conta e orientação
+            // de procurar o administrador para os demais — antes o clique era
+            // um toast seguido de um redirect que só funcionava para o dono.
+            setIsBillingBlockOpen(true);
             return;
           }
           void (async () => {
@@ -513,6 +518,18 @@ export default function ProcedimentosPage() {
         }}
         onTemplateUpdated={loadTemplates}
       />
+
+      {blockReasonCode && (
+        <BillingLimitModal
+          isOpen={isBillingBlockOpen}
+          onClose={() => setIsBillingBlockOpen(false)}
+          block={{
+            reason: blockReasonCode,
+            message:
+              blockReason ?? "Assinatura não permite criar solicitações.",
+          }}
+        />
+      )}
 
       {/* Create Surgery Request Wizard (from template) */}
       <CreateSurgeryRequestWizard

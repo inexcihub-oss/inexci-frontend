@@ -29,6 +29,71 @@ export function getApiErrorMessage(
 }
 
 /**
+ * Motivos de bloqueio comercial devolvidos pelo backend no corpo do HTTP 402
+ * (`BillingRequiredException.reason`). `unknown` cobre um 402 sem `reason`
+ * reconhecido — o aviso cai na cópia genérica usando a mensagem do servidor.
+ */
+export const BILLING_BLOCK_REASONS = [
+  "quota_exceeded",
+  "subscription_suspended",
+  "subscription_canceled",
+  "trial_expired",
+  "payment_method_required",
+] as const;
+
+export type BillingBlockReason =
+  | (typeof BILLING_BLOCK_REASONS)[number]
+  | "unknown";
+
+export interface BillingBlockError {
+  reason: BillingBlockReason;
+  /** Mensagem do backend, usada como fallback quando não há cópia específica. */
+  message: string;
+}
+
+/**
+ * Para bloqueios comerciais (HTTP 402 Payment Required): cota do plano
+ * atingida, assinatura suspensa/cancelada, trial expirado.
+ *
+ * Retorna `null` quando o erro não é um 402 — aí o chamador segue com o
+ * tratamento normal (toast, pendências etc.).
+ */
+export function getBillingBlockError(error: unknown): BillingBlockError | null {
+  if (!(error instanceof AxiosError) || error.response?.status !== 402) {
+    return null;
+  }
+
+  const data = error.response?.data;
+  const rawReason =
+    data && typeof data === "object"
+      ? (data as { reason?: unknown }).reason
+      : undefined;
+
+  const reason: BillingBlockReason = BILLING_BLOCK_REASONS.includes(
+    rawReason as (typeof BILLING_BLOCK_REASONS)[number],
+  )
+    ? (rawReason as BillingBlockReason)
+    : "unknown";
+
+  // Deliberadamente não usa `getApiErrorMessage`: `AxiosError` estende
+  // `Error`, então sem `message` no corpo a mensagem técnica do Axios
+  // ("Request failed") vazaria para o aviso na tela.
+  const rawMessage =
+    data && typeof data === "object"
+      ? (data as { message?: unknown }).message
+      : undefined;
+
+  const message =
+    typeof rawMessage === "string" && rawMessage.trim()
+      ? rawMessage
+      : Array.isArray(rawMessage) && rawMessage.length > 0
+        ? rawMessage.join(", ")
+        : "Sua assinatura não permite esta ação no momento.";
+
+  return { reason, message };
+}
+
+/**
  * Para erros de transição de status bloqueados pelo backend (HTTP 400 com `pendencies[]`).
  * Retorna mensagem formatada incluindo a lista de pendências, ou null se não for esse tipo de erro.
  */
