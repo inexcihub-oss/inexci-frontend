@@ -1,33 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
-import Input from "@/components/ui/Input";
-import { DateInput } from "@/components/ui/DateInput";
-import Select from "@/components/ui/Select";
-import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { patientService, Patient } from "@/services/patient.service";
-import { GENDER_OPTIONS, STATE_OPTIONS } from "@/lib/options";
-import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
-import { HealthPlanComboboxField } from "@/components/patients/HealthPlanComboboxField";
+import { PatientRegistrationForm } from "@/components/patients/PatientRegistrationForm";
+import { PatientClinicalTimeline } from "@/components/clinical/PatientClinicalTimeline";
+import { PatientDocuments } from "@/components/clinical/PatientDocuments";
+import { PatientTimelineSidebar } from "@/components/clinical/PatientTimelineSidebar";
+import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
 import {
   surgeryRequestService,
   SurgeryRequestListItem,
-  STATUS_NUMBER_TO_STRING,
-  STATUS_COLORS,
 } from "@/services/surgery-request.service";
+import { appointmentService, Appointment } from "@/services/appointment.service";
 import { logger } from "@/lib/logger";
-import { formatCPF, formatPhone } from "@/lib/formatters";
-import { formatDate } from "@/lib/utils";
+import { resolverReturnUrl } from "@/lib/safe-return-url";
 import { useToast } from "@/hooks/useToast";
-import { useCepLookup } from "@/hooks/useCepLookup";
-import { maskCep } from "@/lib/masks";
-import { ChevronRight, Loader2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
+import { Plus } from "lucide-react";
 
 export default function PacienteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -36,208 +32,83 @@ export default function PacienteDetalhePage() {
   const rawReturnUrl = searchParams.get("returnUrl");
   const returnUrl = (() => {
     if (!rawReturnUrl) return null;
+    if (typeof window === "undefined") return null;
     const decoded = decodeURIComponent(rawReturnUrl);
-    return decoded.startsWith("/") && !decoded.startsWith("//")
-      ? decoded
-      : null;
+    return resolverReturnUrl(decoded, window.location.origin);
   })();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [surgeryRequests, setSurgeryRequests] = useState<
     SurgeryRequestListItem[]
   >([]);
   const [loadingSurgeries, setLoadingSurgeries] = useState(true);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
+  const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
+  const { can } = useAuth();
+  const podeAgenda = can(Permission.AGENDA);
+  // Prontuário e documentos exigem Atendimento no backend (`ATENDIMENTO`
+  // na classe de `clinical-records` e `clinical-records/documents`,
+  // inclusive no GET) — sem a permissão não há nada legítimo para buscar,
+  // então a seção nem monta.
+  const podeAtendimento = can(Permission.ATENDIMENTO);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    name: "",
-    cpf: "",
-    email: "",
-    phone: "",
-    birthDate: "",
-    gender: "",
-    address: "",
-    addressNumber: "",
-    addressComplement: "",
-    neighborhood: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    healthPlanId: "",
-    healthPlanNumber: "",
-    healthPlanType: "",
-    medicalNotes: "",
-  });
-  const [originalData, setOriginalData] = useState<typeof formData | null>(
-    null,
-  );
-  const isDirty =
-    originalData !== null &&
-    JSON.stringify(formData) !== JSON.stringify(originalData);
-
-  const { loading: cepLoading } = useCepLookup({
-    cep: formData.zipCode,
-    enabled: !!patient,
-    onResolved: (data) => {
-      setFormData((prev) => ({
-        ...prev,
-        address: data.logradouro,
-        neighborhood: data.bairro,
-        city: data.cidade,
-        state: data.uf,
-      }));
-    },
-    onError: (err) => {
-      if (err.code === "not_found") {
-        showToast("CEP não encontrado.", "error");
-      } else if (err.code === "network") {
-        showToast(err.message, "error");
-      }
-    },
-  });
+  /** Consultas do paciente — vive na página porque o botão "Nova consulta"
+   * também está aqui; a sidebar apenas consome e pede recarga.
+   *
+   * `GET /appointments/patient/:id` exige Agenda **ou** Atendimento. Sem
+   * nenhuma das duas a chamada volta 403 garantido (quem só tem Solicitações,
+   * por exemplo) — o `.catch` escondia o erro, mas a requisição saía a cada
+   * abertura de paciente e sujava o console. */
+  const loadAppointments = useCallback(() => {
+    if (!podeAgenda && !podeAtendimento) {
+      setAppointments([]);
+      setLoadingAppointments(false);
+      return;
+    }
+    setLoadingAppointments(true);
+    appointmentService
+      .getByPatient(params.id)
+      .then(setAppointments)
+      .catch(() => setAppointments([]))
+      .finally(() => setLoadingAppointments(false));
+  }, [params.id, podeAgenda, podeAtendimento]);
 
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
+
   const loadData = async () => {
     setLoading(true);
     setLoadingSurgeries(true);
-    // Disparada junto com o Promise.all abaixo (não depende de patientData —
-    // o filtro por paciente é feito em memória) em vez de esperar o bloco
-    // anterior terminar. `.catch(noop)` evita unhandled rejection caso a
-    // função retorne cedo (paciente não encontrado) antes do await abaixo.
-    const surgeryPromise = surgeryRequestService.getAll();
-    surgeryPromise.catch(() => {});
     try {
-      const [patientData, healthPlansData] = await Promise.all([
+      const [patientData, surgeryData] = await Promise.all([
         patientService.getById(params.id),
-        healthPlanService.getAll(),
+        surgeryRequestService
+          .getAll({ patientId: params.id })
+          .catch(() => ({ total: 0, records: [] })),
       ]);
 
       if (!patientData) {
         logger.error("Paciente não encontrado");
         setLoading(false);
+        setLoadingSurgeries(false);
         return;
       }
 
       setPatient(patientData);
-      setHealthPlans(healthPlansData);
-
-      // Busca solicitações cirúrgicas deste paciente
-      try {
-        const surgeryData = await surgeryPromise;
-        const filtered = (surgeryData.records ?? []).filter(
-          (r) => r.patient?.id === patientData.id,
-        );
-        setSurgeryRequests(filtered);
-      } catch {
-        setSurgeryRequests([]);
-      } finally {
-        setLoadingSurgeries(false);
-      }
-
-      // Preenche o formulário
-      setFormData({
-        name: patientData.name || "",
-        cpf: patientData.cpf || "",
-        email: patientData.email || "",
-        phone: patientData.phone || "",
-        birthDate: patientData.birthDate || "",
-        gender: patientData.gender || "",
-        address: patientData.address || "",
-        addressNumber: patientData.addressNumber || "",
-        addressComplement: patientData.addressComplement || "",
-        neighborhood: patientData.neighborhood || "",
-        city: patientData.city || "",
-        state: patientData.state || "",
-        zipCode: maskCep(patientData.zipCode || ""),
-        healthPlanId: patientData.healthPlanId || "",
-        healthPlanNumber: patientData.healthPlanNumber || "",
-        healthPlanType: patientData.healthPlanType || "",
-        medicalNotes: patientData.medicalNotes || "",
-      });
-      setOriginalData({
-        name: patientData.name || "",
-        cpf: patientData.cpf || "",
-        email: patientData.email || "",
-        phone: patientData.phone || "",
-        birthDate: patientData.birthDate || "",
-        gender: patientData.gender || "",
-        address: patientData.address || "",
-        addressNumber: patientData.addressNumber || "",
-        addressComplement: patientData.addressComplement || "",
-        neighborhood: patientData.neighborhood || "",
-        city: patientData.city || "",
-        state: patientData.state || "",
-        zipCode: maskCep(patientData.zipCode || ""),
-        healthPlanId: patientData.healthPlanId || "",
-        healthPlanNumber: patientData.healthPlanNumber || "",
-        healthPlanType: patientData.healthPlanType || "",
-        medicalNotes: patientData.medicalNotes || "",
-      });
+      setSurgeryRequests(surgeryData.records ?? []);
     } catch (error) {
       logger.error("Erro ao carregar paciente:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = async () => {
-    if (!patient) return;
-
-    if (!formData.cpf.replace(/\D/g, "")) {
-      showToast("CPF é obrigatório.", "error");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await patientService.update(patient.id, {
-        name: formData.name,
-        cpf: formData.cpf.replace(/\D/g, ""),
-        email: formData.email || undefined,
-        phone: formData.phone || undefined,
-        birthDate: formData.birthDate || undefined,
-        gender: formData.gender || undefined,
-        address: formData.address || undefined,
-        addressNumber: formData.addressNumber || undefined,
-        addressComplement: formData.addressComplement || undefined,
-        neighborhood: formData.neighborhood || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
-        zipCode: formData.zipCode.replace(/\D/g, "") || undefined,
-        healthPlanId: formData.healthPlanId || undefined,
-        healthPlanNumber: formData.healthPlanNumber || undefined,
-        healthPlanType: formData.healthPlanType || undefined,
-        medicalNotes: formData.medicalNotes || undefined,
-      });
-      setOriginalData(formData);
-      showToast("Paciente atualizado com sucesso!", "success");
-      if (returnUrl) {
-        setTimeout(() => router.push(returnUrl), 800);
-      }
-    } catch (error) {
-      logger.error("Erro ao salvar:", error);
-      showToast("Erro ao salvar as alterações.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (isDirty && originalData) {
-      setFormData(originalData);
-    } else {
-      router.push(returnUrl ?? "/pacientes");
+      setLoadingSurgeries(false);
     }
   };
 
@@ -262,74 +133,13 @@ export default function PacienteDetalhePage() {
   }
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Histórico de cirurgias
-        </h3>
-        {!loadingSurgeries && (
-          <span className="text-xs text-gray-400">
-            {surgeryRequests.length}
-          </span>
-        )}
-      </div>
-
-      {/* Lista de cirurgias */}
-      <div className="flex-1 overflow-y-auto">
-        {loadingSurgeries ? (
-          <div className="flex items-center justify-center py-8">
-            <Spinner size="sm" />
-          </div>
-        ) : surgeryRequests.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-xs text-gray-400">
-              Nenhuma solicitação encontrada.
-            </p>
-          </div>
-        ) : (
-          surgeryRequests.map((surgery) => {
-            const statusLabel =
-              STATUS_NUMBER_TO_STRING[surgery.status] ?? "Pendente";
-            const colors = STATUS_COLORS[statusLabel] ?? {
-              bg: "bg-gray-50",
-              text: "text-gray-600",
-              border: "border-gray-200",
-            };
-            const procedureName =
-              (surgery as any).procedureName ||
-              surgery.procedure?.name ||
-              surgery.tussProcedure?.description ||
-              "Procedimento não especificado";
-            const date = surgery.createdAt
-              ? formatDate(surgery.createdAt)
-              : "—";
-            return (
-              <div
-                key={surgery.id}
-                onClick={() => router.push(`/solicitacao/${surgery.id}`)}
-                className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
-              >
-                <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
-                  <span className="text-xs font-semibold text-gray-900 truncate">
-                    {procedureName}
-                  </span>
-                  <span className="text-xs text-gray-500">{date}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`text-xs px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}
-                  >
-                    {statusLabel}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
+    <PatientTimelineSidebar
+      appointments={appointments}
+      loadingAppointments={loadingAppointments}
+      surgeries={surgeryRequests}
+      loadingSurgeries={loadingSurgeries}
+      onReload={loadAppointments}
+    />
   );
 
   return (
@@ -339,154 +149,55 @@ export default function PacienteDetalhePage() {
         backHref="/pacientes"
         itemName={patient.name}
         itemSubtitle="Paciente"
+        sidebarIcon="calendar"
         sidebarContent={sidebarContent}
       >
-        {/* Seção: Informações pessoais */}
-        <FormSection title="Informações pessoais">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input
-              label="Nome completo"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
-              required
-            />
-            <Input
-              label="CPF"
-              value={formatCPF(formData.cpf)}
-              onChange={(e) =>
-                handleInputChange("cpf", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="000.000.000-00"
-              required
-            />
-            <DateInput
-              label="Data de nascimento"
-              value={formData.birthDate}
-              onChange={(v) => handleInputChange("birthDate", v)}
-            />
-            <Select
-              label="Gênero"
-              value={formData.gender}
-              onChange={(e) => handleInputChange("gender", e.target.value)}
-              options={GENDER_OPTIONS}
-            />
-            <Input
-              label="Telefone"
-              value={formatPhone(formData.phone)}
-              onChange={(e) =>
-                handleInputChange("phone", e.target.value.replace(/\D/g, ""))
-              }
-              placeholder="(00) 00000-0000"
-            />
-            <Input
-              label="E-mail"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-            />
+        {/* Ação principal do paciente */}
+        {podeAgenda && (
+          <div className="flex justify-end">
+            <button
+              onClick={() => setIsNewAppointmentOpen(true)}
+              className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.2} />
+              <span className="text-xs font-semibold">Nova consulta</span>
+            </button>
           </div>
-        </FormSection>
+        )}
 
-        {/* Seção: Endereço */}
-        <FormSection title="Endereço">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="relative">
-              <Input
-                label="CEP"
-                mask="cep"
-                value={formData.zipCode}
-                onChange={(e) => handleInputChange("zipCode", e.target.value)}
-                placeholder="00000-000"
-              />
-              {cepLoading && (
-                <Loader2 className="absolute right-3 top-9 w-4 h-4 text-gray-400 animate-spin" />
-              )}
-            </div>
-            <Select
-              label="Estado"
-              value={formData.state}
-              onChange={(e) => handleInputChange("state", e.target.value)}
-              options={STATE_OPTIONS}
-            />
-            <div className="md:col-span-2">
-              <Input
-                label="Logradouro"
-                value={formData.address}
-                onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="Rua / Avenida / Travessa"
-              />
-            </div>
-            <Input
-              label="Número"
-              value={formData.addressNumber}
-              onChange={(e) =>
-                handleInputChange("addressNumber", e.target.value)
-              }
-            />
-            <Input
-              label="Complemento"
-              value={formData.addressComplement}
-              onChange={(e) =>
-                handleInputChange("addressComplement", e.target.value)
-              }
-            />
-            <Input
-              label="Bairro"
-              value={formData.neighborhood}
-              onChange={(e) =>
-                handleInputChange("neighborhood", e.target.value)
-              }
-            />
-            <Input
-              label="Cidade"
-              value={formData.city}
-              onChange={(e) => handleInputChange("city", e.target.value)}
-            />
-          </div>
-        </FormSection>
+        {/* Seção: Prontuário — some inteira sem Atendimento, em vez de
+            mostrar um título com nada embaixo. */}
+        {podeAtendimento && (
+          <FormSection title="Prontuário">
+            <PatientClinicalTimeline patientId={patient.id} />
+          </FormSection>
+        )}
 
-        {/* Seção: Convênio */}
-        <FormSection title="Convênio">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <HealthPlanComboboxField
-              label="Convênio"
-              healthPlans={healthPlans}
-              value={formData.healthPlanId}
-              onChange={(id) => handleInputChange("healthPlanId", id)}
-              onHealthPlanCreated={(plan) =>
-                setHealthPlans((prev) => [...prev, plan])
-              }
-            />
-            <Input
-              label="Número da carteirinha"
-              value={formData.healthPlanNumber}
-              onChange={(e) =>
-                handleInputChange("healthPlanNumber", e.target.value)
-              }
-              placeholder="Número do convênio"
-            />
-          </div>
-        </FormSection>
+        {/* Seção: Documentos e exames (card próprio, com ação no header).
+            O componente já se esconde sozinho sem Atendimento. */}
+        <PatientDocuments patientId={patient.id} />
 
-        {/* Botão de salvar */}
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            className="min-h-[44px] rounded-xl"
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSave}
-            isLoading={saving}
-            disabled={!isDirty}
-            className="min-h-[44px] rounded-xl"
-          >
-            Salvar alterações
-          </Button>
-        </div>
+        <PatientRegistrationForm
+          patient={patient}
+          onSaved={(saved) => {
+            setPatient(saved);
+            showToast("Paciente atualizado com sucesso!", "success");
+            if (returnUrl) {
+              setTimeout(() => router.push(returnUrl), 800);
+            }
+          }}
+          onCancel={() => router.push(returnUrl ?? "/pacientes")}
+        />
       </DetailPageLayout>
+
+      <NewAppointmentModal
+        isOpen={isNewAppointmentOpen}
+        onClose={() => setIsNewAppointmentOpen(false)}
+        onSaved={loadAppointments}
+        defaultPatientId={patient.id}
+        defaultPatientLabel={patient.name}
+      />
+
       {toast && (
         <Toast
           message={toast.message}

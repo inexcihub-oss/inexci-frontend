@@ -11,13 +11,14 @@ import { getInitials, getDisplayName, getAvatarColor } from "@/lib/utils";
 import { uploadService } from "@/services/upload.service";
 import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
+import { Permission } from "@/lib/permissions";
 
 interface MenuItem {
   type: "item";
   iconSrc: string;
   label: string;
   href: string;
-  adminOnly?: boolean;
+  permission?: Permission;
 }
 
 interface MenuGroup {
@@ -25,29 +26,66 @@ interface MenuGroup {
   iconSrc: string;
   label: string;
   children: MenuItem[];
-  adminOnly?: boolean;
+  permission?: Permission;
 }
 
 type NavigationEntry = MenuItem | MenuGroup;
 
+/**
+ * Filtra o menu por permissão. Item sem `permission` é comum a todos da
+ * conta. Um grupo some inteiro se ficar sem nenhum filho visível — evita um
+ * acordeão vazio quando, no futuro, algum filho ganhar `permission`.
+ */
+export function filterMenuItems(
+  items: NavigationEntry[],
+  can: (permission: Permission) => boolean,
+): NavigationEntry[] {
+  return items.reduce<NavigationEntry[]>((visible, entry) => {
+    if (entry.permission && !can(entry.permission)) return visible;
+
+    if (entry.type === "item") {
+      visible.push(entry);
+      return visible;
+    }
+
+    const children = entry.children.filter(
+      (child) => !child.permission || can(child.permission),
+    );
+    if (children.length === 0) return visible;
+
+    visible.push({ ...entry, children });
+    return visible;
+  }, []);
+}
+
 const allMenuItems: NavigationEntry[] = [
   {
     type: "item",
-    iconSrc: "/icons/grid-layout.svg",
-    label: "Solicitações Cirúrgicas",
-    href: "/solicitacoes-cirurgicas",
+    iconSrc: "/icons/stethoscope.svg",
+    label: "Atendimento",
+    href: "/atendimento",
+    permission: Permission.ATENDIMENTO,
   },
   {
     type: "item",
     iconSrc: "/icons/calendar-schedule.svg",
     label: "Agenda",
     href: "/agenda",
+    permission: Permission.AGENDA,
+  },
+  {
+    type: "item",
+    iconSrc: "/icons/grid-layout.svg",
+    label: "Solicitações Cirúrgicas",
+    href: "/solicitacoes-cirurgicas",
+    permission: Permission.SOLICITACOES,
   },
   {
     type: "item",
     iconSrc: "/icons/dashboard.svg",
     label: "Dashboard",
     href: "/dashboard",
+    permission: Permission.SOLICITACOES,
   },
   {
     type: "item",
@@ -60,7 +98,7 @@ const allMenuItems: NavigationEntry[] = [
     iconSrc: "/icons/user-profile.svg",
     label: "Colaboradores",
     href: "/colaboradores",
-    adminOnly: true,
+    permission: Permission.ADMINISTRACAO,
   },
   {
     type: "group",
@@ -98,6 +136,7 @@ const allMenuItems: NavigationEntry[] = [
     iconSrc: "/icons/status-surgeries.svg",
     label: "Procedimentos",
     href: "/procedimentos",
+    permission: Permission.SOLICITACOES,
   },
 ];
 
@@ -112,7 +151,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, can } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isCadastrosOpen, setIsCadastrosOpen] = useState(() =>
     ["/hospitais", "/convenios", "/fornecedores", "/fabricantes"].some(
@@ -156,10 +195,7 @@ export default function Sidebar({
   }, [user?.avatarUrl, user?.id]);
 
   // Filtrar itens do menu com base nas permissões do usuário
-  const menuItems = allMenuItems.filter((item) => {
-    if (item.adminOnly && !isAdmin) return false;
-    return true;
-  });
+  const menuItems = filterMenuItems(allMenuItems, can);
 
   useEffect(() => {
     const isCadastrosPath = [

@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import CallToAction from "@/components/landing/call-to-action";
 import FAQs from "@/components/landing/faqs";
 import PainSection from "@/components/landing/pain-section";
@@ -8,11 +9,17 @@ import StatsSection from "@/components/landing/stats";
 import Benefits from "@/components/landing/benefits";
 import { SITE_URL } from "@/lib/landing/seo";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // script estático no HTML inicial: strict-dynamic não cobre isso (só
+  // scripts inseridos via JS por um script já confiável) — precisa de nonce
+  // explícito, senão a CSP bloqueia o JSON-LD de SEO.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <>
       <script
         type="application/ld+json"
+        nonce={nonce}
+        // eslint-disable-next-line react/no-danger -- JSON-LD via JSON.stringify de dados estáticos, não deriva de input do usuário
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
@@ -26,6 +33,8 @@ export default function LandingPage() {
       />
       <script
         type="application/ld+json"
+        nonce={nonce}
+        // eslint-disable-next-line react/no-danger -- JSON-LD via JSON.stringify de dados estáticos, não deriva de input do usuário
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
@@ -44,6 +53,8 @@ export default function LandingPage() {
       />
       <script
         type="application/ld+json"
+        nonce={nonce}
+        // eslint-disable-next-line react/no-danger -- JSON-LD via JSON.stringify de dados estáticos, não deriva de input do usuário
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",

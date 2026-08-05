@@ -406,15 +406,26 @@ export const surgeryRequestService = {
   },
 
   /**
-   * Busca todas as solicitações (payload completo). Ainda usado pelas páginas
-   * de detalhe de entidade (hospital/convênio/paciente/colaborador) que listam
-   * SCs vinculadas. Carrega tudo via `FETCH_ALL_TAKE` — otimização server-side
-   * dessas telas fica fora do escopo do kanban.
+   * Busca solicitações (payload completo). Usado pelas páginas de detalhe de
+   * entidade (paciente/hospital/convênio/colaborador) e pela aba Histórico do
+   * atendimento. Todo filtro informado é aplicado no backend — sem nenhum,
+   * carrega tudo via `FETCH_ALL_TAKE`.
    */
-  async getAll(): Promise<SurgeryRequestListResponse> {
+  async getAll(params?: {
+    patientId?: string;
+    hospitalId?: string;
+    healthPlanId?: string;
+    doctorId?: string;
+  }): Promise<SurgeryRequestListResponse> {
+    const filters: Record<string, string> = {};
+    if (params?.patientId) filters.patientId = params.patientId;
+    if (params?.hospitalId) filters.hospitalId = params.hospitalId;
+    if (params?.healthPlanId) filters.healthPlanId = params.healthPlanId;
+    if (params?.doctorId) filters.doctorId = params.doctorId;
+
     const response = await api.get<SurgeryRequestListResponse>(
       "/surgery-requests",
-      { params: { take: FETCH_ALL_TAKE } },
+      { params: { take: FETCH_ALL_TAKE, ...filters } },
     );
     return response.data;
   },

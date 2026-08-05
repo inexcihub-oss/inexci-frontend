@@ -11,7 +11,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import PageContainer from "@/components/PageContainer";
-import { SearchInput, Button, Checkbox } from "@/components/ui";
+import { SearchInput, Button } from "@/components/ui";
 import {
   Table,
   TableBody,
@@ -28,10 +28,16 @@ import { ProcedureModel } from "@/components/procedures/types";
 import { normalizeTemplateOpmeItems, getTemplateOpmeItemsRaw } from "@/components/procedures/normalize-template-opme";
 import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
 import { NoActiveDoctorModal } from "@/components/surgery-request/NoActiveDoctorModal";
+import { BillingLimitModal } from "@/components/billing/BillingLimitModal";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { availableDoctorsService } from "@/services/available-doctors.service";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
+import {
+  createSelectColumn,
+  createDeleteActionColumn,
+} from "@/components/shared/cadastro-table-columns";
 
 /** Converte um template da API para o tipo ProcedureModel usado na UI */
 function templateToModel(t: any): ProcedureModel {
@@ -90,7 +96,14 @@ export default function ProcedimentosPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState({});
   const { showToast } = useToast();
-  const { canCreateSurgeryRequest, blockReason, isAdmin } = useAuth();
+  const { canCreateSurgeryRequest, blockReason, blockReasonCode, isAdmin, can } =
+    useAuth();
+  const [isBillingBlockOpen, setIsBillingBlockOpen] = useState(false);
+  // Os "modelos" desta página são `SurgeryRequestTemplate` — o backend
+  // (`POST/PATCH/DELETE /surgery-requests/templates/*`) herda a permissão de
+  // classe do controller de solicitações cirúrgicas (`Permission.SOLICITACOES`),
+  // não `ADMINISTRACAO` como os demais cadastros básicos.
+  const podeGerenciarModelos = can(Permission.SOLICITACOES);
 
   const hasActiveStatus = (status?: string) =>
     String(status ?? "").toLowerCase() === "active";
@@ -233,24 +246,9 @@ export default function ProcedimentosPage() {
 
   const columns = useMemo<ColumnDef<ProcedureModel>[]>(
     () => [
-      {
-        id: "select",
-        size: 40,
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllRowsSelected()}
-            onCheckedChange={(value) => table.toggleAllRowsSelected(!!value)}
-            indeterminate={table.getIsSomeRowsSelected()}
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-          />
-        ),
-        enableSorting: false,
-      },
+      ...(podeGerenciarModelos
+        ? [createSelectColumn<ProcedureModel>({ allRows: true })]
+        : []),
       {
         id: "modelName",
         accessorKey: "modelName",
@@ -305,37 +303,16 @@ export default function ProcedimentosPage() {
           <span className="text-xs text-black">{row.original.usageCount}</span>
         ),
       },
-      {
-        id: "actions",
-        header: "",
-        size: 50,
-        meta: { className: "sticky right-0 z-10 bg-white" },
-        enableSorting: false,
-        cell: ({ row }) => (
-          <button
-            onClick={(e) => handleDeleteClick(row.original, e)}
-            className="w-8 h-8 flex items-center justify-center rounded hover:bg-red-50 transition-colors group"
-            title="Excluir modelo"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4 text-red-400 group-hover:text-red-600 transition-colors"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a1 1 0 00-1-1h-1V5a1 1 0 00-1-1h-4a1 1 0 00-1 1v1H7a1 1 0 000 2h10z"
-              />
-            </svg>
-          </button>
-        ),
-      },
+      ...(podeGerenciarModelos
+        ? [
+            createDeleteActionColumn<ProcedureModel>(
+              (item, e) => handleDeleteClick(item, e),
+              "Excluir modelo",
+            ),
+          ]
+        : []),
     ],
-    [],
+    [podeGerenciarModelos],
   );
 
   const table = useReactTable({
@@ -399,7 +376,7 @@ export default function ProcedimentosPage() {
         <div className="hidden sm:block w-px h-8 bg-neutral-100" />
 
         <div className="flex items-center gap-2 flex-1 sm:flex-none">
-          {selectedItems.length > 0 && (
+          {podeGerenciarModelos && selectedItems.length > 0 && (
             <button
               onClick={handleBulkDeleteClick}
               className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 active:scale-[0.98] transition-all min-h-[44px]"
@@ -424,14 +401,16 @@ export default function ProcedimentosPage() {
               </span>
             </button>
           )}
-          <Button
-            variant="primary"
-            size="md"
-            className="flex-1 sm:flex-none min-h-[44px]"
-            onClick={() => setIsNewModelModalOpen(true)}
-          >
-            Novo modelo
-          </Button>
+          {podeGerenciarModelos && (
+            <Button
+              variant="primary"
+              size="md"
+              className="flex-1 sm:flex-none min-h-[44px]"
+              onClick={() => setIsNewModelModalOpen(true)}
+            >
+              Novo modelo
+            </Button>
+          )}
         </div>
       </div>
 
@@ -521,8 +500,10 @@ export default function ProcedimentosPage() {
         procedure={selectedProcedure}
         onUseTemplate={(template) => {
           if (!canCreateSurgeryRequest) {
-            if (blockReason) showToast(blockReason, "error");
-            if (isAdmin) router.push("/configuracoes?tab=plan");
+            // Aviso com caminho de upgrade para o dono da conta e orientação
+            // de procurar o administrador para os demais — antes o clique era
+            // um toast seguido de um redirect que só funcionava para o dono.
+            setIsBillingBlockOpen(true);
             return;
           }
           void (async () => {
@@ -537,6 +518,18 @@ export default function ProcedimentosPage() {
         }}
         onTemplateUpdated={loadTemplates}
       />
+
+      {blockReasonCode && (
+        <BillingLimitModal
+          isOpen={isBillingBlockOpen}
+          onClose={() => setIsBillingBlockOpen(false)}
+          block={{
+            reason: blockReasonCode,
+            message:
+              blockReason ?? "Assinatura não permite criar solicitações.",
+          }}
+        />
+      )}
 
       {/* Create Surgery Request Wizard (from template) */}
       <CreateSurgeryRequestWizard

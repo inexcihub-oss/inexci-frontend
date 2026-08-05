@@ -5,6 +5,7 @@ import ReactDOM from "react-dom";
 import { X, Upload, Check } from "lucide-react";
 import {
   documentService,
+  patientDocumentService,
   DOCUMENT_FOLDERS,
   DocumentFolder,
 } from "@/services/document.service";
@@ -57,7 +58,12 @@ function hasAllowedDocumentExtension(fileName: string): boolean {
 interface DocumentUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  surgeryRequestId: string | number;
+  /** Vínculo com solicitação cirúrgica (fluxo de SC). */
+  surgeryRequestId?: string | number;
+  /** Vínculo com paciente (fluxo de prontuário/atendimento). */
+  patientId?: string;
+  /** Vínculo opcional com a ficha de atendimento. */
+  clinicalRecordId?: string;
   onSuccess: () => void;
   /** Lista de tipos disponíveis para seleção. Padrão: PRE_SURGERY_DOCUMENT_TYPES */
   documentTypes?: readonly DocumentTypeEntry[];
@@ -80,6 +86,8 @@ function DocumentUploadModalContent({
   isOpen: _isOpen,
   onClose,
   surgeryRequestId,
+  patientId,
+  clinicalRecordId,
   onSuccess,
   documentTypes = PRE_SURGERY_DOCUMENT_TYPES,
   folder = DOCUMENT_FOLDERS.PRE_SURGERY,
@@ -224,13 +232,27 @@ function DocumentUploadModalContent({
     setError(null);
 
     try {
-      await documentService.upload({
-        surgeryRequestId: surgeryRequestId,
-        key: documentType,
-        name: documentName.trim(),
-        file: selectedFile,
-        folder,
-      });
+      if (patientId) {
+        await patientDocumentService.upload({
+          patientId,
+          clinicalRecordId,
+          type: documentType,
+          key: documentType,
+          name: documentName.trim(),
+          file: selectedFile,
+          folder,
+        });
+      } else if (surgeryRequestId !== undefined) {
+        await documentService.upload({
+          surgeryRequestId,
+          key: documentType,
+          name: documentName.trim(),
+          file: selectedFile,
+          folder,
+        });
+      } else {
+        throw new Error("Contexto de upload inválido.");
+      }
 
       resetForm();
       onSuccess();
@@ -252,7 +274,11 @@ function DocumentUploadModalContent({
     contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [error]);
 
-  return (
+  if (typeof window === "undefined") return null;
+
+  // Renderizado no body: inline, o wrapper fixed herdaria o `margin-top` do
+  // `space-y-*` do container pai e o modal/backdrop desceriam junto.
+  return ReactDOM.createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
@@ -477,6 +503,7 @@ function DocumentUploadModalContent({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

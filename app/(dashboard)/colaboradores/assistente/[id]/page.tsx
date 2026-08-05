@@ -33,12 +33,15 @@ import { ToastType } from "@/types/toast.types";
 import { ChevronRight, Upload, X, Loader2, Settings2 } from "lucide-react";
 import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 import { CollaboratorActionsSection } from "@/components/colaboradores/CollaboratorActionsSection";
+import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
 import { DoctorHeaderEditor } from "@/components/shared/DoctorHeaderEditor";
 import { useDoctorHeaderEditor } from "@/hooks/useDoctorHeaderEditor";
 import { Modal } from "@/components/ui/Modal";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { maskCep, maskCpf, maskPhone, unmask } from "@/lib/masks";
 import { isValidCpf } from "@/lib/validators";
+import { Permission } from "@/lib/permissions";
+import { buildCollaboratorUpdatePayload } from "@/lib/collaborator-update";
 
 export default function AssistenteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -63,6 +66,12 @@ export default function AssistenteDetalhePage() {
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const { toast, showToast, hideToast } = useToast();
 
+  /**
+   * "É médico" **já salvo**. Governa o que depende de um `doctor_profile` real
+   * no servidor (cabeçalho de documentos, assinatura, barra lateral) — esses
+   * recursos não funcionam antes de a promoção ser gravada. A marcação em
+   * edição vive em `formData.isDoctor`.
+   */
   const isDoctor = collaborator?.isDoctor === true;
   const handleCloseScConfigModal = useCallback(() => {
     setIsScConfigModalOpen(false);
@@ -105,9 +114,11 @@ export default function AssistenteDetalhePage() {
     city: "",
     state: "",
     // Doctor-specific fields
+    isDoctor: false,
     specialty: "",
     crm: "",
     crmState: "",
+    permissions: [] as Permission[],
   });
   const [originalData, setOriginalData] = useState<typeof formData | null>(
     null,
@@ -144,11 +155,13 @@ export default function AssistenteDetalhePage() {
   const loadData = async () => {
     setLoading(true);
     // Disparadas em paralelo com o getById do colaborador — nenhuma das duas
-    // depende dele (filtros são feitos em memória). `.catch(noop)` evita
-    // unhandled rejection quando a função retorna cedo (colaborador não
-    // encontrado) antes de serem consumidas mais abaixo.
+    // depende dele: as solicitações já vêm filtradas pelo médico (id da rota)
+    // no backend. `.catch(noop)` evita unhandled rejection quando a função
+    // retorna cedo (colaborador não encontrado) antes de serem consumidas.
     const patientsPromise = patientService.getAll();
-    const surgeryPromise = surgeryRequestService.getAll();
+    const surgeryPromise = surgeryRequestService.getAll({
+      doctorId: params.id,
+    });
     patientsPromise.catch(() => {});
     surgeryPromise.catch(() => {});
     try {
@@ -180,9 +193,15 @@ export default function AssistenteDetalhePage() {
         city: collab.city || "",
         state: collab.state || "",
         // Doctor-specific
+        isDoctor: collab.isDoctor === true,
         specialty: dp?.specialty || "",
         crm: dp?.crm || "",
         crmState: dp?.crmState || "",
+        // `grantedPermissions` (crua), não `permissions` (efetiva): semear
+        // com a efetiva regravaria o bônus de médico (Agenda/Atendimento/
+        // Solicitações) como concessão real — desmarcar "é médico" depois
+        // não voltaria a tirá-las (I2 do PLANO-PERMISSOES-COLABORADORES).
+        permissions: collab.grantedPermissions ?? [],
       };
       setFormData(fd);
       setOriginalData(fd);
@@ -217,10 +236,8 @@ export default function AssistenteDetalhePage() {
     try {
       const response = await surgeryPromise;
       if (response?.records && Array.isArray(response.records)) {
-        const doctorRequests = response.records
-          .filter((r: any) => String(r.doctorId) === String(params.id))
-          .slice(0, 10);
-        setRecentRequests(doctorRequests);
+        // Já filtradas pelo médico no backend; aqui só limitamos a exibição.
+        setRecentRequests(response.records.slice(0, 10));
       }
     } catch (error) {
       logger.error("Erro ao carregar solicitações:", error);
@@ -229,8 +246,12 @@ export default function AssistenteDetalhePage() {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handlePermissionsChange = (permissions: Permission[]) => {
+    setFormData((prev) => ({ ...prev, permissions }));
   };
 
   const handleSave = async () => {
@@ -250,9 +271,31 @@ export default function AssistenteDetalhePage() {
       return;
     }
 
+    // O backend exige CRM e UF para gravar alguém como médico.
+    if (formData.isDoctor && (!formData.crm.trim() || !formData.crmState)) {
+      showToast(
+        "Para marcar o colaborador como médico, informe CRM e estado do CRM.",
+        "error",
+      );
+      return;
+    }
+
     const normalizedEmail = formData.email.trim();
-    const currentEmail = (collaborator.email ?? "").trim();
-    const emailChanged = normalizedEmail !== currentEmail;
+    const collaboratorUpdatePayload = buildCollaboratorUpdatePayload(
+      {
+        email: (collaborator.email ?? "").trim(),
+        permissions: originalData?.permissions ?? [],
+        isDoctor: originalData?.isDoctor ?? false,
+      },
+      {
+        email: normalizedEmail,
+        permissions: formData.permissions,
+        isDoctor: formData.isDoctor,
+        crm: formData.crm.trim(),
+        crmState: formData.crmState,
+        specialty: formData.specialty.trim(),
+      },
+    );
 
     setSaving(true);
     try {
@@ -270,14 +313,18 @@ export default function AssistenteDetalhePage() {
         state: formData.state || undefined,
       });
 
-      if (emailChanged) {
-        await collaboratorService.update(collaborator.id, {
-          email: normalizedEmail,
-        });
+      if (collaboratorUpdatePayload) {
+        await collaboratorService.update(
+          collaborator.id,
+          collaboratorUpdatePayload,
+        );
       }
 
-      // Se for médico, salvar dados profissionais
-      if (isDoctor && collaborator.doctorProfile?.id) {
+      // Dados profissionais de quem JÁ era médico. Na promoção, CRM/UF/
+      // especialidade já foram no payload acima (que é quem cria o perfil);
+      // chamar aqui usaria um `doctorProfile` que ainda não existe.
+      const jaEraMedico = originalData?.isDoctor === true;
+      if (formData.isDoctor && jaEraMedico && collaborator.doctorProfile?.id) {
         await userService.updateDoctorProfile(collaborator.id, {
           crm: formData.crm || undefined,
           crmState: formData.crmState || undefined,
@@ -286,6 +333,11 @@ export default function AssistenteDetalhePage() {
       }
 
       setOriginalData(formData);
+      // Promoção/despromoção muda o que a tela mostra (dados profissionais,
+      // cabeçalho, permissões fixas) — recarrega para refletir o servidor.
+      if (formData.isDoctor !== jaEraMedico) {
+        await loadData();
+      }
       showToast("Colaborador atualizado com sucesso!", "success");
     } catch (error) {
       logger.error("Erro ao salvar:", error);
@@ -647,7 +699,7 @@ export default function AssistenteDetalhePage() {
             />
           </div>
           {/* Botões dentro da seção */}
-          {!isDoctor && (
+          {!formData.isDoctor && (
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={handleCancel}>
                 Cancelar
@@ -663,90 +715,155 @@ export default function AssistenteDetalhePage() {
           )}
         </FormSection>
 
-        {/* Seção: Dados profissionais (somente médicos) */}
-        {isDoctor && (
-          <FormSection title="Dados profissionais">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
+        {/* Seção: Dados profissionais. Fica sempre visível para que o "é
+            médico" possa ser ligado/desligado depois da criação — antes o
+            bloco inteiro só aparecia para quem já era médico, e não havia
+            como promover nem despromover ninguém pela interface. */}
+        <FormSection title="Dados profissionais">
+          <label className="flex items-start gap-3 rounded-xl border border-neutral-100 p-3 md:p-3.5 cursor-pointer hover:bg-gray-50">
+            <input
+              type="checkbox"
+              checked={formData.isDoctor}
+              onChange={(e) => handleInputChange("isDoctor", e.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 rounded-md accent-primary-500"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="ds-section-title block">É médico</span>
+              <span className="mt-1 block text-xs leading-snug text-gray-500">
+                Cria o perfil médico e libera Agenda, Atendimento e
+                Solicitações cirúrgicas automaticamente. Desmarcar remove o
+                perfil e devolve o colaborador às áreas marcadas manualmente.
+              </span>
+            </span>
+          </label>
+
+          {formData.isDoctor && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <Input
+                    label="Especialidade"
+                    value={formData.specialty}
+                    onChange={(e) =>
+                      handleInputChange("specialty", e.target.value)
+                    }
+                    placeholder="Ex: Ortopedia, Cardiologia..."
+                  />
+                </div>
                 <Input
-                  label="Especialidade"
-                  value={formData.specialty}
-                  onChange={(e) =>
-                    handleInputChange("specialty", e.target.value)
-                  }
-                  placeholder="Ex: Ortopedia, Cardiologia..."
+                  label="CRM"
+                  value={formData.crm}
+                  onChange={(e) => handleInputChange("crm", e.target.value)}
+                  placeholder="000000"
+                  aria-required="true"
+                />
+                <Select
+                  label="Estado do CRM"
+                  value={formData.crmState}
+                  onChange={(e) => handleInputChange("crmState", e.target.value)}
+                  options={STATE_UF_OPTIONS}
                 />
               </div>
-              <Input
-                label="CRM"
-                value={formData.crm}
-                onChange={(e) => handleInputChange("crm", e.target.value)}
-                placeholder="000000"
-              />
-              <Select
-                label="Estado do CRM"
-                value={formData.crmState}
-                onChange={(e) => handleInputChange("crmState", e.target.value)}
-                options={STATE_UF_OPTIONS}
-              />
-            </div>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={cn(
-                    "text-xs px-2.5 py-1 rounded-full border",
-                    signaturePreview
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-amber-50 text-amber-700 border-amber-200",
-                  )}
-                >
-                  Assinatura: {signaturePreview ? "configurada" : "pendente"}
-                </span>
-                <span
-                  className={cn(
-                    "text-xs px-2.5 py-1 rounded-full border",
-                    currentHeader &&
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-2">
+                {/* Assinatura, cabeçalho e configuração de SC dependem de um
+                    `doctor_profile` que já exista no servidor — numa promoção
+                    ainda não salva não há o que configurar. */}
+                {isDoctor ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={cn(
+                        "text-xs px-2.5 py-1 rounded-full border",
+                        signaturePreview
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200",
+                      )}
+                    >
+                      Assinatura: {signaturePreview ? "configurada" : "pendente"}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-xs px-2.5 py-1 rounded-full border",
+                        currentHeader &&
+                          (currentHeader.logoUrl || currentHeader.contentHtml)
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200",
+                      )}
+                    >
+                      Cabeçalho:{" "}
+                      {currentHeader &&
                       (currentHeader.logoUrl || currentHeader.contentHtml)
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-amber-50 text-amber-700 border-amber-200",
+                        ? "configurado"
+                        : "pendente"}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs leading-snug text-gray-500">
+                    Salve para criar o perfil médico — assinatura, cabeçalho e
+                    configuração da solicitação ficam disponíveis em seguida.
+                  </p>
+                )}
+                <div className="flex flex-col sm:flex-row sm:justify-end gap-2 w-full md:w-auto">
+                  {isDoctor && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsScConfigModalOpen(true)}
+                      className="w-full sm:w-auto"
+                    >
+                      <Settings2 className="w-4 h-4 mr-2" />
+                      Configurar solicitação
+                    </Button>
                   )}
-                >
-                  Cabeçalho:{" "}
-                  {currentHeader &&
-                  (currentHeader.logoUrl || currentHeader.contentHtml)
-                    ? "configurado"
-                    : "pendente"}
-                </span>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancel}
+                    className="w-full sm:w-auto"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    isLoading={saving}
+                    disabled={!isDirty}
+                    className="w-full sm:w-auto"
+                  >
+                    Salvar alterações
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-col sm:flex-row sm:justify-end gap-2 w-full md:w-auto">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsScConfigModalOpen(true)}
-                  className="w-full sm:w-auto"
-                >
-                  <Settings2 className="w-4 h-4 mr-2" />
-                  Configurar solicitação
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleCancel}
-                  className="w-full sm:w-auto"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  isLoading={saving}
-                  disabled={!isDirty}
-                  className="w-full sm:w-auto"
-                >
-                  Salvar alterações
-                </Button>
-              </div>
-            </div>
-          </FormSection>
-        )}
+            </>
+          )}
+        </FormSection>
+
+        {/* Seção: Permissões de acesso */}
+        <FormSection title="Permissões de acesso">
+          {/* Usa a marcação em edição, não a salva: ao ligar "é médico" as
+              três áreas já aparecem travadas, mostrando o efeito antes de
+              salvar. O que é gravado continua sendo só `formData.permissions`
+              (as fixas nunca viram concessão). */}
+          <PermissionsSection
+            value={formData.permissions}
+            isDoctor={formData.isDoctor}
+            onChange={handlePermissionsChange}
+          />
+          <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end sm:gap-3">
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSave}
+              isLoading={saving}
+              disabled={!isDirty}
+              className="w-full sm:w-auto"
+            >
+              Salvar alterações
+            </Button>
+          </div>
+        </FormSection>
 
         {/* Seção: Acesso a Médicos */}
         <DoctorAccessSection

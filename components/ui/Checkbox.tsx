@@ -15,7 +15,16 @@ export interface CheckboxProps extends Omit<
 
 const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
   (
-    { className, checked = false, onCheckedChange, indeterminate, ...props },
+    {
+      className,
+      checked = false,
+      onCheckedChange,
+      indeterminate,
+      // O controle clicável é o <button>, não o input sr-only: o rótulo tem que
+      // ficar nele, senão leitores de tela anunciam um checkbox sem nome.
+      "aria-label": ariaLabel,
+      ...props
+    },
     ref,
   ) => {
     const handleClick = () => {
@@ -29,6 +38,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
         type="button"
         role="checkbox"
         aria-checked={indeterminate ? "mixed" : checked}
+        aria-label={ariaLabel}
         onClick={handleClick}
         disabled={props.disabled}
         className={cn(

@@ -24,6 +24,10 @@ import {
   SurgeryRequestTemplate,
 } from "@/services/surgery-request.service";
 
+/** Texto padrão do tooltip quando a criação inline exige administração. */
+export const CADASTRO_RESTRITO_HINT =
+  "Peça a um administrador da conta para cadastrar.";
+
 export const ProcedureSelectionContent = memo(
   function ProcedureSelectionContent({
     onSelect,
@@ -32,6 +36,7 @@ export const ProcedureSelectionContent = memo(
     onNewItemCreated,
     selectedItemId,
     isActive,
+    canCreate = true,
   }: {
     onSelect: (item: Procedure) => void;
     onCreateNew: () => void;
@@ -39,6 +44,13 @@ export const ProcedureSelectionContent = memo(
     onNewItemCreated: (registerFn: (item: Procedure) => void) => void;
     selectedItemId?: string | number | null;
     isActive?: boolean;
+    /**
+     * Falso quando o usuário não pode administrar o catálogo de
+     * procedimentos (sem `administracao`) — governa tanto o "Novo" quanto a
+     * lixeira por linha, já que `POST` e `DELETE /procedures/:id` exigem a
+     * mesma permissão.
+     */
+    canCreate?: boolean;
   }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [procedureToDelete, setProcedureToDelete] =
@@ -120,11 +132,18 @@ export const ProcedureSelectionContent = memo(
             </div>
             <button
               onClick={onCreateNew}
-              className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
+              disabled={!canCreate}
+              title={canCreate ? undefined : CADASTRO_RESTRITO_HINT}
+              className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
             >
               Novo
             </button>
           </div>
+          {!canCreate && (
+            <p className="text-xs text-gray-400 -mt-2 mb-4">
+              {CADASTRO_RESTRITO_HINT}
+            </p>
+          )}
           <div className="border-t border-gray-200">
             {loading ? (
               <div className="text-center py-8 text-gray-500">
@@ -159,17 +178,19 @@ export const ProcedureSelectionContent = memo(
                       </div>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setProcedureToDelete(procedure);
-                      }}
-                      aria-label={`Excluir ${procedure.name}`}
-                      className="h-8 w-8 rounded-lg border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 flex items-center justify-center transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {canCreate && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProcedureToDelete(procedure);
+                        }}
+                        aria-label={`Excluir ${procedure.name}`}
+                        className="h-8 w-8 rounded-lg border border-gray-200 text-gray-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 flex items-center justify-center transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 );
               })
@@ -323,6 +344,7 @@ export const HospitalSelectionContent = memo(function HospitalSelectionContent({
   onNewItemCreated,
   selectedItemId,
   isActive,
+  canCreate = true,
 }: {
   onSelect: (item: Hospital) => void;
   onDeselect: () => void;
@@ -330,6 +352,8 @@ export const HospitalSelectionContent = memo(function HospitalSelectionContent({
   onNewItemCreated: (registerFn: (item: Hospital) => void) => void;
   selectedItemId?: string | number | null;
   isActive?: boolean;
+  /** Falso quando o usuário não pode cadastrar hospitais (sem `administracao`). */
+  canCreate?: boolean;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
@@ -375,11 +399,18 @@ export const HospitalSelectionContent = memo(function HospitalSelectionContent({
         </div>
         <button
           onClick={onCreateNew}
-          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
+          disabled={!canCreate}
+          title={canCreate ? undefined : CADASTRO_RESTRITO_HINT}
+          className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
         >
           Novo
         </button>
       </div>
+      {!canCreate && (
+        <p className="text-xs text-gray-400 -mt-2 mb-4">
+          {CADASTRO_RESTRITO_HINT}
+        </p>
+      )}
       <div className="border-t border-gray-200">
         {loading ? (
           <div className="text-center py-8 text-gray-500">Carregando...</div>
@@ -430,6 +461,7 @@ export const HealthPlanSelectionContent = memo(
     onNewItemCreated,
     selectedItemId,
     isActive,
+    canCreate = true,
   }: {
     onSelect: (item: HealthPlan) => void;
     onDeselect: () => void;
@@ -437,6 +469,8 @@ export const HealthPlanSelectionContent = memo(
     onNewItemCreated: (registerFn: (item: HealthPlan) => void) => void;
     selectedItemId?: string | number | null;
     isActive?: boolean;
+    /** Falso quando o usuário não pode cadastrar convênios (sem `administracao`). */
+    canCreate?: boolean;
   }) {
     const [searchTerm, setSearchTerm] = useState("");
     const queryClient = useQueryClient();
@@ -482,11 +516,18 @@ export const HealthPlanSelectionContent = memo(
           </div>
           <button
             onClick={onCreateNew}
-            className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm"
+            disabled={!canCreate}
+            title={canCreate ? undefined : CADASTRO_RESTRITO_HINT}
+            className="h-12 px-6 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-colors font-semibold text-xs md:text-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white"
           >
             Novo
           </button>
         </div>
+        {!canCreate && (
+          <p className="text-xs text-gray-400 -mt-2 mb-4">
+            {CADASTRO_RESTRITO_HINT}
+          </p>
+        )}
         <div className="border-t border-gray-200">
           {loading ? (
             <div className="text-center py-8 text-gray-500">Carregando...</div>

@@ -90,10 +90,13 @@ export default function HospitalDetalhePage() {
 
   const loadData = async () => {
     setLoading(true);
-    // Disparada em paralelo com o getById abaixo (não depende de hospitalData
-    // — o filtro por hospital é feito em memória). `.catch(noop)` evita
-    // unhandled rejection caso a função retorne cedo (hospital não encontrado).
-    const surgeryPromise = surgeryRequestService.getAll();
+    // Disparada em paralelo com o getById abaixo: o filtro por hospital é
+    // aplicado no backend a partir do id da rota, sem depender de hospitalData.
+    // `.catch(noop)` evita unhandled rejection caso a função retorne cedo
+    // (hospital não encontrado).
+    const surgeryPromise = surgeryRequestService.getAll({
+      hospitalId: params.id,
+    });
     surgeryPromise.catch(() => {});
     try {
       const hospitalData = await hospitalService.getById(params.id);
@@ -101,6 +104,7 @@ export default function HospitalDetalhePage() {
       if (!hospitalData) {
         logger.error("Hospital não encontrado");
         setLoading(false);
+        setLoadingSurgeries(false);
         return;
       }
 
@@ -135,16 +139,11 @@ export default function HospitalDetalhePage() {
         contact: hospitalData.contactName || "",
         contactPhone: maskPhone(hospitalData.contactPhone || ""),
       });
-      // Buscar solicitações cirúrgicas deste hospital
+      // Solicitações cirúrgicas deste hospital (já filtradas no backend)
       setLoadingSurgeries(true);
       try {
         const surgeryData = await surgeryPromise;
-        const filtered = (surgeryData.records ?? []).filter(
-          (r: any) =>
-            String(r.hospitalId) === String(hospitalData.id) ||
-            String(r.hospital?.id) === String(hospitalData.id),
-        );
-        setSurgeryRequests(filtered);
+        setSurgeryRequests(surgeryData.records ?? []);
       } catch {
         setSurgeryRequests([]);
       } finally {

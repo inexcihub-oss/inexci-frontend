@@ -142,10 +142,10 @@ function SearchableMultiSelect({
           }}
           onFocus={openDropdown}
           placeholder={selected.length === 0 ? placeholder : ""}
-          className="flex-1 text-sm outline-none bg-transparent text-neutral-700 placeholder:text-neutral-400"
+          className="flex-1 min-w-0 text-sm outline-none bg-transparent text-neutral-700 placeholder:text-neutral-400"
         />
         {selected.length > 0 && (
-          <span className="flex-shrink-0 text-xs font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
+          <span className="flex-shrink-0 whitespace-nowrap text-xs font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
             {selected.length} selecionado{selected.length > 1 ? "s" : ""}
           </span>
         )}
@@ -157,9 +157,9 @@ function SearchableMultiSelect({
           {selectedOptions.map((opt) => (
             <span
               key={opt.id}
-              className="inline-flex items-center gap-1 text-xs bg-teal-50 text-teal-700 border border-teal-200 rounded-full pl-2.5 pr-1.5 py-1"
+              className="inline-flex max-w-full items-center gap-1 text-xs bg-teal-50 text-teal-700 border border-teal-200 rounded-full pl-2.5 pr-1.5 py-1"
             >
-              {opt.name}
+              <span className="truncate">{opt.name}</span>
               {!lockedSelectedIds.includes(opt.id) && (
                 <button
                   type="button"
@@ -410,8 +410,13 @@ export function DoctorAccessSection({
           placeholder="Buscar médico..."
         />
 
-        <div className="flex justify-end pt-4">
-          <Button onClick={handleSave} isLoading={saving} disabled={!isDirty}>
+        <div className="flex pt-4 sm:justify-end">
+          <Button
+            onClick={handleSave}
+            isLoading={saving}
+            disabled={!isDirty}
+            className="w-full sm:w-auto"
+          >
             Salvar acessos
           </Button>
         </div>

@@ -1,942 +1,500 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
+import Loading from "@/components/ui/Loading";
+import { Toast } from "@/components/ui/Toast";
 import {
   surgeryRequestService,
   SurgeryRequestListItem,
 } from "@/services/surgery-request.service";
-import Loading from "@/components/ui/Loading";
-import { AgendaExportModal } from "@/components/agenda/AgendaExportModal";
+import {
+  appointmentService,
+  Appointment,
+  AppointmentStatus,
+  APPOINTMENT_TYPE_LABELS,
+} from "@/services/appointment.service";
 import { AgendaDoctorFilter } from "@/components/agenda/AgendaDoctorFilter";
-import { filterAgendaByDoctors } from "@/lib/export-agenda";
+import { AgendaExportModal } from "@/components/agenda/AgendaExportModal";
+import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
+import { AppointmentDetailModal } from "@/components/agenda/AppointmentDetailModal";
+import { DatePickerPopover } from "@/components/ui/DatePickerPopover";
+import { CalendarTimeGrid } from "@/components/agenda/CalendarTimeGrid";
+import { CalendarMonthView } from "@/components/agenda/CalendarMonthView";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { useToast } from "@/hooks/useToast";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
+import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
+import {
+  CalEvent,
+  MONTHS,
+  MONTHS_SHORT,
+  addDays,
+  addMonths,
+  appointmentToEvent,
+  dateKey,
+  hhmm,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+  surgeryToEvent,
+} from "@/lib/calendar";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const MONTHS = [
-  "Janeiro",
-  "Fevereiro",
-  "Março",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
-];
-
-const MONTHS_SHORT = [
-  "Jan",
-  "Fev",
-  "Mar",
-  "Abr",
-  "Mai",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Set",
-  "Out",
-  "Nov",
-  "Dez",
-];
-
-const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-// Configurações de status usadas em filtros, badges e calendário
-const STATUS_CONFIG: Record<
-  number,
-  { label: string; badge: string; dot: string; filter: string; active: string }
-> = {
-  5: {
-    label: "Agendada",
-    badge: "bg-teal-50 text-teal-700 border border-teal-200",
-    dot: "bg-teal-500",
-    filter: "border border-teal-300 text-teal-700 hover:bg-teal-50",
-    active: "bg-teal-600 text-white border border-teal-600",
-  },
-  6: {
-    label: "Realizada",
-    badge: "bg-green-50 text-green-700 border border-green-200",
-    dot: "bg-green-500",
-    filter: "border border-green-300 text-green-700 hover:bg-green-50",
-    active: "bg-green-600 text-white border border-green-600",
-  },
-};
-
-// Status 7 e 8 são exibidos como "Realizada" (já passaram do estágio)
-const DISPLAY_STATUS = (status: number): number => (status >= 6 ? 6 : status);
-
-// Ordem de prioridade de cor para o calendário (status mais relevante por dia)
-const STATUS_PRIORITY = [5, 6]; // Agendada > Realizada
-
-function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  if (hours === "00" && minutes === "00") return "—";
-  return `${hours}:${minutes}`;
-}
-
-function formatDateLong(dateStr: string): string {
-  const date = new Date(dateStr);
-  const day = date.getDate().toString().padStart(2, "0");
-  const month = MONTHS_SHORT[date.getMonth()];
-  const year = date.getFullYear();
-  return `${day} ${month} ${year}`;
-}
-
-/** Retorna "YYYY-MM-DD" em horário local */
-function toLocalDateKey(dateStr: string): string {
-  const d = new Date(dateStr);
-  const y = d.getFullYear();
-  const m = (d.getMonth() + 1).toString().padStart(2, "0");
-  const day = d.getDate().toString().padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-// ─── Tipos internos ───────────────────────────────────────────────────────────
-
-type AgendaItem = SurgeryRequestListItem & { surgeryDate: string };
-type StatusFilter = 5 | 6 | null; // null = todos
-
-/** Mapa de data → { total, statusPrioritário } para colorir o calendário */
-type DayEventMap = Map<string, { count: number; topStatus: number }>;
-
-// ─── Componente de chip de status ─────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: number }) {
-  const cfg = STATUS_CONFIG[DISPLAY_STATUS(status)];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-        cfg?.badge ?? "bg-gray-50 text-gray-600 border border-gray-200",
-      )}
-    >
-      {cfg?.label ?? String(status)}
-    </span>
-  );
-}
-
-// ─── Card de cirurgia ─────────────────────────────────────────────────────────
-
-function SurgeryCard({
-  item,
-  onClick,
-}: {
-  item: AgendaItem;
-  onClick: () => void;
-}) {
-  const time = formatTime(item.surgeryDate);
-  const [hh, mm] = time !== "—" ? time.split(":") : ["", ""];
-  const dotColor =
-    STATUS_CONFIG[DISPLAY_STATUS(item.status)]?.dot ?? "bg-gray-400";
-
-  return (
-    <button
-      onClick={onClick}
-      className="w-full text-left flex items-start gap-3 p-3 rounded-xl border border-neutral-100 hover:bg-neutral-50 hover:border-neutral-200 transition-all duration-150 group"
-    >
-      {/* Horário */}
-      <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-teal-50 border border-teal-100">
-        {time !== "—" ? (
-          <>
-            <span className="text-base font-bold text-teal-700 leading-none">
-              {hh}
-            </span>
-            <span className="text-xs text-teal-500 leading-none">:{mm}</span>
-          </>
-        ) : (
-          <span className="text-sm text-teal-400">—</span>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          <span className={cn("w-2 h-2 rounded-full shrink-0", dotColor)} />
-          <span className="text-sm font-semibold text-neutral-900 truncate">
-            {item.patient?.name ?? "Paciente não informado"}
-          </span>
-          <StatusBadge status={item.status} />
-        </div>
-        <p className="text-xs text-neutral-500 truncate mb-1">
-          {item.procedure?.name ??
-            (item.tussProcedure?.description || item.procedureName) ??
-            "Procedimento não informado"}
-        </p>
-        <div className="flex items-center gap-3 text-xs text-neutral-400 flex-wrap">
-          {item.hospital?.name && (
-            <span className="flex items-center gap-1">
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
-              {item.hospital.name}
-            </span>
-          )}
-          {item.doctor?.name && (
-            <span className="flex items-center gap-1">
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              Dr. {item.doctor.name}
-            </span>
-          )}
-          {item.protocol && (
-            <span className="text-neutral-300">#{item.protocol}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Seta */}
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        className="shrink-0 mt-1 text-neutral-300 group-hover:text-neutral-500 transition-colors"
-      >
-        <polyline points="9 18 15 12 9 6" />
-      </svg>
-    </button>
-  );
-}
-
-// ─── Mini calendário ──────────────────────────────────────────────────────────
-
-/** Cores de fundo para o dia baseado no status prioritário */
-const DAY_STATUS_BG: Record<
-  number,
-  { bg: string; text: string; ring: string }
-> = {
-  5: { bg: "bg-teal-100", text: "text-teal-800", ring: "ring-1 ring-teal-400" },
-  4: {
-    bg: "bg-amber-100",
-    text: "text-amber-800",
-    ring: "ring-1 ring-amber-400",
-  },
-  6: {
-    bg: "bg-green-100",
-    text: "text-green-800",
-    ring: "ring-1 ring-green-400",
-  },
-};
-
-function MiniCalendar({
-  year,
-  month,
-  dayEventMap,
-  selectedDay,
-  onSelectDay,
-  onPrevMonth,
-  onNextMonth,
-}: {
-  year: number;
-  month: number; // 0-based
-  dayEventMap: DayEventMap;
-  selectedDay: string | null;
-  onSelectDay: (day: string | null) => void;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
-}) {
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const todayKey = toLocalDateKey(new Date().toISOString());
-
-  const cells: (number | null)[] = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  return (
-    <div className="bg-white rounded-2xl border border-neutral-100 p-4 shadow-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={onPrevMonth}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 transition-colors"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-        <span className="text-sm font-semibold text-neutral-900">
-          {MONTHS[month]} {year}
-        </span>
-        <button
-          onClick={onNextMonth}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 transition-colors"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Dias da semana */}
-      <div className="grid grid-cols-7 mb-1">
-        {WEEKDAYS.map((d) => (
-          <div
-            key={d}
-            className="text-center text-xs font-medium text-neutral-400 py-1"
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-
-      {/* Células */}
-      <div className="grid grid-cols-7 gap-y-1">
-        {cells.map((day, idx) => {
-          if (!day) return <div key={idx} />;
-
-          const key = `${year}-${(month + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
-          const event = dayEventMap.get(key);
-          const hasEvent = !!event;
-          const isSelected = selectedDay === key;
-          const isToday = key === todayKey;
-          const eventStyle = hasEvent ? DAY_STATUS_BG[event!.topStatus] : null;
-
-          return (
-            <button
-              key={idx}
-              onClick={() => onSelectDay(isSelected ? null : key)}
-              className={cn(
-                "relative flex flex-col items-center justify-center h-9 rounded-lg text-sm transition-all duration-100",
-                isSelected
-                  ? "bg-teal-600 text-white font-bold shadow-md"
-                  : hasEvent
-                    ? cn(
-                        eventStyle!.bg,
-                        eventStyle!.text,
-                        eventStyle!.ring,
-                        "font-semibold",
-                      )
-                    : isToday
-                      ? "bg-teal-50 text-teal-700 font-semibold"
-                      : "hover:bg-neutral-50 text-neutral-700",
-              )}
-              title={
-                hasEvent
-                  ? `${event!.count} cirurgia${event!.count > 1 ? "s" : ""}`
-                  : undefined
-              }
-            >
-              <span className="leading-none">{day}</span>
-              {/* Contador de cirurgias no canto superior direito */}
-              {hasEvent && !isSelected && (
-                <span
-                  className={cn(
-                    "absolute -top-1 -right-1 min-w-[16px] h-4 px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center",
-                    event!.topStatus === 5
-                      ? "bg-teal-600 text-white"
-                      : event!.topStatus === 4
-                        ? "bg-amber-500 text-white"
-                        : "bg-green-600 text-white",
-                  )}
-                >
-                  {event!.count}
-                </span>
-              )}
-              {/* Ponto indicador quando selecionado (sem contador) */}
-              {isSelected && hasEvent && (
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white/70" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Legenda de cores */}
-      <div className="mt-3 flex flex-col gap-1.5">
-        {STATUS_PRIORITY.map((s) => (
-          <div key={s} className="flex items-center gap-2">
-            <span
-              className={cn(
-                "w-3 h-3 rounded-full shrink-0",
-                STATUS_CONFIG[s].dot,
-              )}
-            />
-            <span className="text-xs text-neutral-500">
-              {STATUS_CONFIG[s].label}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Limpar filtro de data */}
-      {selectedDay && (
-        <button
-          onClick={() => onSelectDay(null)}
-          className="mt-3 w-full text-xs text-teal-600 hover:text-teal-800 transition-colors text-center font-medium"
-        >
-          Limpar filtro de data
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ─── Componente principal ─────────────────────────────────────────────────────
+type CalView = "day" | "week" | "month";
+type KindFilter = "all" | "appointment" | "surgery";
+type SurgeryItem = SurgeryRequestListItem & { surgeryDate: string };
 
 export default function AgendaPage() {
   const router = useRouter();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
+  const queryClient = useQueryClient();
+  const { toast, showSuccess, showError, hideToast } = useToast();
+  const { can } = useAuth();
+  // Cirurgias vêm de `GET /surgery-requests/agenda`, que exige Solicitações —
+  // um eixo diferente de Agenda. Quem só tem Agenda enxerga só as consultas.
+  const podeVerCirurgias = can(Permission.SOLICITACOES);
 
-  const today = new Date();
-  const [calMonth, setCalMonth] = useState(today.getMonth());
-  const [calYear, setCalYear] = useState(today.getFullYear());
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [showMobileCalendar, setShowMobileCalendar] = useState(false);
-  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [view, setView] = useState<CalView>("week");
+  const [anchor, setAnchor] = useState<Date>(() => new Date());
+  const [kindFilter, setKindFilter] = useState<KindFilter>("all");
   const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
 
-  const { data: availableDoctors = [] } = useAvailableDoctors();
-  const showDoctorFilter = availableDoctors.length > 1;
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [newModal, setNewModal] = useState<{
+    date?: string;
+    time?: string;
+    appointment?: Appointment;
+  } | null>(null);
+  const [detail, setDetail] = useState<Appointment | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  // ── Buscar cirurgias (TanStack Query — P10/P13) ─────────────────────────────
-  // Janela visível: mês corrente ± 7 dias para cobrir as células adjacentes do
-  // grid (item 3.5 — busca por intervalo de surgeryDate). `keepPreviousData`
-  // evita flash de vazio ao navegar entre meses.
-  const { data, isFetching, isError, refetch } = useQuery({
-    queryKey: ["surgery-requests", "agenda", calYear, calMonth],
-    queryFn: () => {
-      const from = new Date(calYear, calMonth, 1);
-      from.setDate(from.getDate() - 7);
-      from.setHours(0, 0, 0, 0);
-      const to = new Date(calYear, calMonth + 1, 0);
-      to.setDate(to.getDate() + 7);
-      to.setHours(23, 59, 59, 999);
-      return surgeryRequestService.getAgenda(
-        from.toISOString(),
-        to.toISOString(),
-      );
-    },
+  const { data: doctors = [] } = useAvailableDoctors();
+  const doctorNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    doctors.forEach((d) => m.set(d.id, d.name));
+    return m;
+  }, [doctors]);
+
+  // ── Intervalo visível + dias ────────────────────────────────────────────────
+  const { rangeFrom, rangeTo, days } = useMemo(() => {
+    if (view === "day") {
+      const s = startOfDay(anchor);
+      return { rangeFrom: s, rangeTo: addDays(s, 1), days: [s] };
+    }
+    if (view === "week") {
+      const s = startOfWeek(anchor);
+      const ds = Array.from({ length: 7 }, (_, i) => addDays(s, i));
+      return { rangeFrom: s, rangeTo: addDays(s, 7), days: ds };
+    }
+    const gridStart = startOfWeek(startOfMonth(anchor));
+    return { rangeFrom: gridStart, rangeTo: addDays(gridStart, 42), days: [] };
+  }, [view, anchor]);
+
+  const fromISO = rangeFrom.toISOString();
+  const toISO = rangeTo.toISOString();
+
+  const surgeriesQuery = useQuery({
+    queryKey: ["surgery-requests", "agenda", fromISO, toISO],
+    queryFn: () => surgeryRequestService.getAgenda(fromISO, toISO),
+    placeholderData: keepPreviousData,
+    enabled: podeVerCirurgias,
+  });
+  const appointmentsQuery = useQuery({
+    queryKey: ["appointments", "agenda", fromISO, toISO],
+    queryFn: () =>
+      appointmentService.getAgenda({ from: fromISO, to: toISO }),
     placeholderData: keepPreviousData,
   });
 
-  const loading = isFetching;
-  const error = isError
-    ? "Não foi possível carregar a agenda. Tente novamente."
-    : null;
+  // `enabled: false` livra a busca inicial de 403, mas `refetch()` ignora
+  // `enabled` (dispara a chamada de qualquer jeito) — por isso a query de
+  // cirurgias também precisa sair de `loading`/`isError` explicitamente
+  // quando falta a permissão, e `refetchAll` não pode chamar
+  // `surgeriesQuery.refetch()` nesse caso.
+  const loading =
+    appointmentsQuery.isFetching ||
+    (podeVerCirurgias && surgeriesQuery.isFetching);
+  const isError =
+    appointmentsQuery.isError || (podeVerCirurgias && surgeriesQuery.isError);
 
-  const items = useMemo<AgendaItem[]>(() => {
-    const records = data?.records ?? [];
-    return records
+  const refetchAll = useCallback(() => {
+    if (podeVerCirurgias) surgeriesQuery.refetch();
+    appointmentsQuery.refetch();
+  }, [podeVerCirurgias, surgeriesQuery, appointmentsQuery]);
+
+  const invalidateAppointments = () =>
+    queryClient.invalidateQueries({ queryKey: ["appointments", "agenda"] });
+
+  // ── Eventos unificados ──────────────────────────────────────────────────────
+  const allEvents = useMemo<CalEvent[]>(() => {
+    const appts = (appointmentsQuery.data ?? []).map((a) =>
+      appointmentToEvent(a, APPOINTMENT_TYPE_LABELS[a.type]),
+    );
+    const surgeries = (surgeriesQuery.data?.records ?? [])
       .filter(
-        (r): r is AgendaItem =>
+        (r): r is SurgeryItem =>
           typeof r.surgeryDate === "string" && r.surgeryDate.length > 0,
       )
-      .sort(
-        (a, b) =>
-          new Date(a.surgeryDate).getTime() - new Date(b.surgeryDate).getTime(),
-      );
-  }, [data]);
+      .map(surgeryToEvent);
+    return [...appts, ...surgeries];
+  }, [appointmentsQuery.data, surgeriesQuery.data]);
 
-  const itemsByDoctor = useMemo(
-    () => filterAgendaByDoctors(items, selectedDoctorIds),
-    [items, selectedDoctorIds],
-  );
+  const events = useMemo(() => {
+    let list = allEvents;
+    if (kindFilter !== "all") list = list.filter((e) => e.kind === kindFilter);
+    if (selectedDoctorIds.length > 0)
+      list = list.filter(
+        (e) => e.doctorId && selectedDoctorIds.includes(e.doctorId),
+      );
+    return list;
+  }, [allEvents, kindFilter, selectedDoctorIds]);
+
+  const counts = useMemo(() => {
+    const scoped =
+      selectedDoctorIds.length > 0
+        ? allEvents.filter(
+            (e) => e.doctorId && selectedDoctorIds.includes(e.doctorId),
+          )
+        : allEvents;
+    return {
+      all: scoped.length,
+      appointment: scoped.filter((e) => e.kind === "appointment").length,
+      surgery: scoped.filter((e) => e.kind === "surgery").length,
+    };
+  }, [allEvents, selectedDoctorIds]);
 
   const countByDoctorId = useMemo(() => {
-    const counts: Record<string, number> = {};
-    items.forEach((item) => {
-      const doctorId = item.doctor?.id;
-      if (!doctorId) return;
-      counts[doctorId] = (counts[doctorId] ?? 0) + 1;
+    const m: Record<string, number> = {};
+    allEvents.forEach((e) => {
+      if (e.doctorId) m[e.doctorId] = (m[e.doctorId] ?? 0) + 1;
     });
-    return counts;
-  }, [items]);
+    return m;
+  }, [allEvents]);
 
-  const hasActiveFilters =
-    statusFilter !== null || selectedDay !== null || selectedDoctorIds.length > 0;
+  // ── Mutations ───────────────────────────────────────────────────────────────
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: AppointmentStatus }) =>
+      appointmentService.updateStatus(id, status),
+    onMutate: ({ id }) => setBusyId(id),
+    onSuccess: () => {
+      showSuccess("Consulta atualizada.");
+      setDetail(null);
+      invalidateAppointments();
+    },
+    onError: (err) =>
+      showError(getApiErrorMessage(err, "Não foi possível atualizar.")),
+    onSettled: () => setBusyId(null),
+  });
 
-  // ── Navegar para o mês corrente ao limpar filtro de dia ────────────────────
-  const handleSelectDay = useCallback((day: string | null) => {
-    setSelectedDay(day);
-    if (day) {
-      const d = new Date(day + "T00:00:00");
-      setCalMonth(d.getMonth());
-      setCalYear(d.getFullYear());
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => appointmentService.delete(id),
+    onMutate: (id) => setBusyId(id),
+    onSuccess: () => {
+      showSuccess("Consulta excluída.");
+      setDetail(null);
+      invalidateAppointments();
+    },
+    onError: (err) =>
+      showError(getApiErrorMessage(err, "Não foi possível excluir.")),
+    onSettled: () => setBusyId(null),
+  });
+
+  // ── Interações ──────────────────────────────────────────────────────────────
+  const handleEventClick = (ev: CalEvent) => {
+    if (ev.kind === "appointment" && ev.appointment) {
+      setDetail(ev.appointment);
+    } else if (ev.surgery) {
+      router.push(`/solicitacao/${ev.surgery.id}`);
     }
-  }, []);
+  };
 
-  // ── Derivados ──────────────────────────────────────────────────────────────
+  const handleSlotClick = (date: Date) => {
+    setNewModal({ date: dateKey(date), time: hhmm(date) });
+  };
 
-  /** Mapa data→{count, topStatus} considerando filtros de médico (ignora status/dia) */
-  const dayEventMap = useMemo<DayEventMap>(() => {
-    const map: DayEventMap = new Map();
-    itemsByDoctor.forEach((i) => {
-      const key = toLocalDateKey(i.surgeryDate);
-      const displayStatus = DISPLAY_STATUS(i.status);
-      const prev = map.get(key);
-      const prevPriorityIdx = prev
-        ? STATUS_PRIORITY.indexOf(prev.topStatus)
-        : Infinity;
-      const currPriorityIdx = STATUS_PRIORITY.indexOf(displayStatus);
-      map.set(key, {
-        count: (prev?.count ?? 0) + 1,
-        topStatus:
-          currPriorityIdx < prevPriorityIdx
-            ? displayStatus
-            : (prev?.topStatus ?? displayStatus),
-      });
-    });
-    return map;
-  }, [itemsByDoctor]);
+  const navigate = (dir: -1 | 1) => {
+    setAnchor((a) =>
+      view === "month"
+        ? addMonths(a, dir)
+        : addDays(a, dir * (view === "week" ? 7 : 1)),
+    );
+  };
 
-  /** Itens filtrados por status, médico e por dia */
-  const filteredItems = useMemo(() => {
-    let result = itemsByDoctor;
-    if (statusFilter !== null)
-      result = result.filter((i) => DISPLAY_STATUS(i.status) === statusFilter);
-    if (selectedDay)
-      result = result.filter(
-        (i) => toLocalDateKey(i.surgeryDate) === selectedDay,
-      );
-    return result;
-  }, [itemsByDoctor, statusFilter, selectedDay]);
-
-  /** Agrupa por data local */
-  const groupedByDate = useMemo(() => {
-    const map = new Map<string, AgendaItem[]>();
-    filteredItems.forEach((item) => {
-      const key = toLocalDateKey(item.surgeryDate);
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(item);
-    });
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [filteredItems]);
-
-  // ── Helpers de navegação do calendário ────────────────────────────────────
-  const prevMonth = useCallback(() => {
-    if (calMonth === 0) {
-      setCalMonth(11);
-      setCalYear((y) => y - 1);
-    } else setCalMonth((m) => m - 1);
-  }, [calMonth]);
-
-  const nextMonth = useCallback(() => {
-    if (calMonth === 11) {
-      setCalMonth(0);
-      setCalYear((y) => y + 1);
-    } else setCalMonth((m) => m + 1);
-  }, [calMonth]);
+  const title = useMemo(() => {
+    if (view === "day") {
+      return `${anchor.getDate()} de ${MONTHS[anchor.getMonth()]} de ${anchor.getFullYear()}`;
+    }
+    if (view === "month") {
+      return `${MONTHS[anchor.getMonth()]} ${anchor.getFullYear()}`;
+    }
+    const s = days[0];
+    const e = days[6];
+    if (s.getMonth() === e.getMonth()) {
+      return `${s.getDate()} – ${e.getDate()} de ${MONTHS[s.getMonth()]} ${s.getFullYear()}`;
+    }
+    return `${s.getDate()} ${MONTHS_SHORT[s.getMonth()]} – ${e.getDate()} ${MONTHS_SHORT[e.getMonth()]} ${e.getFullYear()}`;
+  }, [view, anchor, days]);
 
   const exportDefaults = useMemo(() => {
-    if (selectedDay) {
-      return {
-        from: selectedDay,
-        to: selectedDay,
-      };
-    }
+    const key = (d: Date) => dateKey(d);
+    return { from: key(rangeFrom), to: key(addDays(rangeTo, -1)) };
+  }, [rangeFrom, rangeTo]);
 
-    const from = `${calYear}-${(calMonth + 1).toString().padStart(2, "0")}-01`;
-    const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
-    const to = `${calYear}-${(calMonth + 1).toString().padStart(2, "0")}-${lastDay.toString().padStart(2, "0")}`;
-    return { from, to };
-  }, [selectedDay, calYear, calMonth]);
+  const KIND_TABS: { key: KindFilter; label: string; count: number }[] = [
+    { key: "all", label: "Tudo", count: counts.all },
+    { key: "appointment", label: "Consultas", count: counts.appointment },
+    ...(podeVerCirurgias
+      ? [{ key: "surgery" as const, label: "Cirurgias", count: counts.surgery }]
+      : []),
+  ];
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const VIEW_TABS: { key: CalView; label: string }[] = [
+    { key: "day", label: "Dia" },
+    { key: "week", label: "Semana" },
+    { key: "month", label: "Mês" },
+  ];
 
   return (
     <PageContainer>
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Header */}
-        <div className="flex flex-col gap-3 px-4 lg:px-6 py-4 border-b border-neutral-100 shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/icons/calendar-schedule.svg"
-                alt="Agenda"
-                width={22}
-                height={22}
-              />
-              <h1 className="text-lg font-bold text-neutral-900">Agenda</h1>
-            </div>
-            <div className="flex items-center gap-2">
+        {/* ── Header ─────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-2 px-3 lg:px-6 py-2.5 border-b border-neutral-100 shrink-0">
+          {/* Linha 1: navegação + data + ações */}
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-0.5 shrink-0">
               <button
-                onClick={() => setIsExportOpen(true)}
-                className="flex items-center gap-1.5 h-9 px-3 py-1.5 border border-neutral-100 rounded-xl bg-white hover:bg-neutral-50 transition-colors"
+                onClick={() => navigate(-1)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 transition-colors"
+                aria-label="Anterior"
               >
-                <Image
-                  src="/icons/download.svg"
-                  alt="Exportar"
-                  width={16}
-                  height={16}
-                />
-                <span className="text-xs sm:text-sm text-black">Exportar</span>
-              </button>
-              <button
-                onClick={() => refetch()}
-                disabled={loading}
-                className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-800 transition-colors disabled:opacity-40"
-                title="Atualizar"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className={loading ? "animate-spin" : ""}
-                >
-                  <polyline points="23 4 23 10 17 10" />
-                  <polyline points="1 20 1 14 7 14" />
-                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="15 18 9 12 15 6" />
                 </svg>
-                Atualizar
+              </button>
+              <button
+                onClick={() => navigate(1)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 transition-colors"
+                aria-label="Próximo"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
               </button>
             </div>
-          </div>
 
-          {/* Filtros de status */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setStatusFilter(null)}
-              className={cn(
-                "px-3 py-1.5 rounded-full text-xs font-semibold transition-all",
-                statusFilter === null
-                  ? "bg-neutral-900 text-white"
-                  : "border border-neutral-300 text-neutral-600 hover:bg-neutral-50",
-              )}
-            >
-              Todos
-              <span className="ml-1.5 opacity-70">{itemsByDoctor.length}</span>
-            </button>
-            {([5, 6] as const).map((s) => {
-              const count = itemsByDoctor.filter(
-                (i) => DISPLAY_STATUS(i.status) === s,
-              ).length;
-              const cfg = STATUS_CONFIG[s];
-              return (
+            <DatePickerPopover
+              className="flex-1 min-w-0"
+              value={anchor}
+              onChange={setAnchor}
+              trigger={
                 <button
-                  key={s}
-                  onClick={() => setStatusFilter(statusFilter === s ? null : s)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-semibold transition-all",
-                    statusFilter === s ? cfg.active : cfg.filter,
-                  )}
+                  className="flex items-center gap-1 h-8 pl-1.5 pr-1 rounded-lg hover:bg-neutral-50 transition-colors min-w-0 max-w-full"
+                  title="Escolher data"
                 >
-                  {cfg.label}
-                  <span className="ml-1.5 opacity-80">{count}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {showDoctorFilter && (
-            <AgendaDoctorFilter
-              doctors={availableDoctors}
-              selectedDoctorIds={selectedDoctorIds}
-              onChange={setSelectedDoctorIds}
-              countByDoctorId={countByDoctorId}
-            />
-          )}
-        </div>
-
-        {/* Corpo principal */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Coluna esquerda — calendário e resumo */}
-          <div className="hidden lg:flex flex-col gap-4 w-72 shrink-0 p-4 border-r border-neutral-100 overflow-y-auto">
-            <MiniCalendar
-              year={calYear}
-              month={calMonth}
-              dayEventMap={dayEventMap}
-              selectedDay={selectedDay}
-              onSelectDay={handleSelectDay}
-              onPrevMonth={prevMonth}
-              onNextMonth={nextMonth}
-            />
-
-            {/* Resumo */}
-            <div className="bg-white rounded-2xl border border-neutral-100 p-4 shadow-sm">
-              <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-3">
-                Resumo
-              </p>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-neutral-600">Total</span>
-                  <span className="text-sm font-semibold text-neutral-900">
-                    {itemsByDoctor.length}
-                  </span>
-                </div>
-                {([5, 6] as const).map((s) => (
-                  <div key={s} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "w-2.5 h-2.5 rounded-full",
-                          STATUS_CONFIG[s].dot,
-                        )}
-                      />
-                      <span className="text-sm text-neutral-600">
-                        {STATUS_CONFIG[s].label}
-                      </span>
-                    </div>
-                    <span className="text-sm font-semibold text-neutral-700">
-                      {
-                        itemsByDoctor.filter((i) => DISPLAY_STATUS(i.status) === s)
-                          .length
-                      }
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Coluna direita — lista de cirurgias */}
-          <div className="flex-1 overflow-y-auto">
-            {/* Mobile: botão para abrir/fechar calendário */}
-            <div className="lg:hidden">
-              <button
-                onClick={() => setShowMobileCalendar((v) => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 border-b border-neutral-100 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 transition-colors"
-              >
-                <span className="flex items-center gap-2">
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="text-teal-600"
-                  >
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
+                  <h1 className="text-sm lg:text-base font-bold text-neutral-900 capitalize truncate">
+                    {title}
+                  </h1>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-neutral-400 shrink-0">
+                    <polyline points="6 9 12 15 18 9" />
                   </svg>
-                  {showMobileCalendar
-                    ? "Ocultar calendário"
-                    : selectedDay
-                      ? `Calendário · ${formatDateLong(selectedDay)}`
-                      : `${MONTHS[calMonth]} ${calYear}`}
-                </span>
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className={cn(
-                    "transition-transform duration-200",
-                    showMobileCalendar ? "rotate-180" : "",
-                  )}
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-
-              {showMobileCalendar && (
-                <div className="px-4 py-3 border-b border-neutral-100 bg-neutral-50">
-                  <MiniCalendar
-                    year={calYear}
-                    month={calMonth}
-                    dayEventMap={dayEventMap}
-                    selectedDay={selectedDay}
-                    onSelectDay={(day) => {
-                      handleSelectDay(day);
-                      setShowMobileCalendar(false);
-                    }}
-                    onPrevMonth={prevMonth}
-                    onNextMonth={nextMonth}
-                  />
-                </div>
-              )}
-            </div>
+                </button>
+              }
+            />
 
             {loading && (
-              <div className="flex items-center justify-center h-64">
-                <Loading size="md" />
-              </div>
+              <span className="shrink-0">
+                <Loading size="sm" />
+              </span>
             )}
 
-            {!loading && error && (
-              <div className="flex flex-col items-center justify-center h-64 gap-3 px-4">
-                <p className="text-sm text-red-500 text-center">{error}</p>
+            <button
+              onClick={() => setNewModal({})}
+              className="flex items-center gap-1.5 h-8 px-2 sm:px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span className="text-xs font-semibold hidden sm:inline">Nova consulta</span>
+            </button>
+
+            {podeVerCirurgias && (
+              <button
+                onClick={() => setIsExportOpen(true)}
+                className="flex items-center justify-center w-8 h-8 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors shrink-0"
+                title="Exportar"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </button>
+            )}
+
+            <button
+              onClick={refetchAll}
+              disabled={loading}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-50 transition-colors disabled:opacity-40 shrink-0"
+              title="Atualizar"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={loading ? "animate-spin" : ""}>
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Linha 2: Hoje + visão + filtros */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setAnchor(new Date())}
+              className="h-8 px-3 rounded-lg border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors shrink-0"
+            >
+              Hoje
+            </button>
+
+            <div className="flex items-center bg-neutral-100 rounded-lg p-0.5 shrink-0">
+              {VIEW_TABS.map((v) => (
                 <button
-                  onClick={() => refetch()}
-                  className="text-sm text-teal-600 hover:text-teal-800 underline"
+                  key={v.key}
+                  onClick={() => setView(v.key)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
+                    view === v.key
+                      ? "bg-white text-neutral-900 shadow-sm"
+                      : "text-neutral-500 hover:text-neutral-800",
+                  )}
                 >
-                  Tentar novamente
+                  {v.label}
                 </button>
-              </div>
-            )}
+              ))}
+            </div>
 
-            {!loading && !error && groupedByDate.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-64 gap-3 px-4">
-                <Image
-                  src="/icons/calendar-schedule.svg"
-                  alt="Sem cirurgias"
-                  width={40}
-                  height={40}
-                  className="opacity-30"
-                />
-                <p className="text-sm text-neutral-400 text-center">
-                  {selectedDay
-                    ? `Nenhuma cirurgia encontrada para ${formatDateLong(selectedDay)}.`
-                    : statusFilter !== null
-                      ? `Nenhuma cirurgia com status "${STATUS_CONFIG[statusFilter].label}" no momento.`
-                      : selectedDoctorIds.length > 0
-                        ? "Nenhuma cirurgia encontrada para os médicos selecionados."
-                        : "Nenhuma cirurgia agendada no momento."}
-                </p>
-                {hasActiveFilters && (
-                  <button
-                    onClick={() => {
-                      setSelectedDay(null);
-                      setStatusFilter(null);
-                      setSelectedDoctorIds([]);
-                    }}
-                    className="text-xs text-teal-600 hover:text-teal-800 underline"
-                  >
-                    Limpar filtros
-                  </button>
+            <div className="w-px h-5 bg-neutral-200 hidden sm:block" />
+
+            {KIND_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setKindFilter(tab.key)}
+                className={cn(
+                  "px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0",
+                  kindFilter === tab.key
+                    ? "bg-neutral-900 text-white"
+                    : "border border-neutral-300 text-neutral-600 hover:bg-neutral-50",
                 )}
-              </div>
-            )}
+              >
+                {tab.label}
+                <span className="ml-1.5 opacity-70">{tab.count}</span>
+              </button>
+            ))}
 
-            {!loading && !error && groupedByDate.length > 0 && (
-              <div className="px-4 lg:px-6 py-4 space-y-6">
-                {groupedByDate.map(([dateKey, surgeries]) => {
-                  const date = new Date(dateKey + "T00:00:00");
-                  const todayKey = toLocalDateKey(new Date().toISOString());
-                  const isToday = dateKey === todayKey;
-                  const isPast = dateKey < todayKey;
-
-                  return (
-                    <div key={dateKey}>
-                      {/* Cabeçalho do grupo */}
-                      <div className="flex items-center gap-3 mb-3">
-                        <div
-                          className={cn(
-                            "flex flex-col items-center justify-center w-12 h-12 rounded-xl shrink-0",
-                            isToday
-                              ? "bg-teal-600"
-                              : isPast
-                                ? "bg-neutral-100"
-                                : "bg-teal-50",
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              "text-lg font-bold leading-none",
-                              isToday
-                                ? "text-white"
-                                : isPast
-                                  ? "text-neutral-500"
-                                  : "text-teal-700",
-                            )}
-                          >
-                            {date.getDate()}
-                          </span>
-                          <span
-                            className={cn(
-                              "text-xs leading-none mt-0.5",
-                              isToday
-                                ? "text-teal-100"
-                                : isPast
-                                  ? "text-neutral-400"
-                                  : "text-teal-500",
-                            )}
-                          >
-                            {MONTHS_SHORT[date.getMonth()]}
-                          </span>
-                        </div>
-
-                        <div>
-                          <p className="text-sm font-semibold text-neutral-900">
-                            {WEEKDAYS[date.getDay()]}, {date.getDate()} de{" "}
-                            {MONTHS[date.getMonth()]} de {date.getFullYear()}
-                            {isToday && (
-                              <span className="ml-2 text-xs font-medium text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full">
-                                Hoje
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-neutral-400">
-                            {surgeries.length}{" "}
-                            {surgeries.length === 1 ? "cirurgia" : "cirurgias"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Cards */}
-                      <div className="flex flex-col gap-2">
-                        {surgeries.map((item) => (
-                          <SurgeryCard
-                            key={item.id}
-                            item={item}
-                            onClick={() =>
-                              router.push(`/solicitacao/${item.id}`)
-                            }
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+            {doctors.length > 1 && (
+              <div className="sm:ml-auto">
+                <AgendaDoctorFilter
+                  doctors={doctors}
+                  selectedDoctorIds={selectedDoctorIds}
+                  onChange={setSelectedDoctorIds}
+                  countByDoctorId={countByDoctorId}
+                />
               </div>
             )}
           </div>
         </div>
+
+        {/* ── Corpo ──────────────────────────────────────────────── */}
+        {isError ? (
+          <div className="flex flex-col items-center justify-center flex-1 gap-3 px-4">
+            <p className="text-sm text-red-500 text-center">
+              Não foi possível carregar a agenda.
+            </p>
+            <button
+              onClick={refetchAll}
+              className="text-sm text-teal-600 hover:text-teal-800 underline"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        ) : view === "month" ? (
+          <CalendarMonthView
+            anchor={anchor}
+            events={events}
+            onEventClick={handleEventClick}
+            onSelectDay={(day) => {
+              setAnchor(day);
+              setView("day");
+            }}
+          />
+        ) : (
+          <CalendarTimeGrid
+            days={days}
+            events={events}
+            onEventClick={handleEventClick}
+            onSlotClick={handleSlotClick}
+          />
+        )}
       </div>
+
+      {/* ── Modais ─────────────────────────────────────────────── */}
+      {newModal && (
+        <NewAppointmentModal
+          isOpen
+          onClose={() => setNewModal(null)}
+          onSaved={() => {
+            showSuccess(
+              newModal.appointment ? "Consulta atualizada." : "Consulta agendada.",
+            );
+            invalidateAppointments();
+          }}
+          defaultDate={newModal.date ?? null}
+          defaultTime={newModal.time ?? null}
+          appointment={newModal.appointment ?? null}
+        />
+      )}
+
+      {detail && (
+        <AppointmentDetailModal
+          appointment={detail}
+          doctorName={
+            detail.doctorId ? doctorNameById.get(detail.doctorId) : undefined
+          }
+          busy={busyId === detail.id}
+          onClose={() => setDetail(null)}
+          onEdit={() => {
+            const appt = detail;
+            setDetail(null);
+            setNewModal({ appointment: appt });
+          }}
+          onStartAttendance={() => router.push(`/atendimento/${detail.id}`)}
+          onChangeStatus={(status) =>
+            statusMutation.mutate({ id: detail.id, status })
+          }
+          onDelete={() => deleteMutation.mutate(detail.id)}
+        />
+      )}
 
       <AgendaExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         defaultFrom={exportDefaults.from}
         defaultTo={exportDefaults.to}
-        defaultStatusFilter={statusFilter}
-        availableDoctors={availableDoctors}
+        defaultStatusFilter={null}
+        availableDoctors={doctors}
         defaultDoctorIds={selectedDoctorIds}
       />
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
     </PageContainer>
   );
 }

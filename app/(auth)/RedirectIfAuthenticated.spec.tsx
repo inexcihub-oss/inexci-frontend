@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { RedirectIfAuthenticated } from "./RedirectIfAuthenticated";
+import { Permission } from "@/lib/permissions";
 
 let pathname = "/login";
 
@@ -8,9 +9,14 @@ vi.mock("next/navigation", () => ({
   usePathname: () => pathname,
 }));
 
-let authState: { isAuthenticated: boolean; loading: boolean } = {
+let authState: {
+  isAuthenticated: boolean;
+  loading: boolean;
+  permissions: Permission[];
+} = {
   isAuthenticated: false,
   loading: false,
+  permissions: [Permission.SOLICITACOES],
 };
 
 vi.mock("@/contexts/AuthContext", () => ({
@@ -26,7 +32,11 @@ describe("RedirectIfAuthenticated", () => {
     vi.clearAllMocks();
     localStorage.clear();
     pathname = "/login";
-    authState = { isAuthenticated: false, loading: false };
+    authState = {
+      isAuthenticated: false,
+      loading: false,
+      permissions: [Permission.SOLICITACOES],
+    };
     Object.defineProperty(window, "location", {
       configurable: true,
       value: { ...originalLocation, replace: locationReplaceMock },
@@ -50,20 +60,28 @@ describe("RedirectIfAuthenticated", () => {
     expect(locationReplaceMock).not.toHaveBeenCalled();
   });
 
-  it("redireciona usuário autenticado para a área logada (navegação dura)", () => {
-    authState = { isAuthenticated: true, loading: false };
+  it("redireciona usuário autenticado para a casa da sua área (navegação dura)", () => {
+    authState = {
+      isAuthenticated: true,
+      loading: false,
+      permissions: [Permission.SOLICITACOES],
+    };
     render(
       <RedirectIfAuthenticated>
         <div>formulário de login</div>
       </RedirectIfAuthenticated>,
     );
-    expect(locationReplaceMock).toHaveBeenCalledWith("/solicitacoes-cirurgicas");
+    expect(locationReplaceMock).toHaveBeenCalledWith("/dashboard");
     // Não renderiza o formulário enquanto redireciona (evita flash).
     expect(screen.queryByText("formulário de login")).not.toBeInTheDocument();
   });
 
   it("não redireciona enquanto a sessão ainda está carregando", () => {
-    authState = { isAuthenticated: false, loading: true };
+    authState = {
+      isAuthenticated: false,
+      loading: true,
+      permissions: [Permission.SOLICITACOES],
+    };
     render(
       <RedirectIfAuthenticated>
         <div>conteúdo</div>
@@ -73,7 +91,11 @@ describe("RedirectIfAuthenticated", () => {
   });
 
   it("mostra o formulário imediatamente quando carregando sem indício de sessão", () => {
-    authState = { isAuthenticated: false, loading: true };
+    authState = {
+      isAuthenticated: false,
+      loading: true,
+      permissions: [Permission.SOLICITACOES],
+    };
     render(
       <RedirectIfAuthenticated>
         <div>formulário de login</div>
@@ -87,7 +109,11 @@ describe("RedirectIfAuthenticated", () => {
       "user",
       JSON.stringify({ id: "user-1", email: "a@b.com" }),
     );
-    authState = { isAuthenticated: false, loading: true };
+    authState = {
+      isAuthenticated: false,
+      loading: true,
+      permissions: [Permission.SOLICITACOES],
+    };
     render(
       <RedirectIfAuthenticated>
         <div>formulário de login</div>
@@ -98,7 +124,11 @@ describe("RedirectIfAuthenticated", () => {
 
   it("não expulsa usuário autenticado da confirmação de e-mail (rota isenta)", () => {
     pathname = "/confirmar-email";
-    authState = { isAuthenticated: true, loading: false };
+    authState = {
+      isAuthenticated: true,
+      loading: false,
+      permissions: [Permission.SOLICITACOES],
+    };
     render(
       <RedirectIfAuthenticated>
         <div>confirmação por token</div>
@@ -110,25 +140,57 @@ describe("RedirectIfAuthenticated", () => {
 
   it("redireciona usuário autenticado para fora do /primeiro-acesso", () => {
     pathname = "/primeiro-acesso";
-    authState = { isAuthenticated: true, loading: false };
+    authState = {
+      isAuthenticated: true,
+      loading: false,
+      permissions: [Permission.SOLICITACOES],
+    };
     render(
       <RedirectIfAuthenticated>
         <div>criar sua senha</div>
       </RedirectIfAuthenticated>,
     );
-    expect(locationReplaceMock).toHaveBeenCalledWith("/solicitacoes-cirurgicas");
+    expect(locationReplaceMock).toHaveBeenCalledWith("/dashboard");
     expect(screen.queryByText("criar sua senha")).not.toBeInTheDocument();
   });
 
   it("redireciona usuário autenticado para fora do /forgot-password", () => {
     pathname = "/forgot-password";
-    authState = { isAuthenticated: true, loading: false };
+    authState = {
+      isAuthenticated: true,
+      loading: false,
+      permissions: [Permission.SOLICITACOES],
+    };
     render(
       <RedirectIfAuthenticated>
         <div>recuperar senha</div>
       </RedirectIfAuthenticated>,
     );
-    expect(locationReplaceMock).toHaveBeenCalledWith("/solicitacoes-cirurgicas");
+    expect(locationReplaceMock).toHaveBeenCalledWith("/dashboard");
     expect(screen.queryByText("recuperar senha")).not.toBeInTheDocument();
+  });
+
+  it("manda cada usuário para a casa da SUA área, não para uma rota fixa", () => {
+    // Regressão do destino fixo `/solicitacoes-cirurgicas`: quem não tem a
+    // área caía numa rota proibida e era devolvido pelo PermissionRouteGuard.
+    // Como aqui a navegação é dura, cada ida e volta custava um reload inteiro.
+    const casos: [Permission[], string][] = [
+      [[Permission.ATENDIMENTO], "/atendimento"],
+      [[Permission.AGENDA], "/agenda"],
+      [[Permission.ADMINISTRACAO], "/colaboradores"],
+      [[], "/configuracoes"],
+    ];
+
+    for (const [permissions, destino] of casos) {
+      locationReplaceMock.mockClear();
+      authState = { isAuthenticated: true, loading: false, permissions };
+      const { unmount } = render(
+        <RedirectIfAuthenticated>
+          <div>formulário de login</div>
+        </RedirectIfAuthenticated>,
+      );
+      expect(locationReplaceMock).toHaveBeenCalledWith(destino);
+      unmount();
+    }
   });
 });

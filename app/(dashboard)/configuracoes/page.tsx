@@ -202,8 +202,12 @@ function NotificationItem({
 const BILLING_TAB_ENABLED = true;
 
 function ConfiguracoesPageInner() {
-  const { user, updateUser, isAdmin, subscription, refreshSubscription } =
+  const { user, updateUser, isAccountOwner, subscription, refreshSubscription } =
     useAuth();
+  // O backend recusa checkout/portal do Stripe para quem não é dono da conta
+  // — sem esse filtro a aba oferece um botão que sempre falha. A regra vive
+  // no AuthContext (`isAccountOwner`) para não divergir dos outros pontos que
+  // dependem dela (banner de billing, aviso de bloqueio).
   const queryClient = useQueryClient();
   const { toast, showToast, hideToast } = useToast();
   const searchParams = useSearchParams();
@@ -222,6 +226,7 @@ function ConfiguracoesPageInner() {
 
   const initialTab = (): SettingsTab => {
     const tab = searchParams.get("tab");
+    if (tab === "plan" && !isAccountOwner) return "profile";
     if (
       tab === "header" ||
       tab === "profile" ||
@@ -1262,7 +1267,7 @@ function ConfiguracoesPageInner() {
                 icon={Bell}
                 label="Notificações"
               />
-              {isAdmin && BILLING_TAB_ENABLED && (
+              {isAccountOwner && BILLING_TAB_ENABLED && (
                 <TabButton
                   active={activeTab === "plan"}
                   onClick={() => setActiveTab("plan")}
@@ -1298,7 +1303,7 @@ function ConfiguracoesPageInner() {
             {activeTab === "profile" && renderProfileTab()}
             {activeTab === "notifications" && renderNotificationsTab()}
             {activeTab === "plan" &&
-              isAdmin &&
+              isAccountOwner &&
               BILLING_TAB_ENABLED &&
               renderPlanTab()}
             {activeTab === "security" && renderSecurityTab()}

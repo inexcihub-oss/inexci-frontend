@@ -7,13 +7,18 @@ import { AlertTriangle, ArrowUpRight, Clock, XCircle } from "lucide-react";
 
 /**
  * Banner global exibido no topo do dashboard quando a assinatura
- * exige aten\u00e7\u00e3o do admin (trial expirando, inadimpl\u00eancia, suspens\u00e3o,
- * cota saturada). Apenas admins veem este banner.
+ * exige aten\u00e7\u00e3o (trial expirando, inadimpl\u00eancia, suspens\u00e3o, cota saturada).
+ *
+ * Apenas o **dono da conta** v\u00ea este banner: todo CTA daqui aponta para a aba
+ * de plano, que s\u00f3 existe para ele \u2014 um admin delegado era mandado para uma
+ * aba que o redireciona de volta para "profile". Quem n\u00e3o \u00e9 dono descobre o
+ * bloqueio no ponto da a\u00e7\u00e3o, pelo `BillingLimitModal`, que orienta a procurar
+ * o administrador da conta.
  */
 export function BillingStatusBanner() {
-  const { isAdmin, subscription } = useAuth();
+  const { isAccountOwner, subscription } = useAuth();
 
-  if (!isAdmin || !subscription) return null;
+  if (!isAccountOwner || !subscription) return null;
 
   const { status, cancelAtPeriodEnd, currentPeriodEnd, pastDueSince } =
     subscription.subscription;

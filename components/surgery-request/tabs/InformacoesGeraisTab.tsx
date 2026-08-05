@@ -33,6 +33,9 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   surgery_auth_document: "Guia de Autorização",
   additional_document: "Outro Documento",
   sc_creation_source: "Documento de origem",
+  consent_term: "Termo de Consentimento",
+  // Copiado do prontuário quando a SC nasce de uma indicação no atendimento.
+  exam_referral: "Solicitação de Exames",
 };
 
 function formatDocumentType(key: string): string {

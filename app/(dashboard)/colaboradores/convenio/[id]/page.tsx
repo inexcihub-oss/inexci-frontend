@@ -92,10 +92,13 @@ export default function ConvenioDetalhePage() {
 
   const loadData = async () => {
     setLoading(true);
-    // Disparada em paralelo com o getById abaixo (não depende de
-    // healthPlanData — o filtro por convênio é feito em memória).
-    // `.catch(noop)` evita unhandled rejection em retorno antecipado.
-    const surgeryPromise = surgeryRequestService.getAll();
+    // Disparada em paralelo com o getById abaixo: o filtro por convênio é
+    // aplicado no backend a partir do id da rota, sem depender de
+    // healthPlanData. `.catch(noop)` evita unhandled rejection em retorno
+    // antecipado.
+    const surgeryPromise = surgeryRequestService.getAll({
+      healthPlanId: params.id,
+    });
     surgeryPromise.catch(() => {});
     try {
       const healthPlanData = await healthPlanService.getById(params.id);
@@ -103,6 +106,7 @@ export default function ConvenioDetalhePage() {
       if (!healthPlanData) {
         logger.error("Convênio não encontrado");
         setLoading(false);
+        setLoadingSurgeries(false);
         return;
       }
 
@@ -143,16 +147,11 @@ export default function ConvenioDetalhePage() {
         contactPhone: maskPhone(healthPlanData.authorizationPhone || ""),
         contactEmail: healthPlanData.authorizationEmail || "",
       });
-      // Buscar solicitações cirúrgicas deste convênio
+      // Solicitações cirúrgicas deste convênio (já filtradas no backend)
       setLoadingSurgeries(true);
       try {
         const surgeryData = await surgeryPromise;
-        const filtered = (surgeryData.records ?? []).filter(
-          (r: any) =>
-            String(r.healthPlanId) === String(healthPlanData.id) ||
-            String(r.health_plan?.id) === String(healthPlanData.id),
-        );
-        setSurgeryRequests(filtered);
+        setSurgeryRequests(surgeryData.records ?? []);
       } catch {
         setSurgeryRequests([]);
       } finally {

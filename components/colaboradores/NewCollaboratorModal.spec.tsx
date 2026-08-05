@@ -379,3 +379,99 @@ describe("NewCollaboratorModal — defaultIsDoctor", () => {
     expect(toggle).toHaveAttribute("aria-checked", "true");
   });
 });
+
+/**
+ * Tarefa 18: bloco de permissões dentro do modal de criação.
+ */
+describe("NewCollaboratorModal — permissões", () => {
+  const defaultProps = {
+    isOpen: true,
+    onClose: vi.fn(),
+    onSuccess: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("nasce com o perfil completo (agenda, atendimento e solicitações)", () => {
+    render(<NewCollaboratorModal {...defaultProps} />);
+
+    expect(screen.getByRole("checkbox", { name: /Agenda/i })).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: /Atendimento/i }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: /Solicitações/i }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: /Administração/i }),
+    ).not.toBeChecked();
+  });
+
+  it("trava agenda, atendimento e solicitações ao ativar o toggle de médico, sem salvar", async () => {
+    render(<NewCollaboratorModal {...defaultProps} />);
+
+    const agenda = screen.getByRole("checkbox", { name: /Agenda/i });
+    const atendimento = screen.getByRole("checkbox", { name: /Atendimento/i });
+    const solicitacoes = screen.getByRole("checkbox", {
+      name: /Solicitações/i,
+    });
+
+    expect(agenda).toBeEnabled();
+    expect(atendimento).toBeEnabled();
+    expect(solicitacoes).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("switch"));
+
+    expect(agenda).toBeChecked();
+    expect(agenda).toBeDisabled();
+    expect(atendimento).toBeChecked();
+    expect(atendimento).toBeDisabled();
+    expect(solicitacoes).toBeChecked();
+    expect(solicitacoes).toBeDisabled();
+
+    // Destrava ao desligar de novo, sem precisar salvar/recarregar
+    await userEvent.click(screen.getByRole("switch"));
+
+    expect(agenda).toBeEnabled();
+    expect(atendimento).toBeEnabled();
+    expect(solicitacoes).toBeEnabled();
+  });
+
+  it("envia as permissões escolhidas no payload de criação", async () => {
+    (collaboratorService.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "new-3",
+    });
+
+    render(<NewCollaboratorModal {...defaultProps} />);
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Nome completo"),
+      "Maria Silva",
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("(21) 98765-4321"),
+      "21987654321",
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("colaborador@mail.com"),
+      "maria@email.com",
+    );
+
+    // Desmarca Solicitações — não deve mais aparecer no payload
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /Solicitações/i }),
+    );
+
+    await userEvent.click(screen.getByText("Adicionar colaborador"));
+
+    await waitFor(() => {
+      expect(collaboratorService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          permissions: ["agenda", "atendimento"],
+        }),
+      );
+    });
+  });
+});

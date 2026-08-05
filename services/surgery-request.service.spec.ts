@@ -75,3 +75,77 @@ describe("surgeryRequestService — PDF downloads", () => {
     });
   });
 });
+
+describe("surgeryRequestService.getAll", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("envia apenas o take quando não há filtro", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { total: 0, records: [] },
+    });
+
+    await surgeryRequestService.getAll();
+
+    expect(api.get).toHaveBeenCalledWith("/surgery-requests", {
+      params: { take: 1000 },
+    });
+  });
+
+  it("envia patientId junto com o take quando filtrado", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { total: 1, records: [{ id: "sr-1" }] },
+    });
+
+    const result = await surgeryRequestService.getAll({ patientId: "p-1" });
+
+    expect(api.get).toHaveBeenCalledWith("/surgery-requests", {
+      params: { take: 1000, patientId: "p-1" },
+    });
+    expect(result.records).toHaveLength(1);
+  });
+
+  it("não envia a chave patientId quando o valor é undefined", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { total: 0, records: [] },
+    });
+
+    await surgeryRequestService.getAll({ patientId: undefined });
+
+    expect(api.get).toHaveBeenCalledWith("/surgery-requests", {
+      params: { take: 1000 },
+    });
+  });
+
+  it("envia hospitalId, healthPlanId e doctorId quando informados", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { total: 0, records: [] },
+    });
+
+    await surgeryRequestService.getAll({
+      hospitalId: "h-1",
+      healthPlanId: "hp-1",
+      doctorId: "d-1",
+    });
+
+    expect(api.get).toHaveBeenCalledWith("/surgery-requests", {
+      params: {
+        take: 1000,
+        hospitalId: "h-1",
+        healthPlanId: "hp-1",
+        doctorId: "d-1",
+      },
+    });
+  });
+
+  it("omite as chaves dos filtros ausentes", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { total: 0, records: [] },
+    });
+
+    await surgeryRequestService.getAll({ hospitalId: "h-1" });
+
+    expect(api.get).toHaveBeenCalledWith("/surgery-requests", {
+      params: { take: 1000, hospitalId: "h-1" },
+    });
+  });
+});
