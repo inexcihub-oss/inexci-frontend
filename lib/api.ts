@@ -83,6 +83,23 @@ export function refreshSession(): Promise<string> {
   return refreshPromise;
 }
 
+/**
+ * O refresh falhou porque a sessão acabou — ou só porque não deu agora?
+ *
+ * 400/401/403 vêm do próprio `/auth/refresh` quando o cookie não existe mais,
+ * expirou ou teve a família revogada: aí a sessão morreu de fato e o certo é
+ * mandar para o login. Qualquer outra coisa — 429 do throttler, 5xx, queda de
+ * rede, requisição abortada por navegação — é transitória, e tratá-la como
+ * sessão inválida expulsava o usuário com o refresh token ainda válido no
+ * cookie. `/auth/refresh` é chamado a cada carregamento de página; quem navega
+ * rápido (ou tem várias abas) estoura o limite de 10/min e caía na tela de
+ * login sem ter feito nada de errado.
+ */
+export function isSessaoExpirada(erro: unknown): boolean {
+  const status = (erro as AxiosError | undefined)?.response?.status;
+  return status === 400 || status === 401 || status === 403;
+}
+
 const PUBLIC_AUTH_PATHS = [
   "/login",
   "/cadastro",
@@ -160,7 +177,9 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        forceLogout();
+        // Só derruba a sessão quando ela realmente acabou: um 429 do throttler
+        // ou uma falha de rede não invalidam o cookie de refresh.
+        if (isSessaoExpirada(refreshError)) forceLogout();
         return Promise.reject(refreshError);
       }
     }

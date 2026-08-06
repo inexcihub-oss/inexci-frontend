@@ -13,7 +13,7 @@ import { logger } from "@/lib/logger";
 import { User, SubscriptionDetail } from "@/types";
 import { authService } from "@/services/auth.service";
 import { clearAccessToken, getAccessToken } from "@/lib/auth-token";
-import { refreshSession } from "@/lib/api";
+import { isSessaoExpirada, refreshSession } from "@/lib/api";
 import { clearSessionFlag, hasSessionHint } from "@/lib/session-flag";
 import { consentService } from "@/services/consent.service";
 import { billingService } from "@/services/billing.service";
@@ -180,16 +180,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           try {
             await refreshSession();
-          } catch {
-            // Cookie de refresh ausente ou expirado — sessão inválida.
-            clearAccessToken();
-            clearSessionFlag();
-            localStorage.removeItem("user");
-            setUser(null);
-            setConsents(null);
-            setSubscription(null);
-            setLoading(false);
-            return;
+          } catch (erro) {
+            if (isSessaoExpirada(erro)) {
+              // Cookie de refresh ausente ou expirado — sessão inválida.
+              clearAccessToken();
+              clearSessionFlag();
+              localStorage.removeItem("user");
+              setUser(null);
+              setConsents(null);
+              setSubscription(null);
+              setLoading(false);
+              return;
+            }
+            // Falha transitória (429 do throttler, 5xx, rede): o cookie de
+            // refresh continua valendo, então a sessão não acabou. Seguir para
+            // o `/auth/me` sem access token só produziria outro 401 → outro
+            // refresh throttled → tela de login. Renderiza com o usuário em
+            // cache e deixa a próxima chamada renovar o token; se a sessão
+            // estiver mesmo morta, o 401 seguinte cai no `forceLogout`.
+            logger.warn("Refresh transitório falhou; mantendo a sessão:", erro);
+            const cache = authService.getCurrentUser();
+            if (cache) {
+              setUser(cache);
+              applyConsentsFromUser(cache);
+              setLoading(false);
+              return;
+            }
           }
         }
 
