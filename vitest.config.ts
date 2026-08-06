@@ -10,6 +10,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.{test,spec}.{ts,tsx}"],
+    // A suíte Playwright vive em `e2e/` e usa `*.e2e.ts`; a exclusão é
+    // salvaguarda para o dia em que alguém nomear um arquivo de lá `.spec.ts`
+    // — o Vitest tentaria rodá-lo em jsdom e quebraria por falta de browser.
+    exclude: ["node_modules/**", ".next/**", "e2e/**"],
     css: false,
     alias: {
       "@": path.resolve(__dirname),

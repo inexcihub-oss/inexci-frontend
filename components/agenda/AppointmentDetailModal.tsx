@@ -11,6 +11,7 @@ import {
   APPOINTMENT_TYPE_LABELS,
 } from "@/services/appointment.service";
 import { cn } from "@/lib/utils";
+import { capitalizeFirst, formatDoctorName } from "@/lib/formatters";
 import { Clock, User, Tag, FileText } from "lucide-react";
 
 const STATUS_BADGE: Record<AppointmentStatus, string> = {
@@ -56,7 +57,9 @@ function formatWhen(iso: string, durationMinutes: number): string {
   }).format(start);
   const t = (d: Date) =>
     `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
-  return `${day} · ${t(start)} às ${t(end)}`;
+  // Só a inicial em maiúscula: `capitalize` de CSS subia também as
+  // preposições ("Quarta-Feira, 05 De Agosto").
+  return capitalizeFirst(`${day} · ${t(start)} às ${t(end)}`);
 }
 
 interface Props {
@@ -114,7 +117,7 @@ export function AppointmentDetailModal({
 
         <div className="flex flex-col gap-2 text-sm text-neutral-600">
           <Row icon={<Clock className="w-4 h-4" />}>
-            <span className="capitalize">
+            <span>
               {formatWhen(appointment.scheduledAt, appointment.durationMinutes)}
             </span>
           </Row>
@@ -123,7 +126,9 @@ export function AppointmentDetailModal({
             {appointment.durationMinutes} min
           </Row>
           {doctorName && (
-            <Row icon={<User className="w-4 h-4" />}>Dr(a). {doctorName}</Row>
+            <Row icon={<User className="w-4 h-4" />}>
+              {formatDoctorName(doctorName)}
+            </Row>
           )}
           {appointment.notes && (
             <Row icon={<FileText className="w-4 h-4" />}>{appointment.notes}</Row>

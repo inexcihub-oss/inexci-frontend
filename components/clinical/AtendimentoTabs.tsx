@@ -23,10 +23,12 @@ import {
   clinicalRecordService,
   ClinicalRecord,
 } from "@/services/clinical-record.service";
+import { healthPlanService } from "@/services/health-plan.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/http-error";
-import { formatCPF, formatPhone } from "@/lib/formatters";
+import { logger } from "@/lib/logger";
+import { capitalizeFirst, formatCPF, formatPhone } from "@/lib/formatters";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -127,6 +129,31 @@ export function AtendimentoTabs({
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [documentsVersion, setDocumentsVersion] = useState(0);
+  // O paciente guarda só o id do convênio; o nome vem do cadastro de convênios.
+  // `healthPlanType` (Apartamento / Enfermaria) é a acomodação, não o plano —
+  // era o que o card mostrava, sob o rótulo "Convênio".
+  const [healthPlanName, setHealthPlanName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const id = patient.healthPlanId;
+    if (!id) {
+      setHealthPlanName(null);
+      return;
+    }
+    let active = true;
+    healthPlanService
+      .getById(id)
+      .then((plan) => {
+        if (active) setHealthPlanName(plan?.name ?? null);
+      })
+      .catch((err) => {
+        logger.error("Erro ao carregar o convênio do paciente:", err);
+        if (active) setHealthPlanName(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [patient.healthPlanId]);
 
   const finalized = !!record?.finalizedAt;
   // Registrar o atendimento é ato do médico: secretária e assistente abrem a
@@ -280,11 +307,11 @@ export function AtendimentoTabs({
                 </span>
               )}
             </div>
-            <p className="text-xs text-neutral-500 capitalize truncate">
-              {formatDateTime(appointment.scheduledAt)}
-              {patientAge !== null && (
-                <span className="normal-case"> · {patientAge} anos</span>
-              )}
+            {/* Só a inicial em maiúscula: `capitalize` de CSS subia também as
+                preposições ("Quarta-Feira, 05 De Agosto Às 14:00"). */}
+            <p className="text-xs text-neutral-500 truncate">
+              {capitalizeFirst(formatDateTime(appointment.scheduledAt))}
+              {patientAge !== null && <span> · {patientAge} anos</span>}
             </p>
           </div>
 
@@ -356,7 +383,8 @@ export function AtendimentoTabs({
                 <ContextItem
                   icon={<ShieldCheck className="w-4 h-4" />}
                   label="Convênio"
-                  value={patient.healthPlanType || "—"}
+                  value={healthPlanName || "—"}
+                  hint={healthPlanName ? patient.healthPlanType : undefined}
                 />
                 <ContextItem
                   icon={<IdCard className="w-4 h-4" />}
@@ -418,6 +446,8 @@ export function AtendimentoTabs({
                 <ClinicalDocumentActions
                   ensureRecordId={ensureRecordId}
                   cidCodes={fields.cidCodes}
+                  patientId={patient.id}
+                  doctorId={appointment.doctorId}
                   onEmitted={(document) => {
                     showSuccess(`${document.name} emitido.`);
                     // A aba Documentos já pode estar montada — sem isto, o
@@ -495,10 +525,13 @@ function ContextItem({
   icon,
   label,
   value,
+  hint,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
+  /** Complemento secundário (ex.: a acomodação, ao lado do convênio). */
+  hint?: string;
 }) {
   return (
     <div className="flex items-center gap-2.5 rounded-xl border border-neutral-100 bg-white px-3 py-2.5 shadow-sm">
@@ -511,6 +544,9 @@ function ContextItem({
         </p>
         <p className="text-sm font-medium text-neutral-800 truncate leading-none">
           {value}
+          {hint && (
+            <span className="text-neutral-400 font-normal"> · {hint}</span>
+          )}
         </p>
       </div>
     </div>

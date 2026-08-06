@@ -65,6 +65,8 @@ describe("ClinicalDocumentActions", () => {
         ensureRecordId={ensureRecordId}
         onEmitted={onEmitted}
         cidCodes={hasCid ? [recordCid] : []}
+        patientId="p-1"
+        doctorId="d-1"
       />,
     );
 
@@ -221,7 +223,13 @@ describe("ClinicalDocumentActions", () => {
   });
 
   describe("pré-visualização", () => {
-    it("abre a prévia do documento sem emitir", async () => {
+    /**
+     * D-11: a prévia chamava `ensureRecordId()` e, num atendimento ainda não
+     * salvo, criava uma ficha vazia no prontuário — enquanto o banner dizia
+     * que nada tinha sido salvo. Visualizar manda o paciente e a ficha em
+     * memória; a ficha só é gravada em "Emitir".
+     */
+    it("abre a prévia sem gravar a ficha nem emitir", async () => {
       const user = userEvent.setup();
       setup();
 
@@ -232,16 +240,63 @@ describe("ClinicalDocumentActions", () => {
       await waitFor(() =>
         expect(clinicalRecordService.previewDocument).toHaveBeenCalledWith(
           "prescription",
-          expect.objectContaining({
-            clinicalRecordId: "cr-1",
+          {
+            patientId: "p-1",
+            doctorId: "d-1",
             items: [{ name: "Dipirona" }],
-          }),
+            notes: undefined,
+          },
         ),
       );
-      // Conferir não pode registrar nada no prontuário.
+      // Conferir não pode registrar nada no prontuário — nem a ficha.
+      expect(ensureRecordId).not.toHaveBeenCalled();
       expect(clinicalRecordService.generatePrescription).not.toHaveBeenCalled();
       expect(onEmitted).not.toHaveBeenCalled();
       expect(await screen.findByTestId("document-preview")).toBeDefined();
+    });
+
+    // O pedido de exame imprime a hipótese diagnóstica da ficha; sem os CIDs em
+    // memória, a prévia sairia diferente do documento emitido logo depois.
+    it("leva os CIDs da ficha em memória na prévia do encaminhamento", async () => {
+      const user = userEvent.setup();
+      setup();
+
+      await user.click(screen.getByRole("button", { name: /exames/i }));
+      await user.type(screen.getByLabelText(/exame 1/i), "Hemograma");
+      await user.click(screen.getByRole("button", { name: /visualizar/i }));
+
+      await waitFor(() =>
+        expect(clinicalRecordService.previewDocument).toHaveBeenCalledWith(
+          "exam-referral",
+          expect.objectContaining({
+            patientId: "p-1",
+            doctorId: "d-1",
+            cidCodes: [recordCid],
+          }),
+        ),
+      );
+      expect(ensureRecordId).not.toHaveBeenCalled();
+    });
+
+    // Emitir continua persistindo a ficha antes — o documento é registro do
+    // atendimento e sai da ficha gravada.
+    it("ainda persiste a ficha ao emitir a partir da prévia", async () => {
+      const user = userEvent.setup();
+      setup();
+
+      await user.click(screen.getByRole("button", { name: /receita/i }));
+      await user.type(screen.getByLabelText(/medicamento/i), "Dipirona");
+      await user.click(screen.getByRole("button", { name: /visualizar/i }));
+
+      const emitir = await screen.findByTestId("document-preview").then(() =>
+        screen.getAllByRole("button", { name: /emitir/i }),
+      );
+      await user.click(emitir[emitir.length - 1]);
+
+      await waitFor(() => expect(ensureRecordId).toHaveBeenCalled());
+      expect(clinicalRecordService.generatePrescription).toHaveBeenCalledWith(
+        expect.objectContaining({ clinicalRecordId: "cr-1" }),
+      );
     });
 
     it("não pré-visualiza receita sem medicamento", async () => {

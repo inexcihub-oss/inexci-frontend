@@ -63,14 +63,28 @@ export interface PrescriptionItem {
   instructions?: string;
 }
 
-export interface PrescriptionPayload {
-  clinicalRecordId: string;
+/**
+ * De onde o documento tira paciente e médico.
+ *
+ * Emitir sempre parte da ficha gravada. A **prévia** aceita a segunda forma:
+ * paciente + ficha em memória. Sem isso, "Visualizar" precisava salvar a ficha
+ * antes de montar o HTML e criava prontuário vazio só para conferir.
+ */
+export type ClinicalDocumentTarget =
+  | { clinicalRecordId: string }
+  | {
+      patientId: string;
+      doctorId?: string;
+      /** CIDs da ficha ainda não salva. */
+      cidCodes?: ClinicalCidCode[];
+    };
+
+export interface PrescriptionFields {
   items: PrescriptionItem[];
   notes?: string;
 }
 
-export interface MedicalCertificatePayload {
-  clinicalRecordId: string;
+export interface MedicalCertificateFields {
   restDays?: number;
   startDate?: string;
   /** Reaproveita o CID da ficha quando `cid` não é informado. */
@@ -86,12 +100,22 @@ export interface ExamReferralItem {
   observation?: string;
 }
 
-export interface ExamReferralPayload {
-  clinicalRecordId: string;
+export interface ExamReferralFields {
   exams: ExamReferralItem[];
   clinicalIndication?: string;
   cidCodes?: ClinicalCidCode[];
 }
+
+export type PrescriptionPayload = { clinicalRecordId: string } & PrescriptionFields;
+export type MedicalCertificatePayload = {
+  clinicalRecordId: string;
+} & MedicalCertificateFields;
+export type ExamReferralPayload = {
+  clinicalRecordId: string;
+} & ExamReferralFields;
+
+export type ClinicalDocumentPreviewPayload = ClinicalDocumentTarget &
+  (PrescriptionFields | MedicalCertificateFields | ExamReferralFields);
 
 export const clinicalRecordService = {
   /** Linha do tempo de atendimentos do paciente (mais recentes primeiro). */
@@ -187,13 +211,13 @@ export const clinicalRecordService = {
    * HTML do documento exatamente como será emitido, sem gravar nada — o médico
    * confere antes de assumir o documento. É HTML (e não PDF) porque a prévia
    * serve para olhar na tela: gerar o PDF a cada clique custaria segundos.
+   *
+   * "Sem gravar nada" inclui a própria ficha: o payload pode apontar o paciente
+   * e levar os campos que estão na tela, em vez de exigir uma ficha salva.
    */
   async previewDocument(
     kind: ClinicalDocumentKind,
-    payload:
-      | PrescriptionPayload
-      | MedicalCertificatePayload
-      | ExamReferralPayload,
+    payload: ClinicalDocumentPreviewPayload,
   ): Promise<string> {
     const response = await api.post<{ html: string }>(
       `/clinical-records/documents/${kind}/preview`,

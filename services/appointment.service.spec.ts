@@ -89,6 +89,36 @@ describe("appointmentService", () => {
     });
   });
 
+  // D-15: o backend corta a lista num teto e `total` é a contagem real. A
+  // desigualdade `total > records.length` é o único sinal de corte.
+  describe("getAgendaPage", () => {
+    it("expõe o total do servidor junto dos registros", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { total: 1103, records: [mockAppt] },
+      });
+
+      const result = await appointmentService.getAgendaPage({
+        status: ["completed"],
+        order: "DESC",
+      });
+
+      expect(result.total).toBe(1103);
+      expect(result.records).toHaveLength(1);
+      expect(result.total).toBeGreaterThan(result.records.length);
+    });
+
+    it("sem `total` na resposta, cai para o número de registros (nenhum aviso falso)", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [mockAppt],
+      });
+
+      const result = await appointmentService.getAgendaPage();
+
+      expect(result.total).toBe(1);
+      expect(result.records).toHaveLength(1);
+    });
+  });
+
   describe("getByPatient", () => {
     it("busca o histórico do paciente e mapeia os registros", async () => {
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
