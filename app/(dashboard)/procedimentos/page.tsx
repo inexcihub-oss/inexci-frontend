@@ -25,11 +25,13 @@ import { useDebounce } from "@/hooks";
 import { ProcedureSideSheet } from "@/components/procedures/ProcedureSideSheet";
 import { NewProcedureModelModal } from "@/components/procedures/NewProcedureModelModal";
 import { ProcedureModel } from "@/components/procedures/types";
-import { normalizeTemplateOpmeItems, getTemplateOpmeItemsRaw } from "@/components/procedures/normalize-template-opme";
 import { CreateSurgeryRequestWizard } from "@/components/surgery-request/CreateSurgeryRequestWizard";
 import { NoActiveDoctorModal } from "@/components/surgery-request/NoActiveDoctorModal";
 import { BillingLimitModal } from "@/components/billing/BillingLimitModal";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestTemplateSummary,
+} from "@/services/surgery-request.service";
 import { availableDoctorsService } from "@/services/available-doctors.service";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,41 +41,19 @@ import {
   createDeleteActionColumn,
 } from "@/components/shared/cadastro-table-columns";
 
-/** Converte um template da API para o tipo ProcedureModel usado na UI */
-function templateToModel(t: any): ProcedureModel {
-  const data = t.templateData || {};
+/** Converte o resumo vindo da API para a linha da tabela. */
+function templateToModel(t: SurgeryRequestTemplateSummary): ProcedureModel {
   return {
     id: t.id,
     modelName: t.name,
-    procedureName:
-      data.procedure?.name ||
-      data.procedures?.[0]?.name ||
-      data.procedureName ||
-      "—",
+    procedureName: t.procedureName || "—",
     createdAt: t.createdAt
       ? new Date(t.createdAt).toLocaleDateString("pt-BR")
       : "—",
-    createdBy: t.doctor?.name || "Você",
+    createdBy: t.doctorName || "Você",
     usageCount: t.usageCount ?? 0,
-    documents: (data.requiredDocuments || []).map((d: any, i: number) => ({
-      id: String(i),
-      type: d.type || d,
-      name: d.name || d.type || d,
-    })),
-    opmeItems: normalizeTemplateOpmeItems(
-      getTemplateOpmeItemsRaw(data as Record<string, unknown>),
-    ),
-    tussItems: (data.tussItems || data.procedures || []).map(
-      (p: any, i: number) => ({
-        id: String(i),
-        code: p.tussCode || "",
-        name: p.name || "",
-        quantity: p.quantity || 1,
-      }),
-    ),
-    // Guarda o template_data completo para reuso
-    _raw: t,
-  } as ProcedureModel & { _raw: any };
+    summary: t,
+  };
 }
 
 export default function ProcedimentosPage() {
@@ -92,7 +72,8 @@ export default function ProcedimentosPage() {
   const [hasActiveDoctors, setHasActiveDoctors] = useState<boolean | null>(
     null,
   );
-  const [wizardTemplate, setWizardTemplate] = useState<any>(null);
+  const [wizardTemplate, setWizardTemplate] =
+    useState<SurgeryRequestTemplateSummary | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState({});
   const { showToast } = useToast();
@@ -342,14 +323,16 @@ export default function ProcedimentosPage() {
     procedure?: any;
   }) => {
     try {
-      const created = await surgeryRequestService.createTemplate({
+      await surgeryRequestService.createTemplate({
         name: data.modelName,
         templateData: {
           procedure: data.procedure || null,
           procedureName: data.procedureName,
         },
       });
-      setProcedures((prev) => [templateToModel(created), ...prev]);
+      // A criação devolve o modelo completo, não o resumo da listagem —
+      // recarregar é mais barato que reconstruir a linha na mão.
+      await loadTemplates();
       showToast("Modelo criado com sucesso!", "success");
     } catch {
       showToast("Erro ao criar modelo", "error");

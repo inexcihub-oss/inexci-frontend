@@ -483,9 +483,16 @@ export default function ProcedimentosCirurgicos() {
 
   return (
     <PageContainer>
-      {/* Header */}
-      <div className="flex-none flex items-center gap-2 px-4 py-3 lg:py-6 border-b border-neutral-100">
-        <h1 className="ds-page-title">Solicitações Cirúrgicas</h1>
+      {/*
+        Header — visível só no desktop. No mobile a barra inferior já marca
+        "Solicitações", e o título repetia essa informação ocupando ~52px de
+        uma tela onde o kanban disputa cada pixel. O `<h1>` continua no DOM
+        como `sr-only` para o leitor de tela não perder o marco da página.
+      */}
+      <div className="flex-none flex items-center gap-2 px-4 py-0 lg:py-6 lg:border-b border-neutral-100">
+        <h1 className="ds-page-title sr-only lg:not-sr-only">
+          Solicitações Cirúrgicas
+        </h1>
       </div>
 
       {/* Toolbar */}
@@ -718,8 +725,24 @@ export default function ProcedimentosCirurgicos() {
         </div>
       </div>
 
-      {/* Kanban Board ou Lista */}
-      <div className="flex-1 overflow-hidden px-3 sm:px-4 lg:px-4 py-4 flex flex-col">
+      {/*
+        Kanban Board ou Lista.
+
+        No mobile a altura é **fixa** em 70svh, não um piso: as colunas são
+        `h-full`, e sem altura definida no pai elas resolvem para a altura do
+        conteúdo — uma coluna com 10 cards virava 2.6 mil pixels, arrastando a
+        página junto e levando o cabeçalho da coluna para fora da tela. Com a
+        altura fechada, o cabeçalho fica parado e os cards rolam por dentro,
+        enquanto a rolagem da página serve para tirar o banner do caminho.
+
+        `svh` e não `vh` porque no Safari do iOS o `vh` é medido com a barra de
+        URL recolhida: a coluna nasceria maior que a tela e teria o rodapé
+        sempre cortado.
+
+        No desktop volta a ser item flex do container (`lg:flex-1 lg:h-auto`),
+        ocupando o que sobra da página.
+      */}
+      <div className="h-[70svh] lg:h-auto lg:flex-1 lg:min-h-0 overflow-hidden px-3 sm:px-4 lg:px-4 py-4 flex flex-col">
         {view === "kanban" ? (
           filteredColumns.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-3">

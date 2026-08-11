@@ -211,14 +211,17 @@ export function SendRequestModal({
         name:
           templateName.trim() ||
           `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
+        // O backend sanea o que chega aqui (`sanitizeTemplateData`): entram os
+        // campos do modelo, saem as sobras da SC (ids de item,
+        // `authorizedQuantity`, marcadores de sistema como
+        // `sc_creation_source`).
         templateData: {
           procedure: solicitacao.procedure,
           tussItems: solicitacao.tussItems,
           opmeItems: solicitacao.opmeItems,
           hospital: solicitacao.hospital,
-          hospitalId: solicitacao.hospitalId,
           healthPlan: solicitacao.healthPlan,
-          healthPlanId: solicitacao.healthPlanId,
+          priority: solicitacao.priority,
           requiredDocuments: (solicitacao.documents || []).map((d) => ({
             type: d.key || "",
             name: d.name || d.key || "",

@@ -114,28 +114,9 @@ function toCollaborator(user: BackendUserRecord): Collaborator {
   };
 }
 
-function toDoctor(user: BackendUserRecord): Doctor {
-  return {
-    id: user.id,
-    name: user.name,
-    avatarUrl: user.avatarUrl ?? undefined,
-    email: user.email,
-    phone: user.phone,
-    gender: user.gender,
-    birthDate: user.birthDate,
-    document: user.cpf,
-    cep: user.cep,
-    address: user.address,
-    addressNumber: user.addressNumber,
-    addressComplement: user.addressComplement,
-    city: user.city,
-    state: user.state,
-    status: user.status,
-    doctorProfile: user.doctorProfile || undefined,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-  };
-}
+// `toDoctor` saiu com `getDoctors`/`getDoctorById`, seus únicos chamadores. O
+// tipo `Doctor` continua exportado — a tela de colaborador e o
+// `availableDoctorsService` usam.
 
 export const collaboratorService = {
   /**
@@ -261,24 +242,8 @@ export const collaboratorService = {
     });
   },
 
-  /**
-   * Busca os médicos que pertencem à equipe do administrador da conta.
-   * O próprio administrador é excluído da lista (currentUserId).
-   */
-  async getDoctors(currentUserId?: string): Promise<Doctor[]> {
-    const response = await api.get("/users/doctors");
-    const data = getApiRecords<BackendUserRecord>(response.data);
-
-    return data.filter((user) => user.id !== currentUserId).map(toDoctor);
-  },
-
-  /**
-   * Busca um médico específico por ID
-   */
-  async getDoctorById(doctorId: string): Promise<Doctor | null> {
-    const response = await api.get<BackendUserRecord>(`/users/one`, {
-      params: { id: doctorId },
-    });
-    return toDoctor(response.data);
-  },
+  // `getDoctors` e `getDoctorById` foram removidos: nenhuma tela os chamava.
+  // Quem lista médicos usa `availableDoctorsService.getDoctorsForAccount()`,
+  // que consome a mesma `/users/doctors` e já reduz ao que os seletores
+  // exibem. `getDoctorById` era o último chamador de `/users/one`.
 };

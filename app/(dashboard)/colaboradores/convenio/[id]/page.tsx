@@ -22,11 +22,22 @@ import { useToast } from "@/hooks/useToast";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import { ChevronRight } from "lucide-react";
 
 export default function ConvenioDetalhePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { can } = useAuth();
+  /**
+   * Convênio é cadastro transversal, então quem só tem `agenda` ou
+   * `atendimento` chega até aqui — mas `GET /surgery-requests` exige
+   * `solicitacoes`. Ler `can` no corpo é seguro: o layout do dashboard só
+   * monta os filhos depois que a sessão resolve, então a permissão já é
+   * definitiva quando o `loadData` roda.
+   */
+  const podeVerSolicitacoes = can(Permission.SOLICITACOES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [healthPlan, setHealthPlan] = useState<HealthPlan | null>(null);
@@ -96,10 +107,14 @@ export default function ConvenioDetalhePage() {
     // aplicado no backend a partir do id da rota, sem depender de
     // healthPlanData. `.catch(noop)` evita unhandled rejection em retorno
     // antecipado.
-    const surgeryPromise = surgeryRequestService.getAll({
-      healthPlanId: params.id,
-    });
-    surgeryPromise.catch(() => {});
+    //
+    // Sem `solicitacoes`, a chamada nem sai: o 403 caía nesse mesmo catch e o
+    // painel exibia "0 / Nenhuma solicitação encontrada" — um zero falso,
+    // indistinguível de um convênio que de fato nunca teve cirurgia.
+    const surgeryPromise = podeVerSolicitacoes
+      ? surgeryRequestService.getAll({ healthPlanId: params.id })
+      : null;
+    surgeryPromise?.catch(() => {});
     try {
       const healthPlanData = await healthPlanService.getById(params.id);
 
@@ -148,13 +163,17 @@ export default function ConvenioDetalhePage() {
         contactEmail: healthPlanData.authorizationEmail || "",
       });
       // Solicitações cirúrgicas deste convênio (já filtradas no backend)
-      setLoadingSurgeries(true);
-      try {
-        const surgeryData = await surgeryPromise;
-        setSurgeryRequests(surgeryData.records ?? []);
-      } catch {
-        setSurgeryRequests([]);
-      } finally {
+      if (surgeryPromise) {
+        setLoadingSurgeries(true);
+        try {
+          const surgeryData = await surgeryPromise;
+          setSurgeryRequests(surgeryData.records ?? []);
+        } catch {
+          setSurgeryRequests([]);
+        } finally {
+          setLoadingSurgeries(false);
+        }
+      } else {
         setLoadingSurgeries(false);
       }
     } catch (error) {
@@ -314,7 +333,10 @@ export default function ConvenioDetalhePage() {
         backHref="/convenios"
         itemName={formData.name}
         itemSubtitle="Convênio"
-        sidebarContent={sidebarContent}
+        // `undefined` some com o painel inteiro, inclusive o botão de abrir —
+        // as cirurgias do convênio não são a área de quem só tem `agenda`, e um
+        // aviso fixo sobre algo que ele não veio fazer seria só ruído.
+        sidebarContent={podeVerSolicitacoes ? sidebarContent : undefined}
       >
         {/* Seção: Informações gerais */}
         <FormSection title="Informações gerais">

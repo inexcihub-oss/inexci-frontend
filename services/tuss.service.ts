@@ -20,21 +20,17 @@ export interface SurgeryRequestTussItem {
 // Mantido por compatibilidade
 export interface SurgeryRequestProcedure extends SurgeryRequestTussItem {}
 
+/**
+ * O código TUSS vem de `tuss.json` (sem uuid) e o id do item é gerado pelo
+ * banco — não existe "procedureId" para enviar aqui. O campo chegou a existir
+ * no payload preenchido com o próprio código TUSS e era recusado pelo
+ * `@IsUUID()` do backend, derrubando a inclusão inteira.
+ */
 export interface CreateSurgeryRequestProcedureData {
   surgeryRequestId: string | number;
   procedures: {
-    procedureId: string;
     tussCode: string;
     name: string;
-    quantity: number;
-  }[];
-}
-
-export interface UpdateSurgeryRequestProcedureData {
-  surgeryRequestId: string | number;
-  procedures: {
-    id?: string;
-    procedureId: string;
     quantity: number;
   }[];
 }
@@ -90,20 +86,6 @@ export const tussService = {
       await api.post("/surgery-requests/procedures", data);
     } catch (error: unknown) {
       logger.error("Erro ao adicionar procedimentos", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Atualiza procedimentos TUSS de uma solicitação
-   */
-  async updateProcedures(
-    data: UpdateSurgeryRequestProcedureData,
-  ): Promise<void> {
-    try {
-      await api.post("/surgery-requests/procedures", data);
-    } catch (error: unknown) {
-      logger.error("Erro ao atualizar procedimentos", error);
       throw error;
     }
   },

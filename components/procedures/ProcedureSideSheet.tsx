@@ -12,7 +12,11 @@ import { logger } from "@/lib/logger";
 import { AddDocumentModal } from "./AddDocumentModal";
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
-import { surgeryRequestService } from "@/services/surgery-request.service";
+import {
+  surgeryRequestService,
+  SurgeryRequestTemplateData,
+  SurgeryRequestTemplateSummary,
+} from "@/services/surgery-request.service";
 import { supplierService } from "@/services/supplier.service";
 import { manufacturerService } from "@/services/manufacturer.service";
 import { procedureService, Procedure } from "@/services/procedure.service";
@@ -24,7 +28,7 @@ interface ProcedureSideSheetProps {
   isOpen: boolean;
   onClose: () => void;
   procedure: ProcedureModel | null;
-  onUseTemplate?: (template: any) => void;
+  onUseTemplate?: (template: SurgeryRequestTemplateSummary) => void;
   onTemplateUpdated?: () => void;
 }
 
@@ -141,6 +145,11 @@ export function ProcedureSideSheet({
   const [documents, setDocuments] = useState<ProcedureDocument[]>([]);
   const [opmeItems, setOpmeItems] = useState<ProcedureOpmeItem[]>([]);
   const [tussItems, setTussItems] = useState<ProcedureTussItem[]>([]);
+  /** Conteúdo do modelo carregado sob demanda; base das gravações parciais. */
+  const [templateData, setTemplateData] = useState<SurgeryRequestTemplateData>(
+    {},
+  );
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [modelName, setModelName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -158,30 +167,67 @@ export function ProcedureSideSheet({
     useState<Procedure | null>(null);
   const procedureDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Sync local state when procedure changes
+  /**
+   * O conteúdo do modelo (documentos, OPME, TUSS) não vem na listagem — é
+   * buscado aqui, quando o modelo é aberto. Enquanto carrega, as seções ficam
+   * vazias com o indicador de carregamento.
+   */
   useEffect(() => {
-    if (procedure) {
-      setDocuments(procedure.documents || []);
-      setOpmeItems(normalizeTemplateOpmeItems(procedure.opmeItems));
-      setTussItems(procedure.tussItems || []);
-      setModelName(procedure.modelName);
-      setProcedureName(procedure.procedureName || "—");
-      setProcedureSearch(procedure.procedureName || "");
+    if (!procedure) return;
 
-      const rawProcedure = (procedure as any)?._raw?.templateData?.procedure;
-      if (rawProcedure?.id && rawProcedure?.name) {
-        setSelectedProcedureOption({
-          id: String(rawProcedure.id),
-          name: String(rawProcedure.name),
-          createdAt: "",
-          updatedAt: "",
-        });
-      } else {
-        setSelectedProcedureOption(null);
-      }
+    setModelName(procedure.modelName);
+    setProcedureName(procedure.procedureName || "—");
+    setProcedureSearch(procedure.procedureName || "");
+    setIsEditingProcedure(false);
+    setDocuments([]);
+    setOpmeItems([]);
+    setTussItems([]);
+    setSelectedProcedureOption(null);
 
-      setIsEditingProcedure(false);
-    }
+    let cancelado = false;
+    setIsLoadingContent(true);
+
+    surgeryRequestService
+      .getTemplate(procedure.id)
+      .then((template) => {
+        if (cancelado) return;
+        const data = template.templateData || {};
+        setTemplateData(data);
+        setDocuments(
+          (data.requiredDocuments || []).map((doc, i) => ({
+            id: String(i),
+            type: doc.type,
+            name: doc.name || doc.type,
+          })),
+        );
+        setOpmeItems(normalizeTemplateOpmeItems(data.opmeItems));
+        setTussItems(
+          (data.tussItems || []).map((item, i) => ({
+            id: String(i),
+            code: item.tussCode,
+            name: item.name,
+            quantity: item.quantity,
+          })),
+        );
+        if (data.procedure?.id && data.procedure?.name) {
+          setSelectedProcedureOption({
+            id: data.procedure.id,
+            name: data.procedure.name,
+            createdAt: "",
+            updatedAt: "",
+          });
+        }
+      })
+      .catch((err) => {
+        if (!cancelado) logger.error("Erro ao carregar modelo:", err);
+      })
+      .finally(() => {
+        if (!cancelado) setIsLoadingContent(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
   }, [procedure]);
 
   // Carrega procedimentos cadastrados para edição do tipo
@@ -230,32 +276,39 @@ export function ProcedureSideSheet({
 
   if (!isOpen || !procedure) return null;
 
+  // Enquanto o conteúdo do modelo carrega, as seções mostram o indicador em vez
+  // do estado vazio — senão o modelo parece não ter documento, OPME nem TUSS.
   const hasDocuments = documents.length > 0;
   const hasOpme = opmeItems.length > 0;
   const hasTuss = tussItems.length > 0;
 
-  // Persiste alterações no templateData via API
+  const secaoCarregando = (
+    <div className="flex items-center justify-center gap-2 py-8 text-gray-400">
+      <Loader2 className="w-4 h-4 animate-spin" />
+      <span className="text-xs">Carregando…</span>
+    </div>
+  );
+
+  /**
+   * Grava uma alteração parcial sobre o conteúdo já carregado. A base é o
+   * `templateData` do estado, não a listagem — que não o traz mais.
+   */
   const persistTemplateData = async (updates: {
     name?: string;
     procedure?: { id: string; name: string } | null;
     procedureName?: string;
-    opmeItems?: any[];
-    tussItems?: any[];
-    requiredDocuments?: any[];
+    opmeItems?: SurgeryRequestTemplateData["opmeItems"];
+    tussItems?: SurgeryRequestTemplateData["tussItems"];
+    requiredDocuments?: SurgeryRequestTemplateData["requiredDocuments"];
   }) => {
     try {
-      const raw = (procedure as any)._raw;
-      if (!raw) return;
-      const currentData = raw.templateData || {};
-      const newData = { ...currentData };
-      if (updates.opmeItems !== undefined)
-        newData.opmeItems = updates.opmeItems;
-      if (updates.tussItems !== undefined)
-        newData.tussItems = updates.tussItems;
+      const newData: SurgeryRequestTemplateData = { ...templateData };
+      if (updates.opmeItems !== undefined) newData.opmeItems = updates.opmeItems;
+      if (updates.tussItems !== undefined) newData.tussItems = updates.tussItems;
       if (updates.requiredDocuments !== undefined)
         newData.requiredDocuments = updates.requiredDocuments;
       if (updates.procedure !== undefined)
-        newData.procedure = updates.procedure;
+        newData.procedure = updates.procedure ?? undefined;
       if (updates.procedureName !== undefined)
         newData.procedureName = updates.procedureName;
 
@@ -264,6 +317,7 @@ export function ProcedureSideSheet({
       };
       if (updates.name !== undefined) payload.name = updates.name;
 
+      setTemplateData(newData);
       await surgeryRequestService.updateTemplate(procedure.id, payload);
       onTemplateUpdated?.();
     } catch (err) {
@@ -602,7 +656,9 @@ export function ProcedureSideSheet({
                 )}
               </div>
 
-              {hasDocuments ? (
+              {isLoadingContent ? (
+                secaoCarregando
+              ) : hasDocuments ? (
                 <div>
                   {/* Header row */}
                   <div className="flex items-center gap-2 px-6 py-2 border-b border-gray-200">
@@ -677,7 +733,9 @@ export function ProcedureSideSheet({
                 )}
               </div>
 
-              {hasOpme ? (
+              {isLoadingContent ? (
+                secaoCarregando
+              ) : hasOpme ? (
                 <div>
                   {/* Header */}
                   <div className="flex items-center gap-3 px-4 py-1 border-b border-gray-200">
@@ -809,7 +867,9 @@ export function ProcedureSideSheet({
                 )}
               </div>
 
-              {hasTuss ? (
+              {isLoadingContent ? (
+                secaoCarregando
+              ) : hasTuss ? (
                 <div>
                   {/* Header */}
                   <div className="flex items-center gap-6 px-4 py-1 border-b border-gray-200">
@@ -874,11 +934,8 @@ export function ProcedureSideSheet({
             </button>
             <button
               onClick={() => {
-                const raw = (procedure as any)._raw;
-                if (raw) {
-                  onClose();
-                  onUseTemplate?.(raw);
-                }
+                onClose();
+                onUseTemplate?.(procedure.summary);
               }}
               className="ds-btn-primary"
             >

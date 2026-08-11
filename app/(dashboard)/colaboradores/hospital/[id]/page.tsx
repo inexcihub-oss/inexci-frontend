@@ -22,11 +22,22 @@ import { useToast } from "@/hooks/useToast";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import { ChevronRight } from "lucide-react";
 
 export default function HospitalDetalhePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { can } = useAuth();
+  /**
+   * Hospital é cadastro transversal, então quem só tem `agenda` ou
+   * `atendimento` chega até aqui — mas `GET /surgery-requests` exige
+   * `solicitacoes`. Ler `can` no corpo é seguro: o layout do dashboard só
+   * monta os filhos depois que a sessão resolve, então a permissão já é
+   * definitiva quando o `loadData` roda.
+   */
+  const podeVerSolicitacoes = can(Permission.SOLICITACOES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hospital, setHospital] = useState<Hospital | null>(null);
@@ -94,10 +105,14 @@ export default function HospitalDetalhePage() {
     // aplicado no backend a partir do id da rota, sem depender de hospitalData.
     // `.catch(noop)` evita unhandled rejection caso a função retorne cedo
     // (hospital não encontrado).
-    const surgeryPromise = surgeryRequestService.getAll({
-      hospitalId: params.id,
-    });
-    surgeryPromise.catch(() => {});
+    //
+    // Sem `solicitacoes`, a chamada nem sai: o 403 caía nesse mesmo catch e o
+    // painel exibia "0 / Nenhuma solicitação encontrada" — um zero falso,
+    // indistinguível de um hospital que de fato nunca teve cirurgia.
+    const surgeryPromise = podeVerSolicitacoes
+      ? surgeryRequestService.getAll({ hospitalId: params.id })
+      : null;
+    surgeryPromise?.catch(() => {});
     try {
       const hospitalData = await hospitalService.getById(params.id);
 
@@ -140,13 +155,17 @@ export default function HospitalDetalhePage() {
         contactPhone: maskPhone(hospitalData.contactPhone || ""),
       });
       // Solicitações cirúrgicas deste hospital (já filtradas no backend)
-      setLoadingSurgeries(true);
-      try {
-        const surgeryData = await surgeryPromise;
-        setSurgeryRequests(surgeryData.records ?? []);
-      } catch {
-        setSurgeryRequests([]);
-      } finally {
+      if (surgeryPromise) {
+        setLoadingSurgeries(true);
+        try {
+          const surgeryData = await surgeryPromise;
+          setSurgeryRequests(surgeryData.records ?? []);
+        } catch {
+          setSurgeryRequests([]);
+        } finally {
+          setLoadingSurgeries(false);
+        }
+      } else {
         setLoadingSurgeries(false);
       }
     } catch (error) {
@@ -300,7 +319,10 @@ export default function HospitalDetalhePage() {
         backHref="/hospitais"
         itemName={formData.name}
         itemSubtitle="Hospital"
-        sidebarContent={sidebarContent}
+        // `undefined` some com o painel inteiro, inclusive o botão de abrir —
+        // as cirurgias do hospital não são a área de quem só tem `agenda`, e um
+        // aviso fixo sobre algo que ele não veio fazer seria só ruído.
+        sidebarContent={podeVerSolicitacoes ? sidebarContent : undefined}
       >
         {/* Seção: Informações gerais */}
         <FormSection title="Informações gerais">

@@ -17,7 +17,7 @@ import {
   createDeleteActionColumn,
 } from "@/components/shared/cadastro-table-columns";
 import { useAuth } from "@/contexts/AuthContext";
-import { Permission } from "@/lib/permissions";
+import { hasAnyArea, Permission } from "@/lib/permissions";
 import {
   useReactTable,
   getCoreRowModel,
@@ -39,8 +39,13 @@ import {
 
 export default function FabricantesPage() {
   const router = useRouter();
-  const { can } = useAuth();
-  const podeAdministrar = can(Permission.ADMINISTRACAO);
+  const { can, permissions } = useAuth();
+  // Dois eixos distintos, de propósito: cadastrar segue a regra do cadastro
+  // transversal (qualquer área, igual ao `@RequireAnyArea()` do backend);
+  // excluir continua sendo ato do admin, porque apaga um fabricante que OPMEs
+  // já referenciam.
+  const podeCadastrar = hasAnyArea(permissions);
+  const podeExcluir = can(Permission.ADMINISTRACAO);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
@@ -151,7 +156,7 @@ export default function FabricantesPage() {
   };
 
   const columns: ColumnDef<Manufacturer>[] = [
-    ...(podeAdministrar ? [createSelectColumn<Manufacturer>()] : []),
+    ...(podeExcluir ? [createSelectColumn<Manufacturer>()] : []),
     {
       accessorKey: "name",
       header: "Nome",
@@ -244,7 +249,7 @@ export default function FabricantesPage() {
         </span>
       ),
     },
-    ...(podeAdministrar
+    ...(podeExcluir
       ? [
           createDeleteActionColumn<Manufacturer>(
             (item, e) => handleDeleteClick(item.id, item.name, e),
@@ -285,7 +290,7 @@ export default function FabricantesPage() {
         <div className="hidden sm:block w-px h-8 bg-neutral-100" />
 
         <div className="flex items-center gap-2 flex-1 sm:flex-none">
-          {podeAdministrar && selectedItems.length > 0 && (
+          {podeExcluir && selectedItems.length > 0 && (
             <button
               onClick={() => setBulkDeleteModal({ open: true, loading: false })}
               className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-medium hover:bg-red-100 active:scale-[0.98] transition-all min-h-[44px]"
@@ -307,7 +312,7 @@ export default function FabricantesPage() {
               Excluir selecionados ({selectedItems.length})
             </button>
           )}
-          {podeAdministrar && (
+          {podeCadastrar && (
             <Button
               variant="primary"
               size="md"

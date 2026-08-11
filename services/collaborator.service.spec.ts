@@ -151,18 +151,7 @@ describe("collaboratorService", () => {
     });
   });
 
-  describe("getDoctors", () => {
-    it("deve chamar GET /users/doctors", async () => {
-      const mockDoctors = [{ id: "1", name: "Dr. Silva" }];
-      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: mockDoctors,
-      });
-
-      const result = await collaboratorService.getDoctors();
-
-      expect(api.get).toHaveBeenCalledWith("/users/doctors");
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-    });
-  });
+  // `getDoctors`/`getDoctorById` foram removidos junto com os seus testes:
+  // nenhuma tela os chamava. A listagem de médicos vive em
+  // `availableDoctorsService.getDoctorsForAccount()`.
 });

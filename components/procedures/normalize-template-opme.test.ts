@@ -85,6 +85,52 @@ describe("normalize-template-opme", () => {
     });
   });
 
+  it("completa fabricantes e fornecedores faltantes com 'Outros'", () => {
+    // Caso real: o pipeline de documento manda ["Outros","Outros","Outros"],
+    // a junction (opme_item_id, manufacturer_id) colapsa em uma linha só e o
+    // modelo acaba guardando um fabricante. Sem repor o padding, o item nunca
+    // atinge o mínimo de 3 e some ao criar a SC pelo modelo.
+    const items = extractTemplateOpmeItemsForCreate({
+      opmeItems: [
+        {
+          name: "Kit para endoscopia lombar",
+          quantity: 1,
+          manufacturers: [{ name: "Outros" }],
+          suppliers: [
+            { id: "s1", name: "Sintex" },
+            { id: "s2", name: "BW Medic" },
+            { id: "s3", name: "Lais Brasil" },
+          ],
+        },
+      ],
+    });
+
+    expect(items[0].manufacturerIds).toEqual([]);
+    expect(items[0].manufacturerNames).toEqual(["Outros", "Outros", "Outros"]);
+    expect(items[0].supplierIds).toEqual(["s1", "s2", "s3"]);
+    expect(items[0].supplierNames).toEqual([]);
+  });
+
+  it("conta ids e nomes juntos ao completar até o mínimo", () => {
+    const items = extractTemplateOpmeItemsForCreate({
+      opmeItems: [
+        {
+          name: "Parafuso pedicular",
+          quantity: 1,
+          manufacturers: [{ id: "m1", name: "Stryker" }, "Zimmer"],
+          suppliers: [{ id: "s1", name: "Sintex" }],
+        },
+      ],
+    });
+
+    // 1 id + 1 nome = 2 → falta um só.
+    expect(items[0].manufacturerIds).toEqual(["m1"]);
+    expect(items[0].manufacturerNames).toEqual(["Zimmer", "Outros"]);
+    // 1 id → faltam dois.
+    expect(items[0].supplierIds).toEqual(["s1"]);
+    expect(items[0].supplierNames).toEqual(["Outros", "Outros"]);
+  });
+
   it("separa ids e nomes livres para criação", () => {
     const items = extractTemplateOpmeItemsForCreate({
       opmeItems: [

@@ -19,7 +19,7 @@ import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Permission } from "@/lib/permissions";
+import { hasAnyArea } from "@/lib/permissions";
 
 interface NewPatientModalProps {
   isOpen: boolean;
@@ -46,8 +46,12 @@ export function NewPatientModal({
   onClose,
   onSuccess,
 }: NewPatientModalProps) {
-  const { can } = useAuth();
-  const podeAdministrarCadastros = can(Permission.ADMINISTRACAO);
+  const { permissions } = useAuth();
+  // Convênio é cadastro transversal (`@RequireAnyArea()` em
+  // `HealthPlansController`): qualquer área cria, quem não tem área nenhuma
+  // não. Exigir ADMINISTRACAO aqui escondia o atalho de quem cadastra
+  // paciente.
+  const podeCriarConvenio = hasAnyArea(permissions);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
@@ -220,7 +224,7 @@ export function NewPatientModal({
               onHealthPlanCreated={(plan) =>
                 setHealthPlans((prev) => [...prev, plan])
               }
-              canCreate={podeAdministrarCadastros}
+              canCreate={podeCriarConvenio}
             />
 
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">

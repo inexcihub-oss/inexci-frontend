@@ -4,9 +4,11 @@ import ColaboradoresLayout from "./layout";
 import { Permission } from "@/lib/permissions";
 
 const replaceMock = vi.fn();
+let pathname = "/colaboradores";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: replaceMock }),
+  usePathname: () => pathname,
 }));
 
 let authState: {
@@ -33,6 +35,7 @@ function renderizar() {
 describe("ColaboradoresLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    pathname = "/colaboradores";
     authState = {
       loading: false,
       permissions: [Permission.ADMINISTRACAO],
@@ -95,5 +98,43 @@ describe("ColaboradoresLayout", () => {
     renderizar();
     expect(replaceMock).not.toHaveBeenCalled();
     expect(screen.queryByText("lista de colaboradores")).not.toBeInTheDocument();
+  });
+
+  /**
+   * As telas de hospital/convênio/fornecedor/fabricante moram sob este layout
+   * por herança de rota, mas são cadastros transversais: qualquer área edita.
+   * Enquanto o gate era um `Permission.ADMINISTRACAO` fixo, elas ficavam
+   * barradas aqui mesmo já liberadas em `ROUTE_PERMISSIONS` — dois lugares
+   * dizendo coisas diferentes sobre a mesma URL.
+   */
+  it.each([
+    "/colaboradores/hospital/h-1",
+    "/colaboradores/convenio/c-1",
+    "/colaboradores/fornecedor/f-1",
+    "/colaboradores/fabricante/m-1",
+  ])("libera %s para quem não tem Administração", (rota) => {
+    pathname = rota;
+    authState = {
+      loading: false,
+      permissions: [Permission.SOLICITACOES],
+      isAdmin: false,
+    };
+    renderizar();
+
+    expect(screen.getByText("lista de colaboradores")).toBeInTheDocument();
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("continua expulsando de /colaboradores/assistente/:id", () => {
+    pathname = "/colaboradores/assistente/a-1";
+    authState = {
+      loading: false,
+      permissions: [Permission.SOLICITACOES],
+      isAdmin: false,
+    };
+    renderizar();
+
+    expect(screen.queryByText("lista de colaboradores")).not.toBeInTheDocument();
+    expect(replaceMock).toHaveBeenCalledWith("/dashboard");
   });
 });

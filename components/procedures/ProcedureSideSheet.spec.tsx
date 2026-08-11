@@ -19,7 +19,18 @@ vi.mock("@/services/manufacturer.service", () => ({
 }));
 
 vi.mock("@/services/surgery-request.service", () => ({
-  surgeryRequestService: { updateTemplate: vi.fn() },
+  surgeryRequestService: {
+    updateTemplate: vi.fn(),
+    // O conteúdo do modelo não vem mais na listagem: o side sheet o busca ao abrir.
+    getTemplate: vi.fn().mockResolvedValue({
+      id: "tpl-1",
+      name: "Artroscopia padrão",
+      usageCount: 2,
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01",
+      templateData: {},
+    }),
+  },
 }));
 
 let authState = { can: (p: Permission) => p === Permission.SOLICITACOES };
@@ -29,17 +40,28 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 import { ProcedureSideSheet } from "./ProcedureSideSheet";
 
-const procedure: ProcedureModel & { _raw?: unknown } = {
+const procedure: ProcedureModel = {
   id: "tpl-1",
   modelName: "Artroscopia padrão",
   procedureName: "Artroscopia de joelho",
   createdAt: "01/01/2026",
   createdBy: "Dr. João",
   usageCount: 2,
-  documents: [],
-  opmeItems: [],
-  tussItems: [],
-  _raw: { id: "tpl-1", templateData: {} },
+  summary: {
+    id: "tpl-1",
+    name: "Artroscopia padrão",
+    procedureId: "proc-1",
+    procedureName: "Artroscopia de joelho",
+    hospitalId: null,
+    hospitalName: null,
+    healthPlanId: null,
+    healthPlanName: null,
+    priority: null,
+    doctorName: "Dr. João",
+    usageCount: 2,
+    createdAt: "2026-01-01",
+    updatedAt: "2026-01-01",
+  },
 };
 
 /**

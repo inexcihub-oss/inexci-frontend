@@ -26,9 +26,15 @@ vi.mock("@/services/patient.service", () => ({
   },
 }));
 
-let authState = { can: (p: Permission) => p === Permission.ADMINISTRACAO };
+// O mock deriva `can` de `permissions` em vez de trazer os dois soltos: com
+// duas fontes, um teste passa a afirmar uma combinação que o AuthContext real
+// nunca produz (ex.: `can(ADMINISTRACAO)` verdadeiro com `permissions` vazio).
+let permissions: Permission[] = [Permission.ADMINISTRACAO];
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => authState,
+  useAuth: () => ({
+    permissions,
+    can: (p: Permission) => permissions.includes(p),
+  }),
 }));
 
 import PacientesPage from "./page";
@@ -41,11 +47,11 @@ import PacientesPage from "./page";
 describe("PacientesPage — gating por Administração", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authState = { can: (p) => p === Permission.ADMINISTRACAO };
+    permissions = [Permission.ADMINISTRACAO];
   });
 
   it("esconde excluir e a coluna de seleção, mas mantém 'Novo paciente' para quem não tem Administração", async () => {
-    authState = { can: () => false };
+    permissions = [Permission.SOLICITACOES];
     render(<PacientesPage />);
 
     expect(await screen.findByText("Ana Beatriz")).toBeInTheDocument();

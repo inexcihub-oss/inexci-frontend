@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { patientService, Patient } from "@/services/patient.service";
+import {
+  patientService,
+  PatientListItem,
+} from "@/services/patient.service";
 import { SearchInput, Button } from "@/components/ui";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -41,7 +44,7 @@ export default function PacientesPage() {
   const podeAdministrar = can(Permission.ADMINISTRACAO);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState<PatientListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [rowSelection, setRowSelection] = useState({});
@@ -51,7 +54,7 @@ export default function PacientesPage() {
   // Estados do modal de exclusão
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
-    patient: Patient | null;
+    patient: PatientListItem | null;
     loading: boolean;
   }>({
     open: false,
@@ -106,7 +109,7 @@ export default function PacientesPage() {
     return Object.keys(rowSelection)
       .filter((key) => (rowSelection as Record<string, boolean>)[key])
       .map((key) => patients[parseInt(key)])
-      .filter((p): p is Patient => Boolean(p));
+      .filter((p): p is PatientListItem => Boolean(p));
   }, [rowSelection, patients]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -166,7 +169,7 @@ export default function PacientesPage() {
     router.push(`/pacientes/${id}`);
   };
 
-  const handleDeleteClick = (patient: Patient, e: React.MouseEvent) => {
+  const handleDeleteClick = (patient: PatientListItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setDeleteModal({ open: true, patient, loading: false });
   };
@@ -214,9 +217,9 @@ export default function PacientesPage() {
   };
 
   // Definição das colunas
-  const columns: ColumnDef<Patient>[] = [
+  const columns: ColumnDef<PatientListItem>[] = [
     ...(podeAdministrar
-      ? [createSelectColumn<Patient>({ allRows: true })]
+      ? [createSelectColumn<PatientListItem>({ allRows: true })]
       : []),
     {
       accessorKey: "name",
@@ -298,7 +301,7 @@ export default function PacientesPage() {
     },
     ...(podeAdministrar
       ? [
-          createDeleteActionColumn<Patient>(
+          createDeleteActionColumn<PatientListItem>(
             (item, e) => handleDeleteClick(item, e),
             "Excluir paciente",
           ),

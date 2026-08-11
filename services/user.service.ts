@@ -1,6 +1,5 @@
 import api from "@/lib/api";
-import { isUnauthorizedError } from "@/lib/http-error";
-import { DoctorProfile, User } from "@/types";
+import { DoctorProfile } from "@/types";
 import { uploadService } from "@/services/upload.service";
 
 /**
@@ -55,30 +54,12 @@ function invalidateProfileCache() {
   profileCache = null;
 }
 
+// `getAll` (GET /users) e `getById` (GET /users/one) foram removidos: nenhuma
+// tela os chamava. O primeiro puxava o diretório do staff inteiro — dado
+// pessoal de cada colega — por uma rota liberada a qualquer área autenticada.
+// A gestão de equipe usa `collaboratorService`, que passa pelas rotas gated
+// por `ADMINISTRACAO`.
 export const userService = {
-  /**
-   * Busca todos os usuários/gestores
-   */
-  async getAll(): Promise<User[]> {
-    try {
-      const response = await api.get("/users?role=collaborator");
-      return response.data.records || response.data;
-    } catch (error: unknown) {
-      if (isUnauthorizedError(error)) {
-        throw new Error("Usuário não autenticado");
-      }
-      throw error;
-    }
-  },
-
-  /**
-   * Busca um usuário específico por ID
-   */
-  async getById(userId: string): Promise<User> {
-    const response = await api.get("/users/one", { params: { id: userId } });
-    return response.data;
-  },
-
   /**
    * Busca o perfil do usuário logado
    */

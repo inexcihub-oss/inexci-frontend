@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 import { useAuth } from "@/contexts/AuthContext";
-import { Permission } from "@/lib/permissions";
+import { hasAnyArea, Permission } from "@/lib/permissions";
 import { CreateProcedureModal } from "./CreateProcedureModal";
 import { CreatePatientModal } from "./CreatePatientModal";
 import { CreateHospitalModal } from "./CreateHospitalModal";
@@ -14,15 +14,16 @@ import { getApiErrorMessage } from "@/lib/http-error";
 import {
   surgeryRequestService,
   SimpleSurgeryRequestPayload,
-  SurgeryRequestTemplate,
+  SurgeryRequestTemplateSummary,
 } from "@/services/surgery-request.service";
 import { logger } from "@/lib/logger";
 import { Procedure } from "@/services/procedure.service";
-import { Patient } from "@/services/patient.service";
+import { PatientListItem } from "@/services/patient.service";
 import { Hospital } from "@/services/hospital.service";
 import { HealthPlan } from "@/services/health-plan.service";
 import { opmeService } from "@/services/opme.service";
 import { extractTemplateOpmeItemsForCreate } from "@/components/procedures/normalize-template-opme";
+import { extractTemplateTussItemsForCreate } from "@/components/procedures/normalize-template-tuss";
 import { tussService } from "@/services/tuss.service";
 import { AvailableDoctor } from "@/types";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
@@ -41,18 +42,11 @@ import {
   TemplateSelectionContent,
 } from "./wizard-steps/SelectionContents";
 
-interface TemplateTussItem {
-  procedureId?: string | number;
-  tussCode?: string;
-  name?: string;
-  quantity?: number;
-}
-
 interface CreateSurgeryRequestWizardProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  initialTemplate?: SurgeryRequestTemplate;
+  initialTemplate?: SurgeryRequestTemplateSummary | null;
 }
 
 type ModalState =
@@ -74,8 +68,14 @@ export function CreateSurgeryRequestWizard({
   onSuccess,
   initialTemplate,
 }: CreateSurgeryRequestWizardProps) {
-  const { can } = useAuth();
+  const { can, permissions } = useAuth();
+  // Excluir procedimento do catálogo (a lixeira na lista) segue em
+  // ADMINISTRACAO: apaga um item que outras solicitações e modelos usam.
   const podeAdministrarCadastros = can(Permission.ADMINISTRACAO);
+  // Procedimento, hospital e convênio são cadastros transversais
+  // (`@RequireAnyArea()`) — é justamente aqui, no meio do wizard, que quem
+  // monta a solicitação descobre que o item não está cadastrado.
+  const podeCriarCadastroTransversal = hasAnyArea(permissions);
   const [modalState, setModalState] = useState<ModalState>("none");
   const [loading, setLoading] = useState(false);
   const [isClosing, _setIsClosing] = useState(false);
@@ -92,7 +92,7 @@ export function CreateSurgeryRequestWizard({
   const [selectedProcedure, setSelectedProcedure] = useState<Procedure | null>(
     null,
   );
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<PatientListItem | null>(null);
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(
     null,
   );
@@ -110,14 +110,14 @@ export function CreateSurgeryRequestWizard({
 
   // Template selecionado para pré-popular OPME/TUSS após criação
   const [activeTemplate, setActiveTemplate] =
-    useState<SurgeryRequestTemplate | null>(null);
+    useState<SurgeryRequestTemplateSummary | null>(null);
 
   // Callbacks para adicionar novos itens às listas
   const [addProcedureToList, setAddProcedureToList] = useState<
     ((item: Procedure) => void) | null
   >(null);
   const [addPatientToList, setAddPatientToList] = useState<
-    ((item: Patient) => void) | null
+    ((item: PatientListItem) => void) | null
   >(null);
   const [addHospitalToList, setAddHospitalToList] = useState<
     ((item: Hospital) => void) | null
@@ -168,12 +168,12 @@ export function CreateSurgeryRequestWizard({
     }
   };
 
-  const handlePatientSelected = (patient: Patient) => {
+  const handlePatientSelected = (patient: PatientListItem) => {
     setSelectedPatient(patient);
     setModalState("doctor-select");
   };
 
-  const handlePatientCreated = (patient: Patient) => {
+  const handlePatientCreated = (patient: PatientListItem) => {
     if (addPatientToList) {
       addPatientToList(patient);
     }
@@ -212,37 +212,36 @@ export function CreateSurgeryRequestWizard({
     setModalState("healthplan-select");
   };
 
-  const handleTemplateSelected = (template: SurgeryRequestTemplate) => {
-    const data = (template.templateData || {}) as Record<string, unknown> & {
-      procedure?: { id?: string } & Record<string, unknown>;
-      hospital?: unknown;
-      hospitalId?: string;
-      healthPlan?: unknown;
-      healthPlanId?: string;
-    };
+  /**
+   * O resumo da listagem já traz tudo que o formulário preenche. O conteúdo do
+   * modelo (TUSS, OPME, documentos) é buscado só no submit — assim espiar
+   * vários modelos antes de decidir não custa uma requisição por clique.
+   */
+  const handleTemplateSelected = (template: SurgeryRequestTemplateSummary) => {
     setActiveTemplate(template);
-    // Pré-preencher procedimento (da tabela procedure)
-    if (data.procedure?.id) {
-      setSelectedProcedure(data.procedure as unknown as Procedure);
+
+    if (template.procedureId && template.procedureName) {
+      setSelectedProcedure({
+        id: template.procedureId,
+        name: template.procedureName,
+      } as Procedure);
     }
-    // Pré-preencher hospital (objeto completo salvo no template)
-    if (data.hospital) {
-      setSelectedHospital(data.hospital as unknown as Hospital);
-    } else if (data.hospitalId) {
+    if (template.hospitalId && template.hospitalName) {
       setSelectedHospital({
-        id: data.hospitalId,
-        name: "Hospital do modelo",
-      } as unknown as Hospital);
+        id: template.hospitalId,
+        name: template.hospitalName,
+      } as Hospital);
     }
-    // Pré-preencher convênio (objeto completo salvo no template)
-    if (data.healthPlan) {
-      setSelectedHealthPlan(data.healthPlan as unknown as HealthPlan);
-    } else if (data.healthPlanId) {
+    if (template.healthPlanId && template.healthPlanName) {
       setSelectedHealthPlan({
-        id: data.healthPlanId,
-        name: "Convênio do modelo",
-      } as unknown as HealthPlan);
+        id: template.healthPlanId,
+        name: template.healthPlanName,
+      } as HealthPlan);
     }
+    if (template.priority) {
+      setPriority(template.priority as PriorityLevel);
+    }
+
     // Navegar para seleção de paciente (deve ser preenchido manualmente)
     setModalState("patient-select");
   };
@@ -261,8 +260,13 @@ export function CreateSurgeryRequestWizard({
     setLoading(true);
 
     try {
-      // Criar payload simplificado com apenas IDs
-      const templateData = activeTemplate?.templateData;
+      // O conteúdo do modelo é buscado antes de criar a SC: se falhar, nada é
+      // criado e o erro aparece inteiro, em vez de deixar uma SC pela metade.
+      const templateData = activeTemplate
+        ? (await surgeryRequestService.getTemplate(activeTemplate.id))
+            .templateData
+        : undefined;
+
       const payload: SimpleSurgeryRequestPayload = {
         procedureId: selectedProcedure.id,
         patientId: selectedPatient.id,
@@ -282,8 +286,10 @@ export function CreateSurgeryRequestWizard({
 
       const newRequest = await surgeryRequestService.createSimple(payload);
 
-      // Pré-popular OPME e TUSS do template, se existirem
-      let opmeSkipped = 0;
+      // Pré-popular OPME e TUSS do template, se existirem.
+      // Cada falha aqui é não-fatal (a SC já existe), mas nenhuma é silenciosa:
+      // o que não foi copiado precisa ser completado à mão na solicitação.
+      const avisos: string[] = [];
       if (templateData) {
         const requestId = newRequest.id;
 
@@ -293,18 +299,8 @@ export function CreateSurgeryRequestWizard({
             (templateData ?? {}) as Record<string, unknown>,
           );
           let opmeCreated = 0;
+          let opmeFalhou = 0;
           for (const item of opmeItems) {
-            // O backend exige no mínimo 3 fabricantes e 3 fornecedores por item.
-            // Itens de modelo incompletos são pulados aqui para evitar 400 e
-            // devem ser completados manualmente na solicitação.
-            const manufacturerCount =
-              item.manufacturerIds.length + item.manufacturerNames.length;
-            const supplierCount =
-              item.supplierIds.length + item.supplierNames.length;
-            if (manufacturerCount < 3 || supplierCount < 3) {
-              opmeSkipped++;
-              continue;
-            }
             try {
               await opmeService.create({
                 surgeryRequestId: requestId,
@@ -328,8 +324,14 @@ export function CreateSurgeryRequestWizard({
               opmeCreated++;
             } catch (e) {
               logger.warn("Erro ao adicionar OPME do template:", e);
-              opmeSkipped++;
+              opmeFalhou++;
             }
+          }
+
+          if (opmeFalhou > 0) {
+            avisos.push(
+              `${opmeFalhou} item(ns) OPME do modelo não foram copiados`,
+            );
           }
 
           // Se OPME foi adicionado, marcar has_opme = true para resolver a pendência
@@ -342,21 +344,28 @@ export function CreateSurgeryRequestWizard({
           }
 
           // Adicionar TUSS
-          const tussItems =
-            (templateData.tussItems as TemplateTussItem[] | undefined) || [];
+          const { items: tussItems, duplicadosIgnorados } =
+            extractTemplateTussItemsForCreate(
+              (templateData ?? {}) as Record<string, unknown>,
+            );
+
+          if (duplicadosIgnorados.length > 0) {
+            avisos.push(
+              `TUSS com código repetido não copiado(s): ${duplicadosIgnorados.join(", ")}`,
+            );
+          }
+
           if (tussItems.length > 0) {
             try {
               await tussService.addProcedures({
                 surgeryRequestId: requestId,
-                procedures: tussItems.map((item) => ({
-                  procedureId: String(item.procedureId || item.tussCode || ""),
-                  tussCode: item.tussCode ?? "",
-                  name: item.name ?? "",
-                  quantity: item.quantity || 1,
-                })),
+                procedures: tussItems,
               });
             } catch (e) {
               logger.warn("Erro ao adicionar TUSS do template:", e);
+              avisos.push(
+                `códigos TUSS do modelo não copiados (${getApiErrorMessage(e, "erro desconhecido")})`,
+              );
             }
           }
         }
@@ -377,10 +386,10 @@ export function CreateSurgeryRequestWizard({
       setTimeout(() => {
         setToast({
           message:
-            opmeSkipped > 0
-              ? `Solicitação criada. ${opmeSkipped} item(ns) OPME do modelo estava(m) incompleto(s) (mín. 3 fabricantes e 3 fornecedores) e não foram adicionados — complete-os na solicitação.`
+            avisos.length > 0
+              ? `Solicitação criada, mas ${avisos.join("; ")} — complete na solicitação.`
               : "Solicitação cirúrgica criada com sucesso!",
-          type: "success",
+          type: avisos.length > 0 ? "warning" : "success",
         });
       }, 100);
     } catch (error: unknown) {
@@ -974,14 +983,15 @@ export function CreateSurgeryRequestWizard({
                     }}
                     selectedItemId={selectedProcedure?.id}
                     isActive={modalState === "procedure-select"}
-                    canCreate={podeAdministrarCadastros}
+                    canCreate={podeCriarCadastroTransversal}
+                    canDelete={podeAdministrarCadastros}
                   />
                 )}
                 {modalState === "patient-select" && (
                   <PatientSelectionContent
                     onSelect={handlePatientSelected}
                     onCreateNew={() => setModalState("patient-create")}
-                    onNewItemCreated={(callback: (item: Patient) => void) => {
+                    onNewItemCreated={(callback: (item: PatientListItem) => void) => {
                       setAddPatientToList(() => callback);
                     }}
                     selectedItemId={selectedPatient?.id}
@@ -998,7 +1008,7 @@ export function CreateSurgeryRequestWizard({
                     }}
                     selectedItemId={selectedHospital?.id}
                     isActive={modalState === "hospital-select"}
-                    canCreate={podeAdministrarCadastros}
+                    canCreate={podeCriarCadastroTransversal}
                   />
                 )}
                 {modalState === "healthplan-select" && (
@@ -1013,7 +1023,7 @@ export function CreateSurgeryRequestWizard({
                     }}
                     selectedItemId={selectedHealthPlan?.id}
                     isActive={modalState === "healthplan-select"}
-                    canCreate={podeAdministrarCadastros}
+                    canCreate={podeCriarCadastroTransversal}
                   />
                 )}
                 {modalState === "doctor-select" && (

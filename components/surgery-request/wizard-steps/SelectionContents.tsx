@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Procedure } from "@/services/procedure.service";
-import { Patient } from "@/services/patient.service";
+import { PatientListItem } from "@/services/patient.service";
 import { Hospital } from "@/services/hospital.service";
 import { HealthPlan } from "@/services/health-plan.service";
 import { AvailableDoctor } from "@/types";
@@ -21,7 +21,7 @@ import {
 } from "@/hooks/useHealthPlans";
 import {
   surgeryRequestService,
-  SurgeryRequestTemplate,
+  SurgeryRequestTemplateSummary,
 } from "@/services/surgery-request.service";
 
 /** Texto padrão do tooltip quando a criação inline exige administração. */
@@ -37,6 +37,7 @@ export const ProcedureSelectionContent = memo(
     selectedItemId,
     isActive,
     canCreate = true,
+    canDelete = true,
   }: {
     onSelect: (item: Procedure) => void;
     onCreateNew: () => void;
@@ -45,12 +46,17 @@ export const ProcedureSelectionContent = memo(
     selectedItemId?: string | number | null;
     isActive?: boolean;
     /**
-     * Falso quando o usuário não pode administrar o catálogo de
-     * procedimentos (sem `administracao`) — governa tanto o "Novo" quanto a
-     * lixeira por linha, já que `POST` e `DELETE /procedures/:id` exigem a
-     * mesma permissão.
+     * Governa o botão "Novo". Procedimento é cadastro transversal:
+     * `POST /procedures` herda o `@RequireAnyArea()` da classe.
      */
     canCreate?: boolean;
+    /**
+     * Governa a lixeira por linha. Separado de `canCreate` de propósito:
+     * `DELETE /procedures/:id` continua exigindo `administracao`, e enquanto
+     * uma prop só governava os dois, liberar a criação teria liberado a
+     * exclusão junto — cada clique na lixeira terminando em 403.
+     */
+    canDelete?: boolean;
   }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [procedureToDelete, setProcedureToDelete] =
@@ -178,7 +184,7 @@ export const ProcedureSelectionContent = memo(
                       </div>
                     </button>
 
-                    {canCreate && (
+                    {canDelete && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -230,13 +236,13 @@ export const PatientSelectionContent = memo(function PatientSelectionContent({
   selectedItemId,
   isActive,
 }: {
-  onSelect: (item: Patient) => void;
+  onSelect: (item: PatientListItem) => void;
   onCreateNew: () => void;
-  onNewItemCreated: (registerFn: (item: Patient) => void) => void;
+  onNewItemCreated: (registerFn: (item: PatientListItem) => void) => void;
   selectedItemId?: string | number | null;
   isActive?: boolean;
 }) {
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState<PatientListItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -263,7 +269,7 @@ export const PatientSelectionContent = memo(function PatientSelectionContent({
 
   useEffect(() => {
     if (onNewItemCreated) {
-      const handleNewItem = (item: Patient) => {
+      const handleNewItem = (item: PatientListItem) => {
         setPatients((prev) => [item, ...prev]);
       };
       onNewItemCreated(handleNewItem);
@@ -658,10 +664,12 @@ export const TemplateSelectionContent = memo(function TemplateSelectionContent({
   onSelect,
   isActive,
 }: {
-  onSelect: (template: SurgeryRequestTemplate) => void;
+  onSelect: (template: SurgeryRequestTemplateSummary) => void;
   isActive?: boolean;
 }) {
-  const [templates, setTemplates] = useState<SurgeryRequestTemplate[]>([]);
+  const [templates, setTemplates] = useState<SurgeryRequestTemplateSummary[]>(
+    [],
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -723,18 +731,7 @@ export const TemplateSelectionContent = memo(function TemplateSelectionContent({
           </div>
         ) : (
           filtered.map((template) => {
-            const td = template.templateData as Record<
-              string,
-              Record<string, unknown> & {
-                name?: string;
-                [key: string]: unknown;
-              }
-            > & { procedures?: { name?: string }[] };
-            const procedureName =
-              td?.procedure?.name || td?.procedures?.[0]?.name;
-            const hospitalName = td?.hospital?.name;
-            const healthPlanName = td?.healthPlan?.name;
-            const meta = [hospitalName, healthPlanName]
+            const meta = [template.hospitalName, template.healthPlanName]
               .filter(Boolean)
               .join(" · ");
             return (
@@ -748,9 +745,9 @@ export const TemplateSelectionContent = memo(function TemplateSelectionContent({
                   <p className="text-xs md:text-sm font-medium text-gray-900 truncate">
                     {template.name}
                   </p>
-                  {procedureName && (
+                  {template.procedureName && (
                     <p className="text-xs text-teal-700 mt-0.5 truncate">
-                      {procedureName as string}
+                      {template.procedureName}
                     </p>
                   )}
                   {meta && (

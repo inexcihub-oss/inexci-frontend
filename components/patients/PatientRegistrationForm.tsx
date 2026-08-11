@@ -17,7 +17,7 @@ import { getApiErrorMessage } from "@/lib/http-error";
 import { logger } from "@/lib/logger";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Permission } from "@/lib/permissions";
+import { hasAnyArea } from "@/lib/permissions";
 
 interface FormData {
   name: string;
@@ -77,8 +77,11 @@ export function PatientRegistrationForm({
   onSaved: (patient: Patient) => void;
   onCancel?: () => void;
 }) {
-  const { can } = useAuth();
-  const podeAdministrarCadastros = can(Permission.ADMINISTRACAO);
+  const { permissions } = useAuth();
+  // Convênio é cadastro transversal (`@RequireAnyArea()` em
+  // `HealthPlansController`): qualquer área cria, quem não tem área nenhuma
+  // não. Exigir ADMINISTRACAO aqui escondia o atalho de quem edita paciente.
+  const podeCriarConvenio = hasAnyArea(permissions);
   const [formData, setFormData] = useState<FormData>(() =>
     formDataFrom(patient),
   );
@@ -276,7 +279,7 @@ export function PatientRegistrationForm({
             onHealthPlanCreated={(plan) =>
               setHealthPlans((prev) => [...prev, plan])
             }
-            canCreate={podeAdministrarCadastros}
+            canCreate={podeCriarConvenio}
           />
           <Input
             label="Número da carteirinha"

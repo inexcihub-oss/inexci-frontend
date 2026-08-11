@@ -373,14 +373,59 @@ export interface SendResponse extends SurgeryRequestMutationResponse {
   pdfBase64?: string;
 }
 
-/** Template de solicitação salvo */
+/** Referência a uma entidade dentro do modelo (procedimento, hospital, convênio). */
+export interface TemplateEntityRef {
+  id: string;
+  name: string;
+}
+
+/** Conteúdo do modelo — só chega em `getTemplate(id)`, nunca na listagem. */
+export interface SurgeryRequestTemplateData {
+  procedure?: TemplateEntityRef;
+  procedureName?: string;
+  hospital?: TemplateEntityRef;
+  healthPlan?: TemplateEntityRef;
+  priority?: number;
+  tussItems?: { tussCode: string; name: string; quantity: number }[];
+  opmeItems?: {
+    name: string;
+    quantity: number;
+    manufacturers: string[];
+    suppliers: string[];
+  }[];
+  requiredDocuments?: { type: string; name: string }[];
+}
+
+/**
+ * O que a listagem devolve: só o que as telas pintam em lista. Tipo separado do
+ * completo de propósito — sem `templateData` aqui, o compilador impede que
+ * alguém volte a depender do conteúdo pesado numa listagem.
+ */
+export interface SurgeryRequestTemplateSummary {
+  id: string;
+  name: string;
+  /** Os ids acompanham os nomes porque o formulário de nova SC preenche com eles. */
+  procedureId: string | null;
+  procedureName: string | null;
+  hospitalId: string | null;
+  hospitalName: string | null;
+  healthPlanId: string | null;
+  healthPlanName: string | null;
+  priority: number | null;
+  doctorName: string | null;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Modelo completo, com o conteúdo. Vem de `getTemplate(id)`. */
 export interface SurgeryRequestTemplate {
   id: string;
   name: string;
-  templateData: Record<string, unknown>;
+  templateData: SurgeryRequestTemplateData;
+  usageCount: number;
   createdAt: string;
   updatedAt: string;
-  [key: string]: unknown;
 }
 
 export interface IncrementTemplateUsageResponse {
@@ -762,10 +807,18 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Lista todos os templates salvos */
-  async getTemplates(): Promise<SurgeryRequestTemplate[]> {
-    const response = await api.get<SurgeryRequestTemplate[]>(
+  /** Lista os modelos salvos (resumo — sem o conteúdo do modelo) */
+  async getTemplates(): Promise<SurgeryRequestTemplateSummary[]> {
+    const response = await api.get<SurgeryRequestTemplateSummary[]>(
       "/surgery-requests/templates",
+    );
+    return response.data;
+  },
+
+  /** Busca um modelo com o conteúdo completo (itens TUSS, OPME, documentos) */
+  async getTemplate(id: string): Promise<SurgeryRequestTemplate> {
+    const response = await api.get<SurgeryRequestTemplate>(
+      `/surgery-requests/templates/${id}`,
     );
     return response.data;
   },

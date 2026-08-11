@@ -18,7 +18,7 @@ export async function loginUi(page: Page) {
     await page.getByRole("button", { name: "Entrar" }).click();
 
     try {
-      // `resolveHome` manda quem tem `solicitacoes` para o dashboard.
+      // `resolveHome` manda quem tem `atendimento` para o atendimento.
       await page.waitForURL(/\/(dashboard|agenda|atendimento)/, {
         timeout: 15_000,
       });
