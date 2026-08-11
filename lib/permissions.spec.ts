@@ -4,6 +4,7 @@ import {
   HOME_ORDER,
   Permission,
   PROFILE_PRESETS,
+  hasAnyArea,
   permissionForRoute,
   presetFor,
   resolveHome,
@@ -33,11 +34,66 @@ describe("permissionForRoute", () => {
       Permission.SOLICITACOES,
     );
   });
+
+  /**
+   * Cadastros transversais: as telas de detalhe moram sob /colaboradores por
+   * herança de layout, mas o dado é compartilhado pelas quatro áreas. O
+   * prefixo mais específico precisa vencer o "/colaboradores" — senão o guard
+   * devolve o colaborador para a casa dele assim que ele clica numa linha da
+   * lista de hospitais.
+   */
+  it.each([
+    "/colaboradores/hospital/abc-123",
+    "/colaboradores/convenio/abc-123",
+    "/colaboradores/fornecedor/abc-123",
+    "/colaboradores/fabricante/abc-123",
+  ])("libera o cadastro transversal %s", (rota) => {
+    expect(permissionForRoute(rota)).toBeNull();
+  });
+
+  it("mantém o resto de /colaboradores em Administração", () => {
+    expect(permissionForRoute("/colaboradores/assistente/abc-123")).toBe(
+      Permission.ADMINISTRACAO,
+    );
+  });
+});
+
+describe("hasAnyArea", () => {
+  it("aceita qualquer uma das quatro áreas", () => {
+    ALL_PERMISSIONS.forEach((p) => expect(hasAnyArea([p])).toBe(true));
+  });
+
+  /**
+   * Espelha o `@RequireAnyArea()`: o colaborador criado sem área nenhuma não
+   * pode cadastrar hospital/convênio/fornecedor/fabricante. Sem esta checagem
+   * o botão apareceria e o backend responderia 403 no envio.
+   */
+  it("recusa quem não tem área nenhuma", () => {
+    expect(hasAnyArea([])).toBe(false);
+  });
 });
 
 describe("resolveHome", () => {
-  it("manda quem tem solicitações para o dashboard", () => {
+  it("manda quem só tem solicitações para o dashboard", () => {
     expect(resolveHome([Permission.SOLICITACOES])).toBe("/dashboard");
+  });
+
+  /**
+   * O médico tem as três áreas de trabalho. Enquanto `resolveHome`
+   * curto-circuitava em `solicitacoes`, ele caía no /dashboard ao entrar — a
+   * casa dele é o Atendimento.
+   */
+  it("prioriza atendimento sobre solicitações", () => {
+    expect(
+      resolveHome([Permission.ATENDIMENTO, Permission.SOLICITACOES]),
+    ).toBe("/atendimento");
+    expect(resolveHome(ALL_PERMISSIONS)).toBe("/atendimento");
+  });
+
+  it("prioriza agenda sobre solicitações quando não há atendimento", () => {
+    expect(resolveHome([Permission.AGENDA, Permission.SOLICITACOES])).toBe(
+      "/agenda",
+    );
   });
 
   it("manda o colaborador de atendimento para o atendimento", () => {

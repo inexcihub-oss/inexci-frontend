@@ -29,14 +29,29 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.SOLICITACOES]:
     "Criar e acompanhar solicitações cirúrgicas e o dashboard.",
   [Permission.ADMINISTRACAO]:
-    "Gerenciar colaboradores, cadastros e a assinatura dos médicos.",
+    "Gerenciar colaboradores, excluir cadastros e a assinatura da conta.",
 };
 
 /**
- * Rota → área. A ordem importa: o primeiro prefixo que casar vence, então
- * prefixos mais específicos vêm antes.
+ * Espelho de `@RequireAnyArea()` do backend: os cadastros transversais
+ * (hospital, convênio, fornecedor, fabricante, paciente) pedem ao menos uma
+ * das quatro áreas — não uma específica. Um colaborador criado com
+ * `permissions: []` fica de fora, e é por isso que a checagem existe em vez de
+ * simplesmente liberar a tela.
  */
-export const ROUTE_PERMISSIONS: { prefix: string; permission: Permission }[] = [
+export function hasAnyArea(permissions: Permission[]): boolean {
+  return ALL_PERMISSIONS.some((p) => permissions.includes(p));
+}
+
+/**
+ * Rota → área. A ordem importa: o primeiro prefixo que casar vence, então
+ * prefixos mais específicos vêm antes. `permission: null` é liberação
+ * explícita — serve para abrir uma sub-rota de um prefixo fechado.
+ */
+export const ROUTE_PERMISSIONS: {
+  prefix: string;
+  permission: Permission | null;
+}[] = [
   { prefix: "/agenda", permission: Permission.AGENDA },
   { prefix: "/atendimento", permission: Permission.ATENDIMENTO },
   {
@@ -45,6 +60,17 @@ export const ROUTE_PERMISSIONS: { prefix: string; permission: Permission }[] = [
   },
   { prefix: "/solicitacao", permission: Permission.SOLICITACOES },
   { prefix: "/dashboard", permission: Permission.SOLICITACOES },
+  // Cadastros transversais: as telas de detalhe moram sob /colaboradores por
+  // herança de layout, mas o dado é compartilhado pelas quatro áreas — quem
+  // monta a solicitação ou marca a consulta cadastra o hospital que faltou sem
+  // depender do admin. Precisam vir ANTES de "/colaboradores", senão o prefixo
+  // mais curto casa primeiro e o guard devolve o usuário para a casa dele.
+  // Excluir continua exigindo Administração, mas isso é decidido no backend e
+  // nos botões da lista, não pela rota.
+  { prefix: "/colaboradores/hospital", permission: null },
+  { prefix: "/colaboradores/convenio", permission: null },
+  { prefix: "/colaboradores/fornecedor", permission: null },
+  { prefix: "/colaboradores/fabricante", permission: null },
   { prefix: "/colaboradores", permission: Permission.ADMINISTRACAO },
   // "Procedimentos" edita `SurgeryRequestTemplate` — herda a permissão de
   // classe do `SurgeryRequestsController` (`GET/POST/PATCH/DELETE
@@ -60,9 +86,10 @@ export function permissionForRoute(pathname: string): Permission | null {
 }
 
 /**
- * Para onde mandar quem não tem Solicitações — o /dashboard deixa de servir
- * como destino padrão de todo mundo. Administração fecha a lista: é a única
- * área do admin delegado, que antes caía em /configuracoes por não ter
+ * A "casa" de cada área, em ordem de prioridade — o /dashboard deixa de servir
+ * como destino padrão de todo mundo. Atendimento abre a lista: o dia do médico
+ * começa na consulta, não no painel de solicitações. Administração fecha: é a
+ * única área do admin delegado, que antes caía em /configuracoes por não ter
  * entrada aqui.
  */
 export const HOME_ORDER: { permission: Permission; href: string }[] = [
@@ -77,9 +104,12 @@ export const HOME_ORDER: { permission: Permission; href: string }[] = [
  * de auth e `PermissionRouteGuard` chamam esta função — antes cada um tinha o
  * seu próprio destino fixo (`/solicitacoes-cirurgicas`), o que mandava todo
  * usuário sem `solicitacoes` para uma rota proibida antes de ser devolvido.
+ *
+ * A prioridade é só a do `HOME_ORDER`: não reintroduza um atalho para
+ * `solicitacoes` antes da busca, senão o médico (que tem as três áreas) volta a
+ * cair no /dashboard em vez do Atendimento.
  */
 export function resolveHome(permissions: Permission[]): string {
-  if (permissions.includes(Permission.SOLICITACOES)) return "/dashboard";
   const destino = HOME_ORDER.find(({ permission }) =>
     permissions.includes(permission),
   );

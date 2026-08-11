@@ -17,7 +17,10 @@ import {
 import { logger } from "@/lib/logger";
 import { userService } from "@/services/user.service";
 import { uploadService } from "@/services/upload.service";
-import { patientService, Patient } from "@/services/patient.service";
+import {
+  patientService,
+  PatientListItem,
+} from "@/services/patient.service";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import {
   SurgeryRequestListItem,
@@ -52,7 +55,7 @@ export default function AssistenteDetalhePage() {
   const [collaboratorStatus, setCollaboratorStatus] = useState<
     string | undefined
   >(undefined);
-  const [recentPatients, setRecentPatients] = useState<Patient[]>([]);
+  const [recentPatients, setRecentPatients] = useState<PatientListItem[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [recentRequests, setRecentRequests] = useState<
     SurgeryRequestListItem[]

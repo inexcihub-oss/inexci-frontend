@@ -338,7 +338,6 @@ export function TussProcedureModal({
       await tussService.addProcedures({
         surgeryRequestId,
         procedures: procedures.map((item) => ({
-          procedureId: item.procedure.id,
           tussCode: item.procedure.tussCode,
           name: item.procedure.name,
           quantity: item.quantity,

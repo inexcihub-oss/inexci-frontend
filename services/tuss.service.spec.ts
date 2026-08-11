@@ -19,14 +19,13 @@ describe("tussService", () => {
   });
 
   describe("addProcedures", () => {
-    it("deve enviar tuss_code e name como obrigatórios", async () => {
+    it("deve enviar apenas tussCode, name e quantity", async () => {
       (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({});
 
       await tussService.addProcedures({
         surgeryRequestId: "sr-1",
         procedures: [
           {
-            procedureId: "p-1",
             tussCode: "30715016",
             name: "Artroscopia",
             quantity: 1,
@@ -34,11 +33,12 @@ describe("tussService", () => {
         ],
       });
 
+      // Nada de `procedureId`: o catálogo TUSS não tem uuid e o backend
+      // recusava o payload inteiro ao validá-lo como tal.
       expect(api.post).toHaveBeenCalledWith("/surgery-requests/procedures", {
         surgeryRequestId: "sr-1",
         procedures: [
           {
-            procedureId: "p-1",
             tussCode: "30715016",
             name: "Artroscopia",
             quantity: 1,
@@ -50,7 +50,6 @@ describe("tussService", () => {
     it("não deve aceitar procedures sem tuss_code e name (TypeScript enforced)", () => {
       // Verifica que a interface requer tuss_code e name
       const validProcedure = {
-        procedureId: "p-1",
         tussCode: "30715016",
         name: "Artroscopia",
         quantity: 1,

@@ -52,6 +52,27 @@ function extractNamedRefs(values: unknown[] | undefined): {
   };
 }
 
+/** Mínimo de fabricantes/fornecedores exigido pelo backend (`MIN_OPME_OPTIONS`). */
+const MIN_OPME_OPTIONS = 3;
+const OPME_FALLBACK_NAME = "Outros";
+
+/**
+ * Completa a lista de nomes com "Outros" até o mínimo, contando os ids já
+ * resolvidos. É a mesma regra que o pipeline de documento aplica no backend
+ * (`surgery-request-assembly.service.ts`) e que o `OpmeTab` usa para exibir.
+ *
+ * Reaplicar o padding aqui é necessário porque ele não sobrevive ao banco: a
+ * junction `(opme_item_id, manufacturer_id)` é única, então três "Outros"
+ * viram uma linha só e o item volta da API abaixo do mínimo.
+ */
+function padOpmeNamesToMinimum(ids: string[], names: string[]): string[] {
+  const out = [...names];
+  while (ids.length + out.length < MIN_OPME_OPTIONS) {
+    out.push(OPME_FALLBACK_NAME);
+  }
+  return out;
+}
+
 export function getTemplateOpmeItemsRaw(
   templateData: Record<string, unknown>,
 ): unknown[] {
@@ -87,9 +108,12 @@ export function extractTemplateOpmeItemsForCreate(
         name: String(raw.name ?? "").trim(),
         quantity: Number(raw.quantity) || 1,
         manufacturerIds: manufacturers.ids,
-        manufacturerNames: manufacturers.names,
+        manufacturerNames: padOpmeNamesToMinimum(
+          manufacturers.ids,
+          manufacturers.names,
+        ),
         supplierIds: suppliers.ids,
-        supplierNames: suppliers.names,
+        supplierNames: padOpmeNamesToMinimum(suppliers.ids, suppliers.names),
       };
     })
     .filter((item) => item.name.length > 0);

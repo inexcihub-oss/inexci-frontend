@@ -11,11 +11,15 @@ vi.mock("@/services/health-plan.service", () => ({
   healthPlanService: { getAll: vi.fn().mockResolvedValue([]) },
 }));
 
-// Usuário simulado com Administração concedida por padrão — o cadastro
-// inline de convênio (grupo 1 do mapa de permissões) é exercido à parte.
-let authState = { can: (p: Permission) => p === Permission.ADMINISTRACAO };
+// O mock deriva `can` de `permissions` em vez de trazer os dois soltos: com
+// duas fontes, um teste passa a afirmar uma combinação que o AuthContext real
+// nunca produz (ex.: `can(ADMINISTRACAO)` verdadeiro com `permissions` vazio).
+let permissions: Permission[] = [Permission.ADMINISTRACAO];
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => authState,
+  useAuth: () => ({
+    permissions,
+    can: (p: Permission) => permissions.includes(p),
+  }),
 }));
 
 import { patientService } from "@/services/patient.service";
@@ -82,7 +86,7 @@ async function renderForm(
 describe("PatientRegistrationForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authState = { can: (p) => p === Permission.ADMINISTRACAO };
+    permissions = [Permission.ADMINISTRACAO];
   });
 
   it("preenche os campos com os dados do paciente", async () => {
@@ -144,17 +148,26 @@ describe("PatientRegistrationForm", () => {
   });
 
   /**
-   * Grupo 1 do mapa de permissões: cadastrar convênio na hora exige
-   * Administração. Sem ela, o formulário não pode travar o colaborador sem
-   * saída — a opção de criar some do combobox e uma dica explica o motivo,
-   * em vez de deixar o clique terminar em 403.
+   * Convênio é cadastro transversal (`@RequireAnyArea()`): qualquer área cria
+   * na hora. Só o colaborador sem área nenhuma fica de fora — e aí o
+   * formulário não pode travá-lo sem saída: a opção some do combobox e uma
+   * dica explica o motivo, em vez de deixar o clique terminar em 403.
    */
-  it("orienta a pedir a um administrador quando falta Administração para cadastrar convênio", async () => {
-    authState = { can: () => false };
+  it("orienta a pedir a um administrador quando não há área nenhuma", async () => {
+    permissions = [];
     await renderForm({ onSaved: vi.fn() });
 
     expect(
       screen.getByText(/Peça a um administrador da conta para cadastrá-lo/i),
     ).toBeInTheDocument();
+  });
+
+  it("deixa o colaborador de qualquer área cadastrar convênio na hora", async () => {
+    permissions = [Permission.AGENDA];
+    await renderForm({ onSaved: vi.fn() });
+
+    expect(
+      screen.queryByText(/Peça a um administrador da conta para cadastrá-lo/i),
+    ).not.toBeInTheDocument();
   });
 });

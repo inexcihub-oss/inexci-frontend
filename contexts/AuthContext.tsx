@@ -20,6 +20,8 @@ import { billingService } from "@/services/billing.service";
 import type { ConsentStatus, ConsentType } from "@/types/consent.types";
 import { useRouter } from "next/navigation";
 import { Permission, resolveHome } from "@/lib/permissions";
+import { QUOTA_QUERY_KEY } from "@/lib/query-keys";
+import { useQueryClient } from "@tanstack/react-query";
 import type { BillingBlockReason } from "@/lib/http-error";
 
 interface AuthContextData {
@@ -77,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const consentsRequestRef = useRef<Promise<void> | null>(null);
   const subscriptionRequestRef = useRef<Promise<void> | null>(null);
   const initialLoadRef = useRef(false);
@@ -124,8 +127,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const effectiveUser = forUser !== undefined ? forUser : user;
       if (!effectiveUser) {
         setSubscription(null);
+        void queryClient.removeQueries({ queryKey: QUOTA_QUERY_KEY });
         return;
       }
+
+      // A cota do banner tem fonte própria (`GET /billing/quota`, aberta a
+      // quem tem Solicitações). Invalidar aqui faz com que todo ponto que já
+      // sincroniza a cobrança — cada envio de solicitação no `SendRequestModal`
+      // — atualize o banner junto, sem precisar lembrar de chamar as duas.
+      void queryClient.invalidateQueries({ queryKey: QUOTA_QUERY_KEY });
+
       if (subscriptionRequestRef.current) {
         return subscriptionRequestRef.current;
       }
@@ -146,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscriptionRequestRef.current = promise;
       return promise;
     },
-    [user],
+    [user, queryClient],
   );
 
   useEffect(() => {

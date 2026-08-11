@@ -101,6 +101,34 @@ function mapBackendPatient(p: BackendPatient): Patient {
   };
 }
 
+/**
+ * O que `GET /patients` devolve: as colunas da tela de pacientes e o que os
+ * seletores exibem. Endereço, convênio e `medicalNotes` ficam de fora — são do
+ * cadastro completo (`getById`), que passa pelo audit de prontuário no backend.
+ *
+ * É um `Pick` de propósito: um `Patient` completo continua atribuível a este
+ * tipo (o formulário de criação devolve um e alimenta as mesmas listas), mas o
+ * caminho contrário não compila — ler `medicalNotes` de uma linha de listagem
+ * vira erro de tipo em vez de `undefined` silencioso em produção.
+ */
+export type PatientListItem = Pick<
+  Patient,
+  | "id"
+  | "name"
+  | "cpf"
+  | "email"
+  | "phone"
+  | "birthDate"
+  | "createdAt"
+  | "updatedAt"
+>;
+
+function mapPatientListItem(p: BackendPatient): PatientListItem {
+  const { id, name, cpf, email, phone, birthDate, createdAt, updatedAt } =
+    mapBackendPatient(p);
+  return { id, name, cpf, email, phone, birthDate, createdAt, updatedAt };
+}
+
 export interface PatientListParams {
   skip?: number;
   take?: number;
@@ -108,7 +136,7 @@ export interface PatientListParams {
 }
 
 export interface PatientListResult {
-  records: Patient[];
+  records: PatientListItem[];
   total: number;
 }
 
@@ -126,7 +154,7 @@ export const patientService = {
       },
     });
     const records = getApiRecords<BackendPatient>(response.data).map(
-      mapBackendPatient,
+      mapPatientListItem,
     );
     const total =
       typeof (response.data as { total?: number })?.total === "number"
@@ -136,16 +164,16 @@ export const patientService = {
   },
 
   /**
-   * Busca todos os pacientes (payload completo). Usado pelos seletores de
-   * paciente do wizard/modais que precisam da lista inteira em memória; a tela
-   * de pacientes usa `list()` paginado.
+   * Busca todos os pacientes. Usado pelos seletores do wizard/modais, que
+   * filtram em memória; a tela de pacientes usa `list()` paginado. Devolve o
+   * mesmo recorte de `list()` — é a mesma rota.
    */
-  async getAll(): Promise<Patient[]> {
+  async getAll(): Promise<PatientListItem[]> {
     const response = await api.get("/patients", {
       params: { take: FETCH_ALL_TAKE },
     });
     const data = getApiRecords<BackendPatient>(response.data);
-    return data.map(mapBackendPatient);
+    return data.map(mapPatientListItem);
   },
 
   /**

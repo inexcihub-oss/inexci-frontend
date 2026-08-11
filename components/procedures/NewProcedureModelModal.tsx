@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Button from "@/components/ui/Button";
 import { X, Search, Plus, Check, Loader2 } from "lucide-react";
 import { procedureService, Procedure } from "@/services/procedure.service";
+import { getApiErrorMessage } from "@/lib/http-error";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
@@ -31,6 +32,7 @@ export function NewProcedureModelModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProcedures, setIsLoadingProcedures] = useState(false);
   const [isCreatingProcedure, setIsCreatingProcedure] = useState(false);
+  const [procedureError, setProcedureError] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const modelNameInputRef = useRef<HTMLInputElement>(null);
@@ -44,6 +46,7 @@ export function NewProcedureModelModal({
     setProcedureSearch("");
     setSelectedProcedure(null);
     setShowDropdown(false);
+    setProcedureError("");
   }, []);
 
   const handleClose = useCallback(() => {
@@ -131,14 +134,20 @@ export function NewProcedureModelModal({
     const name = procedureSearch.trim();
     if (!name) return;
     setIsCreatingProcedure(true);
+    setProcedureError("");
     try {
       const created = await procedureService.create({ name });
       setProcedures((prev) => [created, ...prev]);
       setSelectedProcedure(created);
       setProcedureSearch(created.name);
       setShowDropdown(false);
-    } catch {
-      // silently fail
+    } catch (err) {
+      // Antes este catch era um `// silently fail`: o clique em "Criar" não
+      // fazia nada e não dizia nada — nome duplicado e queda de rede eram
+      // indistinguíveis de um botão morto.
+      setProcedureError(
+        getApiErrorMessage(err, "Erro ao criar procedimento. Tente novamente."),
+      );
     } finally {
       setIsCreatingProcedure(false);
     }
@@ -302,6 +311,11 @@ export function NewProcedureModelModal({
                 </div>
               )}
             </div>
+            {procedureError && (
+              <p role="alert" className="text-xs text-red-600">
+                {procedureError}
+              </p>
+            )}
             <span className="text-xs text-gray-400">
               Você poderá adicionar códigos TUSS, OPME e documentos após criar o
               modelo.

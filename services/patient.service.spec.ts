@@ -45,6 +45,61 @@ describe("patientService", () => {
     });
   });
 
+  // O backend já recorta a listagem, mas o mapper é a segunda barreira: se a
+  // rota voltar a devolver o cadastro inteiro (relação nova, `select` perdido
+  // num refactor), o dado clínico e o endereço morrem aqui em vez de irem
+  // parar no estado de um seletor de paciente.
+  describe("recorte da listagem", () => {
+    const CADASTRO_COMPLETO = {
+      id: "1",
+      name: "Ana",
+      cpf: "12345678900",
+      email: "ana@example.com",
+      phone: "11988880000",
+      birthDate: "1990-05-02",
+      createdAt: "2024-01-01",
+      updatedAt: "2024-01-01",
+      medicalNotes: "Alérgica a dipirona",
+      address: "Rua das Flores",
+      zipCode: "01234-567",
+      healthPlanNumber: "998877",
+      gender: "F",
+    };
+
+    const OCULTOS = [
+      "medicalNotes",
+      "address",
+      "zipCode",
+      "healthPlanNumber",
+      "gender",
+    ];
+
+    it.each([
+      ["list", async () => (await patientService.list()).records],
+      ["getAll", () => patientService.getAll()],
+    ])("%s descarta dado clínico e endereço", async (_nome, executar) => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { total: 1, records: [CADASTRO_COMPLETO] },
+      });
+
+      const [paciente] = await executar();
+
+      for (const campo of OCULTOS) {
+        expect(paciente).not.toHaveProperty(campo);
+      }
+      expect(paciente).toEqual({
+        id: "1",
+        name: "Ana",
+        cpf: "12345678900",
+        email: "ana@example.com",
+        phone: "11988880000",
+        birthDate: "1990-05-02",
+        createdAt: "2024-01-01",
+        updatedAt: "2024-01-01",
+      });
+    });
+  });
+
   describe("list", () => {
     it("envia skip/take/search e devolve records + total", async () => {
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({

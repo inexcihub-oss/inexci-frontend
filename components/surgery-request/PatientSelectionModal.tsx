@@ -3,12 +3,15 @@
 import { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Search, Plus } from "lucide-react";
-import { patientService, Patient } from "@/services/patient.service";
+import {
+  patientService,
+  PatientListItem,
+} from "@/services/patient.service";
 
 interface PatientSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectPatient: (patient: Patient) => void;
+  onSelectPatient: (patient: PatientListItem) => void;
   onCreateNew: () => void;
 }
 
@@ -18,7 +21,7 @@ export function PatientSelectionModal({
   onSelectPatient,
   onCreateNew,
 }: PatientSelectionModalProps) {
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState<PatientListItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
 

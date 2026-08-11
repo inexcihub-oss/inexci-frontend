@@ -93,35 +93,9 @@ describe("userService", () => {
     });
   });
 
-  describe("getAll", () => {
-    it("deve chamar GET /users", async () => {
-      const mockUsers = [{ id: "1", name: "Usuário 1" }];
-      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: mockUsers,
-      });
-
-      const result = await userService.getAll();
-
-      expect(api.get).toHaveBeenCalled();
-      expect(result).toEqual(mockUsers);
-    });
-  });
-
-  describe("getById", () => {
-    it("deve chamar GET /users/one com query param id", async () => {
-      const mockUser = { id: "u-1", name: "João" };
-      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: mockUser,
-      });
-
-      const result = await userService.getById("u-1");
-
-      expect(api.get).toHaveBeenCalledWith("/users/one", {
-        params: { id: "u-1" },
-      });
-      expect(result).toEqual(mockUser);
-    });
-  });
+  // `getAll`/`getById` (GET /users e /users/one) foram removidos junto com os
+  // seus testes: nenhuma tela os chamava e o primeiro trazia o diretório do
+  // staff com dado pessoal de cada colega.
 
   describe("uploadAvatar", () => {
     it("deve fazer upload e atualizar perfil com avatar_url", async () => {

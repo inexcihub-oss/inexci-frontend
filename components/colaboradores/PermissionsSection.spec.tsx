@@ -84,13 +84,19 @@ describe("PermissionsSection", () => {
     ).toBeEnabled();
   });
 
+  /**
+   * O texto diz "excluir cadastros", não "cadastros": criar e editar hospital,
+   * convênio, fornecedor e fabricante são transversais a qualquer área — só a
+   * exclusão ficou em Administração. Prometer o cadastro inteiro aqui faria o
+   * admin conceder a área por um motivo que não existe mais.
+   */
   it("avisa o que a administração concede", () => {
     render(
       <PermissionsSection value={[]} isDoctor={false} onChange={vi.fn()} />,
     );
 
     expect(
-      screen.getByText(/Gerenciar colaboradores, cadastros/i),
+      screen.getByText(/Gerenciar colaboradores, excluir cadastros/i),
     ).toBeInTheDocument();
   });
 

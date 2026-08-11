@@ -1,9 +1,9 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Permission, resolveHome } from "@/lib/permissions";
+import { permissionForRoute, resolveHome } from "@/lib/permissions";
 
 /**
  * Gate da área de Colaboradores.
@@ -18,6 +18,12 @@ import { Permission, resolveHome } from "@/lib/permissions";
  * O destino da recusa sai de `resolveHome`, a mesma função usada pelo
  * `PermissionRouteGuard` e pelo login — mandar para `/dashboard` fixo devolvia
  * o usuário para outra rota que ele também não pode ver.
+ *
+ * A exigência vem de `permissionForRoute`, não de um `Permission.ADMINISTRACAO`
+ * fixo: as telas de hospital, convênio, fornecedor e fabricante moram sob este
+ * layout mas são cadastros transversais, abertos a qualquer área. Com a regra
+ * escrita aqui também, elas ficavam barradas por este gate mesmo já liberadas
+ * no mapa de rotas — dois lugares dizendo coisas diferentes sobre a mesma URL.
  */
 export default function ColaboradoresLayout({
   children,
@@ -26,16 +32,18 @@ export default function ColaboradoresLayout({
 }) {
   const { can, permissions, loading } = useAuth();
   const router = useRouter();
-  const podeAdministrar = can(Permission.ADMINISTRACAO);
+  const pathname = usePathname();
+  const exigida = permissionForRoute(pathname);
+  const liberado = !exigida || can(exigida);
 
   useEffect(() => {
-    if (!loading && !podeAdministrar) {
+    if (!loading && !liberado) {
       router.replace(resolveHome(permissions));
     }
-  }, [podeAdministrar, permissions, loading, router]);
+  }, [liberado, permissions, loading, router]);
 
   // Enquanto carrega ou sem a permissão, não renderiza conteúdo.
-  if (loading || !podeAdministrar) {
+  if (loading || !liberado) {
     return null;
   }
 

@@ -11,7 +11,7 @@ import BottomNavBar from "@/components/BottomNavBar";
 import MobileHeaderActions from "@/components/shared/MobileHeaderActions";
 import { ConsentGate } from "@/components/privacy/ConsentGate";
 import { PermissionRouteGuard } from "@/components/PermissionRouteGuard";
-import { BillingStatusBanner } from "@/components/billing/BillingStatusBanner";
+import { GlobalBanners } from "@/components/billing/GlobalBanners";
 import Image from "next/image";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 
@@ -99,10 +99,24 @@ export default function DashboardLayoutInner({
             <MobileHeaderActions />
           </header>
 
-          <BillingStatusBanner />
+          {/*
+            Conteúdo principal — e, no mobile, o eixo de rolagem da aplicação.
 
-          {/* Conteúdo principal */}
-          <main className="flex-1 overflow-hidden">
+            O banner mora aqui dentro de propósito: como irmão do `main` ele
+            ficava cravado no topo consumindo ~220px permanentes de uma tela de
+            667px, e o que sobrava era subtraído direto da altura útil da
+            página. Rolando junto com o conteúdo, ele sai da tela.
+
+            Coluna flex, e não bloco: é o que faz a página receber
+            **exatamente** a altura que sobra do banner. Com layout de bloco, o
+            `h-full` do `PageContainer` pedia 100% do `main` e o banner
+            empurrava esse tanto para fora — no desktop, onde não há rolagem,
+            o excedente era cortado e o rodapé do kanban ficava inalcançável.
+          */}
+          <main className="flex flex-1 flex-col overflow-y-auto overscroll-y-contain lg:overflow-hidden">
+            <div className="flex-none">
+              <GlobalBanners />
+            </div>
             <PermissionRouteGuard>
               <ConsentGate>{children}</ConsentGate>
             </PermissionRouteGuard>

@@ -157,6 +157,22 @@ export interface QuotaSnapshot {
   periodEnd: string;
 }
 
+/**
+ * Recorte da cota devolvido por `GET /billing/quota` — visível a qualquer
+ * usuário da conta com permissão de solicitações, não só ao dono.
+ *
+ * `remaining` é `null` quando o plano é ilimitado (o `QuotaSnapshot` usa
+ * `Infinity`, que o JSON serializa como `null`).
+ */
+export interface QuotaStatus {
+  used: number;
+  limit: number;
+  isUnlimited: boolean;
+  remaining: number | null;
+  periodStart: string;
+  periodEnd: string;
+}
+
 export interface SubscriptionDetail {
   subscription: Subscription;
   plan: SubscriptionPlan | null;

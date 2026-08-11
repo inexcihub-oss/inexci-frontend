@@ -37,15 +37,14 @@ function renderWithClient(ui: React.ReactElement) {
 }
 
 /**
- * Grupo 1 do mapa de permissões: criar hospital na hora exige Administração.
- * `canCreate` é passado pelo `CreateSurgeryRequestWizard` (que resolve
- * `can(Permission.ADMINISTRACAO)`) — este teste cobre o mecanismo de
- * desabilitar-com-dica em si, isolado do wizard completo.
+ * `canCreate` é resolvido pelo `CreateSurgeryRequestWizard` (hoje, `hasAnyArea`
+ * — hospital é cadastro transversal). Este teste cobre o mecanismo de
+ * desabilitar-com-dica em si, isolado de qual regra o wizard usa para decidir.
  */
 describe("HospitalSelectionContent — gating de criação (canCreate)", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("desabilita 'Novo' e explica o motivo quando falta Administração", () => {
+  it("desabilita 'Novo' e explica o motivo quando não pode criar", () => {
     renderWithClient(
       <HospitalSelectionContent
         onSelect={vi.fn()}
@@ -62,7 +61,7 @@ describe("HospitalSelectionContent — gating de criação (canCreate)", () => {
     ).toBeInTheDocument();
   });
 
-  it("mantém 'Novo' habilitado para quem tem Administração", () => {
+  it("mantém 'Novo' habilitado para quem pode criar", () => {
     renderWithClient(
       <HospitalSelectionContent
         onSelect={vi.fn()}
@@ -81,16 +80,49 @@ describe("HospitalSelectionContent — gating de criação (canCreate)", () => {
 });
 
 /**
- * `DELETE /procedures/:id` exige a mesma Administração que `POST` — a
- * lixeira por linha precisa sumir junto com o "Novo", não só ele. Sem essa
- * checagem, um colaborador com Solicitações e sem Administração (o perfil
- * que o wizard de SC serve) recebia o modal de confirmação e um 403 na
- * hora de confirmar.
+ * Criar e excluir procedimento deixaram de andar juntos: `POST /procedures`
+ * herda o `@RequireAnyArea()` da classe, `DELETE /procedures/:id` continua em
+ * Administração. Enquanto uma prop só governava os dois, liberar a criação
+ * teria trazido a lixeira junto — modal de confirmação e 403 ao confirmar.
  */
-describe("ProcedureSelectionContent — gating de exclusão (canCreate)", () => {
+describe("ProcedureSelectionContent — criar e excluir são props separadas", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("esconde a lixeira por linha quando falta Administração", async () => {
+  const lixeira = { name: /Excluir Artroscopia de joelho/i } as const;
+
+  it("esconde a lixeira quando falta Administração, mesmo podendo criar", async () => {
+    renderWithClient(
+      <ProcedureSelectionContent
+        onSelect={vi.fn()}
+        onCreateNew={vi.fn()}
+        onNewItemCreated={vi.fn()}
+        isActive
+        canCreate
+        canDelete={false}
+      />,
+    );
+
+    expect(await screen.findByText("Artroscopia de joelho")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Novo" })).toBeEnabled();
+    expect(screen.queryByRole("button", lixeira)).not.toBeInTheDocument();
+  });
+
+  it("mostra a lixeira para quem tem Administração", async () => {
+    renderWithClient(
+      <ProcedureSelectionContent
+        onSelect={vi.fn()}
+        onCreateNew={vi.fn()}
+        onNewItemCreated={vi.fn()}
+        isActive
+        canCreate
+        canDelete
+      />,
+    );
+
+    expect(await screen.findByRole("button", lixeira)).toBeInTheDocument();
+  });
+
+  it("desabilita 'Novo' de quem não tem área nenhuma, sem mexer na lixeira", async () => {
     renderWithClient(
       <ProcedureSelectionContent
         onSelect={vi.fn()}
@@ -98,34 +130,12 @@ describe("ProcedureSelectionContent — gating de exclusão (canCreate)", () => 
         onNewItemCreated={vi.fn()}
         isActive
         canCreate={false}
+        canDelete
       />,
     );
 
-    expect(
-      await screen.findByText("Artroscopia de joelho"),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", {
-        name: /Excluir Artroscopia de joelho/i,
-      }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("mostra a lixeira por linha para quem tem Administração", async () => {
-    renderWithClient(
-      <ProcedureSelectionContent
-        onSelect={vi.fn()}
-        onCreateNew={vi.fn()}
-        onNewItemCreated={vi.fn()}
-        isActive
-        canCreate={true}
-      />,
-    );
-
-    expect(
-      await screen.findByRole("button", {
-        name: /Excluir Artroscopia de joelho/i,
-      }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Artroscopia de joelho")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Novo" })).toBeDisabled();
+    expect(screen.getByRole("button", lixeira)).toBeInTheDocument();
   });
 });
