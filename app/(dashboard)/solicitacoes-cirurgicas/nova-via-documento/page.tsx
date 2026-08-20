@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -9,8 +9,6 @@ import {
   Loader2,
   Plus,
   Trash2,
-  Search,
-  Check,
   ChevronRight,
 } from "lucide-react";
 import PageContainer from "@/components/PageContainer";
@@ -19,6 +17,7 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { DateInput } from "@/components/ui/DateInput";
 import { FormSection } from "@/components/details";
+import { EntityComboboxDeferredCreate } from "@/components/surgery-request/EntityComboboxDeferredCreate";
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { useZodForm } from "@/hooks/useZodForm";
@@ -195,233 +194,6 @@ interface OpmeDisplayItem {
 interface SectionRow {
   title: string;
   description: string;
-}
-
-// ─── Combobox de procedimento (criação adiada para o submit) ───────────────
-//
-// Mesmo padrão do ManufacturerAutocomplete/SupplierAutocomplete usados no
-// OpmeModal: campo de busca + dropdown. Quando não existe resultado exato,
-// o procedimento novo é criado apenas ao salvar a solicitação.
-
-interface ProcedureComboboxProps {
-  procedures: Procedure[];
-  value: string;
-  query: string;
-  onSelect: (id: string) => void;
-  onQueryChange: (name: string) => void;
-  error?: string;
-}
-
-function ProcedureCombobox({
-  procedures,
-  value,
-  query,
-  onSelect,
-  onQueryChange,
-  error,
-}: ProcedureComboboxProps) {
-  const selected = procedures.find((p) => p.id === value);
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const filtered = procedures.filter((p) =>
-    p.name.toLowerCase().includes(query.toLowerCase()),
-  );
-  const hasExactMatch = procedures.some(
-    (p) => p.name.toLowerCase() === query.trim().toLowerCase(),
-  );
-
-  const handleSelect = (p: Procedure) => {
-    onSelect(p.id);
-    onQueryChange(p.name);
-    setIsOpen(false);
-  };
-
-  return (
-    <div ref={containerRef} className="relative">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-        <input
-          type="text"
-          value={selected?.name ?? query}
-          onChange={(e) => {
-            onQueryChange(e.target.value);
-            if (value) onSelect("");
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-          placeholder="Buscar ou criar procedimento..."
-          className={`ds-input pl-9 pr-9 ${error ? "border-red-500" : ""}`}
-        />
-        {selected && (
-          <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-teal-600" />
-        )}
-      </div>
-
-      {isOpen && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-neutral-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-          {filtered.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => handleSelect(p)}
-              className={`w-full text-left px-3 py-2.5 text-sm hover:bg-teal-50 transition-colors flex items-center justify-between ${
-                value === p.id
-                  ? "bg-teal-50 text-teal-700 font-medium"
-                  : "text-gray-700"
-              }`}
-            >
-              <span className="truncate">{p.name}</span>
-              {value === p.id && (
-                <Check className="h-4 w-4 text-teal-600 shrink-0" />
-              )}
-            </button>
-          ))}
-
-          {filtered.length === 0 && !hasExactMatch && (
-            <div className="px-3 py-2 text-sm text-gray-400">
-              Nenhum procedimento encontrado.
-            </div>
-          )}
-
-          {query.trim() && !hasExactMatch && (
-            <div className="w-full text-left px-3 py-2.5 text-sm text-teal-700 border-t border-neutral-100 font-medium flex items-center gap-2">
-              <Plus className="h-4 w-4 shrink-0" />
-              <span className="truncate">
-                &ldquo;{query.trim()}&rdquo; será criado ao salvar
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-    </div>
-  );
-}
-
-interface EntityComboboxDeferredCreateProps {
-  value: string;
-  query: string;
-  options: DocumentEntityCandidate[];
-  placeholder: string;
-  emptyText: string;
-  createLabel: string;
-  onSelect: (id: string) => void;
-  onQueryChange: (name: string) => void;
-}
-
-function EntityComboboxDeferredCreate({
-  value,
-  query,
-  options,
-  placeholder,
-  emptyText,
-  createLabel,
-  onSelect,
-  onQueryChange,
-}: EntityComboboxDeferredCreateProps) {
-  const selected = options.find((o) => o.id === value);
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const filtered = options.filter((o) =>
-    o.name.toLowerCase().includes(query.toLowerCase()),
-  );
-  const hasExactMatch = options.some(
-    (o) => o.name.toLowerCase() === query.trim().toLowerCase(),
-  );
-
-  const handleSelect = (o: DocumentEntityCandidate) => {
-    onSelect(o.id);
-    onQueryChange(o.name);
-    setIsOpen(false);
-  };
-
-  return (
-    <div ref={containerRef} className="relative">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-        <input
-          type="text"
-          value={selected?.name ?? query}
-          onChange={(e) => {
-            onQueryChange(e.target.value);
-            if (value) onSelect("");
-            setIsOpen(true);
-          }}
-          onFocus={() => setIsOpen(true)}
-          placeholder={placeholder}
-          className="ds-input pl-9 pr-9"
-        />
-        {selected && (
-          <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-teal-600" />
-        )}
-      </div>
-
-      {isOpen && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-neutral-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-          {filtered.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => handleSelect(o)}
-              className={`w-full text-left px-3 py-2.5 text-sm hover:bg-teal-50 transition-colors flex items-center justify-between ${
-                value === o.id
-                  ? "bg-teal-50 text-teal-700 font-medium"
-                  : "text-gray-700"
-              }`}
-            >
-              <span className="truncate">{o.name}</span>
-              {value === o.id && (
-                <Check className="h-4 w-4 text-teal-600 shrink-0" />
-              )}
-            </button>
-          ))}
-
-          {filtered.length === 0 && query.trim() && !hasExactMatch && (
-            <div className="px-3 py-2 text-sm text-gray-400">{emptyText}</div>
-          )}
-
-          {query.trim() && !hasExactMatch && (
-            <div className="w-full text-left px-3 py-2.5 text-sm text-teal-700 border-t border-neutral-100 font-medium flex items-center gap-2">
-              <Plus className="h-4 w-4 shrink-0" />
-              <span className="truncate">
-                &ldquo;{query.trim()}&rdquo; será criado como {createLabel} ao
-                salvar
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -860,10 +632,13 @@ export default function NovaViaDocumentoPage() {
                   &rdquo;
                 </p>
               )}
-              <ProcedureCombobox
-                procedures={procedures}
+              <EntityComboboxDeferredCreate
                 value={values.procedureId ?? ""}
                 query={values.procedureName ?? ""}
+                options={procedures}
+                placeholder="Buscar ou criar procedimento..."
+                emptyText="Nenhum procedimento encontrado"
+                createLabel="procedimento"
                 onSelect={(id) => setField("procedureId", id)}
                 onQueryChange={(name) => setField("procedureName", name)}
                 error={errors.procedureId}

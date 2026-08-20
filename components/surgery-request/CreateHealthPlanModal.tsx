@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import {
   healthPlanService,
@@ -88,8 +89,17 @@ export function CreateHealthPlanModal({
   );
 
   if (!isOpen) return null;
+  if (typeof document === "undefined") return null;
 
-  return (
+  // Portal obrigatório: este modal é aberto de dentro de outros formulários
+  // (ex.: o combobox de convênio do `NewPatientModal`). Renderizado inline,
+  // o `<form>` daqui vira descendente do `<form>` de quem abriu — HTML
+  // inválido cujo efeito prático é grave: o Chrome não propaga o submit do
+  // form interno para além do form externo, então o handler `onSubmit` do
+  // React (delegado na raiz) nunca roda, ninguém chama `preventDefault` e o
+  // browser faz o submit nativo — a página recarrega e o cadastro em
+  // andamento se perde.
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
@@ -108,7 +118,16 @@ export function CreateHealthPlanModal({
         <div className="h-px bg-gray-200" />
 
         {/* Body */}
-        <form onSubmit={onSubmit} noValidate>
+        <form
+          onSubmit={(e) => {
+            // O portal resolve o DOM, não a árvore React: o evento de submit
+            // continua subindo até o `<form>` de quem abriu este modal e
+            // dispararia a validação daquele formulário junto.
+            e.stopPropagation();
+            void onSubmit(e);
+          }}
+          noValidate
+        >
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
             <Input
               label="Convênio"
@@ -149,6 +168,7 @@ export function CreateHealthPlanModal({
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={hideToast} />
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
