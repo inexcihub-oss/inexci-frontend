@@ -11,7 +11,14 @@ interface BillingPlanCardProps {
   icon: LucideIcon;
   theme: PlanCardTheme;
   highlight?: boolean;
+  /** Plano já contratado no gateway: card travado. */
   isCurrent: boolean;
+  /**
+   * Plano escolhido no teste/cadastro mas ainda não pago. Ganha o mesmo
+   * destaque visual do plano atual — sem travar o CTA, que é justamente o
+   * caminho para assiná-lo.
+   */
+  isTrialSelection?: boolean;
   ctaLabel: string;
   ctaDisabled?: boolean;
   loading?: boolean;
@@ -24,6 +31,7 @@ export function BillingPlanCard({
   theme,
   highlight = false,
   isCurrent,
+  isTrialSelection = false,
   ctaLabel,
   ctaDisabled = false,
   loading = false,
@@ -31,21 +39,27 @@ export function BillingPlanCard({
 }: BillingPlanCardProps) {
   const isEnterprise = plan.slug === "enterprise" || !plan.gatewayPriceId;
 
+  const destacado = isCurrent || isTrialSelection;
+
   return (
     <div className="relative h-full flex flex-col pt-4">
-      {(isCurrent || highlight) && (
+      {(destacado || highlight) && (
         <div className="absolute top-0 inset-x-0 flex justify-center z-10">
           <span
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-white shadow-md ${
-              isCurrent ? "bg-emerald-500" : theme.badgeBg
+              destacado ? "bg-emerald-500" : theme.badgeBg
             }`}
           >
-            {isCurrent ? (
+            {destacado ? (
               <Check className="w-2.5 h-2.5" strokeWidth={3} />
             ) : (
               <Sparkles className="w-2.5 h-2.5" />
             )}
-            {isCurrent ? "Plano atual" : "Mais popular"}
+            {isCurrent
+              ? "Plano atual"
+              : isTrialSelection
+                ? "Escolhido no teste"
+                : "Mais popular"}
           </span>
         </div>
       )}
@@ -53,10 +67,10 @@ export function BillingPlanCard({
       <div
         className={[
           "flex-1 flex flex-col w-full rounded-2xl overflow-hidden bg-white transition-all duration-300",
-          isCurrent
+          destacado
             ? `${theme.ring} border-2 shadow-xl ${theme.glowShadow}`
             : "border border-gray-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300",
-          highlight && !isCurrent ? "border-purple-200 shadow-md" : "",
+          highlight && !destacado ? "border-purple-200 shadow-md" : "",
         ]
           .filter(Boolean)
           .join(" ")}

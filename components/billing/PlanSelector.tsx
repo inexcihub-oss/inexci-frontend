@@ -11,7 +11,7 @@ interface Props {
   currentPlanId: string | null;
   subscriptionStatus: SubscriptionStatus;
   onCheckout: (plan: SubscriptionPlan) => void;
-  onManage: () => void;
+  onManage: (plan?: SubscriptionPlan) => void;
   loading?: boolean;
   redirecting?: boolean;
 }
@@ -62,6 +62,13 @@ export function PlanSelector({
     );
   }
 
+  /**
+   * Enquanto o plano não foi contratado de fato — trial em curso ou assinatura
+   * cancelada — `subscription.planId` guarda apenas a *escolha* feita no
+   * cadastro, não um contrato. Tratar esse card como "Plano atual" (e
+   * desabilitá-lo) trancava justamente o único plano que o usuário queria
+   * pagar: o que ele havia selecionado no teste.
+   */
   const goesThruCheckout =
     subscriptionStatus === "trialing" || subscriptionStatus === "canceled";
 
@@ -75,6 +82,14 @@ export function PlanSelector({
     GRID_COLS_CLASS[allPlans.length] ??
     "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
 
+  /** Plano já contratado no gateway — só existe fora do fluxo de checkout. */
+  const isContractedPlan = (plan: SubscriptionPlan) =>
+    !goesThruCheckout && plan.id === currentPlanId;
+
+  /** Plano escolhido no teste: destacado, mas assinável. */
+  const isTrialSelection = (plan: SubscriptionPlan) =>
+    goesThruCheckout && plan.id === currentPlanId;
+
   const ctaLabelFor = (isCurrent: boolean) =>
     isCurrent
       ? "Plano atual"
@@ -83,7 +98,7 @@ export function PlanSelector({
         : "Fazer upgrade/downgrade";
 
   const handleSelect = (plan: SubscriptionPlan) =>
-    goesThruCheckout ? onCheckout(plan) : onManage();
+    goesThruCheckout ? onCheckout(plan) : onManage(plan);
 
   return (
     <div className="space-y-6">
@@ -123,7 +138,7 @@ export function PlanSelector({
         <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {allPlans.map((plan) => {
             const presentation = getPresentation(plan.slug);
-            const isCurrent = plan.id === currentPlanId;
+            const isCurrent = isContractedPlan(plan);
             return (
               <div
                 key={plan.id}
@@ -135,6 +150,7 @@ export function PlanSelector({
                   theme={presentation.theme}
                   highlight={presentation.highlight}
                   isCurrent={isCurrent}
+                  isTrialSelection={isTrialSelection(plan)}
                   loading={redirecting}
                   ctaDisabled={redirecting}
                   ctaLabel={ctaLabelFor(isCurrent)}
@@ -150,7 +166,7 @@ export function PlanSelector({
       <div className={`hidden sm:grid gap-5 items-stretch ${colClass}`}>
         {allPlans.map((plan) => {
           const presentation = getPresentation(plan.slug);
-          const isCurrent = plan.id === currentPlanId;
+          const isCurrent = isContractedPlan(plan);
           return (
             <BillingPlanCard
               key={plan.id}
@@ -159,6 +175,7 @@ export function PlanSelector({
               theme={presentation.theme}
               highlight={presentation.highlight}
               isCurrent={isCurrent}
+              isTrialSelection={isTrialSelection(plan)}
               loading={redirecting}
               ctaDisabled={redirecting}
               ctaLabel={ctaLabelFor(isCurrent)}

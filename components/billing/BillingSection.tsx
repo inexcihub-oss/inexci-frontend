@@ -54,10 +54,15 @@ export function BillingSection() {
     }
   };
 
-  const handleManage = async () => {
+  /**
+   * Abre o Portal da Stripe. Com um plano em mãos (troca de plano a partir do
+   * seletor), o portal já cai na confirmação daquele plano — sem ele, o usuário
+   * aterrissava na home do portal e a seleção se perdia.
+   */
+  const handleManage = async (plan?: SubscriptionPlan) => {
     try {
       setRedirecting(true);
-      const { url } = await billingService.openPortal();
+      const { url } = await billingService.openPortal(plan?.id);
       window.location.href = url;
     } catch (_err) {
       showToast(
@@ -118,7 +123,7 @@ export function BillingSection() {
 
             {isSuspendedOrPastDue && (
               <Button
-                onClick={handleManage}
+                onClick={() => handleManage()}
                 isLoading={redirecting}
                 className="gap-2"
               >
@@ -130,7 +135,7 @@ export function BillingSection() {
             {!isCanceled && !isTrialing && !isSuspendedOrPastDue && (
               <Button
                 variant="outline"
-                onClick={handleManage}
+                onClick={() => handleManage()}
                 isLoading={redirecting}
                 className="gap-2"
               >

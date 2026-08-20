@@ -30,9 +30,14 @@ export const billingService = {
     return data;
   },
 
-  async openPortal(): Promise<{ url: string }> {
+  /**
+   * `planId` opcional: quando informado, o portal abre direto no fluxo de troca
+   * para aquele plano em vez da home do portal.
+   */
+  async openPortal(planId?: string): Promise<{ url: string }> {
     const { data } = await api.post<{ url: string }>(
       "/billing/subscription/portal",
+      planId ? { planId } : {},
     );
     return data;
   },
