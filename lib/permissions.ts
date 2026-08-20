@@ -76,6 +76,11 @@ export const ROUTE_PERMISSIONS: {
   // classe do `SurgeryRequestsController` (`GET/POST/PATCH/DELETE
   // /surgery-requests/templates/*`), Solicitações, não Administração.
   { prefix: "/procedimentos", permission: Permission.SOLICITACOES },
+  // Diferente dos cadastros transversais: o local de atendimento e sua grade de
+  // funcionamento são configuração da conta, não dado que qualquer área edita.
+  // A LEITURA da lista fica aberta no backend (`@RequireAnyArea`), porque o
+  // modal de consulta precisa dela — mas a TELA é de administração.
+  { prefix: "/clinicas", permission: Permission.ADMINISTRACAO },
 ];
 
 export function permissionForRoute(pathname: string): Permission | null {

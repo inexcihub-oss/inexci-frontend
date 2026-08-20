@@ -119,7 +119,9 @@ export function appointmentToEvent(a: Appointment, typeLabel: string): CalEvent 
     end: new Date(start.getTime() + a.durationMinutes * 60_000),
     allDay: false,
     title: a.patient?.name ?? "Consulta",
-    subtitle: typeLabel,
+    // O card tem uma linha só para isto; a unidade entra ao lado do tipo em
+    // vez de ganhar linha própria, que estouraria a altura do slot de 30min.
+    subtitle: a.clinic ? `${typeLabel} · ${a.clinic.name}` : typeLabel,
     doctorId: a.doctorId,
     status: a.status,
     appointment: a,

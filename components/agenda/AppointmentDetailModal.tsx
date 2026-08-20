@@ -12,7 +12,7 @@ import {
 } from "@/services/appointment.service";
 import { cn } from "@/lib/utils";
 import { capitalizeFirst, formatDoctorName } from "@/lib/formatters";
-import { Clock, User, Tag, FileText } from "lucide-react";
+import { Clock, User, Tag, FileText, MapPin } from "lucide-react";
 
 const STATUS_BADGE: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 text-blue-700 border-blue-200",
@@ -125,6 +125,12 @@ export function AppointmentDetailModal({
             {APPOINTMENT_TYPE_LABELS[appointment.type]} ·{" "}
             {appointment.durationMinutes} min
           </Row>
+          {appointment.clinic && (
+            <Row icon={<MapPin className="w-4 h-4" />}>
+              <span className="sr-only">Local de atendimento</span>
+              {appointment.clinic.name}
+            </Row>
+          )}
           {doctorName && (
             <Row icon={<User className="w-4 h-4" />}>
               {formatDoctorName(doctorName)}

@@ -108,6 +108,13 @@ const allMenuItems: NavigationEntry[] = [
       {
         type: "item",
         iconSrc: "/icons/users.svg",
+        label: "Clínicas",
+        href: "/clinicas",
+        permission: Permission.ADMINISTRACAO,
+      },
+      {
+        type: "item",
+        iconSrc: "/icons/users.svg",
         label: "Hospitais",
         href: "/hospitais",
       },
@@ -154,7 +161,13 @@ export default function Sidebar({
   const { user, logout, can } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isCadastrosOpen, setIsCadastrosOpen] = useState(() =>
-    ["/hospitais", "/convenios", "/fornecedores", "/fabricantes"].some(
+    [
+      "/clinicas",
+      "/hospitais",
+      "/convenios",
+      "/fornecedores",
+      "/fabricantes",
+    ].some(
       (basePath) =>
         pathname === basePath || pathname.startsWith(`${basePath}/`),
     ),
@@ -199,6 +212,7 @@ export default function Sidebar({
 
   useEffect(() => {
     const isCadastrosPath = [
+      "/clinicas",
       "/hospitais",
       "/convenios",
       "/fornecedores",

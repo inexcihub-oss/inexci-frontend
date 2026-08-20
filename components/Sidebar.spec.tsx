@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { Permission } from "@/lib/permissions";
 
 let authState = {
@@ -60,6 +60,25 @@ describe("Sidebar — filtro por permissão", () => {
     render(<Sidebar />);
 
     expect(screen.getByText("Pacientes")).toBeInTheDocument();
+  });
+
+  /**
+   * "Clínicas" mora dentro do acordeão "Cadastros", que começa fechado (o
+   * pathname mockado é "/agenda", fora da lista que o abre por padrão) — é
+   * preciso abrir o acordeão antes de verificar o filho, senão ele nunca
+   * entra no DOM independente da permissão.
+   */
+  it("mostra Clínicas só para quem tem administração", () => {
+    authState.permissions = [Permission.ADMINISTRACAO];
+    const { unmount } = render(<Sidebar />);
+    fireEvent.click(screen.getByText("Cadastros"));
+    expect(screen.getByText("Clínicas")).toBeInTheDocument();
+    unmount();
+
+    authState.permissions = [Permission.AGENDA];
+    render(<Sidebar />);
+    fireEvent.click(screen.getByText("Cadastros"));
+    expect(screen.queryByText("Clínicas")).not.toBeInTheDocument();
   });
 });
 
