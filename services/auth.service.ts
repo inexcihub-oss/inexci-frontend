@@ -60,6 +60,19 @@ export const authService = {
   },
 
   /**
+   * Checa se o telefone já pertence a outra conta. O backend normaliza para
+   * dígitos, então tanto faz enviar mascarado ou limpo.
+   */
+  async checkPhone(
+    phone: string,
+  ): Promise<{ status: "available" | "registered" }> {
+    const { data } = await api.post<{
+      status: "available" | "registered";
+    }>("/auth/check-phone", { phone: phone.trim() });
+    return data;
+  },
+
+  /**
    * Realiza registro de novo usuário
    */
   async register(userData: RegisterData): Promise<AuthResponse> {

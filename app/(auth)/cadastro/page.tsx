@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui";
 import { step1Schema, step2Schema } from "@/lib/schemas/cadastro.schema";
 import { unmask } from "@/lib/masks";
+import { classifyRegisterError } from "@/lib/register-error";
+import { resolveStep1Availability } from "@/lib/step1-availability";
 import type { SubscriptionPlan } from "@/types";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 
@@ -103,9 +105,6 @@ export default function CadastroPage() {
   const [billingPeriod, setBillingPeriod] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
 
   const [error, setError] = useState("");
-  const [errorType, setErrorType] = useState<
-    "" | "email_active" | "email_pending" | "generic"
-  >("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleBillingPeriodChange = (period: "MONTHLY" | "YEARLY") => {
@@ -199,7 +198,6 @@ export default function CadastroPage() {
 
   const handleNext = async () => {
     setError("");
-    setErrorType("");
 
     if (currentStep === 1) {
       const err = validateStep1();
@@ -208,28 +206,35 @@ export default function CadastroPage() {
         return;
       }
 
-      // Detecção antecipada: barra logo aqui e-mails que já têm conta ativa ou
-      // convite de colaborador pendente, evitando que o usuário percorra a
+      // Detecção antecipada: barra aqui e-mail com conta ativa/convite pendente
+      // e telefone já usado por outra conta, evitando que o usuário percorra a
       // etapa de perfil e a de seleção de plano para só então tomar o erro.
+      //
+      // As duas checagens vão em paralelo e cada uma falha por conta própria:
+      // se só uma cair, a outra ainda aponta seu campo (ver
+      // `resolveStep1Availability`).
       setIsLoading(true);
       try {
-        const { status } = await authService.checkEmail(step1.email);
-        if (status === "registered") {
-          setError(
-            "Este e-mail já está cadastrado. Faça login ou recupere sua senha.",
-          );
-          setErrorType("email_active");
+        const [email, phone] = await Promise.all([
+          authService
+            .checkEmail(step1.email)
+            .then((r) => r.status)
+            .catch(() => null),
+          authService
+            .checkPhone(step1.phone)
+            .then((r) => r.status)
+            .catch(() => null),
+        ]);
+
+        const { blocked, fieldErrors } = resolveStep1Availability({
+          email,
+          phone,
+        });
+
+        if (blocked) {
+          setStep1FieldErrors(fieldErrors);
           return;
         }
-        if (status === "pending_invite") {
-          setError(
-            "Este e-mail já tem um convite pendente. Verifique sua caixa de entrada e use o link para criar sua senha.",
-          );
-          setErrorType("email_pending");
-          return;
-        }
-      } catch {
-        // Falha na checagem não deve travar o cadastro — o submit final revalida.
       } finally {
         setIsLoading(false);
       }
@@ -246,7 +251,6 @@ export default function CadastroPage() {
 
   const handleBack = () => {
     setError("");
-    setErrorType("");
     setStep1FieldErrors({});
     setStep2FieldErrors({});
     setCurrentStep((s) => Math.max(s - 1, 1));
@@ -254,7 +258,6 @@ export default function CadastroPage() {
 
   const handleSubmit = async () => {
     setError("");
-    setErrorType("");
     setIsLoading(true);
     try {
       const phoneDigits = unmask(step1.phone);
@@ -277,11 +280,24 @@ export default function CadastroPage() {
       const message =
         axiosErr.response?.data?.message ||
         "Erro ao criar conta. Tente novamente.";
+      const tipo = classifyRegisterError(message);
+
+      // Chegar aqui com erro de e-mail/telefone significa que a etapa 1 deixou
+      // passar: corrida com outro cadastro, ou o usuário voltou e editou o
+      // campo. O dado a corrigir está na etapa 1, então é para lá que ele volta,
+      // com a mensagem no campo — em vez de ficar preso na tela de planos.
+      if (tipo === "email_active" || tipo === "email_pending") {
+        setStep1FieldErrors({ email: message });
+        setCurrentStep(1);
+        return;
+      }
+      if (tipo === "phone_active") {
+        setStep1FieldErrors({ phone: message });
+        setCurrentStep(1);
+        return;
+      }
+
       setError(message);
-      if (message.includes("convite pendente")) setErrorType("email_pending");
-      else if (message.includes("já está cadastrado"))
-        setErrorType("email_active");
-      else setErrorType("generic");
     } finally {
       setIsLoading(false);
     }
@@ -302,7 +318,6 @@ export default function CadastroPage() {
         onSubmit={handleSubmit}
         isLoading={isLoading}
         error={error}
-        errorType={errorType}
       />
     );
   }
@@ -357,23 +372,6 @@ export default function CadastroPage() {
           {error && (
             <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700">
               <p>{error}</p>
-              {errorType === "email_active" && (
-                <div className="mt-2 flex gap-3">
-                  <a
-                    href="/login"
-                    className="font-semibold underline hover:text-red-900"
-                  >
-                    Fazer login
-                  </a>
-                  <span className="text-red-400">·</span>
-                  <a
-                    href="/login?tab=recovery"
-                    className="font-semibold underline hover:text-red-900"
-                  >
-                    Recuperar senha
-                  </a>
-                </div>
-              )}
             </div>
           )}
 
@@ -468,7 +466,6 @@ interface PlanStepLayoutProps {
   onSubmit: () => void;
   isLoading: boolean;
   error: string;
-  errorType: "" | "email_active" | "email_pending" | "generic";
 }
 
 function PlanStepLayout({
@@ -483,7 +480,6 @@ function PlanStepLayout({
   onSubmit,
   isLoading,
   error,
-  errorType,
 }: PlanStepLayoutProps) {
   const selectedPlan = plans.find((p) => p.slug === selectedSlug);
   const ctaLabel = "Começar 15 dias grátis";
@@ -557,23 +553,6 @@ function PlanStepLayout({
         {error && (
           <div className="mt-5 max-w-2xl mx-auto rounded-2xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
             <p>{error}</p>
-            {errorType === "email_active" && (
-              <div className="mt-2 flex gap-3">
-                <a
-                  href="/login"
-                  className="font-semibold underline hover:text-red-900"
-                >
-                  Fazer login
-                </a>
-                <span className="text-red-400">·</span>
-                <a
-                  href="/login?tab=recovery"
-                  className="font-semibold underline hover:text-red-900"
-                >
-                  Recuperar senha
-                </a>
-              </div>
-            )}
           </div>
         )}
       </div>
