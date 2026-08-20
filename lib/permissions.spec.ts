@@ -56,6 +56,13 @@ describe("permissionForRoute", () => {
       Permission.ADMINISTRACAO,
     );
   });
+
+  it("exige administração para o cadastro de clínicas", () => {
+    expect(permissionForRoute("/clinicas")).toBe(Permission.ADMINISTRACAO);
+    expect(permissionForRoute("/clinicas/abc-123")).toBe(
+      Permission.ADMINISTRACAO,
+    );
+  });
 });
 
 describe("hasAnyArea", () => {

@@ -15,9 +15,11 @@ import {
   APPOINTMENT_TYPE_LABELS,
 } from "@/services/appointment.service";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { useClinics } from "@/hooks/useClinics";
+import { mensagemForaDoHorario } from "@/lib/business-hours";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { dateKey, hhmm } from "@/lib/calendar";
-import { CalendarDays, UserPlus } from "lucide-react";
+import { CalendarDays, UserPlus, AlertTriangle } from "lucide-react";
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
@@ -75,10 +77,12 @@ export function NewAppointmentModal({
 }: NewAppointmentModalProps) {
   const isEdit = !!appointment;
   const { data: doctors = [] } = useAvailableDoctors();
+  const { data: clinics = [] } = useClinics();
 
   const [patientId, setPatientId] = useState("");
   const [patientLabel, setPatientLabel] = useState("");
   const [doctorId, setDoctorId] = useState("");
+  const [clinicId, setClinicId] = useState("");
   const [type, setType] = useState<AppointmentType>("first_visit");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");
@@ -136,6 +140,7 @@ export function NewAppointmentModal({
       setPatientId(appointment.patientId);
       setPatientLabel(appointment.patient?.name ?? "");
       setDoctorId(appointment.doctorId);
+      setClinicId(appointment.clinicId ?? "");
       setType(appointment.type);
       setDate(d);
       setTime(t);
@@ -144,7 +149,8 @@ export function NewAppointmentModal({
     } else {
       setPatientId(defaultPatientId ?? "");
       setPatientLabel(defaultPatientLabel ?? "");
-      setDoctorId(doctors.length === 1 ? doctors[0].id : "");
+      setDoctorId("");
+      setClinicId("");
       setType("first_visit");
       setDate(defaultDate ?? "");
       setTime(defaultTime ?? "09:00");
@@ -156,10 +162,21 @@ export function NewAppointmentModal({
     appointment,
     defaultDate,
     defaultTime,
-    doctors,
     defaultPatientId,
     defaultPatientLabel,
   ]);
+
+  /**
+   * Autosseleção do médico quando só existe um acessível. Fica em efeito
+   * próprio porque `doctors` chega assíncrono: mantê-lo nas dependências do
+   * efeito de preenchimento fazia o formulário inteiro ser rebobinado a cada
+   * render enquanto a lista não tinha carregado — apagando, entre outras
+   * coisas, a clínica que o usuário acabara de escolher.
+   */
+  useEffect(() => {
+    if (!isOpen || appointment) return;
+    if (doctors.length === 1) setDoctorId(doctors[0].id);
+  }, [isOpen, appointment, doctors]);
 
   const searchPatients = useCallback(async (term: string) => {
     const { records } = await patientService.list({ search: term, take: 20 });
@@ -171,6 +188,29 @@ export function NewAppointmentModal({
     [patientId, doctorId, date, time],
   );
 
+  /**
+   * Aviso de horário: só existe quando há clínica escolhida e data/hora
+   * válidas. A clínica é opcional de propósito — sem unidade, não há grade
+   * contra a qual comparar, e inventar um aviso seria pior que não avisar.
+   */
+  const avisoHorario = useMemo(() => {
+    const clinica = clinics.find((c) => c.id === clinicId);
+    if (!clinica) return null;
+    const parsed = parseDate(date);
+    if (!parsed || !/^\d{2}:\d{2}$/.test(time)) return null;
+
+    const [hh, mm] = time.split(":").map(Number);
+    const inicio = new Date(parsed);
+    inicio.setHours(hh, mm, 0, 0);
+
+    return mensagemForaDoHorario(
+      clinica.name,
+      clinica.businessHours,
+      inicio,
+      duration,
+    );
+  }, [clinics, clinicId, date, time, duration]);
+
   const handleSubmit = async () => {
     if (!canSubmit) {
       setError("Preencha paciente, médico, data e horário.");
@@ -181,11 +221,19 @@ export function NewAppointmentModal({
     try {
       const scheduledAt = partsToIso(date, time);
       if (isEdit && appointment) {
+        // Só manda `clinicId` quando ele de fato mudou: uma clínica
+        // soft-deletada não aparece em `useClinics`, mas o efeito de
+        // preenchimento carrega o uuid dela mesmo assim — reenviá-lo sem
+        // mudança faria o backend (que filtra soft delete) recusar o PATCH
+        // inteiro com 404, e mandar `null` apagaria o vínculo histórico.
+        const mudouClinica =
+          (clinicId || null) !== (appointment.clinicId ?? null);
         await appointmentService.update(appointment.id, {
           type,
           scheduledAt,
           durationMinutes: duration,
           notes,
+          ...(mudouClinica ? { clinicId: clinicId || null } : {}),
         });
       } else {
         await appointmentService.create({
@@ -195,6 +243,7 @@ export function NewAppointmentModal({
           scheduledAt,
           durationMinutes: duration,
           notes,
+          clinicId: clinicId || null,
         });
       }
       onSaved();
@@ -268,6 +317,32 @@ export function NewAppointmentModal({
           </div>
         )}
 
+        {/* Clínica (local de atendimento) */}
+        <div className="flex flex-col gap-1">
+          <label htmlFor="clinica" className="ds-label mb-0">
+            Clínica
+          </label>
+          <select
+            id="clinica"
+            className="ds-input"
+            value={clinicId}
+            onChange={(e) => setClinicId(e.target.value)}
+          >
+            <option value="">Nenhuma</option>
+            {appointment?.clinic &&
+              !clinics.some((c) => c.id === appointment.clinic!.id) && (
+                <option value={appointment.clinic.id} disabled>
+                  {appointment.clinic.name} (excluída)
+                </option>
+              )}
+            {clinics.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Tipo */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">Tipo</label>
@@ -314,10 +389,11 @@ export function NewAppointmentModal({
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="ds-label mb-0">
+            <label htmlFor="horario" className="ds-label mb-0">
               Horário<span className="text-red-500 ml-0.5">*</span>
             </label>
             <input
+              id="horario"
               type="time"
               className="ds-input"
               value={time}
@@ -384,6 +460,16 @@ export function NewAppointmentModal({
           />
         </div>
 
+        {avisoHorario && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-xs text-amber-800">{avisoHorario}</p>
+          </div>
+        )}
+
         {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
 
@@ -398,7 +484,11 @@ export function NewAppointmentModal({
           disabled={!canSubmit}
           loadingText="Salvando..."
         >
-          {isEdit ? "Salvar alterações" : "Agendar consulta"}
+          {avisoHorario
+            ? "Agendar mesmo assim"
+            : isEdit
+              ? "Salvar alterações"
+              : "Agendar consulta"}
         </SpinnerButton>
       </ModalFooter>
     </Modal>

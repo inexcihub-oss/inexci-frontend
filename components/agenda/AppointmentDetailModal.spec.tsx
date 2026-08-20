@@ -14,25 +14,32 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 import { AppointmentDetailModal } from "./AppointmentDetailModal";
 
+const consultaBase: Appointment = {
+  id: "a-1",
+  doctorId: "d-1",
+  patientId: "p-1",
+  patient: { id: "p-1", name: "Ana Beatriz" },
+  type: "return",
+  status: "confirmed",
+  scheduledAt: "2026-07-29T17:30:00.000Z",
+  durationMinutes: 30,
+  notes: null,
+  cancellationReason: null,
+  clinicId: null,
+  clinic: null,
+};
+
 function appointmentFixture(status: AppointmentStatus): Appointment {
-  return {
-    id: "a-1",
-    doctorId: "d-1",
-    patientId: "p-1",
-    patient: { id: "p-1", name: "Ana Beatriz" },
-    type: "return",
-    status,
-    scheduledAt: "2026-07-29T17:30:00.000Z",
-    durationMinutes: 30,
-    notes: null,
-    cancellationReason: null,
-  } as unknown as Appointment;
+  return { ...consultaBase, status };
 }
 
-function renderModal(status: AppointmentStatus, doctorName?: string) {
+// Helper de baixo nível: renderiza a partir de uma consulta já montada.
+// `renderModal` (abaixo) é o atalho usado pelos testes que só variam o
+// status/nome do médico; os testes de clínica precisam do objeto completo.
+function renderAppointment(appointment: Appointment, doctorName?: string) {
   return render(
     <AppointmentDetailModal
-      appointment={appointmentFixture(status)}
+      appointment={appointment}
       doctorName={doctorName}
       onClose={vi.fn()}
       onEdit={vi.fn()}
@@ -41,6 +48,10 @@ function renderModal(status: AppointmentStatus, doctorName?: string) {
       onDelete={vi.fn()}
     />,
   );
+}
+
+function renderModal(status: AppointmentStatus, doctorName?: string) {
+  return renderAppointment(appointmentFixture(status), doctorName);
 }
 
 describe("AppointmentDetailModal", () => {
@@ -136,5 +147,38 @@ describe("AppointmentDetailModal", () => {
     expect(
       screen.getByRole("button", { name: /Iniciar atendimento/i }),
     ).toBeInTheDocument();
+  });
+
+  it("mostra a clínica da consulta quando há uma", () => {
+    renderAppointment({
+      ...consultaBase,
+      clinicId: "clinic-1",
+      clinic: { id: "clinic-1", name: "Unidade Centro" },
+    });
+
+    expect(screen.getByText("Unidade Centro")).toBeInTheDocument();
+  });
+
+  /**
+   * Minor: a linha da clínica usava um `div` avulso com `items-center`,
+   * diferente das linhas vizinhas (`Row`, com `items-start`). Fixa o mesmo
+   * padrão visual das outras linhas (Clock, Tag, User, FileText).
+   */
+  it("usa o mesmo layout (Row) das outras linhas para a clínica", () => {
+    renderAppointment({
+      ...consultaBase,
+      clinicId: "clinic-1",
+      clinic: { id: "clinic-1", name: "Unidade Centro" },
+    });
+
+    const linha = screen.getByText("Unidade Centro").closest("div");
+    expect(linha).toHaveClass("items-start");
+    expect(linha).not.toHaveClass("items-center");
+  });
+
+  it("omite a linha da clínica quando a consulta não tem unidade", () => {
+    renderAppointment({ ...consultaBase, clinicId: null, clinic: null });
+
+    expect(screen.queryByText(/local de atendimento/i)).not.toBeInTheDocument();
   });
 });

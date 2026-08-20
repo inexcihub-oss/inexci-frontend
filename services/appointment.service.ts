@@ -38,6 +38,8 @@ export interface Appointment {
   notes: string | null;
   cancellationReason: string | null;
   patient?: { id: string; name: string } | null;
+  clinicId: string | null;
+  clinic?: { id: string; name: string } | null;
 }
 
 interface BackendAppointment {
@@ -51,6 +53,8 @@ interface BackendAppointment {
   notes: string | null;
   cancellationReason: string | null;
   patient?: { id: string; name: string } | null;
+  clinicId: string | null;
+  clinic?: { id: string; name: string } | null;
 }
 
 function mapAppointment(a: BackendAppointment): Appointment {
@@ -68,6 +72,8 @@ function mapAppointment(a: BackendAppointment): Appointment {
     notes: a.notes,
     cancellationReason: a.cancellationReason,
     patient: a.patient ?? null,
+    clinicId: a.clinicId ?? null,
+    clinic: a.clinic ?? null,
   };
 }
 
@@ -78,12 +84,14 @@ export interface CreateAppointmentPayload {
   scheduledAt: string;
   durationMinutes?: number;
   notes?: string;
+  /** Local de atendimento. `null` = consulta sem unidade definida. */
+  clinicId?: string | null;
 }
 
 export type UpdateAppointmentPayload = Partial<
   Pick<
     CreateAppointmentPayload,
-    "type" | "scheduledAt" | "durationMinutes" | "notes"
+    "type" | "scheduledAt" | "durationMinutes" | "notes" | "clinicId"
   >
 >;
 
