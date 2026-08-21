@@ -412,7 +412,12 @@ export default function AgendaPage() {
           </div>
         </div>
 
-        <div className="shrink-0 px-3 lg:px-6 pt-3">
+        {/*
+          `empty:hidden`: quando o card retorna `null` (checklist dispensada
+          ou concluída), este wrapper fica sem filhos no DOM e o `:empty`
+          some com ele — sem isso, sobraria uma faixa vazia só de padding.
+        */}
+        <div className="shrink-0 px-3 lg:px-6 pt-3 empty:hidden">
           <OnboardingChecklistCard />
         </div>
 

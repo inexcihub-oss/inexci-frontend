@@ -339,7 +339,12 @@ export default function ColaboradoresPage() {
         </div>
       </div>
 
-      <div className="flex-none px-4 lg:px-8 pt-3">
+      {/*
+        `empty:hidden`: quando o card retorna `null` (checklist dispensada ou
+        concluída), este wrapper fica sem filhos no DOM e o `:empty` some com
+        ele — sem isso, sobraria uma faixa vazia só de padding.
+      */}
+      <div className="flex-none px-4 lg:px-8 pt-3 empty:hidden">
         <OnboardingChecklistCard />
       </div>
 
