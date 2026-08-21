@@ -70,6 +70,22 @@ describe("BottomNavBar — filtro por permissão", () => {
 
     expect(screen.queryByText("Colaboradores")).not.toBeInTheDocument();
   });
+
+  it("mostra Clínicas no overflow para quem tem administração", () => {
+    authState.permissions = [Permission.ADMINISTRACAO];
+    render(<BottomNavBar />);
+    openOverflow();
+
+    expect(screen.getByText("Clínicas")).toBeInTheDocument();
+  });
+
+  it("não mostra Clínicas no overflow para quem não tem administração", () => {
+    authState.permissions = [Permission.AGENDA];
+    render(<BottomNavBar />);
+    openOverflow();
+
+    expect(screen.queryByText("Clínicas")).not.toBeInTheDocument();
+  });
 });
 
 describe("BottomNavBar — layout se adapta à quantidade de itens", () => {
