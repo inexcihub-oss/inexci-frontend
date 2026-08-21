@@ -53,6 +53,12 @@ const OVERFLOW_ITEMS: NavItem[] = [
     href: "/procedimentos",
     permission: Permission.SOLICITACOES,
   },
+  {
+    iconSrc: "/icons/clinic-building.svg",
+    label: "Clínicas",
+    href: "/clinicas",
+    permission: Permission.ADMINISTRACAO,
+  },
   { iconSrc: "/icons/users.svg", label: "Hospitais", href: "/hospitais" },
   {
     iconSrc: "/icons/document.svg",

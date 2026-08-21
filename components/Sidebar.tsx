@@ -107,7 +107,7 @@ const allMenuItems: NavigationEntry[] = [
     children: [
       {
         type: "item",
-        iconSrc: "/icons/users.svg",
+        iconSrc: "/icons/clinic-building.svg",
         label: "Clínicas",
         href: "/clinicas",
         permission: Permission.ADMINISTRACAO,
