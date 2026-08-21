@@ -23,6 +23,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
   const { viewer } = useOnboarding();
   const [indice, setIndice] = useState(0);
   const [montado, setMontado] = useState(false);
+  const [interrompido, setInterrompido] = useState(false);
   const balaoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMontado(true), []);
@@ -34,7 +35,12 @@ export function TourOverlay({ trackId, onClose }: Props) {
   );
   const passo = passos[indice];
 
-  const { rect, estado } = useTargetRect(passo?.target);
+  // O timeout de 3s do hook é dimensionado para passo com `route`, cuja tela
+  // ainda vai montar. Para um passo que o tour pode simplesmente pular, 3s de
+  // espera viram um buraco morto no caminho NORMAL.
+  const { rect, estado } = useTargetRect(passo?.target, {
+    timeoutMs: passo?.route ? 3000 : 800,
+  });
 
   // Passo com `route` navega antes de procurar o alvo.
   useEffect(() => {
@@ -56,16 +62,19 @@ export function TourOverlay({ trackId, onClose }: Props) {
   /**
    * Degradação por alvo ausente. `required: false` (padrão) pula o passo em
    * silêncio: alvos somem por motivos rotineiros e travar o tour aí é pior do
-   * que seguir sem aquele destaque. `required: true` encerra com aviso.
+   * que seguir sem aquele destaque. `required: true` encerra com aviso — mas
+   * não fecha calado: o usuário precisa saber que o tour parou por falta da
+   * tela, não porque ele fez algo (`onClose()` puro seria indistinguível de
+   * "Sair do tour").
    */
   useEffect(() => {
     if (estado !== "ausente" || !passo?.target) return;
     if (passo.required) {
-      onClose();
+      setInterrompido(true);
       return;
     }
     avancar();
-  }, [estado, passo?.target, passo?.required, avancar, onClose]);
+  }, [estado, passo?.target, passo?.required, avancar]);
 
   // Teclado: Esc sai, setas navegam.
   useEffect(() => {
@@ -99,9 +108,14 @@ export function TourOverlay({ trackId, onClose }: Props) {
     return () => document.removeEventListener("keydown", aoTeclar);
   }, [avancar, voltar, onClose]);
 
+  // Depende de `montado` e `estado` de propósito: no primeiro commit o
+  // componente ainda devolve `null` e `balaoRef` é nulo. Com dependência só em
+  // `indice` (que não muda entre esse commit e o seguinte), o efeito nunca
+  // reexecutava — e o foco jamais entrava no balão no PRIMEIRO passo do tour.
   useEffect(() => {
+    if (!montado || estado === "buscando") return;
     balaoRef.current?.querySelector<HTMLElement>("button")?.focus();
-  }, [indice]);
+  }, [indice, montado, estado, interrompido]);
 
   const posicaoBalao = useMemo(() => {
     if (!rect) {
@@ -124,8 +138,53 @@ export function TourOverlay({ trackId, onClose }: Props) {
     return { top, left } as const;
   }, [rect]);
 
-  if (!montado || !track || !passo) return null;
-  if (estado === "buscando") return null;
+  if (!montado) return null;
+
+  if (interrompido) {
+    return createPortal(
+      <div className="fixed inset-0 z-[100] bg-neutral-950/55">
+        <div
+          ref={balaoRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tour-interrompido"
+          className="absolute left-1/2 top-1/2 w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl"
+        >
+          <h3
+            id="tour-interrompido"
+            className="text-base font-semibold text-neutral-900"
+          >
+            Tour interrompido
+          </h3>
+          <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+            {TOUR_UI.interrompido}
+          </p>
+          <div className="mt-5 flex justify-end">
+            <button
+              type="button"
+              onClick={() => onClose()}
+              className="rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800"
+            >
+              Entendi
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
+  if (!track || !passo) return null;
+
+  // Durante a busca o tour NÃO some da tela: mantém o fundo escurecido, para o
+  // usuário ver que ele continua rodando. Devolver `null` aqui fazia o overlay
+  // inteiro desaparecer e reaparecer — parecia que o tour tinha quebrado.
+  if (estado === "buscando") {
+    return createPortal(
+      <div className="fixed inset-0 z-[100] bg-neutral-950/55" aria-hidden />,
+      document.body,
+    );
+  }
 
   const tituloId = `tour-${trackId}-${passo.key}`;
   const ehUltimo = indice === passos.length - 1;

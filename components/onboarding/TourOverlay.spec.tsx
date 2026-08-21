@@ -22,13 +22,36 @@ const TRILHA: Track = {
   ],
 };
 
+/**
+ * Fixture separada para o passo obrigatório: misturar um passo `required`
+ * com alvo ausente na `TRILHA` acima mudaria o fluxo dos 6 testes originais
+ * (o tour encerraria com aviso antes de chegar em "Passo três"). Usa um
+ * `trackId` diferente ("documentos-do-medico") para não colidir.
+ */
+const TRILHA_OBRIGATORIA: Track = {
+  id: "documentos-do-medico",
+  label: "Configurar sua assinatura",
+  descricao: "…",
+  stepKey: "assinatura-do-medico",
+  steps: [
+    {
+      key: "unico",
+      titulo: "Passo obrigatório",
+      corpo: "Corpo obrigatório",
+      target: "alvo-que-nao-existe",
+      required: true,
+    },
+  ],
+};
+
 vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
   const original = await importOriginal<
     typeof import("@/lib/onboarding/tour-registry")
   >();
   return {
     ...original,
-    trackById: () => TRILHA,
+    trackById: (id: string) =>
+      id === "documentos-do-medico" ? TRILHA_OBRIGATORIA : TRILHA,
     visibleSteps: (t: Track) => t.steps,
   };
 });
@@ -85,28 +108,25 @@ describe("TourOverlay", () => {
   /**
    * A regra central: alvo ausente pula o passo, o tour não trava.
    *
-   * `useTargetRect` só reporta "ausente" depois do seu timeout padrão
-   * (3000 ms, tempo real — o teste não usa fake timers). O `timeout` maior
-   * no `waitFor` é para acomodar essa espera real, não uma folga arbitrária.
+   * `useTargetRect` só reporta "ausente" depois de um timeout real (tempo de
+   * parede — o teste não usa fake timers). Passo "dois" não tem `route`, então
+   * o `TourOverlay` usa o timeout curto (800 ms), não os 3000 ms padrão do
+   * hook. O `timeout` do `waitFor` dá uma folga sobre isso, não sobre 3000 ms.
    */
-  it(
-    "pula em silêncio o passo cujo alvo não existe",
-    async () => {
-      montarAlvos(["alvo-um", "alvo-tres"]);
-      const user = userEvent.setup();
-      render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+  it("pula em silêncio o passo cujo alvo não existe", async () => {
+    montarAlvos(["alvo-um", "alvo-tres"]);
+    const user = userEvent.setup();
+    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
 
-      await screen.findByText("Passo um");
-      await user.click(screen.getByRole("button", { name: /próximo/i }));
+    await screen.findByText("Passo um");
+    await user.click(screen.getByRole("button", { name: /próximo/i }));
 
-      await waitFor(
-        () => expect(screen.getByText("Passo três")).toBeInTheDocument(),
-        { timeout: 4000 },
-      );
-      expect(screen.queryByText("Passo dois")).not.toBeInTheDocument();
-    },
-    8000,
-  );
+    await waitFor(
+      () => expect(screen.getByText("Passo três")).toBeInTheDocument(),
+      { timeout: 1500 },
+    );
+    expect(screen.queryByText("Passo dois")).not.toBeInTheDocument();
+  });
 
   it("Esc encerra sem marcar como concluído", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
@@ -120,30 +140,72 @@ describe("TourOverlay", () => {
     expect(onClose).toHaveBeenCalledWith();
   });
 
-  it(
-    "o último passo conclui a trilha",
-    async () => {
-      montarAlvos(["alvo-um", "alvo-tres"]);
-      const onClose = vi.fn();
-      const user = userEvent.setup();
-      render(<TourOverlay trackId="solicitacoes" onClose={onClose} />);
+  it("o último passo conclui a trilha", async () => {
+    montarAlvos(["alvo-um", "alvo-tres"]);
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(<TourOverlay trackId="solicitacoes" onClose={onClose} />);
 
-      await screen.findByText("Passo um");
-      await user.click(screen.getByRole("button", { name: /próximo/i }));
-      // Passo "dois" não tem alvo: precisa esperar o timeout real do
-      // useTargetRect (3000 ms) antes de pular para "três".
-      await screen.findByText("Passo três", {}, { timeout: 4000 });
-      await user.click(screen.getByRole("button", { name: /concluir/i }));
+    await screen.findByText("Passo um");
+    await user.click(screen.getByRole("button", { name: /próximo/i }));
+    // Passo "dois" não tem alvo nem `route`: o TourOverlay usa o timeout
+    // curto (800 ms) do hook antes de pular para "três".
+    await screen.findByText("Passo três", {}, { timeout: 1500 });
+    await user.click(screen.getByRole("button", { name: /concluir/i }));
 
-      expect(onClose).toHaveBeenCalledWith({ concluido: true });
-    },
-    8000,
-  );
+    expect(onClose).toHaveBeenCalledWith({ concluido: true });
+  });
 
   it("mostra o progresso do passo atual", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
 
     expect(await screen.findByText(/1 de 3/)).toBeInTheDocument();
+  });
+
+  it("passo obrigatório sem alvo encerra com aviso, sem concluir", async () => {
+    // Não monta nenhum alvo — o único passo desta trilha é obrigatório e seu
+    // alvo nunca existe.
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+
+    render(<TourOverlay trackId="documentos-do-medico" onClose={onClose} />);
+
+    expect(
+      await screen.findByText(
+        /não conseguimos abrir esta parte/i,
+        {},
+        { timeout: 1500 },
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /entendi/i }));
+
+    expect(onClose).toHaveBeenCalledWith();
+    expect(onClose).not.toHaveBeenCalledWith({ concluido: true });
+  });
+
+  it("prende o foco dentro do balão nos dois sentidos", async () => {
+    montarAlvos(["alvo-um", "alvo-tres"]);
+    const user = userEvent.setup();
+    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+
+    const dialogo = await screen.findByRole("dialog");
+    // O foco tem que ENTRAR no balão sozinho, já no primeiro passo.
+    expect(dialogo.contains(document.activeElement)).toBe(true);
+
+    const focaveis = Array.from(
+      dialogo.querySelectorAll<HTMLElement>("button"),
+    );
+    const primeiro = focaveis[0];
+    const ultimo = focaveis[focaveis.length - 1];
+
+    ultimo.focus();
+    await user.tab();
+    expect(document.activeElement).toBe(primeiro);
+
+    primeiro.focus();
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(ultimo);
   });
 });
