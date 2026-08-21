@@ -158,6 +158,13 @@ export function OnboardingProvider({
   );
 
   const restart = useCallback(async () => {
+    // Cancela a escrita pendente ANTES de resetar. Sem isto, um PATCH agendado
+    // meio segundo atrás dispara depois do reset e regrava o estado velho por
+    // cima — para o usuário, o botão "Refazer" simplesmente não funcionou.
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    pendenteRef.current = null;
+
     // Reset é ação deliberada do usuário: vai direto, sem debounce, e o
     // servidor é a fonte da verdade do estado resultante.
     const novo = await onboardingService.reset();
