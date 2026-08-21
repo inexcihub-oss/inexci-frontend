@@ -53,7 +53,9 @@ import {
   MessageSquare,
   Loader2,
   LayoutTemplate,
+  Compass,
 } from "lucide-react";
+import { OnboardingSettingsTab } from "@/components/onboarding/OnboardingSettingsTab";
 import { PrivacySection } from "@/components/privacy/PrivacySection";
 
 // Tipos
@@ -90,7 +92,8 @@ type SettingsTab =
   | "plan"
   | "security"
   | "header"
-  | "privacy";
+  | "privacy"
+  | "onboarding";
 
 import { maskPhone, maskCpf } from "@/lib/masks";
 
@@ -233,7 +236,8 @@ function ConfiguracoesPageInner() {
       tab === "notifications" ||
       tab === "plan" ||
       tab === "security" ||
-      tab === "privacy"
+      tab === "privacy" ||
+      tab === "onboarding"
     ) {
       return tab as SettingsTab;
     }
@@ -1295,6 +1299,12 @@ function ConfiguracoesPageInner() {
                 icon={ShieldCheck}
                 label="Privacidade e Termos"
               />
+              <TabButton
+                active={activeTab === "onboarding"}
+                onClick={() => setActiveTab("onboarding")}
+                icon={Compass}
+                label="Primeiros passos"
+              />
             </nav>
           </div>
 
@@ -1309,6 +1319,7 @@ function ConfiguracoesPageInner() {
             {activeTab === "security" && renderSecurityTab()}
             {activeTab === "header" && profile.isDoctor && renderHeaderTab()}
             {activeTab === "privacy" && renderPrivacyTab()}
+            {activeTab === "onboarding" && <OnboardingSettingsTab />}
           </div>
         </div>
       </div>
