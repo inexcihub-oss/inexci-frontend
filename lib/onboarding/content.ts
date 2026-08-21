@@ -62,7 +62,7 @@ export const TRILHA_ASSINATURA = {
   descricao:
     "Sem ela, o laudo da solicitação e os documentos do atendimento saem sem assinar.",
   passo: {
-    titulo: "Sua assinatura",
+    titulo: "Envie sua assinatura",
     corpo:
       "Envie uma imagem de até 2 MB, com fundo claro. Ela é aplicada automaticamente no laudo da solicitação e nos documentos do atendimento.",
   },
@@ -84,7 +84,7 @@ export const TRILHA_SOLICITACOES = {
         "Paciente, hospital, convênio ou procedimento que ainda não existem podem ser criados por este botão, sem abandonar a solicitação.",
     },
     requisitos: {
-      titulo: "Para enviar ao convênio",
+      titulo: "Complete antes de enviar",
       corpo:
         "A solicitação só sai de Pendente quando estes itens estiverem completos. O painel de pendências mostra o que falta a qualquer momento.",
     },

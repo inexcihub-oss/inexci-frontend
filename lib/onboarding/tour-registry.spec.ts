@@ -112,6 +112,8 @@ describe("visibleTracks", () => {
    * bloqueia para aquele mesmo usuário.
    */
   it("nunca expõe passo que navega para rota proibida", () => {
+    let verificados = 0;
+
     for (const permissions of todasAsCombinacoes()) {
       for (const isDoctor of [false, true]) {
         for (const isAccountOwner of [false, true]) {
@@ -119,8 +121,14 @@ describe("visibleTracks", () => {
           for (const track of visibleTracks(viewer)) {
             for (const step of visibleSteps(track, viewer)) {
               if (!step.route) continue;
-              const exigida = permissionForRoute(step.route);
+              // A rota pode carregar query (`/configuracoes?tab=profile`), mas
+              // `permissionForRoute` casa por prefixo de PATHNAME. Sem tirar a
+              // query, o passo é pulado em silêncio — e continuaria pulado no
+              // dia em que a rota ganhasse permissão, que é justamente quando
+              // este guard importaria.
+              const exigida = permissionForRoute(step.route.split("?")[0]);
               if (!exigida) continue;
+              verificados++;
               expect(
                 permissions.includes(exigida),
                 `trilha ${track.id}, passo ${step.key}, rota ${step.route}`,
@@ -130,6 +138,10 @@ describe("visibleTracks", () => {
         }
       }
     }
+
+    // As duas cláusulas de guarda acima podem esvaziar a varredura inteira sem
+    // que ninguém perceba: um teste que não chega a assertar passa igual.
+    expect(verificados).toBeGreaterThan(0);
   });
 });
 
