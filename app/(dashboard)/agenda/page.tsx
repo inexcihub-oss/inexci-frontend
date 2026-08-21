@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
+import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
 import Loading from "@/components/ui/Loading";
 import { Toast } from "@/components/ui/Toast";
 import {
@@ -409,6 +410,10 @@ export default function AgendaPage() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="shrink-0 px-3 lg:px-6 pt-3">
+          <OnboardingChecklistCard />
         </div>
 
         {/* ── Corpo ──────────────────────────────────────────────── */}

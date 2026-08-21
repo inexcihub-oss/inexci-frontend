@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { CalendarDays, Stethoscope } from "lucide-react";
 import PageContainer from "@/components/PageContainer";
+import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
 import Loading from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Toast } from "@/components/ui/Toast";
@@ -248,6 +249,8 @@ export default function AtendimentoHubPage() {
 
         {/* ── Corpo ──────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-4">
+          <OnboardingChecklistCard />
+
           {query.isError ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16">
               <p className="text-sm text-red-500">

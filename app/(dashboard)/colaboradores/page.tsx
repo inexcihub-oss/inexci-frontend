@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone } from "@/lib/formatters";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import PageContainer from "@/components/PageContainer";
+import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { NewCollaboratorModal } from "@/components/colaboradores/NewCollaboratorModal";
@@ -336,6 +337,10 @@ export default function ColaboradoresPage() {
             Novo colaborador
           </Button>
         </div>
+      </div>
+
+      <div className="flex-none px-4 lg:px-8 pt-3">
+        <OnboardingChecklistCard />
       </div>
 
       {/* Table */}

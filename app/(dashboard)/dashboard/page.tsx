@@ -5,6 +5,7 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import PageContainer from "@/components/PageContainer";
+import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { reportsService } from "@/services/reports.service";
 import type {
@@ -897,6 +898,8 @@ export default function DashboardPage() {
       {/* Conteúdo scrollável */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
+          <OnboardingChecklistCard />
+
           {/* ── KPI Cards ──────────────────────────────────────────── */}
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
             <KPICard

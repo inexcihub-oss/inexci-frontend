@@ -12,6 +12,8 @@ import MobileHeaderActions from "@/components/shared/MobileHeaderActions";
 import { ConsentGate } from "@/components/privacy/ConsentGate";
 import { PermissionRouteGuard } from "@/components/PermissionRouteGuard";
 import { GlobalBanners } from "@/components/billing/GlobalBanners";
+import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
+import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
 import Image from "next/image";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 
@@ -118,7 +120,11 @@ export default function DashboardLayoutInner({
               <GlobalBanners />
             </div>
             <PermissionRouteGuard>
-              <ConsentGate>{children}</ConsentGate>
+              <ConsentGate>
+                <OnboardingProvider>
+                  <OnboardingGate>{children}</OnboardingGate>
+                </OnboardingProvider>
+              </ConsentGate>
             </PermissionRouteGuard>
           </main>
 

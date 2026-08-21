@@ -46,6 +46,13 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
 
+// Este teste cobre o gating por permissão da própria página, não o
+// onboarding — o card depende de `OnboardingProvider`, que só existe no
+// layout real (Task 14).
+vi.mock("@/components/onboarding/OnboardingChecklistCard", () => ({
+  OnboardingChecklistCard: () => null,
+}));
+
 import AgendaPage from "./page";
 
 // jsdom não implementa matchMedia; `CalendarTimeGrid` usa para detectar telas
