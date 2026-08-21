@@ -1,3 +1,5 @@
+import { Permission } from "@/lib/permissions";
+
 /**
  * Toda a copy do onboarding vive aqui, separada do motor.
  *
@@ -20,19 +22,26 @@ export const BOAS_VINDAS = {
     },
   ],
   pular: "Pular por agora",
+  avancar: "Avançar",
   comecar: "Começar",
 };
 
-/** Slide 3, montado a partir das áreas do usuário. */
-export const SEU_PAPEL: Record<string, string> = {
-  atendimento:
-    "Você atende: abre a ficha do paciente, registra a consulta e emite receita, atestado e pedido de exame.",
-  agenda:
-    "Você cuida da agenda: marca, confirma e remarca consultas, e a plataforma avisa o paciente 24h antes.",
-  solicitacoes:
-    "Você conduz as solicitações cirúrgicas: monta a solicitação, envia ao convênio e acompanha até o pagamento.",
-  administracao:
-    "Você administra a conta: convida a equipe, define o que cada um acessa e cuida dos cadastros da clínica.",
+/**
+ * Slide 3, montado a partir das áreas do usuário — uma linha por área, e o
+ * slide as lista. Emendar as frases num parágrafo só dava um paredão de texto
+ * justamente para a persona principal: o médico dono da conta tem as quatro.
+ *
+ * Tipado por `Permission`, não por `string`: assim uma área nova sem frase aqui
+ * quebra a compilação em vez de renderizar um parágrafo vazio.
+ */
+export const SEU_PAPEL: Record<Permission, string> = {
+  [Permission.AGENDA]: "Marcar, confirmar e remarcar consultas.",
+  [Permission.ATENDIMENTO]:
+    "Abrir a ficha do paciente e registrar o atendimento.",
+  [Permission.SOLICITACOES]:
+    "Montar a solicitação cirúrgica e acompanhar até o pagamento.",
+  [Permission.ADMINISTRACAO]:
+    "Convidar a equipe e definir o que cada um acessa.",
 };
 
 export const CHECKLIST = {

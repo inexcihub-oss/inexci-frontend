@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BOAS_VINDAS, SEU_PAPEL } from "@/lib/onboarding/content";
 import { ALL_PERMISSIONS } from "@/lib/permissions";
 import { useOnboarding } from "./OnboardingProvider";
@@ -12,6 +12,7 @@ interface Props {
 export function WelcomeModal({ onFinish }: Props) {
   const { markWelcome, viewer } = useOnboarding();
   const [slide, setSlide] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   /**
    * O terceiro slide é montado a partir das áreas do usuário: o médico lê
@@ -19,7 +20,7 @@ export function WelcomeModal({ onFinish }: Props) {
    * nenhuma (colaborador recém-criado), cai numa linha genérica — nunca num
    * slide vazio.
    */
-  const seuPapel = useMemo(() => {
+  const seuPapelLinhas = useMemo(() => {
     const linhas = ALL_PERMISSIONS.filter((p) =>
       viewer.permissions.includes(p),
     ).map((p) => SEU_PAPEL[p]);
@@ -30,21 +31,56 @@ export function WelcomeModal({ onFinish }: Props) {
         ];
   }, [viewer.permissions]);
 
+  const temMultiplasAreas = seuPapelLinhas.length > 1;
+
   const slides = [
     ...BOAS_VINDAS.slides,
-    { titulo: "O seu papel", corpo: seuPapel.join(" ") },
+    { titulo: "O seu papel", corpo: seuPapelLinhas },
   ];
   const atual = slides[slide];
   const ehUltimo = slide === slides.length - 1;
 
-  const encerrar = () => {
+  const encerrar = useCallback(() => {
     markWelcome();
     onFinish();
-  };
+  }, [markWelcome, onFinish]);
+
+  // Foco inicial na montagem e a cada mudança de slide, assim como em TourOverlay
+  useEffect(() => {
+    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+  }, [slide]);
+
+  // Teclado: Esc sai, Tab fica preso no diálogo
+  useEffect(() => {
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") {
+        evento.preventDefault();
+        encerrar();
+      } else if (evento.key === "Tab") {
+        // Tab preso no diálogo: sem deixar sair para a página de trás
+        const foco = dialogRef.current?.querySelectorAll<HTMLElement>(
+          "button, [href], [tabindex]:not([tabindex=\"-1\"])",
+        );
+        if (!foco?.length) return;
+        const primeiro = foco[0];
+        const ultimo = foco[foco.length - 1];
+        if (evento.shiftKey && document.activeElement === primeiro) {
+          evento.preventDefault();
+          ultimo.focus();
+        } else if (!evento.shiftKey && document.activeElement === ultimo) {
+          evento.preventDefault();
+          primeiro.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", aoTeclar);
+    return () => document.removeEventListener("keydown", aoTeclar);
+  }, [encerrar]);
 
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-neutral-950/45 p-4 backdrop-blur-[2px]">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="boas-vindas-titulo"
@@ -59,9 +95,22 @@ export function WelcomeModal({ onFinish }: Props) {
         >
           {atual.titulo}
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-neutral-600 sm:text-base">
-          {atual.corpo}
-        </p>
+
+        {/* Renderiza conteúdo diferente se é lista ou parágrafo */}
+        {temMultiplasAreas && Array.isArray(atual.corpo) ? (
+          <ul className="mt-3 space-y-2 text-sm leading-relaxed text-neutral-600 sm:text-base">
+            {atual.corpo.map((linha, idx) => (
+              <li key={idx} className="flex gap-2">
+                <span className="shrink-0">•</span>
+                <span>{linha}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm leading-relaxed text-neutral-600 sm:text-base">
+            {Array.isArray(atual.corpo) ? atual.corpo[0] : atual.corpo}
+          </p>
+        )}
 
         <div className="mt-6 flex items-center gap-1.5" aria-hidden>
           {slides.map((_, i) => (
@@ -87,7 +136,7 @@ export function WelcomeModal({ onFinish }: Props) {
             onClick={() => (ehUltimo ? encerrar() : setSlide((s) => s + 1))}
             className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800"
           >
-            {ehUltimo ? BOAS_VINDAS.comecar : "Avançar"}
+            {ehUltimo ? BOAS_VINDAS.comecar : BOAS_VINDAS.avancar}
           </button>
         </div>
       </div>
