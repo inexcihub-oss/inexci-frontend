@@ -79,4 +79,37 @@ describe("OnboardingSettingsTab", () => {
       screen.getByRole("button", { name: /refazer o onboarding/i }),
     ).toBeInTheDocument();
   });
+
+  it("aparece e permite refazer mesmo sem trilha visível", async () => {
+    // Colaborador sem área nenhuma: não vê card em home alguma, e esta aba é o
+    // único caminho de volta que ele tem.
+    contexto.tracks = [];
+    const user = userEvent.setup();
+    render(<OnboardingSettingsTab />);
+
+    expect(
+      screen.getByText(/as trilhas aparecem aqui/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /refazer o onboarding/i }),
+    );
+    expect(restart).toHaveBeenCalledTimes(1);
+  });
+
+  it("avisa quando reiniciar falha, sem travar o botão", async () => {
+    restart.mockRejectedValueOnce(new Error("500"));
+    const user = userEvent.setup();
+    render(<OnboardingSettingsTab />);
+
+    await user.click(
+      screen.getByRole("button", { name: /refazer o onboarding/i }),
+    );
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /refazer o onboarding/i }),
+    ).toBeEnabled();
+  });
 });

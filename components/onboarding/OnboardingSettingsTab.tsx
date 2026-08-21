@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { Check, RotateCcw } from "lucide-react";
 import { CHECKLIST } from "@/lib/onboarding/content";
+import { logger } from "@/lib/logger";
 import { useOnboarding } from "./OnboardingProvider";
 
 export function OnboardingSettingsTab() {
   const { state, tracks, startTour, restart } = useOnboarding();
   const [reiniciando, setReiniciando] = useState(false);
+  const [erro, setErro] = useState(false);
 
   const concluidas = tracks.filter(
     (t) => state.completedSteps[t.stepKey],
@@ -15,8 +17,15 @@ export function OnboardingSettingsTab() {
 
   const aoRefazer = async () => {
     setReiniciando(true);
+    setErro(false);
     try {
       await restart();
+    } catch (e) {
+      // Reiniciar é a ÚNICA ação que torna "pular" reversível. Falhar em
+      // silêncio faz o usuário clicar, não ver nada acontecer e concluir que a
+      // funcionalidade está quebrada — pior do que não ter o botão.
+      logger.error("Falha ao reiniciar o onboarding:", e);
+      setErro(true);
     } finally {
       setReiniciando(false);
     }
@@ -92,6 +101,11 @@ export function OnboardingSettingsTab() {
           <RotateCcw className="h-4 w-4" />
           {reiniciando ? "Reiniciando…" : "Refazer o onboarding"}
         </button>
+        {erro && (
+          <p role="alert" className="mt-3 text-sm text-rose-600">
+            {CHECKLIST.erroReiniciar}
+          </p>
+        )}
       </div>
     </div>
   );

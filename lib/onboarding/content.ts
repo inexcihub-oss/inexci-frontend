@@ -50,6 +50,7 @@ export const CHECKLIST = {
   ver: "Ver",
   refazer: "Refazer",
   concluido: "Tudo pronto. Você pode rever qualquer passo em Configurações.",
+  erroReiniciar: "Não foi possível reiniciar agora. Tente de novo em instantes.",
 };
 
 export const TOUR_UI = {

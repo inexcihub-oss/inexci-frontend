@@ -17,16 +17,28 @@ let authState: {
   refreshSubscription: () => Promise<void>;
 };
 
+let searchParamsValue = new URLSearchParams();
+
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
 
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => searchParamsValue,
 }));
 
 vi.mock("@/components/billing/BillingSection", () => ({
   BillingSection: () => <div>Stub do billing</div>,
+}));
+
+// Stub: esta suíte testa se a aba abre via deep-link (`?tab=onboarding`) e se
+// o TabButton/render-branch são incondicionais — não o conteúdo interno da
+// aba, que já tem cobertura própria em OnboardingSettingsTab.spec.tsx. Um
+// stub identificável evita depender de OnboardingProvider aqui.
+vi.mock("@/components/onboarding/OnboardingSettingsTab", () => ({
+  OnboardingSettingsTab: () => (
+    <button type="button">Refazer o onboarding</button>
+  ),
 }));
 
 vi.mock("@/services/user.service", () => ({
@@ -79,6 +91,7 @@ describe("Configurações — aba Primeiros passos é incondicional", () => {
       updateUser: vi.fn(),
       refreshSubscription: vi.fn(),
     };
+    searchParamsValue = new URLSearchParams();
   });
 
   it("aparece mesmo para um colaborador sem dono de conta e sem nenhuma área", async () => {
@@ -102,5 +115,15 @@ describe("Configurações — aba Primeiros passos é incondicional", () => {
     });
 
     expect(screen.getByText("Primeiros passos")).toBeInTheDocument();
+  });
+
+  it("?tab=onboarding abre a aba já selecionada", async () => {
+    searchParamsValue = new URLSearchParams("tab=onboarding");
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: /refazer o onboarding/i }),
+    ).toBeInTheDocument();
   });
 });
