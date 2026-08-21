@@ -57,8 +57,7 @@ export function useTargetRect(
       if (limite) clearTimeout(limite);
       limite = null;
 
-      // jsdom não implementa scrollIntoView; guarda para não quebrar os testes.
-      el.scrollIntoView?.({ block: "center", behavior: "smooth" });
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
       medir();
       setEstado("encontrado");
 
