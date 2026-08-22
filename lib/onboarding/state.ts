@@ -53,18 +53,17 @@ export interface OnboardingState {
   restartedAt: string | null;
 }
 
-export type OnboardingPatch = Partial<Omit<OnboardingState, "version">>;
-
 /**
  * Patch que o CLIENTE tem permissão de mandar num PATCH. `restartedAt` fica
  * de fora DE PROPÓSITO: é escrito só pelo `POST /onboarding/reset`, no
- * servidor. Mandar o snapshot inteiro do estado local (que inclui
+ * servidor. Mandar o snapshot inteiro do estado local (que incluiria
  * `restartedAt`) foi exatamente o bug que a revisão final do backend achou —
  * o DTO lá roda `forbidNonWhitelisted` e devolvia 400 em toda escrita,
- * silenciado pelo `.catch` que só loga. Este tipo, mais estrito que
- * `OnboardingPatch`, é o que `OnboardingProvider` e `onboardingService.patch`
- * usam agora — a barreira vira checagem de TIPO, não só disciplina de
- * runtime que alguém pode esquecer no próximo ponto de escrita.
+ * silenciado pelo `.catch` que só loga. `OnboardingProvider` e
+ * `onboardingService.patch` usam só este tipo — não existe mais um tipo de
+ * patch mais largo ao lado dele para alguém alcançar por engano; foi
+ * exatamente essa vizinhança que deixou o bug original passar despercebido
+ * por dezesseis revisões.
  */
 export type OnboardingWritablePatch = Partial<
   Pick<
