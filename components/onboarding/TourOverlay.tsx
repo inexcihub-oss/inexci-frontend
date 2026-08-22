@@ -175,7 +175,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
           aria-modal="true"
           aria-labelledby="tour-interrompido"
           tabIndex={-1}
-          className="absolute left-1/2 top-1/2 w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl"
+          className="absolute left-1/2 top-1/2 w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl focus:outline-none"
         >
           <h3
             id="tour-interrompido"
@@ -190,7 +190,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
             <button
               type="button"
               onClick={() => onClose()}
-              className="rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800"
+              className="rounded-xl bg-primary-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
             >
               Entendi
             </button>
@@ -254,7 +254,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
         aria-labelledby={tituloId}
         tabIndex={-1}
         style={{ ...posicaoBalao, width: LARGURA_BALAO }}
-        className="pointer-events-auto absolute rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl"
+        className="pointer-events-auto absolute rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl focus:outline-none"
       >
         <button
           type="button"
@@ -294,7 +294,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
           <button
             type="button"
             onClick={avancar}
-            className="rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800"
+            className="rounded-xl bg-primary-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
           >
             {ehUltimo ? TOUR_UI.concluir : TOUR_UI.proximo}
           </button>

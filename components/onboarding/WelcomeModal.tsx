@@ -90,7 +90,7 @@ export function WelcomeModal({ onFinish }: Props) {
         aria-modal="true"
         aria-labelledby="boas-vindas-titulo"
         tabIndex={-1}
-        className="w-full max-w-lg overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl"
+        className="w-full max-w-lg overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl focus:outline-none"
       >
         {/*
           Faixa de marca: é o que tira o diálogo de "caixa branca genérica" —

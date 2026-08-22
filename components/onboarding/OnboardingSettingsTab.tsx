@@ -57,7 +57,7 @@ export function OnboardingSettingsTab() {
                   aria-hidden
                   className={`flex h-5 w-5 flex-none items-center justify-center rounded-full border ${
                     feito
-                      ? "border-emerald-600 bg-emerald-600 text-white"
+                      ? "border-primary-600 bg-primary-600 text-white"
                       : "border-neutral-300"
                   }`}
                 >
@@ -96,7 +96,7 @@ export function OnboardingSettingsTab() {
           type="button"
           onClick={aoRefazer}
           disabled={reiniciando}
-          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
+          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-60"
         >
           <RotateCcw className="h-4 w-4" />
           {reiniciando ? "Reiniciando…" : "Refazer o onboarding"}
