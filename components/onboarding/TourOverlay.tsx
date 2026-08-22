@@ -128,9 +128,16 @@ export function TourOverlay({ trackId, onClose }: Props) {
   // componente ainda devolve `null` e `balaoRef` é nulo. Com dependência só em
   // `indice` (que não muda entre esse commit e o seguinte), o efeito nunca
   // reexecutava — e o foco jamais entrava no balão no PRIMEIRO passo do tour.
+  //
+  // Foca o DIÁLOGO (`balaoRef.current`), não o primeiro botão dele. O
+  // primeiro botão focável é sempre "Sair do tour" (spec §3.1) — é a ação
+  // dispensiva, e focar automaticamente nela faz um usuário de teclado que
+  // aperta Enter no reflexo (comum ao abrir qualquer diálogo) sair do tour
+  // sem querer. O `tabIndex={-1}` no `<div role="dialog">` permite o foco
+  // programático sem entrar na ordem de tab normal.
   useEffect(() => {
     if (!montado || estado === "buscando") return;
-    balaoRef.current?.querySelector<HTMLElement>("button")?.focus();
+    balaoRef.current?.focus();
   }, [indice, montado, estado, interrompido]);
 
   const posicaoBalao = useMemo(() => {
@@ -164,6 +171,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="tour-interrompido"
+          tabIndex={-1}
           className="absolute left-1/2 top-1/2 w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl"
         >
           <h3
@@ -206,7 +214,12 @@ export function TourOverlay({ trackId, onClose }: Props) {
   const ehUltimo = indice === passos.length - 1;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100]">
+    // `pointer-events-none` aqui é o que devolve o clique ao resto da página
+    // (o furo do spotlight não é suficiente: sem isso, o `<div>` cobre a
+    // viewport inteira e captura todo clique, inclusive sobre o elemento
+    // destacado). Só o balão religa `pointer-events-auto` — é a única parte
+    // clicável do overlay.
+    <div className="pointer-events-none fixed inset-0 z-[100]">
       <svg className="pointer-events-none absolute inset-0 h-full w-full">
         <defs>
           <mask id="tour-furo">
@@ -236,8 +249,9 @@ export function TourOverlay({ trackId, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={tituloId}
+        tabIndex={-1}
         style={{ ...posicaoBalao, width: LARGURA_BALAO }}
-        className="absolute rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl"
+        className="pointer-events-auto absolute rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl"
       >
         <button
           type="button"

@@ -69,6 +69,27 @@ const TRILHA_REQUISITOS: Track = {
   ],
 };
 
+/**
+ * Fixture com `route` num passo — `pushMock` é declarado desde o início do
+ * arquivo, mas nenhum caso o exercitava (achado da revisão final: "não há
+ * prova de que `router.push` é chamado com a rota do passo").
+ */
+const TRILHA_COM_ROTA: Track = {
+  id: "com-rota",
+  label: "Trilha com rota",
+  descricao: "…",
+  stepKey: "assinatura-do-medico",
+  steps: [
+    {
+      key: "com-rota",
+      titulo: "Passo com rota",
+      corpo: "Corpo com rota",
+      target: "alvo-com-rota",
+      route: "/configuracoes?tab=profile",
+    },
+  ],
+};
+
 vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
   const original = await importOriginal<
     typeof import("@/lib/onboarding/tour-registry")
@@ -78,6 +99,7 @@ vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
     trackById: (id: string) => {
       if (id === "documentos-do-medico") return TRILHA_OBRIGATORIA;
       if (id === "solicitacoes-requisitos") return TRILHA_REQUISITOS;
+      if (id === "com-rota") return TRILHA_COM_ROTA;
       return TRILHA;
     },
     visibleSteps: (t: Track) => t.steps,
@@ -222,6 +244,22 @@ describe("TourOverlay", () => {
     expect(onClose).not.toHaveBeenCalledWith({ concluido: true });
   });
 
+  /**
+   * O foco inicial precisa cair no DIÁLOGO em si, não no primeiro botão
+   * ("Sair do tour" — a ação dispensiva, sempre primeira no DOM por spec
+   * §3.1). Focar automaticamente nele faria um Enter no reflexo, ao abrir o
+   * balão, encerrar o tour sem o usuário querer.
+   * `dialogo.contains(activeElement)` sozinho passaria com o foco no botão
+   * também — só `toBe(dialogo)` prova qual elemento recebeu o foco.
+   */
+  it("o foco inicial cai no diálogo, não no botão 'Sair do tour'", async () => {
+    montarAlvos(["alvo-um", "alvo-tres"]);
+    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+
+    const dialogo = await screen.findByRole("dialog");
+    expect(document.activeElement).toBe(dialogo);
+  });
+
   it("prende o foco dentro do balão nos dois sentidos", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     const user = userEvent.setup();
@@ -244,6 +282,34 @@ describe("TourOverlay", () => {
     primeiro.focus();
     await user.tab({ shift: true });
     expect(document.activeElement).toBe(ultimo);
+  });
+
+  /**
+   * Achado 1(a) da revisão final: o container `fixed inset-0` cobria a
+   * viewport inteira SEM `pointer-events-none`, capturando todo clique —
+   * inclusive sobre o elemento destacado. O furo do spotlight é só visual
+   * (máscara do SVG); sem isso o usuário não consegue clicar em nada durante
+   * o tour, nem no botão que o passo está destacando.
+   */
+  it("libera cliques na página: só o balão captura ponteiro, o container não", async () => {
+    montarAlvos(["alvo-um", "alvo-tres"]);
+    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+
+    const dialogo = await screen.findByRole("dialog");
+    const container = dialogo.parentElement;
+
+    expect(container).toHaveClass("pointer-events-none");
+    expect(dialogo).toHaveClass("pointer-events-auto");
+  });
+
+  /** `pushMock` era declarado desde sempre neste arquivo e nunca era checado. */
+  it("passo com `route` navega para a rota declarada", async () => {
+    montarAlvos(["alvo-com-rota"]);
+    render(<TourOverlay trackId="com-rota" onClose={vi.fn()} />);
+
+    await screen.findByText("Passo com rota");
+
+    expect(pushMock).toHaveBeenCalledWith("/configuracoes?tab=profile");
   });
 });
 

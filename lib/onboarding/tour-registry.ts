@@ -96,12 +96,24 @@ export const TRACKS: Track[] = [
       },
       {
         key: "cadastro-no-modal",
-        target: "sc-wizard-novo-cadastro",
+        // Sem `target` de propósito: `sc-wizard-novo-cadastro` só existe
+        // DENTRO do modal do wizard, que o passo 1 não abre sozinho. Ancorar
+        // aqui exigiria um tour interativo (usuário clica, wizard abre, tour
+        // avança) — mudança de Fase 4, não deste fix-wave. Até lá, degrada
+        // para card centralizado (spec §3.4). O atributo `data-tour` continua
+        // em `SelectionContents.tsx` para quando a Fase 4 chegar — não
+        // remova.
         ...TRILHA_SOLICITACOES.passos.cadastroNoModal,
       },
       {
         key: "requisitos",
-        target: "sc-requisitos",
+        // Sem `target` de propósito: `sc-requisitos` só existe na tela de
+        // detalhe de uma solicitação já criada, e um usuário em seu primeiro
+        // tour não tem nenhuma solicitação para abrir. Não há alvo real
+        // possível aqui — vira card centralizado (spec §3.4), mas mantém a
+        // lista de requisitos vinda do backend. O atributo `data-tour`
+        // continua em `solicitacao/[id]/page.tsx` para uma futura versão
+        // interativa — não remova.
         ...TRILHA_SOLICITACOES.passos.requisitos,
       },
       {
