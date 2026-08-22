@@ -213,4 +213,29 @@ describe("useTargetRect", () => {
     });
     expect(result.current.estado).toBe("ausente");
   });
+
+  it("não anima o scroll quando o usuário pede menos movimento", async () => {
+    vi.useFakeTimers();
+    window.matchMedia = vi.fn().mockReturnValue({
+      matches: true,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }) as unknown as typeof window.matchMedia;
+
+    const alvo = document.createElement("div");
+    alvo.setAttribute("data-tour", "alvo");
+    const scrollIntoView = vi.fn();
+    alvo.scrollIntoView = scrollIntoView;
+    document.body.appendChild(alvo);
+
+    renderHook(() => useTargetRect("alvo"));
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: "center",
+      behavior: "auto",
+    });
+  });
 });

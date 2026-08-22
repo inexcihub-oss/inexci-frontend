@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PERMISSION_DESCRIPTIONS } from "@/lib/permissions";
@@ -506,6 +506,78 @@ describe("TourOverlay — passo 'requisitos' busca os rótulos reais", () => {
  * do backend. O teste prova a DERIVAÇÃO, não um texto copiado: lê os valores
  * do próprio módulo e afirma que todos aparecem no balão.
  */
+/**
+ * A `BottomNavBar` ocupa a base da tela no mobile (~72 px + safe-area). O
+ * balão é posicionado por `top`/`left` calculados a partir do `rect` do
+ * alvo — quando o alvo está colado no rodapé, o balão sem reserva cairia
+ * atrás dela.
+ */
+describe("TourOverlay — balão não fica atrás da BottomNavBar no mobile", () => {
+  const larguraOriginal = window.innerWidth;
+  const alturaOriginal = window.innerHeight;
+
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    vi.clearAllMocks();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    Element.prototype.scrollIntoView = vi.fn();
+    Object.defineProperty(window, "innerWidth", {
+      value: 375,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(window, "innerHeight", {
+      value: 667,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, "innerWidth", {
+      value: larguraOriginal,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(window, "innerHeight", {
+      value: alturaOriginal,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it("mantém o balão acima da reserva de rodapé quando o alvo está colado na base da viewport", async () => {
+    const alvo = document.createElement("button");
+    alvo.setAttribute("data-tour", "alvo-um");
+    alvo.getBoundingClientRect = () =>
+      ({
+        top: 620,
+        left: 20,
+        width: 100,
+        height: 40,
+        bottom: 660,
+        right: 120,
+      }) as DOMRect;
+    document.body.appendChild(alvo);
+    montarAlvos(["alvo-tres"]);
+
+    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+
+    const dialogo = await screen.findByRole("dialog");
+    const top = parseFloat((dialogo as HTMLElement).style.top);
+    const alturaEstimada = 190;
+
+    expect(top + alturaEstimada).toBeLessThanOrEqual(667 - 88);
+  });
+});
+
 describe("TourOverlay — passo 'areas' da trilha administracao", () => {
   beforeEach(() => {
     document.body.innerHTML = "";

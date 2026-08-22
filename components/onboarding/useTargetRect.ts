@@ -9,6 +9,15 @@ export const TIMEOUT_AGUARDA_ACAO_MS = 20000;
 
 export type EstadoAlvo = "buscando" | "encontrado" | "ausente";
 
+/** `matchMedia` não existe em todo ambiente de teste — trate a ausência. */
+function movimentoReduzido(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 /**
  * Acompanha o retângulo do elemento `[data-tour="<target>"]`.
  *
@@ -105,7 +114,10 @@ export function useTargetRect(
       // `parar()` já limpa `intervalo` e `limite` — não repita a limpeza aqui.
       parar();
 
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.scrollIntoView({
+        block: "center",
+        behavior: movimentoReduzido() ? "auto" : "smooth",
+      });
       medir();
       setEstado("encontrado");
 

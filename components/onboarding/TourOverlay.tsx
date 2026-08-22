@@ -22,6 +22,10 @@ import { TIMEOUT_AGUARDA_ACAO_MS, useTargetRect } from "./useTargetRect";
 const PADDING_FURO = 8;
 const LARGURA_BALAO = 320;
 const MARGEM = 16;
+// Reserva do rodapé: a `BottomNavBar` cobre a base da tela no mobile e o
+// balão posicionado por `top` cairia atrás dela — o usuário veria o holofote
+// e não veria a instrução.
+const RESERVA_RODAPE = 88;
 
 /** Estático: as quatro descrições não mudam por sessão. */
 const DESCRICOES_DE_AREA = Object.values(PERMISSION_DESCRIPTIONS);
@@ -195,10 +199,15 @@ export function TourOverlay({ trackId, onClose }: Props) {
     }
     const alturaEstimada = 190;
     const cabeAbaixo =
-      rect.bottom + MARGEM + alturaEstimada < window.innerHeight;
-    const top = cabeAbaixo
+      rect.bottom + MARGEM + alturaEstimada <
+      window.innerHeight - RESERVA_RODAPE;
+    const topBruto = cabeAbaixo
       ? rect.bottom + MARGEM
       : Math.max(MARGEM, rect.top - MARGEM - alturaEstimada);
+    const top = Math.min(
+      topBruto,
+      window.innerHeight - RESERVA_RODAPE - alturaEstimada,
+    );
     const left = Math.min(
       Math.max(MARGEM, rect.left),
       Math.max(MARGEM, window.innerWidth - LARGURA_BALAO - MARGEM),
@@ -297,7 +306,11 @@ export function TourOverlay({ trackId, onClose }: Props) {
         aria-modal="true"
         aria-labelledby={tituloId}
         tabIndex={-1}
-        style={{ ...posicaoBalao, width: LARGURA_BALAO }}
+        style={{
+          ...posicaoBalao,
+          width: LARGURA_BALAO,
+          maxWidth: "calc(100vw - 32px)",
+        }}
         className="pointer-events-auto absolute rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl focus:outline-none"
       >
         <button
