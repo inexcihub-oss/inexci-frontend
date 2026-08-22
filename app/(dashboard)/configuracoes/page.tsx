@@ -956,7 +956,10 @@ function ConfiguracoesPageInner() {
 
         {/* Assinatura digital (apenas para médicos) */}
         {profile.isDoctor && (
-          <Card className="border border-gray-200 rounded-2xl">
+          <Card
+            data-tour="config-assinatura"
+            className="border border-gray-200 rounded-2xl"
+          >
             <CardHeader className="p-6 pb-4">
               <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <FileSignature className="w-5 h-5" />

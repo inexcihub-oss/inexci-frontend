@@ -137,6 +137,7 @@ export const ProcedureSelectionContent = memo(
               />
             </div>
             <button
+              data-tour="sc-wizard-novo-cadastro"
               onClick={onCreateNew}
               disabled={!canCreate}
               title={canCreate ? undefined : CADASTRO_RESTRITO_HINT}

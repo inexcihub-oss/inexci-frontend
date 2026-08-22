@@ -687,6 +687,7 @@ export default function ProcedimentosCirurgicos() {
           {/* Upload document button */}
           <button
             type="button"
+            data-tour="sc-por-documento"
             onClick={() => setIsUploadDocumentOpen(true)}
             title="Criar solicitação a partir de documento"
             className="relative flex items-center gap-1.5 flex-1 sm:flex-none h-9 lg:h-11 px-3 lg:px-3.5 py-1.5 lg:py-2 text-xs lg:text-sm font-medium rounded-xl border border-neutral-100 bg-white text-black hover:bg-neutral-50 transition-colors"
@@ -714,6 +715,7 @@ export default function ProcedimentosCirurgicos() {
 
           {/* New Request Button */}
           <NewSurgeryRequestButton
+            data-tour="sc-nova"
             onClick={handleOpenNewRequest}
             variant="primary"
             disabled={checkingActiveDoctors}

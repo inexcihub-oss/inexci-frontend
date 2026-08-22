@@ -62,6 +62,10 @@ vi.mock("./OnboardingProvider", () => ({
   }),
 }));
 
+vi.mock("@/services/onboarding-requirements", () => ({
+  fetchRequisitosPendente: vi.fn().mockResolvedValue([]),
+}));
+
 function montarAlvos(nomes: string[]) {
   for (const nome of nomes) {
     const el = document.createElement("button");

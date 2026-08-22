@@ -97,6 +97,11 @@ export const TRILHA_SOLICITACOES = {
       titulo: "Complete antes de enviar",
       corpo:
         "A solicitação só sai de Pendente quando estes itens estiverem completos. O painel de pendências mostra o que falta a qualquer momento.",
+      /** Preenchido em runtime com os rótulos vindos do backend. */
+      comRequisitos: (rotulos: string[]) =>
+        rotulos.length
+          ? `A solicitação só sai de Pendente com: ${rotulos.join(", ")}. O painel de pendências mostra o que falta a qualquer momento.`
+          : "A solicitação só sai de Pendente quando todos os itens obrigatórios estiverem completos. O painel de pendências mostra o que falta a qualquer momento.",
     },
     porDocumento: {
       titulo: "Ou comece por um documento",

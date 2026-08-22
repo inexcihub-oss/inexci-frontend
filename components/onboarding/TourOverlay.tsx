@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { TOUR_UI } from "@/lib/onboarding/content";
+import { TOUR_UI, TRILHA_SOLICITACOES } from "@/lib/onboarding/content";
 import type { TrackId } from "@/lib/onboarding/state";
 import { trackById, visibleSteps } from "@/lib/onboarding/tour-registry";
+import { fetchRequisitosPendente } from "@/services/onboarding-requirements";
 import { useOnboarding } from "./OnboardingProvider";
 import { useTargetRect } from "./useTargetRect";
 
@@ -34,6 +35,21 @@ export function TourOverlay({ trackId, onClose }: Props) {
     [track, viewer],
   );
   const passo = passos[indice];
+
+  const [requisitos, setRequisitos] = useState<string[] | null>(null);
+
+  // Só busca quando o passo dos requisitos entra em cena, e só uma vez por
+  // montagem do overlay.
+  useEffect(() => {
+    if (passo?.key !== "requisitos" || requisitos !== null) return;
+    let cancelado = false;
+    void fetchRequisitosPendente().then((rotulos) => {
+      if (!cancelado) setRequisitos(rotulos);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [passo?.key, requisitos]);
 
   // O timeout de 3s do hook é dimensionado para passo com `route`, cuja tela
   // ainda vai montar. Para um passo que o tour pode simplesmente pular, 3s de
@@ -241,7 +257,11 @@ export function TourOverlay({ trackId, onClose }: Props) {
           {passo.titulo}
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-          {passo.corpo}
+          {passo.key === "requisitos"
+            ? TRILHA_SOLICITACOES.passos.requisitos.comRequisitos(
+                requisitos ?? [],
+              )
+            : passo.corpo}
         </p>
 
         <div className="mt-5 flex items-center justify-end gap-2">
