@@ -228,6 +228,29 @@ export const TRILHA_ADMINISTRACAO = {
   },
 };
 
+export const TRILHA_PLANO = {
+  label: "Acompanhar plano e cota",
+  descricao:
+    "O que sua assinatura cobre e quanto do período já foi usado.",
+  passos: {
+    assinatura: {
+      titulo: "Sua assinatura",
+      corpo:
+        "Plano atual, situação do pagamento e data da próxima renovação.",
+    },
+    cota: {
+      titulo: "A cota do período",
+      corpo:
+        "Quantas solicitações o plano cobre e quantas já saíram. Estourar a cota trava novas solicitações — o aviso aparece antes disso.",
+    },
+    acoes: {
+      titulo: "Trocar de plano ou pagamento",
+      corpo:
+        "Tudo pela Stripe, por aqui. Só o dono da conta vê esta aba: um admin delegado cuida da equipe, não da assinatura.",
+    },
+  },
+};
+
 export const TRILHA_AGENDA = {
   label: "Marcar uma consulta",
   descricao:

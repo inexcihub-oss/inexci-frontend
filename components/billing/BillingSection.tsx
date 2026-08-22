@@ -101,10 +101,17 @@ export function BillingSection() {
   return (
     <>
       <div className="space-y-6">
-        <SubscriptionStatusCard detail={subscription} />
-        <QuotaUsageCard quota={subscription.quota} />
+        <div data-tour="plano-assinatura">
+          <SubscriptionStatusCard detail={subscription} />
+        </div>
+        <div data-tour="plano-cota">
+          <QuotaUsageCard quota={subscription.quota} />
+        </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+        <div
+          data-tour="plano-acoes"
+          className="rounded-2xl border border-gray-200 bg-white p-4"
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Resolver assinatura
           </p>

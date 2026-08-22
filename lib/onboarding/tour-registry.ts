@@ -5,6 +5,7 @@ import {
   TRILHA_ATENDIMENTO,
   TRILHA_CADASTROS,
   TRILHA_DOCUMENTOS_MEDICO,
+  TRILHA_PLANO,
   TRILHA_SOLICITACOES,
 } from "./content";
 import type { StepKey, TrackId } from "./state";
@@ -69,12 +70,20 @@ export function canSee(gate: Gate, viewer: Viewer): boolean {
 }
 
 /**
- * Fase 1 traz a trilha de solicitações e o passo avulso da assinatura. As
- * demais entram nas fases seguintes — declarar entradas com `steps: []` agora
- * colocaria itens vazios no checklist de produção.
+ * A ordem do array É a ordem do checklist e a ordem em que o banner global
+ * oferece a próxima trilha. Ela segue o dia real de quem usa a plataforma, não
+ * a arquitetura do código:
  *
- * A assinatura vem PRIMEIRO no array de propósito: é pré-requisito do laudo,
- * e o checklist é lido de cima para baixo.
+ * 1. `documentos-do-medico` — preparo. Sem assinatura, tudo que for emitido
+ *    depois sai sem assinar; é a única trilha que estraga o resultado das
+ *    outras se ficar para depois.
+ * 2. `agenda` — a consulta precisa existir antes de haver o que atender.
+ * 3. `atendimento` — a consulta vira ficha.
+ * 4. `solicitacoes` — a ficha com indicação cirúrgica vira solicitação.
+ * 5. `cadastros` — transversal; vem depois porque o wizard já ensinou a criar
+ *    cada cadastro de dentro dele, sem precisar da tela.
+ * 6. `administracao` e 7. `plano-e-cota` — tarefas do dono da conta, feitas
+ *    uma vez, não no primeiro dia.
  */
 export const TRACKS: Track[] = [
   {
@@ -115,46 +124,36 @@ export const TRACKS: Track[] = [
     ],
   },
   {
-    id: "solicitacoes",
-    label: TRILHA_SOLICITACOES.label,
-    descricao: TRILHA_SOLICITACOES.descricao,
-    stepKey: "criar-solicitacao",
-    permission: Permission.SOLICITACOES,
+    id: "agenda",
+    label: TRILHA_AGENDA.label,
+    descricao: TRILHA_AGENDA.descricao,
+    stepKey: "marcar-consulta",
+    permission: Permission.AGENDA,
     steps: [
       {
-        key: "abrir-wizard",
-        route: "/solicitacoes-cirurgicas",
-        target: "sc-nova",
+        key: "nova-consulta",
+        route: "/agenda",
+        target: "agenda-nova-consulta",
         required: true,
-        ...TRILHA_SOLICITACOES.passos.abrirWizard,
+        ...TRILHA_AGENDA.passos.novaConsulta,
       },
       {
-        key: "cadastro-no-modal",
-        // Sem `target` de propósito: `sc-wizard-novo-cadastro` só existe
-        // DENTRO do modal do wizard, que o passo 1 não abre sozinho. Ancorar
-        // aqui exigiria um tour interativo (usuário clica, wizard abre, tour
-        // avança) — mudança de Fase 4, não deste fix-wave. Até lá, degrada
-        // para card centralizado (spec §3.4). O atributo `data-tour` continua
-        // em `SelectionContents.tsx` para quando a Fase 4 chegar — não
-        // remova.
-        ...TRILHA_SOLICITACOES.passos.cadastroNoModal,
+        key: "horario",
+        target: "agenda-modal-horario",
+        aguardaAcao: true,
+        ...TRILHA_AGENDA.passos.horario,
       },
       {
-        key: "requisitos",
-        // Sem `target` de propósito: `sc-requisitos` só existe na tela de
-        // detalhe de uma solicitação já criada, e um usuário em seu primeiro
-        // tour não tem nenhuma solicitação para abrir. Não há alvo real
-        // possível aqui — vira card centralizado (spec §3.4), mas mantém a
-        // lista de requisitos vinda do backend. O atributo `data-tour`
-        // continua em `solicitacao/[id]/page.tsx` para uma futura versão
-        // interativa — não remova.
-        ...TRILHA_SOLICITACOES.passos.requisitos,
+        key: "status",
+        target: "agenda-consulta-acoes",
+        aguardaAcao: true,
+        ...TRILHA_AGENDA.passos.status,
       },
       {
-        key: "por-documento",
-        route: "/solicitacoes-cirurgicas",
-        target: "sc-por-documento",
-        ...TRILHA_SOLICITACOES.passos.porDocumento,
+        key: "lembrete",
+        // Sem alvo de propósito: o lembrete é um `@Cron` do backend, não tem
+        // controle na tela. Card centralizado é a forma honesta de dizer isso.
+        ...TRILHA_AGENDA.passos.lembrete,
       },
     ],
   },
@@ -205,36 +204,46 @@ export const TRACKS: Track[] = [
     ],
   },
   {
-    id: "agenda",
-    label: TRILHA_AGENDA.label,
-    descricao: TRILHA_AGENDA.descricao,
-    stepKey: "marcar-consulta",
-    permission: Permission.AGENDA,
+    id: "solicitacoes",
+    label: TRILHA_SOLICITACOES.label,
+    descricao: TRILHA_SOLICITACOES.descricao,
+    stepKey: "criar-solicitacao",
+    permission: Permission.SOLICITACOES,
     steps: [
       {
-        key: "nova-consulta",
-        route: "/agenda",
-        target: "agenda-nova-consulta",
+        key: "abrir-wizard",
+        route: "/solicitacoes-cirurgicas",
+        target: "sc-nova",
         required: true,
-        ...TRILHA_AGENDA.passos.novaConsulta,
+        ...TRILHA_SOLICITACOES.passos.abrirWizard,
       },
       {
-        key: "horario",
-        target: "agenda-modal-horario",
-        aguardaAcao: true,
-        ...TRILHA_AGENDA.passos.horario,
+        key: "cadastro-no-modal",
+        // Sem `target` de propósito: `sc-wizard-novo-cadastro` só existe
+        // DENTRO do modal do wizard, que o passo 1 não abre sozinho. Ancorar
+        // aqui exigiria um tour interativo (usuário clica, wizard abre, tour
+        // avança) — mudança de Fase 4, não deste fix-wave. Até lá, degrada
+        // para card centralizado (spec §3.4). O atributo `data-tour` continua
+        // em `SelectionContents.tsx` para quando a Fase 4 chegar — não
+        // remova.
+        ...TRILHA_SOLICITACOES.passos.cadastroNoModal,
       },
       {
-        key: "status",
-        target: "agenda-consulta-acoes",
-        aguardaAcao: true,
-        ...TRILHA_AGENDA.passos.status,
+        key: "requisitos",
+        // Sem `target` de propósito: `sc-requisitos` só existe na tela de
+        // detalhe de uma solicitação já criada, e um usuário em seu primeiro
+        // tour não tem nenhuma solicitação para abrir. Não há alvo real
+        // possível aqui — vira card centralizado (spec §3.4), mas mantém a
+        // lista de requisitos vinda do backend. O atributo `data-tour`
+        // continua em `solicitacao/[id]/page.tsx` para uma futura versão
+        // interativa — não remova.
+        ...TRILHA_SOLICITACOES.passos.requisitos,
       },
       {
-        key: "lembrete",
-        // Sem alvo de propósito: o lembrete é um `@Cron` do backend, não tem
-        // controle na tela. Card centralizado é a forma honesta de dizer isso.
-        ...TRILHA_AGENDA.passos.lembrete,
+        key: "por-documento",
+        route: "/solicitacoes-cirurgicas",
+        target: "sc-por-documento",
+        ...TRILHA_SOLICITACOES.passos.porDocumento,
       },
     ],
   },
@@ -314,6 +323,28 @@ export const TRACKS: Track[] = [
         // Idem: as ações de linha só existem com a lista preenchida.
         ...TRILHA_ADMINISTRACAO.passos.ciclo,
       },
+    ],
+  },
+  {
+    id: "plano-e-cota",
+    label: TRILHA_PLANO.label,
+    descricao: TRILHA_PLANO.descricao,
+    stepKey: "plano-e-cota",
+    // `requiresOwner` é `isAccountOwner`, NUNCA `isAdmin`: o admin delegado tem
+    // `role: 'admin'` e `?tab=plan` o devolve para `profile`
+    // (`resolveSettingsTab`). Um tour que navega para uma tela que devolve o
+    // usuário é pior do que tour nenhum.
+    requiresOwner: true,
+    steps: [
+      {
+        key: "assinatura",
+        route: "/configuracoes?tab=plan",
+        target: "plano-assinatura",
+        required: true,
+        ...TRILHA_PLANO.passos.assinatura,
+      },
+      { key: "cota", target: "plano-cota", ...TRILHA_PLANO.passos.cota },
+      { key: "acoes", target: "plano-acoes", ...TRILHA_PLANO.passos.acoes },
     ],
   },
 ];

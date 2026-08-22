@@ -38,6 +38,20 @@ describe("canSee", () => {
     ).toBe(true);
   });
 
+  it("plano-e-cota é invisível para o admin delegado", () => {
+    const delegado = {
+      permissions: [Permission.ADMINISTRACAO],
+      isDoctor: false,
+      isAccountOwner: false, // é o que o distingue do dono
+    };
+    expect(visibleTracks(delegado).map((t) => t.id)).not.toContain(
+      "plano-e-cota",
+    );
+
+    const dono = { ...delegado, isAccountOwner: true };
+    expect(visibleTracks(dono).map((t) => t.id)).toContain("plano-e-cota");
+  });
+
   it("requiresDoctor olha doctor_profile, não a área de atendimento", () => {
     expect(
       canSee(
@@ -164,6 +178,18 @@ describe("TRACKS", () => {
     // Os do cabeçalho degradam, porque a prévia só existe com conteúdo salvo.
     expect(trilha.steps.filter((p) => p.required).map((p) => p.key)).toEqual([
       "assinatura",
+    ]);
+  });
+
+  it("as trilhas seguem a ordem de uso da plataforma", () => {
+    expect(TRACKS.map((t) => t.id)).toEqual([
+      "documentos-do-medico",
+      "agenda",
+      "atendimento",
+      "solicitacoes",
+      "cadastros",
+      "administracao",
+      "plano-e-cota",
     ]);
   });
 
