@@ -60,6 +60,11 @@ export function useTargetRect(
   }
 
   useEffect(() => {
+    // Redundante com o reset síncrono acima quando é `target` que mudou (já
+    // chegou aqui com `estado`/`rect` corretos) — mas esse efeito também
+    // reexecuta quando só `timeoutMs` muda (dependência `[target, timeoutMs]`
+    // abaixo), caso em que o reset síncrono não dispara (ele só reage a
+    // `target`). Os dois resets continuam necessários; não remova este.
     if (!target) {
       setRect(null);
       setEstado("ausente");
