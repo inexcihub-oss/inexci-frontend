@@ -6,6 +6,7 @@ import {
   markStepComplete,
   markTourSeen,
   markWelcomeSeen,
+  mergeOnboardingPatch,
   normalizeOnboardingState,
   promoteIfComplete,
 } from "./state";
@@ -53,7 +54,7 @@ describe("markStepComplete", () => {
     const estado = markStepComplete(dispensado, "criar-solicitacao", AGORA);
 
     expect(estado.checklistDismissedAt).toBe(AGORA);
-    expect(isChecklistVisible(estado)).toBe(false);
+    expect(isChecklistVisible(estado, false)).toBe(false);
   });
 });
 
@@ -74,27 +75,89 @@ describe("markWelcomeSeen", () => {
 });
 
 describe("isChecklistVisible", () => {
-  it("some quando dispensado", () => {
+  it("some quando dispensado, mesmo promovido nesta sessão", () => {
     expect(
-      isChecklistVisible(dismissChecklist(emptyOnboardingState(), AGORA)),
+      isChecklistVisible(
+        dismissChecklist(emptyOnboardingState(), AGORA),
+        true,
+      ),
     ).toBe(false);
   });
 
   /**
-   * Continua visível quando concluído: é aí que mostra `CHECKLIST.concluido`
-   * ("Tudo pronto…") em vez de sumir em silêncio assim que a última trilha é
-   * marcada. Só "Dispensar" (`checklistDismissedAt`) o esconde de vez.
+   * O "momento de conclusão" é DE SESSÃO (decisão do controller sobre o
+   * achado 4): só fica visível mostrando `CHECKLIST.concluido` quando foi
+   * ESTA sessão que promoveu — senão o card ficaria "Tudo pronto" para
+   * sempre, trocando um incômodo permanente por outro.
    */
-  it("continua visível quando concluído — mostra a mensagem de conclusão até ser dispensado", () => {
+  it("promovido NESTA sessão: continua visível mostrando a mensagem de conclusão", () => {
     expect(
-      isChecklistVisible({ ...emptyOnboardingState(), status: "completed" }),
+      isChecklistVisible(
+        { ...emptyOnboardingState(), status: "completed" },
+        true,
+      ),
     ).toBe(true);
+  });
+
+  it("já chega completed do servidor (não promovido nesta sessão): não renderiza", () => {
+    expect(
+      isChecklistVisible(
+        { ...emptyOnboardingState(), status: "completed" },
+        false,
+      ),
+    ).toBe(false);
   });
 
   it("aparece para quem está no meio", () => {
     expect(
-      isChecklistVisible({ ...emptyOnboardingState(), status: "in_progress" }),
+      isChecklistVisible(
+        { ...emptyOnboardingState(), status: "in_progress" },
+        false,
+      ),
     ).toBe(true);
+  });
+});
+
+describe("mergeOnboardingPatch", () => {
+  it("funde completedSteps e toursSeen chave a chave, não substitui o mapa inteiro", () => {
+    const primeiro = { completedSteps: { "criar-solicitacao": AGORA } };
+    const segundo = { completedSteps: { "assinatura-do-medico": AGORA } };
+
+    expect(mergeOnboardingPatch(primeiro, segundo)).toEqual({
+      completedSteps: {
+        "criar-solicitacao": AGORA,
+        "assinatura-do-medico": AGORA,
+      },
+    });
+  });
+
+  it("escalares são last-write-wins entre os dois patches", () => {
+    const primeiro = { checklistDismissedAt: AGORA };
+    const segundo = { checklistDismissedAt: null };
+
+    expect(mergeOnboardingPatch(primeiro, segundo).checklistDismissedAt).toBe(
+      null,
+    );
+  });
+
+  it("não inclui completedSteps/toursSeen quando nenhum dos dois lados os tocou", () => {
+    const resultado = mergeOnboardingPatch(
+      { checklistDismissedAt: AGORA },
+      { status: "in_progress" },
+    );
+
+    expect(resultado).toEqual({
+      checklistDismissedAt: AGORA,
+      status: "in_progress",
+    });
+    expect(resultado).not.toHaveProperty("completedSteps");
+    expect(resultado).not.toHaveProperty("toursSeen");
+  });
+
+  it("aceita null como base (primeira escrita do debounce)", () => {
+    expect(mergeOnboardingPatch(null, { welcomeSeenAt: AGORA })).toEqual({
+      welcomeSeenAt: AGORA,
+    });
   });
 });
 

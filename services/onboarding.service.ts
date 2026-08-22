@@ -1,5 +1,8 @@
 import api from "@/lib/api";
-import type { OnboardingPatch, OnboardingState } from "@/lib/onboarding/state";
+import type {
+  OnboardingState,
+  OnboardingWritablePatch,
+} from "@/lib/onboarding/state";
 
 export const onboardingService = {
   async getState(): Promise<OnboardingState> {
@@ -7,7 +10,7 @@ export const onboardingService = {
     return response.data;
   },
 
-  async patch(patch: OnboardingPatch): Promise<OnboardingState> {
+  async patch(patch: OnboardingWritablePatch): Promise<OnboardingState> {
     const response = await api.patch<OnboardingState>(
       "/onboarding/state",
       patch,

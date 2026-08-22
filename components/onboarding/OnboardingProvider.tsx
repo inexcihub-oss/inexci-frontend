@@ -17,9 +17,11 @@ import {
   markStepComplete,
   markTourSeen,
   markWelcomeSeen,
+  mergeOnboardingPatch,
   normalizeOnboardingState,
   promoteIfComplete,
   type OnboardingState,
+  type OnboardingWritablePatch,
   type StepKey,
   type TrackId,
 } from "@/lib/onboarding/state";
@@ -84,26 +86,46 @@ export function OnboardingProvider({
   const tracks = useMemo(() => visibleTracks(viewer), [viewer]);
 
   /**
+   * `true` só quando ESTA montagem do provider foi quem promoveu o status
+   * para `completed` (via `promoteIfComplete`, dentro de `aplicar`). Decisão
+   * do controller sobre o achado 4: um `status: "completed"` que já chega
+   * pronto do servidor (próximo login) não deve reativar a mensagem de
+   * conclusão — só a promoção que aconteceu NESTA sessão ativa. Ver
+   * `isChecklistVisible` no `value` abaixo.
+   */
+  const promovidoNestaSessaoRef = useRef(false);
+
+  /**
    * Persistência otimista: o estado local muda na hora e o PATCH sai com
    * debounce. Uma falha só vira log — o onboarding não pode travar a tela
    * porque marcar um checkbox deu 500.
+   *
+   * `pendenteRef` guarda um PATCH PARCIAL (só os campos tocados), não mais um
+   * snapshot do estado inteiro. Mandar o estado inteiro foi o bug que a
+   * revisão final do backend achou: `restartedAt` (campo que só o servidor
+   * escreve) ia junto em todo PATCH, o DTO lá rejeita chave desconhecida
+   * (`forbidNonWhitelisted`) e devolvia 400 sempre — silenciado pelo `.catch`
+   * abaixo, que só loga. Mandar só os campos tocados também resolve um
+   * segundo problema: o merge do backend fecha `completedSteps`/`toursSeen`
+   * chave a chave, mas ESCALARES são last-write-wins — mandar o snapshot
+   * inteiro fazia um dispositivo reenviar `checklistDismissedAt: null` por
+   * cima do dispensar feito em outro.
    */
-  const pendenteRef = useRef<OnboardingState | null>(null);
+  const pendenteRef = useRef<OnboardingWritablePatch | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const enviarPendente = useCallback(() => {
     const paraEnviar = pendenteRef.current;
     pendenteRef.current = null;
     if (!paraEnviar) return;
-    const { version: _version, ...patch } = paraEnviar;
-    void onboardingService.patch(patch).catch((erro) => {
+    void onboardingService.patch(paraEnviar).catch((erro) => {
       logger.error("Falha ao salvar progresso do onboarding:", erro);
     });
   }, []);
 
   const agendarPersistencia = useCallback(
-    (proximo: OnboardingState) => {
-      pendenteRef.current = proximo;
+    (patch: OnboardingWritablePatch) => {
+      pendenteRef.current = mergeOnboardingPatch(pendenteRef.current, patch);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(enviarPendente, DEBOUNCE_MS);
     },
@@ -126,8 +148,20 @@ export function OnboardingProvider({
     [enviarPendente],
   );
 
+  /**
+   * `patch` é o delta que ESTA ação, por si só, toca — quem chama já sabe o
+   * que mudou (ex.: `dismiss` só toca `checklistDismissedAt`), então não há
+   * por que derivar isso de um diff genérico contra o estado anterior.
+   * `aplicar` só adiciona `status` ao patch quando ele muda de fato (seja
+   * pelo `avancarStatus` embutido na própria mutação, seja pela promoção a
+   * `completed`) — sem isso, toda mutação mandaria `status` de novo mesmo
+   * quando ele não mudou.
+   */
   const aplicar = useCallback(
-    (transformar: (atual: OnboardingState) => OnboardingState) => {
+    (
+      transformar: (atual: OnboardingState) => OnboardingState,
+      patch: OnboardingWritablePatch,
+    ) => {
       setState((atual) => {
         const transformado = transformar(atual);
         // Promove para "completed" depois de QUALQUER mudança de estado, não
@@ -137,7 +171,14 @@ export function OnboardingProvider({
           transformado,
           tracks.map((t) => t.stepKey),
         );
-        agendarPersistencia(proximo);
+        if (proximo.status === "completed" && atual.status !== "completed") {
+          promovidoNestaSessaoRef.current = true;
+        }
+        const patchFinal: OnboardingWritablePatch =
+          proximo.status !== atual.status
+            ? { ...patch, status: proximo.status }
+            : patch;
+        agendarPersistencia(patchFinal);
         return proximo;
       });
     },
@@ -145,22 +186,28 @@ export function OnboardingProvider({
   );
 
   const completeStep = useCallback(
-    (key: StepKey) =>
-      aplicar((atual) => markStepComplete(atual, key, new Date().toISOString())),
+    (key: StepKey) => {
+      const agora = new Date().toISOString();
+      aplicar((atual) => markStepComplete(atual, key, agora), {
+        completedSteps: { [key]: agora },
+      });
+    },
     [aplicar],
   );
 
-  const markWelcome = useCallback(
-    () =>
-      aplicar((atual) => markWelcomeSeen(atual, new Date().toISOString())),
-    [aplicar],
-  );
+  const markWelcome = useCallback(() => {
+    const agora = new Date().toISOString();
+    aplicar((atual) => markWelcomeSeen(atual, agora), {
+      welcomeSeenAt: agora,
+    });
+  }, [aplicar]);
 
-  const dismiss = useCallback(
-    () =>
-      aplicar((atual) => dismissChecklist(atual, new Date().toISOString())),
-    [aplicar],
-  );
+  const dismiss = useCallback(() => {
+    const agora = new Date().toISOString();
+    aplicar((atual) => dismissChecklist(atual, agora), {
+      checklistDismissedAt: agora,
+    });
+  }, [aplicar]);
 
   const startTour = useCallback((id: TrackId) => setActiveTour(id), []);
 
@@ -170,11 +217,21 @@ export function OnboardingProvider({
       setActiveTour(null);
       if (!id || !opts?.concluido) return;
       const track = tracks.find((t) => t.id === id);
-      aplicar((atual) => {
-        const agora = new Date().toISOString();
-        const comTrilha = markTourSeen(atual, id, agora);
-        return track ? markStepComplete(comTrilha, track.stepKey, agora) : comTrilha;
-      });
+      const agora = new Date().toISOString();
+      aplicar(
+        (atual) => {
+          const comTrilha = markTourSeen(atual, id, agora);
+          return track
+            ? markStepComplete(comTrilha, track.stepKey, agora)
+            : comTrilha;
+        },
+        track
+          ? {
+              toursSeen: { [id]: agora },
+              completedSteps: { [track.stepKey]: agora },
+            }
+          : { toursSeen: { [id]: agora } },
+      );
     },
     [activeTour, tracks, aplicar],
   );
@@ -206,7 +263,9 @@ export function OnboardingProvider({
       markWelcome,
       dismiss,
       restart,
-      isChecklistVisible: calcChecklistVisible(state) && tracks.length > 0,
+      isChecklistVisible:
+        calcChecklistVisible(state, promovidoNestaSessaoRef.current) &&
+        tracks.length > 0,
     }),
     [
       state,

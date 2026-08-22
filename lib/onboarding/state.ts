@@ -55,6 +55,64 @@ export interface OnboardingState {
 
 export type OnboardingPatch = Partial<Omit<OnboardingState, "version">>;
 
+/**
+ * Patch que o CLIENTE tem permissão de mandar num PATCH. `restartedAt` fica
+ * de fora DE PROPÓSITO: é escrito só pelo `POST /onboarding/reset`, no
+ * servidor. Mandar o snapshot inteiro do estado local (que inclui
+ * `restartedAt`) foi exatamente o bug que a revisão final do backend achou —
+ * o DTO lá roda `forbidNonWhitelisted` e devolvia 400 em toda escrita,
+ * silenciado pelo `.catch` que só loga. Este tipo, mais estrito que
+ * `OnboardingPatch`, é o que `OnboardingProvider` e `onboardingService.patch`
+ * usam agora — a barreira vira checagem de TIPO, não só disciplina de
+ * runtime que alguém pode esquecer no próximo ponto de escrita.
+ */
+export type OnboardingWritablePatch = Partial<
+  Pick<
+    OnboardingState,
+    | "status"
+    | "welcomeSeenAt"
+    | "checklistDismissedAt"
+    | "completedSteps"
+    | "toursSeen"
+  >
+>;
+
+/**
+ * Funde dois patches PARCIAIS — nunca o estado inteiro. `completedSteps` e
+ * `toursSeen` são mesclados chave a chave (espelha o merge do backend);
+ * escalares (`status`, `welcomeSeenAt`, `checklistDismissedAt`) são
+ * last-write-wins, o que é seguro aqui porque as duas pontas do merge vêm da
+ * MESMA sessão/aba entre dois debounces — não é o merge entre dispositivos
+ * diferentes, que é responsabilidade do servidor.
+ *
+ * Só inclui `completedSteps`/`toursSeen` no resultado se pelo menos um dos
+ * dois lados os tinha — sem isso, todo PATCH ganharia `{ completedSteps: {},
+ * toursSeen: {} }` mesmo quando nenhuma ação tocou nesses campos, o que
+ * reabriria uma versão mais sutil do próprio bug que este tipo existe para
+ * evitar (mandar campo que a ação não tocou).
+ */
+export function mergeOnboardingPatch(
+  atual: OnboardingWritablePatch | null,
+  novo: OnboardingWritablePatch,
+): OnboardingWritablePatch {
+  const base = atual ?? {};
+  const mesclado: OnboardingWritablePatch = { ...base, ...novo };
+
+  if (base.completedSteps || novo.completedSteps) {
+    mesclado.completedSteps = {
+      ...(base.completedSteps ?? {}),
+      ...(novo.completedSteps ?? {}),
+    };
+  }
+  if (base.toursSeen || novo.toursSeen) {
+    mesclado.toursSeen = {
+      ...(base.toursSeen ?? {}),
+      ...(novo.toursSeen ?? {}),
+    };
+  }
+  return mesclado;
+}
+
 export function emptyOnboardingState(): OnboardingState {
   return {
     version: ONBOARDING_STATE_VERSION,
@@ -131,16 +189,23 @@ export function dismissChecklist(
 }
 
 /**
- * O card continua visível quando `status: "completed"` — é exatamente aí que
- * ele mostra `CHECKLIST.concluido` ("Tudo pronto…"), o momento de "você
- * terminou". Escondê-lo no instante em que o status muda para `completed`
- * faria o card sumir em silêncio, sem o usuário nunca ver a mensagem — o
- * mesmo defeito, com outra causa, que motivou a Fase 1 a nunca deixar um
- * alvo ausente travar o tour calado. "Dispensar" continua sendo o único jeito
- * de fazê-lo desaparecer de vez.
+ * O momento de "você terminou" é DE SESSÃO, não permanente — decisão do
+ * controller sobre o achado 4: continuar mostrando `CHECKLIST.concluido`
+ * para sempre até o usuário clicar em "Dispensar" só trocaria um incômodo
+ * ("2 de 2" eterno) por outro ("Tudo pronto" eterno, nova tarefa de
+ * dispensar). `promovidoNestaSessao` é `true` só quando ESTA montagem do
+ * provider foi quem promoveu o status para `completed` (via
+ * `promoteIfComplete`); um `status: "completed"` que já chega pronto do
+ * servidor (próximo login) não ativa a mensagem — o card simplesmente não
+ * renderiza, satisfazendo a §6.1 do PLANO ("some quando completed") sem
+ * nunca deixar a promoção acontecer em silêncio.
  */
-export function isChecklistVisible(state: OnboardingState): boolean {
-  return !state.checklistDismissedAt;
+export function isChecklistVisible(
+  state: OnboardingState,
+  promovidoNestaSessao: boolean,
+): boolean {
+  if (state.checklistDismissedAt) return false;
+  return state.status !== "completed" || promovidoNestaSessao;
 }
 
 /**

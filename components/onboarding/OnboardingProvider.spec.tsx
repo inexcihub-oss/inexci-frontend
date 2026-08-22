@@ -20,7 +20,12 @@ vi.mock("@/lib/logger", () => ({
   logger: { error: vi.fn(), warn: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
 
-const authMock = {
+const authMock: {
+  user: { onboardingState: unknown };
+  permissions: Permission[];
+  isDoctor: boolean;
+  isAccountOwner: boolean;
+} = {
   user: { onboardingState: undefined },
   permissions: [Permission.SOLICITACOES],
   isDoctor: false,
@@ -40,6 +45,7 @@ function Sonda() {
     restart,
     startTour,
     closeTour,
+    isChecklistVisible,
   } = useOnboarding();
   return (
     <div>
@@ -53,6 +59,9 @@ function Sonda() {
       </span>
       <span data-testid="trilha-vista">
         {String(Boolean(state.toursSeen.solicitacoes))}
+      </span>
+      <span data-testid="checklist-visivel">
+        {String(isChecklistVisible)}
       </span>
       <button onClick={() => completeStep("criar-solicitacao")}>marcar</button>
       <button onClick={() => completeStep("assinatura-do-medico")}>
@@ -133,10 +142,15 @@ describe("OnboardingProvider", () => {
     });
 
     expect(patchMock).toHaveBeenCalledTimes(1);
-    // Confirma que o único PATCH carrega o estado MESCLADO das duas
-    // escritas, não só que "algo" foi chamado uma vez.
-    expect(patchMock.mock.calls[0][0]).toMatchObject({
+    // `toEqual`, não `toMatchObject`: confirma que o único PATCH carrega
+    // EXATAMENTE os campos tocados pelas duas escritas — nem a mais (um
+    // `toMatchObject` deixaria passar um `restartedAt` ou o `version`
+    // vazando de volta a um snapshot do estado inteiro) nem a menos.
+    // `status` aparece porque a única trilha visível do `authMock` padrão é
+    // completada pelo "marcar" sozinho (achado 4).
+    expect(patchMock.mock.calls[0][0]).toEqual({
       completedSteps: { "criar-solicitacao": expect.any(String) },
+      status: "completed",
       checklistDismissedAt: expect.any(String),
     });
   });
@@ -354,8 +368,111 @@ describe("OnboardingProvider", () => {
     unmount();
 
     expect(patchMock).toHaveBeenCalledTimes(1);
-    expect(patchMock.mock.calls[0][0]).toMatchObject({
+    // `toEqual`: só `checklistDismissedAt` foi tocado — nem `status` (o
+    // `dismiss` não mexe nele), nem qualquer campo do restante do estado.
+    expect(patchMock.mock.calls[0][0]).toEqual({
       checklistDismissedAt: expect.any(String),
+    });
+  });
+
+  /**
+   * Adendo 1 da revisão final (achado do BACKEND): `agendarPersistencia`
+   * mandava o SNAPSHOT inteiro do estado (via `const { version, ...patch } =
+   * estado`), o que incluía `restartedAt` — campo que o DTO do backend não
+   * whitelista (`forbidNonWhitelisted`), devolvendo 400 em toda escrita,
+   * nunca visível porque o `.catch` só loga. Precisa ser exatamente os campos
+   * tocados: nem de mais (fecha o bug), nem de menos (perderia o merge).
+   */
+  describe("PATCH incremental — só os campos tocados, nunca o snapshot inteiro", () => {
+    afterEach(() => {
+      authMock.isDoctor = false;
+    });
+
+    it("acumula só os campos tocados entre dois debounces, sem restartedAt nem o resto do estado", async () => {
+      // Duas trilhas visíveis (isDoctor libera "documentos-do-medico"): assim
+      // "marcar" sozinho NÃO completa o checklist, e o `status` no patch
+      // final reflete só o avanço `not_started -> in_progress` embutido no
+      // próprio `completeStep` — não uma promoção a `completed`.
+      authMock.isDoctor = true;
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <OnboardingProvider>
+          <Sonda />
+        </OnboardingProvider>,
+      );
+
+      await user.click(screen.getByText("marcar"));
+      await user.click(screen.getByText("dispensar"));
+
+      await act(async () => {
+        vi.advanceTimersByTime(600);
+      });
+
+      expect(patchMock).toHaveBeenCalledTimes(1);
+      // `toEqual` sobre o objeto inteiro: qualquer chave extra (`restartedAt`,
+      // `version`, `welcomeSeenAt`, `toursSeen` — nenhum dos dois cliques
+      // tocou nisso) quebra este teste. Foi assim que o bug do backend
+      // passou despercebido: o teste antigo usava `toMatchObject`, que
+      // ignora excedente.
+      expect(patchMock.mock.calls[0][0]).toEqual({
+        completedSteps: { "criar-solicitacao": expect.any(String) },
+        status: "in_progress",
+        checklistDismissedAt: expect.any(String),
+      });
+    });
+  });
+
+  /**
+   * Adendo 2 da revisão final: o momento de conclusão é DE SESSÃO. Se a
+   * promoção para `completed` aconteceu durante ESTA montagem do provider, o
+   * card fica visível mostrando a mensagem. Se o estado já chega `completed`
+   * do servidor (ex.: próximo login), o card não deve renderizar — sem isso,
+   * "2 de 2" para sempre vira "Tudo pronto" para sempre, a mesma queixa com
+   * outra cara.
+   */
+  describe("isChecklistVisible — o 'tudo pronto' é de sessão", () => {
+    it("promovido nesta sessão: o card continua visível", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <OnboardingProvider>
+          <Sonda />
+        </OnboardingProvider>,
+      );
+
+      expect(screen.getByTestId("checklist-visivel")).toHaveTextContent(
+        "true",
+      );
+
+      // Única trilha visível: "marcar" promove para completed NESTA sessão.
+      await user.click(screen.getByText("marcar"));
+
+      expect(screen.getByTestId("status")).toHaveTextContent("completed");
+      expect(screen.getByTestId("checklist-visivel")).toHaveTextContent(
+        "true",
+      );
+    });
+
+    it("já chega completed do servidor (login seguinte): o card não renderiza", () => {
+      const usuarioOriginal = authMock.user;
+      authMock.user = {
+        onboardingState: {
+          status: "completed",
+          completedSteps: { "criar-solicitacao": "2026-08-01T00:00:00.000Z" },
+        },
+      };
+
+      render(
+        <OnboardingProvider>
+          <Sonda />
+        </OnboardingProvider>,
+      );
+
+      expect(screen.getByTestId("status")).toHaveTextContent("completed");
+      expect(screen.getByTestId("checklist-visivel")).toHaveTextContent(
+        "false",
+      );
+
+      authMock.user = usuarioOriginal;
     });
   });
 });
