@@ -1,5 +1,5 @@
 import { Permission, hasAnyArea } from "@/lib/permissions";
-import { TRILHA_ASSINATURA, TRILHA_SOLICITACOES } from "./content";
+import { TRILHA_DOCUMENTOS_MEDICO, TRILHA_SOLICITACOES } from "./content";
 import type { StepKey, TrackId } from "./state";
 
 /** Condição de visibilidade. Todas as declaradas precisam passar (AND). */
@@ -72,8 +72,8 @@ export function canSee(gate: Gate, viewer: Viewer): boolean {
 export const TRACKS: Track[] = [
   {
     id: "documentos-do-medico",
-    label: TRILHA_ASSINATURA.label,
-    descricao: TRILHA_ASSINATURA.descricao,
+    label: TRILHA_DOCUMENTOS_MEDICO.label,
+    descricao: TRILHA_DOCUMENTOS_MEDICO.descricao,
     stepKey: "assinatura-do-medico",
     // `requiresDoctor` é a existência de `doctor_profile`, não a área de
     // Atendimento: assinar é ato privativo do médico.
@@ -84,7 +84,26 @@ export const TRACKS: Track[] = [
         route: "/configuracoes?tab=profile",
         target: "config-assinatura",
         required: true,
-        ...TRILHA_ASSINATURA.passo,
+        ...TRILHA_DOCUMENTOS_MEDICO.passos.assinatura,
+      },
+      {
+        key: "cabecalho-logo",
+        route: "/configuracoes?tab=header",
+        target: "config-header-logo",
+        ...TRILHA_DOCUMENTOS_MEDICO.passos.cabecalhoLogo,
+      },
+      {
+        key: "cabecalho-texto",
+        target: "config-header-texto",
+        ...TRILHA_DOCUMENTOS_MEDICO.passos.cabecalhoTexto,
+      },
+      {
+        key: "previa",
+        // Sem `required`: o card de prévia só existe quando já há logo ou
+        // texto salvo. Para o médico que abre o cabeçalho pela primeira vez
+        // ele não está lá, e pular em silêncio é melhor do que interromper.
+        target: "config-header-previa",
+        ...TRILHA_DOCUMENTOS_MEDICO.passos.previa,
       },
     ],
   },

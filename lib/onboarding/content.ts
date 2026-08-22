@@ -63,18 +63,35 @@ export const TOUR_UI = {
 };
 
 /**
- * A spec põe a assinatura já na Fase 1, fora da trilha completa de documentos
- * do médico: sem ela o laudo da solicitação sai sem assinar, então ela é
- * pré-requisito da trilha de solicitações, não conteúdo de fase posterior.
+ * A assinatura já vinha na Fase 1 sozinha, por ser pré-requisito do laudo. A
+ * Fase 2 completa a trilha com o cabeçalho e a regra que mais gera frustração
+ * quando não é dita antes: documento emitido não se edita.
  */
-export const TRILHA_ASSINATURA = {
-  label: "Configurar sua assinatura",
+export const TRILHA_DOCUMENTOS_MEDICO = {
+  label: "Preparar seus documentos",
   descricao:
-    "Sem ela, o laudo da solicitação e os documentos do atendimento saem sem assinar.",
-  passo: {
-    titulo: "Envie sua assinatura",
-    corpo:
-      "Envie uma imagem de até 2 MB, com fundo claro. Ela é aplicada automaticamente no laudo da solicitação e nos documentos do atendimento.",
+    "Assinatura e cabeçalho aparecem no laudo, na receita, no atestado e no pedido de exame.",
+  passos: {
+    assinatura: {
+      titulo: "Envie sua assinatura",
+      corpo:
+        "Uma imagem de até 2 MB, com fundo claro. Ela entra sozinha no laudo da solicitação e nos documentos do atendimento.",
+    },
+    cabecalhoLogo: {
+      titulo: "A logo do seu cabeçalho",
+      corpo:
+        "PNG ou JPG de até 2 MB. Ela aparece no topo de todo documento que você emitir.",
+    },
+    cabecalhoTexto: {
+      titulo: "O texto do cabeçalho",
+      corpo:
+        "Nome, especialidade, CRM, endereço e contato. É o que identifica você em receita, atestado e pedido de exame.",
+    },
+    previa: {
+      titulo: "Confira antes de emitir",
+      corpo:
+        "Esta é a prévia do que sai no PDF. Vale conferir agora: documento emitido não se edita — corrigir é emitir outro.",
+    },
   },
 };
 

@@ -4,7 +4,13 @@ import {
   Permission,
   permissionForRoute,
 } from "@/lib/permissions";
-import { TRACKS, canSee, visibleSteps, visibleTracks } from "./tour-registry";
+import {
+  TRACKS,
+  canSee,
+  trackById,
+  visibleSteps,
+  visibleTracks,
+} from "./tour-registry";
 
 /** As 16 combinações de área, no molde de `lib/permissions.spec.ts`. */
 function todasAsCombinacoes(): Permission[][] {
@@ -146,6 +152,21 @@ describe("visibleTracks", () => {
 });
 
 describe("TRACKS", () => {
+  it("a trilha do médico cobre assinatura, cabeçalho e prévia", () => {
+    const trilha = trackById("documentos-do-medico")!;
+    expect(trilha.steps.map((p) => p.key)).toEqual([
+      "assinatura",
+      "cabecalho-logo",
+      "cabecalho-texto",
+      "previa",
+    ]);
+    // Só o primeiro passo é required: sem assinatura a trilha não tem assunto.
+    // Os do cabeçalho degradam, porque a prévia só existe com conteúdo salvo.
+    expect(trilha.steps.filter((p) => p.required).map((p) => p.key)).toEqual([
+      "assinatura",
+    ]);
+  });
+
   it("não passa de sete passos por trilha", () => {
     for (const track of TRACKS) {
       expect(track.steps.length).toBeLessThanOrEqual(7);
