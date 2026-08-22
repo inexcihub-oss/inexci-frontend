@@ -11,7 +11,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone } from "@/lib/formatters";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import PageContainer from "@/components/PageContainer";
-import { OnboardingChecklistCard } from "@/components/onboarding/OnboardingChecklistCard";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { NewCollaboratorModal } from "@/components/colaboradores/NewCollaboratorModal";
@@ -337,15 +336,6 @@ export default function ColaboradoresPage() {
             Novo colaborador
           </Button>
         </div>
-      </div>
-
-      {/*
-        `empty:hidden`: quando o card retorna `null` (checklist dispensada ou
-        concluída), este wrapper fica sem filhos no DOM e o `:empty` some com
-        ele — sem isso, sobraria uma faixa vazia só de padding.
-      */}
-      <div className="flex-none px-4 lg:px-8 pt-3 empty:hidden">
-        <OnboardingChecklistCard />
       </div>
 
       {/* Table */}

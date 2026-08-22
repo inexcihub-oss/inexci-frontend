@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 
 import type { SubscriptionDetail } from "@/types";
 
 /**
- * Um banner por vez. Dois empilhados comeriam metade da tela no mobile, e
- * oferecer upgrade de plano a quem está inadimplente é conversa fora de hora.
+ * Um banner por vez. Banners empilhados comeriam metade da tela no mobile, e
+ * a precedência é assinatura → cota → onboarding: oferecer upgrade de plano a
+ * quem está inadimplente é conversa fora de hora, e convidar para um tour
+ * quem está estourando a cota, também.
  */
 
 let authState: {
@@ -15,18 +18,30 @@ let authState: {
   subscriptionLoading: boolean;
 };
 
+/**
+ * Espelha o contrato real do `QuotaBanner`: quando tem aviso de cota a
+ * mostrar, ignora o `fallback` recebido; quando não tem, cede a vez a ele. É
+ * assim que o onboarding aparece só quando a cota está silenciosa.
+ */
+let mostrarAvisoDeCota = true;
+
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
 
 vi.mock("../QuotaBanner", () => ({
-  QuotaBanner: () => <div data-testid="quota-banner" />,
+  QuotaBanner: ({ fallback }: { fallback?: ReactNode }) =>
+    mostrarAvisoDeCota ? <div data-testid="quota-banner" /> : <>{fallback}</>,
 }));
 
 vi.mock("../BillingStatusBanner", () => ({
   BillingStatusBanner: ({ variant }: { variant: { title: string } }) => (
     <div data-testid="billing-banner">{variant.title}</div>
   ),
+}));
+
+vi.mock("@/components/onboarding/OnboardingBanner", () => ({
+  OnboardingBanner: () => <div data-testid="onboarding-banner" />,
 }));
 
 import { GlobalBanners } from "../GlobalBanners";
@@ -64,6 +79,7 @@ beforeEach(() => {
     subscription: assinatura(),
     subscriptionLoading: false,
   };
+  mostrarAvisoDeCota = true;
 });
 
 describe("GlobalBanners", () => {
@@ -71,6 +87,7 @@ describe("GlobalBanners", () => {
     render(<GlobalBanners />);
     expect(screen.getByTestId("quota-banner")).toBeInTheDocument();
     expect(screen.queryByTestId("billing-banner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("onboarding-banner")).not.toBeInTheDocument();
   });
 
   it("dá precedência ao problema de assinatura sobre a cota", () => {
@@ -96,7 +113,7 @@ describe("GlobalBanners", () => {
     expect(screen.getByTestId("quota-banner")).toBeInTheDocument();
   });
 
-  it("segura o de cota enquanto a assinatura do dono ainda está carregando", () => {
+  it("segura os demais banners enquanto a assinatura do dono ainda está carregando", () => {
     authState.subscription = null;
     authState.subscriptionLoading = true;
     const { container } = render(<GlobalBanners />);
@@ -109,5 +126,37 @@ describe("GlobalBanners", () => {
     authState.subscriptionLoading = true;
     render(<GlobalBanners />);
     expect(screen.getByTestId("quota-banner")).toBeInTheDocument();
+  });
+
+  /**
+   * Onboarding é a menor precedência das três: só aparece quando a cota não
+   * tem nada a dizer. Sem este teste, o `fallback` do `QuotaBanner` poderia
+   * parar de ser passado e o onboarding nunca mais apareceria em lugar
+   * nenhum, silenciosamente.
+   */
+  it("mostra o de onboarding quando não há aviso de cota nem problema de assinatura", () => {
+    mostrarAvisoDeCota = false;
+    render(<GlobalBanners />);
+
+    expect(screen.getByTestId("onboarding-banner")).toBeInTheDocument();
+    expect(screen.queryByTestId("quota-banner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("billing-banner")).not.toBeInTheDocument();
+  });
+
+  it("dá precedência à cota sobre o onboarding", () => {
+    mostrarAvisoDeCota = true;
+    render(<GlobalBanners />);
+
+    expect(screen.getByTestId("quota-banner")).toBeInTheDocument();
+    expect(screen.queryByTestId("onboarding-banner")).not.toBeInTheDocument();
+  });
+
+  it("dá precedência ao problema de assinatura sobre o onboarding", () => {
+    mostrarAvisoDeCota = false;
+    authState.subscription = assinatura({ status: "past_due" });
+    render(<GlobalBanners />);
+
+    expect(screen.getByTestId("billing-banner")).toBeInTheDocument();
+    expect(screen.queryByTestId("onboarding-banner")).not.toBeInTheDocument();
   });
 });

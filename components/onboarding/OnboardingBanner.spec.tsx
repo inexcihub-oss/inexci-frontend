@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Permission } from "@/lib/permissions";
 import type { Track } from "@/lib/onboarding/tour-registry";
 import { emptyOnboardingState } from "@/lib/onboarding/state";
-import { OnboardingChecklistCard } from "./OnboardingChecklistCard";
+import { OnboardingBanner } from "./OnboardingBanner";
 
 const startTour = vi.fn();
 const dismiss = vi.fn();
@@ -19,7 +19,7 @@ const TRILHA: Track = {
 };
 
 const TRILHA_2: Track = {
-  id: "assinatura",
+  id: "documentos-do-medico",
   label: "Configurar sua assinatura",
   descricao: "Obrigatório para os documentos.",
   stepKey: "assinatura-do-medico",
@@ -39,7 +39,7 @@ vi.mock("./OnboardingProvider", () => ({
   useOnboarding: () => contexto,
 }));
 
-describe("OnboardingChecklistCard", () => {
+describe("OnboardingBanner", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     contexto = {
@@ -51,93 +51,118 @@ describe("OnboardingChecklistCard", () => {
     };
   });
 
-  it("lista as trilhas visíveis", () => {
-    render(<OnboardingChecklistCard />);
+  it("mostra o título, o progresso e a próxima trilha incompleta", () => {
+    render(<OnboardingBanner />);
 
+    expect(screen.getByText("Primeiros passos")).toBeInTheDocument();
+    expect(screen.getByText("0 de 1")).toBeInTheDocument();
     expect(
-      screen.getByText("Criar e enviar uma solicitação"),
+      screen.getByText(/Próximo: Criar e enviar uma solicitação/),
     ).toBeInTheDocument();
   });
 
-  it("mostra o progresso", () => {
-    render(<OnboardingChecklistCard />);
-
-    expect(screen.getByText("0 de 1")).toBeInTheDocument();
-  });
-
-  it("clicar em Ver abre o tour da trilha", async () => {
+  it("clicar em Continuar abre o tour da próxima trilha incompleta", async () => {
     const user = userEvent.setup();
-    render(<OnboardingChecklistCard />);
+    render(<OnboardingBanner />);
 
-    await user.click(screen.getByRole("button", { name: /ver/i }));
+    await user.click(screen.getByRole("button", { name: /continuar/i }));
 
     expect(startTour).toHaveBeenCalledWith("solicitacoes");
   });
 
-  it("dispensar chama o provider", async () => {
-    const user = userEvent.setup();
-    render(<OnboardingChecklistCard />);
-
-    await user.click(screen.getByRole("button", { name: /dispensar/i }));
-
-    expect(dismiss).toHaveBeenCalledTimes(1);
-  });
-
-  it("marca a trilha já concluída", () => {
+  /**
+   * O CTA precisa apontar para a trilha incompleta que vem DEPOIS de outras
+   * já feitas, não para a primeira do array — senão "Continuar" reabriria um
+   * tour já concluído enquanto ainda sobra trabalho de verdade.
+   */
+  it("o CTA aponta para a próxima trilha incompleta, não para a primeira da lista", async () => {
+    contexto.tracks = [TRILHA, TRILHA_2];
     contexto.state = {
       ...emptyOnboardingState(),
       completedSteps: { "criar-solicitacao": "2026-08-21T00:00:00.000Z" },
     };
-    render(<OnboardingChecklistCard />);
+    const user = userEvent.setup();
+    render(<OnboardingBanner />);
 
-    expect(screen.getByText("1 de 1")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /refazer/i }),
+      screen.getByText(/Próximo: Configurar sua assinatura/),
     ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /continuar/i }));
+
+    expect(startTour).toHaveBeenCalledWith("documentos-do-medico");
+  });
+
+  it("dispensar chama o provider", async () => {
+    const user = userEvent.setup();
+    render(<OnboardingBanner />);
+
+    await user.click(
+      screen.getByRole("button", { name: /dispensar primeiros passos/i }),
+    );
+
+    expect(dismiss).toHaveBeenCalledTimes(1);
   });
 
   it("não renderiza nada quando dispensado", () => {
     contexto.isChecklistVisible = false;
-    const { container } = render(<OnboardingChecklistCard />);
+    const { container } = render(<OnboardingBanner />);
 
     expect(container).toBeEmptyDOMElement();
   });
 
-  /** Um usuário sem área nenhuma não pode ver um card vazio. */
+  /** Um usuário sem área nenhuma não pode ver um banner vazio. */
   it("não renderiza sem trilhas visíveis", () => {
     contexto.tracks = [];
-    const { container } = render(<OnboardingChecklistCard />);
+    const { container } = render(<OnboardingBanner />);
 
     expect(container).toBeEmptyDOMElement();
   });
 
-  /**
-   * Achado 4 da revisão final: `status: "completed"` precisa render algo, não
-   * só existir no tipo. Sem este teste, trocar a checagem por
-   * `state.status !== "completed"` (escondendo o card de novo) ou remover o
-   * branch `concluido` do componente passa despercebido.
-   */
-  it("mostra a mensagem de conclusão em vez da lista quando status é completed", () => {
+  it("mostra a mensagem de conclusão em vez do progresso quando status é completed", () => {
     contexto.state = { ...emptyOnboardingState(), status: "completed" };
-    render(<OnboardingChecklistCard />);
+    render(<OnboardingBanner />);
 
     expect(
       screen.getByText(
         "Tudo pronto. Você pode rever qualquer passo em Configurações.",
       ),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("list")).not.toBeInTheDocument();
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /continuar/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("mesmo concluído, Dispensar continua sendo a saída", async () => {
     contexto.state = { ...emptyOnboardingState(), status: "completed" };
     const user = userEvent.setup();
-    render(<OnboardingChecklistCard />);
+    render(<OnboardingBanner />);
 
-    await user.click(screen.getByRole("button", { name: /dispensar/i }));
+    await user.click(
+      screen.getByRole("button", { name: /dispensar primeiros passos/i }),
+    );
 
     expect(dismiss).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Sem trilha incompleta (todas concluídas), o CTA some — mas o progresso
+   * continua visível. Só o `promoteIfComplete` do provider decide quando o
+   * status vira "completed"; a banner não deve fingir um CTA para uma trilha
+   * que já não precisa de ação.
+   */
+  it("sem próxima trilha incompleta, esconde o CTA mas mantém o progresso", () => {
+    contexto.state = {
+      ...emptyOnboardingState(),
+      completedSteps: { "criar-solicitacao": "2026-08-21T00:00:00.000Z" },
+    };
+    render(<OnboardingBanner />);
+
+    expect(screen.getByText("1 de 1")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /continuar/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("expõe o progresso também para leitor de tela", () => {
@@ -149,7 +174,7 @@ describe("OnboardingChecklistCard", () => {
       ...emptyOnboardingState(),
       completedSteps: { "criar-solicitacao": "2026-08-21T00:00:00.000Z" },
     };
-    render(<OnboardingChecklistCard />);
+    render(<OnboardingBanner />);
 
     const barra = screen.getByRole("progressbar");
     expect(barra).toHaveAttribute("aria-valuenow", "1");

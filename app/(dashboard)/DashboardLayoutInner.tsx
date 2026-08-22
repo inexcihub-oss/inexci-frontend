@@ -114,14 +114,22 @@ export default function DashboardLayoutInner({
             `h-full` do `PageContainer` pedia 100% do `main` e o banner
             empurrava esse tanto para fora — no desktop, onde não há rolagem,
             o excedente era cortado e o rodapé do kanban ficava inalcançável.
+
+            `GlobalBanners` mora DENTRO do `OnboardingProvider` (e depois do
+            `ConsentGate`/`PermissionRouteGuard`) porque é onde o
+            `OnboardingBanner` (a menor precedência dos três) tem o contexto
+            de onboarding disponível — o próprio `OnboardingGate` já exigia
+            ficar depois do `ConsentGate` pelo mesmo motivo legal (aceite vem
+            antes de qualquer outra coisa), e mover o provider para fora
+            dele quebraria essa regra.
           */}
           <main className="flex flex-1 flex-col overflow-y-auto overscroll-y-contain lg:overflow-hidden">
-            <div className="flex-none">
-              <GlobalBanners />
-            </div>
             <PermissionRouteGuard>
               <ConsentGate>
                 <OnboardingProvider>
+                  <div className="flex-none">
+                    <GlobalBanners />
+                  </div>
                   <OnboardingGate>{children}</OnboardingGate>
                 </OnboardingProvider>
               </ConsentGate>

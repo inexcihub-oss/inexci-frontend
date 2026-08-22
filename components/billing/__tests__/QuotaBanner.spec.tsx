@@ -200,4 +200,23 @@ describe("QuotaBanner", () => {
     const { container } = render(<QuotaBanner />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  /**
+   * `fallback` é o mecanismo de precedência do `GlobalBanners`: quando não há
+   * aviso de cota, o `QuotaBanner` cede o lugar em vez de simplesmente sumir.
+   */
+  it("mostra o fallback quando não há aviso de cota a exibir", () => {
+    quotaState = comConsumo(14);
+    render(<QuotaBanner fallback={<div data-testid="fallback" />} />);
+
+    expect(screen.getByTestId("fallback")).toBeInTheDocument();
+  });
+
+  it("ignora o fallback quando há aviso de cota a exibir", () => {
+    quotaState = comConsumo(17);
+    render(<QuotaBanner fallback={<div data-testid="fallback" />} />);
+
+    expect(screen.queryByTestId("fallback")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
 });
