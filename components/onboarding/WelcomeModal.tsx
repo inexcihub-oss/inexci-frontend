@@ -45,9 +45,12 @@ export function WelcomeModal({ onFinish }: Props) {
     onFinish();
   }, [markWelcome, onFinish]);
 
-  // Foco inicial na montagem e a cada mudança de slide, assim como em TourOverlay
+  // Foco inicial na montagem e a cada mudança de slide, assim como em
+  // TourOverlay. Foca o DIÁLOGO, não o primeiro botão: o primeiro botão é
+  // "Pular por agora" (ação dispensiva), e um usuário de teclado que aperta
+  // Enter no reflexo ao abrir o diálogo pularia o onboarding sem querer.
   useEffect(() => {
-    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+    dialogRef.current?.focus();
   }, [slide]);
 
   // Teclado: Esc sai, Tab fica preso no diálogo
@@ -84,6 +87,7 @@ export function WelcomeModal({ onFinish }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="boas-vindas-titulo"
+        tabIndex={-1}
         className="w-full max-w-lg rounded-3xl border border-white/70 bg-white p-6 shadow-2xl sm:p-8"
       >
         <p className="text-xs font-medium text-neutral-400">

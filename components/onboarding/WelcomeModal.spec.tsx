@@ -85,12 +85,19 @@ describe("WelcomeModal", () => {
     expect(onFinish).toHaveBeenCalledTimes(1);
   });
 
-  it("é um diálogo com nome acessível e recebe o foco", async () => {
+  /**
+   * O foco precisa cair no DIÁLOGO, não no primeiro botão ("Pular por
+   * agora"): senão um Enter no reflexo, ao abrir o modal, pula o onboarding
+   * sem o usuário querer. `dialogo.contains(activeElement)` sozinho passaria
+   * mesmo com o foco no botão — só `toBe(dialogo)` prova qual elemento
+   * recebeu o foco de verdade.
+   */
+  it("é um diálogo com nome acessível e o foco cai no diálogo, não no botão de pular", async () => {
     render(<WelcomeModal onFinish={vi.fn()} />);
 
     const dialogo = screen.getByRole("dialog");
     expect(dialogo).toHaveAttribute("aria-modal", "true");
     expect(dialogo).toHaveAccessibleName("O que é a INEXCI");
-    expect(dialogo.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(dialogo);
   });
 });
