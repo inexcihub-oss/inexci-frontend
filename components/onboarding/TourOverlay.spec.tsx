@@ -297,6 +297,53 @@ describe("TourOverlay", () => {
     expect(await screen.findByText(/1 de 3/)).toBeInTheDocument();
   });
 
+  /**
+   * Task 9, passo 1: o balão fica montado entre um passo e outro — só o
+   * conteúdo do bloco de texto (contador, título, corpo) troca. Sem
+   * `aria-live`, alguns leitores de tela não reanunciam a troca, porque o
+   * `aria-labelledby` do diálogo aponta para um `id` que muda junto.
+   */
+  it("anuncia a troca de passo para leitor de tela (aria-live no bloco de texto)", async () => {
+    montarAlvos(["alvo-um", "alvo-tres"]);
+    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+
+    const dialogo = await screen.findByRole("dialog");
+    const blocoDeTexto = dialogo.querySelector('[aria-live="polite"]');
+    expect(blocoDeTexto).toBeInTheDocument();
+    expect(blocoDeTexto).toHaveTextContent("Passo um");
+  });
+
+  /**
+   * Task 9, passo 2: "2 de 5" lido sem contexto não diz que é o progresso do
+   * tour. O texto visual continua igual — só ganha um `aria-label` explícito.
+   */
+  it("rotula o contador de passos com um aria-label descritivo", async () => {
+    montarAlvos(["alvo-um", "alvo-tres"]);
+    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+
+    const contador = await screen.findByText("1 de 3");
+    expect(contador).toHaveAttribute("aria-label", "Passo 1 de 3");
+  });
+
+  /**
+   * Task 9, passo 3: `text-neutral-400` sobre branco fica em ~2.5:1 e reprova
+   * WCAG AA (4.5:1). O contador sobe para `text-neutral-500` (~4.75:1) e o
+   * botão dispensivo "Sair do tour" sobe de `text-neutral-500` para
+   * `text-neutral-600` (~7.82:1) — ver conta completa no relatório da task.
+   */
+  it("usa contraste AA no contador do passo e no botão 'Sair do tour'", async () => {
+    montarAlvos(["alvo-um", "alvo-tres"]);
+    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+
+    const contador = await screen.findByText("1 de 3");
+    expect(contador).toHaveClass("text-neutral-500");
+    expect(contador).not.toHaveClass("text-neutral-400");
+
+    const sair = screen.getByRole("button", { name: /sair do tour/i });
+    expect(sair).toHaveClass("text-neutral-600");
+    expect(sair).not.toHaveClass("text-neutral-500");
+  });
+
   it("passo obrigatório sem alvo encerra com aviso, sem concluir", async () => {
     // Não monta nenhum alvo — o único passo desta trilha é obrigatório e seu
     // alvo nunca existe.

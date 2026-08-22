@@ -165,6 +165,18 @@ describe("OnboardingBanner", () => {
     ).not.toBeInTheDocument();
   });
 
+  /**
+   * Task 9, passo 4: o banner é conteúdo persistente no topo de toda tela —
+   * precisa se anunciar como região nomeada, não só como texto solto.
+   */
+  it("é uma região nomeada para leitor de tela", () => {
+    render(<OnboardingBanner />);
+
+    expect(
+      screen.getByRole("region", { name: "Primeiros passos" }),
+    ).toBeInTheDocument();
+  });
+
   it("expõe o progresso também para leitor de tela", () => {
     // Duas trilhas, uma concluída: `valuenow=1` e `valuemax=2` são valores
     // distintos, então um swap entre os dois atributos falha aqui. Com uma

@@ -100,4 +100,17 @@ describe("WelcomeModal", () => {
     expect(dialogo).toHaveAccessibleName("O que é a INEXCI");
     expect(document.activeElement).toBe(dialogo);
   });
+
+  /**
+   * Task 9, passo 3: `text-neutral-500` sobre branco fica só marginalmente
+   * acima do limite AA (4.5:1) — sobe para `text-neutral-600` (~7.82:1) para
+   * dar margem de segurança. Ver conta completa no relatório da task.
+   */
+  it("usa contraste AA no botão 'Pular por agora'", () => {
+    render(<WelcomeModal onFinish={vi.fn()} />);
+
+    const pular = screen.getByRole("button", { name: /pular por agora/i });
+    expect(pular).toHaveClass("text-neutral-600");
+    expect(pular).not.toHaveClass("text-neutral-500");
+  });
 });

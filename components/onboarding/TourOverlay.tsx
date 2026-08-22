@@ -316,26 +316,38 @@ export function TourOverlay({ trackId, onClose }: Props) {
         <button
           type="button"
           onClick={() => onClose()}
-          className="mb-3 text-xs font-medium text-neutral-500 hover:text-neutral-800"
+          className="mb-3 text-xs font-medium text-neutral-600 hover:text-neutral-800"
         >
           {TOUR_UI.sair}
         </button>
 
-        <p className="text-xs font-medium text-neutral-400">
-          {`${indice + 1} de ${passos.length}`}
-        </p>
-        <h3
-          id={tituloId}
-          className="mt-1 text-base font-semibold text-neutral-900"
-        >
-          {passo.titulo}
-        </h3>
-        <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-          {corpoDoPasso(passo, {
-            requisitos,
-            descricoesDeArea: DESCRICOES_DE_AREA,
-          })}
-        </p>
+        {/*
+          `aria-live="polite"` no bloco de texto do passo: o balão fica
+          montado entre um passo e outro, só o conteúdo troca, e o
+          `aria-labelledby` do diálogo aponta para um `id` que muda junto —
+          alguns leitores de tela não reanunciam sozinhos. Isso garante que a
+          troca de passo é falada mesmo sem remontar o diálogo.
+        */}
+        <div aria-live="polite">
+          <p
+            className="text-xs font-medium text-neutral-500"
+            aria-label={`Passo ${indice + 1} de ${passos.length}`}
+          >
+            {`${indice + 1} de ${passos.length}`}
+          </p>
+          <h3
+            id={tituloId}
+            className="mt-1 text-base font-semibold text-neutral-900"
+          >
+            {passo.titulo}
+          </h3>
+          <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+            {corpoDoPasso(passo, {
+              requisitos,
+              descricoesDeArea: DESCRICOES_DE_AREA,
+            })}
+          </p>
+        </div>
 
         <div className="mt-5 flex items-center justify-end gap-2">
           {indice > 0 && (

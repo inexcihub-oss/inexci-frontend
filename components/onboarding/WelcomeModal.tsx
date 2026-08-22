@@ -156,7 +156,7 @@ export function WelcomeModal({ onFinish }: Props) {
             <button
               type="button"
               onClick={encerrar}
-              className="rounded-xl px-3 py-2 text-sm font-medium text-neutral-500 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+              className="rounded-xl px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
             >
               {BOAS_VINDAS.pular}
             </button>

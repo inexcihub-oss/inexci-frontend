@@ -25,7 +25,11 @@ export function OnboardingBanner() {
   const proximaTrilha = tracks.find((t) => !state.completedSteps[t.stepKey]);
 
   return (
-    <div className="bg-white px-3 py-3 sm:px-4 sm:py-4">
+    <div
+      role="region"
+      aria-label="Primeiros passos"
+      className="bg-white px-3 py-3 sm:px-4 sm:py-4"
+    >
       <div
         role="status"
         aria-live="polite"
