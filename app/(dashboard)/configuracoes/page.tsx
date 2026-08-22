@@ -204,6 +204,33 @@ function NotificationItem({
 
 const BILLING_TAB_ENABLED = true;
 
+/**
+ * Único ponto que decide qual `SettingsTab` um `?tab=` de query representa —
+ * usado tanto no primeiro render (`initialTab`) quanto na reação a mudanças
+ * de query em runtime (ex.: o tour de onboarding navegando para
+ * `?tab=profile` via `router.push` sem trocar de rota, o que o App Router não
+ * remonta). `null` significa "não decide nada" — quem chama escolhe o que
+ * fazer (cair para `profile` no primeiro render, ignorar na reação).
+ */
+function resolveSettingsTab(
+  tab: string | null,
+  isAccountOwner: boolean,
+): SettingsTab | null {
+  if (tab === "plan" && !isAccountOwner) return "profile";
+  if (
+    tab === "header" ||
+    tab === "profile" ||
+    tab === "notifications" ||
+    tab === "plan" ||
+    tab === "security" ||
+    tab === "privacy" ||
+    tab === "onboarding"
+  ) {
+    return tab as SettingsTab;
+  }
+  return null;
+}
+
 function ConfiguracoesPageInner() {
   const { user, updateUser, isAccountOwner, subscription, refreshSubscription } =
     useAuth();
@@ -227,25 +254,28 @@ function ConfiguracoesPageInner() {
     window.history.replaceState({}, "", url.toString());
   };
 
-  const initialTab = (): SettingsTab => {
-    const tab = searchParams.get("tab");
-    if (tab === "plan" && !isAccountOwner) return "profile";
-    if (
-      tab === "header" ||
-      tab === "profile" ||
-      tab === "notifications" ||
-      tab === "plan" ||
-      tab === "security" ||
-      tab === "privacy" ||
-      tab === "onboarding"
-    ) {
-      return tab as SettingsTab;
-    }
-    return "profile";
-  };
+  const initialTab = (): SettingsTab =>
+    resolveSettingsTab(searchParams.get("tab"), isAccountOwner) ?? "profile";
 
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [saving, setSaving] = useState(false);
+
+  /**
+   * Sincroniza `activeTab` com `?tab=` depois do primeiro render.
+   *
+   * O App Router NÃO remonta a página quando só a query muda — então um
+   * `router.push("/configuracoes?tab=profile")` disparado enquanto o usuário
+   * já está em `/configuracoes?tab=onboarding` (o tour de onboarding faz
+   * exatamente isso) mudava a URL sem nunca reagir aqui, e a aba visível
+   * ficava presa na antiga. `initialTab()` sozinho só resolve a entrada pela
+   * URL; esta é a reação a mudanças depois que a página já está montada.
+   */
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (!tab) return;
+    const resolvido = resolveSettingsTab(tab, isAccountOwner);
+    if (resolvido) setActiveTab(resolvido);
+  }, [searchParams, isAccountOwner]);
 
   useEffect(() => {
     if (!checkoutParam || checkoutMessageShownRef.current) return;
