@@ -191,6 +191,7 @@ export default function AtendimentoHubPage() {
             {podeAgenda && (
               <button
                 onClick={() => setNewModal({})}
+                data-tour="atendimento-nova-consulta"
                 className="ml-auto flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">

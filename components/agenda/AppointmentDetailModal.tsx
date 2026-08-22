@@ -194,6 +194,7 @@ export function AppointmentDetailModal({
               variant="primary"
               onClick={onStartAttendance}
               disabled={busy}
+              data-tour="atendimento-iniciar"
               className="w-full sm:w-auto"
             >
               {appointment.status === "completed"

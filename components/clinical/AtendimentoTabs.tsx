@@ -342,6 +342,7 @@ export function AtendimentoTabs({
         <div
           role="tablist"
           aria-label="Seções do atendimento"
+          data-tour="ficha-abas"
           className="flex items-center px-4 lg:px-6 overflow-x-auto scrollbar-hide"
         >
           {TABS.map((tab) => (

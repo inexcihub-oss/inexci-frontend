@@ -180,4 +180,23 @@ describe("TRACKS", () => {
       expect(new Set(chaves).size).toBe(chaves.length);
     }
   });
+
+  it("a trilha de atendimento tem cinco passos e só o de emissão exige médico", () => {
+    const trilha = trackById("atendimento")!;
+    expect(trilha.permission).toBe(Permission.ATENDIMENTO);
+    expect(trilha.steps).toHaveLength(5);
+    expect(
+      trilha.steps.filter((p) => p.requiresDoctor).map((p) => p.key),
+    ).toEqual(["documentos"]);
+  });
+
+  it("a secretária com Atendimento não vê o passo de emitir documentos", () => {
+    const trilha = trackById("atendimento")!;
+    const passos = visibleSteps(trilha, {
+      permissions: [Permission.ATENDIMENTO],
+      isDoctor: false,
+      isAccountOwner: false,
+    });
+    expect(passos.map((p) => p.key)).not.toContain("documentos");
+  });
 });

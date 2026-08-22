@@ -161,6 +161,7 @@ export function IndicacaoCirurgicaCard({
     <SectionCard
       icon={<Scissors className="w-4 h-4" />}
       title="Indicação cirúrgica"
+      dataTour="ficha-indicacao"
     >
       <div className="flex items-start gap-3">
         <Checkbox
@@ -214,13 +215,19 @@ function SectionCard({
   icon,
   title,
   children,
+  dataTour,
 }: {
   icon: React.ReactNode;
   title: string;
   children: React.ReactNode;
+  /** Âncora do tour de onboarding para este card, quando houver. */
+  dataTour?: string;
 }) {
   return (
-    <section className="rounded-2xl border border-neutral-100 bg-white shadow-sm">
+    <section
+      data-tour={dataTour}
+      className="rounded-2xl border border-neutral-100 bg-white shadow-sm"
+    >
       <div className="flex items-center gap-2 px-4 py-3 border-b border-neutral-100">
         <span className="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0">
           {icon}

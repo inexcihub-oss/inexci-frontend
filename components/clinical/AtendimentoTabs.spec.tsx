@@ -173,6 +173,20 @@ describe("AtendimentoTabs", () => {
     expect(screen.getByText("Conduta / Plano")).toBeInTheDocument();
   });
 
+  /**
+   * Âncora do tour de onboarding (trilha "atendimento", passo "abas") em
+   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
+   * trocar o elemento) quebra o tour em silêncio.
+   */
+  it('expõe data-tour="ficha-abas" na barra de abas', () => {
+    renderTabs();
+
+    expect(screen.getByRole("tablist")).toHaveAttribute(
+      "data-tour",
+      "ficha-abas",
+    );
+  });
+
   it("respeita a aba vinda da URL e ignora valor inválido", () => {
     searchParams = new URLSearchParams("tab=cadastro");
     const { unmount } = renderTabs();

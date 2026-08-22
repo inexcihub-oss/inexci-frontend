@@ -95,6 +95,39 @@ export const TRILHA_DOCUMENTOS_MEDICO = {
   },
 };
 
+export const TRILHA_ATENDIMENTO = {
+  label: "Atender um paciente",
+  descricao:
+    "Da consulta agendada à ficha finalizada, incluindo receita, atestado e pedido de exame.",
+  passos: {
+    hub: {
+      titulo: "Suas consultas ficam aqui",
+      corpo:
+        "Próximas e realizadas, na mesma tela. É daqui que o atendimento começa.",
+    },
+    iniciar: {
+      titulo: "Abra a consulta e comece",
+      corpo:
+        "Abrir a ficha é ato do médico: quem agenda não atende. Depois de realizada, todos com Atendimento podem ler.",
+    },
+    abas: {
+      titulo: "Quatro abas, um paciente",
+      corpo:
+        "Atendimento é onde você escreve. Histórico, Cadastro e Documentos trazem o resto sem sair da consulta.",
+    },
+    indicacao: {
+      titulo: "Marque o paciente cirúrgico",
+      corpo:
+        "Ao finalizar a ficha, a solicitação nasce em Pendente e os documentos do paciente vão junto. Ficha finalizada é imutável — correção vira adendo.",
+    },
+    documentos: {
+      titulo: "Emita receita, atestado e exames",
+      corpo:
+        "Cada um tem prévia antes do PDF. Depois de emitido não se edita: corrigir é emitir outro.",
+    },
+  },
+};
+
 export const TRILHA_SOLICITACOES = {
   label: "Criar e enviar uma solicitação",
   descricao:

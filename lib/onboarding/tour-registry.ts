@@ -1,5 +1,9 @@
 import { Permission, hasAnyArea } from "@/lib/permissions";
-import { TRILHA_DOCUMENTOS_MEDICO, TRILHA_SOLICITACOES } from "./content";
+import {
+  TRILHA_ATENDIMENTO,
+  TRILHA_DOCUMENTOS_MEDICO,
+  TRILHA_SOLICITACOES,
+} from "./content";
 import type { StepKey, TrackId } from "./state";
 
 /** Condição de visibilidade. Todas as declaradas precisam passar (AND). */
@@ -148,6 +152,52 @@ export const TRACKS: Track[] = [
         route: "/solicitacoes-cirurgicas",
         target: "sc-por-documento",
         ...TRILHA_SOLICITACOES.passos.porDocumento,
+      },
+    ],
+  },
+  {
+    id: "atendimento",
+    label: TRILHA_ATENDIMENTO.label,
+    descricao: TRILHA_ATENDIMENTO.descricao,
+    stepKey: "atender-consulta",
+    permission: Permission.ATENDIMENTO,
+    steps: [
+      {
+        key: "hub",
+        route: "/atendimento",
+        target: "atendimento-nova-consulta",
+        ...TRILHA_ATENDIMENTO.passos.hub,
+      },
+      {
+        key: "iniciar",
+        // Vive dentro do modal de detalhe da consulta, que o usuário abre
+        // clicando numa consulta da lista. `aguardaAcao` dá tempo para isso.
+        target: "atendimento-iniciar",
+        aguardaAcao: true,
+        ...TRILHA_ATENDIMENTO.passos.iniciar,
+      },
+      {
+        key: "abas",
+        target: "ficha-abas",
+        aguardaAcao: true,
+        ...TRILHA_ATENDIMENTO.passos.abas,
+      },
+      {
+        key: "indicacao",
+        target: "ficha-indicacao",
+        aguardaAcao: true,
+        ...TRILHA_ATENDIMENTO.passos.indicacao,
+      },
+      {
+        key: "documentos",
+        target: "ficha-documentos",
+        aguardaAcao: true,
+        // Emitir receita, atestado e pedido de exame é ato privativo do
+        // médico (`AccessControlService.assertIsDoctor` no backend). Quem tem
+        // Atendimento mas não tem `doctor_profile` lê o prontuário e não vê
+        // estes botões — mostrar o passo seria ensinar o que ele não pode.
+        requiresDoctor: true,
+        ...TRILHA_ATENDIMENTO.passos.documentos,
       },
     ],
   },

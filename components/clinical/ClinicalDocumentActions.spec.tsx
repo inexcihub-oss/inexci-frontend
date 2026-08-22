@@ -78,6 +78,21 @@ describe("ClinicalDocumentActions", () => {
     expect(screen.getByRole("button", { name: /exames/i })).toBeDefined();
   });
 
+  /**
+   * Âncora do tour de onboarding (trilha "atendimento", passo "documentos")
+   * em `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo
+   * (ou trocar o elemento) quebra o tour em silêncio.
+   */
+  it('expõe data-tour="ficha-documentos" no card de documentos do atendimento', () => {
+    setup();
+
+    expect(
+      screen
+        .getByText("Documentos do atendimento")
+        .closest('[data-tour="ficha-documentos"]'),
+    ).not.toBeNull();
+  });
+
   it("emite a receita com os medicamentos digitados", async () => {
     const user = userEvent.setup();
     setup();

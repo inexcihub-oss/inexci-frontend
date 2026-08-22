@@ -97,6 +97,19 @@ describe("AppointmentDetailModal", () => {
   });
 
   /**
+   * Âncora do tour de onboarding (trilha "atendimento", passo "iniciar") em
+   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
+   * trocar o elemento) quebra o tour em silêncio.
+   */
+  it('expõe data-tour="atendimento-iniciar" no botão de iniciar atendimento', () => {
+    renderModal("scheduled");
+
+    expect(
+      screen.getByRole("button", { name: /Iniciar atendimento/i }),
+    ).toHaveAttribute("data-tour", "atendimento-iniciar");
+  });
+
+  /**
    * Quem agenda não atende: a secretária marca, confirma e cancela a consulta,
    * mas abrir a ficha é ato do médico.
    */
