@@ -6,6 +6,14 @@
 
 export const ONBOARDING_STATE_VERSION = 1;
 
+/**
+ * `dismissed` nunca é atribuído pelo frontend: `checklistDismissedAt` é a
+ * fonte de verdade de que o usuário dispensou o card (ver `dismissChecklist`
+ * / `isChecklistVisible`), e `status` não duplica essa informação. O literal
+ * fica reservado no union porque a whitelist `ONBOARDING_STATUSES` do backend
+ * espelha exatamente estes quatro valores — removê-lo aqui exigiria uma
+ * mudança cross-repo por um ganho puramente cosmético.
+ */
 export type OnboardingStatus =
   | "not_started"
   | "in_progress"
@@ -122,6 +130,45 @@ export function dismissChecklist(
   return { ...state, checklistDismissedAt: agora };
 }
 
+/**
+ * O card continua visível quando `status: "completed"` — é exatamente aí que
+ * ele mostra `CHECKLIST.concluido` ("Tudo pronto…"), o momento de "você
+ * terminou". Escondê-lo no instante em que o status muda para `completed`
+ * faria o card sumir em silêncio, sem o usuário nunca ver a mensagem — o
+ * mesmo defeito, com outra causa, que motivou a Fase 1 a nunca deixar um
+ * alvo ausente travar o tour calado. "Dispensar" continua sendo o único jeito
+ * de fazê-lo desaparecer de vez.
+ */
 export function isChecklistVisible(state: OnboardingState): boolean {
-  return !state.checklistDismissedAt && state.status !== "completed";
+  return !state.checklistDismissedAt;
+}
+
+/**
+ * Promove `status` para `completed` quando toda trilha visível (`stepKeys`)
+ * já tem uma entrada em `completedSteps`. Chamada pelo provider a cada
+ * mudança de estado — ele é quem sabe quais trilhas são visíveis para o
+ * usuário atual (permissões, `isDoctor`, `isAccountOwner`); aqui fica só a
+ * regra pura.
+ *
+ * Sem nenhuma trilha visível não promove nada: "tudo pronto" não faz sentido
+ * para quem não tinha nada a fazer (e o card nem chega a renderizar nesse
+ * caso — `tracks.length === 0`). Dispensar (`checklistDismissedAt`) NÃO
+ * impede a promoção: são eixos independentes, e completar o resto depois
+ * pela aba de Configurações é um fato que continua valendo mesmo com o card
+ * escondido. `status === "dismissed"` nunca ocorre na prática (ver comentário
+ * no tipo `OnboardingStatus`) — o curto-circuito abaixo é só para não
+ * regredir esse literal reservado, caso um dia passe a ser escrito.
+ */
+export function promoteIfComplete(
+  state: OnboardingState,
+  stepKeys: StepKey[],
+): OnboardingState {
+  if (state.status === "completed" || state.status === "dismissed") {
+    return state;
+  }
+  if (stepKeys.length === 0) return state;
+  const tudoFeito = stepKeys.every((key) =>
+    Boolean(state.completedSteps[key]),
+  );
+  return tudoFeito ? { ...state, status: "completed" } : state;
 }

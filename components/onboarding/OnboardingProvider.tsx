@@ -18,6 +18,7 @@ import {
   markTourSeen,
   markWelcomeSeen,
   normalizeOnboardingState,
+  promoteIfComplete,
   type OnboardingState,
   type StepKey,
   type TrackId,
@@ -71,46 +72,6 @@ export function OnboardingProvider({
     }
   }, [user?.id, user?.onboardingState]);
 
-  /**
-   * Persistência otimista: o estado local muda na hora e o PATCH sai com
-   * debounce. Uma falha só vira log — o onboarding não pode travar a tela
-   * porque marcar um checkbox deu 500.
-   */
-  const pendenteRef = useRef<OnboardingState | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const agendarPersistencia = useCallback((proximo: OnboardingState) => {
-    pendenteRef.current = proximo;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      const paraEnviar = pendenteRef.current;
-      pendenteRef.current = null;
-      if (!paraEnviar) return;
-      const { version: _version, ...patch } = paraEnviar;
-      void onboardingService.patch(patch).catch((erro) => {
-        logger.error("Falha ao salvar progresso do onboarding:", erro);
-      });
-    }, DEBOUNCE_MS);
-  }, []);
-
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
-
-  const aplicar = useCallback(
-    (transformar: (atual: OnboardingState) => OnboardingState) => {
-      setState((atual) => {
-        const proximo = transformar(atual);
-        agendarPersistencia(proximo);
-        return proximo;
-      });
-    },
-    [agendarPersistencia],
-  );
-
   const viewer = useMemo<Viewer>(
     () => ({
       permissions: permissions ?? [],
@@ -121,6 +82,67 @@ export function OnboardingProvider({
   );
 
   const tracks = useMemo(() => visibleTracks(viewer), [viewer]);
+
+  /**
+   * Persistência otimista: o estado local muda na hora e o PATCH sai com
+   * debounce. Uma falha só vira log — o onboarding não pode travar a tela
+   * porque marcar um checkbox deu 500.
+   */
+  const pendenteRef = useRef<OnboardingState | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const enviarPendente = useCallback(() => {
+    const paraEnviar = pendenteRef.current;
+    pendenteRef.current = null;
+    if (!paraEnviar) return;
+    const { version: _version, ...patch } = paraEnviar;
+    void onboardingService.patch(patch).catch((erro) => {
+      logger.error("Falha ao salvar progresso do onboarding:", erro);
+    });
+  }, []);
+
+  const agendarPersistencia = useCallback(
+    (proximo: OnboardingState) => {
+      pendenteRef.current = proximo;
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(enviarPendente, DEBOUNCE_MS);
+    },
+    [enviarPendente],
+  );
+
+  /**
+   * Ao desmontar (ex.: logout), ENVIA a escrita pendente em vez de só cancelar
+   * o timer. Sem isso, "Dispensar" seguido de logout em menos de 500 ms perde
+   * o PATCH — o card reaparece no próximo login porque o servidor nunca soube
+   * do dismiss. Cancelar o timer continua certo para impedir que esse PATCH
+   * vaze para a sessão de OUTRO usuário depois da troca; aqui ele é disparado
+   * ANTES de desmontar, com o usuário ainda autenticado.
+   */
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      enviarPendente();
+    },
+    [enviarPendente],
+  );
+
+  const aplicar = useCallback(
+    (transformar: (atual: OnboardingState) => OnboardingState) => {
+      setState((atual) => {
+        const transformado = transformar(atual);
+        // Promove para "completed" depois de QUALQUER mudança de estado, não
+        // só depois de `completeStep`: `closeTour` também escreve em
+        // `completedSteps` e é o caminho real que fecha a última trilha.
+        const proximo = promoteIfComplete(
+          transformado,
+          tracks.map((t) => t.stepKey),
+        );
+        agendarPersistencia(proximo);
+        return proximo;
+      });
+    },
+    [agendarPersistencia, tracks],
+  );
 
   const completeStep = useCallback(
     (key: StepKey) =>

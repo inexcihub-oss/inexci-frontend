@@ -111,6 +111,35 @@ describe("OnboardingChecklistCard", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  /**
+   * Achado 4 da revisão final: `status: "completed"` precisa render algo, não
+   * só existir no tipo. Sem este teste, trocar a checagem por
+   * `state.status !== "completed"` (escondendo o card de novo) ou remover o
+   * branch `concluido` do componente passa despercebido.
+   */
+  it("mostra a mensagem de conclusão em vez da lista quando status é completed", () => {
+    contexto.state = { ...emptyOnboardingState(), status: "completed" };
+    render(<OnboardingChecklistCard />);
+
+    expect(
+      screen.getByText(
+        "Tudo pronto. Você pode rever qualquer passo em Configurações.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  });
+
+  it("mesmo concluído, Dispensar continua sendo a saída", async () => {
+    contexto.state = { ...emptyOnboardingState(), status: "completed" };
+    const user = userEvent.setup();
+    render(<OnboardingChecklistCard />);
+
+    await user.click(screen.getByRole("button", { name: /dispensar/i }));
+
+    expect(dismiss).toHaveBeenCalledTimes(1);
+  });
+
   it("expõe o progresso também para leitor de tela", () => {
     // Duas trilhas, uma concluída: `valuenow=1` e `valuemax=2` são valores
     // distintos, então um swap entre os dois atributos falha aqui. Com uma
