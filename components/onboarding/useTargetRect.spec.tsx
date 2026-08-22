@@ -109,6 +109,50 @@ describe("useTargetRect", () => {
     await waitFor(() => expect(result.current.rect?.top).toBe(90));
   });
 
+  it("acha o alvo que só entra no DOM depois, dentro do timeout longo", async () => {
+    vi.useFakeTimers();
+    const { result } = renderHook(() =>
+      useTargetRect("alvo-tardio", { timeoutMs: 20000 }),
+    );
+    expect(result.current.estado).toBe("buscando");
+
+    // 5s depois do início — muito além dos 800ms do passo comum.
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(result.current.estado).toBe("buscando");
+
+    const alvo = document.createElement("div");
+    alvo.setAttribute("data-tour", "alvo-tardio");
+    document.body.appendChild(alvo);
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(result.current.estado).toBe("encontrado");
+  });
+
+  it("volta a procurar quando o alvo destacado sai do DOM", async () => {
+    vi.useFakeTimers();
+    const alvo = document.createElement("div");
+    alvo.setAttribute("data-tour", "some-depois");
+    document.body.appendChild(alvo);
+
+    const { result } = renderHook(() =>
+      useTargetRect("some-depois", { timeoutMs: 20000 }),
+    );
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(result.current.estado).toBe("encontrado");
+
+    alvo.remove();
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(result.current.estado).toBe("buscando");
+  });
+
   it("limpa observer e listeners ao desmontar", async () => {
     const alvo = document.createElement("button");
     alvo.setAttribute("data-tour", "sc-nova");

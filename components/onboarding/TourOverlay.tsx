@@ -8,7 +8,7 @@ import type { TrackId } from "@/lib/onboarding/state";
 import { trackById, visibleSteps } from "@/lib/onboarding/tour-registry";
 import { fetchRequisitosPendente } from "@/services/onboarding-requirements";
 import { useOnboarding } from "./OnboardingProvider";
-import { useTargetRect } from "./useTargetRect";
+import { TIMEOUT_AGUARDA_ACAO_MS, useTargetRect } from "./useTargetRect";
 
 const PADDING_FURO = 8;
 const LARGURA_BALAO = 320;
@@ -53,9 +53,15 @@ export function TourOverlay({ trackId, onClose }: Props) {
 
   // O timeout de 3s do hook é dimensionado para passo com `route`, cuja tela
   // ainda vai montar. Para um passo que o tour pode simplesmente pular, 3s de
-  // espera viram um buraco morto no caminho NORMAL.
+  // espera viram um buraco morto no caminho NORMAL. `aguardaAcao` tem
+  // prioridade sobre `route`: o alvo só existe depois de o usuário agir, então
+  // o motor precisa esperar bem mais (20s) do que o tempo de uma navegação.
   const { rect, estado } = useTargetRect(passo?.target, {
-    timeoutMs: passo?.route ? 3000 : 800,
+    timeoutMs: passo?.aguardaAcao
+      ? TIMEOUT_AGUARDA_ACAO_MS
+      : passo?.route
+        ? 3000
+        : 800,
   });
 
   // Passo com `route` navega antes de procurar o alvo.
@@ -203,10 +209,12 @@ export function TourOverlay({ trackId, onClose }: Props) {
 
   if (!track || !passo) return null;
 
-  // Durante a busca o tour NÃO some da tela: mantém o fundo escurecido, para o
-  // usuário ver que ele continua rodando. Devolver `null` aqui fazia o overlay
-  // inteiro desaparecer e reaparecer — parecia que o tour tinha quebrado.
-  if (estado === "buscando") {
+  // Passo comum: a busca dura no máximo 800 ms e termina em holofote ou em
+  // pulo. Mostrar o balão nesse intervalo produziria um piscar. Passo
+  // `aguardaAcao` é o contrário: a espera É o passo — o usuário precisa LER a
+  // instrução para saber o que clicar, e um fundo escurecido mudo por 20 s
+  // parece tour quebrado.
+  if (estado === "buscando" && !passo.aguardaAcao) {
     return createPortal(
       <div className="fixed inset-0 z-[100] bg-neutral-950/55" aria-hidden />,
       document.body,

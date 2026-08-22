@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 const TIMEOUT_PADRAO_MS = 3000;
 const INTERVALO_BUSCA_MS = 100;
+/** Passo cujo alvo só aparece depois de uma ação do usuário (abrir um modal). */
+export const TIMEOUT_AGUARDA_ACAO_MS = 20000;
 
 export type EstadoAlvo = "buscando" | "encontrado" | "ausente";
 
@@ -37,12 +39,39 @@ export function useTargetRect(
 
     let elemento: HTMLElement | null = null;
     let observer: ResizeObserver | null = null;
+    let mutacoes: MutationObserver | null = null;
     let intervalo: ReturnType<typeof setInterval> | null = null;
     let limite: ReturnType<typeof setTimeout> | null = null;
     let cancelado = false;
 
+    // Declarada antes de `medir` para não depender de hoisting: `medir`
+    // reinicia a busca chamando `procurar` quando o alvo some do DOM.
+    const procurar = () => {
+      const el = document.querySelector<HTMLElement>(
+        `[data-tour="${target}"]`,
+      );
+      if (el) fixar(el);
+    };
+
     const medir = () => {
       if (!elemento || cancelado) return;
+      // Um alvo dentro de modal desaparece quando o usuário fecha o modal. Sem
+      // esta verificação o holofote fica preso no retângulo antigo, iluminando
+      // um pedaço vazio da tela — o `ResizeObserver` não dispara para elemento
+      // já removido do documento.
+      if (!document.contains(elemento)) {
+        observer?.disconnect();
+        observer = null;
+        mutacoes?.disconnect();
+        mutacoes = null;
+        window.removeEventListener("scroll", medir, true);
+        window.removeEventListener("resize", medir);
+        elemento = null;
+        setRect(null);
+        setEstado("buscando");
+        if (!intervalo) intervalo = setInterval(procurar, INTERVALO_BUSCA_MS);
+        return;
+      }
       setRect(elemento.getBoundingClientRect());
     };
 
@@ -67,13 +96,11 @@ export function useTargetRect(
       // horizontal) não borbulham `scroll`.
       window.addEventListener("scroll", medir, true);
       window.addEventListener("resize", medir);
-    };
 
-    const procurar = () => {
-      const el = document.querySelector<HTMLElement>(
-        `[data-tour="${target}"]`,
-      );
-      if (el) fixar(el);
+      // Só `childList`+`subtree`: é a remoção do nó que interessa, e um
+      // observer de atributos no body inteiro seria caro.
+      mutacoes = new MutationObserver(() => medir());
+      mutacoes.observe(document.body, { childList: true, subtree: true });
     };
 
     procurar();
@@ -93,6 +120,7 @@ export function useTargetRect(
       parar();
       if (limite) clearTimeout(limite);
       observer?.disconnect();
+      mutacoes?.disconnect();
       window.removeEventListener("scroll", medir, true);
       window.removeEventListener("resize", medir);
     };

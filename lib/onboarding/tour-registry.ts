@@ -26,6 +26,14 @@ export interface TourStep extends Gate {
    * `false` (padrão) = alvo ausente pula o passo em silêncio.
    */
   required?: boolean;
+  /**
+   * O alvo só existe depois de uma ação do usuário — tipicamente abrir o modal
+   * que o passo anterior mandou abrir. Faz o motor esperar 20 s em vez de 800
+   * ms e, enquanto espera, mostrar o balão centralizado com a instrução, em
+   * vez do fundo escurecido mudo. Sem isso, todo passo ancorado dentro de um
+   * modal seria pulado em silêncio antes de o usuário ter tempo de clicar.
+   */
+  aguardaAcao?: boolean;
 }
 
 export interface Track extends Gate {

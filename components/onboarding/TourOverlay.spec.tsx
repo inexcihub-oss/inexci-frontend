@@ -90,6 +90,42 @@ const TRILHA_COM_ROTA: Track = {
   ],
 };
 
+/**
+ * Fixture do passo `aguardaAcao`: alvo que nunca aparece na montagem (o
+ * usuário ainda não abriu o modal), mas o balão precisa aparecer mesmo assim
+ * — é o contraponto de `TRILHA_PASSO_COMUM`, que continua muda em "buscando".
+ */
+const TRILHA_AGUARDA_ACAO: Track = {
+  id: "aguarda-acao",
+  label: "Trilha com passo aguardaAcao",
+  descricao: "…",
+  stepKey: "marcar-consulta",
+  steps: [
+    {
+      key: "espera",
+      titulo: "Clique em Nova consulta",
+      corpo: "O formulário abre ao lado.",
+      target: "alvo-que-nao-existe-ainda",
+      aguardaAcao: true,
+    },
+  ],
+};
+
+const TRILHA_PASSO_COMUM: Track = {
+  id: "passo-comum-sem-alvo",
+  label: "Trilha com passo comum sem aguardaAcao",
+  descricao: "…",
+  stepKey: "marcar-consulta",
+  steps: [
+    {
+      key: "comum",
+      titulo: "Passo comum",
+      corpo: "…",
+      target: "alvo-que-nao-existe-ainda",
+    },
+  ],
+};
+
 vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
   const original = await importOriginal<
     typeof import("@/lib/onboarding/tour-registry")
@@ -100,6 +136,8 @@ vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
       if (id === "documentos-do-medico") return TRILHA_OBRIGATORIA;
       if (id === "solicitacoes-requisitos") return TRILHA_REQUISITOS;
       if (id === "com-rota") return TRILHA_COM_ROTA;
+      if (id === "aguarda-acao") return TRILHA_AGUARDA_ACAO;
+      if (id === "passo-comum-sem-alvo") return TRILHA_PASSO_COMUM;
       return TRILHA;
     },
     visibleSteps: (t: Track) => t.steps,
@@ -310,6 +348,29 @@ describe("TourOverlay", () => {
     await screen.findByText("Passo com rota");
 
     expect(pushMock).toHaveBeenCalledWith("/configuracoes?tab=profile");
+  });
+
+  /**
+   * `aguardaAcao` inverte a regra de "buscando" mudo: o alvo só existe depois
+   * de o usuário clicar em algo (abrir um modal), então a espera É o passo —
+   * o balão com a instrução precisa aparecer mesmo sem retângulo para
+   * destacar, em vez do fundo escurecido silencioso de hoje.
+   */
+  it("mostra o balão com a instrução enquanto espera o alvo de um passo aguardaAcao", () => {
+    // Checagem síncrona, logo após o mount: `estado` ainda é "buscando" aqui
+    // (o timeout de 20s do `aguardaAcao` está só registrado, não disparado).
+    // Um `await screen.findByText` correria o risco de atravessar os 800ms do
+    // timeout curto e mostrar o balão pelo motivo ERRADO (estado "ausente").
+    render(<TourOverlay trackId="aguarda-acao" onClose={vi.fn()} />);
+
+    expect(screen.getByText("Clique em Nova consulta")).toBeInTheDocument();
+  });
+
+  /** Contraponto: passo comum (sem `aguardaAcao`) continua sem balão em "buscando". */
+  it("não mostra o balão enquanto procura o alvo de um passo comum", () => {
+    render(<TourOverlay trackId="passo-comum-sem-alvo" onClose={vi.fn()} />);
+
+    expect(screen.queryByText("Passo comum")).not.toBeInTheDocument();
   });
 });
 
