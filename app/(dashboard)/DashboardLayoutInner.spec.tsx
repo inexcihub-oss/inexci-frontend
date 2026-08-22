@@ -65,6 +65,12 @@ vi.mock("@/components/onboarding/OnboardingProvider", () => ({
   useOnboarding: () => ({
     state: { welcomeSeenAt: null },
     tracks: [],
+    // `viewer` precisa existir mesmo com `tracks: []`: depois do achado 3 da
+    // revisão final, o `WelcomeModal` monta independente de haver trilha
+    // visível (um colaborador sem área nenhuma também vê o modal) — e ele lê
+    // `viewer.permissions` para montar o slide 3.
+    viewer: { permissions: [], isDoctor: false, isAccountOwner: false },
+    markWelcome: vi.fn(),
     activeTour: null,
     closeTour: vi.fn(),
   }),

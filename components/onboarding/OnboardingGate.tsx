@@ -17,7 +17,7 @@ import { WelcomeModal } from "./WelcomeModal";
  */
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { consents, isAccountOwner, subscription } = useAuth();
-  const { state, tracks, activeTour, closeTour } = useOnboarding();
+  const { state, activeTour, closeTour } = useOnboarding();
 
   const statusAssinatura = subscription?.subscription.status;
   const contaBloqueada =
@@ -27,8 +27,15 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const silenciado =
     contaBloqueada || (consents ? !consents.requiredConsentsAccepted : true);
 
-  const mostrarBoasVindas =
-    !silenciado && !state.welcomeSeenAt && tracks.length > 0;
+  /**
+   * O modal NÃO depende de `tracks.length > 0`. Um colaborador recém-criado
+   * (`permissions: []`, sem `doctor_profile`) tem `tracks = []` e precisa ver
+   * o modal mesmo assim (spec §2.2) — é o slide 3 do `WelcomeModal` que cobre
+   * esse caso ("Assim que o administrador da conta liberar suas áreas…").
+   * `tracks.length > 0` continua sendo a condição do CARD, já aplicada em
+   * `OnboardingProvider.isChecklistVisible` e no próprio guard do card.
+   */
+  const mostrarBoasVindas = !silenciado && !state.welcomeSeenAt;
 
   return (
     <>

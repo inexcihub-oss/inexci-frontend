@@ -114,6 +114,25 @@ describe("OnboardingGate", () => {
     ).not.toBeInTheDocument();
   });
 
+  /**
+   * Achado 3 da revisão final: um colaborador recém-criado
+   * (`permissions: []`, sem `doctor_profile`) tem `tracks = []` e ainda assim
+   * precisa ver o modal de boas-vindas (spec §2.2) — é o slide 3 do
+   * `WelcomeModal` que cobre esse caso exato. Antes do fix,
+   * `mostrarBoasVindas` também exigia `tracks.length > 0` e este usuário
+   * nunca via o modal.
+   */
+  it("mostra o modal mesmo sem nenhuma trilha visível", () => {
+    contexto.tracks = [];
+    render(
+      <OnboardingGate>
+        <p>conteúdo</p>
+      </OnboardingGate>,
+    );
+
+    expect(screen.getByText("modal de boas-vindas")).toBeInTheDocument();
+  });
+
   it("renderiza o tour quando há trilha ativa", () => {
     contexto.state = {
       ...emptyOnboardingState(),
