@@ -293,6 +293,7 @@ export default function ClinicasPage() {
               size="md"
               className="flex-1 sm:flex-none min-h-[44px]"
               onClick={() => setCreateModalOpen(true)}
+              data-tour="cadastros-clinicas"
             >
               Nova clínica
             </Button>

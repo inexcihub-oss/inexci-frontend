@@ -211,4 +211,29 @@ describe("TRACKS", () => {
     ]);
     expect(trilha.steps.at(-1)!.target).toBeUndefined();
   });
+
+  it("a trilha de cadastros é transversal (anyArea) e tem quatro passos", () => {
+    const trilha = trackById("cadastros")!;
+    expect(trilha.anyArea).toBe(true);
+    expect(trilha.steps.map((p) => p.key)).toEqual([
+      "pacientes",
+      "menu",
+      "clinicas",
+      "procedimentos",
+    ]);
+  });
+
+  it("quem não é administração não vê o passo de clínicas", () => {
+    const trilha = trackById("cadastros")!;
+    // Com Solicitações (e sem Administração) o passo de procedimentos segue
+    // visível — o gate que este teste cobre é especificamente o de clínicas.
+    const passos = visibleSteps(trilha, {
+      permissions: [Permission.AGENDA, Permission.SOLICITACOES],
+      isDoctor: false,
+      isAccountOwner: false,
+    });
+    expect(passos.map((p) => p.key)).not.toContain("clinicas");
+    // mas continua vendo os outros três
+    expect(passos).toHaveLength(3);
+  });
 });

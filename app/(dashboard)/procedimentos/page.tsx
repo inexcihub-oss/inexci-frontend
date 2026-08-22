@@ -390,6 +390,7 @@ export default function ProcedimentosPage() {
               size="md"
               className="flex-1 sm:flex-none min-h-[44px]"
               onClick={() => setIsNewModelModalOpen(true)}
+              data-tour="cadastros-procedimentos"
             >
               Novo modelo
             </Button>

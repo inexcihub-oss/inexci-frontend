@@ -161,6 +161,34 @@ export const TRILHA_SOLICITACOES = {
   },
 };
 
+export const TRILHA_CADASTROS = {
+  label: "Preencher os cadastros",
+  descricao:
+    "Pacientes, hospitais, convênios, fornecedores, clínicas e procedimentos.",
+  passos: {
+    pacientes: {
+      titulo: "O paciente é o cadastro central",
+      corpo:
+        "Ele é o mesmo na agenda, no atendimento e na solicitação. Cadastre uma vez e use nas quatro áreas.",
+    },
+    menu: {
+      titulo: "Hospitais, convênios e fornecedores",
+      corpo:
+        "Ficam neste menu — e também podem ser criados de dentro do wizard da solicitação, sem largar o que você estava fazendo.",
+    },
+    clinicas: {
+      titulo: "Onde você atende",
+      corpo:
+        "A clínica guarda o endereço e a grade de funcionamento que a agenda usa para avisar de horário fora do expediente.",
+    },
+    procedimentos: {
+      titulo: "Modelos que poupam redigitação",
+      corpo:
+        "Um procedimento guarda TUSS e OPME prontos. Na próxima solicitação igual, você parte do modelo.",
+    },
+  },
+};
+
 export const TRILHA_AGENDA = {
   label: "Marcar uma consulta",
   descricao:

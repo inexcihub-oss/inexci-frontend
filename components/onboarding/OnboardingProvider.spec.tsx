@@ -67,6 +67,9 @@ function Sonda() {
       <button onClick={() => completeStep("assinatura-do-medico")}>
         marcar assinatura
       </button>
+      <button onClick={() => completeStep("cadastros-basicos")}>
+        marcar cadastros
+      </button>
       <button onClick={dismiss}>dispensar</button>
       <button onClick={() => void restart()}>reiniciar</button>
       <button onClick={() => startTour("solicitacoes")}>iniciar tour</button>
@@ -113,11 +116,13 @@ describe("OnboardingProvider", () => {
     );
 
     await user.click(screen.getByText("marcar"));
+    await user.click(screen.getByText("marcar cadastros"));
 
-    // "completed", não "in_progress": o `authMock` padrão só libera
-    // `Permission.SOLICITACOES`, então "solicitacoes" é a ÚNICA trilha
-    // visível — marcar seu passo já completa todas as trilhas visíveis e
-    // promove o status (achado 4 da revisão final).
+    // "completed": o `authMock` padrão só libera `Permission.SOLICITACOES`,
+    // então "solicitacoes" e "cadastros" (trilha `anyArea`, sempre visível
+    // para quem tem qualquer área) são as DUAS trilhas visíveis — marcar os
+    // dois passos completa todas elas e promove o status (achado 4 da
+    // revisão final).
     expect(screen.getByTestId("status")).toHaveTextContent("completed");
     // Sem isto, uma implementação que aguardasse o PATCH antes do setState
     // também passaria — o teste não provaria otimismo nenhum.
@@ -146,11 +151,13 @@ describe("OnboardingProvider", () => {
     // EXATAMENTE os campos tocados pelas duas escritas — nem a mais (um
     // `toMatchObject` deixaria passar um `restartedAt` ou o `version`
     // vazando de volta a um snapshot do estado inteiro) nem a menos.
-    // `status` aparece porque a única trilha visível do `authMock` padrão é
-    // completada pelo "marcar" sozinho (achado 4).
+    // `status` aparece como "in_progress" (not_started -> in_progress do
+    // próprio `completeStep`): o `authMock` padrão tem DUAS trilhas visíveis
+    // ("solicitacoes" e "cadastros", esta última `anyArea`), então marcar só
+    // "criar-solicitacao" não promove a `completed` (achado 4).
     expect(patchMock.mock.calls[0][0]).toEqual({
       completedSteps: { "criar-solicitacao": expect.any(String) },
-      status: "completed",
+      status: "in_progress",
       checklistDismissedAt: expect.any(String),
     });
   });
@@ -202,9 +209,11 @@ describe("OnboardingProvider", () => {
       vi.advanceTimersByTime(600);
     });
 
-    // "completed": mesma razão do teste de otimismo acima — a única trilha
-    // visível do `authMock` padrão é completada com um clique só.
-    expect(screen.getByTestId("status")).toHaveTextContent("completed");
+    // "in_progress": o `authMock` padrão tem duas trilhas visíveis
+    // ("solicitacoes" e "cadastros"), então um clique só não promove a
+    // "completed" — o ponto deste teste é não quebrar com o PATCH falhando,
+    // não a transição de status em si.
+    expect(screen.getByTestId("status")).toHaveTextContent("in_progress");
     // Distingue "falha capturada e logada" de "rejeição solta no processo":
     // o setState otimista é síncrono e passaria de qualquer forma.
     expect(logger.error).toHaveBeenCalled();
@@ -295,16 +304,18 @@ describe("OnboardingProvider", () => {
 
   /**
    * Achado 4 da revisão final: `status: "completed"` nunca era atribuído.
-   * `authMock` só libera `Permission.SOLICITACOES` por padrão — mutar
-   * `isDoctor` aqui adiciona a trilha `documentos-do-medico`, o mínimo para
-   * provar "falta uma trilha" sem depender de outro arquivo de fixture.
+   * `authMock` só libera `Permission.SOLICITACOES` por padrão, o que já
+   * expõe DUAS trilhas: "solicitacoes" e "cadastros" (esta última `anyArea`,
+   * visível para quem tem qualquer área). Mutar `isDoctor` aqui adiciona uma
+   * terceira, `documentos-do-medico`, para provar "falta uma trilha" sem
+   * depender de outro arquivo de fixture.
    */
   describe("promoção para completed", () => {
     afterEach(() => {
       authMock.isDoctor = false;
     });
 
-    it("promove quando a única trilha visível é concluída", async () => {
+    it("promove quando as duas trilhas visíveis do authMock padrão são concluídas", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
         <OnboardingProvider>
@@ -313,6 +324,7 @@ describe("OnboardingProvider", () => {
       );
 
       await user.click(screen.getByText("marcar"));
+      await user.click(screen.getByText("marcar cadastros"));
 
       expect(screen.getByTestId("status")).toHaveTextContent("completed");
     });
@@ -326,7 +338,8 @@ describe("OnboardingProvider", () => {
         </OnboardingProvider>,
       );
 
-      // Só marca "criar-solicitacao" — "assinatura-do-medico" continua faltando.
+      // Só marca "criar-solicitacao" — "assinatura-do-medico" e
+      // "cadastros-basicos" continuam faltando.
       await user.click(screen.getByText("marcar"));
 
       expect(screen.getByTestId("status")).toHaveTextContent("in_progress");
@@ -343,6 +356,7 @@ describe("OnboardingProvider", () => {
 
       await user.click(screen.getByText("marcar"));
       await user.click(screen.getByText("marcar assinatura"));
+      await user.click(screen.getByText("marcar cadastros"));
 
       expect(screen.getByTestId("status")).toHaveTextContent("completed");
     });
@@ -443,8 +457,10 @@ describe("OnboardingProvider", () => {
         "true",
       );
 
-      // Única trilha visível: "marcar" promove para completed NESTA sessão.
+      // Duas trilhas visíveis no `authMock` padrão ("solicitacoes" e
+      // "cadastros"): marcar as duas promove para completed NESTA sessão.
       await user.click(screen.getByText("marcar"));
+      await user.click(screen.getByText("marcar cadastros"));
 
       expect(screen.getByTestId("status")).toHaveTextContent("completed");
       expect(screen.getByTestId("checklist-visivel")).toHaveTextContent(

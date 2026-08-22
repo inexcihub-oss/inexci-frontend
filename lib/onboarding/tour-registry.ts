@@ -2,6 +2,7 @@ import { Permission, hasAnyArea } from "@/lib/permissions";
 import {
   TRILHA_AGENDA,
   TRILHA_ATENDIMENTO,
+  TRILHA_CADASTROS,
   TRILHA_DOCUMENTOS_MEDICO,
   TRILHA_SOLICITACOES,
 } from "./content";
@@ -233,6 +234,51 @@ export const TRACKS: Track[] = [
         // Sem alvo de propósito: o lembrete é um `@Cron` do backend, não tem
         // controle na tela. Card centralizado é a forma honesta de dizer isso.
         ...TRILHA_AGENDA.passos.lembrete,
+      },
+    ],
+  },
+  {
+    id: "cadastros",
+    label: TRILHA_CADASTROS.label,
+    descricao: TRILHA_CADASTROS.descricao,
+    stepKey: "cadastros-basicos",
+    // `anyArea` espelha `@RequireAnyArea()` do backend: cadastro é transversal
+    // às quatro áreas, e o isolamento real é por `ownerId`, não por área.
+    anyArea: true,
+    steps: [
+      {
+        key: "pacientes",
+        route: "/pacientes",
+        target: "cadastros-pacientes",
+        required: true,
+        ...TRILHA_CADASTROS.passos.pacientes,
+      },
+      {
+        key: "menu",
+        // A sidebar é drawer no mobile: o alvo não existe em 375 px e o passo
+        // degrada para card centralizado, mantendo a informação.
+        target: "cadastros-menu",
+        ...TRILHA_CADASTROS.passos.menu,
+      },
+      {
+        key: "clinicas",
+        route: "/clinicas",
+        target: "cadastros-clinicas",
+        // A TELA de clínicas é de administração (`ROUTE_PERMISSIONS`), embora
+        // a leitura da lista fique aberta no backend para o modal de consulta.
+        // Sem este gate o tour mandaria um assistente de agenda para uma rota
+        // que o `PermissionRouteGuard` devolve.
+        permission: Permission.ADMINISTRACAO,
+        ...TRILHA_CADASTROS.passos.clinicas,
+      },
+      {
+        key: "procedimentos",
+        route: "/procedimentos",
+        target: "cadastros-procedimentos",
+        // "Procedimentos" edita `SurgeryRequestTemplate` e herda a permissão de
+        // classe do `SurgeryRequestsController`: Solicitações, não Administração.
+        permission: Permission.SOLICITACOES,
+        ...TRILHA_CADASTROS.passos.procedimentos,
       },
     ],
   },

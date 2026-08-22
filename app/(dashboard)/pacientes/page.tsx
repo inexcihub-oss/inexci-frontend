@@ -372,6 +372,7 @@ export default function PacientesPage() {
             size="md"
             className="flex-1 sm:flex-none min-h-[44px]"
             onClick={() => setNewPatientModalOpen(true)}
+            data-tour="cadastros-pacientes"
           >
             Novo paciente
           </Button>
