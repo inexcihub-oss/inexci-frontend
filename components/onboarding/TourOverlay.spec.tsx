@@ -129,6 +129,31 @@ const TRILHA_PASSO_COMUM: Track = {
   ],
 };
 
+/**
+ * Fixture do bug real achado por um teste e2e (trilha `solicitacoes`, passo
+ * "requisitos" → "por-documento"): um passo SEM `target` (não uma string que
+ * nunca resolve — a ausência literal do campo) seguido por um passo cujo alvo
+ * já está no DOM ANTES da montagem. `useTargetRect` reporta "ausente" para o
+ * primeiro (sem alvo não espera nada) e, se o segundo alvo é achado no MESMO
+ * commit em que o efeito de degradação ainda lê o "ausente" do passo anterior,
+ * o `TourOverlay` fechava o tour em vez de mostrar o passo com o alvo já ali.
+ */
+const TRILHA_SEM_ALVO_DEPOIS_COM_ALVO: Track = {
+  id: "sem-alvo-depois-com-alvo",
+  label: "Trilha sem alvo seguida de alvo já presente",
+  descricao: "…",
+  stepKey: "criar-solicitacao",
+  steps: [
+    { key: "sem-alvo", titulo: "Passo sem alvo", corpo: "…" },
+    {
+      key: "com-alvo",
+      titulo: "Passo com alvo já presente",
+      corpo: "…",
+      target: "alvo-ja-presente",
+    },
+  ],
+};
+
 vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
   const original = await importOriginal<
     typeof import("@/lib/onboarding/tour-registry")
@@ -141,6 +166,8 @@ vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
       if (id === "com-rota") return TRILHA_COM_ROTA;
       if (id === "aguarda-acao") return TRILHA_AGUARDA_ACAO;
       if (id === "passo-comum-sem-alvo") return TRILHA_PASSO_COMUM;
+      if (id === "sem-alvo-depois-com-alvo")
+        return TRILHA_SEM_ALVO_DEPOIS_COM_ALVO;
       // "administracao" usa a trilha REAL do registry (não uma fixture) —
       // é o único jeito de provar que o passo "areas" de produção deriva o
       // corpo de `PERMISSION_DESCRIPTIONS`, e não de um texto copiado aqui.
@@ -260,6 +287,33 @@ describe("TourOverlay", () => {
       { timeout: 1500 },
     );
     expect(screen.queryByText("Passo dois")).not.toBeInTheDocument();
+  });
+
+  /**
+   * Bug real achado por um teste e2e (não por este arquivo) na trilha
+   * `solicitacoes`: um passo sem alvo, seguido por um passo cujo alvo já está
+   * no DOM antes mesmo do `TourOverlay` montar. Sem o reset síncrono em
+   * `useTargetRect`, o efeito de degradação do `TourOverlay` lia o "ausente"
+   * deixado pelo passo anterior (sem alvo) já combinado com o `target` do
+   * passo novo, e fechava o tour antes de `procurar()` rodar — o passo com
+   * alvo já presente nunca chegava a aparecer.
+   */
+  it("não fecha o tour quando um passo sem alvo é seguido por um passo cujo alvo já está no DOM", async () => {
+    montarAlvos(["alvo-ja-presente"]);
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <TourOverlay
+        trackId="sem-alvo-depois-com-alvo"
+        onClose={onClose}
+      />,
+    );
+
+    await screen.findByText("Passo sem alvo");
+    await user.click(screen.getByRole("button", { name: /próximo/i }));
+
+    await screen.findByText("Passo com alvo já presente");
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("Esc encerra sem marcar como concluído", async () => {

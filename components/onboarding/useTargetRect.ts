@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const TIMEOUT_PADRAO_MS = 3000;
 const INTERVALO_BUSCA_MS = 100;
@@ -35,6 +35,29 @@ export function useTargetRect(
   const [estado, setEstado] = useState<EstadoAlvo>(
     target ? "buscando" : "ausente",
   );
+
+  /**
+   * Reset SÍNCRONO, durante o render — não dentro do efeito. Quando `target`
+   * troca (o tour avança de passo), `estado` continua carregando o valor do
+   * ALVO ANTERIOR até o efeito abaixo rodar. Bug real encontrado num teste
+   * e2e: da trilha `solicitacoes`, o passo "requisitos" (sem alvo, `estado`
+   * vira "ausente") é seguido por "por-documento" (com alvo já presente na
+   * tela). No commit em que `indice` avança, o efeito de degradação do
+   * `TourOverlay` — que roda no MESMO commit, reagindo a `estado ===
+   * "ausente"` — ainda lia o "ausente" deixado pelo passo ANTERIOR, agora
+   * combinado com o `target` do passo NOVO, e concluía (errado) que o alvo
+   * novo não foi encontrado — fechando o tour antes mesmo de `procurar()`
+   * rodar. O padrão "ajustar estado durante o render" (comparar com o valor
+   * anterior guardado num ref e chamar `setState` no corpo da função) resolve
+   * porque o React descarta este render e já refaz com o estado corrigido
+   * ANTES de qualquer efeito — inclusive o desta própria função — disparar.
+   */
+  const targetAnteriorRef = useRef(target);
+  if (targetAnteriorRef.current !== target) {
+    targetAnteriorRef.current = target;
+    setRect(null);
+    setEstado(target ? "buscando" : "ausente");
+  }
 
   useEffect(() => {
     if (!target) {
