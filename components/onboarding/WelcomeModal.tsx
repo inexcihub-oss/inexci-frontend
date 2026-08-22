@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import { Check } from "lucide-react";
 import { BOAS_VINDAS, SEU_PAPEL } from "@/lib/onboarding/content";
 import { ALL_PERMISSIONS } from "@/lib/permissions";
 import { useOnboarding } from "./OnboardingProvider";
@@ -88,60 +90,84 @@ export function WelcomeModal({ onFinish }: Props) {
         aria-modal="true"
         aria-labelledby="boas-vindas-titulo"
         tabIndex={-1}
-        className="w-full max-w-lg rounded-3xl border border-white/70 bg-white p-6 shadow-2xl sm:p-8"
+        className="w-full max-w-lg overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl"
       >
-        <p className="text-xs font-medium text-neutral-400">
-          {BOAS_VINDAS.titulo}
-        </p>
-        <h2
-          id="boas-vindas-titulo"
-          className="mt-1 text-xl font-semibold text-neutral-900 sm:text-2xl"
-        >
-          {atual.titulo}
-        </h2>
-
-        {/* Renderiza conteúdo diferente se é lista ou parágrafo */}
-        {temMultiplasAreas && Array.isArray(atual.corpo) ? (
-          <ul className="mt-3 space-y-2 text-sm leading-relaxed text-neutral-600 sm:text-base">
-            {atual.corpo.map((linha, idx) => (
-              <li key={idx} className="flex gap-2">
-                <span className="shrink-0">•</span>
-                <span>{linha}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-sm leading-relaxed text-neutral-600 sm:text-base">
-            {Array.isArray(atual.corpo) ? atual.corpo[0] : atual.corpo}
+        {/*
+          Faixa de marca: é o que tira o diálogo de "caixa branca genérica" —
+          ícone da INEXCI + eyebrow, antes de qualquer texto de conteúdo.
+        */}
+        <div className="flex items-center gap-3 bg-gradient-to-br from-primary-50 via-white to-primary-50 px-6 py-5 sm:px-8">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-primary-100">
+            <Image
+              src="/brand/icon.png"
+              alt=""
+              width={40}
+              height={40}
+              className="h-10 w-10 object-contain"
+            />
+          </div>
+          <p className="min-w-0 text-xs font-semibold uppercase tracking-wide text-primary-800">
+            {BOAS_VINDAS.titulo}
           </p>
-        )}
+        </div>
 
-        <div className="mt-6 flex items-center gap-1.5" aria-hidden>
+        {/*
+          Trilho de progresso segmentado — elemento de assinatura do modal.
+          Três segmentos iguais avisam, antes de qualquer leitura, que são só
+          três passos curtos: é isso que desarma o reflexo de pular.
+        */}
+        <div className="flex gap-1 px-6 sm:px-8" aria-hidden>
           {slides.map((_, i) => (
             <span
               key={i}
-              className={`h-1.5 rounded-full transition-all ${
-                i === slide ? "w-6 bg-neutral-900" : "w-1.5 bg-neutral-200"
+              className={`h-1 flex-1 rounded-full transition-all duration-300 motion-reduce:transition-none ${
+                i <= slide ? "bg-primary-600" : "bg-primary-100"
               }`}
             />
           ))}
         </div>
 
-        <div className="mt-6 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={encerrar}
-            className="rounded-xl px-3 py-2 text-sm font-medium text-neutral-500 hover:bg-neutral-100"
+        {/* Corpo do slide */}
+        <div className="px-6 py-6 sm:px-8 sm:py-7">
+          <h2
+            id="boas-vindas-titulo"
+            className="text-xl font-semibold text-neutral-900 sm:text-2xl"
           >
-            {BOAS_VINDAS.pular}
-          </button>
-          <button
-            type="button"
-            onClick={() => (ehUltimo ? encerrar() : setSlide((s) => s + 1))}
-            className="rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800"
-          >
-            {ehUltimo ? BOAS_VINDAS.comecar : BOAS_VINDAS.avancar}
-          </button>
+            {atual.titulo}
+          </h2>
+
+          {/* Renderiza conteúdo diferente se é lista ou parágrafo */}
+          {temMultiplasAreas && Array.isArray(atual.corpo) ? (
+            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-neutral-600 sm:text-base">
+              {atual.corpo.map((linha, idx) => (
+                <li key={idx} className="flex gap-2">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary-600" />
+                  <span>{linha}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm leading-relaxed text-neutral-600 sm:text-base">
+              {Array.isArray(atual.corpo) ? atual.corpo[0] : atual.corpo}
+            </p>
+          )}
+
+          <div className="mt-6 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={encerrar}
+              className="rounded-xl px-3 py-2 text-sm font-medium text-neutral-500 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+            >
+              {BOAS_VINDAS.pular}
+            </button>
+            <button
+              type="button"
+              onClick={() => (ehUltimo ? encerrar() : setSlide((s) => s + 1))}
+              className="rounded-xl bg-primary-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+            >
+              {ehUltimo ? BOAS_VINDAS.comecar : BOAS_VINDAS.avancar}
+            </button>
+          </div>
         </div>
       </div>
     </div>
