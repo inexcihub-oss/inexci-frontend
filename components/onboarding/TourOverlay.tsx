@@ -64,14 +64,17 @@ export function TourOverlay({ trackId, onClose }: Props) {
   }, [passo?.route, router]);
 
   const avancar = useCallback(() => {
-    setIndice((i) => {
-      if (i >= passos.length - 1) {
-        onClose({ concluido: true });
-        return i;
-      }
-      return i + 1;
-    });
-  }, [passos.length, onClose]);
+    // A decisão de concluir fica FORA do updater de propósito. Dentro dele,
+    // `onClose` roda durante o render do TourOverlay e o `setActiveTour` do
+    // provider vira "Cannot update a component while rendering a different
+    // component" — e o StrictMode, que executa updaters duas vezes, dobrava o
+    // efeito colateral. Updater é para calcular estado, não para disparar ação.
+    if (indice >= passos.length - 1) {
+      onClose({ concluido: true });
+      return;
+    }
+    setIndice((i) => i + 1);
+  }, [indice, passos.length, onClose]);
 
   const voltar = useCallback(() => setIndice((i) => Math.max(0, i - 1)), []);
 

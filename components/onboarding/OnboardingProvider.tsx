@@ -64,13 +64,24 @@ export function OnboardingProvider({
   );
   const [activeTour, setActiveTour] = useState<TrackId | null>(null);
 
+  /**
+   * Espelho do estado, lido por `aplicar` no lugar da forma funcional do
+   * `setState`. Existe para que os efeitos colaterais (agendar o PATCH, marcar
+   * a promoção da sessão) fiquem fora do updater — updater pode reexecutar e
+   * roda durante o render. É atualizado em toda escrita, inclusive nas duas
+   * fora de `aplicar`, para nunca ficar atrás do estado real.
+   */
+  const stateRef = useRef(state);
+
   // O estado chega embutido no /auth/me. Ressincroniza quando o usuário
   // troca (login/logout) sem disparar request extra.
   const usuarioIdRef = useRef<string | null>(user?.id ?? null);
   useEffect(() => {
     if (user?.id !== usuarioIdRef.current) {
       usuarioIdRef.current = user?.id ?? null;
-      setState(normalizeOnboardingState(user?.onboardingState));
+      const doUsuario = normalizeOnboardingState(user?.onboardingState);
+      stateRef.current = doUsuario;
+      setState(doUsuario);
     }
   }, [user?.id, user?.onboardingState]);
 
@@ -162,25 +173,35 @@ export function OnboardingProvider({
       transformar: (atual: OnboardingState) => OnboardingState,
       patch: OnboardingWritablePatch,
     ) => {
-      setState((atual) => {
-        const transformado = transformar(atual);
-        // Promove para "completed" depois de QUALQUER mudança de estado, não
-        // só depois de `completeStep`: `closeTour` também escreve em
-        // `completedSteps` e é o caminho real que fecha a última trilha.
-        const proximo = promoteIfComplete(
-          transformado,
-          tracks.map((t) => t.stepKey),
-        );
-        if (proximo.status === "completed" && atual.status !== "completed") {
-          promovidoNestaSessaoRef.current = true;
-        }
-        const patchFinal: OnboardingWritablePatch =
-          proximo.status !== atual.status
-            ? { ...patch, status: proximo.status }
-            : patch;
-        agendarPersistencia(patchFinal);
-        return proximo;
-      });
+      // Tudo acontece FORA do updater do `setState`. Agendar persistência e
+      // marcar o ref lá dentro são efeitos colaterais em função que o React
+      // pode reexecutar (o StrictMode reexecuta) e que roda durante o render —
+      // foi o que produzia "Cannot update a component while rendering a
+      // different component" quando o `closeTour` era disparado pelo overlay.
+      //
+      // `stateRef` substitui a forma funcional: ele é atualizado na hora, logo
+      // abaixo, então duas chamadas no MESMO tick continuam encadeando sem uma
+      // sobrescrever a outra — que era a única vantagem do updater aqui.
+      const atual = stateRef.current;
+      const transformado = transformar(atual);
+      // Promove para "completed" depois de QUALQUER mudança de estado, não
+      // só depois de `completeStep`: `closeTour` também escreve em
+      // `completedSteps` e é o caminho real que fecha a última trilha.
+      const proximo = promoteIfComplete(
+        transformado,
+        tracks.map((t) => t.stepKey),
+      );
+      if (proximo.status === "completed" && atual.status !== "completed") {
+        promovidoNestaSessaoRef.current = true;
+      }
+      const patchFinal: OnboardingWritablePatch =
+        proximo.status !== atual.status
+          ? { ...patch, status: proximo.status }
+          : patch;
+
+      stateRef.current = proximo;
+      setState(proximo);
+      agendarPersistencia(patchFinal);
     },
     [agendarPersistencia, tracks],
   );
@@ -247,7 +268,9 @@ export function OnboardingProvider({
     // Reset é ação deliberada do usuário: vai direto, sem debounce, e o
     // servidor é a fonte da verdade do estado resultante.
     const novo = await onboardingService.reset();
-    setState(normalizeOnboardingState(novo));
+    const normalizado = normalizeOnboardingState(novo);
+    stateRef.current = normalizado;
+    setState(normalizado);
     setActiveTour(null);
   }, []);
 
