@@ -44,14 +44,42 @@ const TRILHA_OBRIGATORIA: Track = {
   ],
 };
 
+/**
+ * Fixture com um passo `key: "requisitos"` de verdade — nenhum caso acima
+ * exercita esse ramo. Tem DOIS passos (não um só) de propósito: a prova de
+ * "busca uma vez só" (achado 2 da revisão da Task 16) precisa navegar para
+ * trás e para frente dentro da MESMA montagem, e isso exige um passo anterior
+ * para onde voltar.
+ */
+const TRILHA_REQUISITOS: Track = {
+  id: "solicitacoes-requisitos",
+  label: "Criar e enviar uma solicitação",
+  descricao: "…",
+  stepKey: "criar-solicitacao",
+  steps: [
+    { key: "antes", titulo: "Passo antes", corpo: "Corpo antes", target: "alvo-antes" },
+    {
+      key: "requisitos",
+      titulo: "Complete antes de enviar",
+      // `corpo` estático não deve aparecer: o TourOverlay troca por
+      // `comRequisitos(...)` só para este `key`.
+      corpo: "CORPO ESTÁTICO — não deveria renderizar",
+      target: "alvo-requisitos",
+    },
+  ],
+};
+
 vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
   const original = await importOriginal<
     typeof import("@/lib/onboarding/tour-registry")
   >();
   return {
     ...original,
-    trackById: (id: string) =>
-      id === "documentos-do-medico" ? TRILHA_OBRIGATORIA : TRILHA,
+    trackById: (id: string) => {
+      if (id === "documentos-do-medico") return TRILHA_OBRIGATORIA;
+      if (id === "solicitacoes-requisitos") return TRILHA_REQUISITOS;
+      return TRILHA;
+    },
     visibleSteps: (t: Track) => t.steps,
   };
 });
@@ -62,8 +90,12 @@ vi.mock("./OnboardingProvider", () => ({
   }),
 }));
 
+const { fetchRequisitosPendenteMock } = vi.hoisted(() => ({
+  fetchRequisitosPendenteMock: vi.fn(),
+}));
+
 vi.mock("@/services/onboarding-requirements", () => ({
-  fetchRequisitosPendente: vi.fn().mockResolvedValue([]),
+  fetchRequisitosPendente: fetchRequisitosPendenteMock,
 }));
 
 function montarAlvos(nomes: string[]) {
@@ -79,6 +111,7 @@ describe("TourOverlay", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
     vi.clearAllMocks();
+    fetchRequisitosPendenteMock.mockReset().mockResolvedValue([]);
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -211,5 +244,93 @@ describe("TourOverlay", () => {
     primeiro.focus();
     await user.tab({ shift: true });
     expect(document.activeElement).toBe(ultimo);
+  });
+});
+
+/**
+ * Achado 2 da revisão da Task 16: o mock de `fetchRequisitosPendente` acima
+ * só evitava uma chamada axios real — nenhum caso exercitava o efeito de
+ * carga, o corpo dinâmico ou o fallback. Estes três testes fecham a lacuna.
+ */
+describe("TourOverlay — passo 'requisitos' busca os rótulos reais", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    vi.clearAllMocks();
+    fetchRequisitosPendenteMock.mockReset();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("mostra os rótulos vindos do backend no corpo do passo", async () => {
+    fetchRequisitosPendenteMock.mockResolvedValue([
+      "Dados do Paciente",
+      "Hospital",
+    ]);
+    montarAlvos(["alvo-antes", "alvo-requisitos"]);
+    const user = userEvent.setup();
+    render(
+      <TourOverlay trackId="solicitacoes-requisitos" onClose={vi.fn()} />,
+    );
+
+    await screen.findByText("Passo antes");
+    await user.click(screen.getByRole("button", { name: /próximo/i }));
+
+    expect(
+      await screen.findByText(
+        "A solicitação só sai de Pendente com: Dados do Paciente, Hospital. O painel de pendências mostra o que falta a qualquer momento.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("CORPO ESTÁTICO — não deveria renderizar"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("cai para a frase genérica quando o backend não devolve nenhum rótulo", async () => {
+    fetchRequisitosPendenteMock.mockResolvedValue([]);
+    montarAlvos(["alvo-antes", "alvo-requisitos"]);
+    const user = userEvent.setup();
+    render(
+      <TourOverlay trackId="solicitacoes-requisitos" onClose={vi.fn()} />,
+    );
+
+    await screen.findByText("Passo antes");
+    await user.click(screen.getByRole("button", { name: /próximo/i }));
+
+    expect(
+      await screen.findByText(
+        "A solicitação só sai de Pendente quando todos os itens obrigatórios estiverem completos. O painel de pendências mostra o que falta a qualquer momento.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("busca uma única vez por montagem, mesmo voltando e avançando de novo", async () => {
+    fetchRequisitosPendenteMock.mockResolvedValue(["Dados do Paciente"]);
+    montarAlvos(["alvo-antes", "alvo-requisitos"]);
+    const user = userEvent.setup();
+    render(
+      <TourOverlay trackId="solicitacoes-requisitos" onClose={vi.fn()} />,
+    );
+
+    await screen.findByText("Passo antes");
+    await user.click(screen.getByRole("button", { name: /próximo/i }));
+    await screen.findByText(/Dados do Paciente/);
+    expect(fetchRequisitosPendenteMock).toHaveBeenCalledTimes(1);
+
+    // Volta para "antes" e avança de novo para "requisitos": o efeito tem
+    // guarda dupla (`passo?.key !== "requisitos"` e `requisitos !== null`) —
+    // esta é a prova de que ela realmente impede a segunda chamada.
+    await user.click(screen.getByRole("button", { name: /anterior/i }));
+    await screen.findByText("Passo antes");
+    await user.click(screen.getByRole("button", { name: /próximo/i }));
+    await screen.findByText(/Dados do Paciente/);
+
+    expect(fetchRequisitosPendenteMock).toHaveBeenCalledTimes(1);
   });
 });

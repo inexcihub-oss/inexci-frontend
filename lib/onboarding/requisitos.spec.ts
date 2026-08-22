@@ -10,6 +10,17 @@ describe("fetchRequisitosPendente", () => {
   it("devolve só os rótulos bloqueantes do status Pendente", async () => {
     getMock.mockResolvedValue({
       data: [
+        // "Em Agendamento" vem PRIMEIRO de propósito, e com pendência
+        // bloqueante: uma implementação que pegasse `data[0]` em vez de
+        // buscar pelo status passaria com um fixture onde Pendente fosse o
+        // primeiro do array. Aqui ela devolveria ["Definir datas"] e falharia.
+        {
+          status: 4,
+          label: "Em Agendamento",
+          pendencies: [
+            { key: "schedule_dates", label: "Definir datas", blocking: true },
+          ],
+        },
         {
           status: 1,
           label: "Pendente",
@@ -19,7 +30,6 @@ describe("fetchRequisitosPendente", () => {
             { key: "opcional", label: "Algo opcional", blocking: false },
           ],
         },
-        { status: 4, label: "Em Agendamento", pendencies: [] },
       ],
     });
 
