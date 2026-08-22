@@ -1,5 +1,6 @@
 import { Permission, hasAnyArea } from "@/lib/permissions";
 import {
+  TRILHA_AGENDA,
   TRILHA_ATENDIMENTO,
   TRILHA_DOCUMENTOS_MEDICO,
   TRILHA_SOLICITACOES,
@@ -198,6 +199,40 @@ export const TRACKS: Track[] = [
         // estes botões — mostrar o passo seria ensinar o que ele não pode.
         requiresDoctor: true,
         ...TRILHA_ATENDIMENTO.passos.documentos,
+      },
+    ],
+  },
+  {
+    id: "agenda",
+    label: TRILHA_AGENDA.label,
+    descricao: TRILHA_AGENDA.descricao,
+    stepKey: "marcar-consulta",
+    permission: Permission.AGENDA,
+    steps: [
+      {
+        key: "nova-consulta",
+        route: "/agenda",
+        target: "agenda-nova-consulta",
+        required: true,
+        ...TRILHA_AGENDA.passos.novaConsulta,
+      },
+      {
+        key: "horario",
+        target: "agenda-modal-horario",
+        aguardaAcao: true,
+        ...TRILHA_AGENDA.passos.horario,
+      },
+      {
+        key: "status",
+        target: "agenda-consulta-acoes",
+        aguardaAcao: true,
+        ...TRILHA_AGENDA.passos.status,
+      },
+      {
+        key: "lembrete",
+        // Sem alvo de propósito: o lembrete é um `@Cron` do backend, não tem
+        // controle na tela. Card centralizado é a forma honesta de dizer isso.
+        ...TRILHA_AGENDA.passos.lembrete,
       },
     ],
   },

@@ -362,7 +362,7 @@ export function NewAppointmentModal({
         </div>
 
         {/* Data + horário */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3" data-tour="agenda-modal-horario">
           <div className="flex flex-col gap-1">
             <label className="ds-label mb-0">
               Data<span className="text-red-500 ml-0.5">*</span>

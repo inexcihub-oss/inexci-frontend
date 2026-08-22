@@ -199,4 +199,16 @@ describe("TRACKS", () => {
     });
     expect(passos.map((p) => p.key)).not.toContain("documentos");
   });
+
+  it("a trilha de agenda tem quatro passos e o último não depende de alvo", () => {
+    const trilha = trackById("agenda")!;
+    expect(trilha.permission).toBe(Permission.AGENDA);
+    expect(trilha.steps.map((p) => p.key)).toEqual([
+      "nova-consulta",
+      "horario",
+      "status",
+      "lembrete",
+    ]);
+    expect(trilha.steps.at(-1)!.target).toBeUndefined();
+  });
 });

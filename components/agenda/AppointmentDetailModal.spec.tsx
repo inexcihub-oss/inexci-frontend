@@ -110,6 +110,21 @@ describe("AppointmentDetailModal", () => {
   });
 
   /**
+   * Âncora do tour de onboarding (trilha "agenda", passo "status") em
+   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
+   * trocar o elemento) quebra o tour em silêncio.
+   */
+  it('expõe data-tour="agenda-consulta-acoes" na linha de botões de status', () => {
+    renderModal("scheduled");
+
+    expect(
+      screen.getByRole("button", { name: /Confirmar/i }).closest(
+        '[data-tour="agenda-consulta-acoes"]',
+      ),
+    ).not.toBeNull();
+  });
+
+  /**
    * Quem agenda não atende: a secretária marca, confirma e cancela a consulta,
    * mas abrir a ficha é ato do médico.
    */

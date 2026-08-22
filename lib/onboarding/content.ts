@@ -160,3 +160,31 @@ export const TRILHA_SOLICITACOES = {
     },
   },
 };
+
+export const TRILHA_AGENDA = {
+  label: "Marcar uma consulta",
+  descricao:
+    "Agendar, confirmar e remarcar — e o lembrete que o paciente recebe sozinho.",
+  passos: {
+    novaConsulta: {
+      titulo: "Comece por aqui",
+      corpo:
+        "Este botão abre o formulário da consulta, já no dia que estiver aberto na agenda.",
+    },
+    horario: {
+      titulo: "Data, hora e duração",
+      corpo:
+        "A plataforma recusa dois atendimentos sobrepostos para o mesmo médico e avisa quando o horário cai fora do expediente.",
+    },
+    status: {
+      titulo: "Confirmar, remarcar ou cancelar",
+      corpo:
+        "Abra a consulta na agenda e mude o status por aqui. Cancelada libera o horário para outra marcação.",
+    },
+    lembrete: {
+      titulo: "O lembrete vai sozinho",
+      corpo:
+        "O paciente recebe um aviso 24 h antes, por e-mail. Ninguém da equipe precisa mandar.",
+    },
+  },
+};

@@ -143,7 +143,7 @@ export function AppointmentDetailModal({
 
         {/* Ações de status */}
         {actions.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" data-tour="agenda-consulta-acoes">
             {actions.map((a) => (
               <button
                 key={a.status}

@@ -101,6 +101,21 @@ describe("NewAppointmentModal — clínica e aviso de horário", () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * Âncora do tour de onboarding (trilha "agenda", passo "horario") em
+   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
+   * trocar o elemento) quebra o tour em silêncio.
+   */
+  it('expõe data-tour="agenda-modal-horario" no bloco de data e horário', () => {
+    abrirModal();
+
+    expect(
+      screen
+        .getByPlaceholderText("DD/MM/AAAA")
+        .closest('[data-tour="agenda-modal-horario"]'),
+    ).not.toBeNull();
+  });
+
   it("não avisa quando o horário está dentro do funcionamento", async () => {
     abrirModal();
     fireEvent.change(screen.getByLabelText(/clínica/i), {

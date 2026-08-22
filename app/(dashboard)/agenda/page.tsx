@@ -317,6 +317,7 @@ export default function AgendaPage() {
 
             <button
               onClick={() => setNewModal({})}
+              data-tour="agenda-nova-consulta"
               className="flex items-center gap-1.5 h-8 px-2 sm:px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
