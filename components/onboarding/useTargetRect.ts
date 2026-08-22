@@ -69,7 +69,7 @@ export function useTargetRect(
         elemento = null;
         setRect(null);
         setEstado("buscando");
-        if (!intervalo) intervalo = setInterval(procurar, INTERVALO_BUSCA_MS);
+        reiniciarBusca();
         return;
       }
       setRect(elemento.getBoundingClientRect());
@@ -78,13 +78,32 @@ export function useTargetRect(
     const parar = () => {
       if (intervalo) clearInterval(intervalo);
       intervalo = null;
+      if (limite) clearTimeout(limite);
+      limite = null;
+    };
+
+    // Rearma tanto o polling quanto o teto de desistência. Usada na busca
+    // inicial e de novo quando um alvo já encontrado some do DOM (ex.: passo
+    // `aguardaAcao` cujo modal foi fechado sem a ação ser concluída) — sem
+    // rearmar o `limite` aqui, um alvo que aparece e some ficaria em
+    // "buscando" para sempre, com o polling rodando até o componente
+    // desmontar, contrariando o próprio motivo do timeout existir.
+    const reiniciarBusca = () => {
+      if (!intervalo) intervalo = setInterval(procurar, INTERVALO_BUSCA_MS);
+      if (limite) clearTimeout(limite);
+      limite = setTimeout(() => {
+        parar();
+        if (!cancelado) {
+          setRect(null);
+          setEstado("ausente");
+        }
+      }, timeoutMs);
     };
 
     const fixar = (el: HTMLElement) => {
       elemento = el;
+      // `parar()` já limpa `intervalo` e `limite` — não repita a limpeza aqui.
       parar();
-      if (limite) clearTimeout(limite);
-      limite = null;
 
       el.scrollIntoView({ block: "center", behavior: "smooth" });
       medir();
@@ -104,21 +123,11 @@ export function useTargetRect(
     };
 
     procurar();
-    if (!elemento) {
-      intervalo = setInterval(procurar, INTERVALO_BUSCA_MS);
-      limite = setTimeout(() => {
-        parar();
-        if (!cancelado) {
-          setRect(null);
-          setEstado("ausente");
-        }
-      }, timeoutMs);
-    }
+    if (!elemento) reiniciarBusca();
 
     return () => {
       cancelado = true;
       parar();
-      if (limite) clearTimeout(limite);
       observer?.disconnect();
       mutacoes?.disconnect();
       window.removeEventListener("scroll", medir, true);

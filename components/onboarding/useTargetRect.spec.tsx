@@ -184,4 +184,33 @@ describe("useTargetRect", () => {
     );
     expect(removeSpy).toHaveBeenCalledWith("resize", expect.any(Function));
   });
+
+  it("volta a desistir (estado ausente) se o alvo some de novo e não reaparece dentro do timeout", async () => {
+    vi.useFakeTimers();
+    const alvo = document.createElement("div");
+    alvo.setAttribute("data-tour", "some-e-nao-volta");
+    document.body.appendChild(alvo);
+
+    const { result } = renderHook(() =>
+      useTargetRect("some-e-nao-volta", { timeoutMs: 1000 }),
+    );
+    await act(async () => {
+      vi.advanceTimersByTime(50);
+    });
+    expect(result.current.estado).toBe("encontrado");
+
+    alvo.remove();
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(result.current.estado).toBe("buscando");
+
+    // O alvo não volta. Sem rearmar o teto de desistência quando o elemento
+    // já encontrado sai do DOM, o hook ficaria em "buscando" para sempre — é
+    // exatamente o que este teste prova que não acontece mais.
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(result.current.estado).toBe("ausente");
+  });
 });
