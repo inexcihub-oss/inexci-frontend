@@ -70,7 +70,7 @@ export const TOUR_UI = {
 export const TRILHA_DOCUMENTOS_MEDICO = {
   label: "Preparar seus documentos",
   descricao:
-    "Assinatura e cabeçalho aparecem no laudo, na receita, no atestado e no pedido de exame.",
+    "Assinatura e cabeçalho aparecem no laudo, na receita, no atestado e nos exames.",
   passos: {
     assinatura: {
       titulo: "Envie sua assinatura",
@@ -85,7 +85,7 @@ export const TRILHA_DOCUMENTOS_MEDICO = {
     cabecalhoTexto: {
       titulo: "O texto do cabeçalho",
       corpo:
-        "Nome, especialidade, CRM, endereço e contato. É o que identifica você em receita, atestado e pedido de exame.",
+        "Nome, especialidade, CRM, endereço e contato. É o que identifica você em receita, atestado e exames.",
     },
     previa: {
       titulo: "Confira antes de emitir",
@@ -98,7 +98,7 @@ export const TRILHA_DOCUMENTOS_MEDICO = {
 export const TRILHA_ATENDIMENTO = {
   label: "Atender um paciente",
   descricao:
-    "Da consulta agendada à ficha finalizada, incluindo receita, atestado e pedido de exame.",
+    "Da consulta agendada à ficha finalizada, incluindo receita, atestado e exames.",
   passos: {
     hub: {
       titulo: "Suas consultas ficam aqui",
@@ -131,17 +131,17 @@ export const TRILHA_ATENDIMENTO = {
 export const TRILHA_SOLICITACOES = {
   label: "Criar e enviar uma solicitação",
   descricao:
-    "Do wizard ao envio para o convênio, incluindo criar a solicitação a partir de um documento.",
+    "Do formulário ao envio para o convênio, incluindo criar a solicitação a partir de um documento.",
   passos: {
     abrirWizard: {
       titulo: "Comece por aqui",
       corpo:
-        "Este botão abre o wizard. Ele pede paciente, hospital, convênio e procedimento — nessa ordem.",
+        "Clique para abrir a nova solicitação: preencha paciente, hospital, convênio e procedimento, nessa ordem.",
     },
     cadastroNoModal: {
       titulo: "Cadastre sem sair daqui",
       corpo:
-        "Paciente, hospital, convênio ou procedimento que ainda não existem podem ser criados por este botão, sem abandonar a solicitação.",
+        "Cadastre paciente, hospital, convênio ou procedimento que ainda não existam direto por este botão, sem sair da solicitação.",
     },
     requisitos: {
       titulo: "Complete antes de enviar",
@@ -174,7 +174,7 @@ export const TRILHA_CADASTROS = {
     menu: {
       titulo: "Hospitais, convênios e fornecedores",
       corpo:
-        "Ficam neste menu — e também podem ser criados de dentro do wizard da solicitação, sem largar o que você estava fazendo.",
+        "Ficam neste menu — e também podem ser criados de dentro da nova solicitação, sem largar o que você estava fazendo.",
     },
     clinicas: {
       titulo: "Onde você atende",
@@ -184,7 +184,7 @@ export const TRILHA_CADASTROS = {
     procedimentos: {
       titulo: "Modelos que poupam redigitação",
       corpo:
-        "Um procedimento guarda TUSS e OPME prontos. Na próxima solicitação igual, você parte do modelo.",
+        "Cada procedimento guarda pronto o código de identificação (TUSS) e os materiais usados (OPME). Na próxima solicitação igual, você parte do modelo.",
     },
   },
 };
@@ -259,7 +259,7 @@ export const TRILHA_AGENDA = {
     novaConsulta: {
       titulo: "Comece por aqui",
       corpo:
-        "Este botão abre o formulário da consulta, já no dia que estiver aberto na agenda.",
+        "Clique para abrir o formulário da consulta, já no dia que estiver aberto na agenda.",
     },
     horario: {
       titulo: "Data, hora e duração",
