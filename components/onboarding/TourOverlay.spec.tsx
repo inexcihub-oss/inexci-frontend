@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { PERMISSION_DESCRIPTIONS } from "@/lib/permissions";
+import type { TrackId } from "@/lib/onboarding/state";
 import type { Track } from "@/lib/onboarding/tour-registry";
+import { trackById, visibleSteps } from "@/lib/onboarding/tour-registry";
 import { TourOverlay } from "./TourOverlay";
 
 const pushMock = vi.fn();
@@ -138,6 +141,10 @@ vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
       if (id === "com-rota") return TRILHA_COM_ROTA;
       if (id === "aguarda-acao") return TRILHA_AGUARDA_ACAO;
       if (id === "passo-comum-sem-alvo") return TRILHA_PASSO_COMUM;
+      // "administracao" usa a trilha REAL do registry (não uma fixture) —
+      // é o único jeito de provar que o passo "areas" de produção deriva o
+      // corpo de `PERMISSION_DESCRIPTIONS`, e não de um texto copiado aqui.
+      if (id === "administracao") return original.trackById(id);
       return TRILHA;
     },
     visibleSteps: (t: Track) => t.steps,
@@ -164,6 +171,36 @@ function montarAlvos(nomes: string[]) {
     el.setAttribute("data-tour", nome);
     el.textContent = nome;
     document.body.appendChild(el);
+  }
+}
+
+/**
+ * Monta o `TourOverlay` da trilha REAL `trackId` (via `trackById`/
+ * `visibleSteps` mockados acima, que encaminham "administracao" para o
+ * registry de produção) e avança até o passo `key`, clicando em "Próximo"
+ * pelos passos anteriores. Monta antecipadamente o alvo de qualquer passo
+ * anterior que declare `target`, para nenhum deles ser pulado ou interromper
+ * o tour por alvo ausente.
+ */
+async function renderOverlayNoPasso(trackId: TrackId, key: string) {
+  const track = trackById(trackId)!;
+  const passos = visibleSteps(track, {
+    permissions: [],
+    isDoctor: false,
+    isAccountOwner: false,
+  });
+  const indiceAlvo = passos.findIndex((p) => p.key === key);
+  const anteriores = passos.slice(0, indiceAlvo);
+  montarAlvos(
+    anteriores.filter((p) => p.target).map((p) => p.target as string),
+  );
+
+  const user = userEvent.setup();
+  render(<TourOverlay trackId={trackId} onClose={vi.fn()} />);
+
+  for (const passo of anteriores) {
+    await screen.findByText(passo.titulo, {}, { timeout: 4000 });
+    await user.click(screen.getByRole("button", { name: /próximo/i }));
   }
 }
 
@@ -459,5 +496,37 @@ describe("TourOverlay — passo 'requisitos' busca os rótulos reais", () => {
     await screen.findByText(/Dados do Paciente/);
 
     expect(fetchRequisitosPendenteMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * Task 6: o passo "areas" da trilha `administracao` é o segundo caso (depois
+ * de "requisitos") em que `corpoDoPasso` monta o texto em runtime a partir de
+ * outro módulo — aqui, `PERMISSION_DESCRIPTIONS` (`lib/permissions.ts`), não
+ * do backend. O teste prova a DERIVAÇÃO, não um texto copiado: lê os valores
+ * do próprio módulo e afirma que todos aparecem no balão.
+ */
+describe("TourOverlay — passo 'areas' da trilha administracao", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    vi.clearAllMocks();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("descreve as quatro permissões a partir de lib/permissions", async () => {
+    await renderOverlayNoPasso("administracao", "areas");
+
+    const balao = await screen.findByRole("dialog");
+    for (const descricao of Object.values(PERMISSION_DESCRIPTIONS)) {
+      expect(balao).toHaveTextContent(descricao);
+    }
   });
 });

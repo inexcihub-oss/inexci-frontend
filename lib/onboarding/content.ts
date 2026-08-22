@@ -189,6 +189,45 @@ export const TRILHA_CADASTROS = {
   },
 };
 
+/**
+ * A descrição de cada área não é redigitada aqui: `comAreas` recebe a lista
+ * pronta (vinda de `PERMISSION_DESCRIPTIONS`, em `lib/permissions.ts`) para
+ * este módulo não precisar importar `permissions` e criar uma dependência
+ * cruzada entre copy e regra de acesso.
+ */
+export const TRILHA_ADMINISTRACAO = {
+  label: "Montar sua equipe",
+  descricao: "Convidar colaboradores, definir áreas e vincular aos médicos.",
+  passos: {
+    convidar: {
+      titulo: "Convide quem trabalha com você",
+      corpo:
+        "O colaborador recebe um e-mail e define a própria senha. Você não digita senha por ninguém.",
+    },
+    areas: {
+      titulo: "Escolha o que cada um acessa",
+      corpo: "", // montado em runtime — ver `comAreas` abaixo
+      /**
+       * Lê as descrições de `lib/permissions.ts` em vez de repetir o texto
+       * aqui. Recebe a lista pronta para não importar `permissions` dentro da
+       * copy e criar dependência cruzada.
+       */
+      comAreas: (descricoes: string[]) =>
+        `São quatro áreas independentes: ${descricoes.join(" ")}`,
+    },
+    vinculo: {
+      titulo: "Vincule ao médico certo",
+      corpo:
+        "Na ficha do colaborador, escolha de quais médicos ele enxerga a agenda, o prontuário e as solicitações.",
+    },
+    ciclo: {
+      titulo: "Ativar, desativar, remover",
+      corpo:
+        "Desativar corta o acesso na hora e preserva o histórico. Remover é definitivo.",
+    },
+  },
+};
+
 export const TRILHA_AGENDA = {
   label: "Marcar uma consulta",
   descricao:

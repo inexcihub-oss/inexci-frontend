@@ -330,6 +330,7 @@ export default function ColaboradoresPage() {
           <Button
             variant="primary"
             size="md"
+            data-tour="admin-novo-colaborador"
             className="flex-1 sm:flex-none min-h-[44px]"
             onClick={() => setCreateModalOpen(true)}
           >

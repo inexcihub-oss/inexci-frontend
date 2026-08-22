@@ -81,7 +81,7 @@ export function PermissionsSection({ value, isDoctor, onChange }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-4 md:gap-5">
+    <div data-tour="admin-areas" className="flex flex-col gap-4 md:gap-5">
       {/* Perfil pronto */}
       <div className="flex flex-col">
         <label htmlFor="perfil-colaborador" className="ds-label">

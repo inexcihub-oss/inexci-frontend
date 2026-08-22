@@ -236,4 +236,36 @@ describe("TRACKS", () => {
     // mas continua vendo os outros três
     expect(passos).toHaveLength(3);
   });
+
+  it("a trilha de administração exige a área e tem quatro passos, só o de convidar obrigatório", () => {
+    const trilha = trackById("administracao")!;
+    expect(trilha.permission).toBe(Permission.ADMINISTRACAO);
+    expect(trilha.steps.map((p) => p.key)).toEqual([
+      "convidar",
+      "areas",
+      "vinculo",
+      "ciclo",
+    ]);
+    expect(trilha.steps.filter((p) => p.required).map((p) => p.key)).toEqual([
+      "convidar",
+    ]);
+    // "areas" mora dentro do modal de edição do colaborador — o alvo só
+    // existe depois de o usuário abrir a ficha, daí `aguardaAcao`.
+    expect(trilha.steps.find((p) => p.key === "areas")?.aguardaAcao).toBe(
+      true,
+    );
+    // "vinculo" e "ciclo" não têm alvo real possível no primeiro tour: a
+    // ficha do colaborador e a lista preenchida ainda não existem.
+    expect(trilha.steps.find((p) => p.key === "vinculo")?.target).toBeUndefined();
+    expect(trilha.steps.find((p) => p.key === "ciclo")?.target).toBeUndefined();
+  });
+
+  it("quem não tem Administração não vê a trilha de administração", () => {
+    const trilhas = visibleTracks({
+      permissions: [Permission.AGENDA, Permission.ATENDIMENTO],
+      isDoctor: false,
+      isAccountOwner: false,
+    });
+    expect(trilhas.map((t) => t.id)).not.toContain("administracao");
+  });
 });

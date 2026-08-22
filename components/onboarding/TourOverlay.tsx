@@ -3,9 +3,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { TOUR_UI, TRILHA_SOLICITACOES } from "@/lib/onboarding/content";
+import {
+  TOUR_UI,
+  TRILHA_ADMINISTRACAO,
+  TRILHA_SOLICITACOES,
+} from "@/lib/onboarding/content";
+import { PERMISSION_DESCRIPTIONS } from "@/lib/permissions";
 import type { TrackId } from "@/lib/onboarding/state";
-import { trackById, visibleSteps } from "@/lib/onboarding/tour-registry";
+import {
+  trackById,
+  visibleSteps,
+  type TourStep,
+} from "@/lib/onboarding/tour-registry";
 import { fetchRequisitosPendente } from "@/services/onboarding-requirements";
 import { useOnboarding } from "./OnboardingProvider";
 import { TIMEOUT_AGUARDA_ACAO_MS, useTargetRect } from "./useTargetRect";
@@ -13,6 +22,33 @@ import { TIMEOUT_AGUARDA_ACAO_MS, useTargetRect } from "./useTargetRect";
 const PADDING_FURO = 8;
 const LARGURA_BALAO = 320;
 const MARGEM = 16;
+
+/** Estático: as quatro descrições não mudam por sessão. */
+const DESCRICOES_DE_AREA = Object.values(PERMISSION_DESCRIPTIONS);
+
+/**
+ * Corpo do passo atual. A maioria vem pronta de `passo.corpo`, mas dois
+ * passos são montados em runtime a partir de dado assíncrono ou de outro
+ * módulo — cada `key` especial ganha um `case` aqui em vez de uma cascata de
+ * ternários no JSX.
+ */
+function corpoDoPasso(
+  passo: TourStep,
+  ctx: { requisitos: string[] | null; descricoesDeArea: string[] },
+): string {
+  switch (passo.key) {
+    case "requisitos":
+      return TRILHA_SOLICITACOES.passos.requisitos.comRequisitos(
+        ctx.requisitos ?? [],
+      );
+    case "areas":
+      return TRILHA_ADMINISTRACAO.passos.areas.comAreas(
+        ctx.descricoesDeArea,
+      );
+    default:
+      return passo.corpo;
+  }
+}
 
 interface Props {
   trackId: TrackId;
@@ -282,11 +318,10 @@ export function TourOverlay({ trackId, onClose }: Props) {
           {passo.titulo}
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-neutral-600">
-          {passo.key === "requisitos"
-            ? TRILHA_SOLICITACOES.passos.requisitos.comRequisitos(
-                requisitos ?? [],
-              )
-            : passo.corpo}
+          {corpoDoPasso(passo, {
+            requisitos,
+            descricoesDeArea: DESCRICOES_DE_AREA,
+          })}
         </p>
 
         <div className="mt-5 flex items-center justify-end gap-2">

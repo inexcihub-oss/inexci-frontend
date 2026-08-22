@@ -1,5 +1,6 @@
 import { Permission, hasAnyArea } from "@/lib/permissions";
 import {
+  TRILHA_ADMINISTRACAO,
   TRILHA_AGENDA,
   TRILHA_ATENDIMENTO,
   TRILHA_CADASTROS,
@@ -279,6 +280,39 @@ export const TRACKS: Track[] = [
         // classe do `SurgeryRequestsController`: Solicitações, não Administração.
         permission: Permission.SOLICITACOES,
         ...TRILHA_CADASTROS.passos.procedimentos,
+      },
+    ],
+  },
+  {
+    id: "administracao",
+    label: TRILHA_ADMINISTRACAO.label,
+    descricao: TRILHA_ADMINISTRACAO.descricao,
+    stepKey: "convidar-colaborador",
+    permission: Permission.ADMINISTRACAO,
+    steps: [
+      {
+        key: "convidar",
+        route: "/colaboradores",
+        target: "admin-novo-colaborador",
+        required: true,
+        ...TRILHA_ADMINISTRACAO.passos.convidar,
+      },
+      {
+        key: "areas",
+        target: "admin-areas",
+        aguardaAcao: true,
+        ...TRILHA_ADMINISTRACAO.passos.areas,
+      },
+      {
+        key: "vinculo",
+        // Sem alvo: o vínculo mora na ficha de um colaborador que ainda não
+        // existe para quem está fazendo o onboarding.
+        ...TRILHA_ADMINISTRACAO.passos.vinculo,
+      },
+      {
+        key: "ciclo",
+        // Idem: as ações de linha só existem com a lista preenchida.
+        ...TRILHA_ADMINISTRACAO.passos.ciclo,
       },
     ],
   },

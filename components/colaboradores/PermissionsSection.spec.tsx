@@ -118,6 +118,21 @@ describe("PermissionsSection", () => {
     ]);
   });
 
+  /**
+   * Âncora do tour de onboarding (`lib/onboarding/tour-registry.ts`, trilha
+   * `administracao`, passo `areas`). Sem este teste, mover ou remover o
+   * atributo do elemento raiz quebra o tour em silêncio.
+   */
+  it('expõe data-tour="admin-areas" no elemento raiz', () => {
+    const { container } = render(
+      <PermissionsSection value={[]} isDoctor={false} onChange={vi.fn()} />,
+    );
+
+    expect(
+      container.querySelector('[data-tour="admin-areas"]'),
+    ).not.toBeNull();
+  });
+
   it("não deixa desmarcar uma caixa travada quando é médico", () => {
     const onChange = vi.fn();
     render(<PermissionsSection value={[]} isDoctor onChange={onChange} />);
