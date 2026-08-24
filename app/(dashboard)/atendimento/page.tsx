@@ -37,6 +37,8 @@ import {
   HubTab,
   hubTabQuery,
 } from "@/lib/atendimento-hub";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
+import { criarConsultaDemo } from "@/lib/onboarding/demo-data";
 
 const STATUS_BADGE: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 text-blue-700 border-blue-200",
@@ -50,7 +52,7 @@ export default function AtendimentoHubPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast, showSuccess, showError, hideToast } = useToast();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const podeAgenda = can(Permission.AGENDA);
 
   const [tab, setTab] = useState<HubTab>("today");
@@ -61,6 +63,12 @@ export default function AtendimentoHubPage() {
   } | null>(null);
   const [detail, setDetail] = useState<Appointment | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Passo "iniciar" da trilha Atendimento: abre o modal de detalhe com uma
+  // consulta fabricada, só para mostrar onde fica "Iniciar atendimento".
+  useOnboardingAction("atendimento-abrir-detalhe-demo", () =>
+    setDetail(criarConsultaDemo(user?.doctorProfile?.id ?? "")),
+  );
 
   const { data: doctors = [] } = useAvailableDoctors();
   const doctorNameById = useMemo(() => {

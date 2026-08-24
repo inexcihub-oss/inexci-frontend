@@ -14,6 +14,7 @@ import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { NewCollaboratorModal } from "@/components/colaboradores/NewCollaboratorModal";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 import {
   useReactTable,
   getCoreRowModel,
@@ -42,6 +43,13 @@ export default function ColaboradoresPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
   const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  // Passo "areas" da trilha Administração: abre o modal de novo colaborador
+  // ao entrar no passo — é lá dentro que vive `admin-areas`.
+  useOnboardingAction("administracao-abrir-novo-colaborador", () =>
+    setCreateModalOpen(true),
+  );
+
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
     id: string | null;

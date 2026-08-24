@@ -45,6 +45,8 @@ import {
   SC_FROM_DOCUMENT_EXTRACTION_KEY,
   setScFromDocumentStorage,
 } from "@/lib/sc-from-document-background";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 
 const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "pendente", title: "Pendente", status: "Pendente", cards: [] },
@@ -75,6 +77,7 @@ export default function ProcedimentosCirurgicos() {
   const userId = user?.id;
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+  const { executarAcao } = useOnboarding();
   const [isNoActiveDoctorModalOpen, setIsNoActiveDoctorModalOpen] =
     useState(false);
   const [hasActiveDoctors, setHasActiveDoctors] = useState<boolean | null>(
@@ -128,6 +131,16 @@ export default function ProcedimentosCirurgicos() {
     }
     setIsNewRequestOpen(true);
   }, [ensureAdminHasActiveDoctor]);
+
+  // Passo "cadastro-no-modal" da trilha Solicitações: abre o wizard e pede
+  // a ele para já mostrar o painel de procedimento, onde vive o botão "Novo"
+  // (`sc-wizard-novo-cadastro`). O wizard registra
+  // "sc-abrir-selecao-procedimento" desde o próprio mount (Task 5), então já
+  // está disponível quando este passo dispara.
+  useOnboardingAction("sc-abrir-cadastro-transversal", () => {
+    setIsNewRequestOpen(true);
+    executarAcao("sc-abrir-selecao-procedimento");
+  });
 
   const handleUploadDocumentSuccess = useCallback(
     (response: ExtractFromDocumentResponse) => {
