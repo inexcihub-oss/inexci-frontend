@@ -16,6 +16,7 @@ import {
   type TourStep,
 } from "@/lib/onboarding/tour-registry";
 import { fetchRequisitosPendente } from "@/services/onboarding-requirements";
+import { STATUS_NUMBER_TO_STRING } from "@/services/surgery-request.service";
 import { useOnboarding } from "./OnboardingProvider";
 import { TIMEOUT_AGUARDA_ACAO_MS, useTargetRect } from "./useTargetRect";
 
@@ -44,6 +45,10 @@ function corpoDoPasso(
     case "requisitos":
       return TRILHA_SOLICITACOES.passos.requisitos.comRequisitos(
         ctx.requisitos ?? [],
+      );
+    case "kanban-status":
+      return TRILHA_SOLICITACOES.passos.kanbanStatus.comStatus(
+        Object.values(STATUS_NUMBER_TO_STRING),
       );
     case "areas":
       return TRILHA_ADMINISTRACAO.passos.areas.comAreas(

@@ -5,6 +5,7 @@ import { PERMISSION_DESCRIPTIONS } from "@/lib/permissions";
 import type { TrackId } from "@/lib/onboarding/state";
 import type { Track } from "@/lib/onboarding/tour-registry";
 import { trackById, visibleSteps } from "@/lib/onboarding/tour-registry";
+import { STATUS_NUMBER_TO_STRING } from "@/services/surgery-request.service";
 import { TourOverlay } from "./TourOverlay";
 
 const pushMock = vi.fn();
@@ -13,8 +14,16 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/solicitacoes-cirurgicas",
 }));
 
+/**
+ * Fixture genérica usada pelos testes de comportamento do `TourOverlay`
+ * (posicionamento, navegação, acessibilidade) que não têm relação com uma
+ * trilha real. `trackId` era "solicitacoes" até a Task 4 desta trilha passar
+ * a ter um passo ("kanban-status") que exige a trilha REAL do registry — o
+ * id mudou para "trilha-generica" para não colidir com o passthrough de
+ * `trackById` adicionado para "solicitacoes" (ver comentário logo abaixo).
+ */
 const TRILHA: Track = {
-  id: "solicitacoes",
+  id: "trilha-generica",
   label: "Criar e enviar uma solicitação",
   descricao: "…",
   stepKey: "criar-solicitacao",
@@ -189,6 +198,9 @@ vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
       // é o único jeito de provar que o passo "areas" de produção deriva o
       // corpo de `PERMISSION_DESCRIPTIONS`, e não de um texto copiado aqui.
       if (id === "administracao") return original.trackById(id);
+      // Mesmo raciocínio para "solicitacoes": o passo "kanban-status" deriva
+      // o corpo de `STATUS_NUMBER_TO_STRING`, e só a trilha REAL prova isso.
+      if (id === "solicitacoes") return original.trackById(id);
       return TRILHA;
     },
     visibleSteps: (t: Track) => t.steps,
@@ -275,14 +287,14 @@ describe("TourOverlay", () => {
 
   it("mostra o primeiro passo", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     expect(await screen.findByText("Passo um")).toBeInTheDocument();
   });
 
   it("é um diálogo com rótulo acessível", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     expect(dialogo).toHaveAttribute("aria-modal", "true");
@@ -300,7 +312,7 @@ describe("TourOverlay", () => {
   it("pula em silêncio o passo cujo alvo não existe", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     const user = userEvent.setup();
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     await screen.findByText("Passo um");
     await user.click(screen.getByRole("button", { name: /próximo/i }));
@@ -343,7 +355,7 @@ describe("TourOverlay", () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     const onClose = vi.fn();
     const user = userEvent.setup();
-    render(<TourOverlay trackId="solicitacoes" onClose={onClose} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={onClose} />);
 
     await screen.findByText("Passo um");
     await user.keyboard("{Escape}");
@@ -355,7 +367,7 @@ describe("TourOverlay", () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     const onClose = vi.fn();
     const user = userEvent.setup();
-    render(<TourOverlay trackId="solicitacoes" onClose={onClose} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={onClose} />);
 
     await screen.findByText("Passo um");
     await user.click(screen.getByRole("button", { name: /próximo/i }));
@@ -369,7 +381,7 @@ describe("TourOverlay", () => {
 
   it("mostra o progresso do passo atual", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     expect(await screen.findByText(/1 de 3/)).toBeInTheDocument();
   });
@@ -382,7 +394,7 @@ describe("TourOverlay", () => {
    */
   it("anuncia a troca de passo para leitor de tela (aria-live no bloco de texto)", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     const blocoDeTexto = dialogo.querySelector('[aria-live="polite"]');
@@ -396,7 +408,7 @@ describe("TourOverlay", () => {
    */
   it("rotula o contador de passos com um aria-label descritivo", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     const contador = await screen.findByText("1 de 3");
     expect(contador).toHaveAttribute("aria-label", "Passo 1 de 3");
@@ -410,7 +422,7 @@ describe("TourOverlay", () => {
    */
   it("usa contraste AA no contador do passo e no botão 'Sair do tour'", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     const contador = await screen.findByText("1 de 3");
     expect(contador).toHaveClass("text-neutral-500");
@@ -453,7 +465,7 @@ describe("TourOverlay", () => {
    */
   it("o foco inicial cai no diálogo, não no botão 'Sair do tour'", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     expect(document.activeElement).toBe(dialogo);
@@ -462,7 +474,7 @@ describe("TourOverlay", () => {
   it("prende o foco dentro do balão nos dois sentidos", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     const user = userEvent.setup();
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     // O foco tem que ENTRAR no balão sozinho, já no primeiro passo.
@@ -492,7 +504,7 @@ describe("TourOverlay", () => {
    */
   it("libera cliques na página: só o balão captura ponteiro, o container não", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     const container = dialogo.parentElement;
@@ -723,7 +735,7 @@ describe("TourOverlay — balão não fica atrás da BottomNavBar no mobile", ()
     document.body.appendChild(alvo);
     montarAlvos(["alvo-tres"]);
 
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     const top = parseFloat((dialogo as HTMLElement).style.top);
@@ -804,7 +816,7 @@ describe("TourOverlay — balão não cobre o próprio alvo", () => {
     document.body.appendChild(alvo);
     montarAlvos(["alvo-tres"]);
 
-    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     const top = parseFloat((dialogo as HTMLElement).style.top);
@@ -840,6 +852,31 @@ describe("TourOverlay — passo 'areas' da trilha administracao", () => {
     const balao = await screen.findByRole("dialog");
     for (const descricao of Object.values(PERMISSION_DESCRIPTIONS)) {
       expect(balao).toHaveTextContent(descricao);
+    }
+  });
+});
+
+describe("TourOverlay — passo 'kanban-status' da trilha solicitacoes", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    vi.clearAllMocks();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  it("lista os nove status a partir de STATUS_NUMBER_TO_STRING", async () => {
+    await renderOverlayNoPasso("solicitacoes", "kanban-status");
+
+    const balao = await screen.findByRole("dialog");
+    for (const rotulo of Object.values(STATUS_NUMBER_TO_STRING)) {
+      expect(balao).toHaveTextContent(rotulo);
     }
   });
 });

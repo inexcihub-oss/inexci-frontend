@@ -52,7 +52,7 @@ export const KanbanBoard = memo<KanbanBoardProps>(({ initialColumns }) => {
   }, []);
 
   return (
-    <div className="relative h-full">
+    <div className="relative h-full" data-tour="sc-kanban-colunas">
       <div
         ref={scrollRef}
         className="flex items-start gap-3 lg:gap-4 h-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory lg:snap-none pb-4 px-1 sm:px-0"

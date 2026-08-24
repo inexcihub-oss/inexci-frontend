@@ -158,6 +158,17 @@ export const TRILHA_SOLICITACOES = {
       corpo:
         "Por convênio, hospital, médico ou prioridade — o mesmo filtro vale para o kanban e para a lista.",
     },
+    kanbanStatus: {
+      titulo: "Nove status, um caminho só",
+      corpo: "", // montado em runtime — ver `comStatus` abaixo
+      /**
+       * Lê os rótulos de `STATUS_NUMBER_TO_STRING`
+       * (`services/surgery-request.service.ts`) em vez de repetir a lista
+       * aqui — mesmo raciocínio de `TRILHA_ADMINISTRACAO.passos.areas.comAreas`.
+       */
+      comStatus: (rotulos: string[]) =>
+        `A solicitação percorre, nesta ordem: ${rotulos.join(" → ")}. Contestação pode acontecer em vários pontos do caminho.`,
+    },
     porDocumento: {
       titulo: "Ou comece por um documento",
       corpo:

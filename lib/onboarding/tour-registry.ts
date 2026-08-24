@@ -243,6 +243,11 @@ export const TRACKS: Track[] = [
         ...TRILHA_SOLICITACOES.passos.abrirWizard,
       },
       {
+        key: "kanban-status",
+        target: "sc-kanban-colunas",
+        ...TRILHA_SOLICITACOES.passos.kanbanStatus,
+      },
+      {
         key: "filtro",
         target: "sc-filtro",
         ...TRILHA_SOLICITACOES.passos.filtro,

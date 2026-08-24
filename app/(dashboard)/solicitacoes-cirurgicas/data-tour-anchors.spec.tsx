@@ -89,4 +89,13 @@ describe("Tela de Solicitações Cirúrgicas — âncoras do tour", () => {
     const botao = await screen.findByText("Filtro");
     expect(botao.closest('[data-tour="sc-filtro"]')).not.toBeNull();
   });
+
+  it('expõe data-tour="sc-kanban-colunas" no board', async () => {
+    renderPagina();
+
+    await screen.findByText("Nova solicitação");
+    expect(
+      document.querySelector('[data-tour="sc-kanban-colunas"]'),
+    ).not.toBeNull();
+  });
 });
