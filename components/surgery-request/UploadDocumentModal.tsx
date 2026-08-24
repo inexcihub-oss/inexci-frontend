@@ -126,6 +126,10 @@ export function UploadDocumentModal({
 
   const handleClose = () => {
     if (loading) {
+      // Cancela o `setTimeout` fabricado da simulação do tour (se houver):
+      // sem isso, `onSuccess` dispararia ~1.5s depois do modal já fechado,
+      // navegando o usuário para longe de onde ele foi ao clicar em Fechar.
+      analiseSimuladaAtivaRef.current = false;
       keepTrackingInBackgroundRef.current = true;
       removeScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY);
       if (queuedBackgroundJobRef.current) {

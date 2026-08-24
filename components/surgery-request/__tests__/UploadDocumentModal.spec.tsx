@@ -228,4 +228,27 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
     );
     expect(surgeryRequestService.extractFromDocument).not.toHaveBeenCalled();
   });
+
+  it("não chama onSuccess se o modal for fechado durante o delay fabricado da simulação", async () => {
+    onboardingMockState.emTour = true;
+
+    render(
+      <UploadDocumentModal isOpen onClose={onClose} onSuccess={onSuccess} />,
+    );
+
+    onboardingActions["sc-simular-analise-documento"]();
+
+    expect(await screen.findByText("Análise em andamento")).toBeInTheDocument();
+
+    const closeButtons = screen.getAllByRole("button", { name: "Fechar" });
+    fireEvent.click(closeButtons[closeButtons.length - 1]);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    // Espera passar o delay fabricado de 1.5s da simulação e confirma que o
+    // `setTimeout` pendente não chamou `onSuccess` depois do fechamento.
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    expect(onSuccess).not.toHaveBeenCalled();
+  }, 4000);
 });
