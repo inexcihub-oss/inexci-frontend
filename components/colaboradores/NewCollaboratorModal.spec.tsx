@@ -10,6 +10,11 @@ vi.mock("@/services/collaborator.service", () => ({
   },
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
 import { collaboratorService } from "@/services/collaborator.service";
 
 /**
@@ -25,6 +30,7 @@ describe("NewCollaboratorModal", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    onboardingMockState.emTour = false;
   });
 
   it("não deve renderizar quando isOpen=false", () => {
@@ -245,6 +251,21 @@ describe("NewCollaboratorModal", () => {
       .mock.calls[0][0];
     expect(callArgs).toHaveProperty("isDoctor", true);
     expect(callArgs).not.toHaveProperty("is_doctor");
+  });
+
+  it("desabilita o botão de adicionar durante o tour", () => {
+    onboardingMockState.emTour = true;
+    render(<NewCollaboratorModal {...defaultProps} />);
+    expect(
+      screen.getByRole("button", { name: /adicionar colaborador/i }),
+    ).toBeDisabled();
+  });
+
+  it("mantém o botão habilitado fora do tour", () => {
+    render(<NewCollaboratorModal {...defaultProps} />);
+    expect(
+      screen.getByRole("button", { name: /adicionar colaborador/i }),
+    ).toBeEnabled();
   });
 });
 
