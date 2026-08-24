@@ -195,9 +195,14 @@ describe("TRACKS", () => {
     ]);
   });
 
-  it("não passa de sete passos por trilha", () => {
+  it("não passa de oito passos por trilha", () => {
+    // A trilha `solicitacoes` chegou a 8 com a expansão "via documento"
+    // (B2 do PLANO-ONBOARDING-TRILHAS-EXPANDIDAS): abrir-wizard,
+    // kanban-status, filtro, cadastro-no-modal, requisitos, por-documento,
+    // documento-enviar, documento-revisar. Subir o teto além disso merece
+    // reabrir a decisão, não só editar este número.
     for (const track of TRACKS) {
-      expect(track.steps.length).toBeLessThanOrEqual(7);
+      expect(track.steps.length).toBeLessThanOrEqual(8);
     }
   });
 

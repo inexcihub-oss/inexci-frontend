@@ -293,6 +293,13 @@ export const TRACKS: Track[] = [
         aguardaAcao: true,
         ...TRILHA_SOLICITACOES.passos.documentoEnviar,
       },
+      {
+        key: "documento-revisar",
+        route: "/solicitacoes-cirurgicas/nova-via-documento",
+        target: "sc-documento-paciente-extraido",
+        aguardaAcao: true,
+        ...TRILHA_SOLICITACOES.passos.documentoRevisar,
+      },
     ],
   },
   {

@@ -46,6 +46,8 @@ import {
   getScFromDocumentStorage,
   removeScFromDocumentStorage,
 } from "@/lib/sc-from-document-background";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { TOUR_DEMO_EXTRACTION_MARKER } from "@/lib/onboarding/demo-data";
 
 // ─── Padding de fornecedor/fabricante OPME ──────────────────────────────────
 //
@@ -202,6 +204,7 @@ export default function NovaViaDocumentoPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const { emTour } = useOnboarding();
 
   const [extraction, setExtraction] =
     useState<ExtractFromDocumentResponse | null>(null);
@@ -266,8 +269,19 @@ export default function NovaViaDocumentoPage() {
     },
   });
 
-  // Carrega extraction do localStorage com TTL
+  // Carrega extraction do localStorage com TTL.
+  //
+  // Guard de idempotência (`if (extraction) return;`): esta leitura só deve
+  // acontecer uma vez. Sem o guard, o efeito reexecuta sempre que `router`
+  // trocar de identidade — o que não acontece no `useRouter` real do Next
+  // (referência estável), mas pode acontecer com providers/mocks que devolvem
+  // um objeto novo a cada render — e `getScFromDocumentStorage` faz um
+  // `JSON.parse` novo a cada chamada, então `setExtraction` receberia uma
+  // referência nova (ainda que com o mesmo conteúdo) a cada execução,
+  // realimentando o próprio efeito num loop de render infinito.
   useEffect(() => {
+    if (extraction) return;
+
     const parsed =
       getScFromDocumentStorage<ExtractFromDocumentResponse>(
         SC_FROM_DOCUMENT_EXTRACTION_KEY,
@@ -290,7 +304,7 @@ export default function NovaViaDocumentoPage() {
     }
 
     setExtraction(parsed);
-  }, [router]);
+  }, [router, extraction]);
 
   useEffect(() => {
     const prefetched = readScFromDocumentCatalogPrefetch();
@@ -400,11 +414,15 @@ export default function NovaViaDocumentoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extraction]);
 
+  const firstAvailableDoctorId = availableDoctors[0]?.id;
   useEffect(() => {
-    if (!extraction || !availableDoctors[0]?.id) return;
+    if (!extraction || !firstAvailableDoctorId) return;
     if (values.doctorId) return;
-    setField("doctorId", availableDoctors[0].id);
-  }, [extraction, availableDoctors, setField, values.doctorId]);
+    setField("doctorId", firstAvailableDoctorId);
+    // Depende do id primitivo, não do array `availableDoctors` — um caller
+    // (real ou de teste) que devolva uma nova referência de array a cada
+    // render não deve fazer este efeito reexecutar.
+  }, [extraction, firstAvailableDoctorId, setField, values.doctorId]);
 
   // ─── OPME/TUSS helpers ─────────────────────────────────────────────────────
 
@@ -590,6 +608,12 @@ export default function NovaViaDocumentoPage() {
   const showHealthPlanNumber = !!ext.healthPlan?.planId;
   const showHealthPlanSection = true;
   const showHospitalSection = true;
+  /**
+   * Proveniência do dado, não só `emTour`: o usuário pode sair do tour ainda
+   * nesta tela — sem checar `tempStoragePath`, ele poderia criar uma SC de
+   * verdade com dados fabricados.
+   */
+  const isFabricado = extraction.tempStoragePath === TOUR_DEMO_EXTRACTION_MARKER;
 
   return (
     <PageContainer>
@@ -708,16 +732,18 @@ export default function NovaViaDocumentoPage() {
               ) : (
                 <FormSection title="Identificação do paciente">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Nome completo"
-                      required
-                      value={values.newPatientName}
-                      onChange={(e) =>
-                        setField("newPatientName", e.target.value)
-                      }
-                      placeholder="Nome do paciente"
-                      error={errors.newPatientName}
-                    />
+                    <div data-tour="sc-documento-paciente-extraido">
+                      <Input
+                        label="Nome completo"
+                        required
+                        value={values.newPatientName}
+                        onChange={(e) =>
+                          setField("newPatientName", e.target.value)
+                        }
+                        placeholder="Nome do paciente"
+                        error={errors.newPatientName}
+                      />
+                    </div>
                     <Input
                       label="CPF"
                       required
@@ -1172,7 +1198,7 @@ export default function NovaViaDocumentoPage() {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={submitting}
+                disabled={submitting || emTour || isFabricado}
                 className="w-full sm:w-auto min-w-[180px]"
               >
                 {submitting ? (

@@ -179,6 +179,11 @@ export const TRILHA_SOLICITACOES = {
       corpo:
         "Enquanto a plataforma lê o documento, você pode fechar e continuar navegando — o sininho avisa quando terminar.",
     },
+    documentoRevisar: {
+      titulo: "Revise antes de criar",
+      corpo:
+        "Paciente, procedimento, TUSS e OPME já vêm preenchidos. Ajuste o que precisar antes de confirmar.",
+    },
   },
 };
 
