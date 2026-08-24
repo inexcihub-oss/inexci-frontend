@@ -82,6 +82,9 @@ function Sonda() {
       <button onClick={() => completeStep("cadastros-basicos")}>
         marcar cadastros
       </button>
+      <button onClick={() => completeStep("ver-dashboard")}>
+        marcar dashboard
+      </button>
       <button onClick={dismiss}>dispensar</button>
       <button onClick={() => void restart()}>reiniciar</button>
       <button onClick={() => startTour("solicitacoes")}>iniciar tour</button>
@@ -143,13 +146,14 @@ describe("OnboardingProvider", () => {
     );
 
     await user.click(screen.getByText("marcar"));
+    await user.click(screen.getByText("marcar dashboard"));
     await user.click(screen.getByText("marcar cadastros"));
 
     // "completed": o `authMock` padrão só libera `Permission.SOLICITACOES`,
-    // então "solicitacoes" e "cadastros" (trilha `anyArea`, sempre visível
-    // para quem tem qualquer área) são as DUAS trilhas visíveis — marcar os
-    // dois passos completa todas elas e promove o status (achado 4 da
-    // revisão final).
+    // então "solicitacoes", "dashboard" (mesma permissão) e "cadastros"
+    // (trilha `anyArea`, sempre visível para quem tem qualquer área) são as
+    // TRÊS trilhas visíveis — marcar os três passos completa todas elas e
+    // promove o status (achado 4 da revisão final).
     expect(screen.getByTestId("status")).toHaveTextContent("completed");
     // Sem isto, uma implementação que aguardasse o PATCH antes do setState
     // também passaria — o teste não provaria otimismo nenhum.
@@ -179,9 +183,9 @@ describe("OnboardingProvider", () => {
     // `toMatchObject` deixaria passar um `restartedAt` ou o `version`
     // vazando de volta a um snapshot do estado inteiro) nem a menos.
     // `status` aparece como "in_progress" (not_started -> in_progress do
-    // próprio `completeStep`): o `authMock` padrão tem DUAS trilhas visíveis
-    // ("solicitacoes" e "cadastros", esta última `anyArea`), então marcar só
-    // "criar-solicitacao" não promove a `completed` (achado 4).
+    // próprio `completeStep`): o `authMock` padrão tem TRÊS trilhas visíveis
+    // ("solicitacoes", "dashboard" e "cadastros", esta última `anyArea`),
+    // então marcar só "criar-solicitacao" não promove a `completed` (achado 4).
     expect(patchMock.mock.calls[0][0]).toEqual({
       completedSteps: { "criar-solicitacao": expect.any(String) },
       status: "in_progress",
@@ -236,10 +240,10 @@ describe("OnboardingProvider", () => {
       vi.advanceTimersByTime(600);
     });
 
-    // "in_progress": o `authMock` padrão tem duas trilhas visíveis
-    // ("solicitacoes" e "cadastros"), então um clique só não promove a
-    // "completed" — o ponto deste teste é não quebrar com o PATCH falhando,
-    // não a transição de status em si.
+    // "in_progress": o `authMock` padrão tem três trilhas visíveis
+    // ("solicitacoes", "dashboard" e "cadastros"), então um clique só não
+    // promove a "completed" — o ponto deste teste é não quebrar com o PATCH
+    // falhando, não a transição de status em si.
     expect(screen.getByTestId("status")).toHaveTextContent("in_progress");
     // Distingue "falha capturada e logada" de "rejeição solta no processo":
     // o setState otimista é síncrono e passaria de qualquer forma.
@@ -329,10 +333,11 @@ describe("OnboardingProvider", () => {
     });
 
     /**
-     * O `authMock` padrão expõe DUAS trilhas ("solicitacoes" e "cadastros",
-     * esta última `anyArea`) — concluir a primeira não deveria devolver o
-     * usuário ao banner para um novo clique em "Continuar": o motor mesmo
-     * já sabe que "cadastros" continua incompleta e deveria abrir ela.
+     * O `authMock` padrão expõe TRÊS trilhas ("solicitacoes", "dashboard" e
+     * "cadastros", esta última `anyArea`) — concluir a primeira não deveria
+     * devolver o usuário ao banner para um novo clique em "Continuar": o
+     * motor mesmo já sabe que "dashboard" continua incompleta e deveria
+     * abrir ela.
      */
     it("concluir uma trilha avança sozinho para a próxima incompleta, sem fechar o tour", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -350,7 +355,7 @@ describe("OnboardingProvider", () => {
       await user.click(screen.getByText("fechar concluido"));
 
       expect(screen.getByTestId("trilha-ativa")).toHaveTextContent(
-        "cadastros",
+        "dashboard",
       );
       expect(screen.getByTestId("em-tour")).toHaveTextContent("true");
     });
@@ -363,8 +368,9 @@ describe("OnboardingProvider", () => {
         </OnboardingProvider>,
       );
 
-      // Completa "cadastros" primeiro, direto pelo checklist — só sobra
-      // "solicitacoes" para o tour concluir.
+      // Completa "dashboard" e "cadastros" primeiro, direto pelo checklist —
+      // só sobra "solicitacoes" para o tour concluir.
+      await user.click(screen.getByText("marcar dashboard"));
       await user.click(screen.getByText("marcar cadastros"));
       await user.click(screen.getByText("iniciar tour"));
       await user.click(screen.getByText("fechar concluido"));
@@ -393,17 +399,17 @@ describe("OnboardingProvider", () => {
   /**
    * Achado 4 da revisão final: `status: "completed"` nunca era atribuído.
    * `authMock` só libera `Permission.SOLICITACOES` por padrão, o que já
-   * expõe DUAS trilhas: "solicitacoes" e "cadastros" (esta última `anyArea`,
-   * visível para quem tem qualquer área). Mutar `isDoctor` aqui adiciona uma
-   * terceira, `documentos-do-medico`, para provar "falta uma trilha" sem
-   * depender de outro arquivo de fixture.
+   * expõe TRÊS trilhas: "solicitacoes", "dashboard" (mesma permissão) e
+   * "cadastros" (esta última `anyArea`, visível para quem tem qualquer
+   * área). Mutar `isDoctor` aqui adiciona uma quarta, `documentos-do-medico`,
+   * para provar "falta uma trilha" sem depender de outro arquivo de fixture.
    */
   describe("promoção para completed", () => {
     afterEach(() => {
       authMock.isDoctor = false;
     });
 
-    it("promove quando as duas trilhas visíveis do authMock padrão são concluídas", async () => {
+    it("promove quando as três trilhas visíveis do authMock padrão são concluídas", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
         <OnboardingProvider>
@@ -412,6 +418,7 @@ describe("OnboardingProvider", () => {
       );
 
       await user.click(screen.getByText("marcar"));
+      await user.click(screen.getByText("marcar dashboard"));
       await user.click(screen.getByText("marcar cadastros"));
 
       expect(screen.getByTestId("status")).toHaveTextContent("completed");
@@ -426,8 +433,8 @@ describe("OnboardingProvider", () => {
         </OnboardingProvider>,
       );
 
-      // Só marca "criar-solicitacao" — "assinatura-do-medico" e
-      // "cadastros-basicos" continuam faltando.
+      // Só marca "criar-solicitacao" — "assinatura-do-medico", "ver-dashboard"
+      // e "cadastros-basicos" continuam faltando.
       await user.click(screen.getByText("marcar"));
 
       expect(screen.getByTestId("status")).toHaveTextContent("in_progress");
@@ -444,6 +451,7 @@ describe("OnboardingProvider", () => {
 
       await user.click(screen.getByText("marcar"));
       await user.click(screen.getByText("marcar assinatura"));
+      await user.click(screen.getByText("marcar dashboard"));
       await user.click(screen.getByText("marcar cadastros"));
 
       expect(screen.getByTestId("status")).toHaveTextContent("completed");
@@ -545,9 +553,11 @@ describe("OnboardingProvider", () => {
         "true",
       );
 
-      // Duas trilhas visíveis no `authMock` padrão ("solicitacoes" e
-      // "cadastros"): marcar as duas promove para completed NESTA sessão.
+      // Três trilhas visíveis no `authMock` padrão ("solicitacoes",
+      // "dashboard" e "cadastros"): marcar as três promove para completed
+      // NESTA sessão.
       await user.click(screen.getByText("marcar"));
+      await user.click(screen.getByText("marcar dashboard"));
       await user.click(screen.getByText("marcar cadastros"));
 
       expect(screen.getByTestId("status")).toHaveTextContent("completed");

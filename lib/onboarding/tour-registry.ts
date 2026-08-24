@@ -4,6 +4,7 @@ import {
   TRILHA_AGENDA,
   TRILHA_ATENDIMENTO,
   TRILHA_CADASTROS,
+  TRILHA_DASHBOARD,
   TRILHA_DOCUMENTOS_MEDICO,
   TRILHA_PLANO,
   TRILHA_SOLICITACOES,
@@ -284,6 +285,36 @@ export const TRACKS: Track[] = [
         acao: "sc-fechar-wizard",
         target: "sc-por-documento",
         ...TRILHA_SOLICITACOES.passos.porDocumento,
+      },
+    ],
+  },
+  {
+    id: "dashboard",
+    label: TRILHA_DASHBOARD.label,
+    descricao: TRILHA_DASHBOARD.descricao,
+    stepKey: "ver-dashboard",
+    permission: Permission.SOLICITACOES,
+    steps: [
+      {
+        key: "kpis",
+        route: "/dashboard",
+        target: "dashboard-kpis",
+        required: true,
+        // A tela mostra um loading de página inteira até a query consolidada
+        // (`reportsService.getDashboardFull`) resolver — nenhum `data-tour`
+        // existe no DOM antes disso.
+        aguardaAcao: true,
+        ...TRILHA_DASHBOARD.passos.kpis,
+      },
+      {
+        key: "filtros",
+        target: "dashboard-filtros",
+        ...TRILHA_DASHBOARD.passos.filtros,
+      },
+      {
+        key: "kanban",
+        target: "dashboard-ver-kanban",
+        ...TRILHA_DASHBOARD.passos.kanban,
       },
     ],
   },

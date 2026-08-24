@@ -304,3 +304,24 @@ export const TRILHA_AGENDA = {
     },
   },
 };
+
+export const TRILHA_DASHBOARD = {
+  label: "Ver os números da conta",
+  descricao: "KPIs, filtros e o link direto para o kanban de solicitações.",
+  passos: {
+    kpis: {
+      titulo: "Os números da sua operação",
+      corpo:
+        "Total, pendentes, autorizadas, realizadas, tempo médio e alertas — tudo em um lugar.",
+    },
+    filtros: {
+      titulo: "Filtre por período ou convênio",
+      corpo: "Os mesmos filtros valem para todos os gráficos da tela.",
+    },
+    kanban: {
+      titulo: "Vá direto ao kanban",
+      corpo:
+        "Um clique leva à carteira completa de solicitações, já com o quadro por status.",
+    },
+  },
+};

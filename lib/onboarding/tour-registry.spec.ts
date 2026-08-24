@@ -188,6 +188,7 @@ describe("TRACKS", () => {
       "agenda",
       "atendimento",
       "solicitacoes",
+      "dashboard",
       "cadastros",
       "administracao",
       "plano-e-cota",
@@ -295,6 +296,29 @@ describe("TRACKS", () => {
       isAccountOwner: false,
     });
     expect(trilhas.map((t) => t.id)).not.toContain("administracao");
+  });
+
+  it("a trilha do dashboard exige Solicitações e tem três passos, só o primeiro obrigatório e com aguardaAcao", () => {
+    const trilha = trackById("dashboard")!;
+    expect(trilha.permission).toBe(Permission.SOLICITACOES);
+    expect(trilha.steps.map((p) => p.key)).toEqual([
+      "kpis",
+      "filtros",
+      "kanban",
+    ]);
+    expect(trilha.steps.filter((p) => p.required).map((p) => p.key)).toEqual([
+      "kpis",
+    ]);
+    expect(trilha.steps.find((p) => p.key === "kpis")?.aguardaAcao).toBe(true);
+  });
+
+  it("quem não tem Solicitações não vê a trilha do dashboard", () => {
+    const trilhas = visibleTracks({
+      permissions: [Permission.AGENDA, Permission.ATENDIMENTO],
+      isDoctor: false,
+      isAccountOwner: false,
+    });
+    expect(trilhas.map((t) => t.id)).not.toContain("dashboard");
   });
 });
 

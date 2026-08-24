@@ -858,6 +858,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsFilterOpen(true)}
+            data-tour="dashboard-filtros"
             className={`relative flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl border transition-colors min-h-[44px] active:scale-[0.98] ${
               activeFilterCount > 0
                 ? "bg-teal-50 border-teal-300 text-teal-700"
@@ -880,6 +881,7 @@ export default function DashboardPage() {
           </button>
           <Link
             href="/solicitacoes-cirurgicas"
+            data-tour="dashboard-ver-kanban"
             className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors min-h-[44px] active:scale-[0.98]"
           >
             <Image
@@ -898,7 +900,10 @@ export default function DashboardPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
           {/* ── KPI Cards ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+          <div
+            className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4"
+            data-tour="dashboard-kpis"
+          >
             <KPICard
               title="Total de Solicitações"
               value={dashboard.total}
