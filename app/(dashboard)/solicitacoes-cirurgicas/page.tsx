@@ -584,6 +584,7 @@ export default function ProcedimentosCirurgicos() {
             return (
               <button
                 onClick={() => setIsFilterOpen(true)}
+                data-tour="sc-filtro"
                 className={`flex items-center gap-1.5 h-9 lg:h-11 px-3 lg:px-3.5 py-1.5 lg:py-2 border rounded-xl transition-colors ${
                   isActive
                     ? "border-teal-600 bg-teal-50 hover:bg-teal-100"

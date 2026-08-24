@@ -153,6 +153,11 @@ export const TRILHA_SOLICITACOES = {
           ? `A solicitação só sai de Pendente com: ${rotulos.join(", ")}. O painel de pendências mostra o que falta a qualquer momento.`
           : "A solicitação só sai de Pendente quando todos os itens obrigatórios estiverem completos. O painel de pendências mostra o que falta a qualquer momento.",
     },
+    filtro: {
+      titulo: "Filtre o quadro",
+      corpo:
+        "Por convênio, hospital, médico ou prioridade — o mesmo filtro vale para o kanban e para a lista.",
+    },
     porDocumento: {
       titulo: "Ou comece por um documento",
       corpo:

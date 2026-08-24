@@ -243,6 +243,11 @@ export const TRACKS: Track[] = [
         ...TRILHA_SOLICITACOES.passos.abrirWizard,
       },
       {
+        key: "filtro",
+        target: "sc-filtro",
+        ...TRILHA_SOLICITACOES.passos.filtro,
+      },
+      {
         key: "cadastro-no-modal",
         // `sc-wizard-novo-cadastro` vive dentro do painel de seleção de
         // procedimento do wizard — a ação abre o wizard E pede a ele para já

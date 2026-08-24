@@ -82,4 +82,11 @@ describe("Tela de Solicitações Cirúrgicas — âncoras do tour", () => {
     );
     expect(botao).toHaveAttribute("data-tour", "sc-por-documento");
   });
+
+  it('expõe data-tour="sc-filtro" no botão de filtro', async () => {
+    renderPagina();
+
+    const botao = await screen.findByText("Filtro");
+    expect(botao.closest('[data-tour="sc-filtro"]')).not.toBeNull();
+  });
 });
