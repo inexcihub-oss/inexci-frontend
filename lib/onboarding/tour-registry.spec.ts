@@ -11,6 +11,7 @@ import {
   visibleSteps,
   visibleTracks,
 } from "./tour-registry";
+import type { TrackId } from "./state";
 
 /** As 16 combinações de área, no molde de `lib/permissions.spec.ts`. */
 function todasAsCombinacoes(): Permission[][] {
@@ -293,5 +294,42 @@ describe("TRACKS", () => {
       isAccountOwner: false,
     });
     expect(trilhas.map((t) => t.id)).not.toContain("administracao");
+  });
+});
+
+describe("passos dirigidos pelo tour (Driver)", () => {
+  function passo(trackId: TrackId, stepKey: string) {
+    const track = trackById(trackId);
+    return track?.steps.find((s) => s.key === stepKey);
+  }
+
+  it("agenda: horario e status acionam o driver", () => {
+    expect(passo("agenda", "horario")?.acao).toBe(
+      "agenda-abrir-novo-horario",
+    );
+    expect(passo("agenda", "status")?.acao).toBe("agenda-abrir-detalhe-demo");
+  });
+
+  it("atendimento: iniciar aciona o driver e abas navega para a página demo", () => {
+    expect(passo("atendimento", "iniciar")?.acao).toBe(
+      "atendimento-abrir-detalhe-demo",
+    );
+    expect(passo("atendimento", "abas")?.route).toBe("/atendimento/tour-demo");
+    expect(passo("atendimento", "indicacao")?.target).toBe("ficha-indicacao");
+    expect(passo("atendimento", "documentos")?.target).toBe(
+      "ficha-documentos",
+    );
+  });
+
+  it("solicitacoes: cadastro-no-modal ganha alvo real e aciona o driver", () => {
+    const p = passo("solicitacoes", "cadastro-no-modal");
+    expect(p?.acao).toBe("sc-abrir-cadastro-transversal");
+    expect(p?.target).toBe("sc-wizard-novo-cadastro");
+  });
+
+  it("administracao: areas aciona o driver", () => {
+    expect(passo("administracao", "areas")?.acao).toBe(
+      "administracao-abrir-novo-colaborador",
+    );
   });
 });

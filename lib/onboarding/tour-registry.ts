@@ -151,12 +151,14 @@ export const TRACKS: Track[] = [
         key: "horario",
         target: "agenda-modal-horario",
         aguardaAcao: true,
+        acao: "agenda-abrir-novo-horario",
         ...TRILHA_AGENDA.passos.horario,
       },
       {
         key: "status",
         target: "agenda-consulta-acoes",
         aguardaAcao: true,
+        acao: "agenda-abrir-detalhe-demo",
         ...TRILHA_AGENDA.passos.status,
       },
       {
@@ -182,28 +184,37 @@ export const TRACKS: Track[] = [
       },
       {
         key: "iniciar",
-        // Vive dentro do modal de detalhe da consulta, que o usuário abre
-        // clicando numa consulta da lista. `aguardaAcao` dá tempo para isso.
+        // Abre com uma consulta FABRICADA (nunca existe de verdade) — ver
+        // `lib/onboarding/demo-data.ts` e a ação registrada em
+        // `app/(dashboard)/atendimento/page.tsx`. `aguardaAcao` continua como
+        // rede de segurança.
         target: "atendimento-iniciar",
         aguardaAcao: true,
+        acao: "atendimento-abrir-detalhe-demo",
         ...TRILHA_ATENDIMENTO.passos.iniciar,
       },
       {
         key: "abas",
+        // Navega DE VERDADE para a página de atendimento, usando o id
+        // sentinela — `/atendimento/[appointmentId]/page.tsx` (Task 8)
+        // reconhece "tour-demo" e usa dados fabricados em vez de buscar no
+        // backend. Substitui o `aguardaAcao` que dependia do usuário clicar
+        // em "Iniciar atendimento" de verdade.
         target: "ficha-abas",
-        aguardaAcao: true,
+        route: "/atendimento/tour-demo",
         ...TRILHA_ATENDIMENTO.passos.abas,
       },
       {
         key: "indicacao",
+        // Mesma página do passo anterior — já carregada, sem precisar de
+        // rota nem `aguardaAcao` de novo.
         target: "ficha-indicacao",
-        aguardaAcao: true,
         ...TRILHA_ATENDIMENTO.passos.indicacao,
       },
       {
         key: "documentos",
+        // Mesma página dos dois passos anteriores.
         target: "ficha-documentos",
-        aguardaAcao: true,
         // Emitir receita, atestado e pedido de exame é ato privativo do
         // médico (`AccessControlService.assertIsDoctor` no backend). Quem tem
         // Atendimento mas não tem `doctor_profile` lê o prontuário e não vê
@@ -229,13 +240,13 @@ export const TRACKS: Track[] = [
       },
       {
         key: "cadastro-no-modal",
-        // Sem `target` de propósito: `sc-wizard-novo-cadastro` só existe
-        // DENTRO do modal do wizard, que o passo 1 não abre sozinho. Ancorar
-        // aqui exigiria um tour interativo (usuário clica, wizard abre, tour
-        // avança) — mudança de Fase 4, não deste fix-wave. Até lá, degrada
-        // para card centralizado (spec §3.4). O atributo `data-tour` continua
-        // em `SelectionContents.tsx` para quando a Fase 4 chegar — não
-        // remova.
+        // `sc-wizard-novo-cadastro` vive dentro do painel de seleção de
+        // procedimento do wizard — a ação abre o wizard E pede a ele para já
+        // mostrar esse painel (ver `solicitacoes-cirurgicas/page.tsx`,
+        // Task 9, e `CreateSurgeryRequestWizard.tsx`, Task 5).
+        target: "sc-wizard-novo-cadastro",
+        aguardaAcao: true,
+        acao: "sc-abrir-cadastro-transversal",
         ...TRILHA_SOLICITACOES.passos.cadastroNoModal,
       },
       {
@@ -320,6 +331,7 @@ export const TRACKS: Track[] = [
         key: "areas",
         target: "admin-areas",
         aguardaAcao: true,
+        acao: "administracao-abrir-novo-colaborador",
         ...TRILHA_ADMINISTRACAO.passos.areas,
       },
       {
