@@ -347,21 +347,32 @@ export function AtendimentoTabs({
           data-tour="ficha-abas"
           className="flex items-center px-4 lg:px-6 overflow-x-auto scrollbar-hide"
         >
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              onClick={() => goToTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-all whitespace-nowrap min-h-[44px] -mb-px ${
-                activeTab === tab.id
-                  ? "text-black border-b-[3px] border-teal-700"
-                  : "text-gray-500 hover:text-black"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {TABS.map((tab) => {
+            // Histórico, Cadastro e Documentos buscam dados REAIS do
+            // paciente pelo `patientId` — durante o tour esse id é
+            // fabricado (`lib/onboarding/demo-data.ts`), e clicar nessas
+            // abas mandaria uma requisição de verdade para um paciente que
+            // não existe. Nenhum passo do tour precisa delas; só
+            // "Atendimento" (onde vivem `ficha-indicacao`/`ficha-documentos`)
+            // fica acessível durante o tour.
+            const bloqueadaNoTour = emTour && tab.id !== "atendimento";
+            return (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                disabled={bloqueadaNoTour}
+                onClick={() => goToTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-all whitespace-nowrap min-h-[44px] -mb-px disabled:opacity-40 disabled:cursor-not-allowed ${
+                  activeTab === tab.id
+                    ? "text-black border-b-[3px] border-teal-700"
+                    : "text-gray-500 hover:text-black"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </header>
 

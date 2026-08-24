@@ -851,4 +851,34 @@ describe("AtendimentoTabs", () => {
       screen.getAllByRole("button", { name: /finalizar/i })[0],
     ).toBeEnabled();
   });
+
+  it("bloqueia as abas Histórico, Cadastro e Documentos durante o tour, mantendo Atendimento acessível", () => {
+    onboardingMockState.emTour = true;
+    render(
+      <AtendimentoTabs
+        patient={patient}
+        appointment={appointment}
+        initialRecord={null}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Histórico" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Cadastro" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Documentos" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Atendimento" })).toBeEnabled();
+  });
+
+  it("mantém todas as abas acessíveis fora do tour", () => {
+    render(
+      <AtendimentoTabs
+        patient={patient}
+        appointment={appointment}
+        initialRecord={null}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Histórico" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: "Cadastro" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: "Documentos" })).toBeEnabled();
+  });
 });

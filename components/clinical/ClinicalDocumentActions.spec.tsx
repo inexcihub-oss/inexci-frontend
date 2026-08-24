@@ -455,4 +455,24 @@ describe("ClinicalDocumentActions", () => {
 
     expect(screen.getByRole("button", { name: /^emitir$/i })).toBeDisabled();
   });
+
+  it("desabilita o botão Visualizar durante o tour", async () => {
+    onboardingMockState.emTour = true;
+    const user = userEvent.setup();
+    render(
+      <ClinicalDocumentActions
+        ensureRecordId={vi.fn().mockResolvedValue("record-1")}
+        onEmitted={vi.fn()}
+        cidCodes={[]}
+        patientId="pac-1"
+        doctorId="doctor-1"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /receita/i }));
+
+    expect(
+      screen.getByRole("button", { name: /visualizar/i }),
+    ).toBeDisabled();
+  });
 });

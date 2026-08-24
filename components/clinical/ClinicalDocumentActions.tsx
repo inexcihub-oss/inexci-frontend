@@ -475,7 +475,7 @@ export function ClinicalDocumentActions({
             variant="outline"
             onClick={handlePreview}
             isLoading={previewing}
-            disabled={submitting}
+            disabled={submitting || emTour}
             className="min-h-[44px]"
           >
             <Eye className="w-4 h-4 mr-2" />
