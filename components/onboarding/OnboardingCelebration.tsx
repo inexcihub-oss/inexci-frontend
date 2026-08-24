@@ -1,9 +1,8 @@
 "use client";
 
 import { CheckCircle2, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-const DURACAO_MS = 4500;
 const NUM_CONFETES = 40;
 const CORES = [
   "#0d9488",
@@ -40,32 +39,28 @@ function gerarConfetes(): Confete[] {
 }
 
 interface Props {
-  /** Chamado sozinho, sem exigir clique, quando a celebração termina. */
+  /** Chamado quando a pessoa confirma que pode seguir para a plataforma. */
   onDone: () => void;
 }
 
 /**
  * Celebração de conclusão total do onboarding. `OnboardingGate` monta este
  * componente uma vez, quando o status vira "completed" nesta sessão — não é
- * o card do banner, é um efeito visual passageiro por cima da tela. Some
- * sozinha depois de `DURACAO_MS`; `pointer-events-none` garante que ela
- * nunca atrapalha um clique em algo por baixo.
+ * o card do banner, é uma confirmação explícita por cima da tela. Ela só
+ * fecha quando a pessoa escolhe continuar, para a mensagem não desaparecer
+ * antes de ser lida.
  */
 export function OnboardingCelebration({ onDone }: Props) {
   const [confetes] = useState<Confete[]>(() =>
     movimentoReduzido() ? [] : gerarConfetes(),
   );
 
-  useEffect(() => {
-    const id = setTimeout(onDone, DURACAO_MS);
-    return () => clearTimeout(id);
-  }, [onDone]);
-
   return (
     <div
-      role="status"
-      aria-live="polite"
-      className="pointer-events-none fixed inset-0 z-[110] overflow-hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-celebration-title"
+      className="fixed inset-0 z-[110] overflow-hidden"
     >
       {confetes.map((confete, indice) => (
         <span
@@ -92,7 +87,10 @@ export function OnboardingCelebration({ onDone }: Props) {
           <p className="mt-5 text-xs font-bold uppercase tracking-[0.18em] text-white/75">
             Onboarding concluído
           </p>
-          <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+          <h2
+            id="onboarding-celebration-title"
+            className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl"
+          >
             Você está pronto para começar
           </h2>
         </div>
@@ -106,9 +104,15 @@ export function OnboardingCelebration({ onDone }: Props) {
             página inicial para continuar o trabalho.
           </p>
         </div>
-        <p className="px-6 pb-6 pt-5 text-xs font-medium text-neutral-400 sm:pb-7">
-          Esta mensagem fecha automaticamente.
-        </p>
+        <div className="px-6 pb-6 pt-5 sm:pb-7">
+          <button
+            type="button"
+            onClick={onDone}
+            className="w-full rounded-xl bg-primary-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+          >
+            Começar a usar
+          </button>
+        </div>
       </div>
     </div>
   );

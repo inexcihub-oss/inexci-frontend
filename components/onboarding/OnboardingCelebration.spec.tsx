@@ -1,12 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { OnboardingCelebration } from "./OnboardingCelebration";
 
 describe("OnboardingCelebration", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -19,15 +16,15 @@ describe("OnboardingCelebration", () => {
     ).toBeInTheDocument();
   });
 
-  it("chama onDone sozinha depois de alguns segundos, sem exigir clique", () => {
+  it("só fecha quando a pessoa confirma", async () => {
     const onDone = vi.fn();
     render(<OnboardingCelebration onDone={onDone} />);
 
     expect(onDone).not.toHaveBeenCalled();
 
-    act(() => {
-      vi.advanceTimersByTime(4500);
-    });
+    await userEvent.setup().click(
+      screen.getByRole("button", { name: "Começar a usar" }),
+    );
 
     expect(onDone).toHaveBeenCalledTimes(1);
   });
@@ -60,14 +57,13 @@ describe("OnboardingCelebration", () => {
     ).toBeInTheDocument();
   });
 
-  it("limpa o timer ao desmontar antes do fim", () => {
+  it("não fecha apenas por ficar montada", () => {
+    vi.useFakeTimers();
     const onDone = vi.fn();
-    const { unmount } = render(<OnboardingCelebration onDone={onDone} />);
-
-    unmount();
+    render(<OnboardingCelebration onDone={onDone} />);
 
     act(() => {
-      vi.advanceTimersByTime(4500);
+      vi.advanceTimersByTime(60_000);
     });
 
     expect(onDone).not.toHaveBeenCalled();

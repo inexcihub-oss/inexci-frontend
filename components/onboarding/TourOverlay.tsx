@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { GripHorizontal } from "lucide-react";
 import {
   TOUR_UI,
   TRILHA_ADMINISTRACAO,
@@ -76,6 +77,11 @@ interface Props {
   onClose: (opts?: { concluido?: boolean }) => void;
 }
 
+interface Ponto {
+  x: number;
+  y: number;
+}
+
 export function TourOverlay({ trackId, onClose }: Props) {
   const router = useRouter();
   const { viewer, executarAcao } = useOnboarding();
@@ -84,6 +90,9 @@ export function TourOverlay({ trackId, onClose }: Props) {
   const [interrompido, setInterrompido] = useState(false);
   const balaoRef = useRef<HTMLDivElement>(null);
   const [alturaBalao, setAlturaBalao] = useState(ALTURA_BALAO_INICIAL);
+  const [deslocamento, setDeslocamento] = useState<Ponto>({ x: 0, y: 0 });
+  const [arrastando, setArrastando] = useState(false);
+  const arrasteRef = useRef<Ponto | null>(null);
 
   useEffect(() => setMontado(true), []);
 
@@ -126,6 +135,64 @@ export function TourOverlay({ trackId, onClose }: Props) {
     window.innerWidth < BREAKPOINT_DESKTOP
       ? passo.mobileTarget
       : passo?.target;
+
+  // Cada passo começa junto ao elemento que explica. O deslocamento é local
+  // ao passo atual para que mover um card não estrague a posição do próximo.
+  useEffect(() => {
+    setDeslocamento({ x: 0, y: 0 });
+    setArrastando(false);
+    arrasteRef.current = null;
+  }, [trackId, indice]);
+
+  const iniciarArraste = useCallback(
+    (evento: React.PointerEvent<HTMLDivElement>) => {
+      if (evento.pointerType === "mouse" && evento.button !== 0) return;
+      evento.preventDefault();
+      arrasteRef.current = { x: evento.clientX, y: evento.clientY };
+      evento.currentTarget.setPointerCapture?.(evento.pointerId);
+      setArrastando(true);
+    },
+    [],
+  );
+
+  const moverBalao = useCallback(
+    (evento: React.PointerEvent<HTMLDivElement>) => {
+      const inicio = arrasteRef.current;
+      const balao = balaoRef.current;
+      if (!inicio || !balao) return;
+
+      const retangulo = balao.getBoundingClientRect();
+      const deltaX = evento.clientX - inicio.x;
+      const deltaY = evento.clientY - inicio.y;
+      const deslocamentoX = Math.min(
+        Math.max(deltaX, MARGEM - retangulo.left),
+        window.innerWidth - MARGEM - retangulo.right,
+      );
+      const deslocamentoY = Math.min(
+        Math.max(deltaY, MARGEM - retangulo.top),
+        window.innerHeight - MARGEM - retangulo.bottom,
+      );
+
+      setDeslocamento((atual) => ({
+        x: atual.x + deslocamentoX,
+        y: atual.y + deslocamentoY,
+      }));
+      arrasteRef.current = { x: evento.clientX, y: evento.clientY };
+    },
+    [],
+  );
+
+  const encerrarArraste = useCallback(
+    (evento: React.PointerEvent<HTMLDivElement>) => {
+      if (!arrasteRef.current) return;
+      if (evento.currentTarget.hasPointerCapture?.(evento.pointerId)) {
+        evento.currentTarget.releasePointerCapture?.(evento.pointerId);
+      }
+      arrasteRef.current = null;
+      setArrastando(false);
+    },
+    [],
+  );
 
   const [requisitos, setRequisitos] = useState<string[] | null>(null);
 
@@ -312,6 +379,9 @@ export function TourOverlay({ trackId, onClose }: Props) {
     return { top, left } as const;
   }, [rect, alturaBalao]);
 
+  const transformacaoBase =
+    "transform" in posicaoBalao ? posicaoBalao.transform : "";
+
   if (!montado) return null;
 
   if (interrompido) {
@@ -407,9 +477,24 @@ export function TourOverlay({ trackId, onClose }: Props) {
           ...posicaoBalao,
           width: LARGURA_BALAO,
           maxWidth: "calc(100vw - 32px)",
+          transform: `${transformacaoBase} translate3d(${deslocamento.x}px, ${deslocamento.y}px, 0)`,
         }}
-        className="pointer-events-auto absolute max-h-[calc(100dvh-7.5rem)] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl focus:outline-none md:max-h-[calc(100dvh-2rem)]"
+        className={`pointer-events-auto absolute max-h-[calc(100dvh-7.5rem)] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl focus:outline-none md:max-h-[calc(100dvh-2rem)] ${
+          arrastando ? "select-none" : ""
+        }`}
       >
+        <div
+          data-tour-drag-handle
+          aria-label="Arraste para mover a explicação"
+          onPointerDown={iniciarArraste}
+          onPointerMove={moverBalao}
+          onPointerUp={encerrarArraste}
+          onPointerCancel={encerrarArraste}
+          className="mb-2 flex cursor-grab touch-none items-center gap-1.5 text-xs font-medium text-neutral-400 active:cursor-grabbing"
+        >
+          <GripHorizontal className="h-4 w-4" aria-hidden="true" />
+          Arraste para mover
+        </div>
         <button
           type="button"
           onClick={() => onClose()}

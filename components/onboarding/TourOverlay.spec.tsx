@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PERMISSION_DESCRIPTIONS } from "@/lib/permissions";
 import type { TrackId } from "@/lib/onboarding/state";
@@ -361,6 +361,44 @@ describe("TourOverlay", () => {
     await user.keyboard("{Escape}");
 
     expect(onClose).toHaveBeenCalledWith();
+  });
+
+  it("mostra a saída em qualquer passo e encerra sem concluir", async () => {
+    montarAlvos(["alvo-um", "alvo-tres"]);
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(<TourOverlay trackId="trilha-generica" onClose={onClose} />);
+
+    await user.click(screen.getByRole("button", { name: "Sair do tour" }));
+
+    expect(onClose).toHaveBeenCalledWith();
+  });
+
+  it("permite arrastar a explicação para não cobrir a área de interesse", async () => {
+    montarAlvos(["alvo-um", "alvo-tres"]);
+    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+
+    const dialogo = await screen.findByRole("dialog");
+    const alca = dialogo.querySelector("[data-tour-drag-handle]");
+    expect(alca).not.toBeNull();
+
+    fireEvent.pointerDown(alca!, {
+      pointerId: 1,
+      pointerType: "mouse",
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(alca!, {
+      pointerId: 1,
+      clientX: 140,
+      clientY: 130,
+    });
+    fireEvent.pointerUp(alca!, { pointerId: 1 });
+
+    expect((dialogo as HTMLElement).style.transform).toContain(
+      "translate3d(40px, 30px, 0)",
+    );
   });
 
   it("o último passo conclui a trilha", async () => {
