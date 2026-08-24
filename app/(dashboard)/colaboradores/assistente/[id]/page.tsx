@@ -45,6 +45,10 @@ import { maskCep, maskCpf, maskPhone, unmask } from "@/lib/masks";
 import { isValidCpf } from "@/lib/validators";
 import { Permission } from "@/lib/permissions";
 import { buildCollaboratorUpdatePayload } from "@/lib/collaborator-update";
+import {
+  criarColaboradorDemo,
+  TOUR_DEMO_COLLABORATOR_ID,
+} from "@/lib/onboarding/demo-data";
 
 export default function AssistenteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -76,6 +80,7 @@ export default function AssistenteDetalhePage() {
    * edição vive em `formData.isDoctor`.
    */
   const isDoctor = collaborator?.isDoctor === true;
+  const isFabricado = collaborator?.id === TOUR_DEMO_COLLABORATOR_ID;
   const handleCloseScConfigModal = useCallback(() => {
     setIsScConfigModalOpen(false);
   }, []);
@@ -157,6 +162,39 @@ export default function AssistenteDetalhePage() {
 
   const loadData = async () => {
     setLoading(true);
+
+    if (params.id === TOUR_DEMO_COLLABORATOR_ID) {
+      const collab = criarColaboradorDemo();
+      setCollaborator(collab);
+      setCollaboratorStatus(collab.status);
+      const fd = {
+        name: collab.name || "",
+        email: collab.email || "",
+        phone: maskPhone(collab.phone || ""),
+        gender: "",
+        birthDate: "",
+        cpf: "",
+        cep: "",
+        address: "",
+        addressNumber: "",
+        addressComplement: "",
+        city: "",
+        state: "",
+        isDoctor: false,
+        specialty: "",
+        crm: "",
+        crmState: "",
+        permissions: collab.grantedPermissions ?? [],
+      };
+      setFormData(fd);
+      setOriginalData(fd);
+      setSignaturePreview(null);
+      setLoading(false);
+      setLoadingPatients(false);
+      setLoadingRequests(false);
+      return;
+    }
+
     // Disparadas em paralelo com o getById do colaborador — nenhuma das duas
     // depende dele: as solicitações já vêm filtradas pelo médico (id da rota)
     // no backend. `.catch(noop)` evita unhandled rejection quando a função
@@ -710,7 +748,7 @@ export default function AssistenteDetalhePage() {
               <Button
                 onClick={handleSave}
                 isLoading={saving}
-                disabled={!isDirty}
+                disabled={!isDirty || isFabricado}
               >
                 Salvar alterações
               </Button>
@@ -827,7 +865,7 @@ export default function AssistenteDetalhePage() {
                   <Button
                     onClick={handleSave}
                     isLoading={saving}
-                    disabled={!isDirty}
+                    disabled={!isDirty || isFabricado}
                     className="w-full sm:w-auto"
                   >
                     Salvar alterações
@@ -860,7 +898,7 @@ export default function AssistenteDetalhePage() {
             <Button
               onClick={handleSave}
               isLoading={saving}
-              disabled={!isDirty}
+              disabled={!isDirty || isFabricado}
               className="w-full sm:w-auto"
             >
               Salvar alterações

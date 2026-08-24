@@ -1,6 +1,7 @@
 import type { Appointment } from "@/services/appointment.service";
 import type { Patient } from "@/services/patient.service";
 import type { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
+import type { Collaborator } from "@/services/collaborator.service";
 
 /**
  * Id reservado para a consulta fabricada do tour de onboarding.
@@ -87,5 +88,34 @@ export function criarExtracaoDemo(): ExtractFromDocumentResponse {
     candidates: { patient: [], hospital: [], healthPlan: [], procedure: [] },
     tempStoragePath: TOUR_DEMO_EXTRACTION_MARKER,
     originalFileName: "documento-exemplo.pdf",
+  };
+}
+
+/**
+ * Id reservado para o colaborador fabricado do tour de onboarding.
+ * `/colaboradores/assistente/[id]` reconhece este valor e usa dados
+ * fabricados em memória em vez de buscar no backend — nunca existe um
+ * colaborador real com este id.
+ */
+export const TOUR_DEMO_COLLABORATOR_ID = "tour-demo-colaborador";
+
+/**
+ * Colaborador fabricado só para o tour — nunca médico, de propósito: um
+ * colaborador médico exigiria simular também emissão de assinatura/cabeçalho
+ * (`doctorProfile`), fora de escopo deste item (B3 do design doc).
+ */
+export function criarColaboradorDemo(): Collaborator {
+  const agora = new Date().toISOString();
+  return {
+    id: TOUR_DEMO_COLLABORATOR_ID,
+    name: "Colaborador de demonstração",
+    email: "colaborador.demo@inexci.com",
+    phone: "",
+    status: "active",
+    isDoctor: false,
+    permissions: [],
+    grantedPermissions: [],
+    createdAt: agora,
+    updatedAt: agora,
   };
 }
