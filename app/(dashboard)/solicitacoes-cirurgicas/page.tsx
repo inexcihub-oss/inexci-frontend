@@ -142,6 +142,13 @@ export default function ProcedimentosCirurgicos() {
     executarAcao("sc-abrir-selecao-procedimento");
   });
 
+  // Passo "por-documento": navega para a MESMA rota do passo anterior, que o
+  // Next.js trata como no-op (não remonta a página, não reseta o `useState`
+  // local do wizard) — sem fechar explicitamente aqui, o wizard aberto pelo
+  // passo "cadastro-no-modal" continuava por cima do botão que este passo
+  // deveria destacar.
+  useOnboardingAction("sc-fechar-wizard", () => setIsNewRequestOpen(false));
+
   const handleUploadDocumentSuccess = useCallback(
     (response: ExtractFromDocumentResponse) => {
       setIsUploadDocumentOpen(false);

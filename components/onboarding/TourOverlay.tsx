@@ -233,10 +233,29 @@ export function TourOverlay({ trackId, onClose }: Props) {
       topBruto,
       window.innerHeight - RESERVA_RODAPE - alturaEstimada,
     );
-    const left = Math.min(
+    let left = Math.min(
       Math.max(MARGEM, rect.left),
       Math.max(MARGEM, window.innerWidth - LARGURA_BALAO - MARGEM),
     );
+
+    // O cálculo acima só evita o balão sair da viewport — não evita ele
+    // cair EM CIMA do próprio alvo. Perto de um canto sem espaço livre
+    // (ex.: botão no rodapé de um modal pequeno), "abaixo"/"acima" e o
+    // clamp de viewport podem colidir mesmo assim. Detectada a colisão,
+    // empurra o balão para o lado do alvo em vez de deixá-lo por cima.
+    const sobrepoe =
+      left < rect.right &&
+      left + LARGURA_BALAO > rect.left &&
+      top < rect.bottom &&
+      top + alturaEstimada > rect.top;
+    if (sobrepoe) {
+      const cabeADireita =
+        rect.right + MARGEM + LARGURA_BALAO <= window.innerWidth - MARGEM;
+      left = cabeADireita
+        ? rect.right + MARGEM
+        : Math.max(MARGEM, rect.left - MARGEM - LARGURA_BALAO);
+    }
+
     return { top, left } as const;
   }, [rect]);
 

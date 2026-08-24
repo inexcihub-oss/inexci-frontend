@@ -310,6 +310,15 @@ describe("passos dirigidos pelo tour (Driver)", () => {
     expect(passo("agenda", "status")?.acao).toBe("agenda-abrir-detalhe-demo");
   });
 
+  /**
+   * Bug real achado pelo usuário: o passo "hub" falava da lista de
+   * consultas mas destacava o botão de criação. A âncora certa é o grupo de
+   * abas Hoje/Próximas/Realizadas.
+   */
+  it("atendimento: hub aponta para o grupo de abas, não para o botão de nova consulta", () => {
+    expect(passo("atendimento", "hub")?.target).toBe("atendimento-abas");
+  });
+
   it("atendimento: iniciar aciona o driver e abas navega para a página demo", () => {
     expect(passo("atendimento", "iniciar")?.acao).toBe(
       "atendimento-abrir-detalhe-demo",
@@ -325,6 +334,17 @@ describe("passos dirigidos pelo tour (Driver)", () => {
     const p = passo("solicitacoes", "cadastro-no-modal");
     expect(p?.acao).toBe("sc-abrir-cadastro-transversal");
     expect(p?.target).toBe("sc-wizard-novo-cadastro");
+  });
+
+  /**
+   * Bug real achado pelo usuário: navegar para a MESMA rota do passo
+   * anterior é no-op no Next.js — sem fechar o wizard explicitamente, ele
+   * continuava por cima do alvo `sc-por-documento`.
+   */
+  it("solicitacoes: por-documento fecha o wizard explicitamente ao entrar no passo", () => {
+    expect(passo("solicitacoes", "por-documento")?.acao).toBe(
+      "sc-fechar-wizard",
+    );
   });
 
   it("administracao: areas aciona o driver", () => {

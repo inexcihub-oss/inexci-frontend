@@ -733,6 +733,92 @@ describe("TourOverlay — balão não fica atrás da BottomNavBar no mobile", ()
   });
 });
 
+/**
+ * Bug real achado pelo usuário: o balão nascia em cima do próprio botão que
+ * deveria destacar, quando o alvo ficava perto de um canto sem espaço livre
+ * — `posicaoBalao` só evitava sair da viewport, nunca verificava colisão com
+ * o `rect` do alvo.
+ */
+describe("TourOverlay — balão não cobre o próprio alvo", () => {
+  const larguraOriginal = window.innerWidth;
+  const alturaOriginal = window.innerHeight;
+
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    vi.clearAllMocks();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, "innerWidth", {
+      value: larguraOriginal,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(window, "innerHeight", {
+      value: alturaOriginal,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it("empurra o balão para o lado quando a posição calculada colidiria com o próprio alvo", async () => {
+    // Viewport pequeno de propósito: sem espaço livre nem acima nem abaixo
+    // do alvo, o cálculo antigo (só evita sair da tela) sobrepunha o próprio
+    // retângulo do alvo — exatamente o que aconteceu com um botão perto do
+    // canto de um modal pequeno.
+    Object.defineProperty(window, "innerWidth", {
+      value: 1280,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(window, "innerHeight", {
+      value: 300,
+      writable: true,
+      configurable: true,
+    });
+
+    // Viewport baixo de propósito: sem espaço livre acima ou abaixo do alvo,
+    // o cálculo antigo (só evita sair da tela) sobrepunha o próprio
+    // retângulo do alvo. Largo o bastante para o lado esquerdo ter espaço de
+    // sobra — é o que a correção usa para empurrar o balão para lá.
+    const alvo = document.createElement("button");
+    alvo.setAttribute("data-tour", "alvo-um");
+    alvo.getBoundingClientRect = () =>
+      ({
+        top: 150,
+        left: 900,
+        width: 100,
+        height: 40,
+        bottom: 190,
+        right: 1000,
+      }) as DOMRect;
+    document.body.appendChild(alvo);
+    montarAlvos(["alvo-tres"]);
+
+    render(<TourOverlay trackId="solicitacoes" onClose={vi.fn()} />);
+
+    const dialogo = await screen.findByRole("dialog");
+    const top = parseFloat((dialogo as HTMLElement).style.top);
+    const left = parseFloat((dialogo as HTMLElement).style.left);
+    const alturaEstimada = 190;
+    const larguraBalao = 320;
+
+    const sobrepoeVertical = top < 190 && top + alturaEstimada > 150;
+    const sobrepoeHorizontal = left < 1000 && left + larguraBalao > 900;
+
+    expect(sobrepoeVertical && sobrepoeHorizontal).toBe(false);
+  });
+});
+
 describe("TourOverlay — passo 'areas' da trilha administracao", () => {
   beforeEach(() => {
     document.body.innerHTML = "";

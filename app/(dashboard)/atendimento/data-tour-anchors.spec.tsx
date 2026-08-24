@@ -79,4 +79,19 @@ describe("Tela de Atendimento — âncora do tour", () => {
     );
     expect(comAncora).toHaveLength(1);
   });
+
+  /**
+   * O passo "hub" da trilha atendimento fala da lista de consultas ("Próximas
+   * e realizadas, na mesma tela"), não de um botão de criação — a âncora
+   * certa é o grupo de abas Hoje/Próximas/Realizadas, não
+   * "atendimento-nova-consulta" (bug real: o tour apontava para o botão
+   * errado).
+   */
+  it('expõe data-tour="atendimento-abas" no grupo de abas Hoje/Próximas/Realizadas', async () => {
+    renderPagina();
+    await screen.findByText("Nenhuma consulta");
+
+    const abas = screen.getByRole("button", { name: "Hoje" });
+    expect(abas.closest('[data-tour="atendimento-abas"]')).not.toBeNull();
+  });
 });

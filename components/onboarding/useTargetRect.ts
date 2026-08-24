@@ -4,6 +4,16 @@ import { useEffect, useRef, useState } from "react";
 
 const TIMEOUT_PADRAO_MS = 3000;
 const INTERVALO_BUSCA_MS = 100;
+/**
+ * Por quanto tempo, depois de achar o alvo, o hook continua remedindo a
+ * cada quadro — cobre a duração das animações de entrada já usadas no
+ * projeto (`scale-in`/`fade-in` 0.2s, `slide-up`/`slide-down` 0.3s, ver
+ * `tailwind.config.ts`). `transform` não dispara `ResizeObserver` (a caixa
+ * não muda de tamanho) nem `MutationObserver` (nenhum nó entra ou sai), então
+ * sem essa janela o retângulo do spotlight ficava congelado num quadro
+ * intermediário da animação.
+ */
+const JANELA_REMEDICAO_ANIMACAO_MS = 400;
 /** Passo cujo alvo só aparece depois de uma ação do usuário (abrir um modal). */
 export const TIMEOUT_AGUARDA_ACAO_MS = 20000;
 
@@ -148,6 +158,19 @@ export function useTargetRect(
       });
       medir();
       setEstado("encontrado");
+
+      // Remede a cada quadro por uma janela curta — o container do alvo
+      // pode estar no meio de uma animação de entrada (`transform`) neste
+      // exato instante, e nada mais aqui reagiria ao fim dela.
+      const fimJanela = Date.now() + JANELA_REMEDICAO_ANIMACAO_MS;
+      const remedirDuranteAnimacao = () => {
+        if (cancelado || !elemento) return;
+        medir();
+        if (Date.now() < fimJanela) {
+          requestAnimationFrame(remedirDuranteAnimacao);
+        }
+      };
+      requestAnimationFrame(remedirDuranteAnimacao);
 
       observer = new ResizeObserver(medir);
       observer.observe(el);

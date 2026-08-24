@@ -2,8 +2,14 @@ import { useState } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Permission } from "@/lib/permissions";
 import { emptyOnboardingState } from "@/lib/onboarding/state";
 import { OnboardingGate } from "./OnboardingGate";
+
+const pushMock = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
+}));
 
 /**
  * Conta montagens de verdade (não re-renders) do `TourOverlay` mockado — é
@@ -25,6 +31,7 @@ let auth = {
   consents: { requiredConsentsAccepted: true },
   isAccountOwner: false,
   subscription: { subscription: { status: "active" } },
+  permissions: [Permission.ATENDIMENTO],
 };
 
 vi.mock("./OnboardingProvider", () => ({
@@ -74,6 +81,7 @@ describe("OnboardingGate", () => {
       consents: { requiredConsentsAccepted: true },
       isAccountOwner: false,
       subscription: { subscription: { status: "active" } },
+      permissions: [Permission.ATENDIMENTO],
     };
   });
 
@@ -235,6 +243,39 @@ describe("OnboardingGate", () => {
       );
 
       expect(screen.getByText("celebração ativa")).toBeInTheDocument();
+    });
+
+    /**
+     * Bug real achado pelo usuário: o tour só fechava o overlay ao concluir
+     * tudo, sem navegar para lugar nenhum — o usuário ficava parado onde
+     * quer que o último passo o tivesse deixado (ex.: Configurações), em vez
+     * de voltar para a "casa" dele (`resolveHome`, a mesma função que já
+     * decide o destino no login).
+     */
+    it("navega para a casa do usuário (resolveHome) ao concluir tudo", () => {
+      contexto.state = {
+        ...emptyOnboardingState(),
+        welcomeSeenAt: "2026-08-01T00:00:00.000Z",
+        status: "in_progress",
+      };
+      const { rerender } = render(
+        <OnboardingGate>
+          <p>conteúdo</p>
+        </OnboardingGate>,
+      );
+
+      expect(pushMock).not.toHaveBeenCalled();
+
+      contexto.state = { ...contexto.state, status: "completed" };
+      rerender(
+        <OnboardingGate>
+          <p>conteúdo</p>
+        </OnboardingGate>,
+      );
+
+      // `auth.permissions` padrão deste arquivo é só Atendimento —
+      // `resolveHome` resolve para "/atendimento".
+      expect(pushMock).toHaveBeenCalledWith("/atendimento");
     });
 
     /**

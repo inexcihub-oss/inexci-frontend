@@ -109,6 +109,41 @@ describe("useTargetRect", () => {
     await waitFor(() => expect(result.current.rect?.top).toBe(90));
   });
 
+  /**
+   * Bug real achado pelo usuário: o container do alvo pode estar no meio de
+   * uma animação de entrada (`animate-scale-in`/`animate-slide-up`) quando o
+   * hook o acha pela primeira vez — `transform` não dispara `ResizeObserver`
+   * (tamanho da caixa não muda) nem `MutationObserver` (nenhum nó é
+   * inserido/removido), então sem remedir de novo o retângulo do spotlight
+   * ficava congelado num quadro intermediário da animação.
+   */
+  it("remede repetidamente por um tempo após achar o alvo, sem depender de scroll/resize/ResizeObserver", async () => {
+    const alvo = document.createElement("div");
+    alvo.setAttribute("data-tour", "alvo-anim");
+    let topo = 10;
+    alvo.getBoundingClientRect = () =>
+      ({
+        top: topo,
+        left: 0,
+        width: 10,
+        height: 10,
+        bottom: topo + 10,
+        right: 10,
+      }) as DOMRect;
+    document.body.appendChild(alvo);
+
+    const { result } = renderHook(() => useTargetRect("alvo-anim"));
+    await waitFor(() => expect(result.current.estado).toBe("encontrado"));
+    expect(result.current.rect?.top).toBe(10);
+
+    // Simula o container ainda se movendo (mid-animação): nenhum evento é
+    // disparado, nenhum nó é inserido/removido, o tamanho não muda — só uma
+    // remedição por tempo (não por evento) pegaria isso.
+    topo = 40;
+
+    await waitFor(() => expect(result.current.rect?.top).toBe(40));
+  });
+
   it("acha o alvo que só entra no DOM depois, dentro do timeout longo", async () => {
     vi.useFakeTimers();
     const { result } = renderHook(() =>

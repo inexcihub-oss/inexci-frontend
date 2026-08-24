@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { resolveHome } from "@/lib/permissions";
 import type { TrackId } from "@/lib/onboarding/state";
 import { OnboardingCelebration } from "./OnboardingCelebration";
 import { useOnboarding } from "./OnboardingProvider";
@@ -18,8 +20,9 @@ import { WelcomeModal } from "./WelcomeModal";
  * antes do uso.
  */
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
-  const { consents, isAccountOwner, subscription } = useAuth();
+  const { consents, isAccountOwner, subscription, permissions } = useAuth();
   const { state, activeTour, closeTour } = useOnboarding();
+  const router = useRouter();
 
   /**
    * Celebração de conclusão total — dispara só na transição PARA "completed"
@@ -27,15 +30,22 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
    * `OnboardingProvider.isChecklistVisible`): um `status: "completed"" que já
    * chega pronto do servidor (próximo login) não deveria reabrir os
    * confetes toda vez que a página carrega.
+   *
+   * Junto com a celebração, navega para a "casa" do usuário (`resolveHome`,
+   * a mesma função que decide o destino no login) — bug real achado pelo
+   * usuário: sem isso, o tour só fechava o overlay e deixava o usuário
+   * parado onde quer que o último passo o tivesse levado (ex.:
+   * Configurações), em vez de devolvê-lo à tela principal.
    */
   const statusAnteriorRef = useRef(state.status);
   const [celebrando, setCelebrando] = useState(false);
   useEffect(() => {
     if (statusAnteriorRef.current !== "completed" && state.status === "completed") {
       setCelebrando(true);
+      router.push(resolveHome(permissions ?? []));
     }
     statusAnteriorRef.current = state.status;
-  }, [state.status]);
+  }, [state.status, router, permissions]);
 
   const statusAssinatura = subscription?.subscription.status;
   const contaBloqueada =

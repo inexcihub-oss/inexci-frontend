@@ -179,7 +179,11 @@ export const TRACKS: Track[] = [
       {
         key: "hub",
         route: "/atendimento",
-        target: "atendimento-nova-consulta",
+        // O texto do passo fala da LISTA de consultas ("Próximas e
+        // realizadas, na mesma tela"), não de um botão de criação — a âncora
+        // certa é o grupo de abas, não "atendimento-nova-consulta" (bug real
+        // achado pelo usuário: o destaque caía no botão errado).
+        target: "atendimento-abas",
         ...TRILHA_ATENDIMENTO.passos.hub,
       },
       {
@@ -263,6 +267,11 @@ export const TRACKS: Track[] = [
       {
         key: "por-documento",
         route: "/solicitacoes-cirurgicas",
+        // `route` sozinho não bastava: é a MESMA rota do passo anterior, e
+        // o Next.js trata isso como no-op — o wizard aberto por
+        // "cadastro-no-modal" continuava por cima do alvo (bug real). A
+        // `acao` fecha o wizard explicitamente ao entrar neste passo.
+        acao: "sc-fechar-wizard",
         target: "sc-por-documento",
         ...TRILHA_SOLICITACOES.passos.porDocumento,
       },

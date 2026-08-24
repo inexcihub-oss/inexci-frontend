@@ -215,7 +215,10 @@ export default function AtendimentoHubPage() {
 
           {/* Abas + filtro de médico */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center bg-neutral-100 rounded-lg p-0.5">
+            <div
+              data-tour="atendimento-abas"
+              className="flex items-center bg-neutral-100 rounded-lg p-0.5"
+            >
               {HUB_TABS.map((t) => (
                 <button
                   key={t.key}
