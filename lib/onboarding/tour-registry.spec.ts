@@ -385,6 +385,12 @@ describe("passos dirigidos pelo tour (Driver)", () => {
     );
   });
 
+  it("solicitacoes: mantém a etapa de análise até a pessoa avançar", () => {
+    expect(
+      passo("solicitacoes", "documento-enviar")?.keepOpenWhenTargetMissing,
+    ).toBe(true);
+  });
+
   it("administracao: areas aciona o driver", () => {
     expect(passo("administracao", "areas")?.acao).toBe(
       "administracao-abrir-novo-colaborador",

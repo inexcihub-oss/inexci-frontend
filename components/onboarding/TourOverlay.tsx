@@ -10,7 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { GripHorizontal } from "lucide-react";
+import { GripHorizontal, LogOut } from "lucide-react";
 import {
   TOUR_UI,
   TRILHA_ADMINISTRACAO,
@@ -277,12 +277,16 @@ export function TourOverlay({ trackId, onClose }: Props) {
    */
   useEffect(() => {
     if (estado !== "ausente" || !alvo) return;
+    // Alguns passos disparam uma ação que navega por conta própria. O alvo
+    // visual da etapa anterior deixa de existir, mas a leitura deve ficar sob
+    // controle da pessoa — nunca avançar sozinha para a próxima explicação.
+    if (passo.keepOpenWhenTargetMissing) return;
     if (passo.required) {
       setInterrompido(true);
       return;
     }
     avancar();
-  }, [estado, alvo, passo?.required, avancar]);
+  }, [estado, alvo, passo?.keepOpenWhenTargetMissing, passo?.required, avancar]);
 
   // Teclado: Esc sai, setas navegam.
   useEffect(() => {
@@ -498,8 +502,9 @@ export function TourOverlay({ trackId, onClose }: Props) {
         <button
           type="button"
           onClick={() => onClose()}
-          className="mb-3 text-xs font-medium text-neutral-600 hover:text-neutral-800"
+          className="mb-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 text-sm font-semibold text-neutral-700 shadow-sm transition-colors hover:border-neutral-300 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
         >
+          <LogOut className="h-4 w-4" aria-hidden="true" />
           {TOUR_UI.sair}
         </button>
 

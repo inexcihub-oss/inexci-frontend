@@ -46,6 +46,11 @@ export interface TourStep extends Gate {
    */
   aguardaAcao?: boolean;
   /**
+   * Mantém a explicação até a pessoa avançar, mesmo se a ação do passo trocar
+   * de página e fizer o alvo temporário desaparecer.
+   */
+  keepOpenWhenTargetMissing?: boolean;
+  /**
    * Id de uma ação registrada via `useOnboardingAction` em algum componente
    * (abrir um modal, trocar um estado interno). O motor tenta executá-la ao
    * ENTRAR neste passo, antes de procurar `target` — substitui a espera
@@ -309,6 +314,10 @@ export const TRACKS: Track[] = [
         acao: "sc-abrir-upload-documento",
         target: "sc-documento-analisando",
         aguardaAcao: true,
+        // A simulação navega para a tela de revisão ao terminar. O alvo de
+        // "analisando" some nessa navegação, mas a explicação só pode trocar
+        // quando a pessoa escolher "Próximo".
+        keepOpenWhenTargetMissing: true,
         ...TRILHA_SOLICITACOES.passos.documentoEnviar,
       },
       {

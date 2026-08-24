@@ -7,6 +7,7 @@ import type { Track } from "@/lib/onboarding/tour-registry";
 import { trackById, visibleSteps } from "@/lib/onboarding/tour-registry";
 import { STATUS_NUMBER_TO_STRING } from "@/services/surgery-request.service";
 import { TourOverlay } from "./TourOverlay";
+import { TIMEOUT_AGUARDA_ACAO_MS } from "./useTargetRect";
 
 const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -119,6 +120,7 @@ const TRILHA_AGUARDA_ACAO: Track = {
       corpo: "O formulário abre ao lado.",
       target: "alvo-que-nao-existe-ainda",
       aguardaAcao: true,
+      keepOpenWhenTargetMissing: true,
     },
   ],
 };
@@ -467,8 +469,9 @@ describe("TourOverlay", () => {
     expect(contador).not.toHaveClass("text-neutral-400");
 
     const sair = screen.getByRole("button", { name: /sair do tour/i });
-    expect(sair).toHaveClass("text-neutral-600");
-    expect(sair).not.toHaveClass("text-neutral-500");
+    expect(sair).toHaveClass("text-neutral-700");
+    expect(sair).toHaveClass("border");
+    expect(sair).toHaveClass("bg-neutral-50");
   });
 
   it("passo obrigatório sem alvo encerra com aviso, sem concluir", async () => {
@@ -575,6 +578,20 @@ describe("TourOverlay", () => {
     render(<TourOverlay trackId="aguarda-acao" onClose={vi.fn()} />);
 
     expect(screen.getByText("Clique em Nova consulta")).toBeInTheDocument();
+  });
+
+  it("não avança sozinho quando o alvo de uma etapa intencionalmente some", () => {
+    vi.useFakeTimers();
+    const onClose = vi.fn();
+    render(<TourOverlay trackId="aguarda-acao" onClose={onClose} />);
+
+    act(() => {
+      vi.advanceTimersByTime(TIMEOUT_AGUARDA_ACAO_MS + 100);
+    });
+
+    expect(screen.getByText("Clique em Nova consulta")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   /** Contraponto: passo comum (sem `aguardaAcao`) continua sem balão em "buscando". */
