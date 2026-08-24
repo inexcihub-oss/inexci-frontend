@@ -470,7 +470,9 @@ describe("TourOverlay", () => {
 
     const sair = screen.getByRole("button", { name: /sair do tour/i });
     expect(sair).toHaveClass("text-primary-700");
-    expect(sair).toHaveClass("underline");
+    expect(sair).toHaveClass("text-xs");
+    expect(sair).toHaveClass("font-medium");
+    expect(sair).not.toHaveClass("underline");
     expect(sair).not.toHaveClass("border");
   });
 

@@ -502,7 +502,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
         <button
           type="button"
           onClick={() => onClose()}
-          className="mb-3 min-h-10 text-sm font-semibold text-primary-700 underline decoration-primary-300 underline-offset-4 transition-colors hover:text-primary-800 hover:decoration-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+          className="mb-3 text-xs font-medium text-primary-700 hover:text-primary-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
         >
           {TOUR_UI.sair}
         </button>
