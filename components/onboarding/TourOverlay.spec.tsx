@@ -469,9 +469,9 @@ describe("TourOverlay", () => {
     expect(contador).not.toHaveClass("text-neutral-400");
 
     const sair = screen.getByRole("button", { name: /sair do tour/i });
-    expect(sair).toHaveClass("text-neutral-700");
-    expect(sair).toHaveClass("border");
-    expect(sair).toHaveClass("bg-neutral-50");
+    expect(sair).toHaveClass("text-primary-700");
+    expect(sair).toHaveClass("underline");
+    expect(sair).not.toHaveClass("border");
   });
 
   it("passo obrigatório sem alvo encerra com aviso, sem concluir", async () => {
