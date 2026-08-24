@@ -86,6 +86,7 @@ export function ClinicalDocumentActions({
   cidCodes,
   patientId,
   doctorId,
+  dadosFabricados,
 }: {
   ensureRecordId: () => Promise<string>;
   onEmitted: (document: GeneratedClinicalDocument) => void;
@@ -95,6 +96,12 @@ export function ClinicalDocumentActions({
   patientId: string;
   /** Médico que assina o documento. */
   doctorId: string;
+  /**
+   * Marca que o atendimento em tela é o fabricado do tour. Bloqueia a
+   * emissão por PROVENIÊNCIA do dado, não pelo estado do tour — sair do tour
+   * na página sentinela não pode reabilitar a emissão real.
+   */
+  dadosFabricados?: boolean;
 }) {
   const [openKind, setOpenKind] = useState<DocumentKind | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -102,6 +109,7 @@ export function ClinicalDocumentActions({
   const [error, setError] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const { emTour } = useOnboarding();
+  const bloqueado = emTour || dadosFabricados;
 
   // Receita e exames compartilham a mesma lista repetível.
   const [rows, setRows] = useState<ItemRow[]>([emptyRow()]);
@@ -475,7 +483,7 @@ export function ClinicalDocumentActions({
             variant="outline"
             onClick={handlePreview}
             isLoading={previewing}
-            disabled={submitting || emTour}
+            disabled={submitting || bloqueado}
             className="min-h-[44px]"
           >
             <Eye className="w-4 h-4 mr-2" />
@@ -484,7 +492,7 @@ export function ClinicalDocumentActions({
           <Button
             onClick={handleSubmit}
             isLoading={submitting}
-            disabled={previewing || emTour}
+            disabled={previewing || bloqueado}
             className="min-h-[44px]"
           >
             Emitir
@@ -522,7 +530,7 @@ export function ClinicalDocumentActions({
           <Button
             onClick={handleSubmit}
             isLoading={submitting}
-            disabled={emTour}
+            disabled={bloqueado}
             className="min-h-[44px]"
           >
             Emitir

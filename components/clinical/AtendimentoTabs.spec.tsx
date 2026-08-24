@@ -881,4 +881,28 @@ describe("AtendimentoTabs", () => {
     expect(screen.getByRole("tab", { name: "Cadastro" })).toBeEnabled();
     expect(screen.getByRole("tab", { name: "Documentos" })).toBeEnabled();
   });
+
+  /**
+   * Guard por PROVENIÊNCIA: `/atendimento/tour-demo` continua na tela com os
+   * dados fabricados depois que o tour termina (`closeTour` não navega), e
+   * nada pode voltar a mutar com o id sentinela.
+   */
+  it("mantém os botões e as abas bloqueados mesmo fora do tour, se a consulta for a fabricada", () => {
+    render(
+      <AtendimentoTabs
+        patient={patient}
+        appointment={{ ...appointment, id: "tour-demo" }}
+        initialRecord={null}
+      />,
+    );
+
+    expect(onboardingMockState.emTour).toBe(false);
+    expect(
+      screen.getAllByRole("button", { name: /salvar rascunho/i })[0],
+    ).toBeDisabled();
+    expect(
+      screen.getAllByRole("button", { name: /finalizar/i })[0],
+    ).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Histórico" })).toBeDisabled();
+  });
 });

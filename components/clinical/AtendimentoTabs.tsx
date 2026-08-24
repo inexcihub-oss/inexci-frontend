@@ -26,6 +26,7 @@ import {
 import { healthPlanService } from "@/services/health-plan.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { logger } from "@/lib/logger";
@@ -109,6 +110,11 @@ export function AtendimentoTabs({
   const { isDoctor } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
   const { emTour } = useOnboarding();
+  // Guarda por PROVENIÊNCIA, não só pelo estado do tour: `/atendimento/tour-demo`
+  // continua na tela com os dados fabricados depois que o tour termina, e
+  // nenhum botão pode voltar a disparar mutação com o id sentinela.
+  const dadosFabricados = appointment.id === TOUR_DEMO_APPOINTMENT_ID;
+  const bloqueado = emTour || dadosFabricados;
 
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<AtendimentoTabId>(
@@ -323,7 +329,7 @@ export function AtendimentoTabs({
                 variant="outline"
                 onClick={handleSave}
                 isLoading={saving}
-                disabled={finalizing || emTour}
+                disabled={finalizing || bloqueado}
                 className="rounded-xl"
               >
                 Salvar rascunho
@@ -331,7 +337,7 @@ export function AtendimentoTabs({
               <Button
                 onClick={handleFinalize}
                 isLoading={finalizing}
-                disabled={saving || emTour}
+                disabled={saving || bloqueado}
                 className="rounded-xl"
               >
                 Finalizar
@@ -355,7 +361,7 @@ export function AtendimentoTabs({
             // não existe. Nenhum passo do tour precisa delas; só
             // "Atendimento" (onde vivem `ficha-indicacao`/`ficha-documentos`)
             // fica acessível durante o tour.
-            const bloqueadaNoTour = emTour && tab.id !== "atendimento";
+            const bloqueadaNoTour = bloqueado && tab.id !== "atendimento";
             return (
               <button
                 key={tab.id}
@@ -462,6 +468,7 @@ export function AtendimentoTabs({
                   cidCodes={fields.cidCodes}
                   patientId={patient.id}
                   doctorId={appointment.doctorId}
+                  dadosFabricados={bloqueado}
                   onEmitted={(document) => {
                     showSuccess(`${document.name} emitido.`);
                     // A aba Documentos já pode estar montada — sem isto, o
@@ -477,7 +484,7 @@ export function AtendimentoTabs({
                     variant="outline"
                     onClick={handleSave}
                     isLoading={saving}
-                    disabled={finalizing || emTour}
+                    disabled={finalizing || bloqueado}
                     className="min-h-[44px] rounded-xl"
                   >
                     Salvar rascunho
@@ -485,7 +492,7 @@ export function AtendimentoTabs({
                   <Button
                     onClick={handleFinalize}
                     isLoading={finalizing}
-                    disabled={saving || emTour}
+                    disabled={saving || bloqueado}
                     className="min-h-[44px] rounded-xl"
                   >
                     Finalizar atendimento

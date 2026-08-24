@@ -475,4 +475,30 @@ describe("ClinicalDocumentActions", () => {
       screen.getByRole("button", { name: /visualizar/i }),
     ).toBeDisabled();
   });
+
+  /**
+   * Guard por PROVENIÊNCIA: o pai passa `dadosFabricados` quando o
+   * atendimento em tela é o fabricado do tour. Sair do tour (`emTour: false`)
+   * não pode reabilitar a emissão real.
+   */
+  it("desabilita o Emitir mesmo fora do tour, quando dadosFabricados é true", async () => {
+    const user = userEvent.setup();
+    render(
+      <ClinicalDocumentActions
+        ensureRecordId={vi.fn().mockResolvedValue("record-1")}
+        onEmitted={vi.fn()}
+        cidCodes={[]}
+        patientId="pac-1"
+        doctorId="doctor-1"
+        dadosFabricados
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /receita/i }));
+    await user.type(screen.getByLabelText(/medicamento 1/i), "Dipirona");
+
+    expect(onboardingMockState.emTour).toBe(false);
+    expect(screen.getByRole("button", { name: /^emitir$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /visualizar/i })).toBeDisabled();
+  });
 });

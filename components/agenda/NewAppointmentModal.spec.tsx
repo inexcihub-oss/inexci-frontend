@@ -320,4 +320,38 @@ describe("NewAppointmentModal — tour de onboarding", () => {
       screen.getByRole("button", { name: /agendar consulta/i }),
     ).toBeDisabled();
   });
+
+  /**
+   * Guard por PROVENIÊNCIA: o formulário está completo e o tour já acabou
+   * (`emTour: false`), mas a consulta em edição é a fabricada — salvar
+   * dispararia um PATCH com o id sentinela.
+   */
+  it("desabilita o botão mesmo fora do tour, ao editar a consulta fabricada do tour", () => {
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={{
+          id: "tour-demo",
+          doctorId: "doctor-1",
+          patientId: "pac-1",
+          type: "first_visit",
+          status: "scheduled",
+          scheduledAt: "2026-01-10T09:00:00.000Z",
+          durationMinutes: 30,
+          notes: null,
+          cancellationReason: null,
+          patient: { id: "pac-1", name: "Paciente" },
+          clinicId: null,
+          clinic: null,
+        }}
+      />,
+    );
+
+    expect(onboardingMockState.emTour).toBe(false);
+    expect(
+      screen.getByRole("button", { name: /salvar alterações/i }),
+    ).toBeDisabled();
+  });
 });

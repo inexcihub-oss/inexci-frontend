@@ -4,6 +4,7 @@ import { Modal } from "@/components/ui/Modal";
 import { SpinnerButton } from "@/components/shared/ModalFooter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 import { Permission } from "@/lib/permissions";
 import {
   Appointment,
@@ -86,6 +87,11 @@ export function AppointmentDetailModal({
 }: Props) {
   const { isDoctor, can } = useAuth();
   const { emTour } = useOnboarding();
+  // Guarda por PROVENIÊNCIA, não só pelo estado do tour: se o usuário sair
+  // do tour ainda olhando esta consulta fabricada, o botão continua
+  // desabilitado — o dado nunca deixa de ser fabricado só porque o tour
+  // acabou.
+  const dadosFabricados = appointment.id === TOUR_DEMO_APPOINTMENT_ID;
 
   // Atender é ato do médico; quem agenda não abre a ficha. A consulta já
   // realizada abre para todos (leitura do prontuário) — só cancelada/faltou
@@ -149,7 +155,7 @@ export function AppointmentDetailModal({
             {actions.map((a) => (
               <button
                 key={a.status}
-                disabled={busy || emTour}
+                disabled={busy || emTour || dadosFabricados}
                 onClick={() => onChangeStatus(a.status)}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold border bg-white transition-colors disabled:opacity-40 min-h-[36px]",
@@ -172,7 +178,7 @@ export function AppointmentDetailModal({
           <SpinnerButton
             variant="secondary"
             onClick={onDelete}
-            disabled={busy || emTour}
+            disabled={busy || emTour || dadosFabricados}
             className="w-full sm:w-auto !text-red-600 hover:!bg-red-50 !border-red-200"
           >
             Excluir

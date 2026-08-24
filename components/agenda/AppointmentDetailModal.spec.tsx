@@ -230,4 +230,17 @@ describe("AppointmentDetailModal", () => {
     expect(screen.getByRole("button", { name: "Confirmar" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Excluir" })).toBeEnabled();
   });
+
+  /**
+   * O guard real é a PROVENIÊNCIA do dado, não o estado do tour: sair do tour
+   * (`emTour: false`) na página sentinela não pode devolver os botões de
+   * mutação com o id fabricado ainda em tela.
+   */
+  it("desabilita as ações mesmo fora do tour, se a consulta for a fabricada do tour", () => {
+    renderAppointment({ ...consultaBase, id: "tour-demo", status: "scheduled" });
+
+    expect(onboardingMockState.emTour).toBe(false);
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeDisabled();
+  });
 });
