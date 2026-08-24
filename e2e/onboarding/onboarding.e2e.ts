@@ -187,16 +187,23 @@ test.describe("Onboarding", () => {
     ).toBeVisible();
     await page.getByRole("button", { name: "Próximo" }).click();
 
-    // Fecha o modal de nova consulta manualmente antes de seguir — o tour
-    // não fecha modais que ele mesmo abriu; isso é esperado.
-    await page.getByRole("button", { name: "Cancelar" }).click();
+    // Passo 3 — "Confirmar, remarcar ou cancelar": o driver fecha o modal
+    // de nova consulta e abre o modal de detalhe com uma consulta
+    // FABRICADA — o usuário nunca precisa ter uma consulta real na agenda
+    // para ver este passo. `AppointmentDetailModal` usa `title="Consulta"`
+    // no `<Modal>`, então o diálogo tem esse nome acessível.
+    await expect(
+      page.getByRole("dialog", { name: "Consulta" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole("dialog", { name: "Confirmar, remarcar ou cancelar" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Próximo" }).click();
 
-    // Passo 3 — "Confirmar, remarcar ou cancelar": sem uma consulta real na
-    // agenda, o alvo (dentro do modal de detalhe) não existe e o passo
-    // degrada em silêncio — chega direto no passo 4.
+    // Passo 4 — "O lembrete vai sozinho" (sem alvo, card centralizado).
     await expect(
       page.getByRole("dialog", { name: "O lembrete vai sozinho" }),
-    ).toBeVisible({ timeout: 25_000 });
+    ).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Concluir" }).click();
 
     await expect(

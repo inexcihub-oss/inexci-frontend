@@ -84,9 +84,13 @@ export default function AgendaPage() {
 
   // Passo "status": abre o modal de detalhe com uma consulta fabricada —
   // nunca existe de verdade, só mostra onde ficam as ações de status.
-  useOnboardingAction("agenda-abrir-detalhe-demo", () =>
-    setDetail(criarConsultaDemo(user?.doctorProfile?.id ?? "")),
-  );
+  useOnboardingAction("agenda-abrir-detalhe-demo", () => {
+    // O passo anterior ("horario") abriu o modal de nova consulta; sem
+    // fechar aqui, os dois modais ficariam empilhados ao entrar neste
+    // passo — `newModal` e `detail` são estados independentes.
+    setNewModal(null);
+    setDetail(criarConsultaDemo(user?.doctorProfile?.id ?? ""));
+  });
 
   const { data: doctors = [] } = useAvailableDoctors();
   const doctorNameById = useMemo(() => {
