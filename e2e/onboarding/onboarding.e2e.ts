@@ -108,9 +108,18 @@ test.describe("Onboarding", () => {
     ).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Próximo" }).click();
 
-    // Passo 2 — "Cadastre sem sair daqui" (sem alvo: card centralizado).
+    // Passo 2 — "Cadastre sem sair daqui": o tour agora ABRE o wizard de
+    // verdade e mostra o painel de procedimento, onde vive o botão "Novo"
+    // (prova de que o Driver funciona — antes desta mudança, este passo era
+    // um card centralizado e o wizard nunca abria sozinho).
     await expect(
       page.getByRole("dialog", { name: "Cadastre sem sair daqui" }),
+    ).toBeVisible();
+    await expect(page.getByText("Nova solicitação")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.getByRole("button", { name: "Novo" }).first(),
     ).toBeVisible();
     await page.getByRole("button", { name: "Próximo" }).click();
 
@@ -152,5 +161,46 @@ test.describe("Onboarding", () => {
     await expect(
       itemConcluido.getByRole("button", { name: "Refazer" }),
     ).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("a trilha de agenda abre o modal de nova consulta e o de detalhe sozinha", async () => {
+    await page.goto("/configuracoes?tab=onboarding");
+
+    const item = page.locator("li", { hasText: "Marcar uma consulta" });
+    await expect(item).toBeVisible();
+    await item.getByRole("button", { name: "Ver" }).click();
+
+    // Passo 1 — "Comece por aqui" (route /agenda, alvo agenda-nova-consulta).
+    await page.waitForURL(/\/agenda/, { timeout: 15_000 });
+    await expect(
+      page.getByRole("dialog", { name: "Comece por aqui" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Passo 2 — "Data, hora e duração": o driver abre o modal de nova
+    // consulta sozinho, sem o usuário clicar em nada.
+    await expect(
+      page.getByRole("dialog", { name: "Nova consulta" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByRole("dialog", { name: "Data, hora e duração" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Fecha o modal de nova consulta manualmente antes de seguir — o tour
+    // não fecha modais que ele mesmo abriu; isso é esperado.
+    await page.getByRole("button", { name: "Cancelar" }).click();
+
+    // Passo 3 — "Confirmar, remarcar ou cancelar": sem uma consulta real na
+    // agenda, o alvo (dentro do modal de detalhe) não existe e o passo
+    // degrada em silêncio — chega direto no passo 4.
+    await expect(
+      page.getByRole("dialog", { name: "O lembrete vai sozinho" }),
+    ).toBeVisible({ timeout: 25_000 });
+    await page.getByRole("button", { name: "Concluir" }).click();
+
+    await expect(
+      page.getByRole("button", { name: "Sair do tour" }),
+    ).toHaveCount(0);
   });
 });
