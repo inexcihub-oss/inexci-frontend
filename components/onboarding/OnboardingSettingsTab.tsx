@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Check, RotateCcw } from "lucide-react";
 import { CHECKLIST } from "@/lib/onboarding/content";
 import { logger } from "@/lib/logger";
+import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
 import { useOnboarding } from "./OnboardingProvider";
 
 export function OnboardingSettingsTab() {
@@ -34,10 +36,10 @@ export function OnboardingSettingsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-neutral-900">
+        <h2 className="ds-section-title text-base md:text-lg">
           {CHECKLIST.titulo}
         </h2>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="ds-caption mt-1 text-sm">
           {tracks.length > 0
             ? `Você concluiu ${concluidas} de ${tracks.length}. Rode qualquer um de novo quando quiser.`
             : "As trilhas aparecem aqui conforme as áreas liberadas para você."}
@@ -45,68 +47,81 @@ export function OnboardingSettingsTab() {
       </div>
 
       {tracks.length > 0 && (
-        <ul className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200">
-          {tracks.map((track) => {
-            const feito = Boolean(state.completedSteps[track.stepKey]);
-            return (
-              <li
-                key={track.id}
-                className="flex items-center gap-3 px-4 py-3.5"
-              >
-                <span
-                  aria-hidden
-                  className={`flex h-5 w-5 flex-none items-center justify-center rounded-full border ${
-                    feito
-                      ? "border-primary-600 bg-primary-600 text-white"
-                      : "border-neutral-300"
-                  }`}
-                >
-                  {feito && <Check className="h-3 w-3" />}
-                </span>
-                <span className="flex-1">
-                  <span className="block text-sm font-medium text-neutral-900">
-                    {track.label}
-                  </span>
-                  <span className="block text-xs text-neutral-500">
-                    {track.descricao}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => startTour(track.id)}
-                  className="rounded-xl border border-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
-                >
-                  {feito ? CHECKLIST.refazer : CHECKLIST.ver}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <Card>
+          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+            <h3 className="ds-section-title">Trilhas disponíveis</h3>
+            <p className="ds-caption">Aprenda o essencial por área da plataforma.</p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ul className="divide-y divide-gray-100 border-t border-gray-100">
+              {tracks.map((track) => {
+                const feito = Boolean(state.completedSteps[track.stepKey]);
+                return (
+                  <li
+                    key={track.id}
+                    className="flex items-center gap-3 px-4 py-3.5 sm:px-6"
+                  >
+                    <span
+                      aria-hidden
+                      className={`flex h-7 w-7 flex-none items-center justify-center rounded-full border ${
+                        feito
+                          ? "border-primary-600 bg-primary-600 text-white"
+                          : "border-gray-300 bg-white"
+                      }`}
+                    >
+                      {feito && <Check className="h-3.5 w-3.5" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-gray-900">
+                        {track.label}
+                      </span>
+                      <span className="block text-xs leading-5 text-gray-500">
+                        {track.descricao}
+                      </span>
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => startTour(track.id)}
+                      className="shrink-0 border-gray-200 text-gray-700"
+                    >
+                      {feito ? CHECKLIST.refazer : CHECKLIST.ver}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="rounded-2xl border border-neutral-200 p-4">
-        <p className="text-sm font-medium text-neutral-900">
-          Refazer o onboarding
-        </p>
-        <p className="mt-1 text-sm text-neutral-500">
-          Zera o progresso e começa imediatamente pela primeira trilha, sem
-          precisar procurar o botão Continuar.
-        </p>
-        <button
-          type="button"
-          onClick={aoRefazer}
-          disabled={reiniciando}
-          className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-60"
-        >
-          <RotateCcw className="h-4 w-4" />
-          {reiniciando ? "Reiniciando…" : "Refazer o onboarding"}
-        </button>
-        {erro && (
-          <p role="alert" className="mt-3 text-sm text-rose-600">
-            {CHECKLIST.erroReiniciar}
+      <Card>
+        <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+          <h3 className="ds-section-title">Refazer o onboarding</h3>
+          <p className="ds-caption mt-1">
+            Zera o progresso e começa imediatamente pela primeira trilha, sem
+            precisar procurar o botão Continuar.
           </p>
-        )}
-      </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+          <Button
+            type="button"
+            onClick={aoRefazer}
+            disabled={reiniciando}
+            variant="primary"
+            className="gap-2"
+          >
+            <RotateCcw className="h-4 w-4" />
+            {reiniciando ? "Reiniciando…" : "Refazer o onboarding"}
+          </Button>
+          {erro && (
+            <p role="alert" className="mt-3 text-sm text-red-600">
+              {CHECKLIST.erroReiniciar}
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
