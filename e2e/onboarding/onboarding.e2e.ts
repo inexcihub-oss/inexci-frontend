@@ -115,9 +115,11 @@ test.describe("Onboarding", () => {
     await expect(
       page.getByRole("dialog", { name: "Cadastre sem sair daqui" }),
     ).toBeVisible();
-    await expect(page.getByText("Nova solicitação")).toBeVisible({
-      timeout: 15_000,
-    });
+    // `getByText` resolveria para 3 elementos com o wizard aberto (o botão que
+    // o abre, o <h2> do painel e o botão de submit) e o modo estrito abortaria.
+    await expect(
+      page.getByRole("heading", { name: "Nova solicitação" }),
+    ).toBeVisible({ timeout: 15_000 });
     await expect(
       page.getByRole("button", { name: "Novo" }).first(),
     ).toBeVisible();

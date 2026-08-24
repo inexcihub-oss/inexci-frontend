@@ -80,7 +80,12 @@ export default function AgendaPage() {
 
   // Passo "horario" da trilha Agenda: abre o formulário de nova consulta ao
   // entrar no passo, em vez de esperar o usuário achar o botão real.
-  useOnboardingAction("agenda-abrir-novo-horario", () => setNewModal({}));
+  useOnboardingAction("agenda-abrir-novo-horario", () => {
+    // Espelha a limpeza já feita ao ENTRAR no passo seguinte — sem isso,
+    // voltar do passo "status" para "horario" reempilha os dois modais.
+    setDetail(null);
+    setNewModal({});
+  });
 
   // Passo "status": abre o modal de detalhe com uma consulta fabricada —
   // nunca existe de verdade, só mostra onde ficam as ações de status.
