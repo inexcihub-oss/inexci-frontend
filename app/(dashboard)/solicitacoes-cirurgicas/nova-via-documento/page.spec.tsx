@@ -77,5 +77,6 @@ describe("NovaViaDocumentoPage — guard de proveniência do tour", () => {
       name: "Criar solicitação",
     });
     expect(botao).not.toBeDisabled();
+    expect(document.querySelector('[data-tour="sc-documento-paciente-extraido"]')).not.toBeNull();
   });
 });
