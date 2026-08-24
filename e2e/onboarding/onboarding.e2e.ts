@@ -156,18 +156,17 @@ test.describe("Onboarding", () => {
     ).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Próximo" }).click();
 
-    // Passo 7 — "Envie e acompanhe a análise": o driver abre o modal de
-    // upload sozinho e a simulação de análise dispara. Espera a simulação
-    // terminar antes de seguir: avançar antes disso fecha o modal e cancela o
-    // timer fabricado, comportamento que imita o cancelamento explícito.
+    // Passo 7 — "Envie e acompanhe a análise": o driver abre o modal e
+    // mantém a análise demonstrativa nele. A revisão não pode abrir sozinha.
     await expect(
       page.getByRole("dialog", { name: "Envie e acompanhe a análise" }),
     ).toBeVisible({ timeout: 15_000 });
-    await page.waitForURL(/\/nova-via-documento/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/solicitacoes-cirurgicas$/);
     await page
       .getByRole("dialog", { name: "Envie e acompanhe a análise" })
       .getByRole("button", { name: "Próximo" })
       .click();
+    await page.waitForURL(/\/nova-via-documento/, { timeout: 15_000 });
 
     // Passo 8 (último) — "Revise antes de criar". O botão vira "Concluir".
     await expect(
@@ -327,14 +326,13 @@ test.describe("Onboarding", () => {
     await expect(
       page.getByRole("dialog", { name: "Envie e acompanhe a análise" }),
     ).toBeVisible();
-    // A simulação (1,5 s) chama o mesmo `onSuccess` do fluxo real e navega
-    // para a revisão. Só depois disso o usuário pode avançar o texto do tour
-    // sem cancelar a simulação ao desmontar o modal.
-    await page.waitForURL(/\/nova-via-documento/, { timeout: 15_000 });
+    // A simulação permanece nesta tela até a confirmação explícita.
+    await expect(page).toHaveURL(/\/solicitacoes-cirurgicas$/);
     await page
       .getByRole("dialog", { name: "Envie e acompanhe a análise" })
       .getByRole("button", { name: "Próximo" })
       .click();
+    await page.waitForURL(/\/nova-via-documento/, { timeout: 15_000 });
 
     // Passo 8 (último) — "Revise antes de criar".
     await expect(

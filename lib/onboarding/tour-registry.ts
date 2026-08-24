@@ -51,6 +51,12 @@ export interface TourStep extends Gate {
    */
   keepOpenWhenTargetMissing?: boolean;
   /**
+   * Ação executada quando a pessoa escolhe "Próximo", antes de entrar no
+   * passo seguinte. Útil quando a própria progressão confirma uma simulação
+   * ou troca de tela do fluxo demonstrado.
+   */
+  acaoAoAvancar?: string;
+  /**
    * Id de uma ação registrada via `useOnboardingAction` em algum componente
    * (abrir um modal, trocar um estado interno). O motor tenta executá-la ao
    * ENTRAR neste passo, antes de procurar `target` — substitui a espera
@@ -314,10 +320,9 @@ export const TRACKS: Track[] = [
         acao: "sc-abrir-upload-documento",
         target: "sc-documento-analisando",
         aguardaAcao: true,
-        // A simulação navega para a tela de revisão ao terminar. O alvo de
-        // "analisando" some nessa navegação, mas a explicação só pode trocar
-        // quando a pessoa escolher "Próximo".
-        keepOpenWhenTargetMissing: true,
+        // A análise demonstrativa permanece no modal. Só "Próximo" a
+        // conclui e leva à tela em que os dados extraídos são revisados.
+        acaoAoAvancar: "sc-concluir-analise-documento",
         ...TRILHA_SOLICITACOES.passos.documentoEnviar,
       },
       {

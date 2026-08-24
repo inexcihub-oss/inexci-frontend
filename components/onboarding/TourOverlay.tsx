@@ -262,8 +262,14 @@ export function TourOverlay({ trackId, onClose }: Props) {
       onClose({ concluido: true });
       return;
     }
+    // Alguns fluxos só devem executar sua transição (por exemplo, concluir a
+    // análise demonstrativa de um documento) depois que a pessoa confirma
+    // que terminou de ler esta etapa.
+    if (passo?.acaoAoAvancar) {
+      executarAcao(passo.acaoAoAvancar);
+    }
     setIndice((i) => i + 1);
-  }, [indice, passos.length, onClose]);
+  }, [indice, passos.length, passo?.acaoAoAvancar, onClose, executarAcao]);
 
   const voltar = useCallback(() => setIndice((i) => Math.max(0, i - 1)), []);
 
@@ -277,9 +283,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
    */
   useEffect(() => {
     if (estado !== "ausente" || !alvo) return;
-    // Alguns passos disparam uma ação que navega por conta própria. O alvo
-    // visual da etapa anterior deixa de existir, mas a leitura deve ficar sob
-    // controle da pessoa — nunca avançar sozinha para a próxima explicação.
     if (passo.keepOpenWhenTargetMissing) return;
     if (passo.required) {
       setInterrompido(true);

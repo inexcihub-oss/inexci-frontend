@@ -385,10 +385,10 @@ describe("passos dirigidos pelo tour (Driver)", () => {
     );
   });
 
-  it("solicitacoes: mantém a etapa de análise até a pessoa avançar", () => {
+  it("solicitacoes: só conclui a análise ao avançar para a revisão", () => {
     expect(
-      passo("solicitacoes", "documento-enviar")?.keepOpenWhenTargetMissing,
-    ).toBe(true);
+      passo("solicitacoes", "documento-enviar")?.acaoAoAvancar,
+    ).toBe("sc-concluir-analise-documento");
   });
 
   it("administracao: areas aciona o driver", () => {

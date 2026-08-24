@@ -207,7 +207,7 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
   // módulo real, e sobrescrever via `doMock`/`resetModules` no meio do
   // arquivo é frágil (mesma solução já usada em
   // `NewProcedureModelModal.spec.tsx` — "guard emTour").
-  it("simula a análise e chama onSuccess com o resultado fabricado quando emTour é true", async () => {
+  it("mantém a análise simulada aberta até o avanço explícito do tour", async () => {
     onboardingMockState.emTour = true;
 
     render(
@@ -221,18 +221,18 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
       document.querySelector('[data-tour="sc-documento-analisando"]'),
     ).not.toBeNull();
 
-    await waitFor(
-      () => {
-        expect(onSuccess).toHaveBeenCalledWith(
-          expect.objectContaining({ tempStoragePath: "tour-demo" }),
-        );
-      },
-      { timeout: 3000 },
+    await new Promise((resolve) => setTimeout(resolve, 1600));
+    expect(onSuccess).not.toHaveBeenCalled();
+
+    onboardingActions["sc-concluir-analise-documento"]();
+
+    expect(onSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({ tempStoragePath: "tour-demo" }),
     );
     expect(surgeryRequestService.extractFromDocument).not.toHaveBeenCalled();
   });
 
-  it("não chama onSuccess se o modal for fechado durante o delay fabricado da simulação", async () => {
+  it("não conclui a simulação se o modal for fechado", async () => {
     onboardingMockState.emTour = true;
 
     render(
@@ -256,12 +256,10 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
       screen.queryByText("Análise em andamento"),
     ).not.toBeInTheDocument();
 
-    // Espera passar o delay fabricado de 1.5s da simulação e confirma que o
-    // `setTimeout` pendente não chamou `onSuccess` depois do fechamento.
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    onboardingActions["sc-concluir-analise-documento"]();
 
     expect(onSuccess).not.toHaveBeenCalled();
-  }, 4000);
+  });
 
   it("handleSubmit não chama extractFromDocument real quando emTour é true", () => {
     onboardingMockState.emTour = true;

@@ -141,6 +141,28 @@ const TRILHA_COM_ACAO: Track = {
   ],
 };
 
+const TRILHA_ACAO_AO_AVANCAR: Track = {
+  id: "acao-ao-avancar",
+  label: "Trilha com ação ao avançar",
+  descricao: "…",
+  stepKey: "marcar-consulta",
+  steps: [
+    {
+      key: "confirmar",
+      titulo: "Confirme a etapa",
+      corpo: "Corpo da etapa.",
+      target: "alvo-confirmar",
+      acaoAoAvancar: "concluir-algo",
+    },
+    {
+      key: "revisar",
+      titulo: "Revise a etapa",
+      corpo: "Corpo da revisão.",
+      target: "alvo-revisar",
+    },
+  ],
+};
+
 const TRILHA_PASSO_COMUM: Track = {
   id: "passo-comum-sem-alvo",
   label: "Trilha com passo comum sem aguardaAcao",
@@ -196,6 +218,7 @@ vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
       if (id === "sem-alvo-depois-com-alvo")
         return TRILHA_SEM_ALVO_DEPOIS_COM_ALVO;
       if (id === "com-acao") return TRILHA_COM_ACAO;
+      if (id === "acao-ao-avancar") return TRILHA_ACAO_AO_AVANCAR;
       // "administracao" usa a trilha REAL do registry (não uma fixture) —
       // é o único jeito de provar que o passo "areas" de produção deriva o
       // corpo de `PERMISSION_DESCRIPTIONS`, e não de um texto copiado aqui.
@@ -610,6 +633,20 @@ describe("TourOverlay", () => {
     await waitFor(() =>
       expect(executarAcaoMock).toHaveBeenCalledWith("abrir-algo"),
     );
+  });
+
+  it("executa a ação de confirmação somente ao clicar em Próximo", async () => {
+    montarAlvos(["alvo-confirmar", "alvo-revisar"]);
+    const user = userEvent.setup();
+    render(<TourOverlay trackId="acao-ao-avancar" onClose={vi.fn()} />);
+
+    await screen.findByText("Confirme a etapa");
+    expect(executarAcaoMock).not.toHaveBeenCalledWith("concluir-algo");
+
+    await user.click(screen.getByRole("button", { name: "Próximo" }));
+
+    expect(executarAcaoMock).toHaveBeenCalledWith("concluir-algo");
+    expect(await screen.findByText("Revise a etapa")).toBeInTheDocument();
   });
 
   it("tenta de novo a cada 150ms até a ação ser encontrada", async () => {
