@@ -16,6 +16,13 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: false, executarAcao: () => false }),
+}));
+vi.mock("@/components/onboarding/useOnboardingAction", () => ({
+  useOnboardingAction: () => {},
+}));
+
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     isAdmin: false,

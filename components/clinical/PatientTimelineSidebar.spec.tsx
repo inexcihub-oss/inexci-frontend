@@ -10,6 +10,13 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: false, executarAcao: () => false }),
+}));
+vi.mock("@/components/onboarding/useOnboardingAction", () => ({
+  useOnboardingAction: () => {},
+}));
+
 vi.mock("@/services/appointment.service", async () => {
   const actual = await vi.importActual<
     typeof import("@/services/appointment.service")
