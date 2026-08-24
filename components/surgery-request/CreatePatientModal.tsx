@@ -14,6 +14,7 @@ import { unmask } from "@/lib/masks";
 import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 
 interface CreatePatientModalProps {
   isOpen: boolean;
@@ -34,6 +35,9 @@ export function CreatePatientModal({
   onSuccess,
 }: CreatePatientModalProps) {
   const [loading, setLoading] = useState(false);
+  // Este modal é alcançado pelo passo `cadastro-no-modal` da trilha de
+  // Solicitações; submeter aqui criaria um cadastro real durante o tour.
+  const { emTour } = useOnboarding();
   const [error, setError] = useState("");
   const { toast, showToast, hideToast } = useToast();
 
@@ -139,7 +143,11 @@ export function CreatePatientModal({
           {/* Footer */}
           <div className="h-px bg-gray-200" />
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4">
-            <button type="submit" disabled={loading} className="ds-btn-primary">
+            <button
+              type="submit"
+              disabled={loading || emTour}
+              className="ds-btn-primary"
+            >
               {loading ? "Adicionando..." : "Adicionar paciente"}
             </button>
           </div>

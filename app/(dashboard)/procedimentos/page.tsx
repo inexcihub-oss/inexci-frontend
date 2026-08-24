@@ -12,6 +12,8 @@ import {
 } from "@tanstack/react-table";
 import PageContainer from "@/components/PageContainer";
 import { SearchInput, Button } from "@/components/ui";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
+import { ACAO_PROCEDIMENTOS_ABRIR_NOVO_MODELO } from "@/lib/onboarding/tour-registry";
 import {
   Table,
   TableBody,
@@ -85,6 +87,12 @@ export default function ProcedimentosPage() {
   // classe do controller de solicitações cirúrgicas (`Permission.SOLICITACOES`),
   // não `ADMINISTRACAO` como os demais cadastros básicos.
   const podeGerenciarModelos = can(Permission.SOLICITACOES);
+
+  // Passo "novo-modelo" da trilha Cadastros: abre o modal sozinho, sem o
+  // usuário precisar achar o botão "Novo modelo".
+  useOnboardingAction(ACAO_PROCEDIMENTOS_ABRIR_NOVO_MODELO, () =>
+    setIsNewModelModalOpen(true),
+  );
 
   const hasActiveStatus = (status?: string) =>
     String(status ?? "").toLowerCase() === "active";
@@ -390,6 +398,7 @@ export default function ProcedimentosPage() {
               size="md"
               className="flex-1 sm:flex-none min-h-[44px]"
               onClick={() => setIsNewModelModalOpen(true)}
+              data-tour="cadastros-procedimentos"
             >
               Novo modelo
             </Button>

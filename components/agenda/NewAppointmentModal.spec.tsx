@@ -68,6 +68,11 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ permissions: [] }),
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
 import { NewAppointmentModal } from "./NewAppointmentModal";
 
 /** Segunda-feira, 17/08/2026. */
@@ -99,6 +104,21 @@ describe("NewAppointmentModal — clínica e aviso de horário", () => {
     expect(
       screen.getByRole("button", { name: /agendar consulta/i }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Âncora do tour de onboarding (trilha "agenda", passo "horario") em
+   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
+   * trocar o elemento) quebra o tour em silêncio.
+   */
+  it('expõe data-tour="agenda-modal-horario" no bloco de data e horário', () => {
+    abrirModal();
+
+    expect(
+      screen
+        .getByPlaceholderText("DD/MM/AAAA")
+        .closest('[data-tour="agenda-modal-horario"]'),
+    ).not.toBeNull();
   });
 
   it("não avisa quando o horário está dentro do funcionamento", async () => {
@@ -260,5 +280,78 @@ describe("NewAppointmentModal — edição com clínica excluída (C1)", () => {
     expect(update.mock.calls[0][1]).toEqual(
       expect.objectContaining({ clinicId: "clinic-1" }),
     );
+  });
+});
+
+describe("NewAppointmentModal — tour de onboarding", () => {
+  beforeEach(() => {
+    onboardingMockState.emTour = false;
+  });
+
+  it("mantém o botão habilitado fora do tour quando o formulário está completo", () => {
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        defaultDate="2026-01-10"
+        defaultPatientId="pac-1"
+        defaultPatientLabel="Paciente Teste"
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /agendar consulta/i }),
+    ).toBeEnabled();
+  });
+
+  it("desabilita o botão de salvar durante o tour mesmo com o formulário completo", () => {
+    onboardingMockState.emTour = true;
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        defaultDate="2026-01-10"
+        defaultPatientId="pac-1"
+        defaultPatientLabel="Paciente Teste"
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /agendar consulta/i }),
+    ).toBeDisabled();
+  });
+
+  /**
+   * Guard por PROVENIÊNCIA: o formulário está completo e o tour já acabou
+   * (`emTour: false`), mas a consulta em edição é a fabricada — salvar
+   * dispararia um PATCH com o id sentinela.
+   */
+  it("desabilita o botão mesmo fora do tour, ao editar a consulta fabricada do tour", () => {
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={{
+          id: "tour-demo",
+          doctorId: "doctor-1",
+          patientId: "pac-1",
+          type: "first_visit",
+          status: "scheduled",
+          scheduledAt: "2026-01-10T09:00:00.000Z",
+          durationMinutes: 30,
+          notes: null,
+          cancellationReason: null,
+          patient: { id: "pac-1", name: "Paciente" },
+          clinicId: null,
+          clinic: null,
+        }}
+      />,
+    );
+
+    expect(onboardingMockState.emTour).toBe(false);
+    expect(
+      screen.getByRole("button", { name: /salvar alterações/i }),
+    ).toBeDisabled();
   });
 });

@@ -14,14 +14,23 @@ import { SubscriptionStatusCard } from "./SubscriptionStatusCard";
 import { QuotaUsageCard } from "./QuotaUsageCard";
 import { PlanSelector } from "./PlanSelector";
 import { ExternalLink, Layers, Loader2 } from "lucide-react";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
+import { ACAO_PLANO_ABRIR_SELECAO } from "@/lib/onboarding/tour-registry";
 
 export function BillingSection() {
   const { subscription, subscriptionLoading, refreshSubscription } = useAuth();
+  const { emTour } = useOnboarding();
   const { toast, showToast, hideToast } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+
+  // Passo "planos-disponiveis" da trilha Plano e cota: abre o modal sozinho.
+  useOnboardingAction(ACAO_PLANO_ABRIR_SELECAO, () =>
+    setIsPlansModalOpen(true),
+  );
 
   const loadPlans = useCallback(async () => {
     setLoadingPlans(true);
@@ -44,6 +53,8 @@ export function BillingSection() {
   }, [refreshSubscription]);
 
   const handleCheckout = async (plan: SubscriptionPlan) => {
+    // Redireciona para a Stripe de verdade — nunca durante o tour.
+    if (emTour) return;
     try {
       setRedirecting(true);
       const { url } = await billingService.startCheckout(plan.id);
@@ -60,6 +71,8 @@ export function BillingSection() {
    * aterrissava na home do portal e a seleção se perdia.
    */
   const handleManage = async (plan?: SubscriptionPlan) => {
+    // Redireciona para a Stripe de verdade — nunca durante o tour.
+    if (emTour) return;
     try {
       setRedirecting(true);
       const { url } = await billingService.openPortal(plan?.id);
@@ -101,10 +114,17 @@ export function BillingSection() {
   return (
     <>
       <div className="space-y-6">
-        <SubscriptionStatusCard detail={subscription} />
-        <QuotaUsageCard quota={subscription.quota} />
+        <div data-tour="plano-assinatura">
+          <SubscriptionStatusCard detail={subscription} />
+        </div>
+        <div data-tour="plano-cota">
+          <QuotaUsageCard quota={subscription.quota} />
+        </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+        <div
+          data-tour="plano-acoes"
+          className="rounded-2xl border border-gray-200 bg-white p-4"
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Resolver assinatura
           </p>
@@ -115,6 +135,7 @@ export function BillingSection() {
                 onClick={() => setIsPlansModalOpen(true)}
                 className="gap-2"
                 isLoading={redirecting}
+                disabled={redirecting || emTour}
               >
                 <Layers className="w-4 h-4" />
                 Contratar novo plano na Stripe
@@ -125,6 +146,7 @@ export function BillingSection() {
               <Button
                 onClick={() => handleManage()}
                 isLoading={redirecting}
+                disabled={redirecting || emTour}
                 className="gap-2"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -137,6 +159,7 @@ export function BillingSection() {
                 variant="outline"
                 onClick={() => handleManage()}
                 isLoading={redirecting}
+                disabled={redirecting || emTour}
                 className="gap-2"
               >
                 <ExternalLink className="w-4 h-4" />

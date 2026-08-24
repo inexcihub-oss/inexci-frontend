@@ -125,6 +125,15 @@ describe("ColaboradoresLayout", () => {
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
+  it("expulsa do cadastro transversal quem não tem área nenhuma", () => {
+    pathname = "/colaboradores/hospital/h-1";
+    authState = { loading: false, permissions: [], isAdmin: false };
+    renderizar();
+
+    expect(screen.queryByText("lista de colaboradores")).not.toBeInTheDocument();
+    expect(replaceMock).toHaveBeenCalledWith("/configuracoes");
+  });
+
   it("continua expulsando de /colaboradores/assistente/:id", () => {
     pathname = "/colaboradores/assistente/a-1";
     authState = {

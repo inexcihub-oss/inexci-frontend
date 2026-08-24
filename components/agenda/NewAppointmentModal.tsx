@@ -16,6 +16,8 @@ import {
 } from "@/services/appointment.service";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useClinics } from "@/hooks/useClinics";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 import { mensagemForaDoHorario } from "@/lib/business-hours";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { dateKey, hhmm } from "@/lib/calendar";
@@ -78,6 +80,10 @@ export function NewAppointmentModal({
   const isEdit = !!appointment;
   const { data: doctors = [] } = useAvailableDoctors();
   const { data: clinics = [] } = useClinics();
+  const { emTour } = useOnboarding();
+  // Guarda por PROVENIÊNCIA, não só pelo estado do tour: editar a consulta
+  // fabricada continua bloqueado mesmo depois que o tour termina.
+  const dadosFabricados = appointment?.id === TOUR_DEMO_APPOINTMENT_ID;
 
   const [patientId, setPatientId] = useState("");
   const [patientLabel, setPatientLabel] = useState("");
@@ -362,7 +368,7 @@ export function NewAppointmentModal({
         </div>
 
         {/* Data + horário */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3" data-tour="agenda-modal-horario">
           <div className="flex flex-col gap-1">
             <label className="ds-label mb-0">
               Data<span className="text-red-500 ml-0.5">*</span>
@@ -481,7 +487,7 @@ export function NewAppointmentModal({
           variant="primary"
           onClick={handleSubmit}
           isLoading={saving}
-          disabled={!canSubmit}
+          disabled={!canSubmit || emTour || dadosFabricados}
           loadingText="Salvando..."
         >
           {avisoHorario

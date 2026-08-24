@@ -34,6 +34,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
+import { criarConsultaDemo } from "@/lib/onboarding/demo-data";
 import {
   CalEvent,
   MONTHS,
@@ -57,7 +59,7 @@ export default function AgendaPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast, showSuccess, showError, hideToast } = useToast();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   // Cirurgias vêm de `GET /surgery-requests/agenda`, que exige Solicitações —
   // um eixo diferente de Agenda. Quem só tem Agenda enxerga só as consultas.
   const podeVerCirurgias = can(Permission.SOLICITACOES);
@@ -75,6 +77,25 @@ export default function AgendaPage() {
   } | null>(null);
   const [detail, setDetail] = useState<Appointment | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Passo "horario" da trilha Agenda: abre o formulário de nova consulta ao
+  // entrar no passo, em vez de esperar o usuário achar o botão real.
+  useOnboardingAction("agenda-abrir-novo-horario", () => {
+    // Espelha a limpeza já feita ao ENTRAR no passo seguinte — sem isso,
+    // voltar do passo "status" para "horario" reempilha os dois modais.
+    setDetail(null);
+    setNewModal({});
+  });
+
+  // Passo "status": abre o modal de detalhe com uma consulta fabricada —
+  // nunca existe de verdade, só mostra onde ficam as ações de status.
+  useOnboardingAction("agenda-abrir-detalhe-demo", () => {
+    // O passo anterior ("horario") abriu o modal de nova consulta; sem
+    // fechar aqui, os dois modais ficariam empilhados ao entrar neste
+    // passo — `newModal` e `detail` são estados independentes.
+    setNewModal(null);
+    setDetail(criarConsultaDemo(user?.doctorProfile?.id ?? ""));
+  });
 
   const { data: doctors = [] } = useAvailableDoctors();
   const doctorNameById = useMemo(() => {
@@ -317,6 +338,7 @@ export default function AgendaPage() {
 
             <button
               onClick={() => setNewModal({})}
+              data-tour="agenda-nova-consulta"
               className="flex items-center gap-1.5 h-8 px-2 sm:px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">

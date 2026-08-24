@@ -71,7 +71,10 @@ export function DoctorHeaderEditor({
 
   return (
     <div className="space-y-6">
-      <Card className="border border-gray-200 rounded-2xl">
+      <Card
+        data-tour="config-header-logo"
+        className="border border-gray-200 rounded-2xl"
+      >
         <CardHeader className="p-6 pb-4">
           <h3 className="text-base font-semibold text-gray-900">
             Logo do Cabeçalho
@@ -177,7 +180,10 @@ export function DoctorHeaderEditor({
         </CardContent>
       </Card>
 
-      <Card className="border border-gray-200 rounded-2xl">
+      <Card
+        data-tour="config-header-texto"
+        className="border border-gray-200 rounded-2xl"
+      >
         <CardHeader className="p-6 pb-4">
           <h3 className="text-base font-semibold text-gray-900">
             Texto do Cabeçalho
@@ -196,7 +202,10 @@ export function DoctorHeaderEditor({
       </Card>
 
       {(logoPreview || contentHtml) && (
-        <Card className="border border-gray-200 rounded-2xl">
+        <Card
+          data-tour="config-header-previa"
+          className="border border-gray-200 rounded-2xl"
+        >
           <CardHeader className="p-6 pb-4">
             <h3 className="text-base font-semibold text-gray-900">
               Pré-visualização

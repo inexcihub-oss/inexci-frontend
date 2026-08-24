@@ -11,6 +11,11 @@ vi.mock("@/services/clinical-record-template.service", () => ({
   },
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
 import { clinicalRecordTemplateService } from "@/services/clinical-record-template.service";
 import { ClinicalTemplateActions } from "./ClinicalTemplateActions";
 
@@ -41,6 +46,7 @@ describe("ClinicalTemplateActions", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    onboardingMockState.emTour = false;
     (
       clinicalRecordTemplateService.getAll as ReturnType<typeof vi.fn>
     ).mockResolvedValue([template]);
@@ -157,5 +163,39 @@ describe("ClinicalTemplateActions", () => {
       expect(clinicalRecordTemplateService.getAll).toHaveBeenCalled(),
     );
     expect(screen.queryByText(/aplicar modelo/i)).toBeNull();
+  });
+
+  /**
+   * Aplicar um modelo chama `apply`, que incrementa o contador de uso real;
+   * salvar cria um registro persistente. Nenhum dos dois pode acontecer com o
+   * tour guiado no ar — a região dos modelos é destacada pelos passos
+   * `indicacao`/`documentos` da trilha Atendimento.
+   */
+  it("mantém Aplicar e Salvar habilitados fora do tour", async () => {
+    const user = userEvent.setup();
+    setup({ ...currentFields, anamnesis: "<p>Dor lombar</p>" });
+
+    expect(await screen.findByText("Primeira consulta")).toBeEnabled();
+
+    await user.click(
+      screen.getByRole("button", { name: /salvar como modelo/i }),
+    );
+    await user.type(screen.getByLabelText(/nome do modelo/i), "Lombalgia");
+    expect(screen.getByRole("button", { name: /^salvar$/i })).toBeEnabled();
+  });
+
+  it("desabilita Aplicar e Salvar durante o tour", async () => {
+    onboardingMockState.emTour = true;
+    const user = userEvent.setup();
+    setup({ ...currentFields, anamnesis: "<p>Dor lombar</p>" });
+
+    expect(await screen.findByText("Primeira consulta")).toBeDisabled();
+
+    await user.click(
+      screen.getByRole("button", { name: /salvar como modelo/i }),
+    );
+    await user.type(screen.getByLabelText(/nome do modelo/i), "Lombalgia");
+    expect(screen.getByRole("button", { name: /^salvar$/i })).toBeDisabled();
+    expect(clinicalRecordTemplateService.create).not.toHaveBeenCalled();
   });
 });

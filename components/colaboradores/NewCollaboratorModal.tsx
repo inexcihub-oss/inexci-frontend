@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
 import { PROFILE_PRESETS } from "@/lib/permissions";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 
 interface NewCollaboratorModalProps {
   isOpen: boolean;
@@ -76,6 +77,7 @@ export function NewCollaboratorModal({
   const [emailError, setEmailError] = useState("");
   const [error, setError] = useState("");
   const { toast, showToast, hideToast } = useToast();
+  const { emTour } = useOnboarding();
 
   const form = useZodForm({
     schema: createCollaboratorSchema,
@@ -369,7 +371,7 @@ export function NewCollaboratorModal({
           <div className="ds-modal-footer">
             <button
               type="submit"
-              disabled={loading || !!emailError}
+              disabled={loading || !!emailError || emTour}
               className="ds-btn-primary"
             >
               {loading

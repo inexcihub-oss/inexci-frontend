@@ -37,6 +37,8 @@ import {
   HubTab,
   hubTabQuery,
 } from "@/lib/atendimento-hub";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
+import { criarConsultaDemo } from "@/lib/onboarding/demo-data";
 
 const STATUS_BADGE: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 text-blue-700 border-blue-200",
@@ -50,7 +52,7 @@ export default function AtendimentoHubPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast, showSuccess, showError, hideToast } = useToast();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const podeAgenda = can(Permission.AGENDA);
 
   const [tab, setTab] = useState<HubTab>("today");
@@ -61,6 +63,12 @@ export default function AtendimentoHubPage() {
   } | null>(null);
   const [detail, setDetail] = useState<Appointment | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Passo "iniciar" da trilha Atendimento: abre o modal de detalhe com uma
+  // consulta fabricada, só para mostrar onde fica "Iniciar atendimento".
+  useOnboardingAction("atendimento-abrir-detalhe-demo", () =>
+    setDetail(criarConsultaDemo(user?.doctorProfile?.id ?? "")),
+  );
 
   const { data: doctors = [] } = useAvailableDoctors();
   const doctorNameById = useMemo(() => {
@@ -191,6 +199,7 @@ export default function AtendimentoHubPage() {
             {podeAgenda && (
               <button
                 onClick={() => setNewModal({})}
+                data-tour="atendimento-nova-consulta"
                 className="ml-auto flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -206,7 +215,10 @@ export default function AtendimentoHubPage() {
 
           {/* Abas + filtro de médico */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center bg-neutral-100 rounded-lg p-0.5">
+            <div
+              data-tour="atendimento-abas"
+              className="flex items-center bg-neutral-100 rounded-lg p-0.5"
+            >
               {HUB_TABS.map((t) => (
                 <button
                   key={t.key}

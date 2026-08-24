@@ -137,6 +137,34 @@ export async function agendarViaApi(
   return res.json();
 }
 
+/**
+ * Zera o onboarding pelo próprio produto (`POST /onboarding/reset`).
+ *
+ * O seed não garante `onboarding_state` nulo numa execução repetida da
+ * suíte — o cenário "usuário novo vê o modal" exige `welcomeSeenAt` nulo, e
+ * escrever isso via SQL direto contornaria a regra de negócio real.
+ */
+export async function resetOnboarding(session: ApiSession) {
+  const res = await session.ctx.post("/onboarding/reset", {
+    headers: auth(session),
+  });
+  if (!res.ok()) {
+    throw new Error(`Falha ao reiniciar o onboarding (${res.status()})`);
+  }
+  return res.json();
+}
+
+/** Progresso de onboarding do usuário autenticado (`GET /onboarding/state`). */
+export async function onboardingState(session: ApiSession) {
+  const res = await session.ctx.get("/onboarding/state", {
+    headers: auth(session),
+  });
+  if (!res.ok()) {
+    throw new Error(`Falha ao ler o estado do onboarding (${res.status()})`);
+  }
+  return res.json();
+}
+
 /** CPF válido gerado a partir de 9 dígitos aleatórios (o backend valida). */
 export function gerarCpf(): string {
   const base = Array.from({ length: 9 }, () => Math.floor(Math.random() * 9));

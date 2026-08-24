@@ -12,6 +12,8 @@ import MobileHeaderActions from "@/components/shared/MobileHeaderActions";
 import { ConsentGate } from "@/components/privacy/ConsentGate";
 import { PermissionRouteGuard } from "@/components/PermissionRouteGuard";
 import { GlobalBanners } from "@/components/billing/GlobalBanners";
+import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
+import { OnboardingGate } from "@/components/onboarding/OnboardingGate";
 import Image from "next/image";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 
@@ -112,13 +114,27 @@ export default function DashboardLayoutInner({
             `h-full` do `PageContainer` pedia 100% do `main` e o banner
             empurrava esse tanto para fora — no desktop, onde não há rolagem,
             o excedente era cortado e o rodapé do kanban ficava inalcançável.
+
+            `GlobalBanners` mora DENTRO do `OnboardingProvider` (e depois do
+            `ConsentGate`/`PermissionRouteGuard`) porque é onde o
+            `OnboardingBanner` (a menor precedência dos três) tem o contexto
+            de onboarding disponível — o próprio `OnboardingGate` já exigia
+            ficar depois do `ConsentGate` pelo mesmo motivo legal (aceite vem
+            antes de qualquer outra coisa), e mover o provider para fora
+            dele quebraria essa regra.
           */}
           <main className="flex flex-1 flex-col overflow-y-auto overscroll-y-contain lg:overflow-hidden">
-            <div className="flex-none">
-              <GlobalBanners />
-            </div>
             <PermissionRouteGuard>
-              <ConsentGate>{children}</ConsentGate>
+              <ConsentGate>
+                <OnboardingProvider>
+                  <div className="flex-none">
+                    <GlobalBanners />
+                  </div>
+                  <OnboardingGate>{children}</OnboardingGate>
+                  {/* O menu móvel também registra ações acionadas pelo tour. */}
+                  <BottomNavBar />
+                </OnboardingProvider>
+              </ConsentGate>
             </PermissionRouteGuard>
           </main>
 
@@ -129,9 +145,6 @@ export default function DashboardLayoutInner({
             aria-hidden
           />
         </div>
-
-        {/* Bottom Navigation - apenas mobile */}
-        <BottomNavBar />
 
         {shouldBlockDashboard && (
           <div className="fixed inset-0 z-[90] flex items-center justify-center bg-neutral-950/45 p-4 backdrop-blur-[2px] sm:p-6">

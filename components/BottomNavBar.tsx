@@ -7,6 +7,8 @@ import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 import { Permission } from "@/lib/permissions";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
+import { ACAO_CADASTROS_ABRIR_MENU_MOBILE } from "@/lib/onboarding/tour-registry";
 
 interface NavItem {
   iconSrc: string;
@@ -87,6 +89,13 @@ export default function BottomNavBar() {
   const pathname = usePathname();
   const { can } = useAuth();
   const [overflowOpen, setOverflowOpen] = useState(false);
+
+  // O passo "Hospitais, convênios e fornecedores" precisa revelar o
+  // overflow no mobile; sem isso, a explicação virava um card solto e não
+  // mostrava onde os cadastros realmente ficam.
+  useOnboardingAction(ACAO_CADASTROS_ABRIR_MENU_MOBILE, () =>
+    setOverflowOpen(true),
+  );
 
   const closeOverflow = () => setOverflowOpen(false);
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
@@ -237,7 +246,8 @@ export default function BottomNavBar() {
 
           {/* Sheet */}
           <div
-            className="fixed inset-x-0 bottom-0 z-60 lg:hidden bg-white rounded-t-3xl shadow-xl animate-slide-up"
+            data-tour="cadastros-menu-mobile"
+            className="fixed inset-x-0 bottom-0 z-[60] lg:hidden bg-white rounded-t-3xl shadow-xl animate-slide-up"
             style={
               isDragging
                 ? { transform: `translateY(${dragY}px)`, transition: "none" }

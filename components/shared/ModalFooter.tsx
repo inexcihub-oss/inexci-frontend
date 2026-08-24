@@ -39,6 +39,12 @@ interface SpinnerButtonProps {
   className?: string;
   children: React.ReactNode;
   type?: "button" | "submit";
+  /**
+   * Âncora do tour de onboarding. A interface é fechada de propósito (não faz
+   * spread de `ButtonHTMLAttributes`), então o atributo precisa ser declarado
+   * para chegar ao DOM.
+   */
+  "data-tour"?: string;
 }
 
 /**
@@ -54,6 +60,7 @@ export function SpinnerButton({
   className = "",
   children,
   type = "button",
+  "data-tour": dataTour,
 }: SpinnerButtonProps) {
   const variantClasses: Record<string, string> = {
     primary:
@@ -70,6 +77,7 @@ export function SpinnerButton({
       type={type}
       onClick={onClick}
       disabled={disabled || isLoading}
+      data-tour={dataTour}
       className={`px-3 py-1.5 md:px-4 md:py-2.5 text-xs md:text-sm font-semibold rounded-xl transition-all duration-200 min-h-[36px] md:min-h-[44px] active:scale-[0.98] ${variantClasses[variant]} ${className}`}
     >
       {isLoading ? (

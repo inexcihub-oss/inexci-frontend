@@ -1603,7 +1603,10 @@ export default function SolicitacaoDetalhePage() {
               ) : (
                 <>
                   {/* Pendências Content */}
-                  <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
+                  <div
+                    data-tour="sc-requisitos"
+                    className="flex-1 flex flex-col bg-white overflow-hidden relative"
+                  >
                     {/* Lista de Pendências - Validação Dinâmica */}
                     <div className="flex-1 overflow-auto p-3">
                       {loadingPendencies ? (

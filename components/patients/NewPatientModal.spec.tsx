@@ -15,6 +15,11 @@ vi.mock("@/services/health-plan.service", () => ({
 }));
 
 const permissions: Permission[] = [Permission.ATENDIMENTO];
+// CreateHealthPlanModal (aberto pelo atalho de convênio) lê o estado do tour.
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: false }),
+}));
+
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     permissions,

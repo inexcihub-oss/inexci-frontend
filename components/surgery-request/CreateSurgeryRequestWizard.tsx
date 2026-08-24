@@ -27,6 +27,8 @@ import { extractTemplateTussItemsForCreate } from "@/components/procedures/norma
 import { tussService } from "@/services/tuss.service";
 import { AvailableDoctor } from "@/types";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 import { priorityColors } from "@/lib/design-system";
 import {
   PriorityLevel,
@@ -69,6 +71,7 @@ export function CreateSurgeryRequestWizard({
   initialTemplate,
 }: CreateSurgeryRequestWizardProps) {
   const { can, permissions } = useAuth();
+  const { emTour } = useOnboarding();
   // Excluir procedimento do catálogo (a lixeira na lista) segue em
   // ADMINISTRACAO: apaga um item que outras solicitações e modelos usam.
   const podeAdministrarCadastros = can(Permission.ADMINISTRACAO);
@@ -77,6 +80,16 @@ export function CreateSurgeryRequestWizard({
   // monta a solicitação descobre que o item não está cadastrado.
   const podeCriarCadastroTransversal = hasAnyArea(permissions);
   const [modalState, setModalState] = useState<ModalState>("none");
+  // Alvo do tour "cadastro-no-modal" vive dentro de `ProcedureSelectionContent`
+  // (o botão "Novo", `data-tour="sc-wizard-novo-cadastro"`), que só monta
+  // quando `modalState === "procedure-select"`. O tour aciona esta troca ao
+  // entrar no passo — ver `tour-registry.ts` (Task 10) e a página que abre o
+  // wizard (Task 9). Registrado incondicionalmente: o wizard fica sempre
+  // montado (`isOpen` só controla o próprio JSX interno), então a ação já
+  // está disponível antes mesmo de o usuário abrir o modal pela primeira vez.
+  useOnboardingAction("sc-abrir-selecao-procedimento", () =>
+    setModalState("procedure-select"),
+  );
   const [loading, setLoading] = useState(false);
   const [isClosing, _setIsClosing] = useState(false);
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
@@ -895,6 +908,7 @@ export function CreateSurgeryRequestWizard({
                     disabled={
                       loading ||
                       isClosing ||
+                      emTour ||
                       !selectedDoctor ||
                       !selectedPatient ||
                       !selectedProcedure

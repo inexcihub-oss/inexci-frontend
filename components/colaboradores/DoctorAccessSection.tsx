@@ -13,6 +13,7 @@ import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { Stethoscope } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { TOUR_DEMO_COLLABORATOR_ID } from "@/lib/onboarding/demo-data";
 
 interface DoctorAccessSectionProps {
   collaboratorId: string;
@@ -277,6 +278,14 @@ export function DoctorAccessSection({
     [collaboratorId, collaboratorIsDoctor],
   );
 
+  /**
+   * Proveniência do dado, não `emTour`: o colaborador fabricado nunca existe
+   * de verdade, então salvar acessos ou consultar `getAccessForUser` para
+   * ele sempre seria uma chamada de rede sem sentido — mesmo que o usuário
+   * já tenha saído do tour olhando para esta ficha.
+   */
+  const isFabricado = collaboratorId === TOUR_DEMO_COLLABORATOR_ID;
+
   const ensureMandatoryDoctorsSelected = useCallback(
     (ids: string[]) => Array.from(new Set([...ids, ...mandatoryDoctorIds])),
     [mandatoryDoctorIds],
@@ -310,7 +319,9 @@ export function DoctorAccessSection({
     try {
       const [doctors, access] = await Promise.all([
         availableDoctorsService.getDoctorsForAccount(),
-        userDoctorAccessService.getAccessForUser(collaboratorId),
+        isFabricado
+          ? Promise.resolve<UserDoctorAccess[]>([])
+          : userDoctorAccessService.getAccessForUser(collaboratorId),
       ]);
 
       setAccountDoctors(doctors);
@@ -330,7 +341,7 @@ export function DoctorAccessSection({
     } finally {
       setLoading(false);
     }
-  }, [collaboratorId, ensureMandatoryDoctorsSelected, showToast]);
+  }, [collaboratorId, ensureMandatoryDoctorsSelected, isFabricado, showToast]);
 
   useEffect(() => {
     loadData();
@@ -349,6 +360,9 @@ export function DoctorAccessSection({
   };
 
   const handleSave = async () => {
+    // Defesa em profundidade: o botão já fica desabilitado (`isFabricado`),
+    // mas o handler não pode depender só disso.
+    if (isFabricado) return;
     setSaving(true);
     try {
       const normalizedSelectedIds =
@@ -402,19 +416,21 @@ export function DoctorAccessSection({
           visualizar e gerenciar.
         </p>
 
-        <SearchableMultiSelect
-          options={doctorsWithSelf}
-          selected={selectedDoctorIds}
-          onToggle={toggleDoctor}
-          lockedSelectedIds={mandatoryDoctorIds}
-          placeholder="Buscar médico..."
-        />
+        <div data-tour="colaborador-vinculo-medico">
+          <SearchableMultiSelect
+            options={doctorsWithSelf}
+            selected={selectedDoctorIds}
+            onToggle={toggleDoctor}
+            lockedSelectedIds={mandatoryDoctorIds}
+            placeholder="Buscar médico..."
+          />
+        </div>
 
         <div className="flex pt-4 sm:justify-end">
           <Button
             onClick={handleSave}
             isLoading={saving}
-            disabled={!isDirty}
+            disabled={!isDirty || isFabricado}
             className="w-full sm:w-auto"
           >
             Salvar acessos

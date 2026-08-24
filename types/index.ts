@@ -15,6 +15,7 @@ export interface DoctorProfile {
 // ─── User types ───────────────────────────────────────────────────────────────
 
 import type { ConsentStatus } from "@/types/consent.types";
+import type { OnboardingState } from "@/lib/onboarding/state";
 import { Permission } from "@/lib/permissions";
 
 export interface User {
@@ -46,6 +47,8 @@ export interface User {
   updatedAt: string;
   /** Embutido no `/auth/me` (item 4.4b) — evita round-trip extra no boot. */
   consents?: ConsentStatus;
+  /** Embutido no `/auth/me` pelo mesmo motivo de `consents`: evita round-trip no boot. */
+  onboardingState?: OnboardingState;
 }
 
 // ─── User Doctor Access ───────────────────────────────────────────────────────

@@ -22,6 +22,9 @@ import {
   removeScFromDocumentStorage,
   setScFromDocumentStorage,
 } from "@/lib/sc-from-document-background";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
+import { criarExtracaoDemo } from "@/lib/onboarding/demo-data";
 
 const ACCEPTED_MIME = [
   "application/pdf",
@@ -67,13 +70,38 @@ export function UploadDocumentModal({
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { onDocumentExtractionStatus } = useNotificationsContext();
+  const { onDocumentExtractionStatus, setUnreadCount } =
+    useNotificationsContext();
+  const { emTour } = useOnboarding();
   const inputRef = useRef<HTMLInputElement>(null);
   const extractionCancelledRef = useRef(false);
   const abortPendingWaitRef = useRef<(() => void) | null>(null);
   const keepTrackingInBackgroundRef = useRef(false);
   const queuedBackgroundJobRef =
     useRef<BackgroundDocumentExtractionActive | null>(null);
+  /** Mantém a análise demonstrativa viva até o avanço explícito do tour. */
+  const analiseSimuladaAtivaRef = useRef(false);
+
+  /**
+   * Passo "documento-enviar" da trilha Solicitações: simula a análise sem
+   * NENHUMA chamada real a `extractFromDocument`/`waitForExtractionResult`.
+   * A análise fica visível até a pessoa clicar em "Próximo" no tour.
+   */
+  useOnboardingAction("sc-simular-analise-documento", () => {
+    if (!emTour) return;
+    analiseSimuladaAtivaRef.current = true;
+    setLoading(true);
+    setError(null);
+    setUnreadCount((c) => c + 1);
+  });
+
+  // O clique em "Próximo" da etapa 7 confirma a simulação e abre a revisão.
+  useOnboardingAction("sc-concluir-analise-documento", () => {
+    if (!emTour || !analiseSimuladaAtivaRef.current) return;
+    analiseSimuladaAtivaRef.current = false;
+    setLoading(false);
+    onSuccess(criarExtracaoDemo());
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -84,6 +112,7 @@ export function UploadDocumentModal({
     setFile(null);
     setError(null);
     setLoading(false);
+    analiseSimuladaAtivaRef.current = false;
     extractionCancelledRef.current = true;
     abortPendingWaitRef.current?.();
     abortPendingWaitRef.current = null;
@@ -93,6 +122,15 @@ export function UploadDocumentModal({
   };
 
   const handleClose = () => {
+    if (analiseSimuladaAtivaRef.current) {
+      // Simulação fabricada do tour: não existe job real em background para
+      // continuar rastreando — sem isso, `loading` ficava travado para
+      // sempre (o `setTimeout` fabricado é cancelado dentro de resetState).
+      resetState();
+      onClose();
+      return;
+    }
+
     if (loading) {
       keepTrackingInBackgroundRef.current = true;
       removeScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY);
@@ -143,6 +181,10 @@ export function UploadDocumentModal({
   };
 
   const handleSubmit = async () => {
+    // Defesa em profundidade: durante o tour não deve existir NENHUMA
+    // chamada real a `extractFromDocument` — a UI já bloqueia isso, mas o
+    // handler não pode depender só do botão desabilitado.
+    if (emTour) return;
     if (!file) return;
     setLoading(true);
     setError(null);
@@ -273,6 +315,8 @@ export function UploadDocumentModal({
       extractionCancelledRef.current = true;
       abortPendingWaitRef.current?.();
       abortPendingWaitRef.current = null;
+      // A simulação só pode ser concluída enquanto este modal ainda existe.
+      analiseSimuladaAtivaRef.current = false;
     };
   }, []);
 
@@ -379,7 +423,10 @@ export function UploadDocumentModal({
         )}
 
         {loading && (
-          <div className="flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
+          <div
+            data-tour="sc-documento-analisando"
+            className="flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-800"
+          >
             <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-medium">Análise em andamento</p>

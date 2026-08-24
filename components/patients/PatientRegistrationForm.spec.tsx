@@ -15,6 +15,11 @@ vi.mock("@/services/health-plan.service", () => ({
 // duas fontes, um teste passa a afirmar uma combinação que o AuthContext real
 // nunca produz (ex.: `can(ADMINISTRACAO)` verdadeiro com `permissions` vazio).
 let permissions: Permission[] = [Permission.ADMINISTRACAO];
+// CreateHealthPlanModal (aberto pelo atalho de convênio) lê o estado do tour.
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: false }),
+}));
+
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     permissions,

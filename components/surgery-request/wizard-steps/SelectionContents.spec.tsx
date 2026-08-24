@@ -138,4 +138,28 @@ describe("ProcedureSelectionContent — criar e excluir são props separadas", (
     expect(screen.getByRole("button", { name: "Novo" })).toBeDisabled();
     expect(screen.getByRole("button", lixeira)).toBeInTheDocument();
   });
+
+  /**
+   * `sc-wizard-novo-cadastro` é a âncora que o tour de onboarding usa para
+   * destacar o botão "Novo" dentro do wizard (`tour-registry.ts`, passo
+   * "cadastro-no-modal"). Sem este teste, trocar ou remover o atributo aqui
+   * não quebra nada visivelmente — o tour só passa a pular o passo em
+   * silêncio (`useTargetRect` reporta "ausente").
+   */
+  it("expõe a âncora do tour no botão 'Novo'", () => {
+    renderWithClient(
+      <ProcedureSelectionContent
+        onSelect={vi.fn()}
+        onCreateNew={vi.fn()}
+        onNewItemCreated={vi.fn()}
+        isActive
+        canCreate
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Novo" })).toHaveAttribute(
+      "data-tour",
+      "sc-wizard-novo-cadastro",
+    );
+  });
 });

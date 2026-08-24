@@ -19,6 +19,11 @@ vi.mock("@/services/cid.service", () => ({
   cidService: { search: vi.fn().mockResolvedValue({ records: [] }) },
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
 import { clinicalRecordService } from "@/services/clinical-record.service";
 import { tussService } from "@/services/tuss.service";
 import { ClinicalDocumentActions } from "./ClinicalDocumentActions";
@@ -39,6 +44,7 @@ describe("ClinicalDocumentActions", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    onboardingMockState.emTour = false;
     ensureRecordId.mockResolvedValue("cr-1");
     (
       clinicalRecordService.generatePrescription as ReturnType<typeof vi.fn>
@@ -76,6 +82,21 @@ describe("ClinicalDocumentActions", () => {
     expect(screen.getByRole("button", { name: /receita/i })).toBeDefined();
     expect(screen.getByRole("button", { name: /atestado/i })).toBeDefined();
     expect(screen.getByRole("button", { name: /exames/i })).toBeDefined();
+  });
+
+  /**
+   * Âncora do tour de onboarding (trilha "atendimento", passo "documentos")
+   * em `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo
+   * (ou trocar o elemento) quebra o tour em silêncio.
+   */
+  it('expõe data-tour="ficha-documentos" no card de documentos do atendimento', () => {
+    setup();
+
+    expect(
+      screen
+        .getByText("Documentos do atendimento")
+        .closest('[data-tour="ficha-documentos"]'),
+    ).not.toBeNull();
   });
 
   it("emite a receita com os medicamentos digitados", async () => {
@@ -419,5 +440,65 @@ describe("ClinicalDocumentActions", () => {
     expect(
       (screen.getByLabelText(/medicamento/i) as HTMLInputElement).value,
     ).toBe("Dipirona 500mg");
+  });
+
+  it("desabilita o botão Emitir durante o tour", async () => {
+    onboardingMockState.emTour = true;
+    const user = userEvent.setup();
+    setup();
+
+    await user.click(screen.getByRole("button", { name: /receita/i }));
+    await user.type(
+      screen.getByLabelText(/medicamento 1/i),
+      "Dipirona 500mg",
+    );
+
+    expect(screen.getByRole("button", { name: /^emitir$/i })).toBeDisabled();
+  });
+
+  it("desabilita o botão Visualizar durante o tour", async () => {
+    onboardingMockState.emTour = true;
+    const user = userEvent.setup();
+    render(
+      <ClinicalDocumentActions
+        ensureRecordId={vi.fn().mockResolvedValue("record-1")}
+        onEmitted={vi.fn()}
+        cidCodes={[]}
+        patientId="pac-1"
+        doctorId="doctor-1"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /receita/i }));
+
+    expect(
+      screen.getByRole("button", { name: /visualizar/i }),
+    ).toBeDisabled();
+  });
+
+  /**
+   * Guard por PROVENIÊNCIA: o pai passa `dadosFabricados` quando o
+   * atendimento em tela é o fabricado do tour. Sair do tour (`emTour: false`)
+   * não pode reabilitar a emissão real.
+   */
+  it("desabilita o Emitir mesmo fora do tour, quando dadosFabricados é true", async () => {
+    const user = userEvent.setup();
+    render(
+      <ClinicalDocumentActions
+        ensureRecordId={vi.fn().mockResolvedValue("record-1")}
+        onEmitted={vi.fn()}
+        cidCodes={[]}
+        patientId="pac-1"
+        doctorId="doctor-1"
+        dadosFabricados
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /receita/i }));
+    await user.type(screen.getByLabelText(/medicamento 1/i), "Dipirona");
+
+    expect(onboardingMockState.emTour).toBe(false);
+    expect(screen.getByRole("button", { name: /^emitir$/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /visualizar/i })).toBeDisabled();
   });
 });

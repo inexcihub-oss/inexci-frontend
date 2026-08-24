@@ -64,6 +64,11 @@ vi.mock("@/services/health-plan.service", () => ({
   healthPlanService: { getById: vi.fn() },
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
 import { Permission } from "@/lib/permissions";
 
 // `can` concede tudo por padrão — os testes deste arquivo focam no eixo
@@ -154,6 +159,7 @@ describe("AtendimentoTabs", () => {
     vi.clearAllMocks();
     searchParams = new URLSearchParams();
     authState = { isDoctor: true, can: () => true };
+    onboardingMockState.emTour = false;
     (healthPlanService.getById as ReturnType<typeof vi.fn>).mockResolvedValue(
       null,
     );
@@ -171,6 +177,20 @@ describe("AtendimentoTabs", () => {
     );
     expect(screen.getByText("Anamnese")).toBeInTheDocument();
     expect(screen.getByText("Conduta / Plano")).toBeInTheDocument();
+  });
+
+  /**
+   * Âncora do tour de onboarding (trilha "atendimento", passo "abas") em
+   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
+   * trocar o elemento) quebra o tour em silêncio.
+   */
+  it('expõe data-tour="ficha-abas" na barra de abas', () => {
+    renderTabs();
+
+    expect(screen.getByRole("tablist")).toHaveAttribute(
+      "data-tour",
+      "ficha-abas",
+    );
   });
 
   it("respeita a aba vinda da URL e ignora valor inválido", () => {
@@ -797,5 +817,92 @@ describe("AtendimentoTabs", () => {
     expect(back).toHaveBeenCalledTimes(1);
 
     confirmSpy.mockRestore();
+  });
+
+  it("desabilita Salvar rascunho e Finalizar durante o tour", () => {
+    onboardingMockState.emTour = true;
+    render(
+      <AtendimentoTabs
+        patient={patient}
+        appointment={appointment}
+        initialRecord={null}
+      />,
+    );
+    expect(
+      screen.getAllByRole("button", { name: /salvar rascunho/i })[0],
+    ).toBeDisabled();
+    expect(
+      screen.getAllByRole("button", { name: /finalizar/i })[0],
+    ).toBeDisabled();
+  });
+
+  it("mantém Salvar rascunho e Finalizar habilitados fora do tour", () => {
+    render(
+      <AtendimentoTabs
+        patient={patient}
+        appointment={appointment}
+        initialRecord={null}
+      />,
+    );
+    expect(
+      screen.getAllByRole("button", { name: /salvar rascunho/i })[0],
+    ).toBeEnabled();
+    expect(
+      screen.getAllByRole("button", { name: /finalizar/i })[0],
+    ).toBeEnabled();
+  });
+
+  it("bloqueia as abas Histórico, Cadastro e Documentos durante o tour, mantendo Atendimento acessível", () => {
+    onboardingMockState.emTour = true;
+    render(
+      <AtendimentoTabs
+        patient={patient}
+        appointment={appointment}
+        initialRecord={null}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Histórico" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Cadastro" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Documentos" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Atendimento" })).toBeEnabled();
+  });
+
+  it("mantém todas as abas acessíveis fora do tour", () => {
+    render(
+      <AtendimentoTabs
+        patient={patient}
+        appointment={appointment}
+        initialRecord={null}
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "Histórico" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: "Cadastro" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: "Documentos" })).toBeEnabled();
+  });
+
+  /**
+   * Guard por PROVENIÊNCIA: `/atendimento/tour-demo` continua na tela com os
+   * dados fabricados depois que o tour termina (`closeTour` não navega), e
+   * nada pode voltar a mutar com o id sentinela.
+   */
+  it("mantém os botões e as abas bloqueados mesmo fora do tour, se a consulta for a fabricada", () => {
+    render(
+      <AtendimentoTabs
+        patient={patient}
+        appointment={{ ...appointment, id: "tour-demo", clinicId: null }}
+        initialRecord={null}
+      />,
+    );
+
+    expect(onboardingMockState.emTour).toBe(false);
+    expect(
+      screen.getAllByRole("button", { name: /salvar rascunho/i })[0],
+    ).toBeDisabled();
+    expect(
+      screen.getAllByRole("button", { name: /finalizar/i })[0],
+    ).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Histórico" })).toBeDisabled();
   });
 });

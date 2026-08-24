@@ -45,12 +45,14 @@ export function hasAnyArea(permissions: Permission[]): boolean {
 
 /**
  * Rota → área. A ordem importa: o primeiro prefixo que casar vence, então
- * prefixos mais específicos vêm antes. `permission: null` é liberação
- * explícita — serve para abrir uma sub-rota de um prefixo fechado.
+ * prefixos mais específicos vêm antes. `permission: "any-area"` abre a
+ * sub-rota de um prefixo fechado para qualquer usuário com ao menos uma área.
  */
+type RouteAccess = Permission | "any-area";
+
 export const ROUTE_PERMISSIONS: {
   prefix: string;
-  permission: Permission | null;
+  permission: RouteAccess;
 }[] = [
   { prefix: "/agenda", permission: Permission.AGENDA },
   { prefix: "/atendimento", permission: Permission.ATENDIMENTO },
@@ -67,10 +69,10 @@ export const ROUTE_PERMISSIONS: {
   // mais curto casa primeiro e o guard devolve o usuário para a casa dele.
   // Excluir continua exigindo Administração, mas isso é decidido no backend e
   // nos botões da lista, não pela rota.
-  { prefix: "/colaboradores/hospital", permission: null },
-  { prefix: "/colaboradores/convenio", permission: null },
-  { prefix: "/colaboradores/fornecedor", permission: null },
-  { prefix: "/colaboradores/fabricante", permission: null },
+  { prefix: "/colaboradores/hospital", permission: "any-area" },
+  { prefix: "/colaboradores/convenio", permission: "any-area" },
+  { prefix: "/colaboradores/fornecedor", permission: "any-area" },
+  { prefix: "/colaboradores/fabricante", permission: "any-area" },
   { prefix: "/colaboradores", permission: Permission.ADMINISTRACAO },
   // "Procedimentos" edita `SurgeryRequestTemplate` — herda a permissão de
   // classe do `SurgeryRequestsController` (`GET/POST/PATCH/DELETE
@@ -87,7 +89,18 @@ export function permissionForRoute(pathname: string): Permission | null {
   const encontrada = ROUTE_PERMISSIONS.find(
     ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
-  return encontrada?.permission ?? null;
+  return encontrada?.permission === "any-area"
+    ? null
+    : (encontrada?.permission ?? null);
+}
+
+/** Verdadeiro quando a rota exige pelo menos uma área, como o backend. */
+export function routeRequiresAnyArea(pathname: string): boolean {
+  return ROUTE_PERMISSIONS.some(
+    ({ prefix, permission }) =>
+      permission === "any-area" &&
+      (pathname === prefix || pathname.startsWith(`${prefix}/`)),
+  );
 }
 
 /**

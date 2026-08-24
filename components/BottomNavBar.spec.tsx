@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { Permission } from "@/lib/permissions";
+import { ACAO_CADASTROS_ABRIR_MENU_MOBILE } from "@/lib/onboarding/tour-registry";
 
 let authState = {
   permissions: [] as Permission[],
@@ -10,6 +11,13 @@ let authState = {
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => authState }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/agenda",
+}));
+
+const onboardingActions = new Map<string, () => void>();
+vi.mock("@/components/onboarding/useOnboardingAction", () => ({
+  useOnboardingAction: (id: string, fn: () => void) => {
+    onboardingActions.set(id, fn);
+  },
 }));
 
 import BottomNavBar from "./BottomNavBar";
@@ -22,6 +30,7 @@ function openOverflow() {
 describe("BottomNavBar — filtro por permissão", () => {
   beforeEach(() => {
     authState = { ...authState, permissions: [] };
+    onboardingActions.clear();
   });
 
   it("mostra só agenda e pacientes para quem só tem agenda", () => {
@@ -85,6 +94,19 @@ describe("BottomNavBar — filtro por permissão", () => {
     openOverflow();
 
     expect(screen.queryByText("Clínicas")).not.toBeInTheDocument();
+  });
+
+  it("abre o menu de cadastros quando a trilha pede no mobile", () => {
+    render(<BottomNavBar />);
+
+    act(() => onboardingActions.get(ACAO_CADASTROS_ABRIR_MENU_MOBILE)?.());
+
+    expect(screen.getByText("Hospitais")).toBeInTheDocument();
+    expect(screen.getByText("Convênios")).toBeInTheDocument();
+    expect(screen.getByText("Fornecedores")).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-tour="cadastros-menu-mobile"]'),
+    ).not.toBeNull();
   });
 });
 

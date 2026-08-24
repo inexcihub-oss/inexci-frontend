@@ -8,6 +8,13 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: false, executarAcao: () => false }),
+}));
+vi.mock("@/components/onboarding/useOnboardingAction", () => ({
+  useOnboardingAction: () => {},
+}));
+
 const { getAgendaSurgeries } = vi.hoisted(() => ({
   getAgendaSurgeries: vi.fn().mockResolvedValue({ total: 0, records: [] }),
 }));

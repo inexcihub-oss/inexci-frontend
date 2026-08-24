@@ -41,6 +41,16 @@ vi.mock("@/contexts/AuthContext", () => ({
   }),
 }));
 
+// Este arquivo testa o fluxo de criação a partir de modelo, não o tour de
+// onboarding (ver CreateSurgeryRequestWizard.spec.tsx) — mocks neutros só
+// para o componente conseguir montar.
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: false }),
+}));
+vi.mock("@/components/onboarding/useOnboardingAction", () => ({
+  useOnboardingAction: () => {},
+}));
+
 // As telas de seleção não são o objeto deste teste; o que importa é o que o
 // submit dispara depois que o modelo foi aplicado.
 vi.mock("../wizard-steps/SelectionContents", () => ({

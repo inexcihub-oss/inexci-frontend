@@ -99,6 +99,20 @@ describe("PermissionRouteGuard", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("redireciona colaborador sem nenhuma área de um cadastro transversal", () => {
+    pathname = "/colaboradores/hospital/h-1";
+    authState.permissions = [];
+
+    render(
+      <PermissionRouteGuard>
+        <p>conteúdo</p>
+      </PermissionRouteGuard>,
+    );
+
+    expect(replace).toHaveBeenCalledWith("/configuracoes");
+    expect(screen.queryByText("conteúdo")).not.toBeInTheDocument();
+  });
+
   /**
    * Ponto 2 da Tarefa 17: enquanto o AuthContext ainda resolve o perfil,
    * `permissions` chega vazio por estar em trânsito — não porque o usuário

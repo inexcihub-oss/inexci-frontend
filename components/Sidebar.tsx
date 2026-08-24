@@ -365,6 +365,7 @@ export default function Sidebar({
                           : "opacity-70 hover:bg-neutral-50 hover:opacity-100"
                       } ${isCollapsed ? "lg:justify-center" : ""}`}
                       title={isCollapsed ? item.label : undefined}
+                      data-tour="cadastros-menu"
                     >
                       <Image
                         src={item.iconSrc}

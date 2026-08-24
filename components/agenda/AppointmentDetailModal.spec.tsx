@@ -12,6 +12,11 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
 import { AppointmentDetailModal } from "./AppointmentDetailModal";
 
 const consultaBase: Appointment = {
@@ -57,6 +62,7 @@ function renderModal(status: AppointmentStatus, doctorName?: string) {
 describe("AppointmentDetailModal", () => {
   beforeEach(() => {
     authState = { isDoctor: true, can: (p) => p === Permission.AGENDA };
+    onboardingMockState.emTour = false;
   });
 
   /**
@@ -94,6 +100,34 @@ describe("AppointmentDetailModal", () => {
     expect(
       screen.getByRole("button", { name: /Iniciar atendimento/i }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Âncora do tour de onboarding (trilha "atendimento", passo "iniciar") em
+   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
+   * trocar o elemento) quebra o tour em silêncio.
+   */
+  it('expõe data-tour="atendimento-iniciar" no botão de iniciar atendimento', () => {
+    renderModal("scheduled");
+
+    expect(
+      screen.getByRole("button", { name: /Iniciar atendimento/i }),
+    ).toHaveAttribute("data-tour", "atendimento-iniciar");
+  });
+
+  /**
+   * Âncora do tour de onboarding (trilha "agenda", passo "status") em
+   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
+   * trocar o elemento) quebra o tour em silêncio.
+   */
+  it('expõe data-tour="agenda-consulta-acoes" na linha de botões de status', () => {
+    renderModal("scheduled");
+
+    expect(
+      screen.getByRole("button", { name: /Confirmar/i }).closest(
+        '[data-tour="agenda-consulta-acoes"]',
+      ),
+    ).not.toBeNull();
   });
 
   /**
@@ -180,5 +214,33 @@ describe("AppointmentDetailModal", () => {
     renderAppointment({ ...consultaBase, clinicId: null, clinic: null });
 
     expect(screen.queryByText(/local de atendimento/i)).not.toBeInTheDocument();
+  });
+
+  it("desabilita as ações rápidas de status e o botão Excluir durante o tour", () => {
+    onboardingMockState.emTour = true;
+    renderModal("scheduled");
+
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeDisabled();
+  });
+
+  it("mantém as ações habilitadas fora do tour", () => {
+    renderModal("scheduled");
+
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeEnabled();
+  });
+
+  /**
+   * O guard real é a PROVENIÊNCIA do dado, não o estado do tour: sair do tour
+   * (`emTour: false`) na página sentinela não pode devolver os botões de
+   * mutação com o id fabricado ainda em tela.
+   */
+  it("desabilita as ações mesmo fora do tour, se a consulta for a fabricada do tour", () => {
+    renderAppointment({ ...consultaBase, id: "tour-demo", status: "scheduled" });
+
+    expect(onboardingMockState.emTour).toBe(false);
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeDisabled();
   });
 });

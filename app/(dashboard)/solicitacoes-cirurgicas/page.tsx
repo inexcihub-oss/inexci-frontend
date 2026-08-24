@@ -45,6 +45,8 @@ import {
   SC_FROM_DOCUMENT_EXTRACTION_KEY,
   setScFromDocumentStorage,
 } from "@/lib/sc-from-document-background";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 
 const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "pendente", title: "Pendente", status: "Pendente", cards: [] },
@@ -75,6 +77,7 @@ export default function ProcedimentosCirurgicos() {
   const userId = user?.id;
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+  const { executarAcao } = useOnboarding();
   const [isNoActiveDoctorModalOpen, setIsNoActiveDoctorModalOpen] =
     useState(false);
   const [hasActiveDoctors, setHasActiveDoctors] = useState<boolean | null>(
@@ -128,6 +131,30 @@ export default function ProcedimentosCirurgicos() {
     }
     setIsNewRequestOpen(true);
   }, [ensureAdminHasActiveDoctor]);
+
+  // Passo "cadastro-no-modal" da trilha Solicitações: abre o wizard e pede
+  // a ele para já mostrar o painel de procedimento, onde vive o botão "Novo"
+  // (`sc-wizard-novo-cadastro`). O wizard registra
+  // "sc-abrir-selecao-procedimento" desde o próprio mount (Task 5), então já
+  // está disponível quando este passo dispara.
+  useOnboardingAction("sc-abrir-cadastro-transversal", () => {
+    setIsNewRequestOpen(true);
+    executarAcao("sc-abrir-selecao-procedimento");
+  });
+
+  // Passo "por-documento": navega para a MESMA rota do passo anterior, que o
+  // Next.js trata como no-op (não remonta a página, não reseta o `useState`
+  // local do wizard) — sem fechar explicitamente aqui, o wizard aberto pelo
+  // passo "cadastro-no-modal" continuava por cima do botão que este passo
+  // deveria destacar.
+  useOnboardingAction("sc-fechar-wizard", () => setIsNewRequestOpen(false));
+
+  // Passo "documento-enviar": abre o modal e inicia a simulação visual. A
+  // conclusão/navegação fica para a ação disparada ao clicar em "Próximo".
+  useOnboardingAction("sc-abrir-upload-documento", () => {
+    setIsUploadDocumentOpen(true);
+    executarAcao("sc-simular-analise-documento");
+  });
 
   const handleUploadDocumentSuccess = useCallback(
     (response: ExtractFromDocumentResponse) => {
@@ -564,6 +591,7 @@ export default function ProcedimentosCirurgicos() {
             return (
               <button
                 onClick={() => setIsFilterOpen(true)}
+                data-tour="sc-filtro"
                 className={`flex items-center gap-1.5 h-9 lg:h-11 px-3 lg:px-3.5 py-1.5 lg:py-2 border rounded-xl transition-colors ${
                   isActive
                     ? "border-teal-600 bg-teal-50 hover:bg-teal-100"
@@ -687,6 +715,7 @@ export default function ProcedimentosCirurgicos() {
           {/* Upload document button */}
           <button
             type="button"
+            data-tour="sc-por-documento"
             onClick={() => setIsUploadDocumentOpen(true)}
             title="Criar solicitação a partir de documento"
             className="relative flex items-center gap-1.5 flex-1 sm:flex-none h-9 lg:h-11 px-3 lg:px-3.5 py-1.5 lg:py-2 text-xs lg:text-sm font-medium rounded-xl border border-neutral-100 bg-white text-black hover:bg-neutral-50 transition-colors"
@@ -714,6 +743,7 @@ export default function ProcedimentosCirurgicos() {
 
           {/* New Request Button */}
           <NewSurgeryRequestButton
+            data-tour="sc-nova"
             onClick={handleOpenNewRequest}
             variant="primary"
             disabled={checkingActiveDoctors}

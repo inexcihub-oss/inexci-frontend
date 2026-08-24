@@ -11,6 +11,7 @@ import { ModalFooter } from "@/components/shared/ModalFooter";
 import { CidPicker } from "@/components/clinical/CidPicker";
 import { DocumentPreview } from "@/components/clinical/DocumentPreview";
 import { TussCodePicker } from "@/components/tuss/TussCodePicker";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import {
   clinicalRecordService,
   ClinicalCidCode,
@@ -85,6 +86,7 @@ export function ClinicalDocumentActions({
   cidCodes,
   patientId,
   doctorId,
+  dadosFabricados,
 }: {
   ensureRecordId: () => Promise<string>;
   onEmitted: (document: GeneratedClinicalDocument) => void;
@@ -94,12 +96,20 @@ export function ClinicalDocumentActions({
   patientId: string;
   /** Médico que assina o documento. */
   doctorId: string;
+  /**
+   * Marca que o atendimento em tela é o fabricado do tour. Bloqueia a
+   * emissão por PROVENIÊNCIA do dado, não pelo estado do tour — sair do tour
+   * na página sentinela não pode reabilitar a emissão real.
+   */
+  dadosFabricados?: boolean;
 }) {
   const [openKind, setOpenKind] = useState<DocumentKind | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const { emTour } = useOnboarding();
+  const bloqueado = emTour || dadosFabricados;
 
   // Receita e exames compartilham a mesma lista repetível.
   const [rows, setRows] = useState<ItemRow[]>([emptyRow()]);
@@ -249,7 +259,10 @@ export function ClinicalDocumentActions({
 
   return (
     <>
-      <div className="rounded-xl border border-neutral-100 bg-white p-4 shadow-sm">
+      <div
+        data-tour="ficha-documentos"
+        className="rounded-xl border border-neutral-100 bg-white p-4 shadow-sm"
+      >
         <p className="text-sm font-semibold text-neutral-900 mb-1">
           Documentos do atendimento
         </p>
@@ -470,7 +483,7 @@ export function ClinicalDocumentActions({
             variant="outline"
             onClick={handlePreview}
             isLoading={previewing}
-            disabled={submitting}
+            disabled={submitting || bloqueado}
             className="min-h-[44px]"
           >
             <Eye className="w-4 h-4 mr-2" />
@@ -479,7 +492,7 @@ export function ClinicalDocumentActions({
           <Button
             onClick={handleSubmit}
             isLoading={submitting}
-            disabled={previewing}
+            disabled={previewing || bloqueado}
             className="min-h-[44px]"
           >
             Emitir
@@ -517,6 +530,7 @@ export function ClinicalDocumentActions({
           <Button
             onClick={handleSubmit}
             isLoading={submitting}
+            disabled={bloqueado}
             className="min-h-[44px]"
           >
             Emitir
