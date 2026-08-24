@@ -11,6 +11,7 @@ import {
   ClinicalRecordTemplate,
 } from "@/services/clinical-record-template.service";
 import { ClinicalCidCode } from "@/services/clinical-record.service";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { logger } from "@/lib/logger";
 
@@ -54,6 +55,9 @@ export function ClinicalTemplateActions({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [applyingId, setApplyingId] = useState<string | null>(null);
+  // Aplicar incrementa o contador de uso do modelo e salvar cria um registro
+  // real e persistente: nenhum dos dois pode acontecer durante o tour.
+  const { emTour } = useOnboarding();
 
   const load = useCallback(() => {
     clinicalRecordTemplateService
@@ -138,7 +142,7 @@ export function ClinicalTemplateActions({
                 key={template.id}
                 type="button"
                 onClick={() => handleApply(template)}
-                disabled={applyingId === template.id}
+                disabled={applyingId === template.id || emTour}
                 className="rounded-full border border-neutral-200 px-3 py-2 sm:py-1 min-h-[40px] sm:min-h-0 text-xs font-medium text-neutral-700 hover:border-teal-500 hover:text-teal-700 transition-colors disabled:opacity-50"
                 title={template.specialty ?? undefined}
               >
@@ -208,6 +212,7 @@ export function ClinicalTemplateActions({
           <Button
             onClick={handleSave}
             isLoading={saving}
+            disabled={saving || emTour}
             className="min-h-[44px]"
           >
             Salvar
