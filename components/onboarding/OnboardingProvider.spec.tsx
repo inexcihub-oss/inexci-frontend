@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -46,7 +47,13 @@ function Sonda() {
     startTour,
     closeTour,
     isChecklistVisible,
+    emTour,
+    registrarAcao,
+    desregistrarAcao,
+    executarAcao,
   } = useOnboarding();
+  const [executado, setExecutado] = useState(false);
+  const [resultadoExecucao, setResultadoExecucao] = useState("");
   return (
     <div>
       <span data-testid="status">{state.status}</span>
@@ -63,6 +70,9 @@ function Sonda() {
       <span data-testid="checklist-visivel">
         {String(isChecklistVisible)}
       </span>
+      <span data-testid="em-tour">{String(emTour)}</span>
+      <span data-testid="acao-executada">{String(executado)}</span>
+      <span data-testid="resultado-execucao">{resultadoExecucao}</span>
       <button onClick={() => completeStep("criar-solicitacao")}>marcar</button>
       <button onClick={() => completeStep("assinatura-do-medico")}>
         marcar assinatura
@@ -77,6 +87,21 @@ function Sonda() {
         fechar concluido
       </button>
       <button onClick={() => closeTour()}>fechar sem concluir</button>
+      <button
+        onClick={() => registrarAcao("acao-teste", () => setExecutado(true))}
+      >
+        registrar ação
+      </button>
+      <button onClick={() => desregistrarAcao("acao-teste")}>
+        desregistrar ação
+      </button>
+      <button
+        onClick={() =>
+          setResultadoExecucao(String(executarAcao("acao-teste")))
+        }
+      >
+        executar ação
+      </button>
     </div>
   );
 }
@@ -490,5 +515,70 @@ describe("OnboardingProvider", () => {
 
       authMock.user = usuarioOriginal;
     });
+  });
+
+  it("emTour reflete se há um tour ativo", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(
+      <OnboardingProvider>
+        <Sonda />
+      </OnboardingProvider>,
+    );
+
+    expect(screen.getByTestId("em-tour")).toHaveTextContent("false");
+    await user.click(screen.getByText("iniciar tour"));
+    expect(screen.getByTestId("em-tour")).toHaveTextContent("true");
+    await user.click(screen.getByText("fechar sem concluir"));
+    expect(screen.getByTestId("em-tour")).toHaveTextContent("false");
+  });
+
+  it("executarAcao roda a função registrada e devolve true", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(
+      <OnboardingProvider>
+        <Sonda />
+      </OnboardingProvider>,
+    );
+
+    await user.click(screen.getByText("registrar ação"));
+    await user.click(screen.getByText("executar ação"));
+
+    expect(screen.getByTestId("acao-executada")).toHaveTextContent("true");
+    expect(screen.getByTestId("resultado-execucao")).toHaveTextContent(
+      "true",
+    );
+  });
+
+  it("executarAcao devolve false quando nada foi registrado sob o id", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(
+      <OnboardingProvider>
+        <Sonda />
+      </OnboardingProvider>,
+    );
+
+    await user.click(screen.getByText("executar ação"));
+
+    expect(screen.getByTestId("resultado-execucao")).toHaveTextContent(
+      "false",
+    );
+    expect(screen.getByTestId("acao-executada")).toHaveTextContent("false");
+  });
+
+  it("desregistrarAcao remove a ação — executarAcao volta a devolver false", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(
+      <OnboardingProvider>
+        <Sonda />
+      </OnboardingProvider>,
+    );
+
+    await user.click(screen.getByText("registrar ação"));
+    await user.click(screen.getByText("desregistrar ação"));
+    await user.click(screen.getByText("executar ação"));
+
+    expect(screen.getByTestId("resultado-execucao")).toHaveTextContent(
+      "false",
+    );
   });
 });

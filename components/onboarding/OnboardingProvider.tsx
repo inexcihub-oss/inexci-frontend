@@ -46,6 +46,10 @@ interface OnboardingContextData {
   dismiss: () => void;
   restart: () => Promise<void>;
   isChecklistVisible: boolean;
+  emTour: boolean;
+  registrarAcao: (id: string, fn: () => void) => void;
+  desregistrarAcao: (id: string) => void;
+  executarAcao: (id: string) => boolean;
 }
 
 const OnboardingContext = createContext<OnboardingContextData | undefined>(
@@ -105,6 +109,14 @@ export function OnboardingProvider({
    * `isChecklistVisible` no `value` abaixo.
    */
   const promovidoNestaSessaoRef = useRef(false);
+
+  /**
+   * Registro de ações do tour por id — o mesmo papel que `data-tour` cumpre
+   * para elementos visuais, mas para funções (abrir um modal, trocar um
+   * estado interno). Alimentado por `useOnboardingAction`, lido por
+   * `TourOverlay` via `executarAcao`.
+   */
+  const acoesRef = useRef(new Map<string, () => void>());
 
   /**
    * Persistência otimista: o estado local muda na hora e o PATCH sai com
@@ -274,18 +286,42 @@ export function OnboardingProvider({
     setActiveTour(null);
   }, []);
 
+  const registrarAcao = useCallback((id: string, fn: () => void) => {
+    acoesRef.current.set(id, fn);
+  }, []);
+
+  const desregistrarAcao = useCallback((id: string) => {
+    acoesRef.current.delete(id);
+  }, []);
+
+  /**
+   * Executa a ação registrada sob `id`, se houver. Devolve `false` quando
+   * ninguém registrou ainda — quem chama (`TourOverlay`) decide se tenta de
+   * novo; este registro não sabe de tentativas.
+   */
+  const executarAcao = useCallback((id: string): boolean => {
+    const fn = acoesRef.current.get(id);
+    if (!fn) return false;
+    fn();
+    return true;
+  }, []);
+
   const value = useMemo<OnboardingContextData>(
     () => ({
       state,
       tracks,
       viewer,
       activeTour,
+      emTour: activeTour !== null,
       startTour,
       closeTour,
       completeStep,
       markWelcome,
       dismiss,
       restart,
+      registrarAcao,
+      desregistrarAcao,
+      executarAcao,
       isChecklistVisible:
         calcChecklistVisible(state, promovidoNestaSessaoRef.current) &&
         tracks.length > 0,
@@ -301,6 +337,9 @@ export function OnboardingProvider({
       markWelcome,
       dismiss,
       restart,
+      registrarAcao,
+      desregistrarAcao,
+      executarAcao,
     ],
   );
 
