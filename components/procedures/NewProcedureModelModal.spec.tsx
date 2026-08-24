@@ -41,9 +41,9 @@ async function criarProcedimento() {
     { target: { value: "Artroscopia" } },
   );
 
-  // "Criar "Artroscopia"" (opção do dropdown), não "Criar modelo" (submit).
+  // Regex casa "Criar «Artroscopia»" (opção do dropdown), não "Criar modelo" (submit).
   fireEvent.click(
-    await screen.findByRole("button", { name: /Criar\s+"Artroscopia"/i }),
+    await screen.findByRole("button", { name: /Criar\s+“Artroscopia”/i }),
   );
 }
 
