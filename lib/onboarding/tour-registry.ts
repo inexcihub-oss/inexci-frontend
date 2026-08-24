@@ -322,9 +322,9 @@ export const TRACKS: Track[] = [
       },
       {
         key: "novo-modelo",
-        acao: "procedimentos-abrir-novo-modelo",
         target: "procedimentos-modelo-nome",
         aguardaAcao: true,
+        acao: "procedimentos-abrir-novo-modelo",
         permission: Permission.SOLICITACOES,
         ...TRILHA_CADASTROS.passos.novoModelo,
       },
