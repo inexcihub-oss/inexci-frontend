@@ -12,9 +12,16 @@ import {
   ClinicalRecord,
 } from "@/services/clinical-record.service";
 import { logger } from "@/lib/logger";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  criarConsultaDemo,
+  criarPacienteDemo,
+  TOUR_DEMO_APPOINTMENT_ID,
+} from "@/lib/onboarding/demo-data";
 
 export default function AtendimentoPage() {
   const params = useParams<{ appointmentId: string }>();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [appointment, setAppointment] = useState<Appointment | null>(null);
@@ -24,6 +31,18 @@ export default function AtendimentoPage() {
   useEffect(() => {
     let active = true;
     setLoading(true);
+
+    // Consulta fabricada do tour de onboarding: nunca existe de verdade no
+    // backend, então pular a busca real é o comportamento certo — não um
+    // atalho de performance.
+    if (params.appointmentId === TOUR_DEMO_APPOINTMENT_ID) {
+      setAppointment(criarConsultaDemo(user?.doctorProfile?.id ?? ""));
+      setPatient(criarPacienteDemo());
+      setRecord(null);
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       try {
         const appt = await appointmentService.getById(params.appointmentId);
@@ -45,7 +64,7 @@ export default function AtendimentoPage() {
     return () => {
       active = false;
     };
-  }, [params.appointmentId]);
+  }, [params.appointmentId, user]);
 
   if (loading) {
     return (
