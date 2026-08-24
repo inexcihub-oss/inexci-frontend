@@ -320,6 +320,14 @@ export const TRACKS: Track[] = [
         permission: Permission.SOLICITACOES,
         ...TRILHA_CADASTROS.passos.procedimentos,
       },
+      {
+        key: "novo-modelo",
+        acao: "procedimentos-abrir-novo-modelo",
+        target: "procedimentos-modelo-nome",
+        aguardaAcao: true,
+        permission: Permission.SOLICITACOES,
+        ...TRILHA_CADASTROS.passos.novoModelo,
+      },
     ],
   },
   {

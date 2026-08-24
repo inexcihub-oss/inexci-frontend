@@ -186,6 +186,11 @@ export const TRILHA_CADASTROS = {
       corpo:
         "Cada procedimento guarda pronto o código de identificação (TUSS) e os materiais usados (OPME). Na próxima solicitação igual, você parte do modelo.",
     },
+    novoModelo: {
+      titulo: "Comece um modelo agora",
+      corpo:
+        "Dê um nome e, se quiser, já vincule a um procedimento. Você completa TUSS e OPME depois de criar.",
+    },
   },
 };
 

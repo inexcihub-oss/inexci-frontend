@@ -7,6 +7,7 @@ import { procedureService, Procedure } from "@/services/procedure.service";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 
 interface NewProcedureModelModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export function NewProcedureModelModal({
   onClose,
   onSubmit,
 }: NewProcedureModelModalProps) {
+  const { emTour } = useOnboarding();
   const [modelName, setModelName] = useState("");
   const [procedureSearch, setProcedureSearch] = useState("");
   const [selectedProcedure, setSelectedProcedure] = useState<Procedure | null>(
@@ -215,7 +217,7 @@ export function NewProcedureModelModal({
         {/* Body — sem overflow hidden para o dropdown poder vazar */}
         <div className="flex flex-col gap-5 p-5 md:p-6 overflow-visible">
           {/* Nome do modelo */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5" data-tour="procedimentos-modelo-nome">
             <label className="ds-label mb-0">
               Nome do modelo <span className="text-red-500">*</span>
             </label>
@@ -331,7 +333,7 @@ export function NewProcedureModelModal({
           <Button
             variant="primary"
             onClick={handleSubmit}
-            disabled={isLoading || !modelName.trim()}
+            disabled={isLoading || !modelName.trim() || emTour}
           >
             {isLoading ? (
               <span className="flex items-center gap-2">

@@ -239,7 +239,7 @@ describe("TRACKS", () => {
     expect(trilha.steps.at(-1)!.target).toBeUndefined();
   });
 
-  it("a trilha de cadastros é transversal (anyArea) e tem quatro passos", () => {
+  it("a trilha de cadastros é transversal (anyArea) e tem cinco passos", () => {
     const trilha = trackById("cadastros")!;
     expect(trilha.anyArea).toBe(true);
     expect(trilha.steps.map((p) => p.key)).toEqual([
@@ -247,6 +247,7 @@ describe("TRACKS", () => {
       "menu",
       "clinicas",
       "procedimentos",
+      "novo-modelo",
     ]);
   });
 
@@ -260,8 +261,8 @@ describe("TRACKS", () => {
       isAccountOwner: false,
     });
     expect(passos.map((p) => p.key)).not.toContain("clinicas");
-    // mas continua vendo os outros três
-    expect(passos).toHaveLength(3);
+    // mas continua vendo os outros quatro (pacientes, menu, procedimentos, novo-modelo)
+    expect(passos).toHaveLength(4);
   });
 
   it("a trilha de administração exige a área e tem quatro passos, só o de convidar obrigatório", () => {
@@ -350,6 +351,12 @@ describe("passos dirigidos pelo tour (Driver)", () => {
   it("administracao: areas aciona o driver", () => {
     expect(passo("administracao", "areas")?.acao).toBe(
       "administracao-abrir-novo-colaborador",
+    );
+  });
+
+  it("cadastros: novo-modelo aciona o driver", () => {
+    expect(passo("cadastros", "novo-modelo")?.acao).toBe(
+      "procedimentos-abrir-novo-modelo",
     );
   });
 });

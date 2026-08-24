@@ -12,6 +12,7 @@ import {
 } from "@tanstack/react-table";
 import PageContainer from "@/components/PageContainer";
 import { SearchInput, Button } from "@/components/ui";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 import {
   Table,
   TableBody,
@@ -85,6 +86,12 @@ export default function ProcedimentosPage() {
   // classe do controller de solicitações cirúrgicas (`Permission.SOLICITACOES`),
   // não `ADMINISTRACAO` como os demais cadastros básicos.
   const podeGerenciarModelos = can(Permission.SOLICITACOES);
+
+  // Passo "novo-modelo" da trilha Cadastros: abre o modal sozinho, sem o
+  // usuário precisar achar o botão "Novo modelo".
+  useOnboardingAction("procedimentos-abrir-novo-modelo", () =>
+    setIsNewModelModalOpen(true),
+  );
 
   const hasActiveStatus = (status?: string) =>
     String(status ?? "").toLowerCase() === "active";

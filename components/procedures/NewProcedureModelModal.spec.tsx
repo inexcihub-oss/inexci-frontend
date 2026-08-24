@@ -11,6 +11,12 @@ vi.mock("@/services/procedure.service", () => ({
   procedureService: { getAll, create },
 }));
 
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: false }),
+  OnboardingProvider: ({ children }: { children: React.ReactNode }) =>
+    children,
+}));
+
 import { NewProcedureModelModal } from "./NewProcedureModelModal";
 
 function renderModal() {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProcedimentosPage from "./page";
 
@@ -70,6 +71,20 @@ describe("Tela de Procedimentos — âncoras do tour", () => {
     const botao = await screen.findByText("Novo modelo");
     expect(
       botao.closest('[data-tour="cadastros-procedimentos"]'),
+    ).not.toBeNull();
+  });
+
+  it('expõe data-tour="procedimentos-modelo-nome" no campo de nome, dentro do modal', async () => {
+    renderPagina();
+
+    const botaoNovoModelo = await screen.findByText("Novo modelo");
+    await userEvent.setup().click(botaoNovoModelo);
+
+    // Aguarda o modal e o input aparecerem
+    await screen.findByPlaceholderText("Ex: Artroplastia padrão Bradesco");
+
+    expect(
+      document.querySelector('[data-tour="procedimentos-modelo-nome"]'),
     ).not.toBeNull();
   });
 });
