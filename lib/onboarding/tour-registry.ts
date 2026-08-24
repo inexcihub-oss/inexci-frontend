@@ -42,6 +42,16 @@ export interface TourStep extends Gate {
    * modal seria pulado em silêncio antes de o usuário ter tempo de clicar.
    */
   aguardaAcao?: boolean;
+  /**
+   * Id de uma ação registrada via `useOnboardingAction` em algum componente
+   * (abrir um modal, trocar um estado interno). O motor tenta executá-la ao
+   * ENTRAR neste passo, antes de procurar `target` — substitui a espera
+   * passiva de `aguardaAcao` nos passos que hoje dependem do usuário achar o
+   * botão sozinho. Os dois campos podem coexistir: `aguardaAcao` continua
+   * como rede de segurança (balão de instrução + timeout de 20s) caso a
+   * ação ainda não tenha sido registrada.
+   */
+  acao?: string;
 }
 
 export interface Track extends Gate {

@@ -61,7 +61,7 @@ interface Props {
 
 export function TourOverlay({ trackId, onClose }: Props) {
   const router = useRouter();
-  const { viewer } = useOnboarding();
+  const { viewer, executarAcao } = useOnboarding();
   const [indice, setIndice] = useState(0);
   const [montado, setMontado] = useState(false);
   const [interrompido, setInterrompido] = useState(false);
@@ -108,6 +108,31 @@ export function TourOverlay({ trackId, onClose }: Props) {
   useEffect(() => {
     if (passo?.route) router.push(passo.route);
   }, [passo?.route, router]);
+
+  // Passo com `acao` aciona o registro externo (abrir modal, trocar estado
+  // interno) ao ENTRAR no passo — em vez de esperar o usuário achar o botão
+  // sozinho, como só `aguardaAcao` fazia até aqui. Tenta por até 3s porque
+  // quem registra a ação pode montar um instante depois do commit em que
+  // `indice` mudou (ex.: acabou de navegar para uma rota nova) — mesmo
+  // idioma de "tenta até achar" do `useTargetRect`.
+  useEffect(() => {
+    const acao = passo?.acao;
+    if (!acao) return;
+    let cancelado = false;
+    let tentativas = 0;
+    const tentar = () => {
+      if (cancelado) return;
+      const executou = executarAcao(acao);
+      if (!executou && tentativas < 20) {
+        tentativas++;
+        setTimeout(tentar, 150);
+      }
+    };
+    tentar();
+    return () => {
+      cancelado = true;
+    };
+  }, [passo?.acao, executarAcao]);
 
   const avancar = useCallback(() => {
     // A decisão de concluir fica FORA do updater de propósito. Dentro dele,

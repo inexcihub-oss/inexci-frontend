@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PERMISSION_DESCRIPTIONS } from "@/lib/permissions";
 import type { TrackId } from "@/lib/onboarding/state";
@@ -114,6 +114,22 @@ const TRILHA_AGUARDA_ACAO: Track = {
   ],
 };
 
+const TRILHA_COM_ACAO: Track = {
+  id: "com-acao",
+  label: "Trilha com passo acao",
+  descricao: "…",
+  stepKey: "marcar-consulta",
+  steps: [
+    {
+      key: "aciona",
+      titulo: "Passo com ação",
+      corpo: "Corpo do passo com ação.",
+      target: "alvo-acionado",
+      acao: "abrir-algo",
+    },
+  ],
+};
+
 const TRILHA_PASSO_COMUM: Track = {
   id: "passo-comum-sem-alvo",
   label: "Trilha com passo comum sem aguardaAcao",
@@ -168,6 +184,7 @@ vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
       if (id === "passo-comum-sem-alvo") return TRILHA_PASSO_COMUM;
       if (id === "sem-alvo-depois-com-alvo")
         return TRILHA_SEM_ALVO_DEPOIS_COM_ALVO;
+      if (id === "com-acao") return TRILHA_COM_ACAO;
       // "administracao" usa a trilha REAL do registry (não uma fixture) —
       // é o único jeito de provar que o passo "areas" de produção deriva o
       // corpo de `PERMISSION_DESCRIPTIONS`, e não de um texto copiado aqui.
@@ -178,9 +195,14 @@ vi.mock("@/lib/onboarding/tour-registry", async (importOriginal) => {
   };
 });
 
+const { executarAcaoMock } = vi.hoisted(() => ({
+  executarAcaoMock: vi.fn(),
+}));
+
 vi.mock("./OnboardingProvider", () => ({
   useOnboarding: () => ({
     viewer: { permissions: [], isDoctor: false, isAccountOwner: false },
+    executarAcao: executarAcaoMock,
   }),
 }));
 
@@ -236,6 +258,7 @@ describe("TourOverlay", () => {
     document.body.innerHTML = "";
     vi.clearAllMocks();
     fetchRequisitosPendenteMock.mockReset().mockResolvedValue([]);
+    executarAcaoMock.mockReset().mockReturnValue(true);
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -509,6 +532,37 @@ describe("TourOverlay", () => {
     render(<TourOverlay trackId="passo-comum-sem-alvo" onClose={vi.fn()} />);
 
     expect(screen.queryByText("Passo comum")).not.toBeInTheDocument();
+  });
+
+  it("executa a ação do passo ao entrar nele", async () => {
+    montarAlvos(["alvo-acionado"]);
+    render(<TourOverlay trackId="com-acao" onClose={vi.fn()} />);
+
+    await waitFor(() =>
+      expect(executarAcaoMock).toHaveBeenCalledWith("abrir-algo"),
+    );
+  });
+
+  it("tenta de novo a cada 150ms até a ação ser encontrada", async () => {
+    vi.useFakeTimers();
+    executarAcaoMock
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(false)
+      .mockReturnValue(true);
+    montarAlvos(["alvo-acionado"]);
+    render(<TourOverlay trackId="com-acao" onClose={vi.fn()} />);
+
+    expect(executarAcaoMock).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      vi.advanceTimersByTime(150);
+    });
+    expect(executarAcaoMock).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      vi.advanceTimersByTime(150);
+    });
+    expect(executarAcaoMock).toHaveBeenCalledTimes(3);
+
+    vi.useRealTimers();
   });
 });
 
