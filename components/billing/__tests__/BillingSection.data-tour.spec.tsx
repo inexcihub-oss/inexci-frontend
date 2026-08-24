@@ -1,18 +1,42 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import type { SubscriptionDetail } from "@/types";
+import userEvent from "@testing-library/user-event";
+import type { SubscriptionDetail, SubscriptionPlan } from "@/types";
 
 /**
  * Prova que a aba de plano carrega as âncoras `data-tour` que a trilha
  * `plano-e-cota` (`lib/onboarding/tour-registry.ts`) espera encontrar:
- * "plano-assinatura", "plano-cota" e "plano-acoes". Sem este teste, remover o
- * atributo (ou trocar o elemento) quebra o tour em silêncio.
+ * "plano-assinatura", "plano-cota", "plano-acoes" e (dentro do modal de
+ * seleção) "plano-planos-disponiveis". Sem este teste, remover o atributo
+ * (ou trocar o elemento) quebra o tour em silêncio.
  */
+
+function planoFake(): SubscriptionPlan {
+  return {
+    id: "plan-1",
+    slug: "profissional",
+    name: "Profissional",
+    description: null,
+    priceCents: 19900,
+    currency: "BRL",
+    billingPeriod: "MONTHLY",
+    surgeryRequestQuota: 50,
+    sortOrder: 1,
+    isTrialDefault: false,
+  };
+}
 
 vi.mock("@/services/billing.service", () => ({
   billingService: {
-    listPlans: vi.fn().mockResolvedValue([]),
+    listPlans: vi.fn().mockResolvedValue([planoFake()]),
   },
+}));
+
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: false, executarAcao: () => false }),
+}));
+vi.mock("@/components/onboarding/useOnboardingAction", () => ({
+  useOnboardingAction: () => {},
 }));
 
 function assinatura(): SubscriptionDetail {
@@ -60,5 +84,22 @@ describe("BillingSection — âncoras do tour", () => {
       .toBeNull();
     expect(document.querySelector('[data-tour="plano-cota"]')).not.toBeNull();
     expect(document.querySelector('[data-tour="plano-acoes"]')).not.toBeNull();
+  });
+
+  it('expõe data-tour="plano-planos-disponiveis" dentro do modal de troca de plano', async () => {
+    render(<BillingSection />);
+
+    const botaoTrocarPlano = await screen.findByText("Trocar plano");
+    await userEvent.setup().click(botaoTrocarPlano);
+
+    // PlanSelector monta o carrossel mobile e a grade desktop ao mesmo tempo
+    // (alternância é só por CSS), então o nome do plano aparece duas vezes no
+    // DOM — mesmo padrão já usado em PlanSelector.spec.tsx.
+    expect((await screen.findAllByText("Profissional")).length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      document.querySelector('[data-tour="plano-planos-disponiveis"]'),
+    ).not.toBeNull();
   });
 });

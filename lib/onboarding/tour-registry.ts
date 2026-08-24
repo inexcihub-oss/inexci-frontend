@@ -384,6 +384,13 @@ export const TRACKS: Track[] = [
       },
       { key: "cota", target: "plano-cota", ...TRILHA_PLANO.passos.cota },
       { key: "acoes", target: "plano-acoes", ...TRILHA_PLANO.passos.acoes },
+      {
+        key: "planos-disponiveis",
+        acao: "plano-abrir-selecao",
+        target: "plano-planos-disponiveis",
+        aguardaAcao: true,
+        ...TRILHA_PLANO.passos.planosDisponiveis,
+      },
     ],
   },
 ];

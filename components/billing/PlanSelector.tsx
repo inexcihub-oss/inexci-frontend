@@ -101,7 +101,7 @@ export function PlanSelector({
     goesThruCheckout ? onCheckout(plan) : onManage(plan);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tour="plano-planos-disponiveis">
       {/* Toggle Mensal / Anual */}
       <div className="flex justify-center">
         <div className="inline-flex bg-white border border-gray-200 rounded-full p-1 shadow-sm">

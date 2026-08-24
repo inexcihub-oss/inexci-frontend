@@ -253,6 +253,11 @@ export const TRILHA_PLANO = {
       corpo:
         "Tudo pela Stripe, por aqui. Só o dono da conta vê esta aba: um admin delegado cuida da equipe, não da assinatura.",
     },
+    planosDisponiveis: {
+      titulo: "Compare e escolha",
+      corpo:
+        "Mensal ou anual, cada plano mostra o que muda. A troca é feita direto na Stripe, sem perder seus dados.",
+    },
   },
 };
 

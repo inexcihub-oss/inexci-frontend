@@ -14,14 +14,20 @@ import { SubscriptionStatusCard } from "./SubscriptionStatusCard";
 import { QuotaUsageCard } from "./QuotaUsageCard";
 import { PlanSelector } from "./PlanSelector";
 import { ExternalLink, Layers, Loader2 } from "lucide-react";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 
 export function BillingSection() {
   const { subscription, subscriptionLoading, refreshSubscription } = useAuth();
+  const { emTour } = useOnboarding();
   const { toast, showToast, hideToast } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
+
+  // Passo "planos-disponiveis" da trilha Plano e cota: abre o modal sozinho.
+  useOnboardingAction("plano-abrir-selecao", () => setIsPlansModalOpen(true));
 
   const loadPlans = useCallback(async () => {
     setLoadingPlans(true);
@@ -44,6 +50,8 @@ export function BillingSection() {
   }, [refreshSubscription]);
 
   const handleCheckout = async (plan: SubscriptionPlan) => {
+    // Redireciona para a Stripe de verdade — nunca durante o tour.
+    if (emTour) return;
     try {
       setRedirecting(true);
       const { url } = await billingService.startCheckout(plan.id);
@@ -60,6 +68,8 @@ export function BillingSection() {
    * aterrissava na home do portal e a seleção se perdia.
    */
   const handleManage = async (plan?: SubscriptionPlan) => {
+    // Redireciona para a Stripe de verdade — nunca durante o tour.
+    if (emTour) return;
     try {
       setRedirecting(true);
       const { url } = await billingService.openPortal(plan?.id);
@@ -122,6 +132,7 @@ export function BillingSection() {
                 onClick={() => setIsPlansModalOpen(true)}
                 className="gap-2"
                 isLoading={redirecting}
+                disabled={redirecting || emTour}
               >
                 <Layers className="w-4 h-4" />
                 Contratar novo plano na Stripe
@@ -132,6 +143,7 @@ export function BillingSection() {
               <Button
                 onClick={() => handleManage()}
                 isLoading={redirecting}
+                disabled={redirecting || emTour}
                 className="gap-2"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -144,6 +156,7 @@ export function BillingSection() {
                 variant="outline"
                 onClick={() => handleManage()}
                 isLoading={redirecting}
+                disabled={redirecting || emTour}
                 className="gap-2"
               >
                 <ExternalLink className="w-4 h-4" />
