@@ -3,7 +3,12 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { permissionForRoute, resolveHome } from "@/lib/permissions";
+import {
+  hasAnyArea,
+  permissionForRoute,
+  resolveHome,
+  routeRequiresAnyArea,
+} from "@/lib/permissions";
 
 /**
  * Gate da área de Colaboradores.
@@ -34,7 +39,9 @@ export default function ColaboradoresLayout({
   const router = useRouter();
   const pathname = usePathname();
   const exigida = permissionForRoute(pathname);
-  const liberado = !exigida || can(exigida);
+  const liberado = routeRequiresAnyArea(pathname)
+    ? hasAnyArea(permissions)
+    : !exigida || can(exigida);
 
   useEffect(() => {
     if (!loading && !liberado) {

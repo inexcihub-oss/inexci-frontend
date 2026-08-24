@@ -3,7 +3,12 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { permissionForRoute, resolveHome } from "@/lib/permissions";
+import {
+  hasAnyArea,
+  permissionForRoute,
+  resolveHome,
+  routeRequiresAnyArea,
+} from "@/lib/permissions";
 
 /**
  * Esconder o item do menu não basta: link direto, favorito e histórico do
@@ -26,7 +31,9 @@ export function PermissionRouteGuard({
   const router = useRouter();
 
   const exigida = permissionForRoute(pathname);
-  const liberado = !exigida || permissions.includes(exigida);
+  const liberado = routeRequiresAnyArea(pathname)
+    ? hasAnyArea(permissions)
+    : !exigida || permissions.includes(exigida);
 
   useEffect(() => {
     if (loading) return;

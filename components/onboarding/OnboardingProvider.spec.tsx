@@ -250,7 +250,7 @@ describe("OnboardingProvider", () => {
     expect(logger.error).toHaveBeenCalled();
   });
 
-  it("reinicia direto na primeira trilha e descarta o PATCH pendente", async () => {
+  it("reinicia direto na primeira trilha após persistir o PATCH pendente", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <OnboardingProvider>
@@ -269,11 +269,42 @@ describe("OnboardingProvider", () => {
       "solicitacoes",
     );
     expect(screen.getByTestId("em-tour")).toHaveTextContent("true");
-    expect(patchMock).toHaveBeenCalledTimes(1);
-    expect(patchMock).toHaveBeenCalledWith({
+    expect(patchMock).toHaveBeenCalledTimes(2);
+    expect(patchMock).toHaveBeenNthCalledWith(2, {
       welcomeSeenAt: expect.any(String),
       status: "in_progress",
     });
+  });
+
+  it("espera o PATCH já em voo antes de enviar o reset", async () => {
+    let concluirPatch: (() => void) | undefined;
+    patchMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          concluirPatch = resolve;
+        }),
+    );
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(
+      <OnboardingProvider>
+        <Sonda />
+      </OnboardingProvider>,
+    );
+
+    await user.click(screen.getByText("marcar"));
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(patchMock).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByText("reiniciar"));
+    expect(resetMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      concluirPatch?.();
+    });
+
+    expect(resetMock).toHaveBeenCalledTimes(1);
   });
 
   /**

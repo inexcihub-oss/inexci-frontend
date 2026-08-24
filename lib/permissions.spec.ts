@@ -8,6 +8,7 @@ import {
   permissionForRoute,
   presetFor,
   resolveHome,
+  routeRequiresAnyArea,
 } from "./permissions";
 
 describe("permissionForRoute", () => {
@@ -49,6 +50,7 @@ describe("permissionForRoute", () => {
     "/colaboradores/fabricante/abc-123",
   ])("libera o cadastro transversal %s", (rota) => {
     expect(permissionForRoute(rota)).toBeNull();
+    expect(routeRequiresAnyArea(rota)).toBe(true);
   });
 
   it("mantém o resto de /colaboradores em Administração", () => {
@@ -62,6 +64,10 @@ describe("permissionForRoute", () => {
     expect(permissionForRoute("/clinicas/abc-123")).toBe(
       Permission.ADMINISTRACAO,
     );
+  });
+
+  it("não trata rotas comuns como cadastro transversal", () => {
+    expect(routeRequiresAnyArea("/configuracoes")).toBe(false);
   });
 });
 

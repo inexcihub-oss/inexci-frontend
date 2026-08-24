@@ -126,14 +126,37 @@ export function OnboardingProvider({
    */
   const pendenteRef = useRef<OnboardingWritablePatch | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * Fila de escrita da aba. Além de manter a ordem de duas ações rápidas, ela
+   * permite que `restart` espere um PATCH já disparado antes de mandar o reset.
+   */
+  const escritaEmVooRef = useRef<Promise<void> | null>(null);
 
-  const enviarPendente = useCallback(() => {
+  const enviarPendente = useCallback((): Promise<void> => {
     const paraEnviar = pendenteRef.current;
     pendenteRef.current = null;
-    if (!paraEnviar) return;
-    void onboardingService.patch(paraEnviar).catch((erro) => {
-      logger.error("Falha ao salvar progresso do onboarding:", erro);
+    if (!paraEnviar) return escritaEmVooRef.current ?? Promise.resolve();
+
+    const salvar = async () => {
+      try {
+        await onboardingService.patch(paraEnviar);
+      } catch (erro) {
+        logger.error("Falha ao salvar progresso do onboarding:", erro);
+      }
+    };
+    const anterior = escritaEmVooRef.current;
+    // A primeira escrita começa imediatamente — o cleanup de logout precisa
+    // colocá-la na rede antes de a sessão ser limpa. As seguintes encadeiam na
+    // anterior para preservar a ordem da aba.
+    const envio = anterior ? anterior.catch(() => undefined).then(salvar) : salvar();
+    let rastreado: Promise<void>;
+    rastreado = envio.finally(() => {
+      if (escritaEmVooRef.current === rastreado) {
+        escritaEmVooRef.current = null;
+      }
     });
+    escritaEmVooRef.current = rastreado;
+    return rastreado;
   }, []);
 
   const agendarPersistencia = useCallback(
@@ -269,12 +292,12 @@ export function OnboardingProvider({
   );
 
   const restart = useCallback(async () => {
-    // Cancela a escrita pendente ANTES de resetar. Sem isto, um PATCH agendado
-    // meio segundo atrás dispara depois do reset e regrava o estado velho por
-    // cima — para o usuário, o botão "Refazer" simplesmente não funcionou.
+    // Desarma o debounce e envia o que ficou pendente ANTES de resetar. Um
+    // PATCH que já saiu também entra na mesma fila, então o reset só chega ao
+    // servidor depois dele e não pode ser sobrescrito pela escrita antiga.
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = null;
-    pendenteRef.current = null;
+    await enviarPendente();
 
     // Reset é ação deliberada do usuário: vai direto, sem debounce, e o
     // servidor é a fonte da verdade do estado resultante.
@@ -301,7 +324,7 @@ export function OnboardingProvider({
       status: recomeçado.status,
     });
     setActiveTour(primeiraTrilha.id);
-  }, [agendarPersistencia, tracks]);
+  }, [agendarPersistencia, enviarPendente, tracks]);
 
   const registrarAcao = useCallback((id: string, fn: () => void) => {
     acoesRef.current.set(id, fn);
