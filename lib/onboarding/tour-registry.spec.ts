@@ -288,10 +288,18 @@ describe("TRACKS", () => {
     expect(trilha.steps.find((p) => p.key === "areas")?.aguardaAcao).toBe(
       true,
     );
-    // "vinculo" e "ciclo" não têm alvo real possível no primeiro tour: a
-    // ficha do colaborador e a lista preenchida ainda não existem.
-    expect(trilha.steps.find((p) => p.key === "vinculo")?.target).toBeUndefined();
-    expect(trilha.steps.find((p) => p.key === "ciclo")?.target).toBeUndefined();
+    // "vinculo" e "ciclo" navegam para a ficha de um colaborador FABRICADO
+    // (`TOUR_DEMO_COLLABORATOR_ID`) — nunca existe de verdade, então o alvo
+    // real existe mesmo no primeiro tour.
+    expect(trilha.steps.find((p) => p.key === "vinculo")?.target).toBe(
+      "colaborador-vinculo-medico",
+    );
+    expect(trilha.steps.find((p) => p.key === "vinculo")?.route).toBe(
+      "/colaboradores/assistente/tour-demo-colaborador",
+    );
+    expect(trilha.steps.find((p) => p.key === "ciclo")?.target).toBe(
+      "colaborador-ciclo-status",
+    );
   });
 
   it("quem não tem Administração não vê a trilha de administração", () => {

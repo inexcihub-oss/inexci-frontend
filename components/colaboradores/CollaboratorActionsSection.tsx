@@ -16,6 +16,7 @@ import {
   EyeOff,
   Mail,
 } from "lucide-react";
+import { TOUR_DEMO_COLLABORATOR_ID } from "@/lib/onboarding/demo-data";
 
 interface CollaboratorActionsSectionProps {
   collaboratorId: string;
@@ -39,6 +40,7 @@ export function CollaboratorActionsSection({
 
   const isActive = currentStatus === "active";
   const isPending = currentStatus === "pending";
+  const isFabricado = collaboratorId === TOUR_DEMO_COLLABORATOR_ID;
 
   const handleToggleStatus = async () => {
     setTogglingStatus(true);
@@ -110,6 +112,7 @@ export function CollaboratorActionsSection({
       <FormSection title="Acesso e Segurança">
         {/* Status do usuário */}
         <div
+          data-tour="colaborador-ciclo-status"
           className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
             isActive
               ? "border-teal-200 bg-teal-50"
@@ -142,7 +145,7 @@ export function CollaboratorActionsSection({
             type="button"
             role="switch"
             aria-checked={isActive}
-            disabled={togglingStatus || currentStatus === "pending"}
+            disabled={togglingStatus || currentStatus === "pending" || isFabricado}
             onClick={handleToggleStatus}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
               isActive ? "bg-teal-500" : "bg-neutral-300"
@@ -237,7 +240,7 @@ export function CollaboratorActionsSection({
               <Button
                 onClick={handleResetPassword}
                 isLoading={savingPassword}
-                disabled={!password || !confirmPassword}
+                disabled={!password || !confirmPassword || isFabricado}
               >
                 Salvar nova senha
               </Button>

@@ -408,13 +408,19 @@ export const TRACKS: Track[] = [
       },
       {
         key: "vinculo",
-        // Sem alvo: o vínculo mora na ficha de um colaborador que ainda não
-        // existe para quem está fazendo o onboarding.
+        // Navega para a ficha de um colaborador FABRICADO
+        // (`TOUR_DEMO_COLLABORATOR_ID`, `lib/onboarding/demo-data.ts`) —
+        // nunca existe de verdade, então o alvo real existe mesmo no
+        // primeiro tour.
+        route: "/colaboradores/assistente/tour-demo-colaborador",
+        target: "colaborador-vinculo-medico",
+        aguardaAcao: true,
         ...TRILHA_ADMINISTRACAO.passos.vinculo,
       },
       {
         key: "ciclo",
-        // Idem: as ações de linha só existem com a lista preenchida.
+        // Mesma página do passo anterior — já carregada, sem `route` de novo.
+        target: "colaborador-ciclo-status",
         ...TRILHA_ADMINISTRACAO.passos.ciclo,
       },
     ],
