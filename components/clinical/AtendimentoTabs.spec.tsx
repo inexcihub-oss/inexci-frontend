@@ -891,7 +891,7 @@ describe("AtendimentoTabs", () => {
     render(
       <AtendimentoTabs
         patient={patient}
-        appointment={{ ...appointment, id: "tour-demo" }}
+        appointment={{ ...appointment, id: "tour-demo", clinicId: null }}
         initialRecord={null}
       />,
     );
