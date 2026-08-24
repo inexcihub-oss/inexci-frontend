@@ -250,12 +250,7 @@ describe("OnboardingProvider", () => {
     expect(logger.error).toHaveBeenCalled();
   });
 
-  /**
-   * Reproduz o bug do "Refazer": marcar um passo agenda um PATCH em 500ms;
-   * reiniciar logo em seguida precisa cancelar esse PATCH órfão, senão ele
-   * dispara depois do reset e regrava o estado velho por cima.
-   */
-  it("cancela o PATCH pendente ao reiniciar, para não sobrescrever o reset do servidor", async () => {
+  it("reinicia direto na primeira trilha e descarta o PATCH pendente", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <OnboardingProvider>
@@ -270,7 +265,15 @@ describe("OnboardingProvider", () => {
       vi.advanceTimersByTime(600);
     });
 
-    expect(patchMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId("trilha-ativa")).toHaveTextContent(
+      "solicitacoes",
+    );
+    expect(screen.getByTestId("em-tour")).toHaveTextContent("true");
+    expect(patchMock).toHaveBeenCalledTimes(1);
+    expect(patchMock).toHaveBeenCalledWith({
+      welcomeSeenAt: expect.any(String),
+      status: "in_progress",
+    });
   });
 
   /**
@@ -532,16 +535,8 @@ describe("OnboardingProvider", () => {
     });
   });
 
-  /**
-   * Adendo 2 da revisão final: o momento de conclusão é DE SESSÃO. Se a
-   * promoção para `completed` aconteceu durante ESTA montagem do provider, o
-   * card fica visível mostrando a mensagem. Se o estado já chega `completed`
-   * do servidor (ex.: próximo login), o card não deve renderizar — sem isso,
-   * "2 de 2" para sempre vira "Tudo pronto" para sempre, a mesma queixa com
-   * outra cara.
-   */
-  describe("isChecklistVisible — o 'tudo pronto' é de sessão", () => {
-    it("promovido nesta sessão: o card continua visível", async () => {
+  describe("isChecklistVisible", () => {
+    it("some imediatamente ao concluir", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
         <OnboardingProvider>
@@ -562,7 +557,7 @@ describe("OnboardingProvider", () => {
 
       expect(screen.getByTestId("status")).toHaveTextContent("completed");
       expect(screen.getByTestId("checklist-visivel")).toHaveTextContent(
-        "true",
+        "false",
       );
     });
 

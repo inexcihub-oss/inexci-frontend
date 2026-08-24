@@ -739,7 +739,7 @@ describe("TourOverlay — balão não fica atrás da BottomNavBar no mobile", ()
 
     const dialogo = await screen.findByRole("dialog");
     const top = parseFloat((dialogo as HTMLElement).style.top);
-    const alturaEstimada = 190;
+    const alturaEstimada = 360;
 
     expect(top + alturaEstimada).toBeLessThanOrEqual(667 - 88);
   });
@@ -821,7 +821,7 @@ describe("TourOverlay — balão não cobre o próprio alvo", () => {
     const dialogo = await screen.findByRole("dialog");
     const top = parseFloat((dialogo as HTMLElement).style.top);
     const left = parseFloat((dialogo as HTMLElement).style.left);
-    const alturaEstimada = 190;
+    const alturaEstimada = 360;
     const larguraBalao = 320;
 
     const sobrepoeVertical = top < 190 && top + alturaEstimada > 150;

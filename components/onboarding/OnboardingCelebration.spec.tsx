@@ -15,7 +15,7 @@ describe("OnboardingCelebration", () => {
     render(<OnboardingCelebration onDone={vi.fn()} />);
 
     expect(
-      screen.getByText("Tudo pronto! Você já pode usar a plataforma."),
+      screen.getByText("Você está pronto para começar"),
     ).toBeInTheDocument();
   });
 
@@ -26,7 +26,7 @@ describe("OnboardingCelebration", () => {
     expect(onDone).not.toHaveBeenCalled();
 
     act(() => {
-      vi.advanceTimersByTime(3500);
+      vi.advanceTimersByTime(4500);
     });
 
     expect(onDone).toHaveBeenCalledTimes(1);
@@ -36,7 +36,7 @@ describe("OnboardingCelebration", () => {
     const { container } = render(<OnboardingCelebration onDone={vi.fn()} />);
 
     expect(
-      container.querySelectorAll('[aria-hidden="true"]').length,
+      container.querySelectorAll('[data-confetti="true"]').length,
     ).toBeGreaterThan(0);
   });
 
@@ -54,9 +54,9 @@ describe("OnboardingCelebration", () => {
 
     const { container } = render(<OnboardingCelebration onDone={vi.fn()} />);
 
-    expect(container.querySelectorAll('[aria-hidden="true"]').length).toBe(0);
+    expect(container.querySelectorAll('[data-confetti="true"]').length).toBe(0);
     expect(
-      screen.getByText("Tudo pronto! Você já pode usar a plataforma."),
+      screen.getByText("Você está pronto para começar"),
     ).toBeInTheDocument();
   });
 
@@ -67,7 +67,7 @@ describe("OnboardingCelebration", () => {
     unmount();
 
     act(() => {
-      vi.advanceTimersByTime(3500);
+      vi.advanceTimersByTime(4500);
     });
 
     expect(onDone).not.toHaveBeenCalled();

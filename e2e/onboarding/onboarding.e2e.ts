@@ -73,7 +73,7 @@ test.describe("Onboarding", () => {
     await expect(page.getByText("Bem-vindo à INEXCI")).toHaveCount(0);
   });
 
-  test("refazer pela aba de Configurações traz o onboarding de volta", async () => {
+  test("refazer pela aba de Configurações reinicia direto no primeiro tour", async () => {
     await page.goto("/configuracoes?tab=onboarding");
     await expect(
       page.getByRole("heading", { name: "Primeiros passos" }),
@@ -81,13 +81,19 @@ test.describe("Onboarding", () => {
 
     await page.getByRole("button", { name: "Refazer o onboarding" }).click();
 
-    const modal = page.getByText("Bem-vindo à INEXCI");
-    await expect(modal).toBeVisible({ timeout: 15_000 });
+    // "Refazer" não deve devolver o usuário ao banner/modal de boas-vindas:
+    // ele abre a primeira trilha imediatamente, no caminho real do tour.
+    await expect(page.getByText("Bem-vindo à INEXCI")).toHaveCount(0);
+    // Para o médico do seed, a primeira trilha visível é a de documentos,
+    // cujo primeiro passo leva ao Perfil. O ponto é iniciar o tour sem CTA
+    // intermediário, não impor uma trilha que talvez nem seja visível.
+    await expect(
+      page.getByRole("dialog", { name: "Envie sua assinatura" }),
+    ).toBeVisible({ timeout: 15_000 });
 
-    // Fecha para não vazar para o cenário seguinte, e espera persistir antes
-    // da próxima navegação completa.
-    await page.getByRole("button", { name: "Pular por agora" }).click();
-    await expect(modal).toHaveCount(0);
+    // Sai sem concluir para não vazar estado do tour para o cenário seguinte,
+    // mas aguarda a marcação de boas-vindas iniciada pelo próprio "Refazer".
+    await page.getByRole("button", { name: "Sair do tour" }).click();
     await aguardarWelcomeSeenPersistido();
   });
 
@@ -151,18 +157,19 @@ test.describe("Onboarding", () => {
     await page.getByRole("button", { name: "Próximo" }).click();
 
     // Passo 7 — "Envie e acompanhe a análise": o driver abre o modal de
-    // upload sozinho e a simulação de análise dispara. A cobertura detalhada
-    // da simulação (sem chamada real ao backend de extração) vive no cenário
-    // seguinte — aqui só se avança o suficiente para completar a trilha.
+    // upload sozinho e a simulação de análise dispara. Espera a simulação
+    // terminar antes de seguir: avançar antes disso fecha o modal e cancela o
+    // timer fabricado, comportamento que imita o cancelamento explícito.
     await expect(
       page.getByRole("dialog", { name: "Envie e acompanhe a análise" }),
     ).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: "Próximo" }).click();
-
-    // Passo 8 (último) — "Revise antes de criar" (a navegação para
-    // nova-via-documento já aconteceu pelo passo anterior). O botão vira
-    // "Concluir".
     await page.waitForURL(/\/nova-via-documento/, { timeout: 15_000 });
+    await page
+      .getByRole("dialog", { name: "Envie e acompanhe a análise" })
+      .getByRole("button", { name: "Próximo" })
+      .click();
+
+    // Passo 8 (último) — "Revise antes de criar". O botão vira "Concluir".
     await expect(
       page.getByRole("dialog", { name: "Revise antes de criar" }),
     ).toBeVisible({ timeout: 15_000 });
@@ -320,12 +327,16 @@ test.describe("Onboarding", () => {
     await expect(
       page.getByRole("dialog", { name: "Envie e acompanhe a análise" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Próximo" }).click();
-
-    // Passo 8 (último) — "Revise antes de criar": a navegação para
-    // nova-via-documento já deveria ter acontecido pelo passo anterior
-    // (a simulação de 1.5s chama o mesmo onSuccess do fluxo real).
+    // A simulação (1,5 s) chama o mesmo `onSuccess` do fluxo real e navega
+    // para a revisão. Só depois disso o usuário pode avançar o texto do tour
+    // sem cancelar a simulação ao desmontar o modal.
     await page.waitForURL(/\/nova-via-documento/, { timeout: 15_000 });
+    await page
+      .getByRole("dialog", { name: "Envie e acompanhe a análise" })
+      .getByRole("button", { name: "Próximo" })
+      .click();
+
+    // Passo 8 (último) — "Revise antes de criar".
     await expect(
       page.getByRole("dialog", { name: "Revise antes de criar" }),
     ).toBeVisible({ timeout: 15_000 });

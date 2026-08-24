@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
@@ -23,6 +30,10 @@ import { TIMEOUT_AGUARDA_ACAO_MS, useTargetRect } from "./useTargetRect";
 const PADDING_FURO = 8;
 const LARGURA_BALAO = 320;
 const MARGEM = 16;
+// Estimativa conservadora até a primeira medição do DOM. O balão real é
+// medido logo depois por `useLayoutEffect`; 190 px era baixo demais para uma
+// copy de duas linhas + controles e fazia o tour cobrir o alvo no mobile.
+const ALTURA_BALAO_INICIAL = 360;
 // Reserva do rodapé: a `BottomNavBar` cobre a base da tela no mobile e o
 // balão posicionado por `top` cairia atrás dela — o usuário veria o holofote
 // e não veria a instrução.
@@ -71,8 +82,36 @@ export function TourOverlay({ trackId, onClose }: Props) {
   const [montado, setMontado] = useState(false);
   const [interrompido, setInterrompido] = useState(false);
   const balaoRef = useRef<HTMLDivElement>(null);
+  const [alturaBalao, setAlturaBalao] = useState(ALTURA_BALAO_INICIAL);
 
   useEffect(() => setMontado(true), []);
+
+  // Posicionamento não pode supor uma altura fixa: copy dinâmica, zoom do
+  // navegador e fonte do usuário fazem o balão crescer. Mede antes de pintar
+  // e acompanha mudanças de conteúdo/tamanho para nunca encobrir o alvo.
+  useLayoutEffect(() => {
+    const balao = balaoRef.current;
+    if (!balao) return;
+
+    const medir = () => {
+      const medida = Math.ceil(balao.getBoundingClientRect().height);
+      if (medida > 0) {
+        setAlturaBalao((atual) => (atual === medida ? atual : medida));
+      }
+    };
+    medir();
+
+    const observador =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(medir);
+    observador?.observe(balao);
+    window.addEventListener("resize", medir);
+    return () => {
+      observador?.disconnect();
+      window.removeEventListener("resize", medir);
+    };
+  }, [montado, trackId, indice]);
 
   const track = trackById(trackId);
   const passos = useMemo(
@@ -227,17 +266,19 @@ export function TourOverlay({ trackId, onClose }: Props) {
         transform: "translate(-50%, -50%)",
       } as const;
     }
-    const alturaEstimada = 190;
+    const limiteInferior = window.innerHeight - RESERVA_RODAPE;
     const cabeAbaixo =
-      rect.bottom + MARGEM + alturaEstimada <
-      window.innerHeight - RESERVA_RODAPE;
+      rect.bottom + MARGEM + alturaBalao <= limiteInferior;
+    const cabeAcima = rect.top - MARGEM - alturaBalao >= MARGEM;
+    const maxTop = Math.max(MARGEM, limiteInferior - alturaBalao);
+    const espacoAcima = rect.top - MARGEM;
+    const espacoAbaixo = limiteInferior - rect.bottom - MARGEM;
     const topBruto = cabeAbaixo
       ? rect.bottom + MARGEM
-      : Math.max(MARGEM, rect.top - MARGEM - alturaEstimada);
-    const top = Math.min(
-      topBruto,
-      window.innerHeight - RESERVA_RODAPE - alturaEstimada,
-    );
+      : cabeAcima || espacoAcima >= espacoAbaixo
+        ? rect.top - MARGEM - alturaBalao
+        : rect.bottom + MARGEM;
+    const top = Math.min(Math.max(MARGEM, topBruto), maxTop);
     let left = Math.min(
       Math.max(MARGEM, rect.left),
       Math.max(MARGEM, window.innerWidth - LARGURA_BALAO - MARGEM),
@@ -252,7 +293,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
       left < rect.right &&
       left + LARGURA_BALAO > rect.left &&
       top < rect.bottom &&
-      top + alturaEstimada > rect.top;
+      top + alturaBalao > rect.top;
     if (sobrepoe) {
       const cabeADireita =
         rect.right + MARGEM + LARGURA_BALAO <= window.innerWidth - MARGEM;
@@ -262,7 +303,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
     }
 
     return { top, left } as const;
-  }, [rect]);
+  }, [rect, alturaBalao]);
 
   if (!montado) return null;
 
@@ -360,7 +401,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
           width: LARGURA_BALAO,
           maxWidth: "calc(100vw - 32px)",
         }}
-        className="pointer-events-auto absolute rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl focus:outline-none"
+        className="pointer-events-auto absolute max-h-[calc(100dvh-7.5rem)] overflow-y-auto rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl focus:outline-none md:max-h-[calc(100dvh-2rem)]"
       >
         <button
           type="button"

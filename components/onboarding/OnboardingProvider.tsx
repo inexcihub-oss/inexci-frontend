@@ -70,9 +70,9 @@ export function OnboardingProvider({
 
   /**
    * Espelho do estado, lido por `aplicar` no lugar da forma funcional do
-   * `setState`. Existe para que os efeitos colaterais (agendar o PATCH, marcar
-   * a promoção da sessão) fiquem fora do updater — updater pode reexecutar e
-   * roda durante o render. É atualizado em toda escrita, inclusive nas duas
+   * `setState`. Existe para que os efeitos colaterais (agendar o PATCH) fiquem
+   * fora do updater — updater pode reexecutar e roda durante o render. É
+   * atualizado em toda escrita, inclusive nas duas
    * fora de `aplicar`, para nunca ficar atrás do estado real.
    */
   const stateRef = useRef(state);
@@ -99,16 +99,6 @@ export function OnboardingProvider({
   );
 
   const tracks = useMemo(() => visibleTracks(viewer), [viewer]);
-
-  /**
-   * `true` só quando ESTA montagem do provider foi quem promoveu o status
-   * para `completed` (via `promoteIfComplete`, dentro de `aplicar`). Decisão
-   * do controller sobre o achado 4: um `status: "completed"` que já chega
-   * pronto do servidor (próximo login) não deve reativar a mensagem de
-   * conclusão — só a promoção que aconteceu NESTA sessão ativa. Ver
-   * `isChecklistVisible` no `value` abaixo.
-   */
-  const promovidoNestaSessaoRef = useRef(false);
 
   /**
    * Registro de ações do tour por id — o mesmo papel que `data-tour` cumpre
@@ -185,9 +175,9 @@ export function OnboardingProvider({
       transformar: (atual: OnboardingState) => OnboardingState,
       patch: OnboardingWritablePatch,
     ) => {
-      // Tudo acontece FORA do updater do `setState`. Agendar persistência e
-      // marcar o ref lá dentro são efeitos colaterais em função que o React
-      // pode reexecutar (o StrictMode reexecuta) e que roda durante o render —
+      // Tudo acontece FORA do updater do `setState`. Agendar persistência é
+      // efeito colateral em função que o React pode reexecutar (o StrictMode
+      // reexecuta) e que roda durante o render —
       // foi o que produzia "Cannot update a component while rendering a
       // different component" quando o `closeTour` era disparado pelo overlay.
       //
@@ -203,9 +193,6 @@ export function OnboardingProvider({
         transformado,
         tracks.map((t) => t.stepKey),
       );
-      if (proximo.status === "completed" && atual.status !== "completed") {
-        promovidoNestaSessaoRef.current = true;
-      }
       const patchFinal: OnboardingWritablePatch =
         proximo.status !== atual.status
           ? { ...patch, status: proximo.status }
@@ -293,10 +280,28 @@ export function OnboardingProvider({
     // servidor é a fonte da verdade do estado resultante.
     const novo = await onboardingService.reset();
     const normalizado = normalizeOnboardingState(novo);
-    stateRef.current = normalizado;
-    setState(normalizado);
-    setActiveTour(null);
-  }, []);
+    const primeiraTrilha = tracks[0];
+
+    if (!primeiraTrilha) {
+      stateRef.current = normalizado;
+      setState(normalizado);
+      setActiveTour(null);
+      return;
+    }
+
+    // "Refazer" é uma escolha explícita de pular a introdução e voltar
+    // direto ao conteúdo. Marca as boas-vindas como vistas e abre a primeira
+    // trilha no mesmo fluxo, sem exigir outro clique no banner.
+    const agora = new Date().toISOString();
+    const recomeçado = markWelcomeSeen(normalizado, agora);
+    stateRef.current = recomeçado;
+    setState(recomeçado);
+    agendarPersistencia({
+      welcomeSeenAt: agora,
+      status: recomeçado.status,
+    });
+    setActiveTour(primeiraTrilha.id);
+  }, [agendarPersistencia, tracks]);
 
   const registrarAcao = useCallback((id: string, fn: () => void) => {
     acoesRef.current.set(id, fn);
@@ -335,8 +340,7 @@ export function OnboardingProvider({
       desregistrarAcao,
       executarAcao,
       isChecklistVisible:
-        calcChecklistVisible(state, promovidoNestaSessaoRef.current) &&
-        tracks.length > 0,
+        calcChecklistVisible(state) && tracks.length > 0,
     }),
     [
       state,

@@ -89,8 +89,8 @@ export function OnboardingSettingsTab() {
           Refazer o onboarding
         </p>
         <p className="mt-1 text-sm text-neutral-500">
-          Zera o progresso e traz de volta as boas-vindas e o card de primeiros
-          passos na sua tela inicial.
+          Zera o progresso e começa imediatamente pela primeira trilha, sem
+          precisar procurar o botão Continuar.
         </p>
         <button
           type="button"

@@ -54,7 +54,7 @@ describe("markStepComplete", () => {
     const estado = markStepComplete(dispensado, "criar-solicitacao", AGORA);
 
     expect(estado.checklistDismissedAt).toBe(AGORA);
-    expect(isChecklistVisible(estado, false)).toBe(false);
+    expect(isChecklistVisible(estado)).toBe(false);
   });
 });
 
@@ -75,45 +75,21 @@ describe("markWelcomeSeen", () => {
 });
 
 describe("isChecklistVisible", () => {
-  it("some quando dispensado, mesmo promovido nesta sessão", () => {
-    expect(
-      isChecklistVisible(
-        dismissChecklist(emptyOnboardingState(), AGORA),
-        true,
-      ),
-    ).toBe(false);
+  it("some quando dispensado", () => {
+    expect(isChecklistVisible(dismissChecklist(emptyOnboardingState(), AGORA))).toBe(
+      false,
+    );
   });
 
-  /**
-   * O "momento de conclusão" é DE SESSÃO (decisão do controller sobre o
-   * achado 4): só fica visível mostrando `CHECKLIST.concluido` quando foi
-   * ESTA sessão que promoveu — senão o card ficaria "Tudo pronto" para
-   * sempre, trocando um incômodo permanente por outro.
-   */
-  it("promovido NESTA sessão: continua visível mostrando a mensagem de conclusão", () => {
+  it("some ao concluir, inclusive na mesma sessão", () => {
     expect(
-      isChecklistVisible(
-        { ...emptyOnboardingState(), status: "completed" },
-        true,
-      ),
-    ).toBe(true);
-  });
-
-  it("já chega completed do servidor (não promovido nesta sessão): não renderiza", () => {
-    expect(
-      isChecklistVisible(
-        { ...emptyOnboardingState(), status: "completed" },
-        false,
-      ),
+      isChecklistVisible({ ...emptyOnboardingState(), status: "completed" }),
     ).toBe(false);
   });
 
   it("aparece para quem está no meio", () => {
     expect(
-      isChecklistVisible(
-        { ...emptyOnboardingState(), status: "in_progress" },
-        false,
-      ),
+      isChecklistVisible({ ...emptyOnboardingState(), status: "in_progress" }),
     ).toBe(true);
   });
 });

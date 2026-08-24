@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Compass, X } from "lucide-react";
+import { Compass, X } from "lucide-react";
 import { CHECKLIST } from "@/lib/onboarding/content";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useOnboarding } from "./OnboardingProvider";
@@ -16,12 +16,19 @@ export function OnboardingBanner() {
   const { state, tracks, startTour, dismiss, isChecklistVisible } =
     useOnboarding();
 
-  if (!isChecklistVisible || tracks.length === 0) return null;
+  // A conclusão é celebrada pelo overlay próprio. Manter este banner nessa
+  // transição deixava uma camada visual presa no topo da tela.
+  if (
+    !isChecklistVisible ||
+    tracks.length === 0 ||
+    state.status === "completed"
+  ) {
+    return null;
+  }
 
   const concluidas = tracks.filter(
     (t) => state.completedSteps[t.stepKey],
   ).length;
-  const concluido = state.status === "completed";
   const proximaTrilha = tracks.find((t) => !state.completedSteps[t.stepKey]);
 
   return (
@@ -37,49 +44,41 @@ export function OnboardingBanner() {
       >
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <div className="mt-0.5 rounded-xl bg-white/80 p-2 shadow-sm ring-1 ring-black/5">
-            {concluido ? (
-              <CheckCircle2 className="h-5 w-5 shrink-0 text-primary-600" />
-            ) : (
-              <Compass className="h-5 w-5 shrink-0 text-primary-600" />
-            )}
+            <Compass className="h-5 w-5 shrink-0 text-primary-600" />
           </div>
 
           <div className="min-w-0 flex-1">
             <p className="pr-8 text-sm font-semibold sm:text-[15px] md:pr-0">
-              {concluido ? CHECKLIST.concluido : CHECKLIST.titulo}
+              {CHECKLIST.titulo}
             </p>
 
-            {!concluido && (
-              <>
-                <div
-                  role="progressbar"
-                  aria-valuenow={concluidas}
-                  aria-valuemin={0}
-                  aria-valuemax={tracks.length}
-                  className="mt-2 flex items-center gap-2"
-                >
-                  <ProgressBar
-                    value={(concluidas / tracks.length) * 100}
-                    size="sm"
-                    variant="primary"
-                    className="min-w-0 flex-1"
-                  />
-                  <span className="shrink-0 text-xs font-medium tabular-nums opacity-80">
-                    {`${concluidas} de ${tracks.length}`}
-                  </span>
-                </div>
+            <div
+              role="progressbar"
+              aria-valuenow={concluidas}
+              aria-valuemin={0}
+              aria-valuemax={tracks.length}
+              className="mt-2 flex items-center gap-2"
+            >
+              <ProgressBar
+                value={(concluidas / tracks.length) * 100}
+                size="sm"
+                variant="primary"
+                className="min-w-0 flex-1"
+              />
+              <span className="shrink-0 text-xs font-medium tabular-nums opacity-80">
+                {`${concluidas} de ${tracks.length}`}
+              </span>
+            </div>
 
-                {proximaTrilha && (
-                  <p className="mt-1.5 text-xs leading-relaxed opacity-90 sm:text-sm">
-                    {`Próximo: ${proximaTrilha.label}`}
-                  </p>
-                )}
-              </>
+            {proximaTrilha && (
+              <p className="mt-1.5 text-xs leading-relaxed opacity-90 sm:text-sm">
+                {`Próximo: ${proximaTrilha.label}`}
+              </p>
             )}
           </div>
         </div>
 
-        {!concluido && proximaTrilha && (
+        {proximaTrilha && (
           <button
             type="button"
             onClick={() => startTour(proximaTrilha.id)}

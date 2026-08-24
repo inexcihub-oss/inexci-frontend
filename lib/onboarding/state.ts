@@ -190,23 +190,14 @@ export function dismissChecklist(
 }
 
 /**
- * O momento de "você terminou" é DE SESSÃO, não permanente — decisão do
- * controller sobre o achado 4: continuar mostrando `CHECKLIST.concluido`
- * para sempre até o usuário clicar em "Dispensar" só trocaria um incômodo
- * ("2 de 2" eterno) por outro ("Tudo pronto" eterno, nova tarefa de
- * dispensar). `promovidoNestaSessao` é `true` só quando ESTA montagem do
- * provider foi quem promoveu o status para `completed` (via
- * `promoteIfComplete`); um `status: "completed"` que já chega pronto do
- * servidor (próximo login) não ativa a mensagem — o card simplesmente não
- * renderiza, satisfazendo a §6.1 do PLANO ("some quando completed") sem
- * nunca deixar a promoção acontecer em silêncio.
+ * O checklist é uma ajuda para o percurso, não uma tela de término. Assim
+ * que todas as trilhas acabam, ele some imediatamente e a celebração
+ * passageira assume essa comunicação. Mantê-lo visível durante a própria
+ * sessão de conclusão foi o que deixava o banner preso no topo da tela.
  */
-export function isChecklistVisible(
-  state: OnboardingState,
-  promovidoNestaSessao: boolean,
-): boolean {
+export function isChecklistVisible(state: OnboardingState): boolean {
   if (state.checklistDismissedAt) return false;
-  return state.status !== "completed" || promovidoNestaSessao;
+  return state.status !== "completed";
 }
 
 /**

@@ -119,31 +119,11 @@ describe("OnboardingBanner", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("mostra a mensagem de conclusão em vez do progresso quando status é completed", () => {
+  it("some assim que o onboarding é concluído", () => {
     contexto.state = { ...emptyOnboardingState(), status: "completed" };
-    render(<OnboardingBanner />);
+    const { container } = render(<OnboardingBanner />);
 
-    expect(
-      screen.getByText(
-        "Tudo pronto. Você pode rever qualquer passo em Configurações.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /continuar/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("mesmo concluído, Dispensar continua sendo a saída", async () => {
-    contexto.state = { ...emptyOnboardingState(), status: "completed" };
-    const user = userEvent.setup();
-    render(<OnboardingBanner />);
-
-    await user.click(
-      screen.getByRole("button", { name: /dispensar primeiros passos/i }),
-    );
-
-    expect(dismiss).toHaveBeenCalledTimes(1);
+    expect(container).toBeEmptyDOMElement();
   });
 
   /**
