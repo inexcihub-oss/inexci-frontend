@@ -30,6 +30,7 @@ import { TIMEOUT_AGUARDA_ACAO_MS, useTargetRect } from "./useTargetRect";
 const PADDING_FURO = 8;
 const LARGURA_BALAO = 320;
 const MARGEM = 16;
+const BREAKPOINT_DESKTOP = 1024;
 // Estimativa conservadora até a primeira medição do DOM. O balão real é
 // medido logo depois por `useLayoutEffect`; 190 px era baixo demais para uma
 // copy de duas linhas + controles e fazia o tour cobrir o alvo no mobile.
@@ -119,6 +120,12 @@ export function TourOverlay({ trackId, onClose }: Props) {
     [track, viewer],
   );
   const passo = passos[indice];
+  const alvo =
+    passo?.mobileTarget &&
+    typeof window !== "undefined" &&
+    window.innerWidth < BREAKPOINT_DESKTOP
+      ? passo.mobileTarget
+      : passo?.target;
 
   const [requisitos, setRequisitos] = useState<string[] | null>(null);
 
@@ -140,7 +147,7 @@ export function TourOverlay({ trackId, onClose }: Props) {
   // espera viram um buraco morto no caminho NORMAL. `aguardaAcao` tem
   // prioridade sobre `route`: o alvo só existe depois de o usuário agir, então
   // o motor precisa esperar bem mais (20s) do que o tempo de uma navegação.
-  const { rect, estado } = useTargetRect(passo?.target, {
+  const { rect, estado } = useTargetRect(alvo, {
     timeoutMs: passo?.aguardaAcao
       ? TIMEOUT_AGUARDA_ACAO_MS
       : passo?.route
@@ -202,13 +209,13 @@ export function TourOverlay({ trackId, onClose }: Props) {
    * "Sair do tour").
    */
   useEffect(() => {
-    if (estado !== "ausente" || !passo?.target) return;
+    if (estado !== "ausente" || !alvo) return;
     if (passo.required) {
       setInterrompido(true);
       return;
     }
     avancar();
-  }, [estado, passo?.target, passo?.required, avancar]);
+  }, [estado, alvo, passo?.required, avancar]);
 
   // Teclado: Esc sai, setas navegam.
   useEffect(() => {

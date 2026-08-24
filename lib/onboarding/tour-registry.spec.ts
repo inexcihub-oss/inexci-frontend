@@ -396,4 +396,11 @@ describe("passos dirigidos pelo tour (Driver)", () => {
       "procedimentos-abrir-novo-modelo",
     );
   });
+
+  it("cadastros: menu abre o overflow no mobile", () => {
+    expect(passo("cadastros", "menu")?.acao).toBe(
+      "cadastros-abrir-menu-mobile",
+    );
+    expect(passo("cadastros", "menu")?.aguardaAcao).toBe(true);
+  });
 });

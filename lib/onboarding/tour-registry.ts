@@ -28,6 +28,8 @@ export interface TourStep extends Gate {
   corpo: string;
   /** Valor do `data-tour` do elemento a destacar. Ausente = card centralizado. */
   target?: string;
+  /** Alvo alternativo quando a mesma funcionalidade muda de lugar no mobile. */
+  mobileTarget?: string;
   /** Rota a abrir antes do passo. */
   route?: string;
   /**
@@ -80,6 +82,8 @@ export interface Viewer {
 export const ACAO_PROCEDIMENTOS_ABRIR_NOVO_MODELO =
   "procedimentos-abrir-novo-modelo";
 export const ACAO_PLANO_ABRIR_SELECAO = "plano-abrir-selecao";
+export const ACAO_CADASTROS_ABRIR_MENU_MOBILE =
+  "cadastros-abrir-menu-mobile";
 
 export function canSee(gate: Gate, viewer: Viewer): boolean {
   if (gate.requiresOwner && !viewer.isAccountOwner) return false;
@@ -364,9 +368,12 @@ export const TRACKS: Track[] = [
       },
       {
         key: "menu",
-        // A sidebar é drawer no mobile: o alvo não existe em 375 px e o passo
-        // degrada para card centralizado, mantendo a informação.
+        // No desktop, destaca o acordeão da sidebar. No mobile, a ação abre
+        // o overflow "Mais", que expõe os cadastros com a âncora própria.
         target: "cadastros-menu",
+        mobileTarget: "cadastros-menu-mobile",
+        aguardaAcao: true,
+        acao: ACAO_CADASTROS_ABRIR_MENU_MOBILE,
         ...TRILHA_CADASTROS.passos.menu,
       },
       {

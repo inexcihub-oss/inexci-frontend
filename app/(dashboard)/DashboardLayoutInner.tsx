@@ -131,6 +131,8 @@ export default function DashboardLayoutInner({
                     <GlobalBanners />
                   </div>
                   <OnboardingGate>{children}</OnboardingGate>
+                  {/* O menu móvel também registra ações acionadas pelo tour. */}
+                  <BottomNavBar />
                 </OnboardingProvider>
               </ConsentGate>
             </PermissionRouteGuard>
@@ -143,9 +145,6 @@ export default function DashboardLayoutInner({
             aria-hidden
           />
         </div>
-
-        {/* Bottom Navigation - apenas mobile */}
-        <BottomNavBar />
 
         {shouldBlockDashboard && (
           <div className="fixed inset-0 z-[90] flex items-center justify-center bg-neutral-950/45 p-4 backdrop-blur-[2px] sm:p-6">

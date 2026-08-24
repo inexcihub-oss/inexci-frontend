@@ -374,4 +374,42 @@ test.describe("Onboarding", () => {
     page.off("request", escutaDeRequisicoes);
     expect(chamadasDeExtracao).toEqual([]);
   });
+
+  test("a trilha de cadastros abre o menu Mais no mobile", async () => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto("/configuracoes?tab=onboarding");
+
+    // Este cenário também precisa funcionar sozinho, quando o reset do
+    // beforeAll deixou o welcome aberto (na execução serial completa ele já
+    // foi dispensado pelo primeiro caso).
+    const welcome = page.getByText("Bem-vindo à INEXCI");
+    if (await welcome.isVisible()) {
+      await page.getByRole("button", { name: "Pular por agora" }).click();
+    }
+
+    const item = page.locator("li", { hasText: "Preencher os cadastros" });
+    await expect(item).toBeVisible();
+    await item.getByRole("button", { name: "Ver" }).click();
+
+    await page.waitForURL(/\/pacientes/, { timeout: 15_000 });
+    const pacientes = page.getByRole("dialog", {
+      name: "O paciente é o cadastro central",
+    });
+    await expect(pacientes).toBeVisible({ timeout: 15_000 });
+    await pacientes.getByRole("button", { name: "Próximo" }).click();
+
+    await expect(
+      page.getByRole("dialog", {
+        name: "Hospitais, convênios e fornecedores",
+      }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.locator('div[data-tour="cadastros-menu-mobile"]'),
+    ).toBeVisible();
+    await expect(page.getByText("Hospitais", { exact: true })).toBeVisible();
+    await expect(page.getByText("Convênios", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Fornecedores", { exact: true }),
+    ).toBeVisible();
+  });
 });
