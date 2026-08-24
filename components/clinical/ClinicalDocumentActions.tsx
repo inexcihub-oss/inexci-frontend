@@ -11,6 +11,7 @@ import { ModalFooter } from "@/components/shared/ModalFooter";
 import { CidPicker } from "@/components/clinical/CidPicker";
 import { DocumentPreview } from "@/components/clinical/DocumentPreview";
 import { TussCodePicker } from "@/components/tuss/TussCodePicker";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import {
   clinicalRecordService,
   ClinicalCidCode,
@@ -100,6 +101,7 @@ export function ClinicalDocumentActions({
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const { emTour } = useOnboarding();
 
   // Receita e exames compartilham a mesma lista repetível.
   const [rows, setRows] = useState<ItemRow[]>([emptyRow()]);
@@ -482,7 +484,7 @@ export function ClinicalDocumentActions({
           <Button
             onClick={handleSubmit}
             isLoading={submitting}
-            disabled={previewing}
+            disabled={previewing || emTour}
             className="min-h-[44px]"
           >
             Emitir
@@ -520,6 +522,7 @@ export function ClinicalDocumentActions({
           <Button
             onClick={handleSubmit}
             isLoading={submitting}
+            disabled={emTour}
             className="min-h-[44px]"
           >
             Emitir

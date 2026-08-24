@@ -19,6 +19,11 @@ vi.mock("@/services/cid.service", () => ({
   cidService: { search: vi.fn().mockResolvedValue({ records: [] }) },
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
 import { clinicalRecordService } from "@/services/clinical-record.service";
 import { tussService } from "@/services/tuss.service";
 import { ClinicalDocumentActions } from "./ClinicalDocumentActions";
@@ -39,6 +44,7 @@ describe("ClinicalDocumentActions", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    onboardingMockState.emTour = false;
     ensureRecordId.mockResolvedValue("cr-1");
     (
       clinicalRecordService.generatePrescription as ReturnType<typeof vi.fn>
@@ -434,5 +440,19 @@ describe("ClinicalDocumentActions", () => {
     expect(
       (screen.getByLabelText(/medicamento/i) as HTMLInputElement).value,
     ).toBe("Dipirona 500mg");
+  });
+
+  it("desabilita o botão Emitir durante o tour", async () => {
+    onboardingMockState.emTour = true;
+    const user = userEvent.setup();
+    setup();
+
+    await user.click(screen.getByRole("button", { name: /receita/i }));
+    await user.type(
+      screen.getByLabelText(/medicamento 1/i),
+      "Dipirona 500mg",
+    );
+
+    expect(screen.getByRole("button", { name: /^emitir$/i })).toBeDisabled();
   });
 });

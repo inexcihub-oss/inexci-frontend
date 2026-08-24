@@ -25,6 +25,7 @@ import {
 } from "@/services/clinical-record.service";
 import { healthPlanService } from "@/services/health-plan.service";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { logger } from "@/lib/logger";
@@ -107,6 +108,7 @@ export function AtendimentoTabs({
   const searchParams = useSearchParams();
   const { isDoctor } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
+  const { emTour } = useOnboarding();
 
   const tabFromUrl = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<AtendimentoTabId>(
@@ -321,7 +323,7 @@ export function AtendimentoTabs({
                 variant="outline"
                 onClick={handleSave}
                 isLoading={saving}
-                disabled={finalizing}
+                disabled={finalizing || emTour}
                 className="rounded-xl"
               >
                 Salvar rascunho
@@ -329,7 +331,7 @@ export function AtendimentoTabs({
               <Button
                 onClick={handleFinalize}
                 isLoading={finalizing}
-                disabled={saving}
+                disabled={saving || emTour}
                 className="rounded-xl"
               >
                 Finalizar
@@ -464,7 +466,7 @@ export function AtendimentoTabs({
                     variant="outline"
                     onClick={handleSave}
                     isLoading={saving}
-                    disabled={finalizing}
+                    disabled={finalizing || emTour}
                     className="min-h-[44px] rounded-xl"
                   >
                     Salvar rascunho
@@ -472,7 +474,7 @@ export function AtendimentoTabs({
                   <Button
                     onClick={handleFinalize}
                     isLoading={finalizing}
-                    disabled={saving}
+                    disabled={saving || emTour}
                     className="min-h-[44px] rounded-xl"
                   >
                     Finalizar atendimento

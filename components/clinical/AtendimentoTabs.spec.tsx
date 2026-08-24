@@ -64,6 +64,11 @@ vi.mock("@/services/health-plan.service", () => ({
   healthPlanService: { getById: vi.fn() },
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
 import { Permission } from "@/lib/permissions";
 
 // `can` concede tudo por padrão — os testes deste arquivo focam no eixo
@@ -154,6 +159,7 @@ describe("AtendimentoTabs", () => {
     vi.clearAllMocks();
     searchParams = new URLSearchParams();
     authState = { isDoctor: true, can: () => true };
+    onboardingMockState.emTour = false;
     (healthPlanService.getById as ReturnType<typeof vi.fn>).mockResolvedValue(
       null,
     );
@@ -811,5 +817,38 @@ describe("AtendimentoTabs", () => {
     expect(back).toHaveBeenCalledTimes(1);
 
     confirmSpy.mockRestore();
+  });
+
+  it("desabilita Salvar rascunho e Finalizar durante o tour", () => {
+    onboardingMockState.emTour = true;
+    render(
+      <AtendimentoTabs
+        patient={patient}
+        appointment={appointment}
+        initialRecord={null}
+      />,
+    );
+    expect(
+      screen.getAllByRole("button", { name: /salvar rascunho/i })[0],
+    ).toBeDisabled();
+    expect(
+      screen.getAllByRole("button", { name: /finalizar/i })[0],
+    ).toBeDisabled();
+  });
+
+  it("mantém Salvar rascunho e Finalizar habilitados fora do tour", () => {
+    render(
+      <AtendimentoTabs
+        patient={patient}
+        appointment={appointment}
+        initialRecord={null}
+      />,
+    );
+    expect(
+      screen.getAllByRole("button", { name: /salvar rascunho/i })[0],
+    ).toBeEnabled();
+    expect(
+      screen.getAllByRole("button", { name: /finalizar/i })[0],
+    ).toBeEnabled();
   });
 });
