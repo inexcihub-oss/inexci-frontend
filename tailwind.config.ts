@@ -305,6 +305,14 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        // Celebração de conclusão do onboarding (OnboardingCelebration)
+        "onboarding-confete": {
+          "0%": { transform: "translateY(0) rotate(0deg)", opacity: "1" },
+          "100%": {
+            transform: "translateY(105vh) rotate(360deg)",
+            opacity: "0.9",
+          },
+        },
       },
       animation: {
         "slide-up": "slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
@@ -314,6 +322,7 @@ const config: Config = {
         "slide-in-right": "slide-in-right 0.3s ease-out",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "onboarding-confete": "onboarding-confete 2.6s linear forwards",
       },
     },
   },

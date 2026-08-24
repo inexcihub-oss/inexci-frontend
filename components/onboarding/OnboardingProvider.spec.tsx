@@ -41,6 +41,7 @@ function Sonda() {
   const {
     state,
     tracks,
+    activeTour,
     completeStep,
     dismiss,
     restart,
@@ -71,6 +72,7 @@ function Sonda() {
         {String(isChecklistVisible)}
       </span>
       <span data-testid="em-tour">{String(emTour)}</span>
+      <span data-testid="trilha-ativa">{activeTour ?? ""}</span>
       <span data-testid="acao-executada">{String(executado)}</span>
       <span data-testid="resultado-execucao">{resultadoExecucao}</span>
       <button onClick={() => completeStep("criar-solicitacao")}>marcar</button>
@@ -324,6 +326,67 @@ describe("OnboardingProvider", () => {
         "false",
       );
       expect(screen.getByTestId("trilha-vista")).toHaveTextContent("false");
+    });
+
+    /**
+     * O `authMock` padrão expõe DUAS trilhas ("solicitacoes" e "cadastros",
+     * esta última `anyArea`) — concluir a primeira não deveria devolver o
+     * usuário ao banner para um novo clique em "Continuar": o motor mesmo
+     * já sabe que "cadastros" continua incompleta e deveria abrir ela.
+     */
+    it("concluir uma trilha avança sozinho para a próxima incompleta, sem fechar o tour", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <OnboardingProvider>
+          <Sonda />
+        </OnboardingProvider>,
+      );
+
+      await user.click(screen.getByText("iniciar tour"));
+      expect(screen.getByTestId("trilha-ativa")).toHaveTextContent(
+        "solicitacoes",
+      );
+
+      await user.click(screen.getByText("fechar concluido"));
+
+      expect(screen.getByTestId("trilha-ativa")).toHaveTextContent(
+        "cadastros",
+      );
+      expect(screen.getByTestId("em-tour")).toHaveTextContent("true");
+    });
+
+    it("concluir a última trilha incompleta fecha o tour de vez", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <OnboardingProvider>
+          <Sonda />
+        </OnboardingProvider>,
+      );
+
+      // Completa "cadastros" primeiro, direto pelo checklist — só sobra
+      // "solicitacoes" para o tour concluir.
+      await user.click(screen.getByText("marcar cadastros"));
+      await user.click(screen.getByText("iniciar tour"));
+      await user.click(screen.getByText("fechar concluido"));
+
+      expect(screen.getByTestId("trilha-ativa")).toHaveTextContent("");
+      expect(screen.getByTestId("em-tour")).toHaveTextContent("false");
+    });
+
+    /** Sair no meio (sem `concluido`) nunca deveria acionar o auto-avanço. */
+    it("fechar SEM concluir não avança para a próxima trilha", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <OnboardingProvider>
+          <Sonda />
+        </OnboardingProvider>,
+      );
+
+      await user.click(screen.getByText("iniciar tour"));
+      await user.click(screen.getByText("fechar sem concluir"));
+
+      expect(screen.getByTestId("trilha-ativa")).toHaveTextContent("");
+      expect(screen.getByTestId("em-tour")).toHaveTextContent("false");
     });
   });
 

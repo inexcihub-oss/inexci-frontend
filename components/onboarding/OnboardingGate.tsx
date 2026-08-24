@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { TrackId } from "@/lib/onboarding/state";
+import { OnboardingCelebration } from "./OnboardingCelebration";
 import { useOnboarding } from "./OnboardingProvider";
 import { TourOverlay } from "./TourOverlay";
 import { WelcomeModal } from "./WelcomeModal";
@@ -18,6 +20,22 @@ import { WelcomeModal } from "./WelcomeModal";
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { consents, isAccountOwner, subscription } = useAuth();
   const { state, activeTour, closeTour } = useOnboarding();
+
+  /**
+   * Celebração de conclusão total — dispara só na transição PARA "completed"
+   * NESTA sessão (mesmo raciocínio do "tudo pronto" de sessão em
+   * `OnboardingProvider.isChecklistVisible`): um `status: "completed"" que já
+   * chega pronto do servidor (próximo login) não deveria reabrir os
+   * confetes toda vez que a página carrega.
+   */
+  const statusAnteriorRef = useRef(state.status);
+  const [celebrando, setCelebrando] = useState(false);
+  useEffect(() => {
+    if (statusAnteriorRef.current !== "completed" && state.status === "completed") {
+      setCelebrando(true);
+    }
+    statusAnteriorRef.current = state.status;
+  }, [state.status]);
 
   const statusAssinatura = subscription?.subscription.status;
   const contaBloqueada =
@@ -42,10 +60,19 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
       {children}
       {mostrarBoasVindas && <WelcomeModal onFinish={() => undefined} />}
       {!silenciado && activeTour && (
+        // `key={activeTour}` força a remontagem ao trocar de trilha — desde
+        // que o motor passou a avançar sozinho para a próxima trilha
+        // incompleta (`OnboardingProvider.closeTour`), sem isso o índice de
+        // passo interno do `TourOverlay` ficaria parado no valor da trilha
+        // anterior em vez de recomeçar do passo 1.
         <TourOverlay
+          key={activeTour}
           trackId={activeTour as TrackId}
           onClose={(opts) => closeTour(opts)}
         />
+      )}
+      {celebrando && (
+        <OnboardingCelebration onDone={() => setCelebrando(false)} />
       )}
     </>
   );

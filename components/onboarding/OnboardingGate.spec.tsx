@@ -1,7 +1,18 @@
+import { useState } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { emptyOnboardingState } from "@/lib/onboarding/state";
 import { OnboardingGate } from "./OnboardingGate";
+
+/**
+ * Conta montagens de verdade (não re-renders) do `TourOverlay` mockado — é
+ * o jeito de provar que trocar `activeTour` REMONTA o componente em vez de
+ * só atualizar a prop `trackId`. Sem `key={activeTour}` em `OnboardingGate`,
+ * o índice de passo interno do `TourOverlay` real ficaria "grudado" no
+ * valor da trilha anterior ao trocar de trilha.
+ */
+let contadorDeMontagens = 0;
 
 let contexto = {
   state: emptyOnboardingState(),
@@ -29,13 +40,30 @@ vi.mock("./WelcomeModal", () => ({
   WelcomeModal: () => <div>modal de boas-vindas</div>,
 }));
 
+vi.mock("./OnboardingCelebration", () => ({
+  OnboardingCelebration: ({ onDone }: { onDone: () => void }) => (
+    <div>
+      celebração ativa
+      <button onClick={onDone}>fechar celebração</button>
+    </div>
+  ),
+}));
+
 vi.mock("./TourOverlay", () => ({
-  TourOverlay: () => <div>tour ativo</div>,
+  TourOverlay: ({ trackId }: { trackId: string }) => {
+    const [montagem] = useState(() => ++contadorDeMontagens);
+    return (
+      <div>
+        tour ativo: {trackId} (montagem {montagem})
+      </div>
+    );
+  },
 }));
 
 describe("OnboardingGate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    contadorDeMontagens = 0;
     contexto = {
       state: emptyOnboardingState(),
       tracks: [{ id: "solicitacoes" }],
@@ -145,6 +173,113 @@ describe("OnboardingGate", () => {
       </OnboardingGate>,
     );
 
-    expect(screen.getByText("tour ativo")).toBeInTheDocument();
+    expect(screen.getByText(/tour ativo: solicitacoes/)).toBeInTheDocument();
+  });
+
+  /**
+   * Sem `key={activeTour}` no `<TourOverlay>`, trocar de trilha só atualiza a
+   * prop `trackId` do MESMO componente montado — o índice de passo interno
+   * (um `useState` que só reseta no mount) ficaria parado no valor da
+   * trilha anterior. O motor de onboarding auto-avança para a próxima
+   * trilha incompleta assim que uma termina (`OnboardingProvider.closeTour`)
+   * — por isso remontar de verdade importa aqui.
+   */
+  it("remonta o TourOverlay ao trocar de trilha ativa", () => {
+    contexto.state = {
+      ...emptyOnboardingState(),
+      welcomeSeenAt: "2026-08-01T00:00:00.000Z",
+    };
+    contexto.activeTour = "solicitacoes";
+    const { rerender } = render(
+      <OnboardingGate>
+        <p>conteúdo</p>
+      </OnboardingGate>,
+    );
+
+    expect(
+      screen.getByText(/tour ativo: solicitacoes \(montagem 1\)/),
+    ).toBeInTheDocument();
+
+    contexto.activeTour = "cadastros";
+    rerender(
+      <OnboardingGate>
+        <p>conteúdo</p>
+      </OnboardingGate>,
+    );
+
+    expect(
+      screen.getByText(/tour ativo: cadastros \(montagem 2\)/),
+    ).toBeInTheDocument();
+  });
+
+  describe("celebração de conclusão", () => {
+    it("mostra a celebração quando o status vira completed NESTA sessão", () => {
+      contexto.state = {
+        ...emptyOnboardingState(),
+        welcomeSeenAt: "2026-08-01T00:00:00.000Z",
+        status: "in_progress",
+      };
+      const { rerender } = render(
+        <OnboardingGate>
+          <p>conteúdo</p>
+        </OnboardingGate>,
+      );
+
+      expect(screen.queryByText("celebração ativa")).not.toBeInTheDocument();
+
+      contexto.state = { ...contexto.state, status: "completed" };
+      rerender(
+        <OnboardingGate>
+          <p>conteúdo</p>
+        </OnboardingGate>,
+      );
+
+      expect(screen.getByText("celebração ativa")).toBeInTheDocument();
+    });
+
+    /**
+     * Mesmo raciocínio do "tudo pronto" de sessão em `OnboardingProvider`: um
+     * `status: "completed"` que já chega pronto (próximo login) não é uma
+     * transição desta sessão — não deveria reabrir a celebração toda vez que
+     * a página carrega.
+     */
+    it("não mostra a celebração quando completed já chega pronto, sem transição nesta sessão", () => {
+      contexto.state = {
+        ...emptyOnboardingState(),
+        welcomeSeenAt: "2026-08-01T00:00:00.000Z",
+        status: "completed",
+      };
+      render(
+        <OnboardingGate>
+          <p>conteúdo</p>
+        </OnboardingGate>,
+      );
+
+      expect(screen.queryByText("celebração ativa")).not.toBeInTheDocument();
+    });
+
+    it("a celebração some quando o próprio componente avisa que terminou", async () => {
+      contexto.state = {
+        ...emptyOnboardingState(),
+        welcomeSeenAt: "2026-08-01T00:00:00.000Z",
+        status: "in_progress",
+      };
+      const { rerender } = render(
+        <OnboardingGate>
+          <p>conteúdo</p>
+        </OnboardingGate>,
+      );
+      contexto.state = { ...contexto.state, status: "completed" };
+      rerender(
+        <OnboardingGate>
+          <p>conteúdo</p>
+        </OnboardingGate>,
+      );
+
+      const user = userEvent.setup();
+      await user.click(screen.getByText("fechar celebração"));
+
+      expect(screen.queryByText("celebração ativa")).not.toBeInTheDocument();
+    });
   });
 });

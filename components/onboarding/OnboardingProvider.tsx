@@ -247,8 +247,10 @@ export function OnboardingProvider({
   const closeTour = useCallback(
     (opts?: { concluido?: boolean }) => {
       const id = activeTour;
-      setActiveTour(null);
-      if (!id || !opts?.concluido) return;
+      if (!id || !opts?.concluido) {
+        setActiveTour(null);
+        return;
+      }
       const track = tracks.find((t) => t.id === id);
       const agora = new Date().toISOString();
       aplicar(
@@ -265,6 +267,16 @@ export function OnboardingProvider({
             }
           : { toursSeen: { [id]: agora } },
       );
+      // Avança sozinho para a próxima trilha incompleta — sem isso, o
+      // usuário precisa voltar ao banner de "Primeiros passos" e clicar em
+      // "Continuar" de novo a cada trilha concluída. `aplicar` já atualizou
+      // `stateRef` de forma síncrona, então este cálculo já enxerga o passo
+      // recém-marcado. Mesmo critério do banner (`OnboardingBanner`, "Próxima
+      // trilha incompleta").
+      const proxima = tracks.find(
+        (t) => !stateRef.current.completedSteps[t.stepKey],
+      );
+      setActiveTour(proxima?.id ?? null);
     },
     [activeTour, tracks, aplicar],
   );
