@@ -22,6 +22,9 @@ import {
   removeScFromDocumentStorage,
   setScFromDocumentStorage,
 } from "@/lib/sc-from-document-background";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
+import { criarExtracaoDemo } from "@/lib/onboarding/demo-data";
 
 const ACCEPTED_MIME = [
   "application/pdf",
@@ -67,13 +70,41 @@ export function UploadDocumentModal({
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { onDocumentExtractionStatus } = useNotificationsContext();
+  const { onDocumentExtractionStatus, setUnreadCount } =
+    useNotificationsContext();
+  const { emTour } = useOnboarding();
   const inputRef = useRef<HTMLInputElement>(null);
   const extractionCancelledRef = useRef(false);
   const abortPendingWaitRef = useRef<(() => void) | null>(null);
   const keepTrackingInBackgroundRef = useRef(false);
   const queuedBackgroundJobRef =
     useRef<BackgroundDocumentExtractionActive | null>(null);
+  /**
+   * Guarda se a simulação ainda deve concluir quando o `setTimeout` disparar.
+   * `useOnboardingAction`'s `fn` type é `() => void` — não há como devolver
+   * uma função de cleanup de efeito daqui — então este ref, limpo em
+   * `resetState`, é o que impede `onSuccess` de disparar depois que o modal
+   * já foi fechado/resetado durante o delay fabricado de 1.5s.
+   */
+  const analiseSimuladaAtivaRef = useRef(false);
+
+  /**
+   * Passo "documento-enviar" da trilha Solicitações: simula a análise sem
+   * NENHUMA chamada real a `extractFromDocument`/`waitForExtractionResult`.
+   * Só roda quando `emTour` — não altera o comportamento real fora do tour.
+   */
+  useOnboardingAction("sc-simular-analise-documento", () => {
+    if (!emTour) return;
+    analiseSimuladaAtivaRef.current = true;
+    setLoading(true);
+    setError(null);
+    setUnreadCount((c) => c + 1);
+    setTimeout(() => {
+      if (!analiseSimuladaAtivaRef.current) return;
+      setLoading(false);
+      onSuccess(criarExtracaoDemo());
+    }, 1500);
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -84,6 +115,7 @@ export function UploadDocumentModal({
     setFile(null);
     setError(null);
     setLoading(false);
+    analiseSimuladaAtivaRef.current = false;
     extractionCancelledRef.current = true;
     abortPendingWaitRef.current?.();
     abortPendingWaitRef.current = null;
@@ -379,7 +411,10 @@ export function UploadDocumentModal({
         )}
 
         {loading && (
-          <div className="flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
+          <div
+            data-tour="sc-documento-analisando"
+            className="flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-sm text-blue-800"
+          >
             <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-medium">Análise em andamento</p>

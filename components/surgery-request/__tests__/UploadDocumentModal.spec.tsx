@@ -38,6 +38,18 @@ vi.mock("@/lib/auth-token", () => ({
   getAccessToken: vi.fn(() => "token-test"),
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
+const onboardingActions: Record<string, () => void> = {};
+vi.mock("@/components/onboarding/useOnboardingAction", () => ({
+  useOnboardingAction: (id: string, fn: () => void) => {
+    onboardingActions[id] = fn;
+  },
+}));
+
 describe("UploadDocumentModal", () => {
   const onClose = vi.fn();
   const onSuccess = vi.fn();
@@ -46,6 +58,10 @@ describe("UploadDocumentModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.keys(socketHandlers).forEach((key) => delete socketHandlers[key]);
+    Object.keys(onboardingActions).forEach(
+      (key) => delete onboardingActions[key],
+    );
+    onboardingMockState.emTour = false;
     process.env.NEXT_PUBLIC_API_URL = "http://localhost:3002";
     vi.mocked(surgeryRequestService.extractFromDocument).mockResolvedValue({
       jobId: "job-1",
@@ -159,5 +175,57 @@ describe("UploadDocumentModal", () => {
       }),
     );
     expect(mockSocket.disconnect).not.toHaveBeenCalled();
+  });
+});
+
+describe("UploadDocumentModal — simulação do tour (sc-simular-analise-documento)", () => {
+  const onClose = vi.fn();
+  const onSuccess = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.keys(onboardingActions).forEach(
+      (key) => delete onboardingActions[key],
+    );
+    onboardingMockState.emTour = false;
+  });
+
+  it("não faz nada quando emTour é false", () => {
+    render(
+      <UploadDocumentModal isOpen onClose={onClose} onSuccess={onSuccess} />,
+    );
+
+    onboardingActions["sc-simular-analise-documento"]();
+
+    expect(screen.queryByText("Análise em andamento")).not.toBeInTheDocument();
+    expect(surgeryRequestService.extractFromDocument).not.toHaveBeenCalled();
+  });
+
+  // Usa `onboardingMockState` (mutable `vi.hoisted`), não `vi.doMock` +
+  // `vi.resetModules` + import dinâmico como no rascunho original da tarefa:
+  // o `vi.mock` estático deste arquivo já hoisteia `useOnboarding` para o
+  // módulo real, e sobrescrever via `doMock`/`resetModules` no meio do
+  // arquivo é frágil (mesma solução já usada em
+  // `NewProcedureModelModal.spec.tsx` — "guard emTour").
+  it("simula a análise e chama onSuccess com o resultado fabricado quando emTour é true", async () => {
+    onboardingMockState.emTour = true;
+
+    render(
+      <UploadDocumentModal isOpen onClose={onClose} onSuccess={onSuccess} />,
+    );
+
+    onboardingActions["sc-simular-analise-documento"]();
+
+    expect(await screen.findByText("Análise em andamento")).toBeInTheDocument();
+
+    await waitFor(
+      () => {
+        expect(onSuccess).toHaveBeenCalledWith(
+          expect.objectContaining({ tempStoragePath: "tour-demo" }),
+        );
+      },
+      { timeout: 3000 },
+    );
+    expect(surgeryRequestService.extractFromDocument).not.toHaveBeenCalled();
   });
 });

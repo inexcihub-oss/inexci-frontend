@@ -286,6 +286,13 @@ export const TRACKS: Track[] = [
         target: "sc-por-documento",
         ...TRILHA_SOLICITACOES.passos.porDocumento,
       },
+      {
+        key: "documento-enviar",
+        acao: "sc-abrir-upload-documento",
+        target: "sc-documento-analisando",
+        aguardaAcao: true,
+        ...TRILHA_SOLICITACOES.passos.documentoEnviar,
+      },
     ],
   },
   {

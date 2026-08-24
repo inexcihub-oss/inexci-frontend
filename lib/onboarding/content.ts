@@ -174,6 +174,11 @@ export const TRILHA_SOLICITACOES = {
       corpo:
         "Envie o pedido, o laudo ou a guia e a plataforma preenche o que conseguir ler. Você revisa antes de salvar.",
     },
+    documentoEnviar: {
+      titulo: "Envie e acompanhe a análise",
+      corpo:
+        "Enquanto a plataforma lê o documento, você pode fechar e continuar navegando — o sininho avisa quando terminar.",
+    },
   },
 };
 

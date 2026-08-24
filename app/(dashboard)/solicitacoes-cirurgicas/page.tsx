@@ -149,6 +149,14 @@ export default function ProcedimentosCirurgicos() {
   // deveria destacar.
   useOnboardingAction("sc-fechar-wizard", () => setIsNewRequestOpen(false));
 
+  // Passo "documento-enviar": abre o modal de upload e encadeia a simulação
+  // de análise registrada DENTRO de `UploadDocumentModal` (mesmo padrão de
+  // "sc-abrir-cadastro-transversal" → "sc-abrir-selecao-procedimento").
+  useOnboardingAction("sc-abrir-upload-documento", () => {
+    setIsUploadDocumentOpen(true);
+    executarAcao("sc-simular-analise-documento");
+  });
+
   const handleUploadDocumentSuccess = useCallback(
     (response: ExtractFromDocumentResponse) => {
       setIsUploadDocumentOpen(false);

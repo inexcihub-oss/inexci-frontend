@@ -1,5 +1,6 @@
 import type { Appointment } from "@/services/appointment.service";
 import type { Patient } from "@/services/patient.service";
+import type { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
 
 /**
  * Id reservado para a consulta fabricada do tour de onboarding.
@@ -45,5 +46,46 @@ export function criarPacienteDemo(): Patient {
     name: "Paciente de demonstração",
     createdAt: agora,
     updatedAt: agora,
+  };
+}
+
+/**
+ * Marcador de proveniência: `ExtractFromDocumentResponse.tempStoragePath` é o
+ * campo que a tela de revisão (`nova-via-documento/page.tsx`) já manda de
+ * volta no payload de criação — usá-lo aqui deixa o guard de "Criar
+ * solicitação" checar a proveniência do dado sem precisar de um campo novo.
+ */
+export const TOUR_DEMO_EXTRACTION_MARKER = "tour-demo";
+
+/**
+ * Extração fabricada só para o tour — nunca passa por `extractFromDocument`/
+ * `waitForExtractionResult`. Sem candidatos de propósito: `nova-via-documento`
+ * usa a ausência de candidatos para decidir "novo paciente" e pré-preencher o
+ * formulário a partir de `extracted.patient`.
+ */
+export function criarExtracaoDemo(): ExtractFromDocumentResponse {
+  return {
+    kind: "surgery_request",
+    confidence: 0.95,
+    extracted: {
+      patient: {
+        name: "Paciente de demonstração",
+        birthDate: "1985-04-12",
+        gender: "F",
+      },
+      hospital: "Hospital de demonstração",
+      healthPlan: { name: "Convênio de demonstração" },
+      suggestedProcedureName: "Artroscopia de joelho (exemplo)",
+      tuss: [
+        { code: "30912042", description: "Artroscopia de joelho", qty: 1 },
+      ],
+      opme: [{ description: "Âncora de sutura (exemplo)", qty: 2 }],
+    },
+    suggestedDocumentType: "Guia de solicitação",
+    patientCpfMissing: true,
+    patientMatchedByCpf: false,
+    candidates: { patient: [], hospital: [], healthPlan: [], procedure: [] },
+    tempStoragePath: TOUR_DEMO_EXTRACTION_MARKER,
+    originalFileName: "documento-exemplo.pdf",
   };
 }
