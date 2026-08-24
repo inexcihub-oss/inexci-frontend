@@ -108,7 +108,19 @@ test.describe("Onboarding", () => {
     ).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Próximo" }).click();
 
-    // Passo 2 — "Cadastre sem sair daqui": o tour agora ABRE o wizard de
+    // Passo 2 — "Nove status, um caminho só" (alvo `sc-kanban-colunas`).
+    await expect(
+      page.getByRole("dialog", { name: "Nove status, um caminho só" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Passo 3 — "Filtre o quadro" (alvo `sc-filtro`).
+    await expect(
+      page.getByRole("dialog", { name: "Filtre o quadro" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Passo 4 — "Cadastre sem sair daqui": o tour agora ABRE o wizard de
     // verdade e mostra o painel de procedimento, onde vive o botão "Novo"
     // (prova de que o Driver funciona — antes desta mudança, este passo era
     // um card centralizado e o wizard nunca abria sozinho).
@@ -125,17 +137,34 @@ test.describe("Onboarding", () => {
     ).toBeVisible();
     await page.getByRole("button", { name: "Próximo" }).click();
 
-    // Passo 3 — "Complete antes de enviar" (sem alvo; o corpo busca as
+    // Passo 5 — "Complete antes de enviar" (sem alvo; o corpo busca as
     // pendências reais no backend, mas o título já resolve na hora).
     await expect(
       page.getByRole("dialog", { name: "Complete antes de enviar" }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Próximo" }).click();
 
-    // Passo 4 — "Ou comece por um documento" (alvo `sc-por-documento`),
-    // último passo: o botão vira "Concluir".
+    // Passo 6 — "Ou comece por um documento" (alvo `sc-por-documento`).
     await expect(
       page.getByRole("dialog", { name: "Ou comece por um documento" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Passo 7 — "Envie e acompanhe a análise": o driver abre o modal de
+    // upload sozinho e a simulação de análise dispara. A cobertura detalhada
+    // da simulação (sem chamada real ao backend de extração) vive no cenário
+    // seguinte — aqui só se avança o suficiente para completar a trilha.
+    await expect(
+      page.getByRole("dialog", { name: "Envie e acompanhe a análise" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Passo 8 (último) — "Revise antes de criar" (a navegação para
+    // nova-via-documento já aconteceu pelo passo anterior). O botão vira
+    // "Concluir".
+    await page.waitForURL(/\/nova-via-documento/, { timeout: 15_000 });
+    await expect(
+      page.getByRole("dialog", { name: "Revise antes de criar" }),
     ).toBeVisible({ timeout: 15_000 });
     await page.getByRole("button", { name: "Concluir" }).click();
 
@@ -173,21 +202,23 @@ test.describe("Onboarding", () => {
     await item.getByRole("button", { name: "Ver" }).click();
 
     // Passo 1 — "Comece por aqui" (route /agenda, alvo agenda-nova-consulta).
+    // O botão "Próximo" é resolvido dentro do diálogo do próprio tour: a
+    // Agenda tem seu próprio botão de navegação de data com o mesmo rótulo
+    // acessível ("Próximo" do `<DatePickerPopover>`), e um seletor solto por
+    // toda a página colide em modo estrito.
     await page.waitForURL(/\/agenda/, { timeout: 15_000 });
-    await expect(
-      page.getByRole("dialog", { name: "Comece por aqui" }),
-    ).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: "Próximo" }).click();
+    const passo1 = page.getByRole("dialog", { name: "Comece por aqui" });
+    await expect(passo1).toBeVisible({ timeout: 15_000 });
+    await passo1.getByRole("button", { name: "Próximo" }).click();
 
     // Passo 2 — "Data, hora e duração": o driver abre o modal de nova
     // consulta sozinho, sem o usuário clicar em nada.
     await expect(
       page.getByRole("dialog", { name: "Nova consulta" }),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(
-      page.getByRole("dialog", { name: "Data, hora e duração" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Próximo" }).click();
+    const passo2 = page.getByRole("dialog", { name: "Data, hora e duração" });
+    await expect(passo2).toBeVisible();
+    await passo2.getByRole("button", { name: "Próximo" }).click();
 
     // Passo 3 — "Confirmar, remarcar ou cancelar": o driver fecha o modal
     // de nova consulta e abre o modal de detalhe com uma consulta
@@ -203,19 +234,133 @@ test.describe("Onboarding", () => {
     await expect(
       page.getByRole("button", { name: "Confirmar" }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("dialog", { name: "Confirmar, remarcar ou cancelar" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Próximo" }).click();
+    const passo3 = page.getByRole("dialog", {
+      name: "Confirmar, remarcar ou cancelar",
+    });
+    await expect(passo3).toBeVisible();
+    await passo3.getByRole("button", { name: "Próximo" }).click();
 
     // Passo 4 — "O lembrete vai sozinho" (sem alvo, card centralizado).
-    await expect(
-      page.getByRole("dialog", { name: "O lembrete vai sozinho" }),
-    ).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: "Concluir" }).click();
+    const passo4 = page.getByRole("dialog", {
+      name: "O lembrete vai sozinho",
+    });
+    await expect(passo4).toBeVisible({ timeout: 15_000 });
+    await passo4.getByRole("button", { name: "Concluir" }).click();
 
     await expect(
       page.getByRole("button", { name: "Sair do tour" }),
     ).toHaveCount(0);
+  });
+
+  test("a trilha de solicitações simula a análise via documento sem chamar o backend de extração", async () => {
+    // Prova DIRETA (não só indireta via nome fabricado/botão desabilitado):
+    // nenhuma requisição de rede desta trilha pode bater no endpoint real de
+    // extração — a simulação precisa nunca sair do cliente.
+    const chamadasDeExtracao: string[] = [];
+    const escutaDeRequisicoes = (req: import("@playwright/test").Request) => {
+      if (req.url().includes("/surgery-requests/extract-from-document")) {
+        chamadasDeExtracao.push(`${req.method()} ${req.url()}`);
+      }
+    };
+    page.on("request", escutaDeRequisicoes);
+
+    await page.goto("/configuracoes?tab=onboarding");
+
+    const item = page.locator("li", {
+      hasText: "Criar e enviar uma solicitação",
+    });
+    await expect(item).toBeVisible();
+    await item.getByRole("button", { name: "Refazer" }).click();
+
+    // Passos 1-3 (abrir-wizard, kanban-status, filtro) — sem interação
+    // além de avançar.
+    await page.waitForURL(/\/solicitacoes-cirurgicas/, { timeout: 15_000 });
+    await expect(
+      page.getByRole("dialog", { name: "Comece por aqui" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    await expect(
+      page.getByRole("dialog", { name: "Nove status, um caminho só" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    await expect(
+      page.getByRole("dialog", { name: "Filtre o quadro" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Passo 4 — "Cadastre sem sair daqui" (já coberto no cenário anterior).
+    await expect(
+      page.getByRole("dialog", { name: "Cadastre sem sair daqui" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Passo 5 — "Complete antes de enviar".
+    await expect(
+      page.getByRole("dialog", { name: "Complete antes de enviar" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Passo 6 — "Ou comece por um documento".
+    await expect(
+      page.getByRole("dialog", { name: "Ou comece por um documento" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Passo 7 — "Envie e acompanhe a análise": o driver abre o modal de
+    // upload sozinho e a simulação entra em "Análise em andamento" sem
+    // nenhum arquivo selecionado pelo usuário.
+    await expect(
+      page.getByRole("heading", { name: "Criar solicitação a partir de documento" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Análise em andamento")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.getByRole("dialog", { name: "Envie e acompanhe a análise" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Próximo" }).click();
+
+    // Passo 8 (último) — "Revise antes de criar": a navegação para
+    // nova-via-documento já deveria ter acontecido pelo passo anterior
+    // (a simulação de 1.5s chama o mesmo onSuccess do fluxo real).
+    await page.waitForURL(/\/nova-via-documento/, { timeout: 15_000 });
+    await expect(
+      page.getByRole("dialog", { name: "Revise antes de criar" }),
+    ).toBeVisible({ timeout: 15_000 });
+
+    // O paciente fabricado aparece pré-preenchido — prova de que o
+    // localStorage recebeu o resultado da simulação, não uma extração real.
+    // `getByDisplayValue` é API do Testing Library, não do Playwright — o
+    // campo "Nome completo" não tem `id` (logo, sem associação `label`
+    // programática para `getByLabel`), então a checagem usa a mesma âncora
+    // `data-tour` que a suíte de unidade já usa para provar que o card
+    // renderizou (`nova-via-documento/page.spec.tsx`).
+    await expect(
+      page
+        .locator('[data-tour="sc-documento-paciente-extraido"] input')
+        .first(),
+    ).toHaveValue("Paciente de demonstração");
+
+    // O botão de criar fica desabilitado — guard de proveniência
+    // (`tempStoragePath === "tour-demo"`), mesmo com o tour ainda ativo.
+    await expect(
+      page.getByRole("button", { name: "Criar solicitação" }),
+    ).toBeDisabled();
+
+    await page.getByRole("button", { name: "Concluir" }).click();
+    await expect(
+      page.getByRole("button", { name: "Sair do tour" }),
+    ).toHaveCount(0);
+
+    // O botão continua desabilitado depois do tour terminar — proveniência,
+    // não `emTour`.
+    await expect(
+      page.getByRole("button", { name: "Criar solicitação" }),
+    ).toBeDisabled();
+
+    page.off("request", escutaDeRequisicoes);
+    expect(chamadasDeExtracao).toEqual([]);
   });
 });
