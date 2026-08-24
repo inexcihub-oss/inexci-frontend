@@ -13,6 +13,7 @@ import {
 import PageContainer from "@/components/PageContainer";
 import { SearchInput, Button } from "@/components/ui";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
+import { ACAO_PROCEDIMENTOS_ABRIR_NOVO_MODELO } from "@/lib/onboarding/tour-registry";
 import {
   Table,
   TableBody,
@@ -89,7 +90,7 @@ export default function ProcedimentosPage() {
 
   // Passo "novo-modelo" da trilha Cadastros: abre o modal sozinho, sem o
   // usuário precisar achar o botão "Novo modelo".
-  useOnboardingAction("procedimentos-abrir-novo-modelo", () =>
+  useOnboardingAction(ACAO_PROCEDIMENTOS_ABRIR_NOVO_MODELO, () =>
     setIsNewModelModalOpen(true),
   );
 

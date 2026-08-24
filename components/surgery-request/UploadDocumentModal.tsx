@@ -87,6 +87,9 @@ export function UploadDocumentModal({
    * já foi fechado/resetado durante o delay fabricado de 1.5s.
    */
   const analiseSimuladaAtivaRef = useRef(false);
+  const timeoutSimulacaoRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   /**
    * Passo "documento-enviar" da trilha Solicitações: simula a análise sem
@@ -99,7 +102,7 @@ export function UploadDocumentModal({
     setLoading(true);
     setError(null);
     setUnreadCount((c) => c + 1);
-    setTimeout(() => {
+    timeoutSimulacaoRef.current = setTimeout(() => {
       if (!analiseSimuladaAtivaRef.current) return;
       setLoading(false);
       onSuccess(criarExtracaoDemo());
@@ -116,6 +119,10 @@ export function UploadDocumentModal({
     setError(null);
     setLoading(false);
     analiseSimuladaAtivaRef.current = false;
+    if (timeoutSimulacaoRef.current) {
+      clearTimeout(timeoutSimulacaoRef.current);
+      timeoutSimulacaoRef.current = null;
+    }
     extractionCancelledRef.current = true;
     abortPendingWaitRef.current?.();
     abortPendingWaitRef.current = null;
@@ -125,11 +132,16 @@ export function UploadDocumentModal({
   };
 
   const handleClose = () => {
+    if (analiseSimuladaAtivaRef.current) {
+      // Simulação fabricada do tour: não existe job real em background para
+      // continuar rastreando — sem isso, `loading` ficava travado para
+      // sempre (o `setTimeout` fabricado é cancelado dentro de resetState).
+      resetState();
+      onClose();
+      return;
+    }
+
     if (loading) {
-      // Cancela o `setTimeout` fabricado da simulação do tour (se houver):
-      // sem isso, `onSuccess` dispararia ~1.5s depois do modal já fechado,
-      // navegando o usuário para longe de onde ele foi ao clicar em Fechar.
-      analiseSimuladaAtivaRef.current = false;
       keepTrackingInBackgroundRef.current = true;
       removeScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY);
       if (queuedBackgroundJobRef.current) {
@@ -179,6 +191,10 @@ export function UploadDocumentModal({
   };
 
   const handleSubmit = async () => {
+    // Defesa em profundidade: durante o tour não deve existir NENHUMA
+    // chamada real a `extractFromDocument` — a UI já bloqueia isso, mas o
+    // handler não pode depender só do botão desabilitado.
+    if (emTour) return;
     if (!file) return;
     setLoading(true);
     setError(null);
@@ -309,6 +325,14 @@ export function UploadDocumentModal({
       extractionCancelledRef.current = true;
       abortPendingWaitRef.current?.();
       abortPendingWaitRef.current = null;
+      // Cancela o `setTimeout` fabricado da simulação do tour: sem isso, o
+      // timer sobrevive ao unmount (ex.: usuário clica em "Próximo" no
+      // balão do tour) e dispara `onSuccess` a partir de um closure morto.
+      analiseSimuladaAtivaRef.current = false;
+      if (timeoutSimulacaoRef.current) {
+        clearTimeout(timeoutSimulacaoRef.current);
+        timeoutSimulacaoRef.current = null;
+      }
     };
   }, []);
 

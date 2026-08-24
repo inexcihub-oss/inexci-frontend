@@ -7,6 +7,13 @@ import {
   setScFromDocumentStorage,
 } from "@/lib/sc-from-document-background";
 import { criarExtracaoDemo } from "@/lib/onboarding/demo-data";
+import { surgeryRequestService } from "@/services/surgery-request.service";
+
+vi.mock("@/services/surgery-request.service", () => ({
+  surgeryRequestService: {
+    createFromDocument: vi.fn(),
+  },
+}));
 
 /**
  * Guard de proveniência: o botão "Criar solicitação" precisa ficar
@@ -78,5 +85,21 @@ describe("NovaViaDocumentoPage — guard de proveniência do tour", () => {
     });
     expect(botao).not.toBeDisabled();
     expect(document.querySelector('[data-tour="sc-documento-paciente-extraido"]')).not.toBeNull();
+  });
+
+  it("handleSubmit não chama createFromDocument mesmo se o form for submetido diretamente com dado fabricado", async () => {
+    // Defesa em profundidade: simula um submit do <form> que ignore o atributo
+    // `disabled` do botão (ex.: Enter dentro de um input) — o handler precisa
+    // checar `isFabricado` por conta própria, não só confiar na UI desabilitada.
+    setScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_KEY, criarExtracaoDemo());
+    const { container } = renderPagina();
+
+    await screen.findByRole("button", { name: "Criar solicitação" });
+
+    const form = container.querySelector("form");
+    expect(form).not.toBeNull();
+    form!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+    expect(surgeryRequestService.createFromDocument).not.toHaveBeenCalled();
   });
 });

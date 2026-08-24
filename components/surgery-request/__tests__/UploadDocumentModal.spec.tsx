@@ -217,6 +217,9 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
     onboardingActions["sc-simular-analise-documento"]();
 
     expect(await screen.findByText("Análise em andamento")).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-tour="sc-documento-analisando"]'),
+    ).not.toBeNull();
 
     await waitFor(
       () => {
@@ -245,10 +248,37 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
 
     expect(onClose).toHaveBeenCalledTimes(1);
 
+    // Regressão: `handleClose` deve resetar o estado da simulação
+    // imediatamente (não existe job real em background para continuar
+    // rastreando), senão reabrir o modal mostra "Análise em andamento" para
+    // sempre.
+    expect(
+      screen.queryByText("Análise em andamento"),
+    ).not.toBeInTheDocument();
+
     // Espera passar o delay fabricado de 1.5s da simulação e confirma que o
     // `setTimeout` pendente não chamou `onSuccess` depois do fechamento.
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     expect(onSuccess).not.toHaveBeenCalled();
   }, 4000);
+
+  it("handleSubmit não chama extractFromDocument real quando emTour é true", () => {
+    onboardingMockState.emTour = true;
+
+    const { container } = render(
+      <UploadDocumentModal isOpen onClose={onClose} onSuccess={onSuccess} />,
+    );
+
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const file = new File(["pdf-content"], "laudo.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "Analisar documento" }));
+
+    expect(surgeryRequestService.extractFromDocument).not.toHaveBeenCalled();
+  });
 });

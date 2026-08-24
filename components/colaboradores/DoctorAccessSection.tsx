@@ -360,6 +360,9 @@ export function DoctorAccessSection({
   };
 
   const handleSave = async () => {
+    // Defesa em profundidade: o botão já fica desabilitado (`isFabricado`),
+    // mas o handler não pode depender só disso.
+    if (isFabricado) return;
     setSaving(true);
     try {
       const normalizedSelectedIds =

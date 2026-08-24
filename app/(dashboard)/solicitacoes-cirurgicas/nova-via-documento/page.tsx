@@ -455,6 +455,10 @@ export default function NovaViaDocumentoPage() {
   // ─── Submit ────────────────────────────────────────────────────────────────
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    // Defesa em profundidade: o botão já fica desabilitado (`emTour ||
+    // isFabricado`), mas o handler não pode depender só disso — checa a
+    // proveniência do dado, não só `emTour`.
+    if (emTour || isFabricado) return;
     if (!extraction) return;
     setSubmitting(true);
     try {

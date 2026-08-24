@@ -16,6 +16,7 @@ import { PlanSelector } from "./PlanSelector";
 import { ExternalLink, Layers, Loader2 } from "lucide-react";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
+import { ACAO_PLANO_ABRIR_SELECAO } from "@/lib/onboarding/tour-registry";
 
 export function BillingSection() {
   const { subscription, subscriptionLoading, refreshSubscription } = useAuth();
@@ -27,7 +28,9 @@ export function BillingSection() {
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
   // Passo "planos-disponiveis" da trilha Plano e cota: abre o modal sozinho.
-  useOnboardingAction("plano-abrir-selecao", () => setIsPlansModalOpen(true));
+  useOnboardingAction(ACAO_PLANO_ABRIR_SELECAO, () =>
+    setIsPlansModalOpen(true),
+  );
 
   const loadPlans = useCallback(async () => {
     setLoadingPlans(true);

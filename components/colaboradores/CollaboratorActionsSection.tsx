@@ -43,6 +43,9 @@ export function CollaboratorActionsSection({
   const isFabricado = collaboratorId === TOUR_DEMO_COLLABORATOR_ID;
 
   const handleToggleStatus = async () => {
+    // Defesa em profundidade: o toggle já fica desabilitado (`isFabricado`),
+    // mas o handler não pode depender só disso.
+    if (isFabricado) return;
     setTogglingStatus(true);
     try {
       const result = await collaboratorService.toggleStatus(collaboratorId);
@@ -81,6 +84,9 @@ export function CollaboratorActionsSection({
   };
 
   const handleResetPassword = async () => {
+    // Defesa em profundidade: o botão já fica desabilitado (`isFabricado`),
+    // mas o handler não pode depender só disso.
+    if (isFabricado) return;
     if (!password) {
       showToast("Informe a nova senha.", "error");
       return;

@@ -296,6 +296,10 @@ export default function AssistenteDetalhePage() {
   };
 
   const handleSave = async () => {
+    // Defesa em profundidade: o botão já fica desabilitado (`isFabricado`),
+    // mas o handler não pode depender só disso — checa a proveniência do
+    // dado (colaborador fabricado do tour), não uma flag genérica de tour.
+    if (isFabricado) return;
     if (!collaborator) return;
 
     if (

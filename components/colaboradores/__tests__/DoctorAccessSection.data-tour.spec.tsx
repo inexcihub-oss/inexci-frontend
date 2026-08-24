@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { DoctorAccessSection } from "../DoctorAccessSection";
 
 /**
@@ -60,5 +60,31 @@ describe("DoctorAccessSection — âncora do tour", () => {
     expect(
       screen.getByRole("button", { name: "Salvar acessos" }),
     ).toBeDisabled();
+  });
+
+  it("handleSave não chama userDoctorAccessService.setAccessForUser para o colaborador fabricado, mesmo com o botão nativamente habilitado", async () => {
+    const { userDoctorAccessService } = await import(
+      "@/services/user-doctor-access.service"
+    );
+    render(
+      <DoctorAccessSection
+        collaboratorId="tour-demo-colaborador"
+        collaboratorIsDoctor={false}
+        collaboratorName="Colaborador de demonstração"
+      />,
+    );
+
+    await screen.findByPlaceholderText("Buscar médico...");
+
+    // O DOM real suprime o clique num botão `disabled` — removemos o
+    // atributo nativo para provar que é o HANDLER (não só a UI) que recusa
+    // a chamada de rede.
+    const saveButton = screen.getByRole("button", {
+      name: "Salvar acessos",
+    }) as HTMLButtonElement;
+    saveButton.disabled = false;
+    fireEvent.click(saveButton);
+
+    expect(userDoctorAccessService.setAccessForUser).not.toHaveBeenCalled();
   });
 });

@@ -70,6 +70,17 @@ export interface Viewer {
   isAccountOwner: boolean;
 }
 
+/**
+ * Ids de `acao` (`useOnboardingAction`) compartilhados entre este arquivo e o
+ * componente que registra a ação — exportados como constante para que um
+ * typo de qualquer um dos dois lados vire erro de compilação em vez de
+ * degradar o tour em silêncio (a ação nunca dispara, o passo cai no
+ * `aguardaAcao`/timeout de 20s).
+ */
+export const ACAO_PROCEDIMENTOS_ABRIR_NOVO_MODELO =
+  "procedimentos-abrir-novo-modelo";
+export const ACAO_PLANO_ABRIR_SELECAO = "plano-abrir-selecao";
+
 export function canSee(gate: Gate, viewer: Viewer): boolean {
   if (gate.requiresOwner && !viewer.isAccountOwner) return false;
   if (gate.requiresDoctor && !viewer.isDoctor) return false;
@@ -91,9 +102,12 @@ export function canSee(gate: Gate, viewer: Viewer): boolean {
  * 2. `agenda` — a consulta precisa existir antes de haver o que atender.
  * 3. `atendimento` — a consulta vira ficha.
  * 4. `solicitacoes` — a ficha com indicação cirúrgica vira solicitação.
- * 5. `cadastros` — transversal; vem depois porque o wizard já ensinou a criar
+ * 5. `dashboard` — depois que já existe pelo menos uma solicitação para
+ *    aparecer nos KPIs/kanban; exige `Permission.SOLICITACOES`, igual à
+ *    trilha anterior — por isso fica encaixada logo depois dela.
+ * 6. `cadastros` — transversal; vem depois porque o wizard já ensinou a criar
  *    cada cadastro de dentro dele, sem precisar da tela.
- * 6. `administracao` e 7. `plano-e-cota` — tarefas do dono da conta, feitas
+ * 7. `administracao` e 8. `plano-e-cota` — tarefas do dono da conta, feitas
  *    uma vez, não no primeiro dia.
  */
 export const TRACKS: Track[] = [
@@ -379,7 +393,7 @@ export const TRACKS: Track[] = [
         key: "novo-modelo",
         target: "procedimentos-modelo-nome",
         aguardaAcao: true,
-        acao: "procedimentos-abrir-novo-modelo",
+        acao: ACAO_PROCEDIMENTOS_ABRIR_NOVO_MODELO,
         permission: Permission.SOLICITACOES,
         ...TRILHA_CADASTROS.passos.novoModelo,
       },
@@ -447,7 +461,7 @@ export const TRACKS: Track[] = [
       { key: "acoes", target: "plano-acoes", ...TRILHA_PLANO.passos.acoes },
       {
         key: "planos-disponiveis",
-        acao: "plano-abrir-selecao",
+        acao: ACAO_PLANO_ABRIR_SELECAO,
         target: "plano-planos-disponiveis",
         aguardaAcao: true,
         ...TRILHA_PLANO.passos.planosDisponiveis,

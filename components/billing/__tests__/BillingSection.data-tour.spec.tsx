@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { SubscriptionDetail, SubscriptionPlan } from "@/types";
@@ -20,6 +20,9 @@ function planoFake(): SubscriptionPlan {
     priceCents: 19900,
     currency: "BRL",
     billingPeriod: "MONTHLY",
+    // Sem preço no gateway o card vira "Enterprise" e não renderiza o CTA
+    // que estes testes exercitam.
+    gatewayPriceId: "price_profissional_mensal",
     surgeryRequestQuota: 50,
     sortOrder: 1,
     isTrialDefault: false,
@@ -29,11 +32,17 @@ function planoFake(): SubscriptionPlan {
 vi.mock("@/services/billing.service", () => ({
   billingService: {
     listPlans: vi.fn().mockResolvedValue([planoFake()]),
+    startCheckout: vi.fn().mockResolvedValue({ url: "https://stripe.test/checkout" }),
+    openPortal: vi.fn().mockResolvedValue({ url: "https://stripe.test/portal" }),
   },
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
 vi.mock("@/components/onboarding/OnboardingProvider", () => ({
-  useOnboarding: () => ({ emTour: false, executarAcao: () => false }),
+  useOnboarding: () => ({
+    emTour: onboardingMockState.emTour,
+    executarAcao: () => false,
+  }),
 }));
 vi.mock("@/components/onboarding/useOnboardingAction", () => ({
   useOnboardingAction: () => {},
@@ -62,17 +71,32 @@ function assinatura(): SubscriptionDetail {
   } as SubscriptionDetail;
 }
 
+const authMockState = vi.hoisted(() => ({ status: "active" as string }));
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({
-    subscription: assinatura(),
-    subscriptionLoading: false,
-    refreshSubscription: vi.fn().mockResolvedValue(undefined),
-  }),
+  useAuth: () => {
+    const sub = assinatura();
+    return {
+      subscription: {
+        ...sub,
+        subscription: { ...sub.subscription, status: authMockState.status },
+      },
+      subscriptionLoading: false,
+      refreshSubscription: vi.fn().mockResolvedValue(undefined),
+    };
+  },
 }));
 
 import { BillingSection } from "../BillingSection";
+import { billingService } from "@/services/billing.service";
 
 describe("BillingSection — âncoras do tour", () => {
+  beforeEach(() => {
+    onboardingMockState.emTour = false;
+    authMockState.status = "active";
+    vi.clearAllMocks();
+    vi.mocked(billingService.listPlans).mockResolvedValue([planoFake()]);
+  });
+
   it("expõe as três âncoras plano-assinatura, plano-cota e plano-acoes", async () => {
     render(<BillingSection />);
 
@@ -101,5 +125,48 @@ describe("BillingSection — âncoras do tour", () => {
     expect(
       document.querySelector('[data-tour="plano-planos-disponiveis"]'),
     ).not.toBeNull();
+  });
+
+  it("handleManage não chama billingService.openPortal quando emTour é true", async () => {
+    // O botão "Trocar plano" não é desabilitado por `emTour` (só os botões
+    // topo-de-tela são) — é o guard dentro de `handleManage` que precisa
+    // impedir a chamada real à Stripe.
+    onboardingMockState.emTour = true;
+    vi.mocked(billingService.listPlans).mockResolvedValue([
+      planoFake(),
+      { ...planoFake(), id: "plan-2", slug: "avancado", name: "Avançado" },
+    ]);
+
+    render(<BillingSection />);
+
+    const botaoTrocarPlano = await screen.findByText("Trocar plano");
+    await userEvent.setup().click(botaoTrocarPlano);
+    await screen.findAllByText("Avançado");
+
+    const botaoUpgrade = (
+      await screen.findAllByText("Fazer upgrade/downgrade")
+    )[0];
+    await userEvent.setup().click(botaoUpgrade);
+
+    expect(billingService.openPortal).not.toHaveBeenCalled();
+  });
+
+  it("handleCheckout não chama billingService.startCheckout quando emTour é true", async () => {
+    // Assinatura "canceled" faz o CTA do plano virar "Assinar este plano"
+    // (fluxo de checkout) — também não é desabilitado por `emTour`.
+    authMockState.status = "canceled";
+    onboardingMockState.emTour = true;
+
+    render(<BillingSection />);
+
+    const botaoVerPlanos = await screen.findByText("Ver todos os planos");
+    await userEvent.setup().click(botaoVerPlanos);
+
+    const botaoAssinar = (
+      await screen.findAllByText("Assinar este plano")
+    )[0];
+    await userEvent.setup().click(botaoAssinar);
+
+    expect(billingService.startCheckout).not.toHaveBeenCalled();
   });
 });
