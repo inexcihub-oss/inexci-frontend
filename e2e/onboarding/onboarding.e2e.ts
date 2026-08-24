@@ -193,8 +193,14 @@ test.describe("Onboarding", () => {
     // para ver este passo. `AppointmentDetailModal` usa `title="Consulta"`
     // no `<Modal>`, então o diálogo tem esse nome acessível.
     await expect(
-      page.getByRole("dialog", { name: "Consulta" }),
+      page.getByRole("dialog", { name: "Consulta", exact: true }),
     ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.locator('[data-tour="agenda-consulta-acoes"]'),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Confirmar" }),
+    ).toBeVisible();
     await expect(
       page.getByRole("dialog", { name: "Confirmar, remarcar ou cancelar" }),
     ).toBeVisible();
