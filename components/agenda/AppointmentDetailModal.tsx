@@ -3,6 +3,7 @@
 import { Modal } from "@/components/ui/Modal";
 import { SpinnerButton } from "@/components/shared/ModalFooter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { Permission } from "@/lib/permissions";
 import {
   Appointment,
@@ -84,6 +85,7 @@ export function AppointmentDetailModal({
   onDelete,
 }: Props) {
   const { isDoctor, can } = useAuth();
+  const { emTour } = useOnboarding();
 
   // Atender é ato do médico; quem agenda não abre a ficha. A consulta já
   // realizada abre para todos (leitura do prontuário) — só cancelada/faltou
@@ -147,7 +149,7 @@ export function AppointmentDetailModal({
             {actions.map((a) => (
               <button
                 key={a.status}
-                disabled={busy}
+                disabled={busy || emTour}
                 onClick={() => onChangeStatus(a.status)}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold border bg-white transition-colors disabled:opacity-40 min-h-[36px]",
@@ -170,7 +172,7 @@ export function AppointmentDetailModal({
           <SpinnerButton
             variant="secondary"
             onClick={onDelete}
-            disabled={busy}
+            disabled={busy || emTour}
             className="w-full sm:w-auto !text-red-600 hover:!bg-red-50 !border-red-200"
           >
             Excluir

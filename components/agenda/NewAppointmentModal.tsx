@@ -16,6 +16,7 @@ import {
 } from "@/services/appointment.service";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useClinics } from "@/hooks/useClinics";
+import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { mensagemForaDoHorario } from "@/lib/business-hours";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { dateKey, hhmm } from "@/lib/calendar";
@@ -78,6 +79,7 @@ export function NewAppointmentModal({
   const isEdit = !!appointment;
   const { data: doctors = [] } = useAvailableDoctors();
   const { data: clinics = [] } = useClinics();
+  const { emTour } = useOnboarding();
 
   const [patientId, setPatientId] = useState("");
   const [patientLabel, setPatientLabel] = useState("");
@@ -481,7 +483,7 @@ export function NewAppointmentModal({
           variant="primary"
           onClick={handleSubmit}
           isLoading={saving}
-          disabled={!canSubmit}
+          disabled={!canSubmit || emTour}
           loadingText="Salvando..."
         >
           {avisoHorario

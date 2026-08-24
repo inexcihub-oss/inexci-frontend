@@ -68,6 +68,11 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ permissions: [] }),
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
 import { NewAppointmentModal } from "./NewAppointmentModal";
 
 /** Segunda-feira, 17/08/2026. */
@@ -275,5 +280,44 @@ describe("NewAppointmentModal — edição com clínica excluída (C1)", () => {
     expect(update.mock.calls[0][1]).toEqual(
       expect.objectContaining({ clinicId: "clinic-1" }),
     );
+  });
+});
+
+describe("NewAppointmentModal — tour de onboarding", () => {
+  beforeEach(() => {
+    onboardingMockState.emTour = false;
+  });
+
+  it("mantém o botão habilitado fora do tour quando o formulário está completo", () => {
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        defaultDate="2026-01-10"
+        defaultPatientId="pac-1"
+        defaultPatientLabel="Paciente Teste"
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /agendar consulta/i }),
+    ).toBeEnabled();
+  });
+
+  it("desabilita o botão de salvar durante o tour mesmo com o formulário completo", () => {
+    onboardingMockState.emTour = true;
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        defaultDate="2026-01-10"
+        defaultPatientId="pac-1"
+        defaultPatientLabel="Paciente Teste"
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /agendar consulta/i }),
+    ).toBeDisabled();
   });
 });

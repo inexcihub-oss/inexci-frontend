@@ -12,6 +12,11 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
 
+const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
+vi.mock("@/components/onboarding/OnboardingProvider", () => ({
+  useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
+}));
+
 import { AppointmentDetailModal } from "./AppointmentDetailModal";
 
 const consultaBase: Appointment = {
@@ -57,6 +62,7 @@ function renderModal(status: AppointmentStatus, doctorName?: string) {
 describe("AppointmentDetailModal", () => {
   beforeEach(() => {
     authState = { isDoctor: true, can: (p) => p === Permission.AGENDA };
+    onboardingMockState.emTour = false;
   });
 
   /**
@@ -208,5 +214,20 @@ describe("AppointmentDetailModal", () => {
     renderAppointment({ ...consultaBase, clinicId: null, clinic: null });
 
     expect(screen.queryByText(/local de atendimento/i)).not.toBeInTheDocument();
+  });
+
+  it("desabilita as ações rápidas de status e o botão Excluir durante o tour", () => {
+    onboardingMockState.emTour = true;
+    renderModal("scheduled");
+
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeDisabled();
+  });
+
+  it("mantém as ações habilitadas fora do tour", () => {
+    renderModal("scheduled");
+
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeEnabled();
   });
 });
