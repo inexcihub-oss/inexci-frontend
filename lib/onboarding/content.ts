@@ -13,12 +13,12 @@ export const BOAS_VINDAS = {
     {
       titulo: "O que é a INEXCI",
       corpo:
-        "Da indicação cirúrgica ao pagamento, num lugar só: solicitação, análise do convênio, agendamento, atendimento e faturamento.",
+        "Somos um software que transforma a jornada do seu paciente cirúrgico em uma experiência que encanta e fideliza, do atendimento à cirurgia tudo conectado e monitorado em um só lugar.",
     },
     {
       titulo: "Como funciona",
       corpo:
-        "A solicitação caminha por status — de Pendente a Finalizada. A cada etapa, a plataforma mostra o que falta para avançar.",
+        "Com regras e processos definidos a Inexci gerencia e monitora de forma automática, atendimentos e solicitações cirúrgicas em um só lugar.",
     },
   ],
   pular: "Pular por agora",
@@ -44,13 +44,18 @@ export const SEU_PAPEL: Record<Permission, string> = {
     "Convidar a equipe e definir o que cada um acessa.",
 };
 
+/** Fechamento comum do terceiro slide, independentemente das áreas liberadas. */
+export const SEU_PAPEL_FECHAMENTO =
+  "Mantenha sempre atualizada e assuma o controle da jornada do seu paciente.";
+
 export const CHECKLIST = {
   titulo: "Primeiros passos",
   dispensar: "Dispensar",
   ver: "Ver",
   refazer: "Refazer",
   concluido: "Tudo pronto. Você pode rever qualquer passo em Configurações.",
-  erroReiniciar: "Não foi possível reiniciar agora. Tente de novo em instantes.",
+  erroReiniciar:
+    "Não foi possível reiniciar agora. Tente de novo em instantes.",
 };
 
 export const TOUR_UI = {
@@ -108,17 +113,17 @@ export const TRILHA_ATENDIMENTO = {
     iniciar: {
       titulo: "Abra a consulta e comece",
       corpo:
-        "Abrir a ficha é ato do médico: quem agenda não atende. Depois de realizada, todos com Atendimento podem ler.",
+        "Abrir a ficha é ato do médico. Após a finalização do atendimento, colaboradores com acesso ao módulo atendimento poderão ler as informações.",
     },
     abas: {
-      titulo: "Quatro abas, um paciente",
+      titulo: "Migre entre as abas sem sair do atendimento",
       corpo:
-        "Atendimento é onde você escreve. Histórico, Cadastro e Documentos trazem o resto sem sair da consulta.",
+        "Atendimento é a aba específica para registro geral do histórico e evolução da consulta. O Histórico registra todas as atividades realizadas durante o atendimento. O Cadastro é onde fica os dados pessoais do paciente. A aba Documentos é onde fica todos os documentos anexados e exames solicitados.",
     },
     indicacao: {
       titulo: "Marque o paciente cirúrgico",
       corpo:
-        "Ao finalizar a ficha, a solicitação nasce em Pendente e os documentos do paciente vão junto. Ficha finalizada é imutável — correção vira adendo.",
+        "Ao indicar Paciente cirúrgico e clicar em Finalizar a solicitação é criada e inicia-se no fluxo de Solicitações cirúrgicas no status Pendente.",
     },
     documentos: {
       titulo: "Emita receita, atestado e exames",
@@ -261,13 +266,11 @@ export const TRILHA_ADMINISTRACAO = {
 
 export const TRILHA_PLANO = {
   label: "Acompanhar plano e cota",
-  descricao:
-    "O que sua assinatura cobre e quanto do período já foi usado.",
+  descricao: "O que sua assinatura cobre e quanto do período já foi usado.",
   passos: {
     assinatura: {
       titulo: "Sua assinatura",
-      corpo:
-        "Plano atual, situação do pagamento e data da próxima renovação.",
+      corpo: "Plano atual, situação do pagamento e data da próxima renovação.",
     },
     cota: {
       titulo: "A cota do período",
@@ -307,10 +310,20 @@ export const TRILHA_AGENDA = {
       corpo:
         "Abra a consulta na agenda e mude o status por aqui. Cancelada libera o horário para outra marcação.",
     },
+    filtros: {
+      titulo: "Encontre exatamente o que precisa",
+      corpo:
+        "Filtre a agenda por tipo, status, médico ou clínica. No celular, os filtros abrem em uma folha prática na parte inferior da tela.",
+    },
+    exportar: {
+      titulo: "Exporte a agenda quando precisar",
+      corpo:
+        "Escolha o período, os registros e os dados que deseja levar. Você pode gerar a agenda em CSV ou PDF.",
+    },
     lembrete: {
       titulo: "O lembrete vai sozinho",
       corpo:
-        "O paciente recebe um aviso 24 h antes, por e-mail. Ninguém da equipe precisa mandar.",
+        "O paciente receberá de forma automática um lembrete 24h antes da consulta, por e-mail e WhatsApp. Sem necessidade de envio pela equipe.",
     },
   },
 };

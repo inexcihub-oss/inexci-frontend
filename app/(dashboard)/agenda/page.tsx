@@ -21,7 +21,12 @@ import {
   AppointmentStatus,
   APPOINTMENT_TYPE_LABELS,
 } from "@/services/appointment.service";
-import { AgendaDoctorFilter } from "@/components/agenda/AgendaDoctorFilter";
+import {
+  AgendaFilterModal,
+  AgendaFilterState,
+  countActiveAgendaFilters,
+  DEFAULT_AGENDA_FILTERS,
+} from "@/components/agenda/AgendaFilterModal";
 import { AgendaExportModal } from "@/components/agenda/AgendaExportModal";
 import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
 import { AppointmentDetailModal } from "@/components/agenda/AppointmentDetailModal";
@@ -29,6 +34,7 @@ import { DatePickerPopover } from "@/components/ui/DatePickerPopover";
 import { CalendarTimeGrid } from "@/components/agenda/CalendarTimeGrid";
 import { CalendarMonthView } from "@/components/agenda/CalendarMonthView";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { useClinics } from "@/hooks/useClinics";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
@@ -52,7 +58,6 @@ import {
 } from "@/lib/calendar";
 
 type CalView = "day" | "week" | "month";
-type KindFilter = "all" | "appointment" | "surgery";
 type SurgeryItem = SurgeryRequestListItem & { surgeryDate: string };
 
 export default function AgendaPage() {
@@ -66,8 +71,10 @@ export default function AgendaPage() {
 
   const [view, setView] = useState<CalView>("week");
   const [anchor, setAnchor] = useState<Date>(() => new Date());
-  const [kindFilter, setKindFilter] = useState<KindFilter>("all");
-  const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
+  const [filters, setFilters] = useState<AgendaFilterState>(
+    DEFAULT_AGENDA_FILTERS,
+  );
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [newModal, setNewModal] = useState<{
@@ -84,6 +91,8 @@ export default function AgendaPage() {
     // Espelha a limpeza já feita ao ENTRAR no passo seguinte — sem isso,
     // voltar do passo "status" para "horario" reempilha os dois modais.
     setDetail(null);
+    setIsFilterOpen(false);
+    setIsExportOpen(false);
     setNewModal({});
   });
 
@@ -94,10 +103,37 @@ export default function AgendaPage() {
     // fechar aqui, os dois modais ficariam empilhados ao entrar neste
     // passo — `newModal` e `detail` são estados independentes.
     setNewModal(null);
+    setIsFilterOpen(false);
+    setIsExportOpen(false);
     setDetail(criarConsultaDemo(user?.doctorProfile?.id ?? ""));
   });
 
+  // Os próximos dois passos mostram os próprios componentes já usados na
+  // Agenda. Cada um fecha a demonstração anterior para não empilhar modais e
+  // manter o destaque do tour acessível também em telas pequenas.
+  useOnboardingAction("agenda-abrir-filtros", () => {
+    setNewModal(null);
+    setDetail(null);
+    setIsExportOpen(false);
+    setIsFilterOpen(true);
+  });
+
+  useOnboardingAction("agenda-abrir-exportacao", () => {
+    setNewModal(null);
+    setDetail(null);
+    setIsFilterOpen(false);
+    setIsExportOpen(true);
+  });
+
+  useOnboardingAction("agenda-fechar-modais", () => {
+    setNewModal(null);
+    setDetail(null);
+    setIsFilterOpen(false);
+    setIsExportOpen(false);
+  });
+
   const { data: doctors = [] } = useAvailableDoctors();
+  const { data: clinics = [] } = useClinics();
   const doctorNameById = useMemo(() => {
     const m = new Map<string, string>();
     doctors.forEach((d) => m.set(d.id, d.name));
@@ -170,35 +206,32 @@ export default function AgendaPage() {
 
   const events = useMemo(() => {
     let list = allEvents;
-    if (kindFilter !== "all") list = list.filter((e) => e.kind === kindFilter);
-    if (selectedDoctorIds.length > 0)
+    if (filters.kind !== "all")
+      list = list.filter((event) => event.kind === filters.kind);
+    if (filters.doctorIds.length > 0)
       list = list.filter(
-        (e) => e.doctorId && selectedDoctorIds.includes(e.doctorId),
+        (event) => event.doctorId && filters.doctorIds.includes(event.doctorId),
+      );
+    if (filters.appointmentStatuses.length > 0)
+      list = list.filter(
+        (event) =>
+          event.kind !== "appointment" ||
+          (event.status != null && filters.appointmentStatuses.includes(event.status)),
+      );
+    if (filters.appointmentTypes.length > 0)
+      list = list.filter(
+        (event) =>
+          event.kind !== "appointment" ||
+          (event.appointment != null && filters.appointmentTypes.includes(event.appointment.type)),
+      );
+    if (filters.clinicIds.length > 0)
+      list = list.filter(
+        (event) =>
+          event.kind !== "appointment" ||
+          (event.appointment?.clinicId != null && filters.clinicIds.includes(event.appointment.clinicId)),
       );
     return list;
-  }, [allEvents, kindFilter, selectedDoctorIds]);
-
-  const counts = useMemo(() => {
-    const scoped =
-      selectedDoctorIds.length > 0
-        ? allEvents.filter(
-            (e) => e.doctorId && selectedDoctorIds.includes(e.doctorId),
-          )
-        : allEvents;
-    return {
-      all: scoped.length,
-      appointment: scoped.filter((e) => e.kind === "appointment").length,
-      surgery: scoped.filter((e) => e.kind === "surgery").length,
-    };
-  }, [allEvents, selectedDoctorIds]);
-
-  const countByDoctorId = useMemo(() => {
-    const m: Record<string, number> = {};
-    allEvents.forEach((e) => {
-      if (e.doctorId) m[e.doctorId] = (m[e.doctorId] ?? 0) + 1;
-    });
-    return m;
-  }, [allEvents]);
+  }, [allEvents, filters]);
 
   // ── Mutations ───────────────────────────────────────────────────────────────
   const statusMutation = useMutation({
@@ -268,14 +301,6 @@ export default function AgendaPage() {
     const key = (d: Date) => dateKey(d);
     return { from: key(rangeFrom), to: key(addDays(rangeTo, -1)) };
   }, [rangeFrom, rangeTo]);
-
-  const KIND_TABS: { key: KindFilter; label: string; count: number }[] = [
-    { key: "all", label: "Tudo", count: counts.all },
-    { key: "appointment", label: "Consultas", count: counts.appointment },
-    ...(podeVerCirurgias
-      ? [{ key: "surgery" as const, label: "Cirurgias", count: counts.surgery }]
-      : []),
-  ];
 
   const VIEW_TABS: { key: CalView; label: string }[] = [
     { key: "day", label: "Dia" },
@@ -348,19 +373,19 @@ export default function AgendaPage() {
               <span className="text-xs font-semibold hidden sm:inline">Nova consulta</span>
             </button>
 
-            {podeVerCirurgias && (
-              <button
-                onClick={() => setIsExportOpen(true)}
-                className="flex items-center justify-center w-8 h-8 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors shrink-0"
-                title="Exportar"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-              </button>
-            )}
+            <button
+              onClick={() => setIsExportOpen(true)}
+              data-tour="agenda-exportar"
+              className="flex items-center justify-center w-8 h-8 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors shrink-0"
+              title="Exportar"
+              aria-label="Exportar agenda"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </button>
 
             <button
               onClick={refetchAll}
@@ -404,32 +429,26 @@ export default function AgendaPage() {
 
             <div className="w-px h-5 bg-neutral-200 hidden sm:block" />
 
-            {KIND_TABS.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setKindFilter(tab.key)}
-                className={cn(
-                  "px-3 py-1 rounded-full text-xs font-semibold transition-all shrink-0",
-                  kindFilter === tab.key
-                    ? "bg-neutral-900 text-white"
-                    : "border border-neutral-300 text-neutral-600 hover:bg-neutral-50",
-                )}
-              >
-                {tab.label}
-                <span className="ml-1.5 opacity-70">{tab.count}</span>
-              </button>
-            ))}
-
-            {doctors.length > 1 && (
-              <div className="sm:ml-auto">
-                <AgendaDoctorFilter
-                  doctors={doctors}
-                  selectedDoctorIds={selectedDoctorIds}
-                  onChange={setSelectedDoctorIds}
-                  countByDoctorId={countByDoctorId}
-                />
-              </div>
-            )}
+            {(() => {
+              const activeCount = countActiveAgendaFilters(filters);
+              return (
+                <button
+                  type="button"
+                  onClick={() => setIsFilterOpen(true)}
+                  data-tour="agenda-filtros"
+                  className={cn(
+                    "flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold transition-colors shrink-0",
+                    activeCount > 0
+                      ? "border-teal-600 bg-teal-50 text-teal-700 hover:bg-teal-100"
+                      : "border-neutral-200 text-neutral-700 hover:bg-neutral-50",
+                  )}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+                  Filtro
+                  {activeCount > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-teal-700 text-white text-[10px] inline-flex items-center justify-center">{activeCount}</span>}
+                </button>
+              );
+            })()}
           </div>
         </div>
 
@@ -465,6 +484,17 @@ export default function AgendaPage() {
           />
         )}
       </div>
+
+      <AgendaFilterModal
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        onApply={setFilters}
+        onClear={() => setFilters(DEFAULT_AGENDA_FILTERS)}
+        currentFilters={filters}
+        doctors={doctors}
+        clinics={clinics}
+        canFilterSurgeries={podeVerCirurgias}
+      />
 
       {/* ── Modais ─────────────────────────────────────────────── */}
       {newModal && (
@@ -509,9 +539,9 @@ export default function AgendaPage() {
         onClose={() => setIsExportOpen(false)}
         defaultFrom={exportDefaults.from}
         defaultTo={exportDefaults.to}
-        defaultStatusFilter={null}
         availableDoctors={doctors}
-        defaultDoctorIds={selectedDoctorIds}
+        defaultDoctorIds={filters.doctorIds}
+        canExportSurgeries={podeVerCirurgias}
       />
 
       {toast && (

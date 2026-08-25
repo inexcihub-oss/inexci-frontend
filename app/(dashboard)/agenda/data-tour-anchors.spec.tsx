@@ -23,7 +23,7 @@ beforeEach(() => {
 /**
  * Prova que a tela real de agenda carrega a âncora `data-tour` que o tour de
  * onboarding (`lib/onboarding/tour-registry.ts`) espera encontrar —
- * "agenda-nova-consulta". Sem este teste, remover o atributo (ou trocar o
+ * "agenda-nova-consulta", "agenda-filtros" e "agenda-exportar". Sem este teste, remover o atributo (ou trocar o
  * elemento) quebra o tour em silêncio: `useTargetRect` só reporta "ausente" e
  * o passo é pulado, sem nenhum erro visível em dev.
  */
@@ -94,5 +94,20 @@ describe("Tela de Agenda — âncoras do tour", () => {
 
     const botao = await screen.findByText("Nova consulta");
     expect(botao.closest('[data-tour="agenda-nova-consulta"]')).not.toBeNull();
+  });
+
+  it("expõe as âncoras dos botões de filtro e exportação", async () => {
+    renderPagina();
+
+    expect(
+      (await screen.findByRole("button", { name: /filtro/i })).closest(
+        '[data-tour="agenda-filtros"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: /exportar agenda/i }).closest(
+        '[data-tour="agenda-exportar"]',
+      ),
+    ).not.toBeNull();
   });
 });

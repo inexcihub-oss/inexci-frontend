@@ -303,28 +303,13 @@ export function OnboardingProvider({
     // servidor é a fonte da verdade do estado resultante.
     const novo = await onboardingService.reset();
     const normalizado = normalizeOnboardingState(novo);
-    const primeiraTrilha = tracks[0];
-
-    if (!primeiraTrilha) {
-      stateRef.current = normalizado;
-      setState(normalizado);
-      setActiveTour(null);
-      return;
-    }
-
-    // "Refazer" é uma escolha explícita de pular a introdução e voltar
-    // direto ao conteúdo. Marca as boas-vindas como vistas e abre a primeira
-    // trilha no mesmo fluxo, sem exigir outro clique no banner.
-    const agora = new Date().toISOString();
-    const recomeçado = markWelcomeSeen(normalizado, agora);
-    stateRef.current = recomeçado;
-    setState(recomeçado);
-    agendarPersistencia({
-      welcomeSeenAt: agora,
-      status: recomeçado.status,
-    });
-    setActiveTour(primeiraTrilha.id);
-  }, [agendarPersistencia, enviarPendente, tracks]);
+    // O reinício deve reproduzir a primeira experiência: começa pelas boas-
+    // vindas, não pula direto para uma trilha. A página chamadora leva a
+    // pessoa para sua home antes de o Gate exibir o modal.
+    stateRef.current = normalizado;
+    setState(normalizado);
+    setActiveTour(null);
+  }, [enviarPendente]);
 
   const registrarAcao = useCallback((id: string, fn: () => void) => {
     acoesRef.current.set(id, fn);

@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Permission } from "@/lib/permissions";
 import { emptyOnboardingState } from "@/lib/onboarding/state";
+import type { Track } from "@/lib/onboarding/tour-registry";
 import { OnboardingGate } from "./OnboardingGate";
 
 const pushMock = vi.fn();
@@ -20,11 +21,18 @@ vi.mock("next/navigation", () => ({
  */
 let contadorDeMontagens = 0;
 
-let contexto = {
+let contexto: {
+  state: ReturnType<typeof emptyOnboardingState>;
+  tracks: Pick<Track, "id" | "stepKey">[];
+  activeTour: string | null;
+  closeTour: ReturnType<typeof vi.fn>;
+  startTour: ReturnType<typeof vi.fn>;
+} = {
   state: emptyOnboardingState(),
-  tracks: [{ id: "solicitacoes" }],
-  activeTour: null as string | null,
+  tracks: [{ id: "solicitacoes", stepKey: "criar-solicitacao" }],
+  activeTour: null,
   closeTour: vi.fn(),
+  startTour: vi.fn(),
 };
 
 let auth = {
@@ -44,7 +52,19 @@ vi.mock("./OnboardingProvider", () => ({
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => auth }));
 
 vi.mock("./WelcomeModal", () => ({
-  WelcomeModal: () => <div>modal de boas-vindas</div>,
+  WelcomeModal: ({
+    onFinish,
+    onSkip,
+  }: {
+    onFinish: () => void;
+    onSkip: () => void;
+  }) => (
+    <div>
+      modal de boas-vindas
+      <button onClick={onFinish}>concluir boas-vindas</button>
+      <button onClick={onSkip}>pular boas-vindas</button>
+    </div>
+  ),
 }));
 
 vi.mock("./OnboardingCelebration", () => ({
@@ -73,9 +93,10 @@ describe("OnboardingGate", () => {
     contadorDeMontagens = 0;
     contexto = {
       state: emptyOnboardingState(),
-      tracks: [{ id: "solicitacoes" }],
+      tracks: [{ id: "solicitacoes", stepKey: "criar-solicitacao" }],
       activeTour: null,
       closeTour: vi.fn(),
+      startTour: vi.fn(),
     };
     auth = {
       consents: { requiredConsentsAccepted: true },
@@ -103,6 +124,29 @@ describe("OnboardingGate", () => {
     );
 
     expect(screen.getByText("modal de boas-vindas")).toBeInTheDocument();
+  });
+
+  it("ao concluir as boas-vindas abre a próxima trilha incompleta", async () => {
+    const user = userEvent.setup();
+    contexto.tracks = [
+      {
+        id: "solicitacoes",
+        stepKey: "criar-solicitacao",
+      },
+    ];
+    contexto.state = {
+      ...emptyOnboardingState(),
+      welcomeSeenAt: null,
+    };
+    render(
+      <OnboardingGate>
+        <p>conteúdo</p>
+      </OnboardingGate>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /concluir boas-vindas/i }));
+
+    expect(contexto.startTour).toHaveBeenCalledWith("solicitacoes");
   });
 
   it("não mostra o modal para quem já viu", () => {

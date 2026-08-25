@@ -18,6 +18,15 @@ import {
   CreateFromDocumentResponse,
 } from "@/types/surgery-request.types";
 
+export interface ApplyDocumentExtractionPayload {
+  procedure?: boolean; hospital?: boolean; healthPlan?: boolean; report?: boolean; tuss?: boolean; opme?: boolean;
+  procedureName?: string; hospitalName?: string; healthPlanName?: string; healthPlanNumber?: string; notes?: string;
+  sections?: { title: string; description?: string }[];
+  tussItems?: { tussCode: string; name?: string; quantity?: number }[];
+  opmeItems?: { description: string; qty: number; supplier?: string; manufacturer?: string }[];
+  suggestedSuppliers?: string[]; tempStoragePath?: string; originalFileName?: string;
+}
+
 // Re-exporta sub-tipos para uso nos componentes
 export type {
   EntityRef,
@@ -949,9 +958,13 @@ export const surgeryRequestService = {
   /** Envia um arquivo para extração de dados via OCR+IA. */
   async extractFromDocument(
     file: File,
+    options?: { notifyOnCompletion?: boolean },
   ): Promise<ExtractFromDocumentQueuedResponse> {
     const formData = new FormData();
     formData.append("document", file);
+    if (options?.notifyOnCompletion === false) {
+      formData.append("notifyOnCompletion", "false");
+    }
     const response = await api.post<ExtractFromDocumentQueuedResponse>(
       "/surgery-requests/extract-from-document",
       formData,
@@ -977,6 +990,17 @@ export const surgeryRequestService = {
     const response = await api.post<CreateFromDocumentResponse>(
       "/surgery-requests/from-document",
       payload,
+    );
+    return response.data;
+  },
+
+  async applyDocumentExtraction(
+    requestId: string | number,
+    data: ApplyDocumentExtractionPayload,
+  ): Promise<{ warnings: string[] }> {
+    const response = await api.post(
+      `/surgery-requests/${requestId}/apply-document-extraction`,
+      data,
     );
     return response.data;
   },

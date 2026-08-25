@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Upload } from "lucide-react";
 import {
   surgeryRequestService,
   STATUS_NUMBER_TO_STRING,
@@ -32,6 +32,7 @@ import { DefineSurgeryDateModal } from "@/components/surgery-request/modals/Defi
 import { SurgeryStatusModal } from "@/components/surgery-request/modals/SurgeryStatusModal";
 import { InvoiceModal } from "@/components/surgery-request/modals/InvoiceModal";
 import { ConfirmReceiptModal } from "@/components/surgery-request/modals/ConfirmReceiptModal";
+import { ApplyDocumentExtractionModal } from "@/components/surgery-request/ApplyDocumentExtractionModal";
 
 import PageContainer from "@/components/PageContainer";
 import { InformacoesGeraisTab } from "@/components/surgery-request/tabs/InformacoesGeraisTab";
@@ -543,6 +544,7 @@ export default function SolicitacaoDetalhePage() {
 
   // Estados dos modais de ação
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+  const [isDocumentReviewOpen, setIsDocumentReviewOpen] = useState(false);
   const [isStartAnalysisModalOpen, setIsStartAnalysisModalOpen] =
     useState(false);
   const [isUpdateAuthorizationsModalOpen, setIsUpdateAuthorizationsModalOpen] =
@@ -1026,11 +1028,11 @@ export default function SolicitacaoDetalhePage() {
   ];
 
   return (
-    <PageContainer>
+    <PageContainer constrainMobileHeight>
       {/* Container com borda englobando tudo */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Header */}
           <header className="flex items-center justify-between px-4 lg:px-6 py-0 border-b border-neutral-100 h-13">
             <div className="flex items-center gap-2">
@@ -1201,6 +1203,17 @@ export default function SolicitacaoDetalhePage() {
                         </svg>
                       )}
                       {isExportingPdf ? "Gerando…" : "Exportar PDF"}
+                    </button>
+                  )}
+                  {statusNum === 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsDocumentReviewOpen(true)}
+                      className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[36px] md:min-h-[44px] rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 active:scale-[0.98] transition-all text-xs md:text-sm font-semibold text-teal-800 whitespace-nowrap"
+                    >
+                      <Upload className="h-4 w-4" />
+                      <span className="hidden sm:inline">Completar com documento</span>
+                      <span className="sm:hidden">Documento</span>
                     </button>
                   )}
                   {/* Botão primário dinâmico */}
@@ -1665,6 +1678,13 @@ export default function SolicitacaoDetalhePage() {
           setIsSendModalOpen(false);
           showPostTransitionNotification("send", prevStatus);
         }}
+      />
+
+      <ApplyDocumentExtractionModal
+        isOpen={isDocumentReviewOpen}
+        onClose={() => setIsDocumentReviewOpen(false)}
+        solicitation={solicitacao}
+        onSuccess={handleUpdateProcedure}
       />
 
       {/* Modal Solicitação em Análise (status 2 → 3) */}
