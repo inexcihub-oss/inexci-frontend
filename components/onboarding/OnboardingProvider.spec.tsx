@@ -250,7 +250,7 @@ describe("OnboardingProvider", () => {
     expect(logger.error).toHaveBeenCalled();
   });
 
-  it("reinicia direto na primeira trilha após persistir o PATCH pendente", async () => {
+  it("reinicia pelas boas-vindas após persistir o PATCH pendente", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <OnboardingProvider>
@@ -265,15 +265,9 @@ describe("OnboardingProvider", () => {
       vi.advanceTimersByTime(600);
     });
 
-    expect(screen.getByTestId("trilha-ativa")).toHaveTextContent(
-      "solicitacoes",
-    );
-    expect(screen.getByTestId("em-tour")).toHaveTextContent("true");
-    expect(patchMock).toHaveBeenCalledTimes(2);
-    expect(patchMock).toHaveBeenNthCalledWith(2, {
-      welcomeSeenAt: expect.any(String),
-      status: "in_progress",
-    });
+    expect(screen.getByTestId("trilha-ativa")).toHaveTextContent("");
+    expect(screen.getByTestId("em-tour")).toHaveTextContent("false");
+    expect(patchMock).toHaveBeenCalledTimes(1);
   });
 
   it("espera o PATCH já em voo antes de enviar o reset", async () => {

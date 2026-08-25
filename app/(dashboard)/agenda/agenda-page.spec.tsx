@@ -85,11 +85,10 @@ function renderPage() {
 
 /**
  * Grupo 5 (item à parte) do mapa: colaborador com Agenda e sem Solicitações
- * é a combinação inversa do preset "cirurgia" — legítima e hoje quebrada,
+ * é a combinação inversa do preset "cirurgia" — legítima e antes quebrada,
  * porque a busca de cirurgias falhava e derrubava a tela inteira. A correção
- * é não buscar cirurgias sem a permissão, não deixar essa falha (que nem
- * existe mais) derrubar o calendário, e esconder a aba "Cirurgias" e a
- * exportação de quem não pode vê-las.
+ * é não buscar cirurgias sem a permissão, não deixar essa falha derrubar o
+ * calendário e manter a exportação disponível apenas para atendimentos.
  */
 describe("AgendaPage — gating por Solicitações (cirurgias)", () => {
   beforeEach(() => {
@@ -98,7 +97,7 @@ describe("AgendaPage — gating por Solicitações (cirurgias)", () => {
     authState = { can: (p) => p === Permission.AGENDA };
   });
 
-  it("não busca cirurgias e esconde a aba 'Cirurgias' e 'Exportar' sem Solicitações", async () => {
+  it("não busca cirurgias e mantém a exportação de atendimentos sem Solicitações", async () => {
     renderPage();
 
     // A agenda de consultas funciona normalmente.
@@ -108,10 +107,8 @@ describe("AgendaPage — gating por Solicitações (cirurgias)", () => {
       ).not.toBeInTheDocument();
     });
 
-    expect(screen.queryByText("Cirurgias")).not.toBeInTheDocument();
-    expect(
-      screen.queryByTitle("Exportar"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /filtro/i })).toBeInTheDocument();
+    expect(screen.getByTitle("Exportar")).toBeInTheDocument();
     expect(getAgendaSurgeries).not.toHaveBeenCalled();
   });
 
@@ -125,7 +122,9 @@ describe("AgendaPage — gating por Solicitações (cirurgias)", () => {
       expect(getAgendaSurgeries).toHaveBeenCalled();
     });
 
-    expect(screen.getByText("Cirurgias")).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /filtro/i }));
+    expect(screen.getByRole("button", { name: "Cirurgias" })).toBeInTheDocument();
     expect(screen.getByTitle("Exportar")).toBeInTheDocument();
   });
 

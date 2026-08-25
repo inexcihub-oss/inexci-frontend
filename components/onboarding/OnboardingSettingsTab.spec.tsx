@@ -8,6 +8,12 @@ import { OnboardingSettingsTab } from "./OnboardingSettingsTab";
 
 const restart = vi.fn().mockResolvedValue(undefined);
 const startTour = vi.fn();
+const pushMock = vi.fn();
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ permissions: [Permission.ATENDIMENTO] }),
+}));
 
 const TRILHA: Track = {
   id: "solicitacoes",
@@ -64,6 +70,7 @@ describe("OnboardingSettingsTab", () => {
     );
 
     expect(restart).toHaveBeenCalledTimes(1);
+    expect(pushMock).toHaveBeenCalledWith("/atendimento");
   });
 
   /** A aba existe justamente para quem dispensou tudo. */

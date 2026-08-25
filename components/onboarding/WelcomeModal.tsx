@@ -3,15 +3,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Check } from "lucide-react";
-import { BOAS_VINDAS, SEU_PAPEL } from "@/lib/onboarding/content";
+import {
+  BOAS_VINDAS,
+  SEU_PAPEL,
+  SEU_PAPEL_FECHAMENTO,
+} from "@/lib/onboarding/content";
 import { ALL_PERMISSIONS } from "@/lib/permissions";
 import { useOnboarding } from "./OnboardingProvider";
 
 interface Props {
   onFinish: () => void;
+  onSkip: () => void;
 }
 
-export function WelcomeModal({ onFinish }: Props) {
+export function WelcomeModal({ onFinish, onSkip }: Props) {
   const { markWelcome, viewer } = useOnboarding();
   const [slide, setSlide] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -26,11 +31,12 @@ export function WelcomeModal({ onFinish }: Props) {
     const linhas = ALL_PERMISSIONS.filter((p) =>
       viewer.permissions.includes(p),
     ).map((p) => SEU_PAPEL[p]);
-    return linhas.length
+    const papeis = linhas.length
       ? linhas
       : [
           "Assim que o administrador da conta liberar suas áreas, elas aparecem no menu à esquerda.",
         ];
+    return [...papeis, SEU_PAPEL_FECHAMENTO];
   }, [viewer.permissions]);
 
   const temMultiplasAreas = seuPapelLinhas.length > 1;
@@ -42,10 +48,19 @@ export function WelcomeModal({ onFinish }: Props) {
   const atual = slides[slide];
   const ehUltimo = slide === slides.length - 1;
 
-  const encerrar = useCallback(() => {
+  const marcarComoVisto = useCallback(() => {
     markWelcome();
+  }, [markWelcome]);
+
+  const concluir = useCallback(() => {
+    marcarComoVisto();
     onFinish();
-  }, [markWelcome, onFinish]);
+  }, [marcarComoVisto, onFinish]);
+
+  const pular = useCallback(() => {
+    marcarComoVisto();
+    onSkip();
+  }, [marcarComoVisto, onSkip]);
 
   // Foco inicial na montagem e a cada mudança de slide, assim como em
   // TourOverlay. Foca o DIÁLOGO, não o primeiro botão: o primeiro botão é
@@ -60,7 +75,7 @@ export function WelcomeModal({ onFinish }: Props) {
     const aoTeclar = (evento: KeyboardEvent) => {
       if (evento.key === "Escape") {
         evento.preventDefault();
-        encerrar();
+        pular();
       } else if (evento.key === "Tab") {
         // Tab preso no diálogo: sem deixar sair para a página de trás
         const foco = dialogRef.current?.querySelectorAll<HTMLElement>(
@@ -80,7 +95,7 @@ export function WelcomeModal({ onFinish }: Props) {
     };
     document.addEventListener("keydown", aoTeclar);
     return () => document.removeEventListener("keydown", aoTeclar);
-  }, [encerrar]);
+  }, [pular]);
 
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-neutral-950/45 p-4 backdrop-blur-[2px]">
@@ -155,14 +170,14 @@ export function WelcomeModal({ onFinish }: Props) {
           <div className="mt-6 flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={encerrar}
-              className="rounded-xl px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+              onClick={pular}
+              className="-ml-3 rounded-xl px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
             >
               {BOAS_VINDAS.pular}
             </button>
             <button
               type="button"
-              onClick={() => (ehUltimo ? encerrar() : setSlide((s) => s + 1))}
+              onClick={() => (ehUltimo ? concluir() : setSlide((s) => s + 1))}
               className="rounded-xl bg-primary-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
             >
               {ehUltimo ? BOAS_VINDAS.comecar : BOAS_VINDAS.avancar}

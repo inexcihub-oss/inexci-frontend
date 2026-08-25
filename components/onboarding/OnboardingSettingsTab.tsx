@@ -2,14 +2,19 @@
 
 import { useState } from "react";
 import { Check, RotateCcw } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { CHECKLIST } from "@/lib/onboarding/content";
 import { logger } from "@/lib/logger";
+import { resolveHome } from "@/lib/permissions";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "./OnboardingProvider";
 
 export function OnboardingSettingsTab() {
   const { state, tracks, startTour, restart } = useOnboarding();
+  const { permissions } = useAuth();
+  const router = useRouter();
   const [reiniciando, setReiniciando] = useState(false);
   const [erro, setErro] = useState(false);
 
@@ -22,6 +27,9 @@ export function OnboardingSettingsTab() {
     setErro(false);
     try {
       await restart();
+      // A home é sempre calculada pelas permissões efetivas. Para médicos,
+      // ela é Atendimento; nunca uma rota fixa que possa estar bloqueada.
+      router.push(resolveHome(permissions ?? []));
     } catch (e) {
       // Reiniciar é a ÚNICA ação que torna "pular" reversível. Falhar em
       // silêncio faz o usuário clicar, não ver nada acontecer e concluir que a
@@ -100,8 +108,7 @@ export function OnboardingSettingsTab() {
         <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
           <h3 className="ds-section-title">Refazer o onboarding</h3>
           <p className="ds-caption mt-1">
-            Zera o progresso e começa imediatamente pela primeira trilha, sem
-            precisar procurar o botão Continuar.
+            Zera o progresso e reabre as boas-vindas na sua tela inicial.
           </p>
         </CardHeader>
         <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">

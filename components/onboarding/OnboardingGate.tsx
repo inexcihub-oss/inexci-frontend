@@ -21,7 +21,7 @@ import { WelcomeModal } from "./WelcomeModal";
  */
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { consents, isAccountOwner, subscription, permissions } = useAuth();
-  const { state, activeTour, closeTour } = useOnboarding();
+  const { state, tracks, activeTour, closeTour, startTour } = useOnboarding();
   const router = useRouter();
 
   /**
@@ -68,7 +68,17 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      {mostrarBoasVindas && <WelcomeModal onFinish={() => undefined} />}
+      {mostrarBoasVindas && (
+        <WelcomeModal
+          onFinish={() => {
+            const proxima = tracks.find(
+              (track) => !state.completedSteps[track.stepKey],
+            );
+            if (proxima) startTour(proxima.id);
+          }}
+          onSkip={() => undefined}
+        />
+      )}
       {!silenciado && activeTour && (
         // `key={activeTour}` força a remontagem ao trocar de trilha — desde
         // que o motor passou a avançar sozinho para a próxima trilha

@@ -9,6 +9,7 @@ import {
   getAgendaStatusLabel,
   groupAgendaByDate,
   normalizeAgendaItems,
+  sanitizeCsv,
   toLocalDateKey,
 } from "./export-agenda";
 import { SurgeryRequestListItem } from "@/services/surgery-request.service";
@@ -126,5 +127,15 @@ describe("export-agenda", () => {
       "01/07/2026 a 31/07/2026",
     );
     expect(formatPeriodLabel("2026-07-15", "2026-07-15")).toBe("15/07/2026");
+  });
+
+  it("neutraliza fórmulas em células CSV", () => {
+    expect(sanitizeCsv("=HYPERLINK(\"https://malicioso.test\")")).toBe(
+      "\"'=HYPERLINK(\"\"https://malicioso.test\"\")\"",
+    );
+    expect(sanitizeCsv("+1+1")).toBe("'+1+1");
+    expect(sanitizeCsv("-1+1")).toBe("'-1+1");
+    expect(sanitizeCsv("@SUM(A1:A2)")).toBe("'@SUM(A1:A2)");
+    expect(sanitizeCsv("Texto seguro")).toBe("Texto seguro");
   });
 });

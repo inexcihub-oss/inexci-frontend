@@ -233,13 +233,15 @@ describe("TRACKS", () => {
     expect(passos.map((p) => p.key)).not.toContain("documentos");
   });
 
-  it("a trilha de agenda tem quatro passos e o último não depende de alvo", () => {
+  it("a trilha de agenda cobre consulta, filtros, exportação e lembretes", () => {
     const trilha = trackById("agenda")!;
     expect(trilha.permission).toBe(Permission.AGENDA);
     expect(trilha.steps.map((p) => p.key)).toEqual([
       "nova-consulta",
       "horario",
       "status",
+      "filtros",
+      "exportar",
       "lembrete",
     ]);
     expect(trilha.steps.at(-1)!.target).toBeUndefined();
@@ -341,11 +343,20 @@ describe("passos dirigidos pelo tour (Driver)", () => {
     return track?.steps.find((s) => s.key === stepKey);
   }
 
-  it("agenda: horario e status acionam o driver", () => {
+  it("agenda: modais de consulta, filtros e exportação acionam o driver", () => {
     expect(passo("agenda", "horario")?.acao).toBe(
       "agenda-abrir-novo-horario",
     );
     expect(passo("agenda", "status")?.acao).toBe("agenda-abrir-detalhe-demo");
+    expect(passo("agenda", "filtros")?.acao).toBe("agenda-abrir-filtros");
+    expect(passo("agenda", "filtros")?.target).toBe("agenda-filtros");
+    expect(passo("agenda", "exportar")?.acao).toBe(
+      "agenda-abrir-exportacao",
+    );
+    expect(passo("agenda", "exportar")?.target).toBe("agenda-exportar");
+    expect(passo("agenda", "exportar")?.acaoAoAvancar).toBe(
+      "agenda-fechar-modais",
+    );
   });
 
   /**

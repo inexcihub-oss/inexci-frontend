@@ -192,6 +192,21 @@ export const TRACKS: Track[] = [
         ...TRILHA_AGENDA.passos.status,
       },
       {
+        key: "filtros",
+        target: "agenda-filtros",
+        aguardaAcao: true,
+        acao: "agenda-abrir-filtros",
+        ...TRILHA_AGENDA.passos.filtros,
+      },
+      {
+        key: "exportar",
+        target: "agenda-exportar",
+        aguardaAcao: true,
+        acao: "agenda-abrir-exportacao",
+        acaoAoAvancar: "agenda-fechar-modais",
+        ...TRILHA_AGENDA.passos.exportar,
+      },
+      {
         key: "lembrete",
         // Sem alvo de propósito: o lembrete é um `@Cron` do backend, não tem
         // controle na tela. Card centralizado é a forma honesta de dizer isso.

@@ -10,6 +10,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
+  disableClose?: boolean;
 }
 
 export function Modal({
@@ -18,6 +19,7 @@ export function Modal({
   title,
   children,
   size = "md",
+  disableClose = false,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -58,6 +60,7 @@ export function Modal({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (disableClose) return;
         event.preventDefault();
         onCloseRef.current();
         return;
@@ -85,7 +88,7 @@ export function Modal({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, disableClose]);
 
   if (!isOpen) return null;
 
@@ -143,7 +146,8 @@ export function Modal({
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
+            disabled={disableClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Fechar"
           >
             <X className="w-5 h-5" />
