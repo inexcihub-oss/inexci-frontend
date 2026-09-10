@@ -90,6 +90,23 @@ export default function ProcedimentosCirurgicos() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isUploadDocumentOpen, setIsUploadDocumentOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
+
+  // Gerar o relatório monta o PDF no próprio navegador: demora e pode falhar.
+  // Sem estado nem aviso, o menu fechava e o usuário ficava sem arquivo e sem
+  // explicação — a mesma falha silenciosa que o `window.open` tinha antes.
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleExportPdf = async (registros: SurgeryRequest[]) => {
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    try {
+      await exportToPdf(registros);
+    } catch {
+      showToast("Erro ao gerar o PDF. Tente novamente.", "error");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
   const exportRef = useRef<HTMLDivElement>(null);
   const { data: availableDoctorsData = [] } = useAvailableDoctors();
   const availableDoctors = availableDoctorsData.map((d) => ({
@@ -641,7 +658,9 @@ export default function ProcedimentosCirurgicos() {
                 height={16}
                 className="lg:w-6 lg:h-6"
               />
-              <span className="text-xs lg:text-sm text-black">Exportar</span>
+              <span className="text-xs lg:text-sm text-black">
+                {isExportingPdf ? "Gerando PDF…" : "Exportar"}
+              </span>
               <svg
                 width="16"
                 height="16"
@@ -662,10 +681,11 @@ export default function ProcedimentosCirurgicos() {
               <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-neutral-100 rounded-xl shadow-lg z-50 overflow-hidden">
                 <button
                   onClick={() => {
-                    exportToPdf(filteredProcedures);
+                    void handleExportPdf(filteredProcedures);
                     setIsExportOpen(false);
                   }}
-                  className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-gray-700 hover:bg-neutral-50 transition-colors"
+                  disabled={isExportingPdf}
+                  className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-gray-700 hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg
                     width="18"

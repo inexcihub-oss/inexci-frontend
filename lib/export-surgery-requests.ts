@@ -4,6 +4,12 @@
  */
 
 import { SurgeryRequest, PRIORITY_LABELS } from "@/types/surgery-request.types";
+import {
+  CSV_SEPARATOR,
+  pdfText,
+  sanitizeCsvValue,
+  truncatePdfText,
+} from "./export-format";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -20,22 +26,6 @@ function formatDate(value: string): string {
     /* ignore */
   }
   return value || "—";
-}
-
-function sanitizeCsvField(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 // ── Colunas essenciais ─────────────────────────────────────────────────────────
@@ -82,9 +72,9 @@ const HEADERS: { key: keyof ExportRow; label: string }[] = [
 
 export function exportToCsv(requests: SurgeryRequest[]): void {
   const rows = mapToRows(requests);
-  const header = HEADERS.map((h) => h.label).join(",");
+  const header = HEADERS.map((h) => h.label).join(CSV_SEPARATOR);
   const lines = rows.map((row) =>
-    HEADERS.map((h) => sanitizeCsvField(row[h.key])).join(","),
+    HEADERS.map((h) => sanitizeCsvValue(row[h.key])).join(CSV_SEPARATOR),
   );
   const csv = [header, ...lines].join("\n");
 
@@ -94,202 +84,168 @@ export function exportToCsv(requests: SurgeryRequest[]): void {
   downloadBlob(blob, `solicitacoes-cirurgicas-${dateStamp()}.csv`);
 }
 
-// ── PDF (HTML → print) ────────────────────────────────────────────────────────
+// ── PDF ───────────────────────────────────────────────────────────────────────
 
-export function exportToPdf(requests: SurgeryRequest[]): void {
+/**
+ * Gera o relatório das solicitações do kanban e baixa no dispositivo.
+ *
+ * Segue o mesmo desenho de `exportAgendaToPdf`: A4 deitado, cabeçalho teal,
+ * tabela zebrada e rodapé paginado.
+ */
+export async function exportToPdf(requests: SurgeryRequest[]): Promise<void> {
+  const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+
   const rows = mapToRows(requests);
-  const now = new Date().toLocaleString("pt-BR");
+  const geradoEm = new Date().toLocaleString("pt-BR");
+  const contaPorStatus = (status: string[]) =>
+    rows.filter((row) => status.includes(row.status)).length;
+  const contaPorPrioridade = (prioridade: string[]) =>
+    rows.filter((row) => prioridade.includes(row.prioridade)).length;
 
-  const priorityConfig: Record<
-    string,
-    { bg: string; text: string; icon: string }
-  > = {
-    Baixa: { bg: "#D4EFE0", text: "#1E6F47", icon: "↓" },
-    Média: { bg: "#D8E8F7", text: "#1859A3", icon: "→" },
-    Alta: { bg: "#FFF3D6", text: "#996600", icon: "↑" },
-    Urgente: { bg: "#F4E1E3", text: "#7A3B3F", icon: "⚡" },
-  };
+  const pdf = await PDFDocument.create();
+  const regular = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  const statusConfig: Record<
-    string,
-    { bg: string; text: string; dot: string }
-  > = {
-    Pendente: { bg: "#FEF3C7", text: "#92400E", dot: "#F59E0B" },
-    Enviada: { bg: "#DBEAFE", text: "#1E40AF", dot: "#3B82F6" },
-    "Em Análise": { bg: "#E0E7FF", text: "#3730A3", dot: "#6366F1" },
-    "Em Agendamento": { bg: "#D1FAE5", text: "#065F46", dot: "#10B981" },
-    Agendada: { bg: "#CCFBF1", text: "#115E59", dot: "#14B8A6" },
-    Realizada: { bg: "#D1FAE5", text: "#065F46", dot: "#059669" },
-    Faturada: { bg: "#E0E7FF", text: "#3730A3", dot: "#6366F1" },
-    Finalizada: { bg: "#F3F4F6", text: "#374151", dot: "#6B7280" },
-    Encerrada: { bg: "#F3F4F6", text: "#6B7280", dot: "#9CA3AF" },
-  };
+  const width = 841.89;
+  const height = 595.28;
+  const margin = 28;
+  const headerHeight = 62;
+  const rowHeight = 18;
+  const tableWidth = width - margin * 2;
+  const columnWidth = tableWidth / HEADERS.length;
+  const textSize = 7;
+  const maxRowsPerPage = Math.max(
+    1,
+    Math.floor((height - margin * 2 - headerHeight - rowHeight * 2) / rowHeight),
+  );
+  const chunks = rows.length
+    ? Array.from(
+        { length: Math.ceil(rows.length / maxRowsPerPage) },
+        (_, index) =>
+          rows.slice(index * maxRowsPerPage, (index + 1) * maxRowsPerPage),
+      )
+    : [[]];
 
-  const priorityBadge = (p: string) => {
-    const safeLabel = escapeHtml(p);
-    const c = priorityConfig[p] ?? {
-      bg: "#f3f4f6",
-      text: "#374151",
-      icon: "•",
-    };
-    return `<span class="badge" style="background:${c.bg};color:${c.text}">${c.icon} ${safeLabel}</span>`;
-  };
+  const resumo = [
+    `${rows.length} ${rows.length === 1 ? "solicitação" : "solicitações"}`,
+    `Pendente/Análise: ${contaPorStatus(["Pendente", "Em Análise"])}`,
+    `Alta/Urgente: ${contaPorPrioridade(["Alta", "Urgente"])}`,
+    `Agendamento: ${contaPorStatus(["Em Agendamento", "Agendada"])}`,
+  ].join("  |  ");
 
-  const statusBadge = (s: string) => {
-    const safeLabel = escapeHtml(s);
-    const c = statusConfig[s] ?? {
-      bg: "#F3F4F6",
-      text: "#374151",
-      dot: "#9CA3AF",
-    };
-    return `<span class="badge" style="background:${c.bg};color:${c.text}"><span class="dot" style="background:${c.dot}"></span>${safeLabel}</span>`;
-  };
+  chunks.forEach((pageRows, pageIndex) => {
+    const page = pdf.addPage([width, height]);
 
-  const countByStatus = (statuses: string[]) =>
-    rows.filter((r) => statuses.includes(r.status)).length;
-  const countByPriority = (priorities: string[]) =>
-    rows.filter((r) => priorities.includes(r.prioridade)).length;
+    page.drawRectangle({
+      x: margin,
+      y: height - margin - headerHeight,
+      width: tableWidth,
+      height: headerHeight,
+      color: rgb(0.059, 0.463, 0.431),
+    });
+    page.drawText(pdfText("Solicitações Cirúrgicas"), {
+      x: margin + 14,
+      y: height - margin - 25,
+      size: 16,
+      font: bold,
+      color: rgb(1, 1, 1),
+    });
+    page.drawText(pdfText(`Relatório gerado em ${geradoEm}`), {
+      x: margin + 14,
+      y: height - margin - 41,
+      size: 8,
+      font: regular,
+      color: rgb(1, 1, 1),
+    });
+    page.drawText(pdfText(resumo), {
+      x: margin,
+      y: height - margin - headerHeight - 15,
+      size: 8,
+      font: bold,
+      color: rgb(0.12, 0.16, 0.2),
+    });
 
-  const tableRows = rows
-    .map(
-      (r, i) => `
-    <tr class="${i % 2 === 0 ? "even" : "odd"}">
-      <td class="cell proto">${escapeHtml(r.protocolo)}</td>
-      <td class="cell">${escapeHtml(r.paciente)}</td>
-      <td class="cell proc">${escapeHtml(r.procedimento)}</td>
-      <td class="cell">${escapeHtml(r.medico)}</td>
-      <td class="cell">${escapeHtml(r.convenio)}</td>
-      <td class="cell center">${priorityBadge(r.prioridade)}</td>
-      <td class="cell center">${statusBadge(r.status)}</td>
-      <td class="cell center">${escapeHtml(r.pendencias)}</td>
-      <td class="cell date">${escapeHtml(r.criadoEm)}</td>
-    </tr>`,
-    )
-    .join("");
+    const headerY = height - margin - headerHeight - 31;
+    HEADERS.forEach((column, index) => {
+      const x = margin + index * columnWidth;
+      page.drawRectangle({
+        x,
+        y: headerY - rowHeight + 3,
+        width: columnWidth,
+        height: rowHeight,
+        color: rgb(0.95, 0.96, 0.97),
+        borderColor: rgb(0.82, 0.84, 0.86),
+        borderWidth: 0.3,
+      });
+      page.drawText(
+        truncatePdfText(column.label.toUpperCase(), columnWidth - 6, bold, textSize),
+        {
+          x: x + 3,
+          y: headerY - 9,
+          size: textSize,
+          font: bold,
+          color: rgb(0.24, 0.27, 0.3),
+        },
+      );
+    });
 
-  const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8"/>
-  <title>Solicitações Cirúrgicas — Inexci</title>
-  <style>
-    @page { size: A4 portrait; margin: 12mm 10mm; }
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1f2937; background:#fff; font-size:10px; }
-
-    /* ── Header ── */
-    .header {
-      display:flex; align-items:center; gap:12px;
-      padding:16px 20px; margin-bottom:16px;
-      background: linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%);
-      border-radius:12px; color:#fff;
+    if (!pageRows.length) {
+      page.drawText(
+        pdfText("Nenhuma solicitação encontrada para os filtros selecionados."),
+        {
+          x: margin + 4,
+          y: headerY - rowHeight - 15,
+          size: 9,
+          font: regular,
+          color: rgb(0.4, 0.43, 0.47),
+        },
+      );
     }
-    .header-icon {
-      width:40px; height:40px; border-radius:10px;
-      background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center;
-      font-size:20px; flex-shrink:0;
-    }
-    .header-text h1 { font-size:16px; font-weight:700; letter-spacing:-.3px; }
-    .header-text p { font-size:10px; opacity:.85; margin-top:2px; }
-    .header-meta { margin-left:auto; text-align:right; font-size:9px; opacity:.8; line-height:1.5; }
 
-    /* ── Summary Cards ── */
-    .summary { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
-    .card {
-      padding:10px 12px; border-radius:10px;
-      border:1px solid #e5e7eb; position:relative; overflow:hidden;
-    }
-    .card::before {
-      content:""; position:absolute; top:0; left:0; width:3px; height:100%;
-      border-radius:3px 0 0 3px;
-    }
-    .card-1 { background:#f0fdfa; } .card-1::before { background:#0f766e; }
-    .card-2 { background:#fef3c7; } .card-2::before { background:#f59e0b; }
-    .card-3 { background:#fef2f2; } .card-3::before { background:#ef4444; }
-    .card-4 { background:#ede9fe; } .card-4::before { background:#8b5cf6; }
-    .card .num { font-size:20px; font-weight:800; color:#111827; line-height:1; }
-    .card .lbl { font-size:8px; color:#6b7280; margin-top:3px; text-transform:uppercase; letter-spacing:.5px; font-weight:600; }
+    pageRows.forEach((row, rowIndex) => {
+      const y = headerY - rowHeight * (rowIndex + 1);
+      HEADERS.forEach((column, columnIndex) => {
+        const x = margin + columnIndex * columnWidth;
+        page.drawRectangle({
+          x,
+          y: y - rowHeight + 3,
+          width: columnWidth,
+          height: rowHeight,
+          color: rowIndex % 2 ? rgb(0.98, 0.98, 0.98) : rgb(1, 1, 1),
+          borderColor: rgb(0.87, 0.88, 0.89),
+          borderWidth: 0.25,
+        });
+        page.drawText(
+          truncatePdfText(row[column.key], columnWidth - 6, regular, textSize),
+          {
+            x: x + 3,
+            y: y - 9,
+            size: textSize,
+            font: regular,
+            color: rgb(0.12, 0.16, 0.2),
+          },
+        );
+      });
+    });
 
-    /* ── Table ── */
-    table { width:100%; border-collapse:separate; border-spacing:0; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; }
-    thead th {
-      padding:8px 6px; text-align:left; font-size:7.5px; font-weight:700;
-      text-transform:uppercase; letter-spacing:.6px; color:#6b7280;
-      background:#f9fafb; border-bottom:2px solid #e5e7eb;
-    }
-    .cell { padding:7px 6px; border-bottom:1px solid #f3f4f6; font-size:9px; line-height:1.3; vertical-align:middle; }
-    .even { background:#fff; }
-    .odd { background:#fafbfc; }
-    .proto { font-weight:600; color:#0f766e; white-space:nowrap; font-size:8.5px; }
-    .proc { max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .center { text-align:center; }
-    .date { white-space:nowrap; color:#6b7280; font-size:8.5px; }
+    page.drawText(`Inexci | Página ${pageIndex + 1} de ${chunks.length}`, {
+      x: margin,
+      y: margin - 4,
+      size: 7,
+      font: regular,
+      color: rgb(0.45, 0.48, 0.52),
+    });
+  });
 
-    /* ── Badges ── */
-    .badge {
-      display:inline-flex; align-items:center; gap:3px;
-      padding:2px 7px; border-radius:99px;
-      font-size:8px; font-weight:600; white-space:nowrap;
-    }
-    .dot { width:5px; height:5px; border-radius:50%; display:inline-block; flex-shrink:0; }
-
-    /* ── Footer ── */
-    .footer {
-      margin-top:16px; padding-top:10px; border-top:1px solid #e5e7eb;
-      display:flex; justify-content:space-between; align-items:center;
-      font-size:8px; color:#9ca3af;
-    }
-    .footer-brand { font-weight:700; color:#0f766e; font-size:9px; }
-
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .header { -webkit-print-color-adjust: exact; }
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="header-icon">📋</div>
-    <div class="header-text">
-      <h1>Solicitações Cirúrgicas</h1>
-      <p>Relatório de acompanhamento</p>
-    </div>
-    <div class="header-meta">Gerado em ${now}<br/>${rows.length} solicitações</div>
-  </div>
-
-  <div class="summary">
-    <div class="card card-1"><div class="num">${rows.length}</div><div class="lbl">Total</div></div>
-    <div class="card card-2"><div class="num">${countByStatus(["Pendente", "Em Análise"])}</div><div class="lbl">Pendente / Análise</div></div>
-    <div class="card card-3"><div class="num">${countByPriority(["Alta", "Urgente"])}</div><div class="lbl">Alta / Urgente</div></div>
-    <div class="card card-4"><div class="num">${countByStatus(["Em Agendamento", "Agendada"])}</div><div class="lbl">Agendamento</div></div>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        ${HEADERS.map((h) => `<th>${h.label}</th>`).join("")}
-      </tr>
-    </thead>
-    <tbody>
-      ${tableRows}
-    </tbody>
-  </table>
-
-  <div class="footer">
-    <span class="footer-brand">Inexci</span>
-    <span>Relatório gerado automaticamente em ${now}</span>
-  </div>
-
-  <script>window.onload=function(){window.print()}</script>
-</body>
-</html>`;
-
-  const win = window.open("", "_blank");
-  if (win) {
-    win.document.write(html);
-    win.document.close();
-  }
+  const bytes = await pdf.save();
+  // A cópia garante um ArrayBuffer próprio, compatível com Blob nos tipos DOM.
+  const pdfBytes = new Uint8Array(bytes);
+  downloadBlob(
+    new Blob([pdfBytes.buffer], { type: "application/pdf" }),
+    `solicitacoes-cirurgicas-${dateStamp()}.pdf`,
+  );
 }
+
 
 // ── Utilidades ─────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,12 @@
 /** Utilitários para exportação unificada da agenda (consultas e cirurgias). */
 import { Appointment, APPOINTMENT_STATUS_LABELS, APPOINTMENT_TYPE_LABELS } from "@/services/appointment.service";
 import { SurgeryRequestListItem } from "@/services/surgery-request.service";
+import {
+  CSV_SEPARATOR,
+  pdfText,
+  sanitizeCsvValue,
+  truncatePdfText,
+} from "./export-format";
 
 export type AgendaExportStatusFilter = 5 | 6 | null;
 export type AgendaExportSource = "appointments" | "surgeries";
@@ -27,26 +33,10 @@ function mapSurgery(item: AgendaExportItem): AgendaExportRow { return { dateValu
 function mapAppointment(item: Appointment, names: Record<string, string>): AgendaExportRow { return { dateValue: item.scheduledAt, tipoRegistro: "Atendimento", data: formatAgendaDateBR(item.scheduledAt), hora: formatAgendaTime(item.scheduledAt), paciente: item.patient?.name ?? "—", medico: names[item.doctorId] ? `Dr. ${names[item.doctorId]}` : "—", tipo: APPOINTMENT_TYPE_LABELS[item.type], duracao: `${item.durationMinutes} min`, local: item.clinic?.name ?? "—", status: APPOINTMENT_STATUS_LABELS[item.status], observacoes: item.notes ?? "—", procedimento: "—", hospital: "—", convenio: "—", fornecedor: "—", protocolo: "—" }; }
 export function getAgendaExportRows(appointments: Appointment[], surgeries: SurgeryRequestListItem[], options: AgendaExportOptions): AgendaExportRow[] { const sources = options.sources ?? ["appointments", "surgeries"]; const rows: AgendaExportRow[] = []; if (sources.includes("appointments")) rows.push(...appointments.filter((item) => { const date = toLocalDateKey(item.scheduledAt); return date >= options.from && date <= options.to && (!options.doctorIds?.length || options.doctorIds.includes(item.doctorId)); }).map((item) => mapAppointment(item, options.doctorNameById ?? {}))); if (sources.includes("surgeries")) rows.push(...filterAgendaItems(normalizeAgendaItems(surgeries), options).map(mapSurgery)); return rows.sort((a, b) => new Date(a.dateValue).getTime() - new Date(b.dateValue).getTime()); }
 function selectedFields(options: AgendaExportOptions) { const keys = options.fields?.length ? options.fields : AGENDA_EXPORT_FIELDS.map((field) => field.key); return AGENDA_EXPORT_FIELDS.filter((field) => keys.includes(field.key)); }
-export function sanitizeCsv(value: string) {
-  const protectedValue = /^[=+\-@]/.test(value) ? `'${value}` : value;
-  return /[",\n]/.test(protectedValue)
-    ? `"${protectedValue.replace(/"/g, '""')}"`
-    : protectedValue;
-}
+/** Mantido como reexport: o nome já é usado fora daqui. */
+export const sanitizeCsv = sanitizeCsvValue;
 function download(blob: Blob, filename: string) { const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url); }
-export function exportAgendaToCsv(appointments: Appointment[], surgeries: SurgeryRequestListItem[], options: AgendaExportOptions): void { const fields = selectedFields(options); const rows = getAgendaExportRows(appointments, surgeries, options); const csv = [fields.map((field) => field.label).join(","), ...rows.map((row) => fields.map((field) => sanitizeCsv(row[field.key])).join(","))].join("\n"); download(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }), `agenda-${options.from}_${options.to}.csv`); }
-function pdfText(value: string): string {
-  return value.replace(/[—–]/g, "-").replace(/[^\x20-\xFF]/g, "");
-}
-
-function truncatePdfText(value: string, maxWidth: number, font: { widthOfTextAtSize: (text: string, size: number) => number }, size: number): string {
-  const text = pdfText(value);
-  if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
-  let result = text;
-  while (result.length && font.widthOfTextAtSize(result + "...", size) > maxWidth) result = result.slice(0, -1);
-  return result ? result + "..." : "";
-}
-
+export function exportAgendaToCsv(appointments: Appointment[], surgeries: SurgeryRequestListItem[], options: AgendaExportOptions): void { const fields = selectedFields(options); const rows = getAgendaExportRows(appointments, surgeries, options); const csv = [fields.map((field) => field.label).join(CSV_SEPARATOR), ...rows.map((row) => fields.map((field) => sanitizeCsv(row[field.key])).join(CSV_SEPARATOR))].join("\n"); download(new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }), `agenda-${options.from}_${options.to}.csv`); }
 /** Gera um PDF real e inicia o download no navegador. */
 export async function exportAgendaToPdf(appointments: Appointment[], surgeries: SurgeryRequestListItem[], options: AgendaExportOptions): Promise<void> {
   const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
