@@ -1729,8 +1729,12 @@ export default function SolicitacaoDetalhePage() {
         onClose={() => setIsDefineDateModalOpen(false)}
         solicitacao={solicitacao}
         onSuccess={() => {
+          // Mesma transição 4 → 5 do fluxo com datas propostas: o convite para
+          // notificar o paciente vale igual aqui.
+          const prevStatus = solicitacao.status;
           handleUpdateProcedure();
           setIsDefineDateModalOpen(false);
+          showPostTransitionNotification("confirmDate", prevStatus);
         }}
       />
 
