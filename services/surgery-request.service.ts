@@ -304,7 +304,10 @@ export interface SurgeryRequestListItem {
   procedure: { id: string; name: string } | null;
   tussProcedure: { id: string; description: string } | null;
   procedureName?: string;
-  suppliers?: string | null;
+  /** Fornecedores escolhidos no OPME. Referências, não texto: nome de
+   * fornecedor pode conter vírgula e uma string concatenada não teria como ser
+   * separada de volta com segurança. */
+  suppliers?: Array<{ id: string; name: string }>;
   pendenciesCount?: number;
   hasIncompletePayment?: boolean;
   [key: string]: unknown;

@@ -23,6 +23,7 @@ export interface FilterState {
   healthPlanIds: string[];
   procedureNames: string[];
   doctorIds: string[];
+  supplierIds: string[];
   createdAtFrom: Date | null;
   createdAtTo: Date | null;
 }
@@ -34,6 +35,7 @@ export const DEFAULT_FILTERS: FilterState = {
   healthPlanIds: [],
   procedureNames: [],
   doctorIds: [],
+  supplierIds: [],
   createdAtFrom: null,
   createdAtTo: null,
 };
@@ -46,6 +48,7 @@ export function countActiveFilters(f: FilterState): number {
   if (f.healthPlanIds.length) count++;
   if (f.procedureNames.length) count++;
   if (f.doctorIds.length) count++;
+  if (f.supplierIds.length) count++;
   if (f.createdAtFrom || f.createdAtTo) count++;
   return count;
 }
@@ -59,6 +62,7 @@ interface FilterModalProps {
   availableHealthPlans: { id: string; name: string }[];
   availableProcedures: { id: string; name: string }[];
   availableDoctors?: { id: string; name: string }[];
+  availableSuppliers?: { id: string; name: string }[];
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -549,6 +553,7 @@ export function FilterModal({
   availableHealthPlans,
   availableProcedures,
   availableDoctors = [],
+  availableSuppliers = [],
 }: FilterModalProps) {
   const [draft, setDraft] = useState<FilterState>(currentFilters);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -625,6 +630,15 @@ export function FilterModal({
       doctorIds: d.doctorIds.includes(id)
         ? d.doctorIds.filter((dId) => dId !== id)
         : [...d.doctorIds, id],
+    }));
+  }
+
+  function toggleSupplier(id: string) {
+    setDraft((d) => ({
+      ...d,
+      supplierIds: d.supplierIds.includes(id)
+        ? d.supplierIds.filter((sId) => sId !== id)
+        : [...d.supplierIds, id],
     }));
   }
 
@@ -777,6 +791,18 @@ export function FilterModal({
                 selected={draft.procedureNames}
                 onToggle={toggleProcedure}
                 placeholder="Pesquisar procedimento..."
+              />
+            </CollapsibleSection>
+          )}
+
+          {/* Fornecedores */}
+          {availableSuppliers.length > 0 && (
+            <CollapsibleSection title="Fornecedores">
+              <SearchableMultiSelect
+                options={availableSuppliers}
+                selected={draft.supplierIds}
+                onToggle={toggleSupplier}
+                placeholder="Pesquisar fornecedor..."
               />
             </CollapsibleSection>
           )}

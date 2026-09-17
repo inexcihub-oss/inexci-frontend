@@ -258,6 +258,8 @@ export interface SurgeryRequest {
   status: SurgeryRequestStatus;
   topPendencies?: Pendency[]; // Preview das principais pendências
   healthPlan?: string; // Convênio
+  /** Fornecedores escolhidos nos itens OPME (vazio até a escolha acontecer). */
+  suppliers?: { id: string; name: string }[];
   hasIncompletePayment?: boolean; // Recebimento incompleto
 }
 
