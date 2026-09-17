@@ -260,6 +260,8 @@ export interface SurgeryRequest {
   healthPlan?: string; // Convênio
   /** Fornecedores escolhidos nos itens OPME (vazio até a escolha acontecer). */
   suppliers?: { id: string; name: string }[];
+  /** Clínica da consulta que indicou a cirurgia (ausente fora do atendimento). */
+  clinic?: { id: string; name: string } | null;
   hasIncompletePayment?: boolean; // Recebimento incompleto
 }
 

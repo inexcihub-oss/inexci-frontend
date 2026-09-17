@@ -340,6 +340,9 @@ export default function ProcedimentosCirurgicos() {
           id: String(supplier.id),
           name: supplier.name,
         })),
+        clinic: record.clinic
+          ? { id: String(record.clinic.id), name: record.clinic.name }
+          : null,
         hasIncompletePayment: record.hasIncompletePayment === true,
       };
 
@@ -395,6 +398,16 @@ export default function ProcedimentosCirurgicos() {
           if (supplier.name) map.set(supplier.id, supplier.name);
         }),
       ),
+    );
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [rawColumns]);
+
+  const availableClinics = useMemo(() => {
+    const map = new Map<string, string>();
+    rawColumns.forEach((col) =>
+      col.cards.forEach((card) => {
+        if (card.clinic?.name) map.set(card.clinic.id, card.clinic.name);
+      }),
     );
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [rawColumns]);
@@ -477,6 +490,15 @@ export default function ProcedimentosCirurgicos() {
           if (!matches) return false;
         }
 
+        // Clínicas — a da consulta que indicou a cirurgia. Solicitação criada
+        // fora do atendimento não casa com nenhum filtro de clínica.
+        if (
+          filters.clinicIds.length > 0 &&
+          (!card.clinic || !filters.clinicIds.includes(card.clinic.id))
+        ) {
+          return false;
+        }
+
         // Data de criação
         if (filters.createdAtFrom || filters.createdAtTo) {
           const parts = card.createdAt.split("/");
@@ -525,6 +547,7 @@ export default function ProcedimentosCirurgicos() {
       filters.procedureNames.length > 0 ||
       filters.doctorIds.length > 0 ||
       filters.supplierIds.length > 0 ||
+      filters.clinicIds.length > 0 ||
       filters.createdAtFrom ||
       filters.createdAtTo;
 
@@ -888,6 +911,7 @@ export default function ProcedimentosCirurgicos() {
         availableProcedures={availableProcedures}
         availableDoctors={availableDoctors}
         availableSuppliers={availableSuppliers}
+        availableClinics={availableClinics}
       />
 
       <NoActiveDoctorModal

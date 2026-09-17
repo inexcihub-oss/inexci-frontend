@@ -308,6 +308,8 @@ export interface SurgeryRequestListItem {
    * fornecedor pode conter vírgula e uma string concatenada não teria como ser
    * separada de volta com segurança. */
   suppliers?: Array<{ id: string; name: string }>;
+  /** Clínica da consulta que indicou a cirurgia. Só o kanban envia. */
+  clinic?: { id: string; name: string } | null;
   pendenciesCount?: number;
   hasIncompletePayment?: boolean;
   [key: string]: unknown;
