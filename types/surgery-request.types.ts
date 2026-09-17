@@ -184,10 +184,13 @@ export interface OpmeItemRef {
   selectedSupplier?: {
     id?: string | number;
     name?: string;
+    /** Marca o fornecedor genérico "Outro" da conta. */
+    isGeneric?: boolean;
   } | null;
   suppliers?: Array<{
     id?: string | number;
     name?: string;
+    isGeneric?: boolean;
   }>;
   manufacturers?: Array<{
     id?: string | number;

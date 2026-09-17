@@ -626,6 +626,8 @@ export const surgeryRequestService = {
       id: string | number;
       authorizedQuantity: number;
       selectedSupplierId?: string;
+      /** O convênio aprovou alguém fora dos cotados: grava o genérico "Outro". */
+      selectedSupplierIsGeneric?: boolean;
     }[],
   ): Promise<SurgeryRequestMutationResponse> {
     const response = await api.post("/surgery-requests/procedures/authorize", {
