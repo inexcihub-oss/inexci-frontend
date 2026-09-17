@@ -15,6 +15,12 @@ import {
   NotificationConfirmModal,
   type NotificationChannels,
 } from "./NotificationConfirmModal";
+import {
+  buildInitialSelectedOpmeSuppliers,
+  buildSupplierAuthorizationPayload,
+  buildSupplierOptions,
+  describeSelectedSupplier,
+} from "./fornecedor-vencedor";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────────────
 
@@ -72,47 +78,6 @@ function getSummaryRowStyles(
     row: "bg-emerald-100/90 border-l-4 border-l-emerald-500",
     authorizedBox: "bg-emerald-50 border-emerald-300 text-emerald-700",
   };
-}
-
-function getSupplierOptionValue(supplier: {
-  id?: string | number;
-  name?: string;
-}): string {
-  if (supplier.id != null) return String(supplier.id);
-  return supplier.name?.trim() ? `name:${supplier.name.trim()}` : "";
-}
-
-function getSelectedSupplierIdFromValue(value?: string): string | undefined {
-  if (!value || value.startsWith("name:")) return undefined;
-  return value;
-}
-
-function buildInitialSelectedOpmeSuppliers(
-  solicitacao: SurgeryRequestDetail,
-): Record<string, string> {
-  const initial: Record<string, string> = {};
-
-  (solicitacao?.opmeItems ?? []).forEach((item) => {
-    const selectedSupplierValue = item.selectedSupplier?.id
-      ? String(item.selectedSupplier.id)
-      : item.selectedSupplierId
-        ? String(item.selectedSupplierId)
-        : "";
-
-    if (selectedSupplierValue) {
-      initial[String(item.id)] = selectedSupplierValue;
-      return;
-    }
-
-    const firstSupplier = (item.suppliers ?? []).find(
-      (supplier) => !!getSupplierOptionValue(supplier),
-    );
-    if (firstSupplier) {
-      initial[String(item.id)] = getSupplierOptionValue(firstSupplier);
-    }
-  });
-
-  return initial;
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────────────
@@ -229,7 +194,7 @@ export function UpdateAuthorizationsModal({
     opmeAuth.map((e) => ({
       id: e.id,
       authorizedQuantity: Number(e.authorizedQuantity) || 0,
-      selectedSupplierId: getSelectedSupplierIdFromValue(
+      ...buildSupplierAuthorizationPayload(
         selectedOpmeSuppliers[String(e.id)],
       ),
     }));
@@ -550,17 +515,11 @@ export function UpdateAuthorizationsModal({
                       ),
                     )
                   }
-                  getSupplierOptions={(item) => {
-                    const opme = solicitacao.opmeItems?.find(
-                      (o) => o.id === item.id,
-                    );
-                    return (opme?.suppliers ?? [])
-                      .map((supplier) => ({
-                        value: getSupplierOptionValue(supplier),
-                        label: supplier.name?.trim() || "Fornecedor sem nome",
-                      }))
-                      .filter((supplier) => supplier.value !== "");
-                  }}
+                  getSupplierOptions={(item) =>
+                    buildSupplierOptions(
+                      solicitacao.opmeItems?.find((o) => o.id === item.id),
+                    )
+                  }
                   getSelectedSupplier={(id) =>
                     selectedOpmeSuppliers[String(id)] ?? ""
                   }
@@ -652,15 +611,10 @@ export function UpdateAuthorizationsModal({
                       const opme = solicitacao.opmeItems?.find(
                         (o) => o.id === e.id,
                       );
-                      const selectedValue = selectedOpmeSuppliers[String(e.id)];
-                      const selectedSupplierLabel =
-                        (opme?.suppliers ?? []).find(
-                          (supplier) =>
-                            getSupplierOptionValue(supplier) === selectedValue,
-                        )?.name ??
-                        (selectedValue?.startsWith("name:")
-                          ? selectedValue.replace("name:", "")
-                          : "Não selecionado");
+                      const selectedSupplierLabel = describeSelectedSupplier(
+                        opme,
+                        selectedOpmeSuppliers[String(e.id)],
+                      );
 
                       return (
                         <div

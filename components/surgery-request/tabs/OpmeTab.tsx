@@ -15,6 +15,7 @@ import {
   Package,
 } from "lucide-react";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
+import { padWithGenericOption } from "@/lib/generic-option";
 
 /** Lista de nomes de fabricantes a partir do item OPME */
 function getManufacturerNames(item: {
@@ -28,16 +29,8 @@ function getManufacturerNames(item: {
     .filter(Boolean);
 }
 
-const MIN_OPME_OPTIONS = 3;
-const OPME_FALLBACK_NAME = "Outros";
-
-/** Preenche slots vazios com "Outros" até o mínimo exigido pela plataforma. */
 function padOpmeDisplayNames(names: string[]): string[] {
-  const out = names.map((name) => name.trim()).filter(Boolean);
-  while (out.length < MIN_OPME_OPTIONS) {
-    out.push(OPME_FALLBACK_NAME);
-  }
-  return out;
+  return padWithGenericOption(names.map((name) => name.trim()).filter(Boolean));
 }
 
 export function OpmeTab() {

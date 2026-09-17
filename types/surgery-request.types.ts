@@ -184,10 +184,13 @@ export interface OpmeItemRef {
   selectedSupplier?: {
     id?: string | number;
     name?: string;
+    /** Marca o fornecedor genérico "Outro" da conta. */
+    isGeneric?: boolean;
   } | null;
   suppliers?: Array<{
     id?: string | number;
     name?: string;
+    isGeneric?: boolean;
   }>;
   manufacturers?: Array<{
     id?: string | number;
@@ -258,6 +261,10 @@ export interface SurgeryRequest {
   status: SurgeryRequestStatus;
   topPendencies?: Pendency[]; // Preview das principais pendências
   healthPlan?: string; // Convênio
+  /** Fornecedores escolhidos nos itens OPME (vazio até a escolha acontecer). */
+  suppliers?: { id: string; name: string }[];
+  /** Clínica da consulta que indicou a cirurgia (ausente fora do atendimento). */
+  clinic?: { id: string; name: string } | null;
   hasIncompletePayment?: boolean; // Recebimento incompleto
 }
 

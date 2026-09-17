@@ -48,17 +48,14 @@ import {
 } from "@/lib/sc-from-document-background";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { TOUR_DEMO_EXTRACTION_MARKER } from "@/lib/onboarding/demo-data";
+import { padWithGenericOption } from "@/lib/generic-option";
 
 // ─── Padding de fornecedor/fabricante OPME ──────────────────────────────────
 //
-// Espelha `MIN_OPME_OPTIONS`/`FALLBACK_OPME_NAME` do backend
-// (surgery-request-assembly.service.ts): a plataforma exige >=3
-// fornecedores e >=3 fabricantes por item OPME. Pré-preenchemos aqui com
-// "Outros" para que o OpmeModal já abra em estado completo, evitando que o
-// usuário precise digitar manualmente alternativas que o documento não trouxe.
-
-const MIN_OPME_OPTIONS = 3;
-const OPME_FALLBACK_NAME = "Outros";
+// A plataforma exige >=3 fornecedores e >=3 fabricantes por item OPME.
+// Pré-preenchemos com o genérico "Outro" para que o OpmeModal já abra em
+// estado completo: o documento raramente traz três, e o médico quer subir o
+// rascunho sem inventar alternativas.
 
 function dedupeNames(names: (string | undefined)[]): string[] {
   const seen = new Set<string>();
@@ -74,11 +71,7 @@ function dedupeNames(names: (string | undefined)[]): string[] {
   return out;
 }
 
-function padNames(names: string[], min: number, fallback: string): string[] {
-  const out = [...names];
-  while (out.length < min) out.push(fallback);
-  return out;
-}
+
 
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
@@ -387,16 +380,10 @@ export default function NovaViaDocumentoPage() {
           id: String(i),
           name: o.description ?? "",
           quantity: o.qty ?? 1,
-          suppliers: padNames(
+          suppliers: padWithGenericOption(
             dedupeNames([o.supplier, ...(e.suggestedSuppliers ?? [])]),
-            MIN_OPME_OPTIONS,
-            OPME_FALLBACK_NAME,
           ),
-          manufacturers: padNames(
-            dedupeNames([o.manufacturer]),
-            MIN_OPME_OPTIONS,
-            OPME_FALLBACK_NAME,
-          ),
+          manufacturers: padWithGenericOption(dedupeNames([o.manufacturer])),
         })),
       );
     }

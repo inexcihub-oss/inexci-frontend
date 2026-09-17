@@ -9,6 +9,7 @@ import {
   getAgendaStatusLabel,
   groupAgendaByDate,
   normalizeAgendaItems,
+  getAgendaExportRows,
   sanitizeCsv,
   toLocalDateKey,
 } from "./export-agenda";
@@ -35,6 +36,37 @@ function makeItem(
 }
 
 describe("export-agenda", () => {
+  /**
+   * O fornecedor chega como referência `{ id, name }` porque o filtro do kanban
+   * precisa do id. A coluna do relatório é quem junta os nomes — nome de
+   * fornecedor pode ter vírgula, então nunca é o backend que concatena.
+   */
+  it("monta a coluna Fornecedor a partir das referências do OPME", () => {
+    const rows = getAgendaExportRows(
+      [],
+      [
+        makeItem({
+          suppliers: [
+            { id: "f-1", name: "Sintex" },
+            { id: "f-2", name: "Baumer" },
+          ],
+        }),
+      ],
+      { from: "2026-07-01", to: "2026-07-31" },
+    );
+
+    expect(rows[0].fornecedor).toBe("Sintex, Baumer");
+  });
+
+  it("marca a coluna Fornecedor como vazia quando nenhum foi escolhido", () => {
+    const rows = getAgendaExportRows([], [makeItem({ suppliers: [] })], {
+      from: "2026-07-01",
+      to: "2026-07-31",
+    });
+
+    expect(rows[0].fornecedor).toBe("—");
+  });
+
   it("normaliza apenas registros com surgeryDate", () => {
     const items = normalizeAgendaItems([
       makeItem(),

@@ -176,7 +176,7 @@ describe("CreateSurgeryRequestWizard — criação a partir de modelo", () => {
     expect(createSimple).not.toHaveBeenCalled();
   });
 
-  it("deduplica o TUSS repetido e completa o OPME com 'Outros'", async () => {
+  it("deduplica o TUSS repetido e completa o OPME com o genérico", async () => {
     renderizar();
 
     await criarSolicitacao();
@@ -190,7 +190,7 @@ describe("CreateSurgeryRequestWizard — criação a partir de modelo", () => {
     });
     expect(opmeCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        manufacturerNames: ["Outros", "Outros", "Outros"],
+        manufacturerNames: ["Outro", "Outro", "Outro"],
         supplierNames: ["Sintex", "BW Medic", "Lais Brasil"],
       }),
     );
