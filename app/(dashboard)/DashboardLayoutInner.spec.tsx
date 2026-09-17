@@ -116,3 +116,27 @@ describe("DashboardLayoutInner — ordem ConsentGate > OnboardingProvider", () =
     expect(provedorMontado).toHaveBeenCalled();
   });
 });
+
+/**
+ * `100vh` no celular mede a tela SEM a barra de endereço do navegador. Com a
+ * barra visível, a raiz passava do fundo da tela: o fim do `main` ia parar
+ * atrás do navegador e a barra inferior do app (fixa no fundo visível) cobria
+ * o último trecho de conteúdo sem que ele pudesse ser rolado — os botões
+ * "Criar solicitação" da revisão por documento ficavam inalcançáveis.
+ *
+ * O jsdom não calcula unidade de viewport; o que dá para garantir aqui é que a
+ * raiz pede a altura dinâmica (`dvh`), que acompanha a barra do navegador.
+ */
+describe("DashboardLayoutInner — altura da raiz no mobile", () => {
+  it("usa a altura dinâmica da viewport, não 100vh puro", () => {
+    auth = { ...auth, consents: { requiredConsentsAccepted: true } };
+    const { container } = render(
+      <DashboardLayoutInner>
+        <div />
+      </DashboardLayoutInner>,
+    );
+
+    const raiz = container.firstElementChild as HTMLElement;
+    expect(raiz.className).toContain("supports-[height:100dvh]:h-dvh");
+  });
+});

@@ -76,7 +76,13 @@ export default function DashboardLayoutInner({
 
   return (
     <NotificationsProvider>
-      <div className="relative flex h-screen overflow-hidden bg-white">
+      {/*
+        Altura dinâmica (`dvh`): no celular, `100vh` ignora a barra de endereço
+        do navegador e a raiz passava do fundo visível — a barra inferior do
+        app cobria o fim do conteúdo sem deixar rolá-lo. `h-screen` fica só de
+        fallback para navegador sem suporte a `dvh`.
+      */}
+      <div className="relative flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden bg-white">
         {/* Sidebar - apenas visível no desktop ou como drawer */}
         <Sidebar
           isMobileOpen={isMobileMenuOpen}
