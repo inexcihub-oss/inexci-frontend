@@ -85,11 +85,14 @@ describe("normalize-template-opme", () => {
     });
   });
 
-  it("completa fabricantes e fornecedores faltantes com 'Outros'", () => {
-    // Caso real: o pipeline de documento manda ["Outros","Outros","Outros"],
-    // a junction (opme_item_id, manufacturer_id) colapsa em uma linha só e o
-    // modelo acaba guardando um fabricante. Sem repor o padding, o item nunca
-    // atinge o mínimo de 3 e some ao criar a SC pelo modelo.
+  it("completa fabricantes e fornecedores faltantes com o genérico", () => {
+    // Caso real: o pipeline de documento manda três genéricos, a junction
+    // (opme_item_id, manufacturer_id) colapsa em uma linha só e o modelo acaba
+    // guardando um fabricante. Sem repor o padding, o item nunca atinge o
+    // mínimo de 3 e some ao criar a SC pelo modelo.
+    //
+    // O plural vem de solicitação antiga: o nome era "Outros" antes do
+    // genérico existir como linha própria, e continua chegando de modelo salvo.
     const items = extractTemplateOpmeItemsForCreate({
       opmeItems: [
         {
@@ -106,7 +109,7 @@ describe("normalize-template-opme", () => {
     });
 
     expect(items[0].manufacturerIds).toEqual([]);
-    expect(items[0].manufacturerNames).toEqual(["Outros", "Outros", "Outros"]);
+    expect(items[0].manufacturerNames).toEqual(["Outro", "Outro", "Outro"]);
     expect(items[0].supplierIds).toEqual(["s1", "s2", "s3"]);
     expect(items[0].supplierNames).toEqual([]);
   });
@@ -125,10 +128,10 @@ describe("normalize-template-opme", () => {
 
     // 1 id + 1 nome = 2 → falta um só.
     expect(items[0].manufacturerIds).toEqual(["m1"]);
-    expect(items[0].manufacturerNames).toEqual(["Zimmer", "Outros"]);
+    expect(items[0].manufacturerNames).toEqual(["Zimmer", "Outro"]);
     // 1 id → faltam dois.
     expect(items[0].supplierIds).toEqual(["s1"]);
-    expect(items[0].supplierNames).toEqual(["Outros", "Outros"]);
+    expect(items[0].supplierNames).toEqual(["Outro", "Outro"]);
   });
 
   it("separa ids e nomes livres para criação", () => {
