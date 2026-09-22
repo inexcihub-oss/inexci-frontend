@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import { UPLOAD_TIMEOUT_MS } from "@/lib/file-upload";
 
 export interface UploadResponse {
   message: string;
@@ -51,6 +52,7 @@ class UploadService {
         headers: {
           "Content-Type": "multipart/form-data",
         },
+        timeout: UPLOAD_TIMEOUT_MS,
       },
     );
 
@@ -82,6 +84,7 @@ class UploadService {
         headers: {
           "Content-Type": "multipart/form-data",
         },
+        timeout: UPLOAD_TIMEOUT_MS,
       },
     );
 

@@ -10,6 +10,10 @@ import {
   DocumentFolder,
 } from "@/services/document.service";
 import { logger } from "@/lib/logger";
+import {
+  MAX_DOCUMENT_FILE_SIZE_BYTES,
+  MAX_DOCUMENT_FILE_SIZE_MB,
+} from "@/lib/file-upload";
 
 // ─── Tipos de documento por contexto ─────────────────────────────────────────
 
@@ -35,8 +39,8 @@ export const POST_SURGERY_DOCUMENT_TYPES = [
 
 export type DocumentTypeEntry = { key: string; label: string };
 
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
-const FILE_SIZE_ERROR_MESSAGE = "O arquivo deve ter no máximo 5MB.";
+const MAX_FILE_SIZE_BYTES = MAX_DOCUMENT_FILE_SIZE_BYTES;
+const FILE_SIZE_ERROR_MESSAGE = `O arquivo deve ter no máximo ${MAX_DOCUMENT_FILE_SIZE_MB}MB.`;
 const ALLOWED_DOCUMENT_EXTENSIONS = [
   ".pdf",
   ".jpg",
@@ -377,7 +381,8 @@ function DocumentUploadModalContent({
                 : "text-gray-500"
             }`}
           >
-            Formatos aceitos: PDF, JPG, JPEG, PNG, DOC e DOCX (máx. 5MB).
+            Formatos aceitos: PDF, JPG, JPEG, PNG, DOC e DOCX (máx.{" "}
+            {MAX_DOCUMENT_FILE_SIZE_MB}MB).
           </p>
 
           {/* Tipo do documento */}

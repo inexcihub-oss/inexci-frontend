@@ -27,6 +27,10 @@ import dynamic from "next/dynamic";
 import api from "@/lib/api";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { removeBackground } from "@/lib/utils";
+import {
+  MAX_DOCUMENT_FILE_SIZE_BYTES,
+  MAX_DOCUMENT_FILE_SIZE_MB,
+} from "@/lib/file-upload";
 import type { DoctorHeader } from "@/types/doctor-header.types";
 
 // P14: Tiptap (RichTextEditor) carregado sob demanda — fora do chunk estático
@@ -505,11 +509,15 @@ export function MedicalReportEditor() {
         if (imagesInputRef.current) imagesInputRef.current.value = "";
         return;
       }
-      const validFiles = files.filter((f) => f.size <= 5 * 1024 * 1024);
-      const oversized = files.filter((f) => f.size > 5 * 1024 * 1024);
+      const validFiles = files.filter(
+        (f) => f.size <= MAX_DOCUMENT_FILE_SIZE_BYTES,
+      );
+      const oversized = files.filter(
+        (f) => f.size > MAX_DOCUMENT_FILE_SIZE_BYTES,
+      );
       if (oversized.length > 0) {
         showToast(
-          `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 5MB`,
+          `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo ${MAX_DOCUMENT_FILE_SIZE_MB}MB`,
           "error",
         );
       }

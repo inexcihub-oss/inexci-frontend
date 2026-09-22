@@ -9,6 +9,10 @@ import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { getTransitionBlockError } from "@/lib/http-error";
+import {
+  MAX_DOCUMENT_FILE_SIZE_BYTES,
+  MAX_DOCUMENT_FILE_SIZE_MB,
+} from "@/lib/file-upload";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -219,11 +223,15 @@ export function SurgeryStatusModal({
   const addFiles = (key: string, fl: FileList | null) => {
     if (!fl || fl.length === 0) return;
     const allFiles = Array.from(fl);
-    const valid = allFiles.filter((f) => f.size <= 5 * 1024 * 1024);
-    const oversized = allFiles.filter((f) => f.size > 5 * 1024 * 1024);
+    const valid = allFiles.filter(
+      (f) => f.size <= MAX_DOCUMENT_FILE_SIZE_BYTES,
+    );
+    const oversized = allFiles.filter(
+      (f) => f.size > MAX_DOCUMENT_FILE_SIZE_BYTES,
+    );
     if (oversized.length > 0) {
       showToast(
-        `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 5MB`,
+        `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo ${MAX_DOCUMENT_FILE_SIZE_MB}MB`,
         "error",
       );
     }

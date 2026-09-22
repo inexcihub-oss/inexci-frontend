@@ -21,6 +21,10 @@ import {
   buildSupplierOptions,
   describeSelectedSupplier,
 } from "./fornecedor-vencedor";
+import {
+  MAX_DOCUMENT_FILE_SIZE_BYTES,
+  MAX_DOCUMENT_FILE_SIZE_MB,
+} from "@/lib/file-upload";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────────────
 
@@ -1332,11 +1336,15 @@ function ContestFlow({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
     const incoming = Array.from(e.target.files);
-    const valid = incoming.filter((f) => f.size <= 5 * 1024 * 1024);
-    const oversized = incoming.filter((f) => f.size > 5 * 1024 * 1024);
+    const valid = incoming.filter(
+      (f) => f.size <= MAX_DOCUMENT_FILE_SIZE_BYTES,
+    );
+    const oversized = incoming.filter(
+      (f) => f.size > MAX_DOCUMENT_FILE_SIZE_BYTES,
+    );
     if (oversized.length > 0) {
       showToast(
-        `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo 5MB`,
+        `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo ${MAX_DOCUMENT_FILE_SIZE_MB}MB`,
         "error",
       );
     }

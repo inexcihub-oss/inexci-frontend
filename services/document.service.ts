@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import { UPLOAD_TIMEOUT_MS } from "@/lib/file-upload";
 
 export interface Document {
   id: string;
@@ -44,6 +45,7 @@ export const documentService = {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      timeout: UPLOAD_TIMEOUT_MS,
       onUploadProgress: (progressEvent) => {
         if (data.onUploadProgress && progressEvent.total) {
           const pct = Math.round(
@@ -118,6 +120,7 @@ export const patientDocumentService = {
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
+        timeout: UPLOAD_TIMEOUT_MS,
         onUploadProgress: (progressEvent) => {
           if (data.onUploadProgress && progressEvent.total) {
             data.onUploadProgress(

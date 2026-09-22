@@ -21,9 +21,13 @@ import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import { getTransitionBlockError } from "@/lib/http-error";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import {
+  MAX_DOCUMENT_FILE_SIZE_BYTES,
+  MAX_DOCUMENT_FILE_SIZE_MB,
+} from "@/lib/file-upload";
 
 const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png";
-const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024; // 5MB (limite do backend)
+const ATTACHMENT_MAX_BYTES = MAX_DOCUMENT_FILE_SIZE_BYTES; // espelha o limite do backend
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -177,7 +181,10 @@ export function ConfirmReceiptModal({
     e.target.value = ""; // permite re-selecionar o mesmo arquivo
     if (!f) return;
     if (f.size > ATTACHMENT_MAX_BYTES) {
-      showToast("Arquivo muito grande. O máximo permitido é 5MB.", "error");
+      showToast(
+        `Arquivo muito grande. O máximo permitido é ${MAX_DOCUMENT_FILE_SIZE_MB}MB.`,
+        "error",
+      );
       return;
     }
     setter(f);
@@ -569,7 +576,7 @@ export function ConfirmReceiptModal({
                       {receiptFile ? receiptFile.name : "Anexos"}
                     </span>
                     <span className="text-[10px] md:text-xs text-neutral-400">
-                      PDF, JPG, PNG até 5MB
+                      PDF, JPG, PNG até {MAX_DOCUMENT_FILE_SIZE_MB}MB
                     </span>
                   </div>
                 </div>
@@ -752,7 +759,7 @@ export function ConfirmReceiptModal({
                         {contestFile ? contestFile.name : "Anexar documento"}
                       </span>
                       <span className="text-[10px] md:text-xs text-neutral-400">
-                        PDF, JPG, PNG até 5MB
+                        PDF, JPG, PNG até {MAX_DOCUMENT_FILE_SIZE_MB}MB
                       </span>
                     </div>
                   </div>
