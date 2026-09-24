@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const replace = vi.fn();
 const back = vi.fn();
@@ -73,12 +74,24 @@ import { Permission } from "@/lib/permissions";
 
 // `can` concede tudo por padrão — os testes deste arquivo focam no eixo
 // `isDoctor`; a permissão Solicitações é exercida à parte, mais abaixo.
-let authState: { isDoctor: boolean; can: (p: Permission) => boolean } = {
+let authState: {
+  isDoctor: boolean;
+  can: (p: Permission) => boolean;
+  permissions: Permission[];
+} = {
   isDoctor: true,
   can: () => true,
+  permissions: [Permission.ATENDIMENTO],
 };
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
+}));
+
+vi.mock("@/services/procedure.service", () => ({
+  procedureService: {
+    getAll: vi.fn().mockResolvedValue([]),
+    create: vi.fn(),
+  },
 }));
 
 vi.mock("@/services/clinical-record-template.service", () => ({
@@ -134,6 +147,8 @@ function recordFixture(over: Partial<Record_> = {}): Record_ {
     conduct: null,
     surgicalIndication: false,
     surgeryRequestId: null,
+    procedureId: null,
+    procedure: null,
     finalizedAt: null,
     createdAt: "2026-07-29T18:00:00.000Z",
     updatedAt: "2026-07-29T18:00:00.000Z",
@@ -145,12 +160,17 @@ function renderTabs(
   record: Record_ | null = null,
   over: Partial<typeof patient> = {},
 ) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <AtendimentoTabs
-      patient={{ ...patient, ...over }}
-      appointment={appointment}
-      initialRecord={record}
-    />,
+    <QueryClientProvider client={queryClient}>
+      <AtendimentoTabs
+        patient={{ ...patient, ...over }}
+        appointment={appointment}
+        initialRecord={record}
+      />
+    </QueryClientProvider>,
   );
 }
 
@@ -158,7 +178,11 @@ describe("AtendimentoTabs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     searchParams = new URLSearchParams();
-    authState = { isDoctor: true, can: () => true };
+    authState = {
+      isDoctor: true,
+      can: () => true,
+      permissions: [Permission.ATENDIMENTO],
+    };
     onboardingMockState.emTour = false;
     (healthPlanService.getById as ReturnType<typeof vi.fn>).mockResolvedValue(
       null,
@@ -394,6 +418,35 @@ describe("AtendimentoTabs", () => {
     });
   });
 
+  it("envia o procedimento escolhido no picker ao salvar", async () => {
+    const { procedureService } = await import("@/services/procedure.service");
+    (procedureService.getAll as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "proc-1", name: "Artroscopia de joelho" },
+    ]);
+    (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+      recordFixture({ surgicalIndication: true, procedureId: "proc-1" }),
+    );
+    const user = userEvent.setup();
+    renderTabs();
+
+    await user.click(screen.getByRole("checkbox", { name: "Paciente cirúrgico" }));
+    await user.click(
+      screen.getByRole("button", { name: /selecionar procedimento/i }),
+    );
+    await user.click(await screen.findByText("Artroscopia de joelho"));
+
+    const saveButtons = screen.getAllByRole("button", {
+      name: /Salvar rascunho/i,
+    });
+    await user.click(saveButtons[0]);
+
+    await waitFor(() => {
+      expect(clinicalRecordService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ procedureId: "proc-1" }),
+      );
+    });
+  });
+
   it("confirma a SC criada ao finalizar com o marcador ligado", async () => {
     const user = userEvent.setup();
     (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -430,6 +483,7 @@ describe("AtendimentoTabs", () => {
     authState = {
       isDoctor: true,
       can: (p) => p !== Permission.SOLICITACOES,
+      permissions: [Permission.ATENDIMENTO],
     };
     const user = userEvent.setup();
     (clinicalRecordService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -758,7 +812,11 @@ describe("AtendimentoTabs", () => {
    */
   describe("usuário não-médico", () => {
     beforeEach(() => {
-      authState = { isDoctor: false, can: () => true };
+      authState = {
+        isDoctor: false,
+        can: () => true,
+        permissions: [Permission.ATENDIMENTO],
+      };
     });
 
     it("esconde salvar, finalizar e a emissão de documentos", () => {

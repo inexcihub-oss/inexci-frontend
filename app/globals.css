@@ -60,6 +60,20 @@
     textarea:not(:disabled) {
       font-size: 16px !important;
     }
+
+    /*
+     * Escape hatch da regra acima, para o campo que convive lado a lado com
+     * um texto menor e onde o salto para 16px fica gritante — hoje só o
+     * comentário da aba Atividades, que precisa casar com as mensagens já
+     * publicadas (`text-xs`) e com o mesmo campo no desktop.
+     *
+     * TRADE-OFF consciente: abaixo de 16px o Safari do iOS dá zoom ao focar o
+     * campo. Aplique só quando a coerência tipográfica valer esse preço.
+     */
+    input[type="text"].ds-input-xs {
+      font-size: 0.75rem !important;
+      line-height: 1rem;
+    }
   }
 }
 

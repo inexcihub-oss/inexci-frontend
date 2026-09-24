@@ -200,6 +200,7 @@ export function AtendimentoTabs({
       conduct: fields.conduct,
       cidCodes: fields.cidCodes,
       surgicalIndication: fields.surgicalIndication,
+      procedureId: fields.procedureId,
     };
     if (record) {
       return clinicalRecordService.update(record.id, payload);

@@ -2,8 +2,10 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useState } from "react";
 import { CidPicker } from "@/components/clinical/CidPicker";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { ProcedureQuickPickerModal } from "@/components/procedures/ProcedureQuickPickerModal";
 import {
   ClinicalRecord,
   ClinicalCidCode,
@@ -18,6 +20,7 @@ import {
   ClipboardCheck,
   Scissors,
   ArrowUpRight,
+  Search,
 } from "lucide-react";
 
 const RichTextEditor = dynamic(
@@ -33,6 +36,10 @@ export interface FichaFields {
   conduct: string;
   cidCodes: ClinicalCidCode[];
   surgicalIndication: boolean;
+  /** Procedimento escolhido (ou criado) para a SC que nasce da indicação. */
+  procedureId: string | null;
+  /** Só para exibição — o que persiste no backend é `procedureId`. */
+  procedureName: string;
 }
 
 /** Estado inicial da ficha a partir de um registro já persistido (ou vazio). */
@@ -44,6 +51,8 @@ export function fichaFieldsFrom(record: ClinicalRecord | null): FichaFields {
     conduct: record?.conduct ?? "",
     cidCodes: record?.cidCodes ?? [],
     surgicalIndication: record?.surgicalIndication ?? false,
+    procedureId: record?.procedureId ?? null,
+    procedureName: record?.procedure?.name ?? "",
   };
 }
 
@@ -130,6 +139,12 @@ export function AtendimentoFicha({
       <IndicacaoCirurgicaCard
         checked={fields.surgicalIndication}
         onChange={(v) => onFieldChange("surgicalIndication", v)}
+        procedureId={fields.procedureId}
+        procedureName={fields.procedureName}
+        onProcedureChange={(id, name) => {
+          onFieldChange("procedureId", id);
+          onFieldChange("procedureName", name);
+        }}
         readOnly={readOnly}
         surgeryRequestId={surgeryRequestId}
       />
@@ -147,16 +162,23 @@ export function AtendimentoFicha({
 export function IndicacaoCirurgicaCard({
   checked,
   onChange,
+  procedureId,
+  procedureName,
+  onProcedureChange,
   readOnly,
   surgeryRequestId,
 }: {
   checked: boolean;
   onChange: (value: boolean) => void;
+  procedureId: string | null;
+  procedureName: string;
+  onProcedureChange: (id: string, name: string) => void;
   readOnly: boolean;
   surgeryRequestId: string | null;
 }) {
   const { can } = useAuth();
   const podeVerSolicitacoes = can(Permission.SOLICITACOES);
+  const [pickerOpen, setPickerOpen] = useState(false);
   return (
     <SectionCard
       icon={<Scissors className="w-4 h-4" />}
@@ -182,6 +204,45 @@ export function IndicacaoCirurgicaCard({
           )}
         </div>
       </div>
+
+      {checked && !readOnly && (
+        <div className="mt-3">
+          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5">
+            Procedimento
+          </p>
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="w-full flex items-center gap-2 rounded-xl border border-neutral-200 px-3.5 py-2.5 text-left text-sm hover:bg-neutral-50 transition-colors"
+          >
+            <Search className="w-4 h-4 text-neutral-400 shrink-0" />
+            <span
+              className={
+                procedureName
+                  ? "text-neutral-900 truncate"
+                  : "text-neutral-400"
+              }
+            >
+              {procedureName || "Selecionar procedimento"}
+            </span>
+          </button>
+          <ProcedureQuickPickerModal
+            isOpen={pickerOpen}
+            onClose={() => setPickerOpen(false)}
+            selectedProcedureId={procedureId}
+            onSelect={(procedure) =>
+              onProcedureChange(procedure.id, procedure.name)
+            }
+          />
+        </div>
+      )}
+
+      {readOnly && checked && procedureName && (
+        <p className="mt-3 text-sm text-neutral-600">
+          <span className="text-neutral-400">Procedimento: </span>
+          {procedureName}
+        </p>
+      )}
 
       {readOnly && checked && (
         <div className="mt-3">

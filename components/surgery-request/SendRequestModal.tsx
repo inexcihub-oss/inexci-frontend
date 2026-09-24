@@ -17,11 +17,30 @@ import {
 } from "@/lib/http-error";
 import { BillingLimitModal } from "@/components/billing/BillingLimitModal";
 import { SurgeryRequestDocumentPreviewModal } from "@/components/laudo/SurgeryRequestDocumentPreviewModal";
+import { DateInput } from "@/components/ui/DateInput";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   MAX_DOCUMENT_FILE_SIZE_BYTES,
   MAX_DOCUMENT_FILE_SIZE_MB,
 } from "@/lib/file-upload";
+
+/** Data local (YYYY-MM-DD) de hoje — não usa `toISOString` para não pular de
+ * dia perto da meia-noite em fusos atrás de UTC (ex.: Brasil). */
+function todayCalendarDate(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/** Meia-noite local a partir de um YYYY-MM-DD, para comparar com "agora". */
+function parseLocalCalendarDate(iso: string): Date | null {
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const [, y, m, d] = match;
+  return new Date(Number(y), Number(m) - 1, Number(d));
+}
 
 interface SendRequestModalProps {
   isOpen: boolean;
@@ -75,6 +94,11 @@ export function SendRequestModal({
   const [ccInput, setCcInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Data real de envio (método "document"): pré-preenchida com hoje, editável
+  // — cobre o caso de o envio já ter acontecido fora da plataforma.
+  const [sentAt, setSentAt] = useState("");
+  const [sentAtError, setSentAtError] = useState<string | null>(null);
+
   const { showToast } = useToast();
   const { refreshSubscription, blockReason, blockReasonCode } = useAuth();
 
@@ -114,6 +138,8 @@ export function SendRequestModal({
       setAttachments([]);
       setCcTags([]);
       setCcInput("");
+      setSentAt(todayCalendarDate());
+      setSentAtError(null);
       // Quando a assinatura já é conhecida e bloqueia o envio, avisa de
       // saída em vez de deixar o usuário percorrer o wizard para tomar um
       // 402 no final. O backend continua sendo a autoridade — este é só o
@@ -246,7 +272,9 @@ export function SendRequestModal({
       if (sendMethod === "download") {
         await handleDownload();
       } else if (sendMethod === "document") {
-        await handleConfirmWithSourceDocument();
+        // Documento já está na plataforma: só falta confirmar a data real de
+        // envio (step 3, sem os campos de e-mail).
+        setCurrentStep(3);
       } else {
         setCurrentStep(3);
         surgeryRequestService
@@ -255,7 +283,11 @@ export function SendRequestModal({
           .catch(() => {});
       }
     } else if (currentStep === 3) {
-      await handleSendEmail();
+      if (sendMethod === "document") {
+        await handleConfirmWithSourceDocument();
+      } else {
+        await handleSendEmail();
+      }
     }
   };
 
@@ -314,9 +346,23 @@ export function SendRequestModal({
   };
 
   const handleConfirmWithSourceDocument = async () => {
+    const chosenDate = parseLocalCalendarDate(sentAt);
+    if (!chosenDate) {
+      setSentAtError("Informe a data em que a solicitação foi enviada.");
+      return;
+    }
+    if (chosenDate.getTime() > Date.now()) {
+      setSentAtError("A data de envio não pode estar no futuro.");
+      return;
+    }
+    setSentAtError(null);
+
     setIsSending(true);
     try {
-      await surgeryRequestService.send(solicitacao.id, { method: "document" });
+      await surgeryRequestService.send(solicitacao.id, {
+        method: "document",
+        sentAt,
+      });
       await refreshSubscription();
       await saveTemplateIfRequested();
       setCurrentStep(4);
@@ -535,6 +581,16 @@ export function SendRequestModal({
               Baixe um arquivo PDF contendo: Laudo médico, documentos, OPME e
               códigos TUSS
             </span>
+            {hasSourceDocument && (
+              <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium bg-gray-100 text-gray-500">
+                Documento gerado no modelo do sistema
+              </span>
+            )}
+            <span className="text-xs md:text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-1">
+              Atenção: a opção Download Manual atualiza automaticamente o
+              status da solicitação para &ldquo;Enviada&rdquo;, indicando ao
+              sistema que ela já foi enviada ao convênio/plano de saúde.
+            </span>
           </div>
         </button>
 
@@ -557,6 +613,9 @@ export function SendRequestModal({
                 <span className="text-xs md:text-sm text-gray-400">
                   Envie o PDF gerado pela plataforma (laudo, documentos, OPME e
                   códigos TUSS) diretamente ao convênio
+                </span>
+                <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium bg-gray-100 text-gray-500">
+                  Documento gerado no modelo do sistema
                 </span>
               </div>
             </button>
@@ -629,7 +688,32 @@ export function SendRequestModal({
     </div>
   );
 
-  const renderStep3 = () => (
+  const renderStep3Document = () => (
+    <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex flex-col gap-4 p-6">
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+          <p className="text-xs md:text-sm text-gray-700">
+            O documento já está na plataforma. Informe a data em que a
+            solicitação foi de fato enviada ao convênio — útil quando o envio
+            aconteceu antes da atualização do status aqui.
+          </p>
+        </div>
+        <DateInput
+          id="send-document-sent-at"
+          label="Data do envio"
+          value={sentAt}
+          onChange={(value) => {
+            setSentAt(value);
+            setSentAtError(null);
+          }}
+          required
+          error={sentAtError ?? undefined}
+        />
+      </div>
+    </div>
+  );
+
+  const renderStep3Email = () => (
     <div className="flex-1 overflow-y-auto min-h-0">
       <div className="flex flex-col gap-4 p-6">
         {usesSourceDocumentEmail && sourceDocument && (
@@ -850,6 +934,9 @@ export function SendRequestModal({
     </div>
   );
 
+  const renderStep3 = () =>
+    sendMethod === "document" ? renderStep3Document() : renderStep3Email();
+
   const renderStep4 = () => (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 min-h-0">
       <div className="flex items-center justify-center w-20 h-20 rounded-full bg-green-100">
@@ -953,10 +1040,10 @@ export function SendRequestModal({
                 </svg>
                 {currentStep === 3 ? "Enviando..." : "Processando..."}
               </span>
+            ) : currentStep === 3 && sendMethod === "document" ? (
+              "Confirmar envio"
             ) : currentStep === 3 ? (
               "Enviar e-mail"
-            ) : currentStep === 2 && sendMethod === "document" ? (
-              "Confirmar envio"
             ) : (
               "Próximo"
             )}
@@ -973,9 +1060,11 @@ export function SendRequestModal({
       case 2:
         return "Escolha o método de envio";
       case 3:
-        return usesSourceDocumentEmail
-          ? "Enviar documento de origem por e-mail"
-          : "Enviar por e-mail";
+        return sendMethod === "document"
+          ? "Data de envio"
+          : usesSourceDocumentEmail
+            ? "Enviar documento de origem por e-mail"
+            : "Enviar por e-mail";
       case 4:
         return "Solicitação enviada";
     }

@@ -97,7 +97,11 @@ function renderModal() {
 /** Percorre o wizard até disparar o envio por download (caminho mais curto). */
 async function enviarPorDownload(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("button", { name: /próximo/i }));
-  await user.click(await screen.findByText(/download manual/i));
+  // "Download Manual" também aparece no texto do aviso de status abaixo do
+  // botão, então mira no botão pelo nome acessível em vez do texto solto.
+  await user.click(
+    await screen.findByRole("button", { name: /^download manual/i }),
+  );
   await user.click(await screen.findByRole("button", { name: /próximo/i }));
 }
 
