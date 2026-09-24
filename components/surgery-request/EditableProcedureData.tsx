@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Search } from "lucide-react";
 import { Combobox } from "@/components/ui";
 import { SelectSearch } from "@/components/ui/SelectSearch";
+import { ProcedureQuickPickerModal } from "@/components/procedures/ProcedureQuickPickerModal";
 import { useHospitals } from "@/hooks/useHospitals";
 import { useHealthPlans } from "@/hooks/useHealthPlans";
 import {
@@ -55,7 +57,12 @@ export function EditableProcedureData({
     healthPlanId: solicitacao.healthPlan?.id?.toString() || "",
     healthPlanRegistry: solicitacao.healthPlanRegistration || "",
     healthPlanType: solicitacao.healthPlanType || "",
+    procedureId: solicitacao.procedure?.id?.toString() || "",
   });
+  const [procedureName, setProcedureName] = useState(
+    solicitacao.procedure?.name || "",
+  );
+  const [procedurePickerOpen, setProcedurePickerOpen] = useState(false);
 
   // Label de exibição do CID (inclui a descrição buscada da API quando necessário)
   const buildCidDisplayLabel = (
@@ -136,7 +143,9 @@ export function EditableProcedureData({
       healthPlanId: solicitacao.healthPlan?.id?.toString() || "",
       healthPlanRegistry: solicitacao.healthPlanRegistration || "",
       healthPlanType: solicitacao.healthPlanType || "",
+      procedureId: solicitacao.procedure?.id?.toString() || "",
     });
+    setProcedureName(solicitacao.procedure?.name || "");
   };
 
   const handleSave = async () => {
@@ -201,6 +210,9 @@ export function EditableProcedureData({
         updateData.cid = null;
       }
 
+      // Procedimento: sempre envia (id escolhido ou null se foi limpo).
+      updateData.procedureId = formData.procedureId || null;
+
       await surgeryRequestService.update(solicitacao.id.toString(), updateData);
 
       showToast("Dados atualizados com sucesso!", "success");
@@ -249,6 +261,50 @@ export function EditableProcedureData({
         )}
       </div>
       <div className="p-3 md:p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 md:gap-y-4">
+        {/* Procedimento */}
+        <div className="space-y-1">
+          <label className="ds-label mb-0">Procedimento</label>
+          {isEditing ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setProcedurePickerOpen(true)}
+                className="w-full flex items-center gap-2 rounded-xl border border-neutral-200 px-3.5 py-2.5 text-left text-sm hover:bg-gray-50 transition-colors"
+              >
+                <Search className="w-4 h-4 text-neutral-400 shrink-0" />
+                <span
+                  className={
+                    procedureName ? "text-gray-900 truncate" : "text-gray-400"
+                  }
+                >
+                  {procedureName || "Selecionar procedimento"}
+                </span>
+              </button>
+              <ProcedureQuickPickerModal
+                isOpen={procedurePickerOpen}
+                onClose={() => setProcedurePickerOpen(false)}
+                selectedProcedureId={formData.procedureId || null}
+                onSelect={(procedure) => {
+                  setFormData({ ...formData, procedureId: procedure.id });
+                  setProcedureName(procedure.name);
+                }}
+              />
+            </>
+          ) : (
+            <input
+              type="text"
+              value={solicitacao.procedure?.name || ""}
+              placeholder="Não informado"
+              className={`ds-field-readonly bg-gray-50 cursor-default ${
+                solicitacao.procedure?.name
+                  ? "text-gray-500"
+                  : "text-gray-400 italic"
+              }`}
+              disabled
+            />
+          )}
+        </div>
+
         {/* Hospital */}
         <div className="space-y-1">
           {isEditing ? (

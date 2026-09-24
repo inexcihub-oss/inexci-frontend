@@ -13,6 +13,8 @@ import { logger } from "@/lib/logger";
 import {
   MAX_DOCUMENT_FILE_SIZE_BYTES,
   MAX_DOCUMENT_FILE_SIZE_MB,
+  DOCUMENT_FILE_TYPE_ERROR_MESSAGE,
+  hasAllowedDocumentExtension,
 } from "@/lib/file-upload";
 
 // ─── Tipos de documento por contexto ─────────────────────────────────────────
@@ -41,21 +43,7 @@ export type DocumentTypeEntry = { key: string; label: string };
 
 const MAX_FILE_SIZE_BYTES = MAX_DOCUMENT_FILE_SIZE_BYTES;
 const FILE_SIZE_ERROR_MESSAGE = `O arquivo deve ter no máximo ${MAX_DOCUMENT_FILE_SIZE_MB}MB.`;
-const ALLOWED_DOCUMENT_EXTENSIONS = [
-  ".pdf",
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".doc",
-  ".docx",
-];
-const FILE_TYPE_ERROR_MESSAGE =
-  "Formato inválido. Envie apenas PDF, JPG, JPEG, PNG, DOC ou DOCX.";
-
-function hasAllowedDocumentExtension(fileName: string): boolean {
-  const lowerName = fileName.toLowerCase();
-  return ALLOWED_DOCUMENT_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
-}
+const FILE_TYPE_ERROR_MESSAGE = DOCUMENT_FILE_TYPE_ERROR_MESSAGE;
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 

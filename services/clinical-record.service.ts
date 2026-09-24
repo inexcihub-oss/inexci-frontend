@@ -18,6 +18,9 @@ export interface ClinicalRecord {
   surgicalIndication: boolean;
   /** SC gerada ao finalizar; null enquanto a criação estiver pendente. */
   surgeryRequestId: string | null;
+  /** Procedimento escolhido (ou criado) ao marcar "paciente cirúrgico". */
+  procedureId: string | null;
+  procedure: { id: string; name: string } | null;
   finalizedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +36,7 @@ export interface CreateClinicalRecordPayload {
   cidCodes?: ClinicalCidCode[];
   conduct?: string;
   surgicalIndication?: boolean;
+  procedureId?: string | null;
 }
 
 export type UpdateClinicalRecordPayload = Omit<

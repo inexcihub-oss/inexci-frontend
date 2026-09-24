@@ -90,6 +90,16 @@ const mockNotifications = [
     link: null,
     created_at: "2026-04-14T14:00:00Z",
   },
+  {
+    id: 4,
+    user_id: 1,
+    type: "mention",
+    title: "Dr. Ana mencionou você",
+    message: '"@Bruno confere esse laudo?"',
+    read: false,
+    link: "/solicitacao/abc?sidebar=atividades",
+    created_at: "2026-04-13T09:00:00Z",
+  },
 ];
 
 describe("NotificationsDropdown", () => {
@@ -142,6 +152,7 @@ describe("NotificationsDropdown", () => {
       expect(screen.getByText("📋")).toBeInTheDocument(); // status_update
       expect(screen.getByText("⏰")).toBeInTheDocument(); // stale
       expect(screen.getByText("👤")).toBeInTheDocument(); // action_by_user
+      expect(screen.getByText("💬")).toBeInTheDocument(); // mention
     });
   });
 

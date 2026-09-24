@@ -83,6 +83,7 @@ interface NotificationSettings {
   pendencies: boolean;
   expiringDocuments: boolean;
   weeklyReport: boolean;
+  mentionEmails: boolean;
 }
 
 // Tabs da página
@@ -143,15 +144,19 @@ function Toggle({
   checked,
   onChange,
   disabled = false,
+  ariaLabel,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
+  /** Nome acessível do switch — sem ele o leitor de tela anuncia só "switch". */
+  ariaLabel?: string;
 }) {
   return (
     <button
       type="button"
       role="switch"
+      aria-label={ariaLabel}
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
@@ -197,7 +202,7 @@ function NotificationItem({
           <p className="text-xs text-gray-500 mt-0.5">{description}</p>
         </div>
       </div>
-      <Toggle checked={checked} onChange={onChange} />
+      <Toggle checked={checked} onChange={onChange} ariaLabel={title} />
     </div>
   );
 }
@@ -380,6 +385,7 @@ function ConfiguracoesPageInner() {
     pendencies: true,
     expiringDocuments: true,
     weeklyReport: false,
+    mentionEmails: true,
   });
 
   // Estados de segurança
@@ -515,6 +521,7 @@ function ConfiguracoesPageInner() {
           pendencies: settings.pendencies,
           expiringDocuments: settings.expiringDocuments,
           weeklyReport: settings.weeklyReport,
+          mentionEmails: settings.mentionEmails ?? true,
         });
       } catch (error) {
         logger.error("Erro ao carregar configurações de notificação:", error);
@@ -711,6 +718,7 @@ function ConfiguracoesPageInner() {
         pendencies: notifications.pendencies,
         expiringDocuments: notifications.expiringDocuments,
         weeklyReport: notifications.weeklyReport,
+        mentionEmails: notifications.mentionEmails,
       });
       showToast("Configurações de notificação atualizadas!", "success");
     } catch (error: unknown) {
@@ -1196,6 +1204,15 @@ function ConfiguracoesPageInner() {
               checked={notifications.weeklyReport}
               onChange={(checked) =>
                 setNotifications({ ...notifications, weeklyReport: checked })
+              }
+            />
+            <NotificationItem
+              icon={Mail}
+              title="Menções por e-mail"
+              description="Receba um e-mail quando alguém mencionar você num comentário e a notificação não for lida em 10 minutos"
+              checked={notifications.mentionEmails}
+              onChange={(checked) =>
+                setNotifications({ ...notifications, mentionEmails: checked })
               }
             />
           </CardContent>
