@@ -204,6 +204,7 @@ export default function PacienteDetalhePage() {
         onSaved={loadAppointments}
         defaultPatientId={patient.id}
         defaultPatientLabel={patient.name}
+        defaultHealthPlanId={patient.healthPlanId ?? null}
       />
 
       {toast && (

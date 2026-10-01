@@ -95,6 +95,8 @@ describe("patientService", () => {
         phone: "11988880000",
         // Sem foto no cadastro: a listagem devolve `null`, não omite.
         photoUrl: null,
+        // Sem convênio no cadastro.
+        healthPlanId: undefined,
         birthDate: "1990-05-02",
         createdAt: "2024-01-01",
         updatedAt: "2024-01-01",

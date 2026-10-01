@@ -34,7 +34,12 @@ vi.mock("@/hooks/useClinicRooms", () => ({
   }),
 }));
 vi.mock("@/hooks/useHealthPlans", () => ({
-  useHealthPlans: () => ({ data: [{ id: "hp-1", name: "UNIMED" }] }),
+  useHealthPlans: () => ({
+    data: [
+      { id: "hp-1", name: "UNIMED" },
+      { id: "hp-2", name: "AMIL" },
+    ],
+  }),
 }));
 /**
  * Estado compartilhado entre o factory (hoisted, roda antes do resto do
@@ -72,10 +77,37 @@ vi.mock("@/services/appointment.service", async (importOriginal) => {
     },
   };
 });
+const listPatients = vi.hoisted(() => vi.fn());
 vi.mock("@/services/patient.service", () => ({
   patientService: {
-    list: vi.fn().mockResolvedValue({ records: [] }),
+    list: (...a: unknown[]) => listPatients(...a),
   },
+}));
+// Busca de paciente simplificada: um botão que busca e escolhe o primeiro
+// resultado — o que importa aqui é o que o modal faz com a escolha.
+vi.mock("@/components/ui/SelectSearch", () => ({
+  SelectSearch: ({
+    initialLabel,
+    onSearch,
+    onChange,
+  }: {
+    initialLabel?: string;
+    onSearch: (t: string) => Promise<{ value: string; label: string }[]>;
+    onChange: (v: string, label?: string) => void;
+  }) => (
+    <div>
+      <span>{initialLabel}</span>
+      <button
+        type="button"
+        onClick={async () => {
+          const [primeiro] = await onSearch("ma");
+          if (primeiro) onChange(primeiro.value, primeiro.label);
+        }}
+      >
+        buscar paciente
+      </button>
+    </div>
+  ),
 }));
 // NewAppointmentModal sempre monta o <NewPatientModal> (só o "isOpen" muda),
 // e ele usa useAuth() para decidir se mostra o atalho de criar convênio.
@@ -482,5 +514,70 @@ describe("NewAppointmentModal — sala, convênio e encaixe (MIG-03)", () => {
     expect(corpo).toEqual(expect.objectContaining({ isWalkIn: true }));
     expect(corpo).not.toHaveProperty("roomId");
     expect(corpo).not.toHaveProperty("healthPlanId");
+  });
+});
+
+describe("NewAppointmentModal — convênio do paciente como sugestão", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+    listPatients.mockResolvedValue({
+      records: [{ id: "p-2", name: "Maria", healthPlanId: "hp-1" }],
+    });
+  });
+
+  const convenio = () => screen.getByLabelText(/convênio/i) as HTMLSelectElement;
+
+  it("aberto pela página do paciente, já vem com o convênio dele", () => {
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        defaultDate={SEGUNDA}
+        defaultPatientId="p-2"
+        defaultPatientLabel="Maria"
+        defaultHealthPlanId="hp-1"
+      />,
+    );
+
+    expect(convenio()).toHaveValue("hp-1");
+  });
+
+  it("escolher o paciente na busca sugere o convênio dele", async () => {
+    render(
+      <NewAppointmentModal isOpen onClose={vi.fn()} onSaved={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "buscar paciente" }));
+
+    await waitFor(() => expect(convenio()).toHaveValue("hp-1"));
+  });
+
+  it("não sobrescreve o convênio escolhido à mão", async () => {
+    render(
+      <NewAppointmentModal isOpen onClose={vi.fn()} onSaved={vi.fn()} />,
+    );
+
+    fireEvent.change(convenio(), { target: { value: "hp-2" } });
+    fireEvent.click(screen.getByRole("button", { name: "buscar paciente" }));
+    // Espera a escolha do paciente chegar ao modal antes de conferir.
+    expect(await screen.findByText("Maria")).toBeInTheDocument();
+
+    expect(convenio()).toHaveValue("hp-2");
+  });
+
+  it("paciente sem convênio deixa particular", async () => {
+    listPatients.mockResolvedValue({
+      records: [{ id: "p-3", name: "João", healthPlanId: undefined }],
+    });
+    render(
+      <NewAppointmentModal isOpen onClose={vi.fn()} onSaved={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "buscar paciente" }));
+    expect(await screen.findByText("João")).toBeInTheDocument();
+
+    expect(convenio()).toHaveValue("");
   });
 });

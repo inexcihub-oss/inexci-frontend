@@ -135,6 +135,7 @@ export type PatientListItem = Pick<
   | "email"
   | "phone"
   | "photoUrl"
+  | "healthPlanId"
   | "birthDate"
   | "createdAt"
   | "updatedAt"
@@ -148,6 +149,7 @@ function mapPatientListItem(p: BackendPatient): PatientListItem {
     email,
     phone,
     photoUrl,
+    healthPlanId,
     birthDate,
     createdAt,
     updatedAt,
@@ -159,6 +161,7 @@ function mapPatientListItem(p: BackendPatient): PatientListItem {
     email,
     phone,
     photoUrl,
+    healthPlanId,
     birthDate,
     createdAt,
     updatedAt,

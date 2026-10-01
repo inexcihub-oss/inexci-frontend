@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { ModalFooter, SpinnerButton } from "@/components/shared/ModalFooter";
 import { SelectSearch } from "@/components/ui/SelectSearch";
@@ -38,6 +38,8 @@ interface NewAppointmentModalProps {
   /** Paciente pré-selecionado ao criar (ex.: a partir da ficha do paciente). */
   defaultPatientId?: string;
   defaultPatientLabel?: string;
+  /** Convênio do paciente pré-selecionado, sugerido como convênio da consulta. */
+  defaultHealthPlanId?: string | null;
 }
 
 const DURATION_OPTIONS = [15, 20, 30, 45, 60, 90];
@@ -78,6 +80,7 @@ export function NewAppointmentModal({
   appointment,
   defaultPatientId,
   defaultPatientLabel,
+  defaultHealthPlanId,
 }: NewAppointmentModalProps) {
   const isEdit = !!appointment;
   const { data: doctors = [] } = useAvailableDoctors();
@@ -95,6 +98,11 @@ export function NewAppointmentModal({
   const [roomId, setRoomId] = useState("");
   const [healthPlanId, setHealthPlanId] = useState("");
   const [isWalkIn, setIsWalkIn] = useState(false);
+  // Depois que o usuário mexe no convênio, a troca de paciente não o
+  // sobrescreve mais.
+  const [convenioEscolhido, setConvenioEscolhido] = useState(false);
+  // Convênio de cada paciente vindo da busca, para sugerir ao escolher.
+  const convenioDoPaciente = useRef(new Map<string, string | null>());
   const [type, setType] = useState<AppointmentType>("first_visit");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");
@@ -147,6 +155,7 @@ export function NewAppointmentModal({
   useEffect(() => {
     if (!isOpen) return;
     setError(null);
+    setConvenioEscolhido(false);
     if (appointment) {
       const { date: d, time: t } = isoToLocalParts(appointment.scheduledAt);
       setPatientId(appointment.patientId);
@@ -167,7 +176,7 @@ export function NewAppointmentModal({
       setDoctorId("");
       setClinicId("");
       setRoomId("");
-      setHealthPlanId("");
+      setHealthPlanId(defaultHealthPlanId ?? "");
       setIsWalkIn(false);
       setType("first_visit");
       setDate(defaultDate ?? "");
@@ -182,6 +191,7 @@ export function NewAppointmentModal({
     defaultTime,
     defaultPatientId,
     defaultPatientLabel,
+    defaultHealthPlanId,
   ]);
 
   /**
@@ -198,6 +208,9 @@ export function NewAppointmentModal({
 
   const searchPatients = useCallback(async (term: string) => {
     const { records } = await patientService.list({ search: term, take: 20 });
+    for (const p of records) {
+      convenioDoPaciente.current.set(p.id, p.healthPlanId ?? null);
+    }
     return records.map((p) => ({ value: p.id, label: p.name }));
   }, []);
 
@@ -325,6 +338,11 @@ export function NewAppointmentModal({
             onChange={(v, label) => {
               setPatientId(v);
               setPatientLabel(label ?? "");
+              // Sugere o convênio do paciente, sem desfazer uma escolha
+              // explícita de quem está agendando.
+              if (!convenioEscolhido) {
+                setHealthPlanId(convenioDoPaciente.current.get(v) ?? "");
+              }
             }}
             onSearch={searchPatients}
             placeholder="Buscar paciente pelo nome..."
@@ -417,7 +435,10 @@ export function NewAppointmentModal({
             id="convenio-consulta"
             className="ds-input"
             value={healthPlanId}
-            onChange={(e) => setHealthPlanId(e.target.value)}
+            onChange={(e) => {
+              setHealthPlanId(e.target.value);
+              setConvenioEscolhido(true);
+            }}
           >
             <option value="">Particular</option>
             {healthPlans.map((hp) => (
@@ -600,6 +621,7 @@ export function NewAppointmentModal({
         onSuccess={(patient) => {
           setPatientId(patient.id);
           setPatientLabel(patient.name);
+          if (!convenioEscolhido) setHealthPlanId(patient.healthPlanId ?? "");
           setNewPatientOpen(false);
         }}
       />
