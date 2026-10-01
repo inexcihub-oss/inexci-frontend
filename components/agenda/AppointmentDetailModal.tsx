@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { Modal } from "@/components/ui/Modal";
 import { SpinnerButton } from "@/components/shared/ModalFooter";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +16,9 @@ import {
 } from "@/services/appointment.service";
 import { cn } from "@/lib/utils";
 import { capitalizeFirst, formatDoctorName } from "@/lib/formatters";
+import { AppointmentHistory } from "@/components/agenda/AppointmentHistory";
 import {
+  ChevronDown,
   Clock,
   CreditCard,
   User,
@@ -119,6 +123,7 @@ export function AppointmentDetailModal({
   // Mexer na consulta (status, editar, excluir) é ato de quem tem Agenda —
   // eixo diferente de `isDoctor`, que só decide o botão de atendimento acima.
   const podeAgenda = can(Permission.AGENDA);
+  const [historicoAberto, setHistoricoAberto] = useState(false);
   const actions = podeAgenda ? QUICK[appointment.status] : [];
 
   return (
@@ -180,6 +185,35 @@ export function AppointmentDetailModal({
             </p>
           )}
         </div>
+
+        {/* Histórico: carrega só ao abrir. A consulta fabricada do tour não
+            existe no banco, então não tem histórico. */}
+        {!dadosFabricados && (
+          <div className="border-t border-neutral-100 pt-3">
+            <button
+              type="button"
+              aria-expanded={historicoAberto}
+              onClick={() => setHistoricoAberto((v) => !v)}
+              className="flex w-full items-center justify-between text-xs font-semibold text-neutral-600 hover:text-neutral-800 min-h-[36px]"
+            >
+              Histórico
+              <ChevronDown
+                className={cn(
+                  "w-4 h-4 transition-transform",
+                  historicoAberto && "rotate-180",
+                )}
+              />
+            </button>
+            {historicoAberto && (
+              <div className="pt-2">
+                <AppointmentHistory
+                  appointmentId={appointment.id}
+                  podeComentar={podeAgenda}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Ações de status */}
         {actions.length > 0 && (

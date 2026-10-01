@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Appointment, AppointmentStatus } from "@/services/appointment.service";
 import { Permission } from "@/lib/permissions";
+import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 
 // Usuário simulado com Agenda concedida — dono do fluxo de status/editar/excluir.
 let authState: { isDoctor: boolean; can: (p: Permission) => boolean } = {
@@ -313,5 +314,26 @@ describe("AppointmentDetailModal — sala de espera e dados da consulta (MIG-03)
 
     expect(screen.getByText("Particular")).toBeInTheDocument();
     expect(screen.queryByText("Encaixe")).not.toBeInTheDocument();
+  });
+});
+
+describe("AppointmentDetailModal — histórico (MIG-04)", () => {
+  beforeEach(() => {
+    authState = { isDoctor: true, can: (p) => p === Permission.AGENDA };
+    onboardingMockState.emTour = false;
+  });
+
+  it("começa recolhido: o histórico só é buscado quando o usuário abre", () => {
+    renderModal("confirmed");
+    const toggle = screen.getByRole("button", { name: /Histórico/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Carregando histórico...")).not.toBeInTheDocument();
+  });
+
+  it("a consulta fabricada do tour não tem histórico", () => {
+    renderAppointment({ ...consultaBase, id: TOUR_DEMO_APPOINTMENT_ID });
+    expect(
+      screen.queryByRole("button", { name: /Histórico/ }),
+    ).not.toBeInTheDocument();
   });
 });

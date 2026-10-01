@@ -109,6 +109,26 @@ function mapAppointment(a: BackendAppointment): Appointment {
   };
 }
 
+/** O que aconteceu com a consulta (histórico). */
+export type AppointmentActivityType =
+  | "created"
+  | "status_change"
+  | "rescheduled"
+  | "updated"
+  | "comment"
+  | "system";
+
+export interface AppointmentActivity {
+  id: string;
+  type: AppointmentActivityType;
+  fromStatus: AppointmentStatus | null;
+  toStatus: AppointmentStatus | null;
+  content: string | null;
+  createdAt: string;
+  /** Quem fez; `null` = sistema ou usuário excluído. */
+  user: { id: string; name: string } | null;
+}
+
 export interface CreateAppointmentPayload {
   patientId: string;
   doctorId: string;
@@ -244,5 +264,21 @@ export const appointmentService = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`/appointments/${id}`);
+  },
+
+  /** Histórico da consulta, do mais antigo para o mais recente. */
+  async listActivities(id: string): Promise<AppointmentActivity[]> {
+    const response = await api.get<AppointmentActivity[]>(
+      `/appointments/${id}/activities`,
+    );
+    return response.data ?? [];
+  },
+
+  async addComment(id: string, content: string): Promise<AppointmentActivity> {
+    const response = await api.post<AppointmentActivity>(
+      `/appointments/${id}/activities`,
+      { content },
+    );
+    return response.data;
   },
 };
