@@ -59,9 +59,11 @@ import {
   Loader2,
   LayoutTemplate,
   Compass,
+  FileText,
 } from "lucide-react";
 import { OnboardingSettingsTab } from "@/components/onboarding/OnboardingSettingsTab";
 import { PrivacySection } from "@/components/privacy/PrivacySection";
+import { DocumentTemplatesSettings } from "@/components/clinical/DocumentTemplatesSettings";
 
 // Tipos
 interface UserProfile {
@@ -100,7 +102,8 @@ type SettingsTab =
   | "security"
   | "header"
   | "privacy"
-  | "onboarding";
+  | "onboarding"
+  | "document-templates";
 
 import { maskPhone, maskCpf } from "@/lib/masks";
 
@@ -231,7 +234,8 @@ function resolveSettingsTab(
     tab === "plan" ||
     tab === "security" ||
     tab === "privacy" ||
-    tab === "onboarding"
+    tab === "onboarding" ||
+    tab === "document-templates"
   ) {
     return tab as SettingsTab;
   }
@@ -239,8 +243,14 @@ function resolveSettingsTab(
 }
 
 function ConfiguracoesPageInner() {
-  const { user, updateUser, isAccountOwner, subscription, refreshSubscription } =
-    useAuth();
+  const {
+    user,
+    updateUser,
+    isAccountOwner,
+    isPhysician,
+    subscription,
+    refreshSubscription,
+  } = useAuth();
   // O backend recusa checkout/portal do Stripe para quem não é dono da conta
   // — sem esse filtro a aba oferece um botão que sempre falha. A regra vive
   // no AuthContext (`isAccountOwner`) para não divergir dos outros pontos que
@@ -1340,6 +1350,14 @@ function ConfiguracoesPageInner() {
                   label="Cabeçalho de Documentos"
                 />
               )}
+              {isPhysician && user?.id && (
+                <TabButton
+                  active={activeTab === "document-templates"}
+                  onClick={() => setActiveTab("document-templates")}
+                  icon={FileText}
+                  label="Modelos de Documentos"
+                />
+              )}
               <TabButton
                 active={activeTab === "security"}
                 onClick={() => setActiveTab("security")}
@@ -1372,6 +1390,9 @@ function ConfiguracoesPageInner() {
             {activeTab === "security" && renderSecurityTab()}
             {activeTab === "header" && profile.isDoctor && renderHeaderTab()}
             {activeTab === "privacy" && renderPrivacyTab()}
+            {activeTab === "document-templates" && isPhysician && user?.id && (
+              <DocumentTemplatesSettings doctorId={user.id} />
+            )}
             {activeTab === "onboarding" && <OnboardingSettingsTab />}
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FileText, Stethoscope, ClipboardList, Eye } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -20,6 +20,11 @@ import {
   GeneratedClinicalDocument,
 } from "@/services/clinical-record.service";
 import { getApiErrorMessage } from "@/lib/http-error";
+import {
+  clinicalDocumentTemplateService,
+  ClinicalDocumentTemplate,
+  ClinicalDocumentTemplateKind,
+} from "@/services/clinical-document-template.service";
 
 type DocumentKind = "prescription" | "certificate" | "referral";
 
@@ -28,6 +33,13 @@ const MODAL_TITLE: Record<DocumentKind, string> = {
   certificate: "Emitir atestado",
   referral: "Solicitar exames",
 };
+
+/** Documentos que aceitam modelo de texto (MIG-06) e o tipo do modelo. */
+const TEMPLATE_KIND: Partial<Record<DocumentKind, ClinicalDocumentTemplateKind>> =
+  {
+    certificate: "medical_certificate",
+    referral: "exam_referral",
+  };
 
 /** Tipo do documento na API (rota e payload). */
 const API_KIND: Record<DocumentKind, ClinicalDocumentKind> = {
@@ -121,6 +133,56 @@ export function ClinicalDocumentActions({
   const [includeCid, setIncludeCid] = useState(false);
   const [certificateCid, setCertificateCid] = useState<ClinicalCidCode[]>([]);
   const [observations, setObservations] = useState("");
+
+  // Modelos de texto do documento aberto (atestado e pedido de exame).
+  const [templates, setTemplates] = useState<ClinicalDocumentTemplate[]>([]);
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const templateKind = openKind ? TEMPLATE_KIND[openKind] : undefined;
+
+  useEffect(() => {
+    setTemplates([]);
+    if (!templateKind) return;
+    let ativo = true;
+    clinicalDocumentTemplateService
+      .getAll({ kind: templateKind, doctorId })
+      .then((lista) => {
+        if (ativo) setTemplates(lista);
+      })
+      // Modelo é atalho: sem a lista, o médico escreve o texto à mão.
+      .catch(() => undefined);
+    return () => {
+      ativo = false;
+    };
+  }, [templateKind, doctorId]);
+
+  /**
+   * Preenche o texto com o modelo, já com os dados do paciente e do médico
+   * que estão na tela. O campo continua editável; trocar de modelo substitui.
+   */
+  const applyTemplate = async (templateId: string) => {
+    if (!templateId) return;
+    setError(null);
+    setApplyingTemplate(true);
+    try {
+      const days = Number(restDays);
+      const { body } = await clinicalDocumentTemplateService.apply(
+        templateId,
+        {
+          patientId,
+          doctorId,
+          ...(openKind === "certificate" && Number.isFinite(days) && days > 0
+            ? { restDays: days }
+            : {}),
+        },
+      );
+      if (openKind === "certificate") setObservations(body);
+      else setNotes(body);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Não foi possível aplicar o modelo."));
+    } finally {
+      setApplyingTemplate(false);
+    }
+  };
 
   const closePreview = () => setPreviewHtml(null);
 
@@ -304,6 +366,47 @@ export function ClinicalDocumentActions({
         size="lg"
       >
         <div className="px-4 md:px-6 py-4 flex flex-col gap-4">
+          {templateKind && (
+            <div className="flex flex-col gap-1.5">
+              {templates.length > 0 && (
+                <>
+                  <label
+                    htmlFor="clinical-doc-template"
+                    className="ds-label"
+                  >
+                    Usar modelo
+                  </label>
+                  <select
+                    id="clinical-doc-template"
+                    className="ds-input min-h-[44px]"
+                    value=""
+                    disabled={applyingTemplate}
+                    onChange={(e) => applyTemplate(e.target.value)}
+                  >
+                    <option value="">
+                      {applyingTemplate
+                        ? "Aplicando modelo..."
+                        : "Escolha um modelo para preencher o texto"}
+                    </option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+              <a
+                href="/configuracoes?tab=document-templates"
+                target="_blank"
+                rel="noopener"
+                className="self-start text-xs font-semibold text-teal-700 hover:underline min-h-[32px] inline-flex items-center"
+              >
+                {templates.length > 0 ? "Gerenciar modelos" : "Criar modelo de texto"}
+              </a>
+            </div>
+          )}
+
           {isList && (
             <>
               {rows.map((row, index) => (
