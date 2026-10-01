@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Button from "@/components/ui/Button";
@@ -289,9 +291,20 @@ export function AtendimentoTabs({
             <ArrowLeft className="w-5 h-5 text-neutral-600" />
           </button>
 
-          <div className="w-11 h-11 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-            {initials(patient.name)}
-          </div>
+          {patient.photoUrl ? (
+            <Image
+              src={patient.photoUrl}
+              alt={`Foto de ${patient.name}`}
+              width={44}
+              height={44}
+              unoptimized
+              className="w-11 h-11 rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-11 h-11 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+              {initials(patient.name)}
+            </div>
+          )}
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">

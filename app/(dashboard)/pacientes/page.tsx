@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -230,13 +232,24 @@ export default function PacientesPage() {
           className="flex items-center gap-2 cursor-pointer hover:opacity-80"
           onClick={() => handlePatientClick(row.original.id)}
         >
-          <div
-            className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
-              row.original.id,
-            )}`}
-          >
-            {getInitials(row.original.name)}
-          </div>
+          {row.original.photoUrl ? (
+            <Image
+              src={row.original.photoUrl}
+              alt=""
+              width={32}
+              height={32}
+              unoptimized
+              className="w-8 h-8 flex-shrink-0 rounded-lg object-cover"
+            />
+          ) : (
+            <div
+              className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
+                row.original.id,
+              )}`}
+            >
+              {getInitials(row.original.name)}
+            </div>
+          )}
           <span
             className="text-xs font-semibold text-black hover:text-primary-600"
             title={row.original.name}

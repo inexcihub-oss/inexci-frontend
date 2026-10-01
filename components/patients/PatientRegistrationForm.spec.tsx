@@ -120,7 +120,7 @@ describe("PatientRegistrationForm", () => {
 
     await renderForm({ onSaved });
 
-    const phone = fieldByLabel(/^Telefone/i);
+    const phone = fieldByLabel(/^Telefone$/i);
     await user.clear(phone);
     await user.type(phone, "11977770000");
 
@@ -139,8 +139,14 @@ describe("PatientRegistrationForm", () => {
     });
   });
 
-  it("bloqueia o salvamento quando o CPF é apagado", async () => {
+  // CPF passou a ser opcional (MIG-01). Apagar tem que chegar ao backend como
+  // `""` — `undefined` seria "não mexer" e o CPF antigo continuaria lá.
+  it("apagar o CPF salva o paciente sem CPF", async () => {
     const user = userEvent.setup();
+    (patientService.update as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...patient,
+      cpf: undefined,
+    });
     await renderForm({ onSaved: vi.fn() });
 
     await user.clear(fieldByLabel(/^CPF/i));
@@ -148,8 +154,50 @@ describe("PatientRegistrationForm", () => {
       screen.getByRole("button", { name: /Salvar dados do paciente/i }),
     );
 
+    await waitFor(() =>
+      expect(patientService.update).toHaveBeenCalledWith(
+        "p-1",
+        expect.objectContaining({ cpf: "" }),
+      ),
+    );
+  });
+
+  it("bloqueia o salvamento com CPF incompleto", async () => {
+    const user = userEvent.setup();
+    await renderForm({ onSaved: vi.fn() });
+
+    const cpf = fieldByLabel(/^CPF/i);
+    await user.clear(cpf);
+    await user.type(cpf, "1234567");
+    await user.click(
+      screen.getByRole("button", { name: /Salvar dados do paciente/i }),
+    );
+
     expect(patientService.update).not.toHaveBeenCalled();
-    expect(await screen.findByText(/CPF é obrigatório/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/CPF deve ter 11 dígitos/i),
+    ).toBeInTheDocument();
+  });
+
+  it("salva e limpa o telefone secundário", async () => {
+    const user = userEvent.setup();
+    (patientService.update as ReturnType<typeof vi.fn>).mockResolvedValue(
+      patient,
+    );
+    await renderForm({ onSaved: vi.fn() });
+
+    const secundario = fieldByLabel(/^Telefone secundário/i);
+    await user.type(secundario, "2422334455");
+    await user.click(
+      screen.getByRole("button", { name: /Salvar dados do paciente/i }),
+    );
+
+    await waitFor(() =>
+      expect(patientService.update).toHaveBeenCalledWith(
+        "p-1",
+        expect.objectContaining({ secondaryPhone: "2422334455" }),
+      ),
+    );
   });
 
   /**

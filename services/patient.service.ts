@@ -6,7 +6,12 @@ export interface Patient {
   name: string;
   email?: string;
   phone?: string;
+  /** Telefone adicional (fixo, recado). */
+  secondaryPhone?: string;
+  /** Opcional: estrangeiros, menores e pacientes migrados podem não ter. */
   cpf?: string;
+  /** URL assinada da foto (expira); `null` quando não há foto. */
+  photoUrl?: string | null;
   birthDate?: string;
   gender?: string;
   address?: string;
@@ -28,7 +33,15 @@ export interface UpdatePatientPayload {
   name?: string;
   email?: string;
   phone?: string;
+  /** `""` limpa o segundo telefone. */
+  secondaryPhone?: string;
+  /** `""` limpa o CPF (o backend grava `null`). */
   cpf?: string;
+  /**
+   * Caminho devolvido por `uploadService.uploadSingle(file, "patient-photos")`.
+   * `null` remove a foto.
+   */
+  photoPath?: string | null;
   birthDate?: string;
   gender?: string;
   address?: string;
@@ -46,7 +59,6 @@ export interface UpdatePatientPayload {
 
 export interface CreatePatientPayload extends UpdatePatientPayload {
   name: string;
-  cpf: string;
 }
 
 interface BackendPatient {
@@ -54,7 +66,9 @@ interface BackendPatient {
   name: string;
   email?: string;
   phone?: string;
-  cpf?: string;
+  secondaryPhone?: string | null;
+  cpf?: string | null;
+  photoUrl?: string | null;
   birthDate?: string | Date;
   gender?: string;
   address?: string;
@@ -78,7 +92,9 @@ function mapBackendPatient(p: BackendPatient): Patient {
     name: p.name,
     email: p.email,
     phone: p.phone,
-    cpf: p.cpf,
+    secondaryPhone: p.secondaryPhone ?? undefined,
+    cpf: p.cpf ?? undefined,
+    photoUrl: p.photoUrl ?? null,
     birthDate: p.birthDate
       ? typeof p.birthDate === "string"
         ? p.birthDate.substring(0, 10)
@@ -118,15 +134,35 @@ export type PatientListItem = Pick<
   | "cpf"
   | "email"
   | "phone"
+  | "photoUrl"
   | "birthDate"
   | "createdAt"
   | "updatedAt"
 >;
 
 function mapPatientListItem(p: BackendPatient): PatientListItem {
-  const { id, name, cpf, email, phone, birthDate, createdAt, updatedAt } =
-    mapBackendPatient(p);
-  return { id, name, cpf, email, phone, birthDate, createdAt, updatedAt };
+  const {
+    id,
+    name,
+    cpf,
+    email,
+    phone,
+    photoUrl,
+    birthDate,
+    createdAt,
+    updatedAt,
+  } = mapBackendPatient(p);
+  return {
+    id,
+    name,
+    cpf,
+    email,
+    phone,
+    photoUrl,
+    birthDate,
+    createdAt,
+    updatedAt,
+  };
 }
 
 export interface PatientListParams {
@@ -193,8 +229,8 @@ export const patientService = {
    * Cria um novo paciente
    */
   async create(payload: CreatePatientPayload): Promise<Patient> {
-    const response = await api.post("/patients", payload);
-    return response.data;
+    const response = await api.post<BackendPatient>("/patients", payload);
+    return mapBackendPatient(response.data);
   },
 
   /**
@@ -204,8 +240,11 @@ export const patientService = {
     patientId: string,
     payload: UpdatePatientPayload,
   ): Promise<Patient> {
-    const response = await api.patch(`/patients/${patientId}`, payload);
-    return response.data;
+    const response = await api.patch<BackendPatient>(
+      `/patients/${patientId}`,
+      payload,
+    );
+    return mapBackendPatient(response.data);
   },
 
   /**

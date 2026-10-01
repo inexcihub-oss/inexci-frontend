@@ -24,6 +24,7 @@ interface FormData {
   cpf: string;
   email: string;
   phone: string;
+  secondaryPhone: string;
   birthDate: string;
   gender: string;
   address: string;
@@ -45,6 +46,7 @@ function formDataFrom(patient: Patient): FormData {
     cpf: patient.cpf || "",
     email: patient.email || "",
     phone: patient.phone || "",
+    secondaryPhone: patient.secondaryPhone || "",
     birthDate: patient.birthDate || "",
     gender: patient.gender || "",
     address: patient.address || "",
@@ -126,8 +128,11 @@ export function PatientRegistrationForm({
 
   const handleSave = async () => {
     const cpf = formData.cpf.replace(/\D/g, "");
-    if (!cpf) {
-      setError("CPF é obrigatório.");
+    // CPF é opcional (estrangeiros, menores, pacientes migrados), mas quando
+    // informado tem que estar completo. A SC continua cobrando CPF como
+    // pendência antes de avançar.
+    if (cpf && cpf.length !== 11) {
+      setError("CPF deve ter 11 dígitos.");
       return;
     }
 
@@ -135,7 +140,10 @@ export function PatientRegistrationForm({
     try {
       const saved = await patientService.update(patient.id, {
         name: formData.name,
+        // Vão sempre, mesmo vazios: `""` é como o backend sabe que é para
+        // apagar (vira `null`). `undefined` significaria "não mexer".
         cpf,
+        secondaryPhone: formData.secondaryPhone,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
         birthDate: formData.birthDate || undefined,
@@ -188,7 +196,6 @@ export function PatientRegistrationForm({
               setField("cpf", e.target.value.replace(/\D/g, ""))
             }
             placeholder="000.000.000-00"
-            required
           />
           <DateInput
             label="Data de nascimento"
@@ -208,6 +215,14 @@ export function PatientRegistrationForm({
               setField("phone", e.target.value.replace(/\D/g, ""))
             }
             placeholder="(00) 00000-0000"
+          />
+          <Input
+            label="Telefone secundário"
+            value={formatPhone(formData.secondaryPhone)}
+            onChange={(e) =>
+              setField("secondaryPhone", e.target.value.replace(/\D/g, ""))
+            }
+            placeholder="Fixo ou recado"
           />
           <Input
             label="E-mail"

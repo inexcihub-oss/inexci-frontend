@@ -93,3 +93,56 @@ describe("NewPatientModal + cadastro de convênio", () => {
     expect(screen.queryByText(/Corrija os campos/i)).not.toBeInTheDocument();
   });
 });
+
+describe("NewPatientModal — CPF opcional", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(healthPlanService.getAll).mockResolvedValue([]);
+    vi.mocked(patientService.create).mockResolvedValue({
+      id: "p-1",
+      name: "Ana Souza",
+    } as never);
+  });
+
+  it("cria o paciente sem CPF, sem mandar o campo", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(
+      screen.getByRole("button", { name: /adicionar paciente/i }),
+    );
+
+    await waitFor(() => expect(patientService.create).toHaveBeenCalled());
+    expect(vi.mocked(patientService.create).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ name: "Ana Souza", cpf: undefined }),
+    );
+  });
+
+  it("continua validando o CPF quando ele é informado", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.type(screen.getByPlaceholderText("123.456.789-00"), "1234");
+    await user.click(
+      screen.getByRole("button", { name: /adicionar paciente/i }),
+    );
+
+    // A mensagem aparece no campo e no resumo do toast.
+    expect(
+      (await screen.findAllByText(/CPF deve ter 11 dígitos/i)).length,
+    ).toBeGreaterThan(0);
+    expect(patientService.create).not.toHaveBeenCalled();
+  });
+
+  it("não marca o CPF como obrigatório", () => {
+    renderModal();
+
+    expect(screen.getByPlaceholderText("123.456.789-00")).not.toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+    expect(screen.getByText("CPF (opcional)")).toBeInTheDocument();
+  });
+});

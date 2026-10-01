@@ -9,6 +9,7 @@ import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { patientService, Patient } from "@/services/patient.service";
 import { PatientRegistrationForm } from "@/components/patients/PatientRegistrationForm";
+import { PatientPhotoField } from "@/components/patients/PatientPhotoField";
 import { PatientClinicalTimeline } from "@/components/clinical/PatientClinicalTimeline";
 import { PatientDocuments } from "@/components/clinical/PatientDocuments";
 import { PatientTimelineSidebar } from "@/components/clinical/PatientTimelineSidebar";
@@ -152,9 +153,16 @@ export default function PacienteDetalhePage() {
         sidebarIcon="calendar"
         sidebarContent={sidebarContent}
       >
-        {/* Ação principal do paciente */}
-        {podeAgenda && (
-          <div className="flex justify-end">
+        {/* Foto + ação principal do paciente */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <PatientPhotoField
+            patient={patient}
+            onChange={(saved) => {
+              setPatient(saved);
+              showToast("Foto do paciente atualizada.", "success");
+            }}
+          />
+          {podeAgenda && (
             <button
               onClick={() => setIsNewAppointmentOpen(true)}
               className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
@@ -162,8 +170,8 @@ export default function PacienteDetalhePage() {
               <Plus className="w-4 h-4" strokeWidth={2.2} />
               <span className="text-xs font-semibold">Nova consulta</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Seção: Prontuário — some inteira sem Atendimento, em vez de
             mostrar um título com nada embaixo. */}

@@ -99,7 +99,7 @@ export function NewPatientModal({
       try {
         const payload: CreatePatientPayload = {
           name: data.name.trim(),
-          cpf: unmask(data.cpf),
+          cpf: data.cpf ? unmask(data.cpf) : undefined,
           phone: data.phone ? unmask(data.phone) : undefined,
           email: data.email || undefined,
           birthDate: data.birthDate || undefined,
@@ -166,9 +166,8 @@ export function NewPatientModal({
                 {...form.getFieldProps("name")}
               />
               <Input
-                label="CPF"
+                label="CPF (opcional)"
                 mask="cpf"
-                aria-required="true"
                 placeholder="123.456.789-00"
                 {...form.getFieldProps("cpf")}
               />
