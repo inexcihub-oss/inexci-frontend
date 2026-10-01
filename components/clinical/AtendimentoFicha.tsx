@@ -57,7 +57,14 @@ export function AtendimentoFicha({
   onFieldChange,
   readOnly,
   surgeryRequestId,
+  allowSurgicalIndication = true,
 }: {
+  /**
+   * Indicação cirúrgica é ato de médico (CRM): abre uma SC em nome dele. Para
+   * psicologia, nutrição, enfermagem etc. o card some — a não ser que a ficha
+   * já tenha a indicação gravada, caso em que o resultado continua visível.
+   */
+  allowSurgicalIndication?: boolean;
   fields: FichaFields;
   onFieldChange: <K extends keyof FichaFields>(
     key: K,
@@ -127,12 +134,14 @@ export function AtendimentoFicha({
         />
       </SectionCard>
 
-      <IndicacaoCirurgicaCard
-        checked={fields.surgicalIndication}
-        onChange={(v) => onFieldChange("surgicalIndication", v)}
-        readOnly={readOnly}
-        surgeryRequestId={surgeryRequestId}
-      />
+      {(allowSurgicalIndication || fields.surgicalIndication) && (
+        <IndicacaoCirurgicaCard
+          checked={fields.surgicalIndication}
+          onChange={(v) => onFieldChange("surgicalIndication", v)}
+          readOnly={readOnly || !allowSurgicalIndication}
+          surgeryRequestId={surgeryRequestId}
+        />
+      )}
     </div>
   );
 }

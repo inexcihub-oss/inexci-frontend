@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyArea, Permission } from "@/lib/permissions";
@@ -27,6 +27,7 @@ import { extractTemplateTussItemsForCreate } from "@/components/procedures/norma
 import { tussService } from "@/services/tuss.service";
 import { AvailableDoctor } from "@/types";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { canOwnSurgeryRequest } from "@/lib/professional-council";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 import { priorityColors } from "@/lib/design-system";
@@ -113,8 +114,14 @@ export function CreateSurgeryRequestWizard({
     useState<HealthPlan | null>(null);
 
   // Available doctors — usa React Query para evitar re-fetch a cada abertura do modal
-  const { data: availableDoctors = [], isLoading: loadingDoctors } =
+  const { data: allDoctors = [], isLoading: loadingDoctors } =
     useAvailableDoctors();
+  // SC é de médico (CRM): psicóloga, nutricionista etc. aparecem na Agenda,
+  // mas não aqui. O backend também recusa.
+  const availableDoctors = useMemo(
+    () => allDoctors.filter(canOwnSurgeryRequest),
+    [allDoctors],
+  );
   const [selectedDoctor, setSelectedDoctor] = useState<AvailableDoctor | null>(
     null,
   );

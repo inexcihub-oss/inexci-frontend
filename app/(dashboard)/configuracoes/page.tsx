@@ -29,6 +29,11 @@ import api from "@/lib/api";
 import { userService } from "@/services/user.service";
 import { notificationService } from "@/services/notification.service";
 import { uploadService } from "@/services/upload.service";
+import {
+  COUNCIL_OPTIONS,
+  councilOf,
+  ProfessionalCouncil,
+} from "@/lib/professional-council";
 import { clearAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import dynamic from "next/dynamic";
 const BillingSection = dynamic(
@@ -66,8 +71,10 @@ interface UserProfile {
   document: string;
   birthDate: string;
   gender: string;
-  // Campos específicos do médico (lidos de doctor_profile)
+  // Campos específicos do profissional (lidos de doctor_profile)
   specialty?: string;
+  /** Só leitura aqui: quem troca o conselho é a administração da conta. */
+  council?: ProfessionalCouncil;
   crm?: string;
   crmState?: string;
   signatureImageUrl?: string;
@@ -440,6 +447,7 @@ function ConfiguracoesPageInner() {
             : "",
           gender: profileData.gender || "",
           specialty: dp?.specialty || "",
+          council: councilOf(dp),
           crm: dp?.crm || "",
           crmState: dp?.crmState || "",
           signatureImageUrl: dp?.signatureUrl || "",
@@ -484,6 +492,7 @@ function ConfiguracoesPageInner() {
             birthDate: "",
             gender: "",
             specialty: dp?.specialty || "",
+            council: councilOf(dp),
             crm: dp?.crm || "",
             crmState: dp?.crmState || "",
             isDoctor: user.isDoctor || false,
@@ -950,11 +959,22 @@ function ConfiguracoesPageInner() {
                 Dados Profissionais
               </h3>
               <p className="text-sm text-gray-500">
-                Informações do registro médico
+                Informações do registro profissional
               </p>
             </CardHeader>
             <CardContent className="p-6 pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Input
+                  label="Conselho"
+                  value={
+                    COUNCIL_OPTIONS.find(
+                      (opt) => opt.value === (profile.council ?? "CRM"),
+                    )?.label ?? "CRM"
+                  }
+                  disabled
+                  readOnly
+                  title="Para trocar o conselho, fale com a administração da conta."
+                />
                 <Input
                   label="Especialidade"
                   value={profile.specialty || ""}
@@ -964,7 +984,7 @@ function ConfiguracoesPageInner() {
                   placeholder="Ex: Ortopedia"
                 />
                 <Input
-                  label="CRM"
+                  label="Número no conselho"
                   value={profile.crm || ""}
                   onChange={(e) =>
                     setProfile({ ...profile, crm: e.target.value })
@@ -972,7 +992,7 @@ function ConfiguracoesPageInner() {
                   placeholder="00000"
                 />
                 <Select
-                  label="UF do CRM"
+                  label="UF do conselho"
                   value={profile.crmState || ""}
                   onChange={(e) =>
                     setProfile({ ...profile, crmState: e.target.value })

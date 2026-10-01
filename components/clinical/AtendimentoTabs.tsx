@@ -109,7 +109,7 @@ export function AtendimentoTabs({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isDoctor } = useAuth();
+  const { isDoctor, isPhysician } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
   const { emTour } = useOnboarding();
   // Guarda por PROVENIÊNCIA, não só pelo estado do tour: `/atendimento/tour-demo`
@@ -471,11 +471,14 @@ export function AtendimentoTabs({
                 onFieldChange={handleFieldChange}
                 readOnly={readOnly}
                 surgeryRequestId={record?.surgeryRequestId ?? null}
+                allowSurgicalIndication={isPhysician}
               />
 
               {/* Receita, atestado e pedido de exame saem com o CRM e a
-                  assinatura do médico da consulta — só ele emite. */}
-              {isDoctor && (
+                  assinatura do médico da consulta — só médico (CRM) emite.
+                  Psicologia, nutrição, enfermagem etc. registram a ficha,
+                  mas não veem estes botões (o backend também recusa). */}
+              {isPhysician && (
                 <ClinicalDocumentActions
                   ensureRecordId={ensureRecordId}
                   cidCodes={fields.cidCodes}

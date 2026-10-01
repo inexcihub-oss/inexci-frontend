@@ -46,6 +46,11 @@ import { isValidCpf } from "@/lib/validators";
 import { Permission } from "@/lib/permissions";
 import { buildCollaboratorUpdatePayload } from "@/lib/collaborator-update";
 import {
+  COUNCIL_OPTIONS,
+  councilOf,
+  ProfessionalCouncil,
+} from "@/lib/professional-council";
+import {
   criarColaboradorDemo,
   TOUR_DEMO_COLLABORATOR_ID,
 } from "@/lib/onboarding/demo-data";
@@ -123,6 +128,7 @@ export default function AssistenteDetalhePage() {
     state: "",
     // Doctor-specific fields
     isDoctor: false,
+    council: "CRM" as ProfessionalCouncil,
     specialty: "",
     crm: "",
     crmState: "",
@@ -181,6 +187,7 @@ export default function AssistenteDetalhePage() {
         city: "",
         state: "",
         isDoctor: false,
+        council: "CRM" as ProfessionalCouncil,
         specialty: "",
         crm: "",
         crmState: "",
@@ -235,6 +242,7 @@ export default function AssistenteDetalhePage() {
         state: collab.state || "",
         // Doctor-specific
         isDoctor: collab.isDoctor === true,
+        council: councilOf(dp),
         specialty: dp?.specialty || "",
         crm: dp?.crm || "",
         crmState: dp?.crmState || "",
@@ -316,8 +324,13 @@ export default function AssistenteDetalhePage() {
       return;
     }
 
-    // O backend exige CRM e UF para gravar alguém como médico.
-    if (formData.isDoctor && (!formData.crm.trim() || !formData.crmState)) {
+    // O backend exige número e UF para médico (CRM); os demais conselhos
+    // podem ficar sem registro cadastrado.
+    if (
+      formData.isDoctor &&
+      formData.council === "CRM" &&
+      (!formData.crm.trim() || !formData.crmState)
+    ) {
       showToast(
         "Para marcar o colaborador como médico, informe CRM e estado do CRM.",
         "error",
@@ -336,6 +349,7 @@ export default function AssistenteDetalhePage() {
         email: normalizedEmail,
         permissions: formData.permissions,
         isDoctor: formData.isDoctor,
+        council: formData.council,
         crm: formData.crm.trim(),
         crmState: formData.crmState,
         specialty: formData.specialty.trim(),
@@ -371,6 +385,11 @@ export default function AssistenteDetalhePage() {
       const jaEraMedico = originalData?.isDoctor === true;
       if (formData.isDoctor && jaEraMedico && collaborator.doctorProfile?.id) {
         await userService.updateDoctorProfile(collaborator.id, {
+          // Conselho só vai quando mudou: trocar é ato de Administração no
+          // backend, e reenviar o mesmo valor não muda nada.
+          ...(formData.council !== originalData?.council
+            ? { council: formData.council }
+            : {}),
           crm: formData.crm || undefined,
           crmState: formData.crmState || undefined,
           specialty: formData.specialty || undefined,
@@ -773,11 +792,14 @@ export default function AssistenteDetalhePage() {
               className="mt-0.5 h-5 w-5 shrink-0 rounded-md accent-primary-500"
             />
             <span className="min-w-0 flex-1">
-              <span className="ds-section-title block">É médico</span>
+              <span className="ds-section-title block">
+                É profissional de saúde
+              </span>
               <span className="mt-1 block text-xs leading-snug text-gray-500">
-                Cria o perfil médico e libera Agenda, Atendimento e
-                Solicitações cirúrgicas automaticamente. Desmarcar remove o
-                perfil e devolve o colaborador às áreas marcadas manualmente.
+                Cria o perfil profissional e libera Agenda e Atendimento; se o
+                conselho for CRM (médico), também Solicitações cirúrgicas.
+                Desmarcar remove o perfil e devolve o colaborador às áreas
+                marcadas manualmente.
               </span>
             </span>
           </label>
@@ -795,15 +817,40 @@ export default function AssistenteDetalhePage() {
                     placeholder="Ex: Ortopedia, Cardiologia..."
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <Select
+                    label="Conselho"
+                    value={formData.council}
+                    onChange={(e) =>
+                      handleInputChange("council", e.target.value)
+                    }
+                    options={COUNCIL_OPTIONS}
+                  />
+                  {formData.council !== "CRM" && (
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      Tem agenda e prontuário próprios. Receita, atestado,
+                      pedido de exame e indicação cirúrgica são do médico
+                      (CRM).
+                    </p>
+                  )}
+                </div>
                 <Input
-                  label="CRM"
+                  label={
+                    formData.council === "CRM"
+                      ? "Número no conselho"
+                      : "Número no conselho (opcional)"
+                  }
                   value={formData.crm}
                   onChange={(e) => handleInputChange("crm", e.target.value)}
                   placeholder="000000"
-                  aria-required="true"
+                  aria-required={formData.council === "CRM"}
                 />
                 <Select
-                  label="Estado do CRM"
+                  label={
+                    formData.council === "CRM"
+                      ? "UF do conselho"
+                      : "UF do conselho (opcional)"
+                  }
                   value={formData.crmState}
                   onChange={(e) => handleInputChange("crmState", e.target.value)}
                   options={STATE_UF_OPTIONS}
@@ -889,6 +936,7 @@ export default function AssistenteDetalhePage() {
           <PermissionsSection
             value={formData.permissions}
             isDoctor={formData.isDoctor}
+            isPhysician={formData.council === "CRM"}
             onChange={handlePermissionsChange}
           />
           <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end sm:gap-3">

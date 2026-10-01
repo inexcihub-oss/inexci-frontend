@@ -1,4 +1,5 @@
 import api from "@/lib/api";
+import type { ProfessionalCouncil } from "@/lib/professional-council";
 import { DoctorProfile } from "@/types";
 import { uploadService } from "@/services/upload.service";
 
@@ -115,6 +116,8 @@ export const userService = {
   async updateDoctorProfile(
     doctorProfileId: string,
     data: {
+      /** Só a administração da conta troca o conselho (o backend recusa os demais). */
+      council?: ProfessionalCouncil;
       crm?: string;
       crmState?: string;
       specialty?: string;

@@ -73,8 +73,13 @@ import { Permission } from "@/lib/permissions";
 
 // `can` concede tudo por padrão — os testes deste arquivo focam no eixo
 // `isDoctor`; a permissão Solicitações é exercida à parte, mais abaixo.
-let authState: { isDoctor: boolean; can: (p: Permission) => boolean } = {
+let authState: {
+  isDoctor: boolean;
+  isPhysician?: boolean;
+  can: (p: Permission) => boolean;
+} = {
   isDoctor: true,
+  isPhysician: true,
   can: () => true,
 };
 vi.mock("@/contexts/AuthContext", () => ({
@@ -158,7 +163,7 @@ describe("AtendimentoTabs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     searchParams = new URLSearchParams();
-    authState = { isDoctor: true, can: () => true };
+    authState = { isDoctor: true, isPhysician: true, can: () => true };
     onboardingMockState.emTour = false;
     (healthPlanService.getById as ReturnType<typeof vi.fn>).mockResolvedValue(
       null,
@@ -429,6 +434,7 @@ describe("AtendimentoTabs", () => {
   it("esconde o link da SC para quem não tem a permissão Solicitações", async () => {
     authState = {
       isDoctor: true,
+      isPhysician: true,
       can: (p) => p !== Permission.SOLICITACOES,
     };
     const user = userEvent.setup();
@@ -756,6 +762,39 @@ describe("AtendimentoTabs", () => {
    * leitura: sem salvar, sem finalizar e sem emitir documento com o CRM e a
    * assinatura do médico.
    */
+  /**
+   * MIG-02: psicologia, nutrição, enfermagem etc. têm perfil e registram a
+   * própria ficha, mas receita/atestado/pedido de exame e indicação cirúrgica
+   * são atos de médico (CRM).
+   */
+  describe("profissional de saúde que não é médico", () => {
+    beforeEach(() => {
+      authState = { isDoctor: true, isPhysician: false, can: () => true };
+    });
+
+    it("registra a ficha, sem documentos nem indicação cirúrgica", () => {
+      renderTabs();
+
+      expect(
+        screen.getAllByRole("button", { name: /Salvar rascunho/i }).length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.queryByRole("button", { name: /receita/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("checkbox", { name: "Paciente cirúrgico" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("mostra em leitura a indicação que já estava gravada", () => {
+      renderTabs(recordFixture({ surgicalIndication: true }));
+
+      expect(
+        screen.getByRole("checkbox", { name: "Paciente cirúrgico" }),
+      ).toBeDisabled();
+    });
+  });
+
   describe("usuário não-médico", () => {
     beforeEach(() => {
       authState = { isDoctor: false, can: () => true };

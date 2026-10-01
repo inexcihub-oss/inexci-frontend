@@ -29,7 +29,13 @@ interface AuthContextData {
   loading: boolean;
   /** True quando há uma sessão resolvida em memória (usuário carregado). */
   isAuthenticated: boolean;
+  /** Tem perfil profissional (qualquer conselho): atende e tem agenda. */
   isDoctor: boolean;
+  /**
+   * Médico (CRM): emite receita, atestado e pedido de exame e indica
+   * cirurgia. Use este, não `isDoctor`, para esses gates.
+   */
+  isPhysician: boolean;
   isAdmin: boolean;
   /**
    * True apenas para o **dono** da conta (`user.id === user.accountId`).
@@ -322,6 +328,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAuthenticated = useMemo(() => !!user, [user]);
   const isDoctor = useMemo(() => user?.isDoctor ?? false, [user]);
+  const isPhysician = useMemo(() => user?.isPhysician ?? false, [user]);
   const isAdmin = useMemo(() => user?.role === "admin", [user]);
   const accountId = useMemo(() => user?.accountId ?? null, [user]);
   const isAccountOwner = useMemo(
@@ -404,6 +411,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       isAuthenticated,
       isDoctor,
+      isPhysician,
       isAdmin,
       isAccountOwner,
       accountId,
@@ -431,6 +439,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       isAuthenticated,
       isDoctor,
+      isPhysician,
       isAdmin,
       isAccountOwner,
       accountId,

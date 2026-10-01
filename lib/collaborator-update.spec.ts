@@ -116,4 +116,51 @@ describe("buildCollaboratorUpdatePayload", () => {
       ).toEqual({ email: "novo@clinica.com" });
     });
   });
+  describe("conselho profissional (MIG-02)", () => {
+    it("promove a nutricionista sem número, mandando só o conselho", () => {
+      expect(
+        buildCollaboratorUpdatePayload(original, {
+          ...original,
+          isDoctor: true,
+          council: "CRN",
+          crm: "",
+          crmState: "",
+        }),
+      ).toEqual({ isDoctor: true, council: "CRN" });
+    });
+
+    it("leva número e UF de outro conselho quando preenchidos", () => {
+      expect(
+        buildCollaboratorUpdatePayload(original, {
+          ...original,
+          isDoctor: true,
+          council: "COREN",
+          crm: "123",
+          crmState: "RJ",
+        }),
+      ).toEqual({
+        isDoctor: true,
+        council: "COREN",
+        crm: "123",
+        crmState: "RJ",
+      });
+    });
+
+    it("médico CRM explícito continua mandando número e UF", () => {
+      expect(
+        buildCollaboratorUpdatePayload(original, {
+          ...original,
+          isDoctor: true,
+          council: "CRM",
+          crm: "123456",
+          crmState: "SP",
+        }),
+      ).toEqual({
+        isDoctor: true,
+        council: "CRM",
+        crm: "123456",
+        crmState: "SP",
+      });
+    });
+  });
 });

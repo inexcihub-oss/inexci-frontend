@@ -1,10 +1,13 @@
 import { Permission } from "@/lib/permissions";
+import type { ProfessionalCouncil } from "@/lib/professional-council";
 
 export interface CollaboratorUpdateState {
   email: string;
   permissions: Permission[];
-  /** "É médico" — cria/remove o `doctor_profile` no backend. */
+  /** "É profissional de saúde" — cria/remove o `doctor_profile` no backend. */
   isDoctor?: boolean;
+  /** Conselho do perfil criado. Ausente = o backend assume CRM. */
+  council?: ProfessionalCouncil;
   crm?: string;
   crmState?: string;
   specialty?: string;
@@ -14,6 +17,7 @@ export interface CollaboratorUpdatePayload {
   email?: string;
   permissions?: Permission[];
   isDoctor?: boolean;
+  council?: ProfessionalCouncil;
   crm?: string;
   crmState?: string;
   specialty?: string;
@@ -26,9 +30,9 @@ export interface CollaboratorUpdatePayload {
  * `permissions` e `isDoctor` — o `PATCH /users/:id` genérico
  * (`updateProfile`) não aceita nenhum dos dois.
  *
- * Quando `isDoctor` muda, CRM/UF/especialidade vão junto: o DTO do backend
- * (`UpdateCollaboratorDto`) exige `crm` e `crmState` sempre que
- * `isDoctor === true`.
+ * Quando `isDoctor` muda, conselho/número/UF/especialidade vão junto: o
+ * backend exige número e UF quando o conselho é CRM (o default). Para os
+ * demais conselhos, número e UF são opcionais e só vão se preenchidos.
  *
  * Retorna `null` quando nada mudou, para o chamador pular a chamada.
  */
@@ -50,13 +54,25 @@ export function buildCollaboratorUpdatePayload(
     ...(isDoctorChanged
       ? {
           isDoctor: current.isDoctor,
-          // CRM/UF só fazem sentido (e só são aceitos) quando vira médico.
+          // Registro só faz sentido (e só é aceito) quando vira profissional.
           ...(current.isDoctor
-            ? {
-                crm: current.crm ?? "",
-                crmState: current.crmState ?? "",
-                ...(current.specialty ? { specialty: current.specialty } : {}),
-              }
+            ? current.council && current.council !== "CRM"
+              ? {
+                  council: current.council,
+                  ...(current.crm ? { crm: current.crm } : {}),
+                  ...(current.crmState ? { crmState: current.crmState } : {}),
+                  ...(current.specialty
+                    ? { specialty: current.specialty }
+                    : {}),
+                }
+              : {
+                  ...(current.council ? { council: current.council } : {}),
+                  crm: current.crm ?? "",
+                  crmState: current.crmState ?? "",
+                  ...(current.specialty
+                    ? { specialty: current.specialty }
+                    : {}),
+                }
             : {}),
         }
       : {}),

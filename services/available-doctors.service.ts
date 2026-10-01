@@ -1,14 +1,19 @@
 import api from "@/lib/api";
 import { getApiRecords } from "@/lib/api-response";
 import { AvailableDoctor } from "@/types";
+import {
+  councilOf,
+  ProfessionalCouncil,
+} from "@/lib/professional-council";
 
 interface BackendDoctorRecord {
   id: string;
   name: string;
   status?: string;
   doctorProfile?: {
-    crm?: string;
-    crmState?: string;
+    council?: ProfessionalCouncil;
+    crm?: string | null;
+    crmState?: string | null;
     specialty?: string;
   };
 }
@@ -39,6 +44,8 @@ export const availableDoctorsService = {
       crm: user.doctorProfile?.crm ?? "",
       crmState: user.doctorProfile?.crmState ?? "",
       specialty: user.doctorProfile?.specialty ?? undefined,
+      council: councilOf(user.doctorProfile),
+      isPhysician: councilOf(user.doctorProfile) === "CRM",
       status: user.status,
     }));
   },
