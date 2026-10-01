@@ -21,6 +21,21 @@ vi.mock("@/hooks/useClinics", () => ({
   CLINICS_QUERY_KEY: ["clinics"],
   useClinics: () => ({ data: clinics, isLoading: false }),
 }));
+
+const salas = vi.hoisted(() => ({
+  "clinic-1": [
+    { id: "room-1", clinicId: "clinic-1", name: "Consultório 01", active: true },
+    { id: "room-2", clinicId: "clinic-1", name: "Consultório 02", active: false },
+  ],
+}));
+vi.mock("@/hooks/useClinicRooms", () => ({
+  useClinicRooms: (clinicId: string | null) => ({
+    data: clinicId ? (salas as Record<string, unknown[]>)[clinicId] ?? [] : [],
+  }),
+}));
+vi.mock("@/hooks/useHealthPlans", () => ({
+  useHealthPlans: () => ({ data: [{ id: "hp-1", name: "UNIMED" }] }),
+}));
 /**
  * Estado compartilhado entre o factory (hoisted, roda antes do resto do
  * arquivo) e os testes: alterna o mock de `useAvailableDoctors` entre
@@ -353,5 +368,119 @@ describe("NewAppointmentModal — tour de onboarding", () => {
     expect(
       screen.getByRole("button", { name: /salvar alterações/i }),
     ).toBeDisabled();
+  });
+});
+
+describe("NewAppointmentModal — sala, convênio e encaixe (MIG-03)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+  });
+
+  const escolherClinica = () =>
+    fireEvent.change(screen.getByLabelText(/clínica/i), {
+      target: { value: "clinic-1" },
+    });
+  const agendar = () =>
+    fireEvent.click(screen.getByRole("button", { name: /agendar consulta/i }));
+
+  it("sem clínica não mostra o campo de sala", () => {
+    abrirModal();
+
+    expect(screen.queryByLabelText(/^sala$/i)).not.toBeInTheDocument();
+  });
+
+  it("lista só as salas ativas da clínica escolhida e envia a sala", async () => {
+    abrirModal();
+    escolherClinica();
+
+    const select = screen.getByLabelText(/^sala$/i);
+    expect(screen.getByText("Consultório 01")).toBeInTheDocument();
+    expect(screen.queryByText(/Consultório 02/)).not.toBeInTheDocument();
+
+    fireEvent.change(select, { target: { value: "room-1" } });
+    agendar();
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ clinicId: "clinic-1", roomId: "room-1" }),
+    );
+  });
+
+  it("trocar a clínica limpa a sala escolhida", async () => {
+    abrirModal();
+    escolherClinica();
+    fireEvent.change(screen.getByLabelText(/^sala$/i), {
+      target: { value: "room-1" },
+    });
+    fireEvent.change(screen.getByLabelText(/clínica/i), {
+      target: { value: "" },
+    });
+    agendar();
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ clinicId: null, roomId: null }),
+    );
+  });
+
+  it("convênio começa em particular e envia o escolhido", async () => {
+    abrirModal();
+
+    const convenio = screen.getByLabelText(/convênio/i) as HTMLSelectElement;
+    expect(convenio).toHaveValue("");
+    fireEvent.change(convenio, { target: { value: "hp-1" } });
+    agendar();
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ healthPlanId: "hp-1", isWalkIn: false }),
+    );
+  });
+
+  it("envia o encaixe marcado", async () => {
+    abrirModal();
+    fireEvent.click(screen.getByLabelText(/encaixe/i));
+    agendar();
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ isWalkIn: true }),
+    );
+  });
+
+  it("na edição só manda o que mudou", async () => {
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={{
+          id: "appt-1",
+          doctorId: "doctor-1",
+          patientId: "patient-1",
+          patient: { id: "patient-1", name: "João" },
+          type: "first_visit",
+          status: "scheduled",
+          scheduledAt: "2026-08-17T12:00:00.000Z",
+          durationMinutes: 30,
+          notes: null,
+          cancellationReason: null,
+          clinicId: "clinic-1",
+          clinic: { id: "clinic-1", name: "Unidade Centro" },
+          roomId: "room-1",
+          healthPlanId: null,
+          isWalkIn: false,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText(/encaixe/i));
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    const corpo = update.mock.calls[0][1];
+    expect(corpo).toEqual(expect.objectContaining({ isWalkIn: true }));
+    expect(corpo).not.toHaveProperty("roomId");
+    expect(corpo).not.toHaveProperty("healthPlanId");
   });
 });

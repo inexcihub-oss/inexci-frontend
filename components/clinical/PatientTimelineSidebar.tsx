@@ -28,6 +28,8 @@ import { ChevronRight, CalendarDays, Stethoscope } from "lucide-react";
 const APPOINTMENT_BADGE: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 text-blue-700",
   confirmed: "bg-indigo-50 text-indigo-700",
+  waiting: "bg-orange-50 text-orange-700",
+  in_progress: "bg-cyan-50 text-cyan-800",
   completed: "bg-green-50 text-green-700",
   cancelled: "bg-red-50 text-red-600",
   no_show: "bg-amber-50 text-amber-700",

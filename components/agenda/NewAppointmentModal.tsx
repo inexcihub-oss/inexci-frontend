@@ -16,6 +16,8 @@ import {
 } from "@/services/appointment.service";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useClinics } from "@/hooks/useClinics";
+import { useClinicRooms } from "@/hooks/useClinicRooms";
+import { useHealthPlans } from "@/hooks/useHealthPlans";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 import { mensagemForaDoHorario } from "@/lib/business-hours";
@@ -80,6 +82,7 @@ export function NewAppointmentModal({
   const isEdit = !!appointment;
   const { data: doctors = [] } = useAvailableDoctors();
   const { data: clinics = [] } = useClinics();
+  const { data: healthPlans = [] } = useHealthPlans();
   const { emTour } = useOnboarding();
   // Guarda por PROVENIÊNCIA, não só pelo estado do tour: editar a consulta
   // fabricada continua bloqueado mesmo depois que o tour termina.
@@ -89,6 +92,9 @@ export function NewAppointmentModal({
   const [patientLabel, setPatientLabel] = useState("");
   const [doctorId, setDoctorId] = useState("");
   const [clinicId, setClinicId] = useState("");
+  const [roomId, setRoomId] = useState("");
+  const [healthPlanId, setHealthPlanId] = useState("");
+  const [isWalkIn, setIsWalkIn] = useState(false);
   const [type, setType] = useState<AppointmentType>("first_visit");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");
@@ -147,6 +153,9 @@ export function NewAppointmentModal({
       setPatientLabel(appointment.patient?.name ?? "");
       setDoctorId(appointment.doctorId);
       setClinicId(appointment.clinicId ?? "");
+      setRoomId(appointment.roomId ?? "");
+      setHealthPlanId(appointment.healthPlanId ?? "");
+      setIsWalkIn(appointment.isWalkIn ?? false);
       setType(appointment.type);
       setDate(d);
       setTime(t);
@@ -157,6 +166,9 @@ export function NewAppointmentModal({
       setPatientLabel(defaultPatientLabel ?? "");
       setDoctorId("");
       setClinicId("");
+      setRoomId("");
+      setHealthPlanId("");
+      setIsWalkIn(false);
       setType("first_visit");
       setDate(defaultDate ?? "");
       setTime(defaultTime ?? "09:00");
@@ -188,6 +200,17 @@ export function NewAppointmentModal({
     const { records } = await patientService.list({ search: term, take: 20 });
     return records.map((p) => ({ value: p.id, label: p.name }));
   }, []);
+
+  // Salas da clínica escolhida: só as ativas, mais a atual em edição (mesmo
+  // desativada), para não sumir da tela de quem só está mudando o horário.
+  const { data: roomsDaClinica = [] } = useClinicRooms(clinicId || null);
+  const salas = useMemo(
+    () =>
+      roomsDaClinica.filter(
+        (r) => r.active || (isEdit && r.id === appointment?.roomId),
+      ),
+    [roomsDaClinica, isEdit, appointment?.roomId],
+  );
 
   const canSubmit = useMemo(
     () => !!patientId && !!doctorId && !!date && /^\d{2}:\d{2}$/.test(time),
@@ -234,12 +257,18 @@ export function NewAppointmentModal({
         // inteiro com 404, e mandar `null` apagaria o vínculo histórico.
         const mudouClinica =
           (clinicId || null) !== (appointment.clinicId ?? null);
+        const mudouSala = (roomId || null) !== (appointment.roomId ?? null);
+        const mudouConvenio =
+          (healthPlanId || null) !== (appointment.healthPlanId ?? null);
         await appointmentService.update(appointment.id, {
           type,
           scheduledAt,
           durationMinutes: duration,
           notes,
           ...(mudouClinica ? { clinicId: clinicId || null } : {}),
+          ...(mudouSala ? { roomId: roomId || null } : {}),
+          ...(mudouConvenio ? { healthPlanId: healthPlanId || null } : {}),
+          ...(isWalkIn !== (appointment.isWalkIn ?? false) ? { isWalkIn } : {}),
         });
       } else {
         await appointmentService.create({
@@ -250,6 +279,9 @@ export function NewAppointmentModal({
           durationMinutes: duration,
           notes,
           clinicId: clinicId || null,
+          roomId: roomId || null,
+          healthPlanId: healthPlanId || null,
+          isWalkIn,
         });
       }
       onSaved();
@@ -332,7 +364,11 @@ export function NewAppointmentModal({
             id="clinica"
             className="ds-input"
             value={clinicId}
-            onChange={(e) => setClinicId(e.target.value)}
+            onChange={(e) => {
+              setClinicId(e.target.value);
+              // A sala é da clínica: trocar de clínica tira a sala.
+              setRoomId("");
+            }}
           >
             <option value="">Nenhuma</option>
             {appointment?.clinic &&
@@ -344,6 +380,49 @@ export function NewAppointmentModal({
             {clinics.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Sala (só quando a clínica tem salas cadastradas) */}
+        {clinicId && salas.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label htmlFor="sala" className="ds-label mb-0">
+              Sala
+            </label>
+            <select
+              id="sala"
+              className="ds-input"
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)}
+            >
+              <option value="">Sem sala definida</option>
+              {salas.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                  {r.active ? "" : " (desativada)"}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Convênio */}
+        <div className="flex flex-col gap-1">
+          <label htmlFor="convenio-consulta" className="ds-label mb-0">
+            Convênio
+          </label>
+          <select
+            id="convenio-consulta"
+            className="ds-input"
+            value={healthPlanId}
+            onChange={(e) => setHealthPlanId(e.target.value)}
+          >
+            <option value="">Particular</option>
+            {healthPlans.map((hp) => (
+              <option key={hp.id} value={hp.id}>
+                {hp.name}
               </option>
             ))}
           </select>
@@ -407,6 +486,22 @@ export function NewAppointmentModal({
             />
           </div>
         </div>
+
+        {/* Encaixe */}
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isWalkIn}
+            onChange={(e) => setIsWalkIn(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-teal-600"
+          />
+          <span className="text-sm text-neutral-700">
+            Encaixe
+            <span className="block text-xs text-neutral-500">
+              Marca mesmo havendo outra consulta no mesmo período.
+            </span>
+          </span>
+        </label>
 
         {/* Consultas já marcadas no dia */}
         {dayAppointments.length > 0 && (

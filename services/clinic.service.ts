@@ -36,6 +36,15 @@ export interface CreateClinicPayload {
   businessHours?: BusinessHours;
 }
 
+/** Sala (consultório) dentro de uma clínica. */
+export interface ClinicRoom {
+  id: string;
+  clinicId: string;
+  name: string;
+  /** Desativada some do agendamento, mas continua nas consultas antigas. */
+  active: boolean;
+}
+
 interface BackendClinic extends Omit<Clinic, "businessHours"> {
   businessHours?: Partial<BusinessHours> | null;
 }
@@ -87,5 +96,33 @@ export const clinicService = {
   async deleteMany(clinicIds: string[]): Promise<void> {
     if (!clinicIds.length) return;
     await api.post("/clinics/bulk-delete", { ids: clinicIds });
+  },
+
+  async listRooms(clinicId: string): Promise<ClinicRoom[]> {
+    const response = await api.get<ClinicRoom[]>(`/clinics/${clinicId}/rooms`);
+    return response.data ?? [];
+  },
+
+  async createRoom(clinicId: string, name: string): Promise<ClinicRoom> {
+    const response = await api.post<ClinicRoom>(`/clinics/${clinicId}/rooms`, {
+      name,
+    });
+    return response.data;
+  },
+
+  async updateRoom(
+    clinicId: string,
+    roomId: string,
+    payload: { name?: string; active?: boolean },
+  ): Promise<ClinicRoom> {
+    const response = await api.patch<ClinicRoom>(
+      `/clinics/${clinicId}/rooms/${roomId}`,
+      payload,
+    );
+    return response.data;
+  },
+
+  async deleteRoom(clinicId: string, roomId: string): Promise<void> {
+    await api.delete(`/clinics/${clinicId}/rooms/${roomId}`);
   },
 };

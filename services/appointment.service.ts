@@ -7,6 +7,10 @@ export type AppointmentType = "first_visit" | "return" | "follow_up";
 export type AppointmentStatus =
   | "scheduled"
   | "confirmed"
+  /** Paciente chegou e aguarda na recepção. */
+  | "waiting"
+  /** Atendimento em andamento (a ficha foi aberta). */
+  | "in_progress"
   | "completed"
   | "cancelled"
   | "no_show";
@@ -20,6 +24,8 @@ export const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = {
 export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
   scheduled: "Agendada",
   confirmed: "Confirmada",
+  waiting: "Aguardando",
+  in_progress: "Em atendimento",
   completed: "Realizada",
   cancelled: "Cancelada",
   no_show: "Faltou",
@@ -40,6 +46,16 @@ export interface Appointment {
   patient?: { id: string; name: string } | null;
   clinicId: string | null;
   clinic?: { id: string; name: string } | null;
+  /** Sala dentro da clínica. */
+  roomId?: string | null;
+  room?: { id: string; name: string } | null;
+  /** Encaixe: marcado de propósito em cima de outro horário. */
+  isWalkIn?: boolean;
+  /** Convênio da consulta; `null` = particular. */
+  healthPlanId?: string | null;
+  healthPlan?: { id: string; name: string } | null;
+  /** Quem agendou (ausente em consultas antigas). */
+  createdBy?: { id: string; name: string } | null;
 }
 
 interface BackendAppointment {
@@ -55,6 +71,16 @@ interface BackendAppointment {
   patient?: { id: string; name: string } | null;
   clinicId: string | null;
   clinic?: { id: string; name: string } | null;
+  /** Sala dentro da clínica. */
+  roomId?: string | null;
+  room?: { id: string; name: string } | null;
+  /** Encaixe: marcado de propósito em cima de outro horário. */
+  isWalkIn?: boolean;
+  /** Convênio da consulta; `null` = particular. */
+  healthPlanId?: string | null;
+  healthPlan?: { id: string; name: string } | null;
+  /** Quem agendou (ausente em consultas antigas). */
+  createdBy?: { id: string; name: string } | null;
 }
 
 function mapAppointment(a: BackendAppointment): Appointment {
@@ -74,6 +100,12 @@ function mapAppointment(a: BackendAppointment): Appointment {
     patient: a.patient ?? null,
     clinicId: a.clinicId ?? null,
     clinic: a.clinic ?? null,
+    roomId: a.roomId ?? null,
+    room: a.room ?? null,
+    isWalkIn: a.isWalkIn ?? false,
+    healthPlanId: a.healthPlanId ?? null,
+    healthPlan: a.healthPlan ?? null,
+    createdBy: a.createdBy ?? null,
   };
 }
 
@@ -86,12 +118,25 @@ export interface CreateAppointmentPayload {
   notes?: string;
   /** Local de atendimento. `null` = consulta sem unidade definida. */
   clinicId?: string | null;
+  /** Sala da clínica escolhida. `null` tira a sala. */
+  roomId?: string | null;
+  /** Encaixe: o backend não checa conflito de horário. */
+  isWalkIn?: boolean;
+  /** Convênio. `null` = particular. */
+  healthPlanId?: string | null;
 }
 
 export type UpdateAppointmentPayload = Partial<
   Pick<
     CreateAppointmentPayload,
-    "type" | "scheduledAt" | "durationMinutes" | "notes" | "clinicId"
+    | "type"
+    | "scheduledAt"
+    | "durationMinutes"
+    | "notes"
+    | "clinicId"
+    | "roomId"
+    | "isWalkIn"
+    | "healthPlanId"
   >
 >;
 

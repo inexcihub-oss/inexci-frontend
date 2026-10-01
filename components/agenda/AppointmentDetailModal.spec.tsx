@@ -244,3 +244,74 @@ describe("AppointmentDetailModal", () => {
     expect(screen.getByRole("button", { name: "Excluir" })).toBeDisabled();
   });
 });
+
+describe("AppointmentDetailModal — sala de espera e dados da consulta (MIG-03)", () => {
+  beforeEach(() => {
+    authState = { isDoctor: true, can: (p) => p === Permission.AGENDA };
+    onboardingMockState.emTour = false;
+  });
+
+  const botoes = () =>
+    screen
+      .getAllByRole("button")
+      .map((b) => b.textContent?.trim())
+      .filter(Boolean);
+
+  it("agendada e confirmada oferecem 'Chegou'", () => {
+    renderModal("scheduled");
+    expect(botoes()).toContain("Chegou");
+  });
+
+  it("aguardando oferece desfazer a chegada e mostra o status", () => {
+    renderModal("waiting");
+
+    expect(screen.getByText("Aguardando")).toBeInTheDocument();
+    expect(botoes()).toEqual(
+      expect.arrayContaining(["Desfazer chegada", "Realizada", "Faltou", "Cancelar"]),
+    );
+    expect(botoes()).not.toContain("Chegou");
+  });
+
+  it("em atendimento oferece continuar o atendimento", () => {
+    renderModal("in_progress");
+
+    expect(screen.getByText("Em atendimento")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Continuar atendimento" }),
+    ).toBeInTheDocument();
+  });
+
+  it("médico pode iniciar o atendimento de quem está aguardando", () => {
+    renderModal("waiting");
+
+    expect(
+      screen.getByRole("button", { name: "Iniciar atendimento" }),
+    ).toBeInTheDocument();
+  });
+
+  it("mostra encaixe, sala, convênio e quem agendou", () => {
+    renderAppointment({
+      ...consultaBase,
+      isWalkIn: true,
+      clinicId: "c-1",
+      clinic: { id: "c-1", name: "Unidade Centro" },
+      roomId: "r-1",
+      room: { id: "r-1", name: "Consultório 02" },
+      healthPlanId: "hp-1",
+      healthPlan: { id: "hp-1", name: "UNIMED" },
+      createdBy: { id: "u-1", name: "Carla" },
+    });
+
+    expect(screen.getByText("Encaixe")).toBeInTheDocument();
+    expect(screen.getByText(/Unidade Centro · Consultório 02/)).toBeInTheDocument();
+    expect(screen.getByText("UNIMED")).toBeInTheDocument();
+    expect(screen.getByText("Agendada por Carla")).toBeInTheDocument();
+  });
+
+  it("sem convênio mostra particular e nada de encaixe", () => {
+    renderModal("confirmed");
+
+    expect(screen.getByText("Particular")).toBeInTheDocument();
+    expect(screen.queryByText("Encaixe")).not.toBeInTheDocument();
+  });
+});

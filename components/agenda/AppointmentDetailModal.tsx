@@ -14,38 +14,51 @@ import {
 } from "@/services/appointment.service";
 import { cn } from "@/lib/utils";
 import { capitalizeFirst, formatDoctorName } from "@/lib/formatters";
-import { Clock, User, Tag, FileText, MapPin } from "lucide-react";
+import {
+  Clock,
+  CreditCard,
+  User,
+  Tag,
+  FileText,
+  MapPin,
+} from "lucide-react";
 
 const STATUS_BADGE: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 text-blue-700 border-blue-200",
   confirmed: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  waiting: "bg-orange-50 text-orange-700 border-orange-200",
+  in_progress: "bg-cyan-50 text-cyan-800 border-cyan-200",
   completed: "bg-green-50 text-green-700 border-green-200",
   cancelled: "bg-red-50 text-red-600 border-red-200",
   no_show: "bg-amber-50 text-amber-700 border-amber-200",
 };
 
+const ACAO = {
+  confirmar: { status: "confirmed", label: "Confirmar", cls: "text-indigo-700 border-indigo-200 hover:bg-indigo-50" },
+  chegou: { status: "waiting", label: "Chegou", cls: "text-orange-700 border-orange-200 hover:bg-orange-50" },
+  desfazerChegada: { status: "confirmed", label: "Desfazer chegada", cls: "text-indigo-700 border-indigo-200 hover:bg-indigo-50" },
+  realizada: { status: "completed", label: "Realizada", cls: "text-green-700 border-green-200 hover:bg-green-50" },
+  faltou: { status: "no_show", label: "Faltou", cls: "text-amber-700 border-amber-200 hover:bg-amber-50" },
+  cancelar: { status: "cancelled", label: "Cancelar", cls: "text-red-600 border-red-200 hover:bg-red-50" },
+  reabrir: { status: "scheduled", label: "Reabrir", cls: "text-blue-700 border-blue-200 hover:bg-blue-50" },
+} as const satisfies Record<string, { status: AppointmentStatus; label: string; cls: string }>;
+
+/**
+ * Ações rápidas por status. "Chegou" leva à sala de espera (aguardando); abrir
+ * a ficha leva a "em atendimento" pelo backend, por isso não há botão para
+ * isso aqui.
+ */
 const QUICK: Record<
   AppointmentStatus,
   { status: AppointmentStatus; label: string; cls: string }[]
 > = {
-  scheduled: [
-    { status: "confirmed", label: "Confirmar", cls: "text-indigo-700 border-indigo-200 hover:bg-indigo-50" },
-    { status: "completed", label: "Realizada", cls: "text-green-700 border-green-200 hover:bg-green-50" },
-    { status: "no_show", label: "Faltou", cls: "text-amber-700 border-amber-200 hover:bg-amber-50" },
-    { status: "cancelled", label: "Cancelar", cls: "text-red-600 border-red-200 hover:bg-red-50" },
-  ],
-  confirmed: [
-    { status: "completed", label: "Realizada", cls: "text-green-700 border-green-200 hover:bg-green-50" },
-    { status: "no_show", label: "Faltou", cls: "text-amber-700 border-amber-200 hover:bg-amber-50" },
-    { status: "cancelled", label: "Cancelar", cls: "text-red-600 border-red-200 hover:bg-red-50" },
-  ],
+  scheduled: [ACAO.confirmar, ACAO.chegou, ACAO.realizada, ACAO.faltou, ACAO.cancelar],
+  confirmed: [ACAO.chegou, ACAO.realizada, ACAO.faltou, ACAO.cancelar],
+  waiting: [ACAO.desfazerChegada, ACAO.realizada, ACAO.faltou, ACAO.cancelar],
+  in_progress: [ACAO.realizada, ACAO.cancelar],
   completed: [],
-  cancelled: [
-    { status: "scheduled", label: "Reabrir", cls: "text-blue-700 border-blue-200 hover:bg-blue-50" },
-  ],
-  no_show: [
-    { status: "scheduled", label: "Reabrir", cls: "text-blue-700 border-blue-200 hover:bg-blue-50" },
-  ],
+  cancelled: [ACAO.reabrir],
+  no_show: [ACAO.reabrir],
 };
 
 function formatWhen(iso: string, durationMinutes: number): string {
@@ -100,7 +113,9 @@ export function AppointmentDetailModal({
     appointment.status === "completed" ||
     (isDoctor &&
       (appointment.status === "scheduled" ||
-        appointment.status === "confirmed"));
+        appointment.status === "confirmed" ||
+        appointment.status === "waiting" ||
+        appointment.status === "in_progress"));
   // Mexer na consulta (status, editar, excluir) é ato de quem tem Agenda —
   // eixo diferente de `isDoctor`, que só decide o botão de atendimento acima.
   const podeAgenda = can(Permission.AGENDA);
@@ -113,14 +128,21 @@ export function AppointmentDetailModal({
           <h3 className="text-base font-bold text-neutral-900">
             {appointment.patient?.name ?? "Paciente"}
           </h3>
-          <span
-            className={cn(
-              "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border shrink-0",
-              STATUS_BADGE[appointment.status],
+          <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+            {appointment.isWalkIn && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200">
+                Encaixe
+              </span>
             )}
-          >
-            {APPOINTMENT_STATUS_LABELS[appointment.status]}
-          </span>
+            <span
+              className={cn(
+                "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border",
+                STATUS_BADGE[appointment.status],
+              )}
+            >
+              {APPOINTMENT_STATUS_LABELS[appointment.status]}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2 text-sm text-neutral-600">
@@ -137,8 +159,13 @@ export function AppointmentDetailModal({
             <Row icon={<MapPin className="w-4 h-4" />}>
               <span className="sr-only">Local de atendimento</span>
               {appointment.clinic.name}
+              {appointment.room && ` · ${appointment.room.name}`}
             </Row>
           )}
+          <Row icon={<CreditCard className="w-4 h-4" />}>
+            <span className="sr-only">Convênio</span>
+            {appointment.healthPlan?.name ?? "Particular"}
+          </Row>
           {doctorName && (
             <Row icon={<User className="w-4 h-4" />}>
               {formatDoctorName(doctorName)}
@@ -146,6 +173,11 @@ export function AppointmentDetailModal({
           )}
           {appointment.notes && (
             <Row icon={<FileText className="w-4 h-4" />}>{appointment.notes}</Row>
+          )}
+          {appointment.createdBy && (
+            <p className="text-xs text-neutral-400">
+              Agendada por {appointment.createdBy.name}
+            </p>
           )}
         </div>
 
@@ -207,7 +239,9 @@ export function AppointmentDetailModal({
             >
               {appointment.status === "completed"
                 ? "Ver atendimento"
-                : "Iniciar atendimento"}
+                : appointment.status === "in_progress"
+                  ? "Continuar atendimento"
+                  : "Iniciar atendimento"}
             </SpinnerButton>
           )}
         </div>

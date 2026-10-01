@@ -40,3 +40,14 @@ describe("hubTabQuery", () => {
     }
   });
 });
+describe("hubTabQuery — sala de espera (MIG-03)", () => {
+  it("a aba Hoje inclui aguardando e em atendimento", () => {
+    expect(hubTabQuery("today").status).toEqual(
+      expect.arrayContaining(["waiting", "in_progress"]),
+    );
+  });
+
+  it("Próximas continua só com agendada e confirmada", () => {
+    expect(hubTabQuery("upcoming").status).toEqual(["scheduled", "confirmed"]);
+  });
+});
