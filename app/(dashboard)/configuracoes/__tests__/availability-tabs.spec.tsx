@@ -3,16 +3,16 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 /**
- * MIG-06: a aba "Modelos de Documentos" só aparece para médico com CRM —
- * atestado e pedido de exame são atos dele — e abre por deep-link
- * (`?tab=document-templates`), que é o link "Gerenciar modelos" do modal de
- * emissão.
+ * MIG-05: "Minha Agenda" é do profissional de saúde (qualquer conselho) e
+ * "Feriados" é de quem tem Administração. Ambas abrem por deep-link.
  */
 
 let authState: {
   user: { id: string; accountId: string; role: "admin" | "collaborator" } | null;
   isAccountOwner: boolean;
   isPhysician: boolean;
+  isDoctor: boolean;
+  can: (p: string) => boolean;
   subscription: unknown;
   updateUser: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
@@ -21,7 +21,7 @@ let authState: {
 let searchParamsValue = new URLSearchParams();
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ can: () => false, isDoctor: false, ...authState }),
+  useAuth: () => authState,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -46,6 +46,15 @@ vi.mock("@/components/clinical/DocumentTemplatesSettings", () => ({
   DocumentTemplatesSettings: ({ doctorId }: { doctorId: string }) => (
     <p>Gestão de modelos de {doctorId}</p>
   ),
+}));
+
+vi.mock("@/components/availability/ScheduleWeekEditor", () => ({
+  ScheduleWeekEditor: ({ doctorId }: { doctorId: string }) => (
+    <p>Grade de {doctorId}</p>
+  ),
+}));
+vi.mock("@/components/availability/HolidaysSettings", () => ({
+  HolidaysSettings: () => <p>Gestão de feriados</p>,
 }));
 
 vi.mock("@/services/user.service", () => ({
@@ -89,40 +98,49 @@ function renderPage() {
   );
 }
 
-describe("Configurações — aba Modelos de Documentos (MIG-06)", () => {
+describe("Configurações — Minha Agenda e Feriados (MIG-05)", () => {
   beforeEach(() => {
     searchParamsValue = new URLSearchParams();
     authState = {
       user: { id: "doc-1", accountId: "doc-1", role: "admin" },
       isAccountOwner: true,
-      isPhysician: true,
+      isPhysician: false,
+      isDoctor: true,
+      can: (p) => p === "administracao",
       subscription: null,
       updateUser: vi.fn().mockResolvedValue(undefined),
       refreshSubscription: vi.fn().mockResolvedValue(undefined),
     };
   });
 
-  it("médico com CRM vê a aba e abre a gestão por deep-link", async () => {
-    searchParamsValue = new URLSearchParams("tab=document-templates");
+  it("profissional de saúde abre a própria grade por deep-link", async () => {
+    searchParamsValue = new URLSearchParams("tab=my-schedule");
     renderPage();
-
     expect(
-      await screen.findByRole("button", { name: /Modelos de Documentos/ }),
+      await screen.findByRole("button", { name: /Minha Agenda/ }),
     ).toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.getByText("Gestão de modelos de doc-1")).toBeInTheDocument(),
+      expect(screen.getByText("Grade de doc-1")).toBeInTheDocument(),
     );
   });
 
-  it("quem não tem CRM não vê a aba nem o conteúdo pelo deep-link", async () => {
-    authState.isPhysician = false;
-    searchParamsValue = new URLSearchParams("tab=document-templates");
+  it("Administração abre os feriados por deep-link", async () => {
+    searchParamsValue = new URLSearchParams("tab=holidays");
     renderPage();
+    expect(await screen.findByRole("button", { name: /Feriados/ })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("Gestão de feriados")).toBeInTheDocument(),
+    );
+  });
 
+  it("sem perfil de saúde e sem Administração, nenhuma das duas aparece", async () => {
+    authState.isDoctor = false;
+    authState.can = () => false;
+    searchParamsValue = new URLSearchParams("tab=holidays");
+    renderPage();
     await screen.findByRole("button", { name: /Segurança/ });
-    expect(
-      screen.queryByRole("button", { name: /Modelos de Documentos/ }),
-    ).toBeNull();
-    expect(screen.queryByText(/Gestão de modelos/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Minha Agenda/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Feriados/ })).toBeNull();
+    expect(screen.queryByText("Gestão de feriados")).toBeNull();
   });
 });

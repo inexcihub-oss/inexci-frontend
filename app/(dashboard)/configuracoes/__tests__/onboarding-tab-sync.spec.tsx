@@ -26,7 +26,7 @@ let authState: {
 let searchParamsValue = new URLSearchParams("tab=onboarding");
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => authState,
+  useAuth: () => ({ can: () => false, isDoctor: false, ...authState }),
 }));
 
 vi.mock("next/navigation", () => ({

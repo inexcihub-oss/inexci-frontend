@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
+import { ScheduleWeekEditor } from "@/components/availability/ScheduleWeekEditor";
 import Input from "@/components/ui/Input";
 import { DateInput } from "@/components/ui/DateInput";
 import Select from "@/components/ui/Select";
@@ -926,6 +927,14 @@ export default function AssistenteDetalhePage() {
             </>
           )}
         </FormSection>
+
+        {/* Seção: Grade de atendimento (MIG-05) — só para profissional já
+            salvo como médico; a grade é de um doctor_profile real. */}
+        {isDoctor && collaborator && !isFabricado && (
+          <FormSection title="Grade de atendimento">
+            <ScheduleWeekEditor doctorId={collaborator.id} />
+          </FormSection>
+        )}
 
         {/* Seção: Permissões de acesso */}
         <FormSection title="Permissões de acesso">

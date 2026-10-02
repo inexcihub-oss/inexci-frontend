@@ -60,10 +60,15 @@ import {
   LayoutTemplate,
   Compass,
   FileText,
+  CalendarClock,
+  CalendarOff,
 } from "lucide-react";
 import { OnboardingSettingsTab } from "@/components/onboarding/OnboardingSettingsTab";
 import { PrivacySection } from "@/components/privacy/PrivacySection";
 import { DocumentTemplatesSettings } from "@/components/clinical/DocumentTemplatesSettings";
+import { ScheduleWeekEditor } from "@/components/availability/ScheduleWeekEditor";
+import { HolidaysSettings } from "@/components/availability/HolidaysSettings";
+import { Permission } from "@/lib/permissions";
 
 // Tipos
 interface UserProfile {
@@ -103,7 +108,9 @@ type SettingsTab =
   | "header"
   | "privacy"
   | "onboarding"
-  | "document-templates";
+  | "document-templates"
+  | "my-schedule"
+  | "holidays";
 
 import { maskPhone, maskCpf } from "@/lib/masks";
 
@@ -235,7 +242,9 @@ function resolveSettingsTab(
     tab === "security" ||
     tab === "privacy" ||
     tab === "onboarding" ||
-    tab === "document-templates"
+    tab === "document-templates" ||
+    tab === "my-schedule" ||
+    tab === "holidays"
   ) {
     return tab as SettingsTab;
   }
@@ -248,6 +257,8 @@ function ConfiguracoesPageInner() {
     updateUser,
     isAccountOwner,
     isPhysician,
+    isDoctor,
+    can,
     subscription,
     refreshSubscription,
   } = useAuth();
@@ -1350,6 +1361,22 @@ function ConfiguracoesPageInner() {
                   label="Cabeçalho de Documentos"
                 />
               )}
+              {isDoctor && user?.id && (
+                <TabButton
+                  active={activeTab === "my-schedule"}
+                  onClick={() => setActiveTab("my-schedule")}
+                  icon={CalendarClock}
+                  label="Minha Agenda"
+                />
+              )}
+              {can(Permission.ADMINISTRACAO) && (
+                <TabButton
+                  active={activeTab === "holidays"}
+                  onClick={() => setActiveTab("holidays")}
+                  icon={CalendarOff}
+                  label="Feriados"
+                />
+              )}
               {isPhysician && user?.id && (
                 <TabButton
                   active={activeTab === "document-templates"}
@@ -1390,6 +1417,23 @@ function ConfiguracoesPageInner() {
             {activeTab === "security" && renderSecurityTab()}
             {activeTab === "header" && profile.isDoctor && renderHeaderTab()}
             {activeTab === "privacy" && renderPrivacyTab()}
+            {activeTab === "my-schedule" && isDoctor && user?.id && (
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 md:p-6 flex flex-col gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Minha agenda
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Dias e horários em que você atende. A recepção vê esses
+                    horários ao agendar e é avisada quando marca fora deles.
+                  </p>
+                </div>
+                <ScheduleWeekEditor doctorId={user.id} />
+              </div>
+            )}
+            {activeTab === "holidays" && can(Permission.ADMINISTRACAO) && (
+              <HolidaysSettings />
+            )}
             {activeTab === "document-templates" && isPhysician && user?.id && (
               <DocumentTemplatesSettings doctorId={user.id} />
             )}

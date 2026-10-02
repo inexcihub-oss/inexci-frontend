@@ -16,18 +16,35 @@ const HOUR_PX = 52;
 const HOUR_START = 0;
 const HOUR_END = 23;
 
+/**
+ * Faixa em que não se agenda: bloqueio de agenda ou feriado (MIG-05).
+ * Desenhada hachurada atrás das consultas; clicável só quando tem `onClick`.
+ */
+export interface AgendaBlockOverlay {
+  id: string;
+  start: Date;
+  end: Date;
+  label: string;
+  onClick?: () => void;
+}
+
 interface Props {
   days: Date[];
   events: CalEvent[];
   onEventClick: (ev: CalEvent) => void;
   onSlotClick: (date: Date) => void;
+  blocks?: AgendaBlockOverlay[];
 }
+
+const HACHURA =
+  "repeating-linear-gradient(135deg, rgba(115,115,115,0.10) 0 6px, rgba(115,115,115,0.02) 6px 12px)";
 
 export function CalendarTimeGrid({
   days,
   events,
   onEventClick,
   onSlotClick,
+  blocks = [],
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [narrow, setNarrow] = useState(false);
@@ -190,6 +207,53 @@ export function CalendarTimeGrid({
                   />
                 ))}
               </div>
+
+              {/* Bloqueios e feriados (hachurado) */}
+              {blocks.map((b) => {
+                const inicioDia = new Date(day);
+                inicioDia.setHours(0, 0, 0, 0);
+                const fimDia = new Date(inicioDia);
+                fimDia.setDate(fimDia.getDate() + 1);
+                const ini = Math.max(b.start.getTime(), inicioDia.getTime());
+                const fim = Math.min(b.end.getTime(), fimDia.getTime());
+                if (ini >= fim) return null;
+                const iniMin = (ini - inicioDia.getTime()) / 60_000;
+                const fimMin = Math.min(
+                  (fim - inicioDia.getTime()) / 60_000,
+                  HOUR_END * 60,
+                );
+                const top = ((iniMin - HOUR_START * 60) / 60) * HOUR_PX;
+                const height = Math.max(
+                  16,
+                  ((fimMin - iniMin) / 60) * HOUR_PX,
+                );
+                const Tag = b.onClick ? "button" : "div";
+                return (
+                  <Tag
+                    key={`blk-${b.id}`}
+                    type={b.onClick ? "button" : undefined}
+                    onClick={
+                      b.onClick
+                        ? (e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            b.onClick!();
+                          }
+                        : undefined
+                    }
+                    data-testid="agenda-bloqueio"
+                    title={b.label}
+                    className={cn(
+                      "absolute left-0 right-0 border-y border-neutral-300/70 text-left px-1.5 overflow-hidden",
+                      b.onClick ? "cursor-pointer" : "pointer-events-none",
+                    )}
+                    style={{ top, height, backgroundImage: HACHURA }}
+                  >
+                    <span className="text-[10px] font-semibold text-neutral-500 truncate block">
+                      {b.label}
+                    </span>
+                  </Tag>
+                );
+              })}
 
               {/* Linha do horário atual */}
               {isToday(day) && showNow && (

@@ -16,6 +16,7 @@ vi.mock("@/contexts/AuthContext", () => ({
     isAccountOwner: true,
     subscription: null,
     updateUser: vi.fn(),
+    can: () => false,
     refreshSubscription: vi.fn(),
   }),
 }));

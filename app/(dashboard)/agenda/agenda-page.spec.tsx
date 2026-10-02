@@ -42,6 +42,14 @@ vi.mock("@/services/appointment.service", async () => {
   };
 });
 
+const availability = vi.hoisted(() => ({
+  getBlocks: vi.fn().mockResolvedValue([]),
+  getHolidays: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("@/services/availability.service", () => ({
+  availabilityService: availability,
+}));
+
 vi.mock("@/services/available-doctors.service", () => ({
   availableDoctorsService: {
     getAvailableDoctors: vi.fn().mockResolvedValue([]),
@@ -174,3 +182,65 @@ describe("AgendaPage — gating por Solicitações (cirurgias)", () => {
     });
   });
 });
+
+describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    availability.getBlocks.mockResolvedValue([]);
+    availability.getHolidays.mockResolvedValue([]);
+  });
+
+  it("quem tem Agenda vê 'Bloquear horário', que abre o modal", async () => {
+    authState = { can: (p) => p === Permission.AGENDA };
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Bloquear horário" }));
+    expect(await screen.findByLabelText("Profissional")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Toda a clínica" })).toBeInTheDocument();
+  });
+
+  it("sem Agenda não há botão de bloqueio", async () => {
+    authState = {
+      can: (p: Permission) => p === Permission.ATENDIMENTO,
+    } as unknown as typeof authState;
+    renderPage();
+    await waitFor(() => expect(availability.getBlocks).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: "Bloquear horário" })).toBeNull();
+  });
+
+  it("desenha bloqueios e feriados da semana na grade", async () => {
+    authState = { can: (p) => p === Permission.AGENDA };
+    const hoje = new Date();
+    const ini = new Date(hoje);
+    ini.setHours(14, 0, 0, 0);
+    const fim = new Date(hoje);
+    fim.setHours(16, 0, 0, 0);
+    availability.getBlocks.mockResolvedValue([
+      {
+        id: "b1",
+        doctorId: null,
+        clinicId: null,
+        startsAt: ini.toISOString(),
+        endsAt: fim.toISOString(),
+        allDay: false,
+        reason: "Reunião geral",
+      },
+    ]);
+    const amanha = new Date(hoje);
+    amanha.setDate(amanha.getDate() + 1);
+    const ymd = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    availability.getHolidays.mockResolvedValue([
+      { id: "h1", name: "Feriado teste", date: ymd(amanha), recurring: false, blocksAgenda: true },
+    ]);
+    renderPage();
+
+    expect(await screen.findByTitle("Clínica: Reunião geral")).toBeInTheDocument();
+    // O feriado só aparece se "amanhã" estiver na semana exibida.
+    const mesmaSemana = amanha.getDay() !== 0;
+    if (mesmaSemana) {
+      expect(screen.getByTitle("Feriado: Feriado teste")).toBeInTheDocument();
+    }
+  });
+});
+

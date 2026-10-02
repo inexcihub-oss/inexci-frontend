@@ -77,6 +77,12 @@ vi.mock("@/services/appointment.service", async (importOriginal) => {
     },
   };
 });
+const getSlots = vi.hoisted(() => vi.fn());
+vi.mock("@/services/availability.service", () => ({
+  availabilityService: {
+    getSlots: (...a: unknown[]) => getSlots(...a) ?? Promise.resolve([]),
+  },
+}));
 const listPatients = vi.hoisted(() => vi.fn());
 vi.mock("@/services/patient.service", () => ({
   patientService: {
@@ -581,3 +587,118 @@ describe("NewAppointmentModal — convênio do paciente como sugestão", () => {
     expect(convenio()).toHaveValue("");
   });
 });
+
+/** Horário local de São Paulo → ISO (os testes rodam com TZ do Vitest). */
+function slotLocal(hhmm: string, minutos = 30, extra: object = {}) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const ini = new Date(2026, 7, 17, h, m, 0, 0);
+  return {
+    start: ini.toISOString(),
+    end: new Date(ini.getTime() + minutos * 60_000).toISOString(),
+    free: true,
+    ...extra,
+  };
+}
+
+describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+    getSlots.mockResolvedValue([]);
+  });
+
+  it("mostra os horários da grade; livre vira o horário escolhido, ocupado fica desabilitado", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [
+          slotLocal("08:00"),
+          slotLocal("08:30", 30, { free: false, reason: "appointment" }),
+          slotLocal("09:00"),
+        ],
+      },
+    ]);
+    abrirModal();
+
+    const grupo = await screen.findByRole("group", { name: "Horários da grade" });
+    expect(getSlots).toHaveBeenCalledWith({
+      doctorId: "doctor-1",
+      from: SEGUNDA,
+      to: SEGUNDA,
+    });
+    expect(screen.getByRole("button", { name: "08:30 (ocupado)" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "08:00" }));
+    expect(document.getElementById("horario")).toHaveValue("08:00");
+    expect(grupo).toBeInTheDocument();
+    expect(screen.queryByText(/Fora da grade/)).toBeNull();
+  });
+
+  it("horário fora da grade mostra o aviso e o botão vira 'Agendar mesmo assim'", async () => {
+    getSlots.mockResolvedValue([
+      { date: SEGUNDA, holiday: null, slots: [slotLocal("14:00"), slotLocal("14:30")] },
+    ]);
+    abrirModal();
+
+    expect(
+      await screen.findByText("Fora da grade de atendimento do profissional."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Agendar mesmo assim" }),
+    ).toBeInTheDocument();
+  });
+
+  it("feriado que bloqueia a agenda é avisado", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: { name: "Aniversário da cidade", blocksAgenda: true },
+        slots: [slotLocal("09:00", 30, { free: false, reason: "holiday" })],
+      },
+    ]);
+    abrirModal();
+
+    expect(
+      await screen.findByText(
+        "Feriado (Aniversário da cidade): a agenda está bloqueada neste dia.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("sem grade no dia não mostra horários nem aviso", async () => {
+    abrirModal();
+    await waitFor(() => expect(getSlots).toHaveBeenCalled());
+    expect(screen.queryByRole("group", { name: "Horários da grade" })).toBeNull();
+    expect(screen.queryByText(/Fora da grade/)).toBeNull();
+  });
+
+  it("falha ao buscar a grade não atrapalha o agendamento", async () => {
+    getSlots.mockRejectedValue(new Error("rede"));
+    abrirModal();
+    await waitFor(() => expect(getSlots).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("repassa os avisos da consulta salva para quem abriu o modal", async () => {
+    create.mockResolvedValue({ id: "a1", warnings: ["fora_da_grade"] });
+    const onSaved = vi.fn();
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={onSaved}
+        defaultDate={SEGUNDA}
+        defaultTime="09:00"
+        defaultPatientId="patient-1"
+        defaultPatientLabel="João"
+      />,
+    );
+    await waitFor(() => expect(getSlots).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: /Agendar consulta/ }));
+    await waitFor(() =>
+      expect(onSaved).toHaveBeenCalledWith({ id: "a1", warnings: ["fora_da_grade"] }),
+    );
+  });
+});
+

@@ -22,13 +22,20 @@ import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 import { mensagemForaDoHorario } from "@/lib/business-hours";
 import { getApiErrorMessage } from "@/lib/http-error";
+import { cn } from "@/lib/utils";
+import { dentroDaGrade, SLOT_REASON_LABELS } from "@/lib/availability";
+import {
+  availabilityService,
+  AvailabilityDay,
+} from "@/services/availability.service";
 import { dateKey, hhmm } from "@/lib/calendar";
 import { CalendarDays, UserPlus, AlertTriangle } from "lucide-react";
 
 interface NewAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  /** Recebe a consulta salva (com `warnings`, quando houver). */
+  onSaved: (salva?: Appointment) => void;
   /** Data pré-selecionada (YYYY-MM-DD) ao abrir a partir de um dia da agenda. */
   defaultDate?: string | null;
   /** Horário pré-selecionado (HH:mm) ao criar clicando num slot da grade. */
@@ -111,6 +118,8 @@ export function NewAppointmentModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dayAppointments, setDayAppointments] = useState<Appointment[]>([]);
+  // Grade do profissional no dia (MIG-05): horários livres e ocupados.
+  const [diaDaGrade, setDiaDaGrade] = useState<AvailabilityDay | null>(null);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
 
   // Busca as consultas já marcadas no dia/médico selecionado (para o usuário
@@ -150,6 +159,22 @@ export function NewAppointmentModal({
       active = false;
     };
   }, [isOpen, date, doctorId, appointment?.id]);
+
+  useEffect(() => {
+    if (!isOpen || !doctorId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setDiaDaGrade(null);
+      return;
+    }
+    let active = true;
+    availabilityService
+      .getSlots({ doctorId, from: date, to: date })
+      .then((dias) => active && setDiaDaGrade(dias[0] ?? null))
+      // A grade só orienta: sem ela, o agendamento segue como antes.
+      .catch(() => active && setDiaDaGrade(null));
+    return () => {
+      active = false;
+    };
+  }, [isOpen, date, doctorId]);
 
   // Preenche o formulário ao abrir (edição ou defaults de criação).
   useEffect(() => {
@@ -253,6 +278,22 @@ export function NewAppointmentModal({
     );
   }, [clinics, clinicId, date, time, duration]);
 
+  /** Avisos da grade do profissional: feriado que bloqueia e fora da grade. */
+  const avisoGrade = useMemo(() => {
+    if (!diaDaGrade) return null;
+    if (diaDaGrade.holiday?.blocksAgenda) {
+      return `Feriado (${diaDaGrade.holiday.name}): a agenda está bloqueada neste dia.`;
+    }
+    const parsed = parseDate(date);
+    if (!parsed || !/^\d{2}:\d{2}$/.test(time)) return null;
+    const [hh, mm] = time.split(":").map(Number);
+    const inicio = new Date(parsed);
+    inicio.setHours(hh, mm, 0, 0);
+    return dentroDaGrade(diaDaGrade.slots, inicio, duration) === false
+      ? "Fora da grade de atendimento do profissional."
+      : null;
+  }, [diaDaGrade, date, time, duration]);
+
   const handleSubmit = async () => {
     if (!canSubmit) {
       setError("Preencha paciente, médico, data e horário.");
@@ -260,6 +301,7 @@ export function NewAppointmentModal({
     }
     setSaving(true);
     setError(null);
+    let salva: Appointment | undefined;
     try {
       const scheduledAt = partsToIso(date, time);
       if (isEdit && appointment) {
@@ -273,7 +315,7 @@ export function NewAppointmentModal({
         const mudouSala = (roomId || null) !== (appointment.roomId ?? null);
         const mudouConvenio =
           (healthPlanId || null) !== (appointment.healthPlanId ?? null);
-        await appointmentService.update(appointment.id, {
+        salva = await appointmentService.update(appointment.id, {
           type,
           scheduledAt,
           durationMinutes: duration,
@@ -284,7 +326,7 @@ export function NewAppointmentModal({
           ...(isWalkIn !== (appointment.isWalkIn ?? false) ? { isWalkIn } : {}),
         });
       } else {
-        await appointmentService.create({
+        salva = await appointmentService.create({
           patientId,
           doctorId,
           type,
@@ -297,7 +339,7 @@ export function NewAppointmentModal({
           isWalkIn,
         });
       }
-      onSaved();
+      onSaved(salva);
       onClose();
     } catch (err) {
       setError(getApiErrorMessage(err, "Não foi possível salvar a consulta."));
@@ -508,6 +550,46 @@ export function NewAppointmentModal({
           </div>
         </div>
 
+        {/* Horários da grade do profissional no dia */}
+        {diaDaGrade && diaDaGrade.slots.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs font-semibold text-neutral-500">
+              Horários da grade
+            </p>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Horários da grade">
+              {diaDaGrade.slots.map((slot) => {
+                const rotulo = hhmm(new Date(slot.start));
+                const escolhido = rotulo === time;
+                return (
+                  <button
+                    key={slot.start}
+                    type="button"
+                    disabled={!slot.free}
+                    aria-pressed={escolhido}
+                    aria-label={
+                      slot.free
+                        ? rotulo
+                        : `${rotulo} (${SLOT_REASON_LABELS[slot.reason ?? "appointment"]})`
+                    }
+                    title={slot.free ? undefined : SLOT_REASON_LABELS[slot.reason ?? "appointment"]}
+                    onClick={() => setTime(rotulo)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-full border text-xs font-semibold tabular-nums min-h-[32px]",
+                      escolhido
+                        ? "bg-teal-700 text-white border-teal-700"
+                        : slot.free
+                          ? "border-teal-200 text-teal-800 hover:bg-teal-50"
+                          : "border-neutral-200 text-neutral-400 line-through cursor-not-allowed",
+                    )}
+                  >
+                    {rotulo}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Encaixe */}
         <label className="flex items-start gap-2.5 cursor-pointer">
           <input
@@ -582,15 +664,16 @@ export function NewAppointmentModal({
           />
         </div>
 
-        {avisoHorario && (
+        {[avisoHorario, avisoGrade].filter(Boolean).map((aviso) => (
           <div
+            key={aviso}
             role="alert"
             className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5"
           >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-            <p className="text-xs text-amber-800">{avisoHorario}</p>
+            <p className="text-xs text-amber-800">{aviso}</p>
           </div>
-        )}
+        ))}
 
         {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
@@ -606,7 +689,7 @@ export function NewAppointmentModal({
           disabled={!canSubmit || emTour || dadosFabricados}
           loadingText="Salvando..."
         >
-          {avisoHorario
+          {avisoHorario || avisoGrade
             ? "Agendar mesmo assim"
             : isEdit
               ? "Salvar alterações"

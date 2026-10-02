@@ -34,6 +34,8 @@ export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 export interface Appointment {
+  /** Avisos devolvidos ao criar/editar (ex.: `fora_da_grade`), sem impedir. */
+  warnings?: string[];
   id: string;
   doctorId: string;
   patientId: string;
@@ -59,6 +61,8 @@ export interface Appointment {
 }
 
 interface BackendAppointment {
+  /** Só em criar/editar: avisos que não impedem salvar (ex.: `fora_da_grade`). */
+  warnings?: string[];
   id: string;
   doctorId: string;
   patientId: string;
@@ -106,6 +110,7 @@ function mapAppointment(a: BackendAppointment): Appointment {
     healthPlanId: a.healthPlanId ?? null,
     healthPlan: a.healthPlan ?? null,
     createdBy: a.createdBy ?? null,
+    ...(a.warnings?.length ? { warnings: a.warnings } : {}),
   };
 }
 
