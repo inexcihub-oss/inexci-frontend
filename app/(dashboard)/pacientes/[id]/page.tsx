@@ -152,9 +152,7 @@ export default function PacienteDetalhePage() {
         itemSubtitle="Paciente"
         sidebarIcon="calendar"
         sidebarContent={sidebarContent}
-      >
-        {/* Foto + ação principal do paciente */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        avatar={
           <PatientPhotoField
             patient={patient}
             onChange={(saved) => {
@@ -162,17 +160,22 @@ export default function PacienteDetalhePage() {
               showToast("Foto do paciente atualizada.", "success");
             }}
           />
-          {podeAgenda && (
+        }
+        profileAction={
+          podeAgenda ? (
             <button
               onClick={() => setIsNewAppointmentOpen(true)}
-              className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+              aria-label="Nova consulta"
+              className="flex items-center justify-center gap-1.5 h-9 w-9 sm:w-auto sm:px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors"
             >
               <Plus className="w-4 h-4" strokeWidth={2.2} />
-              <span className="text-xs font-semibold">Nova consulta</span>
+              <span className="hidden sm:inline text-xs font-semibold">
+                Nova consulta
+              </span>
             </button>
-          )}
-        </div>
-
+          ) : undefined
+        }
+      >
         {/* Seção: Prontuário — some inteira sem Atendimento, em vez de
             mostrar um título com nada embaixo. */}
         {podeAtendimento && (

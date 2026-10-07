@@ -52,7 +52,7 @@ describe("HolidaysSettings (MIG-05)", () => {
     await screen.findByText("Natal");
     await user.click(screen.getByRole("button", { name: /Novo feriado/ }));
     await user.type(screen.getByLabelText("Nome"), "Aniversário da cidade");
-    await user.type(screen.getByLabelText("Data"), `${ANO}-03-16`);
+    await user.type(screen.getByLabelText("Data"), `1603${ANO}`);
     await user.click(screen.getByLabelText("Repete todo ano"));
     await user.click(screen.getByRole("button", { name: "Salvar feriado" }));
     await waitFor(() =>

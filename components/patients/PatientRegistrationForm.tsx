@@ -10,7 +10,7 @@ import { HealthPlanComboboxField } from "@/components/patients/HealthPlanCombobo
 import { patientService, Patient } from "@/services/patient.service";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { GENDER_OPTIONS, STATE_OPTIONS } from "@/lib/options";
-import { formatCPF, formatPhone } from "@/lib/formatters";
+import { maskCpf, maskPhone } from "@/lib/masks";
 import { maskCep } from "@/lib/masks";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { getApiErrorMessage } from "@/lib/http-error";
@@ -191,7 +191,7 @@ export function PatientRegistrationForm({
           />
           <Input
             label="CPF"
-            value={formatCPF(formData.cpf)}
+            value={maskCpf(formData.cpf)}
             onChange={(e) =>
               setField("cpf", e.target.value.replace(/\D/g, ""))
             }
@@ -210,7 +210,7 @@ export function PatientRegistrationForm({
           />
           <Input
             label="Telefone"
-            value={formatPhone(formData.phone)}
+            value={maskPhone(formData.phone)}
             onChange={(e) =>
               setField("phone", e.target.value.replace(/\D/g, ""))
             }
@@ -218,7 +218,7 @@ export function PatientRegistrationForm({
           />
           <Input
             label="Telefone secundário"
-            value={formatPhone(formData.secondaryPhone)}
+            value={maskPhone(formData.secondaryPhone)}
             onChange={(e) =>
               setField("secondaryPhone", e.target.value.replace(/\D/g, ""))
             }

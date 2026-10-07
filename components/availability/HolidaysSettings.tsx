@@ -1,9 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarOff, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarOff,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
+import { DateInput } from "@/components/ui/DateInput";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { NATIONAL_FIXED_HOLIDAYS } from "@/lib/availability";
@@ -139,9 +147,9 @@ export function HolidaysSettings() {
             type="button"
             aria-label="Ano anterior"
             onClick={() => setAno((a) => a - 1)}
-            className="px-3 rounded-lg border border-gray-200 min-h-[44px]"
+            className="flex items-center justify-center rounded-lg border border-gray-200 min-h-[44px] min-w-[44px] text-gray-600 hover:bg-gray-50"
           >
-            ‹
+            <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-sm font-semibold tabular-nums" aria-live="polite">
             {ano}
@@ -150,9 +158,9 @@ export function HolidaysSettings() {
             type="button"
             aria-label="Próximo ano"
             onClick={() => setAno((a) => a + 1)}
-            className="px-3 rounded-lg border border-gray-200 min-h-[44px]"
+            className="flex items-center justify-center rounded-lg border border-gray-200 min-h-[44px] min-w-[44px] text-gray-600 hover:bg-gray-50"
           >
-            ›
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -203,12 +211,11 @@ export function HolidaysSettings() {
               maxLength={100}
               onChange={(e) => setRascunho({ ...rascunho, name: e.target.value })}
             />
-            <Input
+            <DateInput
               id="feriado-data"
               label="Data"
-              type="date"
               value={rascunho.date}
-              onChange={(e) => setRascunho({ ...rascunho, date: e.target.value })}
+              onChange={(date) => setRascunho({ ...rascunho, date })}
             />
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-700">

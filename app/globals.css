@@ -416,3 +416,57 @@
     }
   }
 }
+
+/*
+ * `prose` sem o plugin de tipografia: o projeto não instala
+ * `@tailwindcss/typography`, e os textos ricos em modo leitura (ficha,
+ * prontuário, laudo, documentos legais) perdiam títulos, negrito e listas —
+ * o Preflight zera tudo. Estilos mínimos, com a escala do design system.
+ */
+@layer components {
+  .prose :where(h1, h2, h3, h4) {
+    @apply font-semibold text-neutral-900;
+  }
+  .prose :where(h1) {
+    @apply mt-4 mb-2 text-lg;
+  }
+  .prose :where(h2) {
+    @apply mt-4 mb-2 text-base;
+  }
+  .prose :where(h3) {
+    @apply mt-3 mb-1 text-sm;
+  }
+  .prose :where(h4) {
+    @apply mt-3 mb-1 text-xs uppercase tracking-wide text-neutral-500;
+  }
+  .prose :where(h1, h2, h3, h4):first-child {
+    @apply mt-0;
+  }
+  .prose :where(p) {
+    @apply my-1;
+  }
+  .prose :where(strong, b) {
+    @apply font-semibold;
+  }
+  .prose :where(em, i) {
+    @apply italic;
+  }
+  .prose :where(u) {
+    @apply underline;
+  }
+  .prose :where(ul) {
+    @apply my-1 list-disc pl-5;
+  }
+  .prose :where(ol) {
+    @apply my-1 list-decimal pl-5;
+  }
+  .prose :where(li) {
+    @apply my-0.5;
+  }
+  .prose :where(blockquote) {
+    @apply my-2 border-l-2 border-neutral-200 pl-3 text-neutral-600;
+  }
+  .prose :where(a) {
+    @apply text-teal-700 underline;
+  }
+}

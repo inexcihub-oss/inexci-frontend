@@ -67,3 +67,18 @@ export function canOwnSurgeryRequest(doctor: {
 }): boolean {
   return doctor.isPhysician !== false;
 }
+
+/**
+ * Rótulo curto do tipo de profissional para listas: "Médico" só para CRM;
+ * os demais pela área do conselho ("Nutrição", "Psicologia"…); sem conselho
+ * definido, "Profissional".
+ */
+export function professionalKindLabel(
+  profile: { council?: ProfessionalCouncil | string | null } | null | undefined,
+): string {
+  const conselho = councilOf(profile);
+  if (conselho === "CRM") return "Médico";
+  if (conselho === "OUTRO") return "Profissional";
+  const opcao = COUNCIL_OPTIONS.find((o) => o.value === conselho);
+  return opcao ? opcao.label.split(" — ")[1] : "Profissional";
+}

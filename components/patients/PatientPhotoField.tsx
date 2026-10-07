@@ -13,8 +13,8 @@ export const PATIENT_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 export const PATIENT_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /**
- * Foto do paciente: mostra a foto (ou as iniciais) e permite enviar, trocar e
- * remover. Salva na hora, independente do formulário de cadastro — a foto não
+ * Foto do paciente no avatar do cartão do nome: clicar no avatar envia ou
+ * troca a foto; o botão no canto remove. Sem foto, mostra as iniciais. Salva na hora, independente do formulário de cadastro — a foto não
  * entra no "tem alteração não salva" do formulário ao lado.
  *
  * A pasta `patient-photos` é escopada pela conta no backend: o caminho
@@ -78,68 +78,86 @@ export function PatientPhotoField({
     }
   };
 
+  const tamanho = "w-14 h-14 lg:w-20 lg:h-20 rounded-xl";
+
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative w-16 h-16 shrink-0">
+    <div className="relative shrink-0">
+      {/* O próprio avatar troca a foto: é o lugar onde a foto aparece. */}
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+        aria-label={hasPhoto ? "Trocar foto" : "Adicionar foto"}
+        title={`${hasPhoto ? "Trocar foto" : "Adicionar foto"} (JPG, PNG ou WEBP, até 2 MB)`}
+        className={cn(
+          "group relative block overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2",
+          tamanho,
+        )}
+      >
         {patient.photoUrl ? (
           <Image
             src={patient.photoUrl}
             alt={`Foto de ${patient.name}`}
-            width={64}
-            height={64}
+            width={80}
+            height={80}
             // URL assinada muda a cada leitura: passar pelo otimizador só
             // encheria o cache com versões da mesma foto.
             unoptimized
-            className="w-16 h-16 rounded-2xl object-cover"
+            className={cn("object-cover", tamanho)}
           />
         ) : (
-          <div
+          <span
             aria-hidden="true"
             className={cn(
-              "w-16 h-16 rounded-2xl flex items-center justify-center text-lg font-semibold",
+              "flex items-center justify-center text-xl lg:text-2xl font-semibold",
+              tamanho,
               getAvatarColor(patient.name),
             )}
           >
             {getInitials(patient.name)}
-          </div>
+          </span>
         )}
+        {/* Câmera: aparece sempre no toque (sem hover) e no hover do mouse. */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+        >
+          <Camera className="w-5 h-5 text-white" />
+        </span>
+        <span
+          aria-hidden="true"
+          className="absolute bottom-0.5 right-0.5 flex h-5 w-5 lg:h-6 lg:w-6 items-center justify-center rounded-full bg-white text-neutral-700 shadow ring-1 ring-neutral-200 group-hover:hidden"
+        >
+          <Camera className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+        </span>
         {busy && (
-          <div className="absolute inset-0 rounded-2xl bg-white/70 flex items-center justify-center">
+          <span className="absolute inset-0 flex items-center justify-center bg-white/70">
             <Loader2 className="w-5 h-5 text-teal-700 animate-spin" />
-          </div>
+          </span>
         )}
-      </div>
+      </button>
 
-      <div className="flex flex-col gap-1.5 min-w-0">
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={busy}
-            className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl border border-neutral-200 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
-          >
-            <Camera className="w-4 h-4" />
-            {hasPhoto ? "Trocar foto" : "Adicionar foto"}
-          </button>
-          {hasPhoto && (
-            <button
-              type="button"
-              onClick={handleRemove}
-              disabled={busy}
-              className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl border border-red-200 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
-            >
-              <Trash2 className="w-4 h-4" />
-              Remover
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-neutral-500">JPG, PNG ou WEBP, até 2 MB.</p>
-        {error && (
-          <p role="alert" className="text-xs text-red-600">
-            {error}
-          </p>
-        )}
-      </div>
+      {hasPhoto && (
+        <button
+          type="button"
+          onClick={handleRemove}
+          disabled={busy}
+          aria-label="Remover foto"
+          title="Remover foto"
+          className="absolute -top-1.5 -right-1.5 lg:-top-2 lg:-right-2 flex h-6 w-6 lg:h-7 lg:w-7 items-center justify-center rounded-full bg-white text-red-600 shadow ring-1 ring-neutral-200 hover:bg-red-50 disabled:opacity-50"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
+
+      {error && (
+        <p
+          role="alert"
+          className="absolute left-0 top-full mt-1 w-56 text-xs text-red-600"
+        >
+          {error}
+        </p>
+      )}
 
       <input
         ref={inputRef}

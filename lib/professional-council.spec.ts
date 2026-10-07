@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
+import { professionalKindLabel,
   canOwnSurgeryRequest,
   councilOf,
   formatRegistration,
@@ -49,5 +49,16 @@ describe("canOwnSurgeryRequest", () => {
 
   it("resposta antiga sem isPhysician continua elegível", () => {
     expect(canOwnSurgeryRequest({})).toBe(true);
+  });
+});
+
+describe("professionalKindLabel", () => {
+  it("só CRM é Médico; os demais pela área; sem conselho, Profissional", () => {
+    expect(professionalKindLabel({ council: "CRM" })).toBe("Médico");
+    expect(professionalKindLabel({})).toBe("Médico");
+    expect(professionalKindLabel({ council: "CRN" })).toBe("Nutrição");
+    expect(professionalKindLabel({ council: "CRP" })).toBe("Psicologia");
+    expect(professionalKindLabel({ council: "COREN" })).toBe("Enfermagem");
+    expect(professionalKindLabel({ council: "OUTRO" })).toBe("Profissional");
   });
 });

@@ -102,6 +102,24 @@ describe("PatientRegistrationForm", () => {
     expect(fieldByLabel(/^Cidade/i)).toHaveValue("São Paulo");
   });
 
+  it("paciente sem CPF e sem telefones mostra os campos vazios, não um traço", async () => {
+    await renderForm({
+      patient: { ...patient, cpf: null, phone: null, secondaryPhone: null } as never,
+    });
+
+    expect(fieldByLabel(/^CPF/i)).toHaveValue("");
+    expect(fieldByLabel(/^Telefone$/i)).toHaveValue("");
+    expect(fieldByLabel(/^Telefone secundário/i)).toHaveValue("");
+  });
+
+  it("aplica a máscara enquanto digita o CPF", async () => {
+    const user = userEvent.setup();
+    await renderForm({ patient: { ...patient, cpf: null } as never });
+
+    await user.type(fieldByLabel(/^CPF/i), "1234567");
+    expect(fieldByLabel(/^CPF/i)).toHaveValue("123.456.7");
+  });
+
   it("mantém o botão salvar desabilitado enquanto nada muda", async () => {
     await renderForm({ onSaved: vi.fn() });
 

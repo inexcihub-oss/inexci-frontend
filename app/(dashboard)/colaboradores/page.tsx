@@ -9,6 +9,8 @@ import {
 import { logger } from "@/lib/logger";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
+import { councilOf, professionalKindLabel } from "@/lib/professional-council";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -238,8 +240,15 @@ export default function ColaboradoresPage() {
       meta: { className: "hidden md:table-cell" },
       cell: ({ row }) =>
         row.original.isDoctor ? (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-            Médico
+          <span
+            className={cn(
+              "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border",
+              councilOf(row.original.doctorProfile) === "CRM"
+                ? "bg-blue-100 text-blue-700 border-blue-200"
+                : "bg-teal-50 text-teal-800 border-teal-200",
+            )}
+          >
+            {professionalKindLabel(row.original.doctorProfile)}
           </span>
         ) : (
           <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">

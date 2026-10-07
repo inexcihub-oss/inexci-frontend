@@ -649,6 +649,26 @@ describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
     ).toBeInTheDocument();
   });
 
+  it("horário digitado dentro de um bloqueio é avisado antes de enviar", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [
+          slotLocal("08:00", 60),
+          slotLocal("09:00", 60, { free: false, reason: "block" }),
+        ],
+      },
+    ]);
+    abrirModal();
+
+    expect(
+      await screen.findByText(
+        "Horário bloqueado na agenda do profissional: não será possível agendar.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("feriado que bloqueia a agenda é avisado", async () => {
     getSlots.mockResolvedValue([
       {

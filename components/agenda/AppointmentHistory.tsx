@@ -82,6 +82,11 @@ export function AppointmentHistory({
   const { data: atividades = [], isLoading, isError } = useQuery({
     queryKey: appointmentActivitiesKey(appointmentId),
     queryFn: () => appointmentService.listActivities(appointmentId),
+    // Mudança de status/edição acontece fora daqui e não invalida esta
+    // chave: abrir a seção sempre busca de novo, senão o histórico mostrava
+    // a versão em cache sem a última mudança.
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const comentar = useMutation({

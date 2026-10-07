@@ -16,6 +16,10 @@ interface DetailPageLayoutProps {
   itemSubtitle?: string;
   /** Imagem do perfil ou iniciais */
   profileImage?: string;
+  /** Avatar próprio (ex.: foto editável do paciente) no lugar da imagem/iniciais. */
+  avatar?: ReactNode;
+  /** Ação à direita do cartão do nome (ex.: "Nova consulta"). */
+  profileAction?: ReactNode;
   /** Navegação entre itens */
   navigation?: {
     currentIndex: number;
@@ -37,6 +41,8 @@ export function DetailPageLayout({
   itemName,
   itemSubtitle,
   profileImage,
+  avatar,
+  profileAction,
   navigation,
   children,
   sidebarContent,
@@ -280,7 +286,9 @@ export function DetailPageLayout({
           {/* Card de perfil */}
           <div className="flex items-center gap-3 lg:gap-4 p-3 lg:p-4 bg-gradient-to-r from-white to-transparent border border-neutral-100 rounded-2xl shadow-sm">
             {/* Avatar */}
-            {profileImage ? (
+            {avatar ? (
+              avatar
+            ) : profileImage ? (
               <Image
                 src={profileImage}
                 alt={itemName}
@@ -297,7 +305,7 @@ export function DetailPageLayout({
             )}
 
             {/* Nome e subtítulo */}
-            <div className="flex flex-col justify-center min-w-0">
+            <div className="flex flex-1 flex-col justify-center min-w-0">
               <h1 className="text-xl lg:text-2xl font-semibold text-gray-900 truncate">
                 {itemName}
               </h1>
@@ -307,6 +315,7 @@ export function DetailPageLayout({
                 </p>
               )}
             </div>
+            {profileAction && <div className="shrink-0">{profileAction}</div>}
           </div>
 
           {/* Conteúdo dos formulários */}

@@ -289,6 +289,16 @@ export function NewAppointmentModal({
     const [hh, mm] = time.split(":").map(Number);
     const inicio = new Date(parsed);
     inicio.setHours(hh, mm, 0, 0);
+    const fim = inicio.getTime() + duration * 60_000;
+    const bloqueado = diaDaGrade.slots.some(
+      (s) =>
+        s.reason === "block" &&
+        new Date(s.start).getTime() < fim &&
+        inicio.getTime() < new Date(s.end).getTime(),
+    );
+    if (bloqueado) {
+      return "Horário bloqueado na agenda do profissional: não será possível agendar.";
+    }
     return dentroDaGrade(diaDaGrade.slots, inicio, duration) === false
       ? "Fora da grade de atendimento do profissional."
       : null;
@@ -396,7 +406,7 @@ export function NewAppointmentModal({
         {doctors.length > 1 && (
           <div className="flex flex-col gap-1">
             <label className="ds-label mb-0">
-              Médico<span className="text-red-500 ml-0.5">*</span>
+              Profissional<span className="text-red-500 ml-0.5">*</span>
             </label>
             <select
               className="ds-input"
@@ -404,7 +414,7 @@ export function NewAppointmentModal({
               onChange={(e) => setDoctorId(e.target.value)}
               disabled={isEdit}
             >
-              <option value="">Selecione o médico</option>
+              <option value="">Selecione o profissional</option>
               {doctors.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}

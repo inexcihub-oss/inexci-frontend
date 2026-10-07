@@ -74,6 +74,25 @@ describe("AppointmentHistory (MIG-04)", () => {
     expect(screen.getByText("Paciente passou mal")).toBeInTheDocument();
   });
 
+  it("reabrir a seção busca de novo (a mudança de status acontece fora dela)", async () => {
+    service.listActivities.mockResolvedValue([]);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 5 * 60_000 } },
+    });
+    const montar = () =>
+      render(
+        <QueryClientProvider client={client}>
+          <AppointmentHistory appointmentId="a-1" podeComentar={false} />
+        </QueryClientProvider>,
+      );
+    const primeira = montar();
+    await screen.findByText("Nada registrado ainda.");
+    primeira.unmount();
+
+    montar();
+    await waitFor(() => expect(service.listActivities).toHaveBeenCalledTimes(2));
+  });
+
   it("mostra estado vazio quando não há nada registrado", async () => {
     service.listActivities.mockResolvedValue([]);
     renderHistory();

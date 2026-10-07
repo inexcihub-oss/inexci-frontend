@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Clock, Pencil, Plus, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
+import { DateInput } from "@/components/ui/DateInput";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { useClinics } from "@/hooks/useClinics";
 import { useClinicRooms } from "@/hooks/useClinicRooms";
@@ -186,32 +187,36 @@ export function ScheduleWeekEditor({
                   {doDia.map((g) => (
                     <div
                       key={g.id}
-                      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+                      className="flex items-start justify-between gap-2 text-sm"
                     >
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <span
-                        className={
-                          g.active
-                            ? "font-medium text-gray-800 tabular-nums"
-                            : "text-gray-400 line-through tabular-nums"
-                        }
-                      >
-                        {hhmm(g.startTime)}–{hhmm(g.endTime)}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        a cada {g.slotMinutes} min
-                        {g.room?.name
-                          ? ` · ${g.room.name}`
-                          : g.clinic?.name
-                            ? ` · ${g.clinic.name}`
-                            : ""}
-                        {g.validFrom || g.validTo
-                          ? ` · ${g.validFrom ? `de ${dataBR(g.validFrom)}` : ""}${g.validTo ? ` até ${dataBR(g.validTo)}` : ""}`
-                          : ""}
-                        {!g.active ? " · inativo" : ""}
-                      </span>
+                      <div className="flex min-w-0 items-start gap-2">
+                        <Clock className="mt-0.5 w-4 h-4 shrink-0 text-gray-400" />
+                        <div className="min-w-0">
+                          <span
+                            className={
+                              g.active
+                                ? "font-medium text-gray-800 tabular-nums"
+                                : "text-gray-400 line-through tabular-nums"
+                            }
+                          >
+                            {hhmm(g.startTime)}–{hhmm(g.endTime)}
+                          </span>
+                          <p className="text-xs text-gray-500">
+                            a cada {g.slotMinutes} min
+                            {g.room?.name
+                              ? ` · ${g.room.name}`
+                              : g.clinic?.name
+                                ? ` · ${g.clinic.name}`
+                                : ""}
+                            {g.validFrom || g.validTo
+                              ? ` · ${g.validFrom ? `de ${dataBR(g.validFrom)}` : ""}${g.validTo ? ` até ${dataBR(g.validTo)}` : ""}`
+                              : ""}
+                            {!g.active ? " · inativo" : ""}
+                          </p>
+                        </div>
+                      </div>
                       {canEdit && (
-                        <span className="ml-auto flex items-center gap-1">
+                        <span className="flex shrink-0 items-center gap-1">
                           <button
                             type="button"
                             onClick={() => alternarAtivo(g)}
@@ -262,8 +267,8 @@ export function ScheduleWeekEditor({
 
       {rascunho && (
         <div className="flex flex-col gap-3 rounded-xl border border-gray-200 p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <Campo id="grade-dia" label="Dia">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Campo id="grade-dia" label="Dia" className="col-span-2 sm:col-span-1">
               <select
                 id="grade-dia"
                 className="ds-input"
@@ -295,7 +300,11 @@ export function ScheduleWeekEditor({
                 onChange={(e) => set({ endTime: e.target.value })}
               />
             </Campo>
-            <Campo id="grade-intervalo" label="Intervalo">
+            <Campo
+              id="grade-intervalo"
+              label="Intervalo"
+              className="col-span-2 sm:col-span-1"
+            >
               <select
                 id="grade-intervalo"
                 className="ds-input"
@@ -348,26 +357,26 @@ export function ScheduleWeekEditor({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <Campo id="grade-de" label="Vale a partir de">
-              <input
+              <DateInput
                 id="grade-de"
-                type="date"
-                className="ds-input"
                 value={rascunho.validFrom}
-                onChange={(e) => set({ validFrom: e.target.value })}
+                onChange={(validFrom) => set({ validFrom })}
               />
             </Campo>
             <Campo id="grade-ate" label="Vale até">
-              <input
+              <DateInput
                 id="grade-ate"
-                type="date"
-                className="ds-input"
                 value={rascunho.validTo}
-                onChange={(e) => set({ validTo: e.target.value })}
+                onChange={(validTo) => set({ validTo })}
               />
             </Campo>
-            <Campo id="grade-encaixes" label="Máx. encaixes">
+            <Campo
+              id="grade-encaixes"
+              label="Máx. encaixes"
+              className="col-span-2 sm:col-span-1"
+            >
               <input
                 id="grade-encaixes"
                 type="number"
@@ -418,14 +427,16 @@ export function ScheduleWeekEditor({
 function Campo({
   id,
   label,
+  className = "",
   children,
 }: {
   id: string;
   label: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className={`flex flex-col gap-1 min-w-0 ${className}`}>
       <label htmlFor={id} className="ds-label mb-0">
         {label}
       </label>

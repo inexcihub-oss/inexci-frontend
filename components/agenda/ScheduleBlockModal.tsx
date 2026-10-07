@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { DateInput } from "@/components/ui/DateInput";
 import { ModalFooter, SpinnerButton } from "@/components/shared/ModalFooter";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { formatDoctorName } from "@/lib/formatters";
@@ -149,18 +150,7 @@ export function ScheduleBlockModal({
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label htmlFor="bloqueio-data" className="ds-label mb-0">
-            Data
-          </label>
-          <input
-            id="bloqueio-data"
-            type="date"
-            className="ds-input"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </div>
+        <DateInput id="bloqueio-data" label="Data" value={date} onChange={setDate} />
 
         <label className="flex items-center gap-2 text-sm text-neutral-700">
           <input

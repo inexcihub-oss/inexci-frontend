@@ -61,6 +61,7 @@ import {
   appointmentToEvent,
   dateKey,
   hhmm,
+  isToday,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -623,7 +624,11 @@ export default function AgendaPage() {
           isOpen
           block={blockModal.block ?? null}
           doctors={doctors}
-          defaultDate={view === "month" ? null : dateKey(days[0] ?? anchor)}
+          defaultDate={
+            view === "month"
+              ? null
+              : dateKey(days.find((d) => isToday(d)) ?? days[0] ?? anchor)
+          }
           onClose={() => setBlockModal(null)}
           onSaved={(mensagem) => {
             showSuccess(mensagem);
