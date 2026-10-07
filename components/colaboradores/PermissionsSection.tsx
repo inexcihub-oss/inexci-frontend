@@ -3,7 +3,6 @@
 import {
   CalendarDays,
   Check,
-  ChevronDown,
   Info,
   LayoutGrid,
   LucideIcon,
@@ -104,7 +103,7 @@ export function PermissionsSection({
             id="perfil-colaborador"
             value={presetFor(efetivas)}
             onChange={(e) => aplicarPreset(e.target.value)}
-            className="ds-input appearance-none pr-9"
+            className="ds-input"
           >
             {Object.entries(PROFILE_LABELS).map(([chave, rotulo]) => (
               <option key={chave} value={chave}>
@@ -112,7 +111,6 @@ export function PermissionsSection({
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
         <p className="ds-caption mt-1.5">
           Escolha um perfil pronto ou marque as áreas uma a uma.
