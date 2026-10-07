@@ -3,6 +3,9 @@ import { addDays, startOfDay } from "./calendar";
 
 export type HubTab = "today" | "upcoming" | "done";
 
+/** Consultas por página nas listas do hub ("carregar mais" de 20 em 20). */
+export const HUB_PAGE_SIZE = 20;
+
 export const HUB_TABS: { key: HubTab; label: string }[] = [
   { key: "today", label: "Hoje" },
   { key: "upcoming", label: "Próximas" },

@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -106,31 +107,77 @@ describe("AtendimentoHubPage — gating por Agenda", () => {
 });
 
 /**
- * D-15: o backend corta a lista num teto por requisição. A aba "Realizadas"
- * é a única sem janela de datas, então é a que pode encostar nele — e antes
- * `total` vinha igual ao tamanho da página, tornando o corte invisível.
+ * Lista paginada de 20 em 20: o rodapé diz quanto falta, "Carregar mais"
+ * pede a página seguinte e "Ver na agenda" leva para o calendário. O filtro
+ * de profissionais vai para o servidor, junto com o pedido de contagens.
  */
-describe("AtendimentoHubPage — aviso de lista cortada", () => {
+describe("AtendimentoHubPage — paginação", () => {
+  const consulta = (i: number) => ({
+    ...CONSULTA,
+    id: `a-${i}`,
+    patient: { id: `p-${i}`, name: `Paciente ${String(i).padStart(2, "0")}` },
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     authState = { can: (p) => p === Permission.AGENDA };
   });
 
-  it("avisa quando o total do servidor é maior que os registros recebidos", async () => {
-    getAgendaPage.mockResolvedValue({ records: [CONSULTA], total: 1103 });
-    renderPage();
-
-    expect(await screen.findByText("Ana Beatriz")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Mostrando as 1 consultas mais recentes de 1103/i),
-    ).toBeInTheDocument();
-  });
-
-  it("não avisa quando a lista veio inteira", async () => {
+  it("pede a 1ª página com 20 itens e as contagens dos profissionais", async () => {
     getAgendaPage.mockResolvedValue({ records: [CONSULTA], total: 1 });
     renderPage();
 
     expect(await screen.findByText("Ana Beatriz")).toBeInTheDocument();
-    expect(screen.queryByText(/mais recentes de/i)).not.toBeInTheDocument();
+    expect(getAgendaPage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 0,
+        take: 20,
+        doctorIds: [],
+        withDoctorCounts: true,
+      }),
+    );
+  });
+
+  it("o total sai com separador de milhar", async () => {
+    getAgendaPage.mockResolvedValue({
+      records: Array.from({ length: 20 }, (_, i) => consulta(i)),
+      total: 2048,
+    });
+    renderPage();
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Mostrando 20 de 2.048 consultas",
+    );
+  });
+
+  it("lista que cabe numa página não mostra rodapé", async () => {
+    getAgendaPage.mockResolvedValue({ records: [CONSULTA], total: 1 });
+    renderPage();
+
+    expect(await screen.findByText("Ana Beatriz")).toBeInTheDocument();
+    expect(screen.queryByText(/Mostrando/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Carregar mais/ })).toBeNull();
+  });
+
+  it("carrega mais 20 a partir de onde parou, até o total", async () => {
+    const primeira = Array.from({ length: 20 }, (_, i) => consulta(i));
+    const segunda = Array.from({ length: 5 }, (_, i) => consulta(20 + i));
+    getAgendaPage
+      .mockResolvedValueOnce({ records: primeira, total: 25 })
+      .mockResolvedValueOnce({ records: segunda, total: 25 });
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByText("Paciente 00")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Mostrando 20 de 25 consultas");
+    expect(screen.getByRole("button", { name: /Ver na agenda/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Carregar mais 5" }));
+
+    expect(await screen.findByText("Paciente 24")).toBeInTheDocument();
+    expect(getAgendaPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ skip: 20, take: 20, withDoctorCounts: false }),
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Mostrando 25 de 25 consultas");
+    expect(screen.queryByRole("button", { name: /Carregar mais/ })).toBeNull();
   });
 });

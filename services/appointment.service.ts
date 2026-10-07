@@ -178,6 +178,13 @@ export interface AgendaQuery {
   status?: AppointmentStatus[];
   /** Ordem por horário — `DESC` nas listas de passado. */
   order?: "ASC" | "DESC";
+  /** Vários profissionais (filtro do hub). Vazio = todos os acessíveis. */
+  doctorIds?: string[];
+  /** Paginação. */
+  skip?: number;
+  take?: number;
+  /** Pede `countByDoctorId` do recorte inteiro (sem paginação). */
+  withDoctorCounts?: boolean;
 }
 
 /**
@@ -189,6 +196,8 @@ export interface AgendaQuery {
 export interface AgendaPage {
   records: Appointment[];
   total: number;
+  /** Consultas por profissional no recorte inteiro, quando pedido. */
+  countByDoctorId?: Record<string, number>;
 }
 
 export const appointmentService = {
@@ -203,6 +212,10 @@ export const appointmentService = {
     if (query.doctorId) params.doctorId = query.doctorId;
     if (query.status?.length) params.status = query.status.join(",");
     if (query.order) params.order = query.order;
+    if (query.doctorIds?.length) params.doctorIds = query.doctorIds.join(",");
+    if (query.skip) params.skip = String(query.skip);
+    if (query.take) params.take = String(query.take);
+    if (query.withDoctorCounts) params.withDoctorCounts = "true";
 
     const response = await api.get("/appointments", { params });
     const records = getApiRecords<BackendAppointment>(response.data).map(
@@ -216,6 +229,9 @@ export const appointmentService = {
       // para `records.length` mantém a desigualdade falsa, ou seja, nenhum
       // aviso de corte — nunca um aviso inventado.
       total: typeof total === "number" ? total : records.length,
+      countByDoctorId: (
+        response.data as { countByDoctorId?: Record<string, number> } | undefined
+      )?.countByDoctorId,
     };
   },
 
