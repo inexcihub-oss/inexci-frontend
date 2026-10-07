@@ -95,6 +95,13 @@ vi.mock("@/services/clinical-record-template.service", () => ({
   },
 }));
 
+vi.mock("@/services/available-doctors.service", () => ({
+  availableDoctorsService: {
+    getAvailableDoctors: vi.fn().mockResolvedValue([]),
+  },
+}));
+
+import { availableDoctorsService } from "@/services/available-doctors.service";
 import { clinicalRecordService } from "@/services/clinical-record.service";
 import { clinicalRecordTemplateService } from "@/services/clinical-record-template.service";
 import { healthPlanService } from "@/services/health-plan.service";
@@ -793,6 +800,53 @@ describe("AtendimentoTabs", () => {
         screen.getByRole("checkbox", { name: "Paciente cirúrgico" }),
       ).toBeDisabled();
     });
+  });
+
+  /**
+   * A indicação abre a SC em nome do profissional da consulta: o backend
+   * recusa se ele não for médico, mesmo que quem está logado seja.
+   */
+  it("médico logado numa consulta de profissional não médico não vê a indicação cirúrgica", async () => {
+    vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue([
+      {
+        id: "d-1",
+        name: "Luana Técnica",
+        crm: null,
+        crmState: null,
+        isPhysician: false,
+      },
+    ]);
+    renderTabs();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("checkbox", { name: "Paciente cirúrgico" }),
+      ).not.toBeInTheDocument(),
+    );
+    vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue([]);
+  });
+
+  it("médico com CRM sem número vê a indicação desabilitada, com o que falta", async () => {
+    vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue([
+      {
+        id: "d-1",
+        name: "Karina Clínica",
+        crm: null,
+        crmState: null,
+        isPhysician: true,
+      },
+    ]);
+    renderTabs();
+
+    expect(
+      await screen.findByText(
+        "Preencha o número do CRM de Karina Clínica em Colaboradores para indicar cirurgia.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Paciente cirúrgico" }),
+    ).toBeDisabled();
+    vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue([]);
   });
 
   describe("usuário não-médico", () => {

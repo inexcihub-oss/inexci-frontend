@@ -91,6 +91,8 @@ export interface MedicalCertificateFields {
   includeCid?: boolean;
   /** CID escolhido para este atestado; tem precedência sobre `includeCid`. */
   cid?: ClinicalCidCode;
+  /** Texto do atestado (modelo ou digitado); substitui a declaração padrão. */
+  text?: string;
   observations?: string;
 }
 

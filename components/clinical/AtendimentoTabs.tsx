@@ -26,6 +26,7 @@ import {
   ClinicalRecord,
 } from "@/services/clinical-record.service";
 import { healthPlanService } from "@/services/health-plan.service";
+import { availableDoctorsService } from "@/services/available-doctors.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
@@ -129,6 +130,30 @@ export function AtendimentoTabs({
   );
 
   const [patient, setPatient] = useState<Patient>(initialPatient);
+  // Indicação cirúrgica sai em nome do profissional da consulta, e o backend
+  // só aceita se ele for médico (CRM) — não basta quem está logado ser. Sem
+  // a lista (falha de rede), presume médico e deixa o backend decidir.
+  const [consultaDeMedico, setConsultaDeMedico] = useState(true);
+  // Médico sem número de CRM (veio assim do Feegow): o backend recusa a
+  // indicação até alguém preencher o número.
+  const [crmSemNumeroDe, setCrmSemNumeroDe] = useState<string | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    availableDoctorsService
+      .getAvailableDoctors()
+      .then((lista) => {
+        const d = lista.find((x) => x.id === appointment.doctorId);
+        if (!ativo || !d) return;
+        setConsultaDeMedico(d.isPhysician !== false);
+        setCrmSemNumeroDe(
+          d.isPhysician !== false && !d.crm?.trim() ? d.name : null,
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      ativo = false;
+    };
+  }, [appointment.doctorId]);
   const [record, setRecord] = useState<ClinicalRecord | null>(initialRecord);
   const [fields, setFields] = useState<FichaFields>(() =>
     fichaFieldsFrom(initialRecord),
@@ -471,7 +496,12 @@ export function AtendimentoTabs({
                 onFieldChange={handleFieldChange}
                 readOnly={readOnly}
                 surgeryRequestId={record?.surgeryRequestId ?? null}
-                allowSurgicalIndication={isPhysician}
+                allowSurgicalIndication={isPhysician && consultaDeMedico}
+                surgicalIndicationBlockedReason={
+                  crmSemNumeroDe
+                    ? `Preencha o número do CRM de ${crmSemNumeroDe} em Colaboradores para indicar cirurgia.`
+                    : undefined
+                }
               />
 
               {/* Receita, atestado e pedido de exame saem com o CRM e a

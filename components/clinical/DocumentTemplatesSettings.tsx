@@ -130,8 +130,8 @@ export function DocumentTemplatesSettings({ doctorId }: { doctorId: string }) {
             Modelos de documentos
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Textos prontos para as observações do atestado e a indicação
-            clínica do pedido de exame. Escolha o modelo na hora de emitir.
+            Textos prontos para o atestado e para a indicação clínica do
+            pedido de exame. Escolha o modelo na hora de emitir.
           </p>
         </div>
         {!rascunho && (
@@ -227,9 +227,15 @@ export function DocumentTemplatesSettings({ doctorId }: { doctorId: string }) {
             onChange={(e) => setRascunho({ ...rascunho, body: e.target.value })}
             placeholder="Atesto, para os devidos fins, que {{paciente.nome}} esteve em consulta em {{data}}..."
           />
-          <p className="text-xs text-gray-400 self-end">
-            {rascunho.body.length}/{DOCUMENT_TEMPLATE_BODY_MAX}
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-xs text-gray-500">
+              Escreva só o texto: título, dados do paciente e assinatura
+              entram sozinhos no documento.
+            </p>
+            <p className="text-xs text-gray-400 shrink-0">
+              {rascunho.body.length}/{DOCUMENT_TEMPLATE_BODY_MAX}
+            </p>
+          </div>
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button

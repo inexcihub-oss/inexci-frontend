@@ -19,6 +19,7 @@ import {
   ClinicalDocumentTarget,
   GeneratedClinicalDocument,
 } from "@/services/clinical-record.service";
+import { availableDoctorsService } from "@/services/available-doctors.service";
 import { getApiErrorMessage } from "@/lib/http-error";
 import {
   clinicalDocumentTemplateService,
@@ -116,6 +117,39 @@ export function ClinicalDocumentActions({
   dadosFabricados?: boolean;
 }) {
   const [openKind, setOpenKind] = useState<DocumentKind | null>(null);
+  // Receita, atestado e pedido de exame só saem em nome de médico (CRM) — o
+  // backend recusa (`assertIsPhysician` em `buildBaseContext`) quando quem
+  // assina é, por exemplo, nutricionista ou técnico. Quem assina
+  // é o profissional da consulta, não quem está logado. Sem a lista,
+  // presume médico e deixa o backend decidir.
+  const [assinante, setAssinante] = useState<{
+    nome: string;
+    medico: boolean;
+    semNumero: boolean;
+  } | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    availableDoctorsService
+      .getAvailableDoctors()
+      .then((lista) => {
+        const d = lista.find((x) => x.id === doctorId);
+        if (ativo && d) {
+          setAssinante({
+            nome: d.name,
+            medico: d.isPhysician !== false,
+            semNumero: !d.crm?.trim(),
+          });
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      ativo = false;
+    };
+  }, [doctorId]);
+  const naoMedico = assinante?.medico === false;
+  // CRM sem número (veio assim do Feegow): o backend recusa a emissão.
+  const crmSemNumero = !!assinante?.medico && assinante.semNumero;
+  const soMedico = naoMedico || crmSemNumero;
   const [submitting, setSubmitting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,10 +167,20 @@ export function ClinicalDocumentActions({
   const [includeCid, setIncludeCid] = useState(false);
   const [certificateCid, setCertificateCid] = useState<ClinicalCidCode[]>([]);
   const [observations, setObservations] = useState("");
+  // Texto do atestado vindo do modelo: substitui a declaração padrão do PDF.
+  // Vazio = declaração padrão. Não é a mesma coisa que observações — antes o
+  // modelo caía em observações e o atestado saía com o texto duas vezes.
+  const [certificateText, setCertificateText] = useState("");
 
   // Modelos de texto do documento aberto (atestado e pedido de exame).
   const [templates, setTemplates] = useState<ClinicalDocumentTemplate[]>([]);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
+  // Modelo escolhido fica visível no seletor (antes ele voltava ao
+  // placeholder e parecia que nada tinha sido escolhido).
+  const [templateId, setTemplateId] = useState("");
+  // Último texto que veio do servidor: enquanto o médico não editar, mudar os
+  // dias de afastamento refaz o texto com os dias novos.
+  const [textoAplicado, setTextoAplicado] = useState("");
   const templateKind = openKind ? TEMPLATE_KIND[openKind] : undefined;
 
   useEffect(() => {
@@ -159,14 +203,25 @@ export function ClinicalDocumentActions({
    * Preenche o texto com o modelo, já com os dados do paciente e do médico
    * que estão na tela. O campo continua editável; trocar de modelo substitui.
    */
-  const applyTemplate = async (templateId: string) => {
-    if (!templateId) return;
+  const applyTemplate = async (id: string) => {
+    if (!id) {
+      // "Nenhum": no atestado volta à declaração padrão; no pedido de exame o
+      // texto digitado fica onde está.
+      setTemplateId("");
+      if (openKind === "certificate") {
+        setCertificateText("");
+        setTextoAplicado("");
+      }
+      return;
+    }
+    const anterior = templateId;
+    setTemplateId(id);
     setError(null);
     setApplyingTemplate(true);
     try {
       const days = Number(restDays);
       const { body } = await clinicalDocumentTemplateService.apply(
-        templateId,
+        id,
         {
           patientId,
           doctorId,
@@ -175,14 +230,27 @@ export function ClinicalDocumentActions({
             : {}),
         },
       );
-      if (openKind === "certificate") setObservations(body);
-      else setNotes(body);
+      if (openKind === "certificate") {
+        setCertificateText(body);
+        setTextoAplicado(body);
+      } else setNotes(body);
     } catch (err) {
+      setTemplateId(anterior);
       setError(getApiErrorMessage(err, "Não foi possível aplicar o modelo."));
     } finally {
       setApplyingTemplate(false);
     }
   };
+
+  // Dias mudaram depois de escolher o modelo e o texto não foi editado:
+  // refaz, senão o atestado sairia com "{{dias}}" do valor antigo.
+  useEffect(() => {
+    if (openKind !== "certificate" || !templateId) return;
+    if (certificateText !== textoAplicado) return;
+    const t = setTimeout(() => applyTemplate(templateId), 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só reage aos dias
+  }, [restDays]);
 
   const closePreview = () => setPreviewHtml(null);
 
@@ -196,6 +264,9 @@ export function ClinicalDocumentActions({
     // motivo.
     setCertificateCid(cidCodes.slice(0, 1));
     setObservations("");
+    setCertificateText("");
+    setTemplateId("");
+    setTextoAplicado("");
     setError(null);
     setOpenKind(kind);
   };
@@ -229,6 +300,7 @@ export function ClinicalDocumentActions({
         startDate: startDate || undefined,
         includeCid: includeCid || undefined,
         cid: includeCid ? certificateCid[0] : undefined,
+        text: certificateText.trim() || undefined,
         observations: observations.trim() || undefined,
       };
     }
@@ -336,6 +408,7 @@ export function ClinicalDocumentActions({
             variant="outline"
             className="rounded-xl min-h-[44px] justify-center"
             onClick={() => openModal("prescription")}
+            disabled={soMedico}
           >
             <FileText className="w-4 h-4 mr-2" />
             Receita
@@ -344,6 +417,7 @@ export function ClinicalDocumentActions({
             variant="outline"
             className="rounded-xl min-h-[44px] justify-center"
             onClick={() => openModal("certificate")}
+            disabled={soMedico}
           >
             <Stethoscope className="w-4 h-4 mr-2" />
             Atestado
@@ -352,11 +426,24 @@ export function ClinicalDocumentActions({
             variant="outline"
             className="rounded-xl min-h-[44px] justify-center"
             onClick={() => openModal("referral")}
+            disabled={soMedico}
           >
             <ClipboardList className="w-4 h-4 mr-2" />
             Solicitar exames
           </Button>
         </div>
+        {naoMedico && (
+          <p className="mt-2 text-xs text-neutral-500">
+            Receita, atestado e pedido de exame só podem ser emitidos por
+            médico (CRM). Esta consulta é de {assinante?.nome}.
+          </p>
+        )}
+        {crmSemNumero && (
+          <p className="mt-2 text-xs text-neutral-500">
+            Preencha o número do CRM de {assinante?.nome} em Colaboradores
+            para emitir documentos.
+          </p>
+        )}
       </div>
 
       <Modal
@@ -379,14 +466,14 @@ export function ClinicalDocumentActions({
                   <select
                     id="clinical-doc-template"
                     className="ds-input min-h-[44px]"
-                    value=""
+                    value={templateId}
                     disabled={applyingTemplate}
                     onChange={(e) => applyTemplate(e.target.value)}
                   >
                     <option value="">
-                      {applyingTemplate
-                        ? "Aplicando modelo..."
-                        : "Escolha um modelo para preencher o texto"}
+                      {openKind === "certificate"
+                        ? "Nenhum (texto padrão do atestado)"
+                        : "Nenhum"}
                     </option>
                     {templates.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -394,6 +481,11 @@ export function ClinicalDocumentActions({
                       </option>
                     ))}
                   </select>
+                  {applyingTemplate && (
+                    <p role="status" className="text-xs text-neutral-500">
+                      Aplicando modelo...
+                    </p>
+                  )}
                 </>
               )}
               <a
@@ -514,6 +606,31 @@ export function ClinicalDocumentActions({
 
           {openKind === "certificate" && (
             <>
+              {(templateId || certificateText) && (
+                <div className="flex flex-col gap-1">
+                  <Textarea
+                    id="clinical-doc-certificate-text"
+                    label="Texto do atestado"
+                    value={certificateText}
+                    onChange={(e) => setCertificateText(e.target.value)}
+                    rows={5}
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-neutral-500">
+                      Substitui o texto padrão. Cabeçalho, dados do paciente e
+                      assinatura entram sozinhos.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => applyTemplate("")}
+                      className="min-h-[32px] text-xs font-semibold text-teal-700 hover:underline"
+                    >
+                      Usar texto padrão
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
                   id="clinical-doc-rest-days"

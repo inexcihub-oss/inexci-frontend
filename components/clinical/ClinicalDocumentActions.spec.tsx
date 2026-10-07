@@ -27,6 +27,12 @@ vi.mock("@/services/clinical-document-template.service", () => ({
   },
 }));
 
+vi.mock("@/services/available-doctors.service", () => ({
+  availableDoctorsService: {
+    getAvailableDoctors: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 vi.mock("@/components/onboarding/OnboardingProvider", () => ({
   useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
 }));
@@ -35,6 +41,7 @@ import { clinicalRecordService } from "@/services/clinical-record.service";
 import { tussService } from "@/services/tuss.service";
 import { ClinicalDocumentActions } from "./ClinicalDocumentActions";
 import { clinicalDocumentTemplateService } from "@/services/clinical-document-template.service";
+import { availableDoctorsService } from "@/services/available-doctors.service";
 
 const generated = {
   id: "doc-1",
@@ -90,6 +97,61 @@ describe("ClinicalDocumentActions", () => {
     expect(screen.getByRole("button", { name: /receita/i })).toBeDefined();
     expect(screen.getByRole("button", { name: /atestado/i })).toBeDefined();
     expect(screen.getByRole("button", { name: /exames/i })).toBeDefined();
+  });
+
+  it("consulta de profissional que não é médico não oferece nenhum dos três documentos", async () => {
+    (
+      availableDoctorsService.getAvailableDoctors as ReturnType<typeof vi.fn>
+    ).mockResolvedValueOnce([
+      {
+        id: "d-1",
+        name: "Luana Técnica",
+        crm: null,
+        crmState: null,
+        isPhysician: false,
+      },
+    ]);
+    setup();
+
+    expect(
+      await screen.findByText(/só podem ser emitidos por médico/),
+    ).toHaveTextContent("Esta consulta é de Luana Técnica.");
+    expect(screen.getByRole("button", { name: /receita/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /atestado/i })).toBeDisabled();
+    // Pedido de exame também: o backend exige médico nos três documentos.
+    expect(screen.getByRole("button", { name: /exames/i })).toBeDisabled();
+  });
+
+  it("médico com CRM sem número não emite e é avisado para preencher", async () => {
+    (
+      availableDoctorsService.getAvailableDoctors as ReturnType<typeof vi.fn>
+    ).mockResolvedValueOnce([
+      { id: "d-1", name: "Karina Clínica", crm: null, crmState: null, isPhysician: true },
+    ]);
+    setup();
+
+    expect(
+      await screen.findByText(/Preencha o número do CRM de Karina Clínica/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /receita/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /atestado/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /exames/i })).toBeDisabled();
+  });
+
+  it("consulta de médico mantém receita e atestado", async () => {
+    (
+      availableDoctorsService.getAvailableDoctors as ReturnType<typeof vi.fn>
+    ).mockResolvedValueOnce([
+      { id: "d-1", name: "Dr. Ana", crm: "1", crmState: "RJ", isPhysician: true },
+    ]);
+    setup();
+
+    await waitFor(() =>
+      expect(availableDoctorsService.getAvailableDoctors).toHaveBeenCalled(),
+    );
+    expect(screen.getByRole("button", { name: /receita/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /atestado/i })).toBeEnabled();
+    expect(screen.queryByText(/só podem ser emitidos por médico/)).toBeNull();
   });
 
   /**
@@ -548,7 +610,7 @@ describe("ClinicalDocumentActions", () => {
       ).toHaveAttribute("href", "/configuracoes?tab=document-templates");
     });
 
-    it("aplicar o modelo preenche as observações, que seguem editáveis e vão na emissão", async () => {
+    it("aplicar o modelo preenche o texto do atestado — não as observações — e o seletor mostra o escolhido", async () => {
       templates.getAll.mockResolvedValue([modelo]);
       templates.apply.mockResolvedValue({
         id: "tpl-1",
@@ -567,21 +629,74 @@ describe("ClinicalDocumentActions", () => {
         doctorId: "d-1",
         restDays: 1,
       });
-      const observacoes = screen.getByLabelText("Observações");
+      const texto = await screen.findByLabelText("Texto do atestado");
       await waitFor(() =>
-        expect(observacoes).toHaveValue("Atesto Maria Silva por 1 dia."),
+        expect(texto).toHaveValue("Atesto Maria Silva por 1 dia."),
       );
+      // Antes o seletor voltava a "Escolha um modelo" e parecia não ter
+      // escolhido nada.
+      expect(select).toHaveValue("tpl-1");
+      expect(screen.getByLabelText("Observações")).toHaveValue("");
 
-      await user.type(observacoes, " Repouso.");
+      await user.type(texto, " Repouso.");
+      await user.type(screen.getByLabelText("Observações"), "Retorno em 7 dias");
       await user.click(screen.getByRole("button", { name: /^emitir/i }));
 
       await waitFor(() =>
         expect(clinicalRecordService.generateMedicalCertificate).toHaveBeenCalledWith(
           expect.objectContaining({
-            observations: "Atesto Maria Silva por 1 dia. Repouso.",
+            text: "Atesto Maria Silva por 1 dia. Repouso.",
+            observations: "Retorno em 7 dias",
           }),
         ),
       );
+    });
+
+    it("'Usar texto padrão' descarta o texto do modelo e volta o seletor para Nenhum", async () => {
+      templates.getAll.mockResolvedValue([modelo]);
+      templates.apply.mockResolvedValue({
+        id: "tpl-1",
+        kind: "medical_certificate",
+        body: "Atesto Maria Silva por 1 dia.",
+      });
+      const user = userEvent.setup();
+      setup(false);
+      await user.click(screen.getByRole("button", { name: /atestado/i }));
+      const select = await screen.findByLabelText("Usar modelo");
+      await user.selectOptions(select, "tpl-1");
+      await screen.findByLabelText("Texto do atestado");
+
+      await user.click(screen.getByRole("button", { name: "Usar texto padrão" }));
+
+      expect(screen.queryByLabelText("Texto do atestado")).toBeNull();
+      expect(select).toHaveValue("");
+      await user.click(screen.getByRole("button", { name: /^emitir/i }));
+      await waitFor(() =>
+        expect(clinicalRecordService.generateMedicalCertificate).toHaveBeenCalledWith(
+          expect.objectContaining({ text: undefined }),
+        ),
+      );
+    });
+
+    it("mudar os dias depois do modelo refaz o texto com os dias novos", async () => {
+      templates.getAll.mockResolvedValue([modelo]);
+      templates.apply.mockImplementation(async (_id, body) => ({
+        id: "tpl-1",
+        kind: "medical_certificate",
+        body: `Afastamento de ${body.restDays} dias.`,
+      }));
+      const user = userEvent.setup();
+      setup(false);
+      await user.click(screen.getByRole("button", { name: /atestado/i }));
+      await user.selectOptions(await screen.findByLabelText("Usar modelo"), "tpl-1");
+      const texto = await screen.findByLabelText("Texto do atestado");
+      await waitFor(() => expect(texto).toHaveValue("Afastamento de 1 dias."));
+
+      const dias = screen.getByLabelText("Dias de afastamento");
+      await user.clear(dias);
+      await user.type(dias, "3");
+
+      await waitFor(() => expect(texto).toHaveValue("Afastamento de 3 dias."));
     });
 
     it("no pedido de exame o modelo preenche a indicação clínica", async () => {
@@ -612,6 +727,10 @@ describe("ClinicalDocumentActions", () => {
           "Investigar lesão.",
         ),
       );
+      // O seletor continua mostrando o modelo escolhido.
+      expect(screen.getByLabelText("Usar modelo")).toHaveValue("tpl-2");
+      // Pedido de exame não tem "texto do atestado".
+      expect(screen.queryByLabelText("Texto do atestado")).toBeNull();
     });
 
     it("a receita não busca modelos", async () => {
