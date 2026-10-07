@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { Appointment, AppointmentStatus } from "@/services/appointment.service";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import {
+  Appointment,
+  AppointmentActivity,
+  AppointmentStatus,
+  appointmentService,
+} from "@/services/appointment.service";
 import { Permission } from "@/lib/permissions";
 import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 
@@ -18,7 +24,17 @@ vi.mock("@/components/onboarding/OnboardingProvider", () => ({
   useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
 }));
 
-import { AppointmentDetailModal } from "./AppointmentDetailModal";
+vi.mock("@/services/appointment.service", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/services/appointment.service")
+  >("@/services/appointment.service");
+  return { ...actual, appointmentService: { listActivities: vi.fn() } };
+});
+
+import {
+  AppointmentDetailModal,
+  statusAntesDaChegada,
+} from "./AppointmentDetailModal";
 
 const consultaBase: Appointment = {
   id: "a-1",
@@ -81,6 +97,24 @@ describe("AppointmentDetailModal", () => {
     renderModal("confirmed", "Carlos Mendonça");
 
     expect(screen.getByText("Dr(a). Carlos Mendonça")).toBeInTheDocument();
+  });
+
+  it("profissional que não é médico aparece sem 'Dr(a).'", () => {
+    render(
+      <AppointmentDetailModal
+        appointment={appointmentFixture("confirmed")}
+        doctorName="Luana Gomes"
+        doctorIsPhysician={false}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onStartAttendance={vi.fn()}
+        onChangeStatus={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Luana Gomes")).toBeInTheDocument();
+    expect(screen.queryByText(/Dr\(a\)\. Luana/)).not.toBeInTheDocument();
   });
 
   /**
@@ -271,6 +305,87 @@ describe("AppointmentDetailModal — sala de espera e dados da consulta (MIG-03)
       expect.arrayContaining(["Desfazer chegada", "Realizada", "Faltou", "Cancelar"]),
     );
     expect(botoes()).not.toContain("Chegou");
+  });
+
+  describe("Desfazer chegada", () => {
+    const mudanca = (
+      fromStatus: AppointmentStatus | null,
+      toStatus: AppointmentStatus,
+      createdAt: string,
+    ): AppointmentActivity => ({
+      id: createdAt,
+      type: "status_change",
+      fromStatus,
+      toStatus,
+      content: null,
+      createdAt,
+      user: null,
+    });
+
+    it("volta ao status de antes do último 'Chegou'", () => {
+      expect(
+        statusAntesDaChegada([
+          mudanca("confirmed", "waiting", "2026-07-01T10:00:00Z"),
+          mudanca("waiting", "scheduled", "2026-07-01T10:05:00Z"),
+          mudanca("scheduled", "waiting", "2026-07-01T10:10:00Z"),
+        ]),
+      ).toBe("scheduled");
+    });
+
+    it("sem registro da chegada, volta a confirmada", () => {
+      expect(statusAntesDaChegada([])).toBe("confirmed");
+    });
+
+    it("quem só estava agendado volta a agendado, não a confirmado", async () => {
+      vi.mocked(appointmentService.listActivities).mockResolvedValue([
+        mudanca("scheduled", "waiting", "2026-07-01T10:00:00Z"),
+      ]);
+      const onChangeStatus = vi.fn();
+      render(
+        <AppointmentDetailModal
+          appointment={appointmentFixture("waiting")}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onStartAttendance={vi.fn()}
+          onChangeStatus={onChangeStatus}
+          onDelete={vi.fn()}
+        />,
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Desfazer chegada" }),
+      );
+
+      await waitFor(() =>
+        expect(onChangeStatus).toHaveBeenCalledWith("scheduled"),
+      );
+      expect(appointmentService.listActivities).toHaveBeenCalledWith("a-1");
+    });
+
+    it("se o histórico falhar, volta a confirmada", async () => {
+      vi.mocked(appointmentService.listActivities).mockRejectedValue(
+        new Error("rede"),
+      );
+      const onChangeStatus = vi.fn();
+      render(
+        <AppointmentDetailModal
+          appointment={appointmentFixture("waiting")}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onStartAttendance={vi.fn()}
+          onChangeStatus={onChangeStatus}
+          onDelete={vi.fn()}
+        />,
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Desfazer chegada" }),
+      );
+
+      await waitFor(() =>
+        expect(onChangeStatus).toHaveBeenCalledWith("confirmed"),
+      );
+    });
   });
 
   it("em atendimento oferece continuar o atendimento", () => {

@@ -154,6 +154,10 @@ export default function AgendaPage() {
     doctors.forEach((d) => m.set(d.id, d.name));
     return m;
   }, [doctors]);
+  const physicianById = useMemo(
+    () => new Map(doctors.map((d) => [d.id, d.isPhysician] as const)),
+    [doctors],
+  );
 
   // ── Intervalo visível + dias ────────────────────────────────────────────────
   const { rangeFrom, rangeTo, days } = useMemo(() => {
@@ -266,7 +270,10 @@ export default function AgendaPage() {
       .filter((b) => blockAppliesTo(b, filters.doctorIds))
       .map((b) => {
         const quem = b.doctorId
-          ? formatDoctorName(doctorNameById.get(b.doctorId) ?? "Profissional")
+          ? formatDoctorName(
+              doctorNameById.get(b.doctorId) ?? "Profissional",
+              physicianById.get(b.doctorId) ?? false,
+            )
           : "Clínica";
         return {
           id: b.id,
@@ -294,6 +301,7 @@ export default function AgendaPage() {
     days,
     filters.doctorIds,
     doctorNameById,
+    physicianById,
     podeAgenda,
   ]);
 
@@ -603,6 +611,9 @@ export default function AgendaPage() {
           appointment={detail}
           doctorName={
             detail.doctorId ? doctorNameById.get(detail.doctorId) : undefined
+          }
+          doctorIsPhysician={
+            detail.doctorId ? physicianById.get(detail.doctorId) : undefined
           }
           busy={busyId === detail.id}
           onClose={() => setDetail(null)}

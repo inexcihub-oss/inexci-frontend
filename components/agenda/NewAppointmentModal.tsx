@@ -278,8 +278,12 @@ export function NewAppointmentModal({
     );
   }, [clinics, clinicId, date, time, duration]);
 
-  /** Avisos da grade do profissional: feriado que bloqueia e fora da grade. */
-  const avisoGrade = useMemo(() => {
+  /**
+   * Feriado que bloqueia e bloqueio de agenda são recusados pelo backend
+   * (409) até para encaixe — não há "mesmo assim". Só "fora da grade" é
+   * aviso que deixa agendar.
+   */
+  const bloqueioGrade = useMemo(() => {
     if (!diaDaGrade) return null;
     if (diaDaGrade.holiday?.blocksAgenda) {
       return `Feriado (${diaDaGrade.holiday.name}): a agenda está bloqueada neste dia.`;
@@ -296,13 +300,23 @@ export function NewAppointmentModal({
         new Date(s.start).getTime() < fim &&
         inicio.getTime() < new Date(s.end).getTime(),
     );
-    if (bloqueado) {
-      return "Horário bloqueado na agenda do profissional: não será possível agendar.";
-    }
+    return bloqueado
+      ? "Horário bloqueado na agenda do profissional: não será possível agendar."
+      : null;
+  }, [diaDaGrade, date, time, duration]);
+
+  /** Fora da grade do profissional: avisa, mas deixa agendar. */
+  const avisoGrade = useMemo(() => {
+    if (!diaDaGrade || bloqueioGrade) return null;
+    const parsed = parseDate(date);
+    if (!parsed || !/^\d{2}:\d{2}$/.test(time)) return null;
+    const [hh, mm] = time.split(":").map(Number);
+    const inicio = new Date(parsed);
+    inicio.setHours(hh, mm, 0, 0);
     return dentroDaGrade(diaDaGrade.slots, inicio, duration) === false
       ? "Fora da grade de atendimento do profissional."
       : null;
-  }, [diaDaGrade, date, time, duration]);
+  }, [diaDaGrade, bloqueioGrade, date, time, duration]);
 
   const handleSubmit = async () => {
     if (!canSubmit) {
@@ -674,6 +688,18 @@ export function NewAppointmentModal({
           />
         </div>
 
+        {bloqueioGrade && (
+          <div
+            role="alert"
+            className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+            <p className="text-xs text-red-700">
+              {bloqueioGrade} Escolha outra data ou horário.
+            </p>
+          </div>
+        )}
+
         {[avisoHorario, avisoGrade].filter(Boolean).map((aviso) => (
           <div
             key={aviso}
@@ -696,10 +722,12 @@ export function NewAppointmentModal({
           variant="primary"
           onClick={handleSubmit}
           isLoading={saving}
-          disabled={!canSubmit || emTour || dadosFabricados}
+          disabled={
+            !canSubmit || emTour || dadosFabricados || Boolean(bloqueioGrade)
+          }
           loadingText="Salvando..."
         >
-          {avisoHorario || avisoGrade
+          {!bloqueioGrade && (avisoHorario || avisoGrade)
             ? "Agendar mesmo assim"
             : isEdit
               ? "Salvar alterações"

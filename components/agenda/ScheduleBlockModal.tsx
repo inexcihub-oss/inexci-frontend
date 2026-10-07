@@ -18,7 +18,7 @@ interface Props {
   onSaved: (mensagem: string) => void;
   /** Bloqueio em edição; ausente = novo. */
   block?: ScheduleBlock | null;
-  doctors: { id: string; name: string }[];
+  doctors: { id: string; name: string; isPhysician?: boolean }[];
   defaultDate?: string | null;
 }
 
@@ -144,7 +144,7 @@ export function ScheduleBlockModal({
             <option value="">Toda a clínica</option>
             {doctors.map((d) => (
               <option key={d.id} value={d.id}>
-                {formatDoctorName(d.name)}
+                {formatDoctorName(d.name, d.isPhysician)}
               </option>
             ))}
           </select>

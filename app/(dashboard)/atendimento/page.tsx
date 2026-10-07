@@ -79,6 +79,10 @@ export default function AtendimentoHubPage() {
     doctors.forEach((d) => m.set(d.id, d.name));
     return m;
   }, [doctors]);
+  const physicianById = useMemo(
+    () => new Map(doctors.map((d) => [d.id, d.isPhysician] as const)),
+    [doctors],
+  );
 
   // O recorte de cada aba (janela de datas + status + ordem) é resolvido no
   // servidor; aqui só agrupamos por dia.
@@ -317,6 +321,7 @@ export default function AtendimentoHubPage() {
                           key={a.id}
                           appointment={a}
                           doctorName={doctorNameById.get(a.doctorId)}
+                          doctorIsPhysician={physicianById.get(a.doctorId)}
                           showDoctor={doctors.length > 1}
                           onOpen={() => setDetail(a)}
                         />
@@ -385,6 +390,7 @@ export default function AtendimentoHubPage() {
         <AppointmentDetailModal
           appointment={detail}
           doctorName={doctorNameById.get(detail.doctorId)}
+          doctorIsPhysician={physicianById.get(detail.doctorId)}
           busy={busyId === detail.id}
           onClose={() => setDetail(null)}
           onEdit={() => {
@@ -411,11 +417,13 @@ export default function AtendimentoHubPage() {
 function AppointmentRow({
   appointment: a,
   doctorName,
+  doctorIsPhysician,
   showDoctor,
   onOpen,
 }: {
   appointment: Appointment;
   doctorName?: string;
+  doctorIsPhysician?: boolean;
   showDoctor: boolean;
   onOpen: () => void;
 }) {
@@ -446,7 +454,7 @@ function AppointmentRow({
         </p>
         <p className="text-xs text-neutral-500 truncate">
           {APPOINTMENT_TYPE_LABELS[a.type]}
-          {showDoctor && doctorName ? ` · ${formatDoctorName(doctorName)}` : ""}
+          {showDoctor && doctorName ? ` · ${formatDoctorName(doctorName, doctorIsPhysician)}` : ""}
         </p>
       </div>
 

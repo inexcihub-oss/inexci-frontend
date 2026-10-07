@@ -664,9 +664,16 @@ describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
 
     expect(
       await screen.findByText(
-        "Horário bloqueado na agenda do profissional: não será possível agendar.",
+        /Horário bloqueado na agenda do profissional: não será possível agendar\./,
       ),
     ).toBeInTheDocument();
+    // Bloqueio é recusado pelo backend até para encaixe: não há "mesmo assim".
+    expect(
+      screen.queryByRole("button", { name: /agendar mesmo assim/i }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Agendar consulta" }),
+    ).toBeDisabled();
   });
 
   it("feriado que bloqueia a agenda é avisado", async () => {
@@ -681,9 +688,15 @@ describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
 
     expect(
       await screen.findByText(
-        "Feriado (Aniversário da cidade): a agenda está bloqueada neste dia.",
+        /Feriado \(Aniversário da cidade\): a agenda está bloqueada neste dia\. Escolha outra data ou horário\./,
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /agendar mesmo assim/i }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Agendar consulta" }),
+    ).toBeDisabled();
   });
 
   it("sem grade no dia não mostra horários nem aviso", async () => {
