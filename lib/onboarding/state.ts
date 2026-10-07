@@ -163,6 +163,29 @@ export function markStepComplete(
   };
 }
 
+/**
+ * "Marcar tudo como concluído" (Configurações): conclui de uma vez os passos
+ * das trilhas visíveis que faltam, sem reescrever a data dos já feitos, e dá
+ * as boas-vindas por vistas. A promoção a `completed` fica com
+ * `promoteIfComplete`, como em qualquer outra escrita.
+ */
+export function markAllComplete(
+  state: OnboardingState,
+  keys: StepKey[],
+  agora: string,
+): OnboardingState {
+  const faltando = keys.filter((k) => !state.completedSteps[k]);
+  return {
+    ...state,
+    status: avancarStatus(state),
+    welcomeSeenAt: state.welcomeSeenAt ?? agora,
+    completedSteps: {
+      ...state.completedSteps,
+      ...Object.fromEntries(faltando.map((k) => [k, agora])),
+    },
+  };
+}
+
 export function markTourSeen(
   state: OnboardingState,
   trackId: TrackId,

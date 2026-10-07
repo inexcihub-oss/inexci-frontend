@@ -8,6 +8,7 @@ import { OnboardingSettingsTab } from "./OnboardingSettingsTab";
 
 const restart = vi.fn().mockResolvedValue(undefined);
 const startTour = vi.fn();
+const completeAll = vi.fn();
 const pushMock = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
@@ -29,6 +30,7 @@ let contexto = {
   tracks: [TRILHA],
   startTour,
   restart,
+  completeAll,
 };
 
 vi.mock("./OnboardingProvider", () => ({ useOnboarding: () => contexto }));
@@ -41,6 +43,7 @@ describe("OnboardingSettingsTab", () => {
       tracks: [TRILHA],
       startTour,
       restart,
+      completeAll,
     };
   });
 
@@ -118,5 +121,29 @@ describe("OnboardingSettingsTab", () => {
     expect(
       screen.getByRole("button", { name: /refazer o onboarding/i }),
     ).toBeEnabled();
+  });
+
+  it("marca tudo como concluído de uma vez", async () => {
+    const user = userEvent.setup();
+    render(<OnboardingSettingsTab />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Marcar tudo como concluído" }),
+    );
+    expect(completeAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("com tudo concluído, o botão some", () => {
+    contexto = {
+      ...contexto,
+      state: {
+        ...emptyOnboardingState(),
+        completedSteps: { "criar-solicitacao": "2026-10-07T10:00:00Z" },
+      },
+    };
+    render(<OnboardingSettingsTab />);
+    expect(
+      screen.queryByRole("button", { name: "Marcar tudo como concluído" }),
+    ).toBeNull();
   });
 });

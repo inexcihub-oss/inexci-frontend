@@ -14,6 +14,7 @@ import { logger } from "@/lib/logger";
 import {
   dismissChecklist,
   isChecklistVisible as calcChecklistVisible,
+  markAllComplete,
   markStepComplete,
   markTourSeen,
   markWelcomeSeen,
@@ -42,6 +43,8 @@ interface OnboardingContextData {
   startTour: (id: TrackId) => void;
   closeTour: (opts?: { concluido?: boolean }) => void;
   completeStep: (key: StepKey) => void;
+  /** Conclui todas as trilhas visíveis de uma vez (Configurações). */
+  completeAll: () => void;
   markWelcome: () => void;
   dismiss: () => void;
   restart: () => Promise<void>;
@@ -238,6 +241,22 @@ export function OnboardingProvider({
     [aplicar],
   );
 
+  const completeAll = useCallback(() => {
+    const agora = new Date().toISOString();
+    const atual = stateRef.current;
+    const faltando = tracks
+      .map((t) => t.stepKey)
+      .filter((k) => !atual.completedSteps[k]);
+    if (faltando.length === 0) return;
+    aplicar(
+      (estado) => markAllComplete(estado, faltando, agora),
+      {
+        completedSteps: Object.fromEntries(faltando.map((k) => [k, agora])),
+        ...(atual.welcomeSeenAt ? {} : { welcomeSeenAt: agora }),
+      },
+    );
+  }, [aplicar, tracks]);
+
   const markWelcome = useCallback(() => {
     const agora = new Date().toISOString();
     aplicar((atual) => markWelcomeSeen(atual, agora), {
@@ -341,6 +360,7 @@ export function OnboardingProvider({
       startTour,
       closeTour,
       completeStep,
+      completeAll,
       markWelcome,
       dismiss,
       restart,
@@ -358,6 +378,7 @@ export function OnboardingProvider({
       startTour,
       closeTour,
       completeStep,
+      completeAll,
       markWelcome,
       dismiss,
       restart,

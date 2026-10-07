@@ -43,6 +43,7 @@ function Sonda() {
     tracks,
     activeTour,
     completeStep,
+    completeAll,
     dismiss,
     restart,
     startTour,
@@ -86,6 +87,7 @@ function Sonda() {
         marcar dashboard
       </button>
       <button onClick={dismiss}>dispensar</button>
+      <button onClick={completeAll}>concluir tudo</button>
       <button onClick={() => void restart()}>reiniciar</button>
       <button onClick={() => startTour("solicitacoes")}>iniciar tour</button>
       <button onClick={() => closeTour({ concluido: true })}>
@@ -158,6 +160,33 @@ describe("OnboardingProvider", () => {
     // Sem isto, uma implementação que aguardasse o PATCH antes do setState
     // também passaria — o teste não provaria otimismo nenhum.
     expect(patchMock).not.toHaveBeenCalled();
+  });
+
+  it("concluir tudo fecha todas as trilhas visíveis num único PATCH", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(
+      <OnboardingProvider>
+        <Sonda />
+      </OnboardingProvider>,
+    );
+
+    await user.click(screen.getByText("concluir tudo"));
+    expect(screen.getByTestId("status")).toHaveTextContent("completed");
+    expect(screen.getByTestId("checklist-visivel")).toHaveTextContent("false");
+
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(patchMock).toHaveBeenCalledTimes(1);
+    expect(patchMock.mock.calls[0][0]).toEqual({
+      completedSteps: {
+        "criar-solicitacao": expect.any(String),
+        "ver-dashboard": expect.any(String),
+        "cadastros-basicos": expect.any(String),
+      },
+      welcomeSeenAt: expect.any(String),
+      status: "completed",
+    });
   });
 
   it("agrupa escritas seguidas num único PATCH", async () => {

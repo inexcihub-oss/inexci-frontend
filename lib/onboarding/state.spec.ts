@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  markAllComplete,
   dismissChecklist,
   emptyOnboardingState,
   isChecklistVisible,
@@ -204,5 +205,37 @@ describe("promoteIfComplete", () => {
     promoteIfComplete(estado, ["criar-solicitacao"]);
 
     expect(estado.status).toBe("in_progress");
+  });
+});
+
+describe("markAllComplete", () => {
+  const agora = "2026-10-07T10:00:00.000Z";
+
+  it("conclui só o que falta, sem reescrever a data dos já feitos", () => {
+    const antes = {
+      ...emptyOnboardingState(),
+      completedSteps: { "criar-solicitacao": "2026-01-01T00:00:00.000Z" },
+    } as ReturnType<typeof emptyOnboardingState>;
+    const depois = markAllComplete(
+      antes,
+      ["criar-solicitacao", "ver-dashboard"],
+      agora,
+    );
+    expect(depois.completedSteps).toEqual({
+      "criar-solicitacao": "2026-01-01T00:00:00.000Z",
+      "ver-dashboard": agora,
+    });
+    expect(depois.status).toBe("in_progress");
+    expect(depois.welcomeSeenAt).toBe(agora);
+  });
+
+  it("não troca a data das boas-vindas já vistas", () => {
+    const antes = {
+      ...emptyOnboardingState(),
+      welcomeSeenAt: "2026-01-01T00:00:00.000Z",
+    };
+    expect(markAllComplete(antes, ["ver-dashboard"], agora).welcomeSeenAt).toBe(
+      "2026-01-01T00:00:00.000Z",
+    );
   });
 });

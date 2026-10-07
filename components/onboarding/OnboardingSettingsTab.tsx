@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, RotateCcw } from "lucide-react";
+import { Check, CheckCheck, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CHECKLIST } from "@/lib/onboarding/content";
 import { logger } from "@/lib/logger";
@@ -12,7 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "./OnboardingProvider";
 
 export function OnboardingSettingsTab() {
-  const { state, tracks, startTour, restart } = useOnboarding();
+  const { state, tracks, startTour, restart, completeAll } = useOnboarding();
   const { permissions } = useAuth();
   const router = useRouter();
   const [reiniciando, setReiniciando] = useState(false);
@@ -100,6 +100,29 @@ export function OnboardingSettingsTab() {
                 );
               })}
             </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {tracks.length > 0 && concluidas < tracks.length && (
+        <Card>
+          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-4">
+            <h3 className="ds-section-title">Concluir o treinamento</h3>
+            <p className="ds-caption mt-1">
+              Marca todas as trilhas como feitas e esconde o card de primeiros
+              passos. Você ainda pode rever qualquer trilha aqui.
+            </p>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+            <Button
+              type="button"
+              onClick={completeAll}
+              variant="outline"
+              className="gap-2"
+            >
+              <CheckCheck className="h-4 w-4" />
+              Marcar tudo como concluído
+            </Button>
           </CardContent>
         </Card>
       )}
