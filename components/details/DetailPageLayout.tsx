@@ -12,8 +12,8 @@ interface DetailPageLayoutProps {
   backHref: string;
   /** Nome do item sendo visualizado */
   itemName: string;
-  /** Subtítulo opcional (ex: especialidade, tipo) */
-  itemSubtitle?: string;
+  /** Subtítulo opcional (ex: especialidade, tipo, resumo do paciente) */
+  itemSubtitle?: ReactNode;
   /** Imagem do perfil ou iniciais */
   profileImage?: string;
   /** Avatar próprio (ex.: foto editável do paciente) no lugar da imagem/iniciais. */
@@ -310,9 +310,9 @@ export function DetailPageLayout({
                 {itemName}
               </h1>
               {itemSubtitle && (
-                <p className="text-xs md:text-sm text-gray-500 opacity-70">
+                <div className="text-xs md:text-sm text-gray-500 opacity-70">
                   {itemSubtitle}
-                </p>
+                </div>
               )}
             </div>
             {profileAction && <div className="shrink-0">{profileAction}</div>}

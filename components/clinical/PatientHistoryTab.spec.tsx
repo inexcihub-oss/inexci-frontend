@@ -3,9 +3,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Permission } from "@/lib/permissions";
 
-// Usuário simulado com Solicitações concedida — é o eixo que decide se o link
-// "Abrir solicitação" aparece na timeline.
-let authState = { can: (p: Permission) => p === Permission.SOLICITACOES };
+// Médico na tela de atendimento: Atendimento libera consultas, fichas e
+// documentos; Solicitações decide se o link "Abrir solicitação" aparece.
+const comSolicitacoes = (p: Permission) =>
+  p === Permission.ATENDIMENTO || p === Permission.SOLICITACOES;
+let authState: { can: (p: Permission) => boolean } = {
+  can: comSolicitacoes,
+};
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
@@ -34,7 +38,17 @@ vi.mock("@/services/surgery-request.service", async () => {
   };
 });
 
+vi.mock("@/services/document.service", () => ({
+  patientDocumentService: { list: vi.fn() },
+}));
+
+vi.mock("@/services/available-doctors.service", () => ({
+  availableDoctorsService: { getAvailableDoctors: vi.fn() },
+}));
+
 import { appointmentService } from "@/services/appointment.service";
+import { patientDocumentService } from "@/services/document.service";
+import { availableDoctorsService } from "@/services/available-doctors.service";
 import { clinicalRecordService } from "@/services/clinical-record.service";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { PatientHistoryTab } from "./PatientHistoryTab";
@@ -95,7 +109,11 @@ const surgery = {
 describe("PatientHistoryTab", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authState = { can: (p) => p === Permission.SOLICITACOES };
+    authState = { can: comSolicitacoes };
+    mocked(patientDocumentService.list).mockResolvedValue([]);
+    mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue([
+      { id: "d-1", name: "Ana Nutricionista", crm: null, crmState: null },
+    ]);
     mocked(appointmentService.getByPatient).mockResolvedValue([
       pastAppointment,
       noShowAppointment,
@@ -142,7 +160,7 @@ describe("PatientHistoryTab", () => {
 
     expect(screen.getByText(/Dor lombar há 3 meses/)).toBeInTheDocument();
     expect(screen.getByText(/Fisioterapia 10 sessões/)).toBeInTheDocument();
-    expect(screen.getByText(/M54\.5/)).toBeInTheDocument();
+    expect(screen.getByText(/Dor lombar baixa/)).toBeInTheDocument();
   });
 
   it("informa quando a consulta não tem ficha", async () => {
@@ -179,7 +197,7 @@ describe("PatientHistoryTab", () => {
    * rota devolveria) não faz sentido.
    */
   it("mantém o card da cirurgia mas esconde o link para quem não tem Solicitações", async () => {
-    authState = { can: () => false };
+    authState = { can: (p) => p === Permission.ATENDIMENTO };
     const user = userEvent.setup();
     render(
       <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
@@ -194,7 +212,7 @@ describe("PatientHistoryTab", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("mostra ficha avulsa como atendimento sem consulta", async () => {
+  it("mostra ficha sem consulta no mesmo dia como atendimento sem consulta", async () => {
     mocked(appointmentService.getByPatient).mockResolvedValue([
       currentAppointment,
     ]);
@@ -211,7 +229,7 @@ describe("PatientHistoryTab", () => {
     );
 
     expect(
-      await screen.findByRole("button", { name: /Atendimento avulso/ }),
+      await screen.findByRole("button", { name: /Atendimento sem consulta/ }),
     ).toBeInTheDocument();
   });
 
@@ -296,5 +314,98 @@ describe("PatientHistoryTab", () => {
     expect(
       screen.queryByText(/Não foi possível carregar o histórico/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("mostra quem atendeu e o resumo da ficha sem precisar abrir", async () => {
+    render(
+      <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
+    );
+
+    const cartao = await screen.findByRole("button", {
+      name: /Primeira consulta/,
+    });
+    expect(cartao).toHaveTextContent("Ana Nutricionista");
+    // Diagnóstico resume melhor que a anamnese.
+    expect(cartao).toHaveTextContent("Lombalgia");
+    expect(cartao).toHaveTextContent("M54.5");
+  });
+
+  it("junta a ficha migrada sem vínculo à consulta do mesmo dia e marca como realizada", async () => {
+    mocked(appointmentService.getByPatient).mockResolvedValue([
+      { ...pastAppointment, status: "waiting" },
+      currentAppointment,
+    ]);
+    mocked(clinicalRecordService.getByPatient).mockResolvedValue([
+      { ...record, appointmentId: null },
+    ]);
+    mocked(surgeryRequestService.getAll).mockResolvedValue({
+      total: 0,
+      records: [],
+    });
+
+    render(
+      <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
+    );
+
+    const cartoes = await screen.findAllByRole("button", { expanded: false });
+    expect(cartoes).toHaveLength(1);
+    expect(cartoes[0]).toHaveTextContent(/Primeira consulta/);
+    expect(cartoes[0]).toHaveTextContent(/Realizada/);
+    expect(cartoes[0]).not.toHaveTextContent(/Aguardando/);
+  });
+
+  it("consulta passada que ficou em aberto e sem ficha aparece como 'Sem registro'", async () => {
+    mocked(appointmentService.getByPatient).mockResolvedValue([
+      { ...noShowAppointment, status: "waiting" },
+      currentAppointment,
+    ]);
+    mocked(clinicalRecordService.getByPatient).mockResolvedValue([]);
+    mocked(surgeryRequestService.getAll).mockResolvedValue({
+      total: 0,
+      records: [],
+    });
+
+    render(
+      <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
+    );
+
+    const cartao = await screen.findByRole("button", { name: /Retorno/ });
+    expect(cartao).toHaveTextContent(/Sem registro/);
+  });
+
+  it("mostra selo dos documentos emitidos na ficha", async () => {
+    mocked(patientDocumentService.list).mockResolvedValue([
+      {
+        id: "doc-1",
+        patientId: "p-1",
+        clinicalRecordId: "r-old",
+        type: "prescription",
+        key: "k",
+        name: "receita.pdf",
+        uri: "https://exemplo/receita.pdf",
+        createdAt: "2025-12-20T14:00:00.000Z",
+      },
+    ]);
+
+    render(
+      <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /Primeira consulta/ }),
+    ).toHaveTextContent("Receita");
+  });
+
+  it("filtra só as cirurgias", async () => {
+    const user = userEvent.setup();
+    render(
+      <PatientHistoryTab patientId="p-1" currentAppointmentId="a-current" />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Cirurgias" }));
+
+    const cartoes = screen.getAllByRole("button", { expanded: false });
+    expect(cartoes).toHaveLength(1);
+    expect(cartoes[0]).toHaveTextContent(/Artroscopia de joelho/);
   });
 });
