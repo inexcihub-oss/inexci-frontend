@@ -146,6 +146,8 @@ export default function NotificationsDropdown({
         return "👤";
       case "stale":
         return "⏰";
+      case "mention":
+        return "💬";
       default:
         return "ℹ️";
     }

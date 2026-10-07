@@ -1,13 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import { Paperclip, X } from "lucide-react";
 import {
   surgeryRequestService,
   StartAnalysisPayload,
 } from "@/services/surgery-request.service";
+import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
 import { getTransitionBlockError } from "@/lib/http-error";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import {
+  MAX_DOCUMENT_FILE_SIZE_BYTES,
+  MAX_DOCUMENT_FILE_SIZE_MB,
+  DOCUMENT_FILE_TYPE_ERROR_MESSAGE,
+  hasAllowedDocumentExtension,
+} from "@/lib/file-upload";
+
+const FILE_SIZE_ERROR_MESSAGE = `O arquivo deve ter no máximo ${MAX_DOCUMENT_FILE_SIZE_MB}MB.`;
 
 interface StartAnalysisModalProps {
   isOpen: boolean;
@@ -39,9 +49,12 @@ export function StartAnalysisModal({
   const [quotation3Number, setQuotation3Number] = useState("");
   const [quotation3ReceivedAt, setQuotation3ReceivedAt] = useState("");
   const [notes, setNotes] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const { showToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClose = () => {
     if (isSaving) return;
@@ -54,8 +67,32 @@ export function StartAnalysisModal({
     setQuotation3Number("");
     setQuotation3ReceivedAt("");
     setNotes("");
+    setFile(null);
+    setFileError(null);
     setAttempted(false);
     onClose();
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = event.target.files?.[0];
+    event.target.value = "";
+    if (!selected) return;
+
+    if (!hasAllowedDocumentExtension(selected.name)) {
+      setFileError(DOCUMENT_FILE_TYPE_ERROR_MESSAGE);
+      return;
+    }
+    if (selected.size > MAX_DOCUMENT_FILE_SIZE_BYTES) {
+      setFileError(FILE_SIZE_ERROR_MESSAGE);
+      return;
+    }
+    setFile(selected);
+    setFileError(null);
+  };
+
+  const handleRemoveFile = () => {
+    setFile(null);
+    setFileError(null);
   };
 
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
@@ -77,6 +114,24 @@ export function StartAnalysisModal({
     }
     setIsSaving(true);
     try {
+      if (file) {
+        try {
+          await documentService.upload({
+            surgeryRequestId,
+            key: "additional_document",
+            name: file.name.replace(/\.[^/.]+$/, ""),
+            file,
+            folder: DOCUMENT_FOLDERS.PRE_SURGERY,
+          });
+        } catch {
+          showToast(
+            "Erro ao enviar o documento. Tente novamente.",
+            "error",
+          );
+          return;
+        }
+      }
+
       const payload: StartAnalysisPayload = {
         requestNumber: requestNumber.trim(),
         receivedAt: receivedAt,
@@ -376,6 +431,52 @@ export function StartAnalysisModal({
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* ── Documento ── */}
+          <div className="flex flex-col gap-1.5">
+            <label className="ds-label mb-0 text-xs font-medium text-neutral-600">
+              Documento
+              <span className="ml-1.5 text-neutral-400 normal-case font-normal tracking-normal">
+                (opcional)
+              </span>
+            </label>
+            {file ? (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 px-3.5 py-2.5">
+                <span className="flex items-center gap-2 min-w-0 text-sm text-neutral-900">
+                  <Paperclip className="w-4 h-4 text-neutral-400 shrink-0" />
+                  <span className="truncate">{file.name}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  disabled={isSaving}
+                  className="text-neutral-400 hover:text-neutral-600 transition-colors shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSaving}
+                className="w-full flex items-center gap-2 rounded-xl border border-dashed border-neutral-300 px-3.5 py-2.5 text-left text-sm text-neutral-500 hover:border-neutral-400 transition-colors disabled:opacity-50"
+              >
+                <Paperclip className="w-4 h-4 text-neutral-400 shrink-0" />
+                Anexar documento
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            {fileError && (
+              <p className="text-xs text-red-600">{fileError}</p>
+            )}
           </div>
 
           {/* ── Observações ── */}

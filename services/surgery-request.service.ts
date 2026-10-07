@@ -48,6 +48,17 @@ export interface ActivityUser {
   avatarUrl: string | null;
 }
 
+export interface ActivityMention {
+  id: string;
+  name: string;
+}
+
+export interface MentionableUser {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
 export interface Activity {
   id: string;
   type: "comment" | "status_change" | "system" | "pdf_generated";
@@ -55,6 +66,8 @@ export interface Activity {
   pdfUrl?: string;
   createdAt: string;
   user: ActivityUser | null;
+  /** Usuários mencionados com @ no comentário (ausente em atividades antigas). */
+  mentions?: ActivityMention[];
 }
 
 // ── Tipos de Seções do Laudo ─────────────────────────────────────────────────
@@ -187,6 +200,13 @@ export interface SendPayload {
   notifyPatient?: boolean;
   /** Anexa o documento de origem (`sc_creation_source`) em vez do PDF gerado. */
   useSourceDocument?: boolean;
+  /**
+   * Data (YYYY-MM-DD) em que a solicitação foi de fato enviada — só se
+   * aplica a `method: "document"` ("Confirmar com documento de origem"),
+   * quando o envio aconteceu fora da plataforma antes da atualização do
+   * status. Reflete no kanban (`lastStatusChangedAt`) e na timeline.
+   */
+  sentAt?: string;
 }
 
 export interface StartAnalysisPayload {
@@ -896,10 +916,29 @@ export const surgeryRequestService = {
   async createActivity(
     requestId: string | number,
     content: string,
+    mentionedUserIds?: string[],
   ): Promise<Activity> {
     const response = await api.post(
       `/surgery-requests/${requestId}/activities`,
-      { content, type: "comment" },
+      {
+        content,
+        type: "comment",
+        // Só manda o campo quando há menção: um array vazio no corpo faria o
+        // backend percorrer o caminho de validação de acesso à toa.
+        ...(mentionedUserIds && mentionedUserIds.length > 0
+          ? { mentionedUserIds }
+          : {}),
+      },
+    );
+    return response.data;
+  },
+
+  /** Usuários que podem ser mencionados com @ nos comentários desta SC. */
+  async getMentionableUsers(
+    requestId: string | number,
+  ): Promise<MentionableUser[]> {
+    const response = await api.get<MentionableUser[]>(
+      `/surgery-requests/${requestId}/activities/mentionable-users`,
     );
     return response.data;
   },
@@ -965,12 +1004,15 @@ export const surgeryRequestService = {
   /** Envia um arquivo para extração de dados via OCR+IA. */
   async extractFromDocument(
     file: File,
-    options?: { notifyOnCompletion?: boolean },
+    options?: { notifyOnCompletion?: boolean; surgeryRequestId?: number | string },
   ): Promise<ExtractFromDocumentQueuedResponse> {
     const formData = new FormData();
     formData.append("document", file);
     if (options?.notifyOnCompletion === false) {
       formData.append("notifyOnCompletion", "false");
+    }
+    if (options?.surgeryRequestId !== undefined) {
+      formData.append("surgeryRequestId", String(options.surgeryRequestId));
     }
     const response = await api.post<ExtractFromDocumentQueuedResponse>(
       "/surgery-requests/extract-from-document",

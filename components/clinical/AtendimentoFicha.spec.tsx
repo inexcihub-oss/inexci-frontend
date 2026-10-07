@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { AtendimentoFicha, FichaFields } from "./AtendimentoFicha";
 
 // O Tiptap não roda bem no jsdom; o editor é substituído por um textarea
@@ -31,6 +32,23 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ can: () => true }),
 }));
 
+vi.mock("@/components/procedures/ProcedureQuickPickerModal", () => ({
+  ProcedureQuickPickerModal: ({
+    isOpen,
+    onSelect,
+  }: {
+    isOpen: boolean;
+    onSelect: (p: { id: string; name: string }) => void;
+  }) =>
+    isOpen ? (
+      <button
+        onClick={() => onSelect({ id: "proc-9", name: "Nome Teste" })}
+      >
+        selecionar procedimento de teste
+      </button>
+    ) : null,
+}));
+
 const fields: FichaFields = {
   anamnesis: "",
   physicalExam: "",
@@ -38,15 +56,21 @@ const fields: FichaFields = {
   conduct: "",
   cidCodes: [],
   surgicalIndication: false,
+  procedureId: null,
+  procedureName: "",
 };
 
-function renderFicha(over: Partial<FichaFields> = {}) {
+function renderFicha(
+  over: Partial<FichaFields> = {},
+  props: { readOnly?: boolean; surgeryRequestId?: string | null } = {},
+  onFieldChange = vi.fn(),
+) {
   return render(
     <AtendimentoFicha
       fields={{ ...fields, ...over }}
-      onFieldChange={vi.fn()}
-      readOnly={false}
-      surgeryRequestId={null}
+      onFieldChange={onFieldChange}
+      readOnly={props.readOnly ?? false}
+      surgeryRequestId={props.surgeryRequestId ?? null}
     />,
   );
 }
@@ -74,5 +98,59 @@ describe("AtendimentoFicha", () => {
         .getByText("Indicação cirúrgica")
         .closest('[data-tour="ficha-indicacao"]'),
     ).not.toBeNull();
+  });
+
+  describe("campo de procedimento", () => {
+    it("não aparece enquanto 'paciente cirúrgico' está desmarcado", () => {
+      renderFicha({ surgicalIndication: false });
+
+      expect(
+        screen.queryByRole("button", { name: /selecionar procedimento/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("aparece ao marcar 'paciente cirúrgico' e permite escolher", async () => {
+      const user = userEvent.setup();
+      const onFieldChange = vi.fn();
+      renderFicha({ surgicalIndication: true }, {}, onFieldChange);
+
+      await user.click(
+        screen.getByRole("button", { name: /selecionar procedimento/i }),
+      );
+      await user.click(
+        screen.getByRole("button", {
+          name: /selecionar procedimento de teste/i,
+        }),
+      );
+
+      expect(onFieldChange).toHaveBeenCalledWith("procedureId", "proc-9");
+      expect(onFieldChange).toHaveBeenCalledWith("procedureName", "Nome Teste");
+    });
+
+    it("mostra o nome já escolhido em vez do placeholder", () => {
+      renderFicha({
+        surgicalIndication: true,
+        procedureId: "proc-1",
+        procedureName: "Artroscopia de joelho",
+      });
+
+      expect(screen.getByText("Artroscopia de joelho")).toBeInTheDocument();
+    });
+
+    it("mostra o procedimento como texto (sem botão) quando finalizada", () => {
+      renderFicha(
+        {
+          surgicalIndication: true,
+          procedureId: "proc-1",
+          procedureName: "Artroscopia de joelho",
+        },
+        { readOnly: true, surgeryRequestId: "sc-1" },
+      );
+
+      expect(screen.getByText("Artroscopia de joelho")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /selecionar procedimento/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

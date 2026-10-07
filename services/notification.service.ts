@@ -10,6 +10,8 @@ export interface NotificationSettings {
   pendencies: boolean;
   expiringDocuments: boolean;
   weeklyReport: boolean;
+  /** E-mail quando alguém menciona o usuário num comentário da solicitação. */
+  mentionEmails: boolean;
 }
 
 export interface UpdateNotificationSettingsData {
@@ -20,6 +22,7 @@ export interface UpdateNotificationSettingsData {
   pendencies?: boolean;
   expiringDocuments?: boolean;
   weeklyReport?: boolean;
+  mentionEmails?: boolean;
 }
 
 export interface NotificationMetadata {

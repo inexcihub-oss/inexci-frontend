@@ -17,6 +17,7 @@ import {
   Clock,
   Info,
   RefreshCw,
+  AtSign,
 } from "lucide-react";
 import { logger } from "@/lib/logger";
 import {
@@ -41,6 +42,7 @@ const NOTIFICATION_TYPES = [
   { value: "expiring_document", label: "Documento Expirando" },
   { value: "action_by_user", label: "Ação de Usuário" },
   { value: "stale", label: "Solicitação Parada" },
+  { value: "mention", label: "Menção" },
   { value: "info", label: "Informativo" },
 ];
 
@@ -82,6 +84,11 @@ const NOTIFICATION_CONFIG: Record<string, NotificationConfig> = {
     icon: Clock,
     bg: "bg-red-50",
     text: "text-red-500",
+  },
+  mention: {
+    icon: AtSign,
+    bg: "bg-teal-50",
+    text: "text-teal-600",
   },
   info: {
     icon: Info,

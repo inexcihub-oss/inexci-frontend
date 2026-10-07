@@ -4,8 +4,22 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 
 export interface DropdownPosition {
   top: number;
+  /** Distância do fundo da janela até o topo do campo — usada quando a lista abre para cima. */
+  bottom: number;
   left: number;
   width: number;
+  placement: "bottom" | "top";
+}
+
+export interface AnchoredDropdownOptions {
+  /**
+   * `"auto"` vira a lista para cima quando não cabe abaixo. É o que o
+   * bottom-sheet do mobile exige: o campo fica no rodapé da folha e uma
+   * lista aberta para baixo nasceria fora da tela.
+   */
+  placement?: "bottom" | "auto";
+  /** Altura máxima esperada da lista (default 240px = `max-h-60`). */
+  maxHeight?: number;
 }
 
 /**
@@ -16,13 +30,22 @@ export interface DropdownPosition {
  * cortado nas bordas — por isso a lista vai para um portal com `position:
  * fixed`, e a posição precisa acompanhar rolagem e redimensionamento.
  */
-export function useAnchoredDropdown(open: boolean, onClose?: () => void) {
+export function useAnchoredDropdown(
+  open: boolean,
+  onClose?: () => void,
+  options?: AnchoredDropdownOptions,
+) {
+  const placementPreferido = options?.placement ?? "bottom";
+  const maxHeight = options?.maxHeight ?? 240;
+
   const anchorRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<DropdownPosition>({
     top: 0,
+    bottom: 0,
     left: 0,
     width: 0,
+    placement: "bottom",
   });
 
   const onCloseRef = useRef(onClose);
@@ -31,8 +54,25 @@ export function useAnchoredDropdown(open: boolean, onClose?: () => void) {
   const recalculate = useCallback(() => {
     const rect = anchorRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setPosition({ top: rect.bottom, left: rect.left, width: rect.width });
-  }, []);
+
+    const alturaJanela = window.innerHeight;
+    const espacoAbaixo = alturaJanela - rect.bottom;
+    const espacoAcima = rect.top;
+    const placement: "bottom" | "top" =
+      placementPreferido === "auto" &&
+      espacoAbaixo < maxHeight &&
+      espacoAcima > espacoAbaixo
+        ? "top"
+        : "bottom";
+
+    setPosition({
+      top: rect.bottom,
+      bottom: alturaJanela - rect.top,
+      left: rect.left,
+      width: rect.width,
+      placement,
+    });
+  }, [placementPreferido, maxHeight]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -46,9 +86,17 @@ export function useAnchoredDropdown(open: boolean, onClose?: () => void) {
     // janela, e eventos de rolagem não borbulham.
     window.addEventListener("scroll", recalculate, true);
     window.addEventListener("resize", recalculate);
+    // Teclado virtual no mobile: só o visualViewport avisa que a área
+    // visível encolheu, e sem isso a lista descola do campo.
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", recalculate);
+    viewport?.addEventListener("scroll", recalculate);
+
     return () => {
       window.removeEventListener("scroll", recalculate, true);
       window.removeEventListener("resize", recalculate);
+      viewport?.removeEventListener("resize", recalculate);
+      viewport?.removeEventListener("scroll", recalculate);
     };
   }, [open, recalculate]);
 

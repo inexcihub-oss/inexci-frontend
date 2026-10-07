@@ -52,12 +52,20 @@ import {
   NotificationChannels,
 } from "@/components/surgery-request/modals/NotificationConfirmModal";
 import { getPendencyAction } from "@/lib/pendency-navigation";
-import { PriorityLevel } from "@/types/surgery-request.types";
+import {
+  ExtractFromDocumentResponse,
+  PriorityLevel,
+} from "@/types/surgery-request.types";
 import { SolicitacaoProvider } from "@/contexts/SolicitacaoContext";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { ActivityComposer } from "@/components/surgery-request/ActivityComposer";
+import { ActivityContent } from "@/components/surgery-request/ActivityContent";
+import { resolveSidebarTabFromQuery } from "@/lib/sidebar-tab";
 import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import { uploadService } from "@/services/upload.service";
 import FacebookSkeleton from "@/components/ui/FacebookSkeleton";
+import { useToast } from "@/hooks/useToast";
+import { Toast } from "@/components/ui/Toast";
 
 type TabType =
   | "informacoes-gerais"
@@ -213,9 +221,10 @@ function ActivityItem({ activity }: { activity: Activity }) {
             </a>
           </div>
         ) : (
-          <p className="text-xs text-gray-600 leading-snug break-words">
-            {activity.content}
-          </p>
+          <ActivityContent
+            content={activity.content}
+            mentions={activity.mentions}
+          />
         )}
       </div>
     </div>
@@ -519,6 +528,16 @@ export default function SolicitacaoDetalhePage() {
     "pendencias" | "atividades" | "timeline"
   >("pendencias");
 
+  // Link da notificação de menção: `/solicitacao/:id?sidebar=atividades`.
+  // No mobile o painel é um bottom-sheet que começa fechado, então além da
+  // aba é preciso abri-lo.
+  useEffect(() => {
+    const aba = resolveSidebarTabFromQuery(searchParams.get("sidebar"));
+    if (!aba) return;
+    setSidebarTab(aba);
+    setIsSidebarOpen(true);
+  }, [searchParams]);
+
   // Detalhe da SC via TanStack Query (P5/P10): 3 queries independentes
   // (sc/pendencies/activities) com invalidação seletiva por mutação.
   const {
@@ -542,9 +561,13 @@ export default function SolicitacaoDetalhePage() {
     enabled: !!id,
   });
 
+  const { toast, showToast, hideToast } = useToast();
+
   // Estados dos modais de ação
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isDocumentReviewOpen, setIsDocumentReviewOpen] = useState(false);
+  const [documentExtractionInitialResult, setDocumentExtractionInitialResult] =
+    useState<ExtractFromDocumentResponse | null>(null);
   const [isStartAnalysisModalOpen, setIsStartAnalysisModalOpen] =
     useState(false);
   const [isUpdateAuthorizationsModalOpen, setIsUpdateAuthorizationsModalOpen] =
@@ -598,9 +621,7 @@ export default function SolicitacaoDetalhePage() {
     queryFn: () => surgeryRequestService.getActivities(id),
     enabled: !!id,
   });
-  const [newComment, setNewComment] = useState("");
-  const [sendingComment, setSendingComment] = useState(false);
-  const activitiesEndRef = useRef<HTMLDivElement>(null);
+  const listaAtividadesRef = useRef<HTMLDivElement>(null);
   const mobileInfoCardsRef = useRef<HTMLDivElement>(null);
   const [highlightedPendency, setHighlightedPendency] =
     useState<CalculatedPendency | null>(null);
@@ -620,8 +641,21 @@ export default function SolicitacaoDetalhePage() {
     }
   }, [isSidebarOpen]);
 
-  // Fechar sidebar no mobile por padrão
+  // Fechar sidebar no mobile por padrão — exceto quando a URL pede uma aba.
+  // O link da notificação de menção (`?sidebar=atividades`) é tratado por um
+  // efeito declarado ACIMA deste; como os dois rodam na mesma montagem e na
+  // ordem de declaração, sem esta guarda o padrão de mobile fecharia o
+  // painel que o deep-link acabou de abrir. Lê da `window.location` em vez
+  // do `searchParams` para manter o efeito preso à montagem.
   useEffect(() => {
+    const pedidoNaUrl =
+      typeof window !== "undefined"
+        ? resolveSidebarTabFromQuery(
+            new URLSearchParams(window.location.search).get("sidebar"),
+          )
+        : null;
+    if (pedidoNaUrl) return;
+
     if (window.innerWidth < 1024) {
       setIsSidebarOpen(false);
     }
@@ -651,40 +685,21 @@ export default function SolicitacaoDetalhePage() {
     queryClient.invalidateQueries({ queryKey: ["surgery-requests", "agenda"] });
   }, [queryClient, id]);
 
-  // Rolar para o fim quando novas atividades chegam
+  // Rolar a lista para o fim quando novas atividades chegam.
+  //
+  // Rola o container diretamente, em vez de `scrollIntoView` no último item:
+  // `scrollIntoView` move TODO ancestral rolável, e o `<main>` do dashboard é
+  // `lg:overflow-hidden` — continua rolável por código, só que sem barra para
+  // o usuário desfazer. Quando o banner do onboarding ocupa altura, o conteúdo
+  // do `main` passa a transbordar e enviar um comentário arrastava a página
+  // inteira para cima: banner cortado no topo, faixa vazia no rodapé e nenhum
+  // jeito de voltar sem recarregar.
   useEffect(() => {
-    if (activities.length > 0) {
-      activitiesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
+    const lista = listaAtividadesRef.current;
+    if (!lista || activities.length === 0) return;
+
+    lista.scrollTo({ top: lista.scrollHeight, behavior: "smooth" });
   }, [activities]);
-
-  const handleSendComment = async () => {
-    const text = newComment.trim();
-    if (!text || sendingComment || !params.id) return;
-    setSendingComment(true);
-    try {
-      const created = await surgeryRequestService.createActivity(
-        params.id as string,
-        text,
-      );
-      queryClient.setQueryData<Activity[]>(
-        ["surgery-request", id, "activities"],
-        (prev) => [...(prev ?? []), created],
-      );
-      setNewComment("");
-    } catch {
-      // silently ignore
-    } finally {
-      setSendingComment(false);
-    }
-  };
-
-  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendComment();
-    }
-  };
 
   const updateMobileCardsScrollHints = useCallback(() => {
     const el = mobileInfoCardsRef.current;
@@ -896,6 +911,58 @@ export default function SolicitacaoDetalhePage() {
         break;
     }
   }, [solicitacao, searchParams, router, params.id]);
+
+  // Reabre a revisão do documento quando o usuário volta pela notificação de
+  // conclusão da análise em background (fechou o `ApplyDocumentExtractionModal`
+  // enquanto analisava) — mesmo padrão do `docExtractionJobId` da criação de SC
+  // via documento em `/solicitacoes-cirurgicas`.
+  useEffect(() => {
+    if (!solicitacao) return;
+
+    const jobId = searchParams.get("applyDocExtractionJobId");
+    if (!jobId) return;
+
+    router.replace(`/solicitacao/${params.id}`, { scroll: false });
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const status =
+          await surgeryRequestService.getExtractFromDocumentStatus(jobId);
+        if (cancelled) return;
+
+        if (status.status === "done") {
+          setDocumentExtractionInitialResult(status.result);
+          setIsDocumentReviewOpen(true);
+          return;
+        }
+
+        if (status.status === "error") {
+          showToast(
+            status.message ||
+              "Não foi possível concluir a análise do documento. Tente novamente.",
+            "error",
+          );
+          return;
+        }
+
+        showToast(
+          "A análise do documento ainda está em andamento. Você receberá uma notificação quando concluir.",
+          "info",
+        );
+      } catch {
+        if (cancelled) return;
+        showToast(
+          "Não foi possível recuperar a análise do documento agora. Tente novamente.",
+          "error",
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [solicitacao, searchParams, router, params.id, showToast]);
 
   const handleSelectDocument = (docId: string) => {
     const newSelected = new Set(selectedDocuments);
@@ -1460,7 +1527,16 @@ export default function SolicitacaoDetalhePage() {
               onClick={() => setIsSidebarOpen(false)}
             />
             <div
-              className="fixed inset-x-0 bottom-16 z-[60] max-h-[calc(92vh-64px)] bg-white rounded-t-3xl flex flex-col lg:relative lg:inset-auto lg:bottom-auto lg:z-auto lg:rounded-none lg:max-h-none lg:w-88 lg:border-l lg:border-neutral-100 animate-slide-up lg:animate-none"
+              /*
+                Altura FIXA no mobile (não `max-h`): com altura derivada do
+                conteúdo a folha mudava de tamanho a cada comentário enviado,
+                e as abas Pendências/Atividades/Timeline abriam com alturas
+                diferentes. As três já são `flex-1` com rolagem própria, então
+                fixar aqui só estabiliza a moldura. `dvh` porque `vh` ignora a
+                barra de endereço do navegador móvel.
+              */
+              data-testid="painel-lateral-sc"
+              className="fixed inset-x-0 bottom-16 z-[60] h-[calc(92dvh-64px)] bg-white rounded-t-3xl flex flex-col lg:relative lg:inset-auto lg:bottom-auto lg:z-auto lg:rounded-none lg:h-auto lg:w-88 lg:border-l lg:border-neutral-100 animate-slide-up lg:animate-none"
               style={
                 sidebarDragY > 0
                   ? {
@@ -1561,7 +1637,11 @@ export default function SolicitacaoDetalhePage() {
               ) : sidebarTab === "atividades" ? (
                 <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
                   {/* Lista de Atividades */}
-                  <div className="flex-1 overflow-y-auto min-h-0">
+                  <div
+                    ref={listaAtividadesRef}
+                    data-testid="lista-atividades"
+                    className="flex-1 overflow-y-auto min-h-0"
+                  >
                     {loadingActivities ? (
                       <div className="flex items-center justify-center py-8">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-700" />
@@ -1577,41 +1657,19 @@ export default function SolicitacaoDetalhePage() {
                         {activities.map((activity) => (
                           <ActivityItem key={activity.id} activity={activity} />
                         ))}
-                        <div ref={activitiesEndRef} />
                       </div>
                     )}
                   </div>
 
-                  {/* Campo de Comentário */}
-                  <div className="bg-white py-2 px-4 border-t border-neutral-100 flex-shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
-                    <div className="flex items-center bg-white border border-neutral-100 gap-2 py-2.5 px-3.5 rounded-xl">
-                      <input
-                        type="text"
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        onKeyDown={handleCommentKeyDown}
-                        placeholder="Escreva um comentário"
-                        disabled={sendingComment}
-                        className="flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug disabled:opacity-50"
-                      />
-                      <button
-                        onClick={handleSendComment}
-                        disabled={!newComment.trim() || sendingComment}
-                        className="w-6 h-6 flex-shrink-0 hover:opacity-70 transition-opacity disabled:opacity-30"
-                      >
-                        {sendingComment ? (
-                          <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Image
-                            src="/icons/send.svg"
-                            alt="Enviar"
-                            width={24}
-                            height={24}
-                          />
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                  <ActivityComposer
+                    surgeryRequestId={String(params.id)}
+                    onSent={(criada) => {
+                      queryClient.setQueryData<Activity[]>(
+                        ["surgery-request", id, "activities"],
+                        (prev) => [...(prev ?? []), criada],
+                      );
+                    }}
+                  />
                 </div>
               ) : (
                 <>
@@ -1682,9 +1740,13 @@ export default function SolicitacaoDetalhePage() {
 
       <ApplyDocumentExtractionModal
         isOpen={isDocumentReviewOpen}
-        onClose={() => setIsDocumentReviewOpen(false)}
+        onClose={() => {
+          setIsDocumentReviewOpen(false);
+          setDocumentExtractionInitialResult(null);
+        }}
         solicitation={solicitacao}
         onSuccess={handleUpdateProcedure}
+        initialResult={documentExtractionInitialResult ?? undefined}
       />
 
       {/* Modal Solicitação em Análise (status 2 → 3) */}
@@ -1817,6 +1879,10 @@ export default function SolicitacaoDetalhePage() {
           handleUpdateProcedure();
         }}
       />
+
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
     </PageContainer>
   );
 }
