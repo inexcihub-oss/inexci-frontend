@@ -38,15 +38,37 @@ describe("PatientPhotoField", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("com foto mostra a imagem, trocar e remover", () => {
+  it("com foto, clicar amplia a foto com trocar e remover", async () => {
+    const user = userEvent.setup();
     render(<PatientPhotoField patient={comFoto} onChange={vi.fn()} />);
 
     expect(screen.getByAltText("Foto de Ana Souza")).toHaveAttribute(
       "src",
       "https://r2/foto.png",
     );
+    // Fechada, nada de remover à vista: as ações ficam na foto ampliada.
+    expect(screen.queryByRole("button", { name: /remover/i })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Ver foto" }));
+
+    const dialogo = screen.getByRole("dialog", { name: "Foto de Ana Souza" });
+    expect(dialogo).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /trocar foto/i })).toBeVisible();
     expect(screen.getByRole("button", { name: /remover/i })).toBeVisible();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("sem foto, clicar abre o seletor de arquivo (não amplia)", async () => {
+    const user = userEvent.setup();
+    render(<PatientPhotoField patient={semFoto} onChange={vi.fn()} />);
+    const clique = vi.spyOn(input(), "click");
+
+    await user.click(screen.getByRole("button", { name: /adicionar foto/i }));
+
+    expect(clique).toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("envia para a pasta de fotos de paciente e grava o caminho", async () => {
@@ -102,6 +124,7 @@ describe("PatientPhotoField", () => {
     vi.mocked(patientService.update).mockResolvedValue(semFoto as never);
 
     render(<PatientPhotoField patient={comFoto} onChange={onChange} />);
+    await user.click(screen.getByRole("button", { name: "Ver foto" }));
     await user.click(screen.getByRole("button", { name: /remover/i }));
 
     await waitFor(() => expect(onChange).toHaveBeenCalledWith(semFoto));

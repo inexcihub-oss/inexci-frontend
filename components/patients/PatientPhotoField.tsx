@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, Loader2, Trash2 } from "lucide-react";
+import { Camera, Loader2, Maximize2, Trash2 } from "lucide-react";
+import { PatientPhotoViewer } from "./PatientPhotoViewer";
 import { patientService, Patient } from "@/services/patient.service";
 import { uploadService } from "@/services/upload.service";
 import { getApiErrorMessage } from "@/lib/http-error";
@@ -31,6 +32,7 @@ export function PatientPhotoField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ampliada, setAmpliada] = useState(false);
 
   const hasPhoto = Boolean(patient.photoUrl);
 
@@ -57,6 +59,7 @@ export function PatientPhotoField({
         photoPath: uploaded.data.path,
       });
       onChange(saved);
+      setAmpliada(false);
     } catch (err) {
       setError(getApiErrorMessage(err, "Não foi possível salvar a foto."));
     } finally {
@@ -71,6 +74,7 @@ export function PatientPhotoField({
     setBusy(true);
     try {
       onChange(await patientService.update(patient.id, { photoPath: null }));
+      setAmpliada(false);
     } catch (err) {
       setError(getApiErrorMessage(err, "Não foi possível remover a foto."));
     } finally {
@@ -83,12 +87,18 @@ export function PatientPhotoField({
   return (
     <div className="relative shrink-0">
       {/* O próprio avatar troca a foto: é o lugar onde a foto aparece. */}
+      {/* Com foto, o clique amplia (trocar e remover ficam na foto
+          ampliada); sem foto, abre o seletor para adicionar. */}
       <button
         type="button"
-        onClick={() => inputRef.current?.click()}
+        onClick={() =>
+          hasPhoto ? setAmpliada(true) : inputRef.current?.click()
+        }
         disabled={busy}
-        aria-label={hasPhoto ? "Trocar foto" : "Adicionar foto"}
-        title={`${hasPhoto ? "Trocar foto" : "Adicionar foto"} (JPG, PNG ou WEBP, até 2 MB)`}
+        aria-label={hasPhoto ? "Ver foto" : "Adicionar foto"}
+        title={
+          hasPhoto ? "Ver foto" : "Adicionar foto (JPG, PNG ou WEBP, até 2 MB)"
+        }
         className={cn(
           "group relative block overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2",
           tamanho,
@@ -122,14 +132,20 @@ export function PatientPhotoField({
           aria-hidden="true"
           className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
         >
-          <Camera className="w-5 h-5 text-white" />
+          {hasPhoto ? (
+            <Maximize2 className="w-5 h-5 text-white" />
+          ) : (
+            <Camera className="w-5 h-5 text-white" />
+          )}
         </span>
-        <span
-          aria-hidden="true"
-          className="absolute bottom-0.5 right-0.5 flex h-5 w-5 lg:h-6 lg:w-6 items-center justify-center rounded-full bg-white text-neutral-700 shadow ring-1 ring-neutral-200 group-hover:hidden"
-        >
-          <Camera className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
-        </span>
+        {!hasPhoto && (
+          <span
+            aria-hidden="true"
+            className="absolute bottom-0.5 right-0.5 flex h-5 w-5 lg:h-6 lg:w-6 items-center justify-center rounded-full bg-white text-neutral-700 shadow ring-1 ring-neutral-200 group-hover:hidden"
+          >
+            <Camera className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+          </span>
+        )}
         {busy && (
           <span className="absolute inset-0 flex items-center justify-center bg-white/70">
             <Loader2 className="w-5 h-5 text-teal-700 animate-spin" />
@@ -137,18 +153,6 @@ export function PatientPhotoField({
         )}
       </button>
 
-      {hasPhoto && (
-        <button
-          type="button"
-          onClick={handleRemove}
-          disabled={busy}
-          aria-label="Remover foto"
-          title="Remover foto"
-          className="absolute -top-1.5 -right-1.5 lg:-top-2 lg:-right-2 flex h-6 w-6 lg:h-7 lg:w-7 items-center justify-center rounded-full bg-white text-red-600 shadow ring-1 ring-neutral-200 hover:bg-red-50 disabled:opacity-50"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      )}
 
       {error && (
         <p
@@ -157,6 +161,36 @@ export function PatientPhotoField({
         >
           {error}
         </p>
+      )}
+
+      {ampliada && patient.photoUrl && (
+        <PatientPhotoViewer
+          src={patient.photoUrl}
+          nome={patient.name}
+          onClose={() => setAmpliada(false)}
+          acoes={
+            <>
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                disabled={busy}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white px-4 text-sm font-semibold text-neutral-800 hover:bg-neutral-100 disabled:opacity-50"
+              >
+                <Camera className="h-4 w-4" />
+                Trocar foto
+              </button>
+              <button
+                type="button"
+                onClick={handleRemove}
+                disabled={busy}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white/10 px-4 text-sm font-semibold text-white ring-1 ring-white/30 hover:bg-red-600 hover:ring-red-600 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Remover
+              </button>
+            </>
+          }
+        />
       )}
 
       <input

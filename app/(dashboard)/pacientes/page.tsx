@@ -3,6 +3,7 @@
 import Image from "next/image";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { PatientPhotoViewer } from "@/components/patients/PatientPhotoViewer";
 import { useRouter } from "next/navigation";
 import {
   patientService,
@@ -45,6 +46,10 @@ export default function PacientesPage() {
   const { can } = useAuth();
   const podeAdministrar = can(Permission.ADMINISTRACAO);
   const [searchTerm, setSearchTerm] = useState("");
+  const [fotoAmpliada, setFotoAmpliada] = useState<{
+    src: string;
+    nome: string;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [patients, setPatients] = useState<PatientListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -233,14 +238,28 @@ export default function PacientesPage() {
           onClick={() => handlePatientClick(row.original.id)}
         >
           {row.original.photoUrl ? (
-            <Image
-              src={row.original.photoUrl}
-              alt=""
-              width={32}
-              height={32}
-              unoptimized
-              className="w-8 h-8 flex-shrink-0 rounded-lg object-cover"
-            />
+            <button
+              type="button"
+              aria-label={`Ver foto de ${row.original.name}`}
+              onClick={(e) => {
+                // A foto amplia; o resto da célula continua abrindo o cadastro.
+                e.stopPropagation();
+                setFotoAmpliada({
+                  src: row.original.photoUrl!,
+                  nome: row.original.name,
+                });
+              }}
+              className="flex-shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+            >
+              <Image
+                src={row.original.photoUrl}
+                alt=""
+                width={32}
+                height={32}
+                unoptimized
+                className="w-8 h-8 rounded-lg object-cover"
+              />
+            </button>
           ) : (
             <div
               className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
@@ -542,6 +561,13 @@ export default function PacientesPage() {
         onCancel={handleBulkDeleteCancel}
         loading={bulkDeleteModal.loading}
       />
+      {fotoAmpliada && (
+        <PatientPhotoViewer
+          src={fotoAmpliada.src}
+          nome={fotoAmpliada.nome}
+          onClose={() => setFotoAmpliada(null)}
+        />
+      )}
     </PageContainer>
   );
 }
