@@ -47,7 +47,8 @@ describe("next.config.mjs — Security Headers (dev/test)", () => {
   it("deve incluir Permissions-Policy restritiva", () => {
     const h = headers.find((h) => h.key === "Permissions-Policy");
     expect(h).toBeDefined();
-    expect(h!.value).toContain("camera=()");
+    // Câmera liberada só para a própria origem (foto do paciente pela webcam).
+    expect(h!.value).toContain("camera=(self)");
     expect(h!.value).toContain("microphone=()");
   });
 

@@ -2,7 +2,9 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, Loader2, Maximize2, Trash2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Camera, ImagePlus, Loader2, Maximize2, Trash2, X } from "lucide-react";
+import { WebcamCaptureModal } from "./WebcamCaptureModal";
 import { PatientPhotoViewer } from "./PatientPhotoViewer";
 import { patientService, Patient } from "@/services/patient.service";
 import { uploadService } from "@/services/upload.service";
@@ -12,6 +14,17 @@ import { getInitials, getAvatarColor, cn } from "@/lib/utils";
 /** Mesmo teto e mesmos tipos que o backend aceita na pasta `patient-photos`. */
 export const PATIENT_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 export const PATIENT_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/** Mensagem do problema com o arquivo, ou `null` se ele pode ser enviado. */
+export function validarFotoPaciente(file: File): string | null {
+  if (!PATIENT_PHOTO_TYPES.includes(file.type)) {
+    return "Envie uma imagem JPG, PNG ou WEBP.";
+  }
+  if (file.size > PATIENT_PHOTO_MAX_BYTES) {
+    return "A foto deve ter no máximo 2 MB.";
+  }
+  return null;
+}
 
 /**
  * Foto do paciente no avatar do cartão do nome: clicar no avatar envia ou
@@ -33,6 +46,17 @@ export function PatientPhotoField({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ampliada, setAmpliada] = useState(false);
+  const [escolhendo, setEscolhendo] = useState(false);
+  const [camera, setCamera] = useState(false);
+
+  const abrirArquivo = () => {
+    setEscolhendo(false);
+    inputRef.current?.click();
+  };
+  const abrirCamera = () => {
+    setEscolhendo(false);
+    setCamera(true);
+  };
 
   const hasPhoto = Boolean(patient.photoUrl);
 
@@ -40,12 +64,9 @@ export function PatientPhotoField({
     if (!file) return;
     setError(null);
 
-    if (!PATIENT_PHOTO_TYPES.includes(file.type)) {
-      setError("Envie uma imagem JPG, PNG ou WEBP.");
-      return;
-    }
-    if (file.size > PATIENT_PHOTO_MAX_BYTES) {
-      setError("A foto deve ter no máximo 2 MB.");
+    const problema = validarFotoPaciente(file);
+    if (problema) {
+      setError(problema);
       return;
     }
 
@@ -91,13 +112,11 @@ export function PatientPhotoField({
           ampliada); sem foto, abre o seletor para adicionar. */}
       <button
         type="button"
-        onClick={() =>
-          hasPhoto ? setAmpliada(true) : inputRef.current?.click()
-        }
+        onClick={() => (hasPhoto ? setAmpliada(true) : setEscolhendo(true))}
         disabled={busy}
         aria-label={hasPhoto ? "Ver foto" : "Adicionar foto"}
         title={
-          hasPhoto ? "Ver foto" : "Adicionar foto (JPG, PNG ou WEBP, até 2 MB)"
+          hasPhoto ? "Ver foto" : "Adicionar foto"
         }
         className={cn(
           "group relative block overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2",
@@ -176,8 +195,17 @@ export function PatientPhotoField({
                 disabled={busy}
                 className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white px-4 text-sm font-semibold text-neutral-800 hover:bg-neutral-100 disabled:opacity-50"
               >
-                <Camera className="h-4 w-4" />
+                <ImagePlus className="h-4 w-4" />
                 Trocar foto
+              </button>
+              <button
+                type="button"
+                onClick={abrirCamera}
+                disabled={busy}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white/10 px-4 text-sm font-semibold text-white ring-1 ring-white/30 hover:bg-white/20 disabled:opacity-50"
+              >
+                <Camera className="h-4 w-4" />
+                Tirar foto
               </button>
               <button
                 type="button"
@@ -190,6 +218,69 @@ export function PatientPhotoField({
               </button>
             </>
           }
+        />
+      )}
+
+      {escolhendo &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Adicionar foto"
+            className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-neutral-950/60 backdrop-blur-sm"
+            onClick={() => setEscolhendo(false)}
+            onKeyDown={(e) => e.key === "Escape" && setEscolhendo(false)}
+          >
+            <div
+              className="w-full rounded-t-3xl bg-white p-5 shadow-xl sm:mx-4 sm:max-w-sm sm:rounded-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="ds-modal-title">Adicionar foto</h2>
+                <button
+                  type="button"
+                  onClick={() => setEscolhendo(false)}
+                  aria-label="Fechar"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  autoFocus
+                  onClick={abrirArquivo}
+                  className="flex min-h-[96px] flex-col items-center justify-center gap-2 rounded-xl border border-neutral-200 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+                >
+                  <ImagePlus className="h-6 w-6 text-teal-700" />
+                  Enviar arquivo
+                </button>
+                <button
+                  type="button"
+                  onClick={abrirCamera}
+                  className="flex min-h-[96px] flex-col items-center justify-center gap-2 rounded-xl border border-neutral-200 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+                >
+                  <Camera className="h-6 w-6 text-teal-700" />
+                  Tirar foto
+                </button>
+              </div>
+              <p className="mt-3 text-center text-xs text-neutral-500">
+                JPG, PNG ou WEBP, até 2 MB.
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {camera && (
+        <WebcamCaptureModal
+          onClose={() => setCamera(false)}
+          onCapture={(foto) => {
+            setCamera(false);
+            handleFile(foto);
+          }}
         />
       )}
 

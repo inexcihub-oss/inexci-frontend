@@ -5,6 +5,16 @@ import userEvent from "@testing-library/user-event";
 vi.mock("@/services/patient.service", () => ({
   patientService: { update: vi.fn() },
 }));
+vi.mock("./WebcamCaptureModal", () => ({
+  WebcamCaptureModal: ({ onCapture }: { onCapture: (f: File) => void }) => (
+    <button
+      type="button"
+      onClick={() => onCapture(new File(["x"], "cam.jpg", { type: "image/jpeg" }))}
+    >
+      câmera falsa: usar foto
+    </button>
+  ),
+}));
 vi.mock("@/services/upload.service", () => ({
   uploadService: { uploadSingle: vi.fn() },
 }));
@@ -54,21 +64,48 @@ describe("PatientPhotoField", () => {
     const dialogo = screen.getByRole("dialog", { name: "Foto de Ana Souza" });
     expect(dialogo).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /trocar foto/i })).toBeVisible();
+    expect(screen.getByRole("button", { name: /tirar foto/i })).toBeVisible();
     expect(screen.getByRole("button", { name: /remover/i })).toBeVisible();
 
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("sem foto, clicar abre o seletor de arquivo (não amplia)", async () => {
+  it("sem foto, clicar oferece enviar arquivo ou tirar foto", async () => {
     const user = userEvent.setup();
     render(<PatientPhotoField patient={semFoto} onChange={vi.fn()} />);
     const clique = vi.spyOn(input(), "click");
 
     await user.click(screen.getByRole("button", { name: /adicionar foto/i }));
+    expect(screen.getByRole("dialog", { name: "Adicionar foto" })).toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: /Enviar arquivo/ }));
     expect(clique).toHaveBeenCalled();
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Adicionar foto" })).toBeNull();
+  });
+
+  it("foto tirada pela câmera é enviada e gravada no paciente", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    vi.mocked(uploadService.uploadSingle).mockResolvedValue({
+      message: "ok",
+      data: { url: "u", path: "patient-photos/o/cam.webp" },
+    });
+    vi.mocked(patientService.update).mockResolvedValue(comFoto as never);
+    render(<PatientPhotoField patient={semFoto} onChange={onChange} />);
+
+    await user.click(screen.getByRole("button", { name: /adicionar foto/i }));
+    await user.click(screen.getByRole("button", { name: /Tirar foto/ }));
+    await user.click(screen.getByRole("button", { name: "câmera falsa: usar foto" }));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(uploadService.uploadSingle).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "image/jpeg" }),
+      "patient-photos",
+    );
+    expect(patientService.update).toHaveBeenCalledWith("p-1", {
+      photoPath: "patient-photos/o/cam.webp",
+    });
   });
 
   it("envia para a pasta de fotos de paciente e grava o caminho", async () => {

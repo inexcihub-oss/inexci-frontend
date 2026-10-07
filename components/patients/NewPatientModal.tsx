@@ -20,6 +20,8 @@ import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyArea } from "@/lib/permissions";
+import { uploadService } from "@/services/upload.service";
+import { PatientPhotoInput } from "@/components/patients/PatientPhotoInput";
 
 interface NewPatientModalProps {
   isOpen: boolean;
@@ -55,6 +57,7 @@ export function NewPatientModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
+  const [foto, setFoto] = useState<File | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
   const form = useZodForm({
@@ -88,6 +91,7 @@ export function NewPatientModal({
   const handleClose = () => {
     if (loading) return;
     form.reset();
+    setFoto(null);
     setError("");
     onClose();
   };
@@ -106,9 +110,26 @@ export function NewPatientModal({
           gender: data.gender || undefined,
           healthPlanId: data.healthPlanId || undefined,
         };
+        // A foto sobe antes e o caminho vai no próprio cadastro: um envio
+        // falho não deixa paciente criado pela metade.
+        if (foto) {
+          try {
+            const enviada = await uploadService.uploadSingle(
+              foto,
+              "patient-photos",
+            );
+            payload.photoPath = enviada.data.path;
+          } catch {
+            setError(
+              "Não foi possível enviar a foto. Tente de novo ou cadastre sem foto.",
+            );
+            return;
+          }
+        }
         const created = await patientService.create(payload);
         onSuccess(created);
         form.reset();
+        setFoto(null);
         onClose();
       } catch (err) {
         const apiError = err as {
@@ -157,6 +178,8 @@ export function NewPatientModal({
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
+            <PatientPhotoInput value={foto} onChange={setFoto} />
+
             {/* Row 1: Nome completo + Telefone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input

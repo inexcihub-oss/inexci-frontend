@@ -7,6 +7,11 @@ vi.mock("@/services/patient.service", () => ({
   patientService: { create: vi.fn() },
 }));
 
+const uploadSingle = vi.hoisted(() => vi.fn());
+vi.mock("@/services/upload.service", () => ({
+  uploadService: { uploadSingle: (...a: unknown[]) => uploadSingle(...a) },
+}));
+
 vi.mock("@/services/health-plan.service", () => ({
   healthPlanService: {
     getAll: vi.fn().mockResolvedValue([]),
@@ -146,3 +151,55 @@ describe("NewPatientModal — CPF opcional", () => {
     expect(screen.getByText("CPF (opcional)")).toBeInTheDocument();
   });
 });
+
+describe("NewPatientModal — foto no cadastro", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(healthPlanService.getAll).mockResolvedValue([]);
+    vi.mocked(patientService.create).mockResolvedValue({ id: "p-1", name: "Ana" } as never);
+    URL.createObjectURL = vi.fn(() => "blob:previa");
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  const foto = () => new File([new Uint8Array(10)], "ana.png", { type: "image/png" });
+
+  it("envia a foto antes e cria o paciente já com o caminho", async () => {
+    uploadSingle.mockResolvedValue({ data: { path: "patient-photos/o/ana.webp", url: "u" } });
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.upload(screen.getByTestId("new-patient-photo-input"), foto());
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+
+    await waitFor(() => expect(patientService.create).toHaveBeenCalled());
+    expect(uploadSingle).toHaveBeenCalledWith(expect.any(File), "patient-photos");
+    expect(vi.mocked(patientService.create).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ name: "Ana Souza", photoPath: "patient-photos/o/ana.webp" }),
+    );
+  });
+
+  it("se a foto não sobe, não cria o paciente e explica", async () => {
+    uploadSingle.mockRejectedValue(new Error("falhou"));
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.upload(screen.getByTestId("new-patient-photo-input"), foto());
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+
+    expect(await screen.findByText(/Não foi possível enviar a foto/)).toBeInTheDocument();
+    expect(patientService.create).not.toHaveBeenCalled();
+  });
+
+  it("sem foto não envia nada", async () => {
+    const user = userEvent.setup();
+    renderModal();
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+    await waitFor(() => expect(patientService.create).toHaveBeenCalled());
+    expect(uploadSingle).not.toHaveBeenCalled();
+    expect(vi.mocked(patientService.create).mock.calls[0][0]).not.toHaveProperty("photoPath");
+  });
+});
+
