@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Permission } from "@/lib/permissions";
 
 vi.mock("@/services/patient.service", () => ({
-  patientService: { create: vi.fn() },
+  patientService: { create: vi.fn(), discardPhoto: vi.fn() },
 }));
 
 const uploadSingle = vi.hoisted(() => vi.fn());
@@ -210,7 +210,8 @@ describe("NewPatientModal — foto no cadastro", () => {
     expect(uploadSingle).toHaveBeenCalledTimes(1);
     expect(vi.mocked(patientService.create).mock.calls[1][0]).toEqual(
       expect.objectContaining({ photoPath: "patient-photos/o/ana.webp" }),
-    );
+    );    // Foto reaproveitada e gravada no paciente: nada a descartar.
+    expect(patientService.discardPhoto).not.toHaveBeenCalled();
   });
 
   it("trocar a foto depois da falha envia a nova", async () => {
@@ -234,7 +235,46 @@ describe("NewPatientModal — foto no cadastro", () => {
     expect(uploadSingle).toHaveBeenCalledTimes(2);
     expect(vi.mocked(patientService.create).mock.calls[1][0]).toEqual(
       expect.objectContaining({ photoPath: "patient-photos/o/2.webp" }),
-    );
+    );    // A primeira foto não vai mais ser usada: sai do storage.
+    expect(patientService.discardPhoto).toHaveBeenCalledTimes(1);
+    expect(patientService.discardPhoto).toHaveBeenCalledWith("patient-photos/o/1.webp");
+  });
+
+  it("cadastro falhou e o modal foi fechado: descarta a foto já enviada", async () => {
+    uploadSingle.mockResolvedValue({ data: { path: "patient-photos/o/ana.webp", url: "u" } });
+    vi.mocked(patientService.create).mockRejectedValueOnce({
+      response: { data: { message: "CPF já cadastrado" } },
+    });
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.upload(screen.getByTestId("new-patient-photo-input"), foto());
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+    expect(await screen.findByText("CPF já cadastrado")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(patientService.discardPhoto).toHaveBeenCalledWith("patient-photos/o/ana.webp");
+  });
+
+  it("foto removida depois da falha: o cadastro sem foto descarta a enviada", async () => {
+    uploadSingle.mockResolvedValue({ data: { path: "patient-photos/o/ana.webp", url: "u" } });
+    vi.mocked(patientService.create)
+      .mockRejectedValueOnce({ response: { data: { message: "Falhou" } } })
+      .mockResolvedValueOnce({ id: "p-1", name: "Ana" } as never);
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.upload(screen.getByTestId("new-patient-photo-input"), foto());
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+    expect(await screen.findByText("Falhou")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Remover/ }));
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+    await waitFor(() => expect(patientService.create).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(patientService.create).mock.calls[1][0]).not.toHaveProperty("photoPath");
+    expect(patientService.discardPhoto).toHaveBeenCalledWith("patient-photos/o/ana.webp");
   });
 
   it("sem foto não envia nada", async () => {

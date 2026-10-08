@@ -28,6 +28,9 @@ vi.mock("@/services/surgery-request.service", async () => {
   };
 });
 
+const { getAgendaCompleta } = vi.hoisted(() => ({
+  getAgendaCompleta: vi.fn().mockResolvedValue({ total: 0, records: [] }),
+}));
 vi.mock("@/services/appointment.service", async () => {
   const actual = await vi.importActual<
     typeof import("@/services/appointment.service")
@@ -36,6 +39,7 @@ vi.mock("@/services/appointment.service", async () => {
     ...actual,
     appointmentService: {
       getAgenda: vi.fn().mockResolvedValue([]),
+      getAgendaCompleta,
       updateStatus: vi.fn(),
       delete: vi.fn(),
     },
@@ -300,3 +304,92 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
   });
 });
 
+
+describe("AgendaPage — consultas além do teto da API", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState = { can: (p) => p === Permission.AGENDA };
+    availability.getBlocks.mockResolvedValue([]);
+    availability.getHolidays.mockResolvedValue([]);
+  });
+
+  it("busca a agenda completa (todas as páginas) do intervalo visível", async () => {
+    getAgendaCompleta.mockResolvedValue({ total: 0, records: [] });
+    renderPage();
+    await waitFor(() => expect(getAgendaCompleta).toHaveBeenCalled());
+    const [query] = getAgendaCompleta.mock.calls[0];
+    expect(query).toEqual({ from: expect.any(String), to: expect.any(String) });
+    expect(query).not.toHaveProperty("take");
+  });
+
+  it("avisa quando o total do servidor passa do que veio", async () => {
+    getAgendaCompleta.mockResolvedValue({ total: 25000, records: [] });
+    renderPage();
+    expect(
+      await screen.findByText(/Mostrando 0 de 25000 consultas deste período/),
+    ).toBeInTheDocument();
+  });
+
+  it("sem corte, nenhum aviso", async () => {
+    getAgendaCompleta.mockResolvedValue({ total: 0, records: [] });
+    renderPage();
+    await waitFor(() => expect(getAgendaCompleta).toHaveBeenCalled());
+    expect(screen.queryByText(/consultas deste período/)).toBeNull();
+  });
+});
+
+describe("AgendaPage — visão mensal desenha feriados e bloqueios", () => {
+  const ymd = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState = { can: (p) => p === Permission.AGENDA };
+    getAgendaCompleta.mockResolvedValue({ total: 0, records: [] });
+  });
+
+  it("mostra o feriado e o bloqueio no dia, na visão Mês", async () => {
+    // Dia 15 do mês corrente: sempre dentro da grade do mês exibido.
+    const hoje = new Date();
+    const dia = new Date(hoje.getFullYear(), hoje.getMonth(), 15);
+    const ini = new Date(dia);
+    ini.setHours(9, 0, 0, 0);
+    const fim = new Date(dia);
+    fim.setHours(11, 0, 0, 0);
+    availability.getBlocks.mockResolvedValue([
+      {
+        id: "bm",
+        doctorId: null,
+        clinicId: null,
+        startsAt: ini.toISOString(),
+        endsAt: fim.toISOString(),
+        allDay: false,
+        reason: "Dedetização",
+      },
+    ]);
+    availability.getHolidays.mockResolvedValue([
+      { id: "h", name: "Feriado do mês", date: ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 16)), recurring: false, blocksAgenda: true },
+    ]);
+
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Mês" }));
+
+    expect(await screen.findByTitle("Clínica: Dedetização")).toBeInTheDocument();
+    expect(await screen.findByTitle("Feriado: Feriado do mês")).toBeInTheDocument();
+  });
+
+  it("feriado que não trava a agenda não aparece", async () => {
+    const hoje = new Date();
+    availability.getBlocks.mockResolvedValue([]);
+    availability.getHolidays.mockResolvedValue([
+      { id: "h2", name: "Ponto facultativo", date: ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 16)), recurring: false, blocksAgenda: false },
+    ]);
+
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Mês" }));
+    await waitFor(() => expect(availability.getHolidays).toHaveBeenCalled());
+    expect(screen.queryByTitle("Feriado: Ponto facultativo")).toBeNull();
+  });
+});

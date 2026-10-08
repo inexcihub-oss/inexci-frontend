@@ -229,6 +229,20 @@ export const patientService = {
   },
 
   /**
+   * Descarta uma foto enviada que não chegou a ser gravada em nenhum paciente
+   * (troca ou cadastro que falhou). Best-effort: nunca lança — o backend só
+   * apaga caminho da própria conta e não referenciado, e a varredura diária
+   * pega o que escapar.
+   */
+  async discardPhoto(path: string): Promise<void> {
+    try {
+      await api.post("/patients/photos/discard", { path });
+    } catch {
+      // ignorado: a varredura diária de fotos órfãs cobre
+    }
+  },
+
+  /**
    * Cria um novo paciente
    */
   async create(payload: CreatePatientPayload): Promise<Patient> {

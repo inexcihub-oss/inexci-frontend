@@ -117,6 +117,7 @@ import { availableDoctorsService } from "@/services/available-doctors.service";
 import { clinicalRecordService } from "@/services/clinical-record.service";
 import { clinicalRecordTemplateService } from "@/services/clinical-record-template.service";
 import { healthPlanService } from "@/services/health-plan.service";
+import type { Patient } from "@/services/patient.service";
 import { AtendimentoTabs } from "./AtendimentoTabs";
 
 const patient = {
@@ -138,6 +139,7 @@ const appointment = {
   durationMinutes: 30,
   notes: null,
   cancellationReason: null,
+  clinicId: null,
 };
 
 type Record_ = NonNullable<
@@ -179,7 +181,7 @@ function renderWithQuery(ui: React.ReactElement) {
 
 function renderTabs(
   record: Record_ | null = null,
-  over: Partial<typeof patient> = {},
+  over: Partial<Patient> = {},
 ) {
   return renderWithQuery(
     <AtendimentoTabs
@@ -882,6 +884,44 @@ describe("AtendimentoTabs", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  // Consulta de dentista: os documentos saem em nome dele. Antes a API não
+  // devolvia `canIssueClinicalDocuments` e a tela caía em `isPhysician`,
+  // desabilitando receita/atestado/pedido de exame do CRO.
+  it.each([
+    ["com canIssueClinicalDocuments", { canIssueClinicalDocuments: true }],
+    ["só com o conselho (resposta sem o campo)", {}],
+  ])(
+    "consulta de dentista (CRO) %s habilita os três documentos",
+    async (_caso, extra) => {
+      vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue([
+        {
+          id: "d-1",
+          name: "Dra. Bia Dentista",
+          crm: "4321",
+          crmState: "RJ",
+          council: "CRO",
+          isPhysician: false,
+          ...extra,
+        },
+      ]);
+      renderTabs();
+
+      // A indicação some quando a lista chega (dentista não indica cirurgia):
+      // a partir daí os botões refletem o profissional da consulta.
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("checkbox", { name: "Paciente cirúrgico" }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(screen.getByRole("button", { name: /receita/i })).toBeEnabled();
+      expect(screen.getByRole("button", { name: /atestado/i })).toBeEnabled();
+      expect(screen.getByRole("button", { name: /exames/i })).toBeEnabled();
+      vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue(
+        [],
+      );
+    },
+  );
 
   describe("profissional de saúde que não é médico", () => {
     beforeEach(() => {

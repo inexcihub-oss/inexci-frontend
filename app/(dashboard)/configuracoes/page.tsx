@@ -27,6 +27,10 @@ import { summarizeErrors } from "@/lib/form-errors";
 import PasswordInput from "@/components/ui/PasswordInput";
 import api from "@/lib/api";
 import { userService } from "@/services/user.service";
+import {
+  buildOwnDoctorProfilePayload,
+  type OwnDoctorProfileFields,
+} from "@/lib/collaborator-update";
 import { notificationService } from "@/services/notification.service";
 import { uploadService } from "@/services/upload.service";
 import {
@@ -448,6 +452,9 @@ function ConfiguracoesPageInner() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signatureDeleted, setSignatureDeleted] = useState(false);
   const [isProcessingSignature, setIsProcessingSignature] = useState(false);
+  // Registro profissional como veio do servidor: o save manda só o que mudou
+  // (e "" para o que foi apagado) — ver `buildOwnDoctorProfilePayload`.
+  const registroSalvoRef = useRef<OwnDoctorProfileFields>({});
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
@@ -512,6 +519,11 @@ function ConfiguracoesPageInner() {
         const profileData = await userService.getProfile();
         const dp = profileData.doctorProfile;
         if (!isMounted) return;
+        registroSalvoRef.current = {
+          crm: dp?.crm || "",
+          crmState: dp?.crmState || "",
+          specialty: dp?.specialty || "",
+        };
         setProfile({
           name: profileData.name || "",
           email: profileData.email || "",
@@ -559,6 +571,11 @@ function ConfiguracoesPageInner() {
         // Fallback para dados do contexto
         if (isMounted && user) {
           const dp = user.doctorProfile;
+          registroSalvoRef.current = {
+            crm: dp?.crm || "",
+            crmState: dp?.crmState || "",
+            specialty: dp?.specialty || "",
+          };
           setProfile({
             name: user.name || "",
             email: user.email || "",
@@ -746,12 +763,23 @@ function ConfiguracoesPageInner() {
       });
 
       // 4. Se é médico, salvar dados profissionais (usa user.id, não doctorProfile.id)
+      //    Só o que mudou; campo apagado vai "" (o backend grava null) — o
+      //    `|| undefined` antigo significava "não mexer" e não deixava apagar
+      //    número/UF de conselho que não exige registro.
       if (profile.isDoctor && user?.id) {
-        await userService.updateDoctorProfile(user.id, {
-          crm: profile.crm || undefined,
-          crmState: profile.crmState || undefined,
-          specialty: profile.specialty || undefined,
-        });
+        const registro: OwnDoctorProfileFields = {
+          crm: profile.crm,
+          crmState: profile.crmState,
+          specialty: profile.specialty,
+        };
+        const payloadRegistro = buildOwnDoctorProfilePayload(
+          registroSalvoRef.current,
+          registro,
+        );
+        if (payloadRegistro) {
+          await userService.updateDoctorProfile(user.id, payloadRegistro);
+          registroSalvoRef.current = registro;
+        }
       }
 
       await updateUser();

@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Camera, Loader2, RotateCcw, X } from "lucide-react";
+import { desenharReduzido } from "./foto-paciente";
 
 type Estado = "abrindo" | "ao-vivo" | "capturada" | "erro";
 
-/** Lado maior da foto capturada: o backend reduz para 800 px de qualquer jeito. */
-const LADO_MAX_CAPTURA = 1280;
 
 function mensagemDeErro(erro: unknown): string {
   const nome = (erro as { name?: string } | null)?.name;
@@ -130,18 +129,11 @@ export function WebcamCaptureModal({
   const capturar = () => {
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
-    const escala = Math.min(
-      1,
-      LADO_MAX_CAPTURA / Math.max(video.videoWidth, video.videoHeight),
-    );
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(video.videoWidth * escala);
-    canvas.height = Math.round(video.videoHeight * escala);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
     // A prévia é espelhada (como um espelho, mais natural para se enquadrar);
     // a foto salva não — senão texto e lado ficam invertidos no cadastro.
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Maior lado até `LADO_MAX_FOTO` (1280 px), o mesmo da redução de arquivo.
+    const canvas = desenharReduzido(video, video.videoWidth, video.videoHeight);
+    if (!canvas) return;
     canvas.toBlob(
       (blob) => {
         if (!blob) return;

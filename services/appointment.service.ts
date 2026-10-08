@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api, { FETCH_ALL_TAKE } from "@/lib/api";
 import { getApiRecords } from "@/lib/api-response";
 
 // ── Enums (espelham o backend) ────────────────────────────────────────────────
@@ -14,6 +14,24 @@ export type AppointmentStatus =
   | "completed"
   | "cancelled"
   | "no_show";
+
+/**
+ * Status que ocupam o horário na agenda — espelho de
+ * `OCCUPYING_APPOINTMENT_STATUSES` do backend (`appointment.entity.ts`).
+ * Cancelada e falta não ocupam: não disputam horário, e a API não confere
+ * bloqueio/feriado nem conflito ao remarcá-las.
+ */
+export const OCCUPYING_APPOINTMENT_STATUSES: readonly AppointmentStatus[] = [
+  "scheduled",
+  "confirmed",
+  "waiting",
+  "in_progress",
+  "completed",
+];
+
+export function ocupaAgenda(status: AppointmentStatus): boolean {
+  return OCCUPYING_APPOINTMENT_STATUSES.includes(status);
+}
 
 export const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = {
   first_visit: "Primeira consulta",
@@ -200,6 +218,14 @@ export interface AgendaPage {
   countByDoctorId?: Record<string, number>;
 }
 
+/**
+ * Teto de páginas de `getAgendaCompleta` — trava contra laço infinito se o
+ * servidor devolver `total` incoerente. 20 × 1000 consultas numa janela de
+ * seis semanas está muito além de qualquer agenda real; passou disso, a tela
+ * avisa que a lista veio cortada (`total > records.length`).
+ */
+export const AGENDA_MAX_PAGINAS = 20;
+
 export const appointmentService = {
   /**
    * Consultas da agenda com a contagem real. Use quando for preciso saber se
@@ -233,6 +259,34 @@ export const appointmentService = {
         response.data as { countByDoctorId?: Record<string, number> } | undefined
       )?.countByDoctorId,
     };
+  },
+
+  /**
+   * Todas as consultas do recorte, buscando página a página até `total`. O
+   * backend corta cada resposta em `APPOINTMENTS_MAX_TAKE` (1000); a Agenda
+   * não pode simplesmente parar na primeira página, senão some consulta da
+   * tela sem aviso. Se ainda assim não couber (`AGENDA_MAX_PAGINAS`), devolve o
+   * que conseguiu com o `total` real — quem chama avisa do corte.
+   */
+  async getAgendaCompleta(
+    query: Omit<AgendaQuery, "skip" | "take"> = {},
+  ): Promise<AgendaPage> {
+    const primeira = await this.getAgendaPage({ ...query, take: FETCH_ALL_TAKE });
+    const records = [...primeira.records];
+    let paginas = 1;
+    while (records.length < primeira.total && paginas < AGENDA_MAX_PAGINAS) {
+      const pagina = await this.getAgendaPage({
+        ...query,
+        skip: records.length,
+        take: FETCH_ALL_TAKE,
+      });
+      paginas += 1;
+      // Página vazia antes do total (consulta removida no meio do caminho):
+      // para em vez de pedir de novo o mesmo `skip`.
+      if (pagina.records.length === 0) break;
+      records.push(...pagina.records);
+    }
+    return { ...primeira, records };
   },
 
   /** Consultas da agenda, opcionalmente recortadas por data e status. */

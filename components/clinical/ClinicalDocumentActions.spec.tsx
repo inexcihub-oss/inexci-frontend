@@ -619,10 +619,10 @@ describe("ClinicalDocumentActions", () => {
       const select = await screen.findByLabelText("Usar modelo");
       await user.selectOptions(select, "tpl-1");
 
+      // Dias e início não vão: `{{dias}}`/`{{inicio}}` ficam para a emissão.
       expect(templates.apply).toHaveBeenCalledWith("tpl-1", {
         patientId: "p-1",
         doctorId: "d-1",
-        restDays: 1,
       });
       const texto = await screen.findByLabelText("Texto do atestado");
       await waitFor(() =>
@@ -680,77 +680,15 @@ describe("ClinicalDocumentActions", () => {
       );
     });
 
-    it("mudar os dias depois do modelo refaz o texto com os dias novos", async () => {
+    // Regressão: o apply gravava "1 dia" no texto; editado, ele congelava os
+    // dias antigos e o PDF saía com "1 dia" no texto e "3 dias" embaixo.
+    // Agora `{{dias}}`/`{{inicio}}` ficam literais e a emissão os preenche.
+    it("texto do modelo editado mantém {{dias}}/{{inicio}} e sai com os dias escolhidos depois", async () => {
       templates.getAll.mockResolvedValue([modelo]);
-      templates.apply.mockImplementation(async (_id, body) => ({
+      templates.apply.mockResolvedValue({
         id: "tpl-1",
         kind: "medical_certificate",
-        body: `Afastamento de ${body.restDays} dias.`,
-      }));
-      const user = userEvent.setup();
-      setup(false);
-      await user.click(screen.getByRole("button", { name: /atestado/i }));
-      await user.selectOptions(
-        await screen.findByLabelText("Usar modelo"),
-        "tpl-1",
-      );
-      const texto = await screen.findByLabelText("Texto do atestado");
-      await waitFor(() => expect(texto).toHaveValue("Afastamento de 1 dias."));
-
-      const dias = screen.getByLabelText("Dias de afastamento");
-      await user.clear(dias);
-      await user.type(dias, "3");
-
-      await waitFor(() => expect(texto).toHaveValue("Afastamento de 3 dias."));
-    });
-
-    it("mudar o início depois do modelo refaz o texto com a data — sem {{inicio}} literal", async () => {
-      templates.getAll.mockResolvedValue([modelo]);
-      templates.apply.mockImplementation(async (_id, body) => ({
-        id: "tpl-1",
-        kind: "medical_certificate",
-        body: `A partir de ${body.startDate ?? "{{inicio}}"}.`,
-      }));
-      const user = userEvent.setup();
-      setup(false);
-      await user.click(screen.getByRole("button", { name: /atestado/i }));
-      await user.selectOptions(
-        await screen.findByLabelText("Usar modelo"),
-        "tpl-1",
-      );
-      const texto = await screen.findByLabelText("Texto do atestado");
-      await waitFor(() => expect(texto).toHaveValue("A partir de {{inicio}}."));
-      // A escolha do modelo não manda data enquanto ela não foi informada.
-      expect(templates.apply).toHaveBeenLastCalledWith(
-        "tpl-1",
-        expect.not.objectContaining({ startDate: expect.anything() }),
-      );
-
-      await user.type(screen.getByLabelText("Início do afastamento"), "2026-10-08");
-
-      await waitFor(() => expect(texto).toHaveValue("A partir de 2026-10-08."));
-      expect(templates.apply).toHaveBeenLastCalledWith(
-        "tpl-1",
-        expect.objectContaining({ startDate: "2026-10-08", refresh: true }),
-      );
-    });
-
-    it("resposta atrasada dos dias antigos não sobrescreve a dos dias novos", async () => {
-      templates.getAll.mockResolvedValue([modelo]);
-      // O apply com 1 dia só volta quando o teste mandar — depois do de 5.
-      let liberarUmDia: () => void = () => undefined;
-      templates.apply.mockImplementation((_id, body) => {
-        const resposta = {
-          id: "tpl-1",
-          kind: "medical_certificate",
-          body: `Afastamento de ${body.restDays} dias.`,
-        };
-        if (body.restDays === 1) {
-          return new Promise((resolve) => {
-            liberarUmDia = () => resolve(resposta);
-          });
-        }
-        return Promise.resolve(resposta);
+        body: "Afastamento de {{dias}} dias a partir de {{inicio}}.",
       });
       const user = userEvent.setup();
       setup(false);
@@ -759,16 +697,71 @@ describe("ClinicalDocumentActions", () => {
         await screen.findByLabelText("Usar modelo"),
         "tpl-1",
       );
+      const texto = await screen.findByLabelText("Texto do atestado");
+      await waitFor(() =>
+        expect(texto).toHaveValue(
+          "Afastamento de {{dias}} dias a partir de {{inicio}}.",
+        ),
+      );
+      // A tela explica quando os placeholders viram valor.
+      expect(
+        screen.getByText(/são preenchidos ao visualizar e ao emitir/),
+      ).toBeInTheDocument();
 
+      await user.type(texto, " Repouso.");
       const dias = screen.getByLabelText("Dias de afastamento");
       await user.clear(dias);
-      await user.type(dias, "5");
-      const texto = await screen.findByLabelText("Texto do atestado");
-      await waitFor(() => expect(texto).toHaveValue("Afastamento de 5 dias."));
+      await user.type(dias, "3");
+      await new Promise((r) => setTimeout(r, 450));
+      // Mudar os dias não reaplica o modelo nem mexe no texto.
+      expect(templates.apply).toHaveBeenCalledTimes(1);
 
-      liberarUmDia();
-      await new Promise((r) => setTimeout(r, 0));
-      expect(texto).toHaveValue("Afastamento de 5 dias.");
+      await user.click(screen.getByRole("button", { name: /^emitir/i }));
+      await waitFor(() =>
+        expect(
+          clinicalRecordService.generateMedicalCertificate,
+        ).toHaveBeenCalled(),
+      );
+      const payload = vi.mocked(
+        clinicalRecordService.generateMedicalCertificate,
+      ).mock.calls[0][0];
+      expect(payload).toMatchObject({
+        restDays: 3,
+        text: "Afastamento de {{dias}} dias a partir de {{inicio}}. Repouso.",
+      });
+    });
+
+    // O formulário começa com 1 dia: o comparecimento saía com "Afastamento
+    // de 1 dia" embaixo.
+    it("modelo de comparecimento zera os dias de afastamento", async () => {
+      templates.getAll.mockResolvedValue([modelo]);
+      templates.apply.mockResolvedValue({
+        id: "tpl-1",
+        kind: "medical_certificate",
+        body: "Declaro que Maria Silva compareceu a esta consulta das 14h às 15h.",
+      });
+      const user = userEvent.setup();
+      setup(false);
+      await user.click(screen.getByRole("button", { name: /atestado/i }));
+      await user.selectOptions(
+        await screen.findByLabelText("Usar modelo"),
+        "tpl-1",
+      );
+      await screen.findByLabelText("Texto do atestado");
+      await waitFor(() =>
+        expect(screen.getByLabelText("Dias de afastamento")).toHaveValue(null),
+      );
+
+      await user.click(screen.getByRole("button", { name: /^emitir/i }));
+      await waitFor(() =>
+        expect(
+          clinicalRecordService.generateMedicalCertificate,
+        ).toHaveBeenCalled(),
+      );
+      expect(
+        vi.mocked(clinicalRecordService.generateMedicalCertificate).mock
+          .calls[0][0],
+      ).toMatchObject({ restDays: undefined });
     });
 
     it("'Usar texto padrão' com o modelo ainda aplicando não deixa o texto voltar", async () => {
@@ -803,13 +796,13 @@ describe("ClinicalDocumentActions", () => {
     // O texto da tela é só a visualização do modelo: enquanto o médico não
     // editar, o atestado sai pelo `templateId` e o servidor preenche {{dias}}
     // com os dias do próprio atestado — nunca com os de um texto antigo.
-    it("texto do modelo intacto sai pelo templateId, com os dias novos, mesmo antes de a tela refazer o texto", async () => {
+    it("texto do modelo intacto sai pelo templateId, com os dias escolhidos", async () => {
       templates.getAll.mockResolvedValue([modelo]);
-      templates.apply.mockImplementation(async (_id, body) => ({
+      templates.apply.mockResolvedValue({
         id: "tpl-1",
         kind: "medical_certificate",
-        body: `Afastamento de ${body.restDays} dias.`,
-      }));
+        body: "Afastamento de {{dias}} dias.",
+      });
       const user = userEvent.setup();
       setup(false);
       await user.click(screen.getByRole("button", { name: /atestado/i }));
@@ -818,13 +811,14 @@ describe("ClinicalDocumentActions", () => {
         "tpl-1",
       );
       const texto = await screen.findByLabelText("Texto do atestado");
-      await waitFor(() => expect(texto).toHaveValue("Afastamento de 1 dias."));
+      await waitFor(() =>
+        expect(texto).toHaveValue("Afastamento de {{dias}} dias."),
+      );
 
       const dias = screen.getByLabelText("Dias de afastamento");
       await user.clear(dias);
       await user.type(dias, "5");
 
-      // Não espera a tela: a emissão não depende do texto refeito.
       const emitir = screen.getByRole("button", { name: /^emitir/i });
       expect(emitir).toBeEnabled();
       await user.click(emitir);
@@ -876,79 +870,6 @@ describe("ClinicalDocumentActions", () => {
       expect(payload).not.toHaveProperty("text");
     });
 
-    it("refazer o texto por causa dos dias não conta outro uso do modelo", async () => {
-      templates.getAll.mockResolvedValue([modelo]);
-      templates.apply.mockImplementation(async (_id, body) => ({
-        id: "tpl-1",
-        kind: "medical_certificate",
-        body: `Afastamento de ${body.restDays} dias.`,
-      }));
-      const user = userEvent.setup();
-      setup(false);
-      await user.click(screen.getByRole("button", { name: /atestado/i }));
-      await user.selectOptions(
-        await screen.findByLabelText("Usar modelo"),
-        "tpl-1",
-      );
-      const texto = await screen.findByLabelText("Texto do atestado");
-      await waitFor(() => expect(texto).toHaveValue("Afastamento de 1 dias."));
-
-      const dias = screen.getByLabelText("Dias de afastamento");
-      await user.clear(dias);
-      await user.type(dias, "3");
-      await waitFor(() => expect(texto).toHaveValue("Afastamento de 3 dias."));
-
-      // A escolha conta o uso; a atualização da tela vai com `refresh`.
-      expect(templates.apply.mock.calls[0][1]).not.toHaveProperty("refresh");
-      expect(templates.apply).toHaveBeenLastCalledWith("tpl-1", {
-        patientId: "p-1",
-        doctorId: "d-1",
-        restDays: 3,
-        refresh: true,
-      });
-    });
-
-    it("falha ao refazer o texto na tela avisa, mas o atestado sai com os dias novos", async () => {
-      templates.getAll.mockResolvedValue([modelo]);
-      templates.apply
-        .mockResolvedValueOnce({
-          id: "tpl-1",
-          kind: "medical_certificate",
-          body: "Afastamento de 1 dias.",
-        })
-        .mockRejectedValue({});
-      const user = userEvent.setup();
-      setup(false);
-      await user.click(screen.getByRole("button", { name: /atestado/i }));
-      const select = await screen.findByLabelText("Usar modelo");
-      await user.selectOptions(select, "tpl-1");
-      const texto = await screen.findByLabelText("Texto do atestado");
-      await waitFor(() => expect(texto).toHaveValue("Afastamento de 1 dias."));
-
-      const dias = screen.getByLabelText("Dias de afastamento");
-      await user.clear(dias);
-      await user.type(dias, "4");
-
-      expect(
-        await screen.findByText(/Não foi possível atualizar o texto na tela/),
-      ).toBeInTheDocument();
-      // O modelo continua escolhido e nada de erro bloqueante.
-      expect(select).toHaveValue("tpl-1");
-      expect(screen.queryByRole("alert")).toBeNull();
-
-      await user.click(screen.getByRole("button", { name: /^emitir/i }));
-      await waitFor(() =>
-        expect(
-          clinicalRecordService.generateMedicalCertificate,
-        ).toHaveBeenCalled(),
-      );
-      const payload = vi.mocked(
-        clinicalRecordService.generateMedicalCertificate,
-      ).mock.calls[0][0];
-      expect(payload).toMatchObject({ templateId: "tpl-1", restDays: 4 });
-      expect(payload).not.toHaveProperty("text");
-    });
-
     it("texto do modelo editado sai como texto, sem templateId", async () => {
       templates.getAll.mockResolvedValue([modelo]);
       templates.apply.mockResolvedValue({
@@ -990,34 +911,6 @@ describe("ClinicalDocumentActions", () => {
         text: "Atesto Maria Silva por 1 dia. Repouso.",
       });
       expect(payload).not.toHaveProperty("templateId");
-    });
-
-    it("fechar o modal cancela a atualização do texto agendada pelos dias", async () => {
-      templates.getAll.mockResolvedValue([modelo]);
-      templates.apply.mockImplementation(async (_id, body) => ({
-        id: "tpl-1",
-        kind: "medical_certificate",
-        body: `Afastamento de ${body.restDays} dias.`,
-      }));
-      const user = userEvent.setup();
-      setup(false);
-      await user.click(screen.getByRole("button", { name: /atestado/i }));
-      await user.selectOptions(
-        await screen.findByLabelText("Usar modelo"),
-        "tpl-1",
-      );
-      await waitFor(() =>
-        expect(screen.getByLabelText("Texto do atestado")).toHaveValue(
-          "Afastamento de 1 dias.",
-        ),
-      );
-      const dias = screen.getByLabelText("Dias de afastamento");
-      await user.clear(dias);
-      await user.type(dias, "6");
-      await user.click(screen.getByRole("button", { name: "Cancelar" }));
-
-      await new Promise((r) => setTimeout(r, 450));
-      expect(templates.apply).toHaveBeenCalledTimes(1);
     });
 
     it("o texto do atestado tem o limite do servidor e mostra a contagem", async () => {

@@ -24,6 +24,7 @@ import {
   APPOINTMENT_STATUS_LABELS,
 } from "@/services/appointment.service";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { diaParaData, useDiaAtual } from "@/hooks/useDiaAtual";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
 import { useToast } from "@/hooks/useToast";
@@ -86,7 +87,14 @@ export default function AtendimentoHubPage() {
 
   // O recorte de cada aba (janela de datas + status + ordem) é resolvido no
   // servidor; aqui só agrupamos por dia.
-  const tabQuery = useMemo(() => hubTabQuery(tab), [tab]);
+  // `hoje` entra no memo: com a tela aberta na virada da meia-noite, a aba
+  // "Hoje" (e "Próximas", que começa hoje) passa para o dia novo — a janela
+  // muda, a query key muda e a lista é buscada de novo.
+  const hoje = useDiaAtual();
+  const tabQuery = useMemo(
+    () => hubTabQuery(tab, diaParaData(hoje)),
+    [tab, hoje],
+  );
   const { from, to, status, order } = tabQuery;
 
   // Lista paginada: 20 por vez, com "carregar mais". O filtro de

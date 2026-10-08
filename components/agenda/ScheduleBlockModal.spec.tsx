@@ -56,6 +56,7 @@ describe("ScheduleBlockModal (MIG-05)", () => {
     await waitFor(() =>
       expect(service.createBlock).toHaveBeenCalledWith({
         doctorId: "d1",
+        clinicId: null,
         startsAt: new Date(2026, 9, 5, 14, 0).toISOString(),
         endsAt: new Date(2026, 9, 5, 18, 0).toISOString(),
         allDay: false,
@@ -211,5 +212,84 @@ describe("ScheduleBlockModal (MIG-05)", () => {
       await user.click(screen.getByRole("button", { name: "Remover" }));
       await waitFor(() => expect(service.deleteBlock).toHaveBeenCalledWith("bc"));
     });
+  });
+});
+
+describe("ScheduleBlockModal — clínica do bloqueio", () => {
+  const clinics = [
+    { id: "c1", name: "Clínica Centro" },
+    { id: "c2", name: "Clínica Barra" },
+  ];
+
+  beforeEach(() => {
+    Object.values(service).forEach((f) => f.mockReset());
+    service.createBlock.mockResolvedValue({});
+    service.updateBlock.mockResolvedValue({});
+  });
+
+  it("lista as clínicas da conta, com 'Todas as clínicas' como padrão", () => {
+    abrir({ clinics });
+    const select = screen.getByLabelText("Clínica") as HTMLSelectElement;
+    expect(select.value).toBe("");
+    expect(screen.getByRole("option", { name: "Todas as clínicas" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Clínica Barra" })).toBeInTheDocument();
+  });
+
+  it("bloqueia o profissional só numa clínica", async () => {
+    const user = userEvent.setup();
+    abrir({ clinics });
+    await user.selectOptions(screen.getByLabelText("Profissional"), "d1");
+    await user.selectOptions(screen.getByLabelText("Clínica"), "c2");
+    await user.click(screen.getByRole("button", { name: "Bloquear" }));
+    await waitFor(() =>
+      expect(service.createBlock).toHaveBeenCalledWith(
+        expect.objectContaining({ doctorId: "d1", clinicId: "c2" }),
+      ),
+    );
+  });
+
+  it("sem Administração, clínica sem profissional continua exigindo o profissional", async () => {
+    const user = userEvent.setup();
+    abrir({ clinics });
+    await user.selectOptions(screen.getByLabelText("Clínica"), "c1");
+    await user.click(screen.getByRole("button", { name: "Bloquear" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Escolha o profissional.");
+    expect(service.createBlock).not.toHaveBeenCalled();
+  });
+
+  it("com Administração, bloqueia a clínica inteira (todos os profissionais dela)", async () => {
+    const user = userEvent.setup();
+    abrir({ clinics, podeClinicaToda: true });
+    await user.selectOptions(screen.getByLabelText("Clínica"), "c1");
+    await user.click(screen.getByRole("button", { name: "Bloquear" }));
+    await waitFor(() =>
+      expect(service.createBlock).toHaveBeenCalledWith(
+        expect.objectContaining({ doctorId: null, clinicId: "c1" }),
+      ),
+    );
+  });
+
+  it("editar preserva a clínica do bloqueio, mesmo fora da lista", async () => {
+    const user = userEvent.setup();
+    abrir({
+      clinics,
+      block: {
+        id: "b9",
+        doctorId: "d1",
+        clinicId: "c-removida",
+        startsAt: new Date(2026, 9, 5, 9, 0).toISOString(),
+        endsAt: new Date(2026, 9, 5, 10, 0).toISOString(),
+        allDay: false,
+        reason: null,
+      },
+    });
+    expect((screen.getByLabelText("Clínica") as HTMLSelectElement).value).toBe("c-removida");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() =>
+      expect(service.updateBlock).toHaveBeenCalledWith(
+        "b9",
+        expect.objectContaining({ clinicId: "c-removida" }),
+      ),
+    );
   });
 });

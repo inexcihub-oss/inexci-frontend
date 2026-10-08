@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, ImagePlus, Trash2, User } from "lucide-react";
-import { PATIENT_PHOTO_TYPES, validarFotoPaciente } from "./PatientPhotoField";
+import { PATIENT_PHOTO_TYPES, prepararFotoPaciente } from "./foto-paciente";
 import { WebcamCaptureModal } from "./WebcamCaptureModal";
 
 /**
@@ -32,12 +32,13 @@ export function PatientPhotoInput({
     [previa],
   );
 
-  const escolher = (file: File | undefined) => {
-    if (!file) return;
-    const problema = validarFotoPaciente(file);
-    setErro(problema);
-    if (!problema) onChange(file);
+  const escolher = async (file: File | undefined) => {
     if (inputRef.current) inputRef.current.value = "";
+    if (!file) return;
+    // Acima de 2 MB, reduz no navegador antes de recusar.
+    const { foto, erro: problema } = await prepararFotoPaciente(file);
+    setErro(problema ?? null);
+    if (foto) onChange(foto);
   };
 
   const botao =

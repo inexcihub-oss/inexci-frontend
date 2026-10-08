@@ -30,6 +30,7 @@ import {
 } from "@/services/clinical-record.service";
 import { healthPlanService } from "@/services/health-plan.service";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { emiteDocumentosClinicos } from "@/lib/professional-council";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
@@ -145,7 +146,11 @@ export function AtendimentoTabs({
     return {
       nome: d.name,
       medico: d.isPhysician !== false,
-      emiteDocumentos: d.canIssueClinicalDocuments ?? d.isPhysician !== false,
+      // Sem `canIssueClinicalDocuments` (resposta antiga), o conselho decide —
+      // `isPhysician` sozinho deixava o dentista (CRO) sem receita/atestado.
+      emiteDocumentos:
+        d.canIssueClinicalDocuments ??
+        (d.council ? emiteDocumentosClinicos(d) : d.isPhysician !== false),
       conselho: d.council ?? "CRM",
       semNumero: !d.crm?.trim() || !d.crmState?.trim(),
     };

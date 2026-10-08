@@ -43,10 +43,14 @@ import {
 import {
   AVAILABILITY_QUERY_KEYS,
   blockAppliesTo,
+  bloqueioNoDia,
   holidayOn,
 } from "@/lib/availability";
 import { formatDoctorName } from "@/lib/formatters";
-import { CalendarMonthView } from "@/components/agenda/CalendarMonthView";
+import {
+  AgendaDayMark,
+  CalendarMonthView,
+} from "@/components/agenda/CalendarMonthView";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useClinics } from "@/hooks/useClinics";
 import { useToast } from "@/hooks/useToast";
@@ -190,12 +194,18 @@ export default function AgendaPage() {
     placeholderData: keepPreviousData,
     enabled: podeVerCirurgias,
   });
+  // Todas as páginas do recorte: o backend corta cada resposta em 1000, e a
+  // agenda não pode sumir com consulta em silêncio. Se nem paginando couber
+  // (`total > records`), a tela avisa — ver `agendaIncompleta`.
   const appointmentsQuery = useQuery({
     queryKey: ["appointments", "agenda", fromISO, toISO],
     queryFn: () =>
-      appointmentService.getAgenda({ from: fromISO, to: toISO }),
+      appointmentService.getAgendaCompleta({ from: fromISO, to: toISO }),
     placeholderData: keepPreviousData,
   });
+  const agendaIncompleta =
+    !!appointmentsQuery.data &&
+    appointmentsQuery.data.total > appointmentsQuery.data.records.length;
 
   // Bloqueios e feriados (MIG-05): só desenham a agenda; quem impede marcar
   // é o backend. Falha aqui não derruba a agenda.
@@ -231,7 +241,7 @@ export default function AgendaPage() {
 
   // ── Eventos unificados ──────────────────────────────────────────────────────
   const allEvents = useMemo<CalEvent[]>(() => {
-    const appts = (appointmentsQuery.data ?? []).map((a) =>
+    const appts = (appointmentsQuery.data?.records ?? []).map((a) =>
       appointmentToEvent(a, APPOINTMENT_TYPE_LABELS[a.type]),
     );
     const surgeries = (surgeriesQuery.data?.records ?? [])
@@ -272,30 +282,67 @@ export default function AgendaPage() {
     return list;
   }, [allEvents, filters]);
 
-  const blockOverlays = useMemo<AgendaBlockOverlay[]>(() => {
-    const overlays: AgendaBlockOverlay[] = (blocksQuery.data ?? [])
-      .filter((b) => blockAppliesTo(b, filters.doctorIds))
-      .map((b) => {
-        const quem = b.doctorId
-          ? formatDoctorName(
-              doctorNameById.get(b.doctorId) ?? "Profissional",
-              physicianById.get(b.doctorId) ?? false,
-            )
-          : "Clínica";
-        return {
-          id: b.id,
-          start: new Date(b.startsAt),
-          end: new Date(b.endsAt),
-          label: `${quem}: ${b.reason ?? "bloqueado"}`,
-          onClick:
-            podeAgenda && (b.doctorId || podeBloquearClinica)
-              ? () => setBlockModal({ block: b })
-              : undefined,
-        };
-      });
-    for (const day of days) {
+  const clinicNameById = useMemo(
+    () => new Map(clinics.map((c) => [c.id, c.name] as const)),
+    [clinics],
+  );
+
+  // Bloqueios visíveis, já rotulados — a grade de horas os desenha como faixa
+  // e a visão mensal, como selo no dia.
+  const blocosVisiveis = useMemo(
+    () =>
+      (blocksQuery.data ?? [])
+        .filter((b) => blockAppliesTo(b, filters.doctorIds))
+        .map((b) => {
+          const quem = b.doctorId
+            ? formatDoctorName(
+                doctorNameById.get(b.doctorId) ?? "Profissional",
+                physicianById.get(b.doctorId) ?? false,
+              )
+            : b.clinicId
+              ? (clinicNameById.get(b.clinicId) ?? "Clínica")
+              : "Clínica";
+          return {
+            block: b,
+            label: `${quem}: ${b.reason ?? "bloqueado"}`,
+            onClick:
+              podeAgenda && (b.doctorId || podeBloquearClinica)
+                ? () => setBlockModal({ block: b })
+                : undefined,
+          };
+        }),
+    [
+      blocksQuery.data,
+      filters.doctorIds,
+      doctorNameById,
+      physicianById,
+      clinicNameById,
+      podeAgenda,
+      podeBloquearClinica,
+    ],
+  );
+
+  const feriadoQueTrava = useCallback(
+    (day: Date) => {
       const feriado = holidayOn(holidaysQuery.data ?? [], dateKey(day));
-      if (!feriado?.blocksAgenda) continue;
+      return feriado?.blocksAgenda ? feriado : undefined;
+    },
+    [holidaysQuery.data],
+  );
+
+  const blockOverlays = useMemo<AgendaBlockOverlay[]>(() => {
+    const overlays: AgendaBlockOverlay[] = blocosVisiveis.map(
+      ({ block: b, label, onClick }) => ({
+        id: b.id,
+        start: new Date(b.startsAt),
+        end: new Date(b.endsAt),
+        label,
+        onClick,
+      }),
+    );
+    for (const day of days) {
+      const feriado = feriadoQueTrava(day);
+      if (!feriado) continue;
       const fim = addDays(day, 1);
       overlays.push({
         id: `feriado-${dateKey(day)}`,
@@ -305,16 +352,32 @@ export default function AgendaPage() {
       });
     }
     return overlays;
-  }, [
-    blocksQuery.data,
-    holidaysQuery.data,
-    days,
-    filters.doctorIds,
-    doctorNameById,
-    physicianById,
-    podeAgenda,
-    podeBloquearClinica,
-  ]);
+  }, [blocosVisiveis, days, feriadoQueTrava]);
+
+  // Visão mensal: `days` é vazio no mês, então percorre as 42 células da grade.
+  const monthDayMarks = useMemo<Record<string, AgendaDayMark[]>>(() => {
+    if (view !== "month") return {};
+    const marks: Record<string, AgendaDayMark[]> = {};
+    for (let i = 0; i < 42; i++) {
+      const day = addDays(rangeFrom, i);
+      const key = dateKey(day);
+      const lista: AgendaDayMark[] = [];
+      const feriado = feriadoQueTrava(day);
+      if (feriado) {
+        lista.push({
+          id: `feriado-${key}`,
+          kind: "holiday",
+          label: `Feriado: ${feriado.name}`,
+        });
+      }
+      for (const { block, label, onClick } of blocosVisiveis) {
+        if (!bloqueioNoDia(block, day)) continue;
+        lista.push({ id: `${block.id}-${key}`, kind: "block", label, onClick });
+      }
+      if (lista.length) marks[key] = lista;
+    }
+    return marks;
+  }, [view, rangeFrom, blocosVisiveis, feriadoQueTrava]);
 
   // ── Mutations ───────────────────────────────────────────────────────────────
   const statusMutation = useMutation({
@@ -550,6 +613,17 @@ export default function AgendaPage() {
           </div>
         </div>
 
+        {agendaIncompleta && appointmentsQuery.data && (
+          <div
+            role="status"
+            className="mx-3 lg:mx-6 mt-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800"
+          >
+            Mostrando {appointmentsQuery.data.records.length} de{" "}
+            {appointmentsQuery.data.total} consultas deste período. Use o filtro
+            de profissional ou uma visão menor (dia/semana) para ver todas.
+          </div>
+        )}
+
         {/* ── Corpo ──────────────────────────────────────────────── */}
         {isError ? (
           <div className="flex flex-col items-center justify-center flex-1 gap-3 px-4">
@@ -567,6 +641,7 @@ export default function AgendaPage() {
           <CalendarMonthView
             anchor={anchor}
             events={events}
+            dayMarks={monthDayMarks}
             onEventClick={handleEventClick}
             onSelectDay={(day) => {
               setAnchor(day);
@@ -646,6 +721,7 @@ export default function AgendaPage() {
           isOpen
           block={blockModal.block ?? null}
           doctors={doctors}
+          clinics={clinics}
           podeClinicaToda={podeBloquearClinica}
           defaultDate={
             view === "month"

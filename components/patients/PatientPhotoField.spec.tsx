@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 vi.mock("@/services/patient.service", () => ({
-  patientService: { update: vi.fn() },
+  patientService: { update: vi.fn(), discardPhoto: vi.fn() },
 }));
 vi.mock("./WebcamCaptureModal", () => ({
   WebcamCaptureModal: ({ onCapture }: { onCapture: (f: File) => void }) => (
@@ -159,7 +159,7 @@ describe("PatientPhotoField", () => {
     expect(uploadService.uploadSingle).not.toHaveBeenCalled();
   });
 
-  it("recusa imagem acima de 2 MB sem enviar nada", async () => {
+  it("recusa imagem acima de 2 MB que o navegador não consegue reduzir, sem enviar nada", async () => {
     const user = userEvent.setup();
     render(<PatientPhotoField patient={semFoto} onChange={vi.fn()} />);
 
@@ -199,5 +199,74 @@ describe("PatientPhotoField", () => {
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+  it("PATCH falhou depois do upload: descarta a foto enviada", async () => {
+    const user = userEvent.setup();
+    vi.mocked(uploadService.uploadSingle).mockResolvedValue({
+      data: { path: "patient-photos/o/nova.webp", url: "u" },
+    } as never);
+    vi.mocked(patientService.update).mockRejectedValue(new Error("falhou"));
+
+    render(<PatientPhotoField patient={semFoto} onChange={vi.fn()} />);
+    await user.upload(input(), arquivo("foto.png", "image/png"));
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(patientService.discardPhoto).toHaveBeenCalledWith(
+      "patient-photos/o/nova.webp",
+    );
+  });
+
+  it("upload falhou: não há o que descartar", async () => {
+    const user = userEvent.setup();
+    vi.mocked(uploadService.uploadSingle).mockRejectedValue(new Error("x"));
+
+    render(<PatientPhotoField patient={semFoto} onChange={vi.fn()} />);
+    await user.upload(input(), arquivo("foto.png", "image/png"));
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(patientService.discardPhoto).not.toHaveBeenCalled();
+  });
+
+  it("foto da galeria acima de 2 MB é reduzida no navegador e enviada", async () => {
+    const user = userEvent.setup();
+    const close = vi.fn();
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn().mockResolvedValue({ width: 4000, height: 3000, close }),
+    );
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue({ drawImage: vi.fn(), fillRect: vi.fn() } as never);
+    const toBlob = vi
+      .spyOn(HTMLCanvasElement.prototype, "toBlob")
+      .mockImplementation((cb: BlobCallback) =>
+        cb(new Blob([new Uint8Array(300 * 1024)], { type: "image/jpeg" })),
+      );
+    vi.mocked(uploadService.uploadSingle).mockResolvedValue({
+      data: { path: "patient-photos/o/grande.webp", url: "u" },
+    } as never);
+    vi.mocked(patientService.update).mockResolvedValue(comFoto as never);
+
+    try {
+      render(<PatientPhotoField patient={semFoto} onChange={vi.fn()} />);
+      await user.upload(
+        input(),
+        arquivo("grande.png", "image/png", 3 * 1024 * 1024),
+      );
+
+      await waitFor(() => expect(uploadService.uploadSingle).toHaveBeenCalled());
+      const enviado = vi.mocked(uploadService.uploadSingle).mock
+        .calls[0][0] as File;
+      expect(enviado.type).toBe("image/jpeg");
+      expect(enviado.name).toBe("grande.jpg");
+      expect(enviado.size).toBeLessThanOrEqual(2 * 1024 * 1024);
+      const canvas = toBlob.mock.contexts[0] as HTMLCanvasElement;
+      expect([canvas.width, canvas.height]).toEqual([1280, 960]);
+      expect(close).toHaveBeenCalled();
+    } finally {
+      getContext.mockRestore();
+      toBlob.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 });

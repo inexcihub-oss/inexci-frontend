@@ -4,7 +4,9 @@ import { Permission } from "@/lib/permissions";
 
 // Atendimento concedido por padrão — a ausência da permissão é o próprio
 // mecanismo testado mais abaixo.
-let authState = { can: (p: Permission) => p === Permission.ATENDIMENTO };
+let authState: { can: (p: Permission) => boolean } = {
+  can: (p: Permission) => p === Permission.ATENDIMENTO,
+};
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));

@@ -97,11 +97,19 @@ export function NewPatientModal({
     }
   };
 
+  // Foto enviada numa tentativa que falhou e não será mais usada (modal
+  // fechado sem salvar, ou foto trocada): sai do storage em best-effort.
+  const descartarFotoEnviada = () => {
+    const enviada = fotoEnviadaRef.current;
+    fotoEnviadaRef.current = null;
+    if (enviada) void patientService.discardPhoto(enviada.path);
+  };
+
   const handleClose = () => {
     if (loading) return;
     form.reset();
     setFoto(null);
-    fotoEnviadaRef.current = null;
+    descartarFotoEnviada();
     setError("");
     onClose();
   };
@@ -153,6 +161,9 @@ export function NewPatientModal({
           try {
             let enviada = fotoEnviadaRef.current;
             if (enviada?.file !== foto) {
+              // Foto trocada depois de uma tentativa falha: a anterior não
+              // vai mais ser usada.
+              descartarFotoEnviada();
               const resposta = await uploadService.uploadSingle(
                 foto,
                 "patient-photos",
@@ -172,7 +183,13 @@ export function NewPatientModal({
         onSuccess(created);
         form.reset();
         setFoto(null);
-        fotoEnviadaRef.current = null;
+        // A foto enviada agora está no paciente; uma de tentativa anterior
+        // (removida antes de salvar) não está, e sai do storage.
+        if (fotoEnviadaRef.current?.path === payload.photoPath) {
+          fotoEnviadaRef.current = null;
+        } else {
+          descartarFotoEnviada();
+        }
         onClose();
       } catch (err) {
         const apiError = err as {

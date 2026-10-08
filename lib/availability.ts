@@ -125,3 +125,19 @@ export function bloqueioNoHorario(
       ini < new Date(b.endsAt).getTime(),
   );
 }
+
+/**
+ * O bloqueio toca o dia local `dia` (qualquer parte de `[00:00, 24:00)`)? Usado
+ * pela visão mensal, que marca o dia em vez de desenhar a faixa de horário.
+ */
+export function bloqueioNoDia(
+  b: Pick<ScheduleBlock, "startsAt" | "endsAt">,
+  dia: Date,
+): boolean {
+  const ini = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate());
+  const fim = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate() + 1);
+  return (
+    new Date(b.startsAt).getTime() < fim.getTime() &&
+    ini.getTime() < new Date(b.endsAt).getTime()
+  );
+}

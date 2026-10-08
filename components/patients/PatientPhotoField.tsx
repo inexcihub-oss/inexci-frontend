@@ -11,20 +11,16 @@ import { uploadService } from "@/services/upload.service";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { getInitials, getAvatarColor, cn } from "@/lib/utils";
 
-/** Mesmo teto e mesmos tipos que o backend aceita na pasta `patient-photos`. */
-export const PATIENT_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
-export const PATIENT_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+import {
+  PATIENT_PHOTO_TYPES,
+  prepararFotoPaciente,
+} from "./foto-paciente";
 
-/** Mensagem do problema com o arquivo, ou `null` se ele pode ser enviado. */
-export function validarFotoPaciente(file: File): string | null {
-  if (!PATIENT_PHOTO_TYPES.includes(file.type)) {
-    return "Envie uma imagem JPG, PNG ou WEBP.";
-  }
-  if (file.size > PATIENT_PHOTO_MAX_BYTES) {
-    return "A foto deve ter no máximo 2 MB.";
-  }
-  return null;
-}
+export {
+  PATIENT_PHOTO_MAX_BYTES,
+  PATIENT_PHOTO_TYPES,
+  validarFotoPaciente,
+} from "./foto-paciente";
 
 /**
  * Foto do paciente no avatar do cartão do nome: clicar no avatar envia ou
@@ -67,24 +63,30 @@ export function PatientPhotoField({
     if (!file) return;
     setError(null);
 
-    const problema = validarFotoPaciente(file);
-    if (problema) {
-      setError(problema);
-      return;
-    }
-
     setBusy(true);
+    // Caminho enviado e ainda não gravado no paciente: se o PATCH falhar, é
+    // descartado (senão a foto ficava órfã no storage — dado de saúde).
+    let enviada: string | null = null;
     try {
+      // Acima de 2 MB, reduz no navegador antes de recusar.
+      const { foto, erro } = await prepararFotoPaciente(file);
+      if (!foto) {
+        setError(erro);
+        return;
+      }
       const uploaded = await uploadService.uploadSingle(
-        file,
+        foto,
         "patient-photos",
       );
+      enviada = uploaded.data.path;
       const saved = await patientService.update(patient.id, {
-        photoPath: uploaded.data.path,
+        photoPath: enviada,
       });
+      enviada = null;
       onChange(saved);
       setAmpliada(false);
     } catch (err) {
+      if (enviada) void patientService.discardPhoto(enviada);
       setError(getApiErrorMessage(err, "Não foi possível salvar a foto."));
     } finally {
       setBusy(false);
@@ -270,7 +272,7 @@ export function PatientPhotoField({
                 </button>
               </div>
               <p className="mt-3 text-center text-xs text-neutral-500">
-                JPG, PNG ou WEBP, até 2 MB.
+                JPG, PNG ou WEBP. Fotos grandes são reduzidas.
               </p>
             </div>
           </div>,

@@ -226,3 +226,41 @@ describe("AtendimentoHubPage — paginação", () => {
     );
   });
 });
+
+/**
+ * A aba "Hoje" memoizava o recorte só pela aba: com a tela aberta na virada da
+ * meia-noite (recepção), continuava mostrando o dia anterior. O dia corrente
+ * entra no memo e muda a query key, então a lista é buscada de novo.
+ */
+describe("AtendimentoHubPage — virada do dia", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState = { can: (p) => p === Permission.AGENDA };
+    getAgendaPage.mockResolvedValue({ records: [], total: 0 });
+  });
+
+  it("ao voltar para a janela no dia seguinte, 'Hoje' busca o dia novo", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.setSystemTime(new Date(2026, 9, 7, 18, 0, 0));
+      renderPage();
+      await vi.waitFor(() => expect(getAgendaPage).toHaveBeenCalled());
+      expect(getAgendaPage.mock.calls[0][0].from).toBe(
+        new Date(2026, 9, 7).toISOString(),
+      );
+
+      vi.setSystemTime(new Date(2026, 9, 8, 7, 30, 0));
+      window.dispatchEvent(new Event("focus"));
+
+      await vi.waitFor(() =>
+        expect(
+          getAgendaPage.mock.calls.some(
+            ([q]) => q.from === new Date(2026, 9, 8).toISOString(),
+          ),
+        ).toBe(true),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

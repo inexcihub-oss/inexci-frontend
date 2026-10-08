@@ -118,3 +118,42 @@ export function buildDoctorProfileUpdatePayload(
   }
   return Object.keys(payload).length > 0 ? payload : null;
 }
+
+/** Registro profissional como a tela de Configurações guarda (campos opcionais). */
+export interface OwnDoctorProfileFields {
+  crm?: string;
+  crmState?: string;
+  specialty?: string;
+}
+
+/**
+ * Corpo do `PATCH /users/doctor-profile/:id` que o próprio profissional manda
+ * em Configurações. Mesma regra do `buildDoctorProfileUpdatePayload`: só vai o
+ * que mudou, e campo apagado vai como `""` (o backend grava `null`) — o
+ * `|| undefined` antigo da tela significava "não mexer", então o profissional
+ * de um conselho que não exige registro não conseguia apagar número/UF.
+ *
+ * Mandar só o que mudou também protege o perfil antigo com número vazio: o
+ * backend valida o registro quando a requisição mexe nele, e reenviar o
+ * número vazio sem mudança travaria salvar o resto do perfil.
+ *
+ * O conselho nunca vai: o próprio profissional não o troca (ato da
+ * administração da conta — e, para o admin delegado, de outro admin).
+ *
+ * Retorna `null` quando nada mudou.
+ */
+export function buildOwnDoctorProfilePayload(
+  original: OwnDoctorProfileFields,
+  current: OwnDoctorProfileFields,
+): Omit<DoctorProfileUpdatePayload, "council"> | null {
+  const comoCampos = (p: OwnDoctorProfileFields): DoctorProfileFields => ({
+    council: "CRM",
+    crm: p.crm ?? "",
+    crmState: p.crmState ?? "",
+    specialty: p.specialty ?? "",
+  });
+  return buildDoctorProfileUpdatePayload(
+    comoCampos(original),
+    comoCampos(current),
+  );
+}

@@ -13,6 +13,7 @@ import {
   Appointment,
   AppointmentType,
   APPOINTMENT_TYPE_LABELS,
+  ocupaAgenda,
 } from "@/services/appointment.service";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useClinics } from "@/hooks/useClinics";
@@ -155,7 +156,9 @@ export function NewAppointmentModal({
         if (!active) return;
         setDayAppointments(
           list
-            .filter((a) => a.id !== appointment?.id && a.status !== "cancelled")
+            // Só o que ocupa o horário: cancelada e falta não disputam a
+            // agenda (mesmo critério do backend).
+            .filter((a) => a.id !== appointment?.id && ocupaAgenda(a.status))
             .sort(
               (a, b) =>
                 new Date(a.scheduledAt).getTime() -
@@ -333,9 +336,14 @@ export function NewAppointmentModal({
 
   /**
    * Na edição, o backend só reconfere bloqueio/feriado quando o horário ou a
-   * clínica mudam; fora disso o aviso da tela não deve travar o "Salvar".
+   * clínica mudam — e só para consulta que ocupa a agenda
+   * (`OCCUPYING_APPOINTMENT_STATUSES`): cancelada/falta pode ser remarcada
+   * para feriado ou bloqueio, porque não disputa o horário (reativá-la é que
+   * revalida). Fora disso o aviso da tela não deve travar o "Salvar".
    */
-  const conferirGrade = mudouHorario || mudouClinica;
+  const ocupaHorario =
+    !isEdit || !appointment ? true : ocupaAgenda(appointment.status);
+  const conferirGrade = ocupaHorario && (mudouHorario || mudouClinica);
 
   /**
    * Feriado que bloqueia e bloqueio de agenda são recusados pelo backend

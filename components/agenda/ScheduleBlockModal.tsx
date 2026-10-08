@@ -19,6 +19,12 @@ interface Props {
   /** Bloqueio em edição; ausente = novo. */
   block?: ScheduleBlock | null;
   doctors: { id: string; name: string; isPhysician?: boolean }[];
+  /**
+   * Clínicas da conta. Opcional no bloqueio: vazio vale para todas; com
+   * clínica, o bloqueio só alcança consultas daquela clínica (regra de
+   * `bloqueioAtinge`). A API recusa clínica de outra conta.
+   */
+  clinics?: { id: string; name: string }[];
   defaultDate?: string | null;
   /**
    * Bloqueio de toda a clínica trava a agenda de todos os profissionais da
@@ -47,10 +53,12 @@ export function ScheduleBlockModal({
   onSaved,
   block,
   doctors,
+  clinics = [],
   defaultDate,
   podeClinicaToda = false,
 }: Props) {
   const [doctorId, setDoctorId] = useState("");
+  const [clinicId, setClinicId] = useState("");
   const [date, setDate] = useState("");
   const [allDay, setAllDay] = useState(false);
   const [from, setFrom] = useState("08:00");
@@ -71,6 +79,7 @@ export function ScheduleBlockModal({
       const ini = new Date(block.startsAt);
       const fim = new Date(block.endsAt);
       setDoctorId(block.doctorId ?? "");
+      setClinicId(block.clinicId ?? "");
       setDate(dateKey(ini));
       setAllDay(block.allDay);
       setFrom(hhmm(ini));
@@ -78,6 +87,7 @@ export function ScheduleBlockModal({
       setReason(block.reason ?? "");
     } else {
       setDoctorId("");
+      setClinicId("");
       setDate(defaultDate ?? dateKey(new Date()));
       setAllDay(false);
       setFrom("08:00");
@@ -118,6 +128,7 @@ export function ScheduleBlockModal({
       : iso(date, to);
     const payload = {
       doctorId: doctorId || null,
+      clinicId: clinicId || null,
       startsAt,
       endsAt,
       allDay,
@@ -187,6 +198,31 @@ export function ScheduleBlockModal({
             {doctors.map((d) => (
               <option key={d.id} value={d.id}>
                 {formatDoctorName(d.name, d.isPhysician)}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="bloqueio-clinica" className="ds-label mb-0">
+            Clínica
+          </label>
+          <select
+            id="bloqueio-clinica"
+            className="ds-input"
+            value={clinicId}
+            onChange={(e) => setClinicId(e.target.value)}
+          >
+            <option value="">Todas as clínicas</option>
+            {/* Clínica do bloqueio que não está na lista (excluída, ou a
+                lista ainda carregando): mantém a opção para não trocá-la
+                sem querer ao salvar. */}
+            {clinicId && !clinics.some((c) => c.id === clinicId) && (
+              <option value={clinicId}>Clínica atual</option>
+            )}
+            {clinics.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
             ))}
           </select>

@@ -26,6 +26,7 @@ export const DOCUMENT_TEMPLATE_PLACEHOLDERS: { key: string; label: string }[] =
     { key: "medico.registro", label: "Registro (CRM/UF)" },
     { key: "data", label: "Data de emissão" },
     { key: "dias", label: "Dias de afastamento" },
+    { key: "inicio", label: "Início do afastamento" },
   ];
 
 /** Mesmo limite dos campos de texto do atestado e do pedido de exame. */
@@ -48,10 +49,7 @@ export interface ApplyDocumentTemplatePayload {
   clinicalRecordId?: string;
   patientId?: string;
   doctorId?: string;
-  restDays?: number;
-  /** Início do afastamento (YYYY-MM-DD) para `{{inicio}}`; ausente, fica literal. */
-  startDate?: string;
-  /** Só atualiza o texto na tela (ex.: dias mudaram): não conta outro uso. */
+  /** Reaplicação sem nova escolha do modelo: não conta outro uso. */
   refresh?: boolean;
 }
 

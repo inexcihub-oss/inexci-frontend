@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  bloqueioNoDia,
   blockAppliesTo,
   bloqueioAtinge,
   bloqueioNoHorario,
@@ -98,5 +99,22 @@ describe("bloqueioNoHorario", () => {
     expect(
       bloqueioNoHorario([bloqueio], "D", null, new Date("2026-10-15T09:30:00Z"), 30),
     ).toBeUndefined();
+  });
+});
+
+describe("bloqueioNoDia (visão mensal)", () => {
+  const dia = new Date(2026, 9, 12);
+  const iso = (d: number, h: number, m = 0) =>
+    new Date(2026, 9, d, h, m).toISOString();
+
+  it("bloqueio dentro do dia, ou atravessando a meia-noite, marca o dia", () => {
+    expect(bloqueioNoDia({ startsAt: iso(12, 14), endsAt: iso(12, 16) }, dia)).toBe(true);
+    expect(bloqueioNoDia({ startsAt: iso(11, 20), endsAt: iso(12, 2) }, dia)).toBe(true);
+    expect(bloqueioNoDia({ startsAt: iso(10, 0), endsAt: iso(15, 0) }, dia)).toBe(true);
+  });
+
+  it("bloqueio que termina à meia-noite não vaza para o dia seguinte", () => {
+    expect(bloqueioNoDia({ startsAt: iso(11, 8), endsAt: iso(12, 0) }, dia)).toBe(false);
+    expect(bloqueioNoDia({ startsAt: iso(13, 0), endsAt: iso(13, 8) }, dia)).toBe(false);
   });
 });

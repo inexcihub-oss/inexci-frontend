@@ -129,6 +129,7 @@ vi.mock("@/components/onboarding/OnboardingProvider", () => ({
 }));
 
 import { NewAppointmentModal } from "./NewAppointmentModal";
+import { appointmentService } from "@/services/appointment.service";
 
 /** Segunda-feira, 17/08/2026. */
 const SEGUNDA = "2026-08-17";
@@ -886,6 +887,122 @@ describe("NewAppointmentModal — edição sem mexer no horário", () => {
       target: { value: "45" },
     });
     expect(screen.getByText(/Horário bloqueado/)).toBeInTheDocument();
+  });
+});
+
+describe("NewAppointmentModal — consulta que não ocupa a agenda", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+    getSlots.mockResolvedValue([]);
+    vi.mocked(appointmentService.getAgenda).mockResolvedValue([]);
+  });
+
+  const base = {
+    id: "appt-2",
+    doctorId: "doctor-1",
+    patientId: "patient-1",
+    patient: { id: "patient-1", name: "João" },
+    type: "first_visit" as const,
+    scheduledAt: new Date(2026, 7, 17, 11, 0, 0, 0).toISOString(),
+    durationMinutes: 30,
+    notes: null,
+    cancellationReason: null,
+    clinicId: null,
+    isWalkIn: false,
+  };
+
+  // A API só confere bloqueio/feriado quando a consulta ocupa a agenda
+  // (`OCCUPYING_APPOINTMENT_STATUSES`). Cancelada/falta remarcada para um
+  // horário bloqueado é aceita — a tela não pode travar o "Salvar".
+  it.each(["cancelled", "no_show"] as const)(
+    "%s remarcada para bloqueio ou feriado não trava o salvar",
+    async (status) => {
+      getSlots.mockResolvedValue([
+        {
+          date: SEGUNDA,
+          holiday: { name: "Aniversário da cidade", blocksAgenda: true },
+          slots: [slotLocal("09:00", 60, { free: false, reason: "block" })],
+        },
+      ]);
+      render(
+        <NewAppointmentModal
+          isOpen
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+          appointment={{ ...base, status }}
+        />,
+      );
+      fireEvent.change(screen.getByLabelText(/horário/i), {
+        target: { value: "09:00" },
+      });
+      // A grade (com o feriado e o bloqueio) já chegou.
+      await screen.findByRole("group", { name: "Horários da grade" });
+
+      expect(screen.queryByText(/Horário bloqueado/)).toBeNull();
+      expect(screen.queryByText(/a agenda está bloqueada/)).toBeNull();
+      const salvar = screen.getByRole("button", { name: /salvar alterações/i });
+      expect(salvar).toBeEnabled();
+      fireEvent.click(salvar);
+      await waitFor(() => expect(update).toHaveBeenCalled());
+    },
+  );
+
+  it("consulta agendada remarcada para feriado continua travada", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: { name: "Aniversário da cidade", blocksAgenda: true },
+        slots: [slotLocal("09:00", 30, { free: false, reason: "holiday" })],
+      },
+    ]);
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={{ ...base, status: "scheduled" }}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/horário/i), {
+      target: { value: "09:00" },
+    });
+    expect(
+      await screen.findByText(/a agenda está bloqueada neste dia/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /salvar alterações/i }),
+    ).toBeDisabled();
+  });
+
+  it("'Consultas nesse dia' não lista cancelada nem falta", async () => {
+    const outra = (id: string, status: string, nome: string, h: number) => ({
+      ...base,
+      id,
+      status,
+      patient: { id: `p-${id}`, name: nome },
+      scheduledAt: new Date(2026, 7, 17, h, 0, 0, 0).toISOString(),
+    });
+    vi.mocked(appointmentService.getAgenda).mockResolvedValue([
+      outra("a1", "scheduled", "Maria Agendada", 8),
+      outra("a2", "completed", "Carla Realizada", 9),
+      outra("a3", "cancelled", "Pedro Cancelado", 10),
+      outra("a4", "no_show", "Lucas Faltou", 14),
+    ] as never);
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={{ ...base, status: "scheduled" }}
+      />,
+    );
+
+    expect(await screen.findByText("Consultas nesse dia (2)")).toBeInTheDocument();
+    expect(screen.getByText("Maria Agendada")).toBeInTheDocument();
+    expect(screen.getByText("Carla Realizada")).toBeInTheDocument();
+    expect(screen.queryByText("Pedro Cancelado")).toBeNull();
+    expect(screen.queryByText("Lucas Faltou")).toBeNull();
   });
 });
 

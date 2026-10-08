@@ -65,6 +65,17 @@ const TEMPLATE_KIND: Partial<
 /** Limite do texto do atestado — o mesmo `MaxLength` do DTO no backend. */
 const CERTIFICATE_TEXT_MAX = 4000;
 
+/** O texto do atestado ainda traz `{{dias}}`/`{{inicio}}` para a emissão. */
+const PLACEHOLDER_DE_AFASTAMENTO = /\{\{\s*(dias|inicio)\s*\}\}/i;
+
+/**
+ * Atestado de comparecimento: fala em comparecer e não em afastamento. Mesma
+ * regra do servidor (`montarNotaDeAfastamento`), que não anexa o afastamento
+ * a ele.
+ */
+export const ehComparecimentoSemAfastamento = (texto: string): boolean =>
+  /comparec/i.test(texto) && !/afast/i.test(texto);
+
 /** Tipo do documento na API (rota e payload). */
 const API_KIND: Record<DocumentKind, ClinicalDocumentKind> = {
   prescription: "prescription",
@@ -186,13 +197,12 @@ export function ClinicalDocumentActions({
   // placeholder e parecia que nada tinha sido escolhido).
   const [templateId, setTemplateId] = useState("");
   // Último texto que veio do servidor. Enquanto o texto na tela for este (o
-  // médico não editou), o atestado sai pelo `templateId`: o servidor preenche
-  // o modelo na hora, com os dias do próprio atestado — o texto da tela é só
-  // a visualização, e nunca leva dias antigos para o documento.
+  // médico não editou), o atestado sai pelo `templateId`. O texto aplicado
+  // mantém `{{dias}}`/`{{inicio}}` literais — editado ou não, quem os
+  // preenche é a prévia/emissão, com o afastamento escolhido naquela hora.
+  // Antes o apply gravava "1 dia" no texto: editado, ele congelava os dias
+  // antigos e o PDF saía com "1 dia" no texto e "3 dias" logo abaixo.
   const [textoAplicado, setTextoAplicado] = useState("");
-  // A atualização do texto na tela (dias mudaram) falhou: o documento sai
-  // certo mesmo assim, mas o texto exibido ficou com os dias antigos.
-  const [textoDesatualizado, setTextoDesatualizado] = useState(false);
   const templateKind = openKind ? TEMPLATE_KIND[openKind] : undefined;
   const textoDoModelo =
     openKind === "certificate" &&
@@ -222,37 +232,21 @@ export function ClinicalDocumentActions({
   // Modelo que estava no seletor antes do apply em voo: se ele for
   // invalidado, o seletor volta para o que de fato está no texto.
   const modeloAntesDoApply = useRef<string | null>(null);
-  // Atualização do texto na tela agendada depois de mudar os dias.
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const invalidateApply = ({ manterSeletor = false } = {}) => {
+  const invalidateApply = () => {
     applySeq.current += 1;
-    if (refreshTimer.current) {
-      clearTimeout(refreshTimer.current);
-      refreshTimer.current = null;
-    }
-    // `manterSeletor`: o mesmo modelo vai ser reaplicado (dias mudaram), e o
-    // "antes" continua valendo para o caso de esse novo apply falhar.
-    if (!manterSeletor && modeloAntesDoApply.current !== null) {
+    if (modeloAntesDoApply.current !== null) {
       setTemplateId(modeloAntesDoApply.current);
       modeloAntesDoApply.current = null;
     }
     setApplyingTemplate(false);
   };
-  useEffect(
-    () => () => {
-      if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    },
-    [],
-  );
 
   /**
    * Preenche o texto com o modelo, já com os dados do paciente e do médico
    * que estão na tela. O campo continua editável; trocar de modelo substitui.
-   *
-   * `refresh`: só refaz o texto exibido do mesmo modelo (os dias mudaram) —
-   * não conta outro uso nem bloqueia a emissão, que vai pelo `templateId`.
+   * `{{dias}}`/`{{inicio}}` seguem literais (ver `textoAplicado`).
    */
-  const applyTemplate = async (id: string, { refresh = false } = {}) => {
+  const applyTemplate = async (id: string) => {
     if (!id) {
       // "Nenhum": no atestado volta à declaração padrão; no pedido de exame o
       // texto digitado fica onde está. Texto editado à mão só sai com
@@ -269,73 +263,43 @@ export function ClinicalDocumentActions({
       }
       invalidateApply();
       setTemplateId("");
-      setTextoDesatualizado(false);
       if (openKind === "certificate") {
         setCertificateText("");
         setTextoAplicado("");
       }
       return;
     }
-    // Refazer o texto de um modelo cuja escolha ainda não chegou continua
-    // sendo a escolha: segura o seletor e a emissão como ela seguraria.
-    const escolhendo = !refresh || modeloAntesDoApply.current !== null;
     // Um apply anterior em voo perde a vez; o seletor que vale é o de antes
     // dele, não o que ele deixou marcado.
     const anterior = modeloAntesDoApply.current ?? templateId;
     const seq = ++applySeq.current;
-    if (escolhendo) {
-      modeloAntesDoApply.current = anterior;
-      setApplyingTemplate(true);
-    }
+    modeloAntesDoApply.current = anterior;
+    setApplyingTemplate(true);
     setTemplateId(id);
     setError(null);
-    setTextoDesatualizado(false);
     try {
-      const days = Number(restDays);
       const { body } = await clinicalDocumentTemplateService.apply(id, {
         patientId,
         doctorId,
-        ...(openKind === "certificate" && Number.isFinite(days) && days > 0
-          ? { restDays: days }
-          : {}),
-        ...(openKind === "certificate" && startDate ? { startDate } : {}),
-        ...(refresh ? { refresh: true } : {}),
       });
       if (seq !== applySeq.current) return;
       modeloAntesDoApply.current = null;
       if (openKind === "certificate") {
         setCertificateText(body);
         setTextoAplicado(body);
+        // Comparecimento declara presença, não afastamento: o "1 dia" com
+        // que o formulário começa não pode ir para o atestado.
+        if (ehComparecimentoSemAfastamento(body)) setRestDays("");
       } else setNotes(body);
     } catch (err) {
       if (seq !== applySeq.current) return;
-      if (escolhendo) {
-        modeloAntesDoApply.current = null;
-        setTemplateId(anterior);
-        setError(getApiErrorMessage(err, "Não foi possível aplicar o modelo."));
-      } else {
-        setTextoDesatualizado(true);
-      }
+      modeloAntesDoApply.current = null;
+      setTemplateId(anterior);
+      setError(getApiErrorMessage(err, "Não foi possível aplicar o modelo."));
     } finally {
       if (seq === applySeq.current) setApplyingTemplate(false);
     }
   };
-
-  // Dias ou início mudaram com o texto do modelo intacto: refaz o texto
-  // exibido. O documento já sairia certo (vai pelo `templateId`, e o servidor
-  // preenche `{{dias}}`/`{{inicio}}` na emissão); isto é para a tela não
-  // mostrar um afastamento e emitir outro.
-  useEffect(() => {
-    if (!textoDoModelo) return;
-    // O apply em voo (dias antigos) não pode mais chegar por último; o
-    // modelo do seletor é o mesmo que vai ser refeito.
-    invalidateApply({ manterSeletor: true });
-    refreshTimer.current = setTimeout(() => {
-      refreshTimer.current = null;
-      applyTemplate(templateId, { refresh: true });
-    }, 400);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- só reage aos dias e ao início
-  }, [restDays, startDate]);
 
   const closePreview = () => setPreviewHtml(null);
 
@@ -354,7 +318,6 @@ export function ClinicalDocumentActions({
     setCertificateText("");
     setTemplateId("");
     setTextoAplicado("");
-    setTextoDesatualizado(false);
     setError(null);
     setOpenKind(kind);
   };
@@ -715,10 +678,11 @@ export function ClinicalDocumentActions({
                     rows={5}
                     maxLength={CERTIFICATE_TEXT_MAX}
                   />
-                  {textoDesatualizado && textoDoModelo && (
-                    <p role="status" className="text-xs text-amber-700">
-                      Não foi possível atualizar o texto na tela. O atestado sai
-                      com os dias informados — use Visualizar para conferir.
+                  {PLACEHOLDER_DE_AFASTAMENTO.test(certificateText) && (
+                    <p className="text-xs text-neutral-500">
+                      {"{{dias}}"} e {"{{inicio}}"} são preenchidos ao
+                      visualizar e ao emitir, com o afastamento informado abaixo
+                      (sem início, vale a data de emissão).
                     </p>
                   )}
                   <div className="flex flex-wrap items-center justify-between gap-2">

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildCollaboratorUpdatePayload,
   buildDoctorProfileUpdatePayload,
+  buildOwnDoctorProfilePayload,
 } from "./collaborator-update";
 import { Permission } from "./permissions";
 
@@ -207,5 +208,42 @@ describe("buildDoctorProfileUpdatePayload", () => {
     expect(
       buildDoctorProfileUpdatePayload(perfil, { ...perfil, council: "CRP" }),
     ).toEqual({ council: "CRP" });
+  });
+});
+
+describe("buildOwnDoctorProfilePayload (Configurações)", () => {
+  const salvo = { crm: "1234", crmState: "RJ", specialty: "Nutrição" };
+
+  it("apagar número e UF manda string vazia (antes ia undefined = não mexer)", () => {
+    expect(
+      buildOwnDoctorProfilePayload(salvo, { ...salvo, crm: "", crmState: "" }),
+    ).toEqual({ crm: "", crmState: "" });
+  });
+
+  it("nada mudou: null (pula a chamada)", () => {
+    expect(buildOwnDoctorProfilePayload(salvo, { ...salvo })).toBeNull();
+  });
+
+  it("perfil antigo com número vazio não reenvia o número ao trocar a especialidade", () => {
+    expect(
+      buildOwnDoctorProfilePayload(
+        { crm: "", crmState: "", specialty: "" },
+        { crm: "", crmState: "", specialty: "Ortopedia" },
+      ),
+    ).toEqual({ specialty: "Ortopedia" });
+  });
+
+  it("campos ausentes contam como vazios", () => {
+    expect(buildOwnDoctorProfilePayload({}, { crm: " 99 " })).toEqual({
+      crm: "99",
+    });
+  });
+
+  it("nunca manda o conselho", () => {
+    const payload = buildOwnDoctorProfilePayload(salvo, {
+      ...salvo,
+      crm: "5",
+    });
+    expect(payload).not.toHaveProperty("council");
   });
 });

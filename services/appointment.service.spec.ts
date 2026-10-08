@@ -119,6 +119,76 @@ describe("appointmentService", () => {
     });
   });
 
+  // A Agenda chamava `getAgenda` sem `take` e o backend corta em 1000: o
+  // excedente sumia da tela sem aviso. `getAgendaCompleta` pagina até `total`.
+  describe("getAgendaCompleta", () => {
+    const pagina = (n: number, prefixo: string) =>
+      Array.from({ length: n }, (_, i) => ({
+        ...mockAppt,
+        id: `${prefixo}${i}`,
+      }));
+
+    it("busca todas as páginas até alcançar o total", async () => {
+      const get = api.get as ReturnType<typeof vi.fn>;
+      get
+        .mockResolvedValueOnce({
+          data: { total: 2500, records: pagina(1000, "a") },
+        })
+        .mockResolvedValueOnce({
+          data: { total: 2500, records: pagina(1000, "b") },
+        })
+        .mockResolvedValueOnce({
+          data: { total: 2500, records: pagina(500, "c") },
+        });
+
+      const result = await appointmentService.getAgendaCompleta({
+        from: "2026-08-01",
+        to: "2026-08-31",
+      });
+
+      expect(result.records).toHaveLength(2500);
+      expect(result.total).toBe(2500);
+      expect(get).toHaveBeenCalledTimes(3);
+      expect(get).toHaveBeenNthCalledWith(1, "/appointments", {
+        params: { from: "2026-08-01", to: "2026-08-31", take: "1000" },
+      });
+      expect(get).toHaveBeenNthCalledWith(3, "/appointments", {
+        params: {
+          from: "2026-08-01",
+          to: "2026-08-31",
+          skip: "2000",
+          take: "1000",
+        },
+      });
+    });
+
+    it("uma página só quando o total cabe nela", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { total: 1, records: [mockAppt] },
+      });
+
+      const result = await appointmentService.getAgendaCompleta();
+
+      expect(api.get).toHaveBeenCalledTimes(1);
+      expect(result.records).toHaveLength(1);
+    });
+
+    it("página vazia antes do total encerra a busca, preservando o total real", async () => {
+      const get = api.get as ReturnType<typeof vi.fn>;
+      get
+        .mockResolvedValueOnce({
+          data: { total: 1500, records: pagina(1000, "a") },
+        })
+        .mockResolvedValueOnce({ data: { total: 1500, records: [] } });
+
+      const result = await appointmentService.getAgendaCompleta();
+
+      expect(get).toHaveBeenCalledTimes(2);
+      expect(result.records).toHaveLength(1000);
+      expect(result.total).toBe(1500);
+    });
+  });
+
   describe("getByPatient", () => {
     it("busca o histórico do paciente e mapeia os registros", async () => {
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
