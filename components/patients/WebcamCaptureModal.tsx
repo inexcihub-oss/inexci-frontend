@@ -7,6 +7,16 @@ import { desenharReduzido } from "./foto-paciente";
 
 type Estado = "abrindo" | "ao-vivo" | "capturada" | "erro";
 
+/**
+ * Prazo para o navegador entregar a câmera. Um pedido de permissão que
+ * ninguém responde deixa o `getUserMedia` pendente para sempre — sem prazo, o
+ * modal ficava em "Abrindo a câmera…" indefinidamente.
+ */
+export const PRAZO_CAMERA_MS = 15_000;
+
+export const MENSAGEM_PRAZO_CAMERA =
+  "A câmera não respondeu. Se o navegador estiver perguntando se este site pode usar a câmera, clique em Permitir e depois em Tentar de novo.";
+
 
 function mensagemDeErro(erro: unknown): string {
   const nome = (erro as { name?: string } | null)?.name;
@@ -51,6 +61,12 @@ export function WebcamCaptureModal({
   // stream — um "tentar de novo" sobrepondo um pedido ainda pendente não
   // deixa o anterior ligado.
   const pedidoRef = useRef(0);
+  const prazoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const limparPrazo = useCallback(() => {
+    if (prazoRef.current) clearTimeout(prazoRef.current);
+    prazoRef.current = null;
+  }, []);
 
   const desligar = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -59,6 +75,7 @@ export function WebcamCaptureModal({
 
   const ligar = useCallback(async () => {
     const pedido = ++pedidoRef.current;
+    limparPrazo();
     setEstado("abrindo");
     setErro("");
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -68,6 +85,17 @@ export function WebcamCaptureModal({
       setEstado("erro");
       return;
     }
+    // Estourado o prazo, o pedido é invalidado: se o navegador entregar a
+    // câmera depois (permissão respondida tarde), as tracks são paradas na
+    // hora pela checagem de `pedidoRef` abaixo — nada fica ligado sem
+    // prévia. "Tentar de novo" faz um pedido novo, já com a permissão dada.
+    prazoRef.current = setTimeout(() => {
+      prazoRef.current = null;
+      if (!montadoRef.current || pedido !== pedidoRef.current) return;
+      pedidoRef.current += 1;
+      setErro(MENSAGEM_PRAZO_CAMERA);
+      setEstado("erro");
+    }, PRAZO_CAMERA_MS);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 960 } },
@@ -77,6 +105,7 @@ export function WebcamCaptureModal({
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
+      limparPrazo();
       if (streamRef.current && streamRef.current !== stream) desligar();
       streamRef.current = stream;
       if (videoRef.current) {
@@ -87,10 +116,11 @@ export function WebcamCaptureModal({
       setEstado("ao-vivo");
     } catch (e) {
       if (!montadoRef.current || pedido !== pedidoRef.current) return;
+      limparPrazo();
       setErro(mensagemDeErro(e));
       setEstado("erro");
     }
-  }, [desligar]);
+  }, [desligar, limparPrazo]);
 
   useEffect(() => {
     montadoRef.current = true;
@@ -99,9 +129,10 @@ export function WebcamCaptureModal({
       montadoRef.current = false;
       // Invalida o pedido em andamento: quando ele resolver, para as tracks.
       pedidoRef.current += 1;
+      limparPrazo();
       desligar();
     };
-  }, [ligar, desligar]);
+  }, [ligar, desligar, limparPrazo]);
 
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {

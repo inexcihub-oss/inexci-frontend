@@ -22,6 +22,15 @@ const { getById, updateProfile, update, updateDoctorProfile } = vi.hoisted(
   }),
 );
 
+// Quem está logado: por padrão o dono da conta, que não é o colaborador.
+const authState = vi.hoisted(() => ({
+  user: { id: "dono-1" } as { id: string } | null,
+  isAccountOwner: true,
+}));
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => authState,
+}));
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   useParams: () => ({ id: "colab-1" }),
@@ -103,6 +112,8 @@ beforeEach(() => {
   updateProfile.mockResolvedValue({});
   update.mockResolvedValue({});
   updateDoctorProfile.mockResolvedValue({});
+  authState.user = { id: "dono-1" };
+  authState.isAccountOwner = true;
 });
 
 describe("Colaborador — dados profissionais", () => {
@@ -167,9 +178,9 @@ describe("Colaborador — dados profissionais", () => {
       }),
     );
     await waitFor(() => expect(getById).toHaveBeenCalledTimes(2));
-    expect(
-      (await screen.findAllByText("Psicologia")).length,
-    ).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Psicologia")).length).toBeGreaterThan(
+      0,
+    );
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ["available-doctors"],
     });
@@ -190,5 +201,84 @@ describe("Colaborador — dados profissionais", () => {
       await screen.findByText(/informe CRM e estado do CRM/),
     ).toBeInTheDocument();
     expect(updateDoctorProfile).not.toHaveBeenCalled();
+  });
+
+  // O backend recusa (403) que o admin delegado troque o próprio conselho ou
+  // vínculo. Antes o select ficava livre e o save gravava o perfil básico e
+  // parava no meio.
+  describe("admin delegado editando a si mesmo", () => {
+    beforeEach(() => {
+      authState.user = { id: "colab-1" };
+      authState.isAccountOwner = false;
+    });
+
+    it("não troca o próprio conselho nem o vínculo profissional", async () => {
+      getById.mockResolvedValue(
+        colaborador({ council: "CRN", crm: "4567", crmState: "RJ" }),
+      );
+      renderPage();
+
+      expect(await screen.findByLabelText("Conselho")).toBeDisabled();
+      expect(
+        screen.getByRole("checkbox", { name: /É profissional de saúde/ }),
+      ).toBeDisabled();
+      expect(
+        screen.getByText(/Só o dono da conta ou outro administrador/),
+      ).toBeInTheDocument();
+    });
+
+    it("segue editando número e UF do próprio registro", async () => {
+      getById.mockResolvedValue(
+        colaborador({ council: "CRN", crm: "4567", crmState: "RJ" }),
+      );
+      renderPage();
+
+      const numero = await screen.findByDisplayValue("4567");
+      expect(numero).toBeEnabled();
+      fireEvent.change(numero, { target: { value: "9999" } });
+      fireEvent.click(screen.getAllByText("Salvar alterações")[0]);
+
+      await waitFor(() =>
+        expect(updateDoctorProfile).toHaveBeenCalledWith("colab-1", {
+          crm: "9999",
+        }),
+      );
+    });
+  });
+
+  it("o dono edita o conselho de outro colaborador", async () => {
+    getById.mockResolvedValue(
+      colaborador({ council: "CRN", crm: "4567", crmState: "RJ" }),
+    );
+    renderPage();
+
+    expect(await screen.findByLabelText("Conselho")).toBeEnabled();
+    expect(
+      screen.getByRole("checkbox", { name: /É profissional de saúde/ }),
+    ).toBeEnabled();
+  });
+
+  // Perfil profissional primeiro: se o backend recusar, nada foi gravado
+  // pela metade.
+  it("grava o perfil profissional antes do perfil básico e do colaborador", async () => {
+    getById.mockResolvedValue(
+      colaborador({ council: "CRN", crm: "4567", crmState: "RJ" }),
+    );
+    updateDoctorProfile.mockRejectedValueOnce({
+      response: { data: { message: "Proibido" } },
+    });
+    renderPage();
+
+    fireEvent.change(await screen.findByLabelText("Conselho"), {
+      target: { value: "CRP" },
+    });
+    fireEvent.change(screen.getByDisplayValue("Ana Souza"), {
+      target: { value: "Ana Souza Lima" },
+    });
+    fireEvent.click(screen.getAllByText("Salvar alterações")[0]);
+
+    expect(await screen.findByText("Proibido")).toBeInTheDocument();
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
   });
 });

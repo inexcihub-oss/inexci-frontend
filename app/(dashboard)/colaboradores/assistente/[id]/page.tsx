@@ -18,10 +18,7 @@ import {
 import { logger } from "@/lib/logger";
 import { userService } from "@/services/user.service";
 import { uploadService } from "@/services/upload.service";
-import {
-  patientService,
-  PatientListItem,
-} from "@/services/patient.service";
+import { patientService, PatientListItem } from "@/services/patient.service";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import {
   SurgeryRequestListItem,
@@ -46,6 +43,7 @@ import { useCepLookup } from "@/hooks/useCepLookup";
 import { maskCep, maskCpf, maskPhone, unmask } from "@/lib/masks";
 import { isValidCpf } from "@/lib/validators";
 import { Permission } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   buildCollaboratorUpdatePayload,
   buildDoctorProfileUpdatePayload,
@@ -60,6 +58,9 @@ import {
   criarColaboradorDemo,
   TOUR_DEMO_COLLABORATOR_ID,
 } from "@/lib/onboarding/demo-data";
+
+const VINCULO_PROPRIO_TRAVADO =
+  "Só o dono da conta ou outro administrador altera o seu próprio conselho e vínculo profissional.";
 
 export default function AssistenteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -93,6 +94,16 @@ export default function AssistenteDetalhePage() {
    */
   const isDoctor = collaborator?.isDoctor === true;
   const isFabricado = collaborator?.id === TOUR_DEMO_COLLABORATOR_ID;
+  // Admin delegado editando a si mesmo: o backend recusa (403) que ele troque
+  // o próprio conselho ou o próprio vínculo profissional — senão um
+  // nutricionista com Administração se promoveria a médico sozinho. Quem
+  // troca é o dono ou outro admin. Número, UF e especialidade seguem livres.
+  const { user: usuarioLogado, isAccountOwner } = useAuth();
+  const vinculoProprioTravado =
+    !!collaborator &&
+    !!usuarioLogado?.id &&
+    collaborator.id === usuarioLogado.id &&
+    !isAccountOwner;
   const handleCloseScConfigModal = useCallback(() => {
     setIsScConfigModalOpen(false);
   }, []);
@@ -345,6 +356,19 @@ export default function AssistenteDetalhePage() {
       return;
     }
 
+    // Os campos já ficam desabilitados; isto cobre um estado antigo no
+    // formulário. Sem esta checagem, o 403 só viria depois de o perfil básico
+    // já ter sido gravado — salvamento pela metade.
+    if (
+      vinculoProprioTravado &&
+      originalData &&
+      (formData.isDoctor !== originalData.isDoctor ||
+        (formData.isDoctor && formData.council !== originalData.council))
+    ) {
+      showToast(VINCULO_PROPRIO_TRAVADO, "error");
+      return;
+    }
+
     const normalizedEmail = formData.email.trim();
     const collaboratorUpdatePayload = buildCollaboratorUpdatePayload(
       {
@@ -365,6 +389,24 @@ export default function AssistenteDetalhePage() {
 
     setSaving(true);
     try {
+      // Dados profissionais de quem JÁ era médico. Na promoção, CRM/UF/
+      // especialidade vão no payload do colaborador (que é quem cria o
+      // perfil); chamar aqui usaria um `doctorProfile` que ainda não existe.
+      // Vai PRIMEIRO: é a gravação com mais regra de permissão (conselho) —
+      // se o backend recusar, nada do resto foi gravado pela metade.
+      const jaEraMedico = originalData?.isDoctor === true;
+      // Só o que mudou; campo apagado vai como "" (o backend grava null).
+      const doctorProfilePayload =
+        formData.isDoctor && jaEraMedico && originalData
+          ? buildDoctorProfileUpdatePayload(originalData, formData)
+          : null;
+      if (doctorProfilePayload && collaborator.doctorProfile?.id) {
+        await userService.updateDoctorProfile(
+          collaborator.id,
+          doctorProfilePayload,
+        );
+      }
+
       await collaboratorService.updateProfile(collaborator.id, {
         name: formData.name.trim(),
         phone: unmask(formData.phone),
@@ -383,22 +425,6 @@ export default function AssistenteDetalhePage() {
         await collaboratorService.update(
           collaborator.id,
           collaboratorUpdatePayload,
-        );
-      }
-
-      // Dados profissionais de quem JÁ era médico. Na promoção, CRM/UF/
-      // especialidade já foram no payload acima (que é quem cria o perfil);
-      // chamar aqui usaria um `doctorProfile` que ainda não existe.
-      const jaEraMedico = originalData?.isDoctor === true;
-      // Só o que mudou; campo apagado vai como "" (o backend grava null).
-      const doctorProfilePayload =
-        formData.isDoctor && jaEraMedico && originalData
-          ? buildDoctorProfileUpdatePayload(originalData, formData)
-          : null;
-      if (doctorProfilePayload && collaborator.doctorProfile?.id) {
-        await userService.updateDoctorProfile(
-          collaborator.id,
-          doctorProfilePayload,
         );
       }
 
@@ -804,10 +830,18 @@ export default function AssistenteDetalhePage() {
             bloco inteiro só aparecia para quem já era médico, e não havia
             como promover nem despromover ninguém pela interface. */}
         <FormSection title="Dados profissionais">
-          <label className="flex items-start gap-3 rounded-xl border border-neutral-100 p-3 md:p-3.5 cursor-pointer hover:bg-gray-50">
+          <label
+            className={cn(
+              "flex items-start gap-3 rounded-xl border border-neutral-100 p-3 md:p-3.5",
+              vinculoProprioTravado
+                ? "cursor-not-allowed opacity-70"
+                : "cursor-pointer hover:bg-gray-50",
+            )}
+          >
             <input
               type="checkbox"
               checked={formData.isDoctor}
+              disabled={vinculoProprioTravado}
               onChange={(e) => handleInputChange("isDoctor", e.target.checked)}
               className="mt-0.5 h-5 w-5 shrink-0 rounded-md accent-primary-500"
             />
@@ -823,6 +857,9 @@ export default function AssistenteDetalhePage() {
               </span>
             </span>
           </label>
+          {vinculoProprioTravado && (
+            <p className="text-xs text-gray-500">{VINCULO_PROPRIO_TRAVADO}</p>
+          )}
 
           {formData.isDoctor && (
             <>
@@ -845,12 +882,12 @@ export default function AssistenteDetalhePage() {
                       handleInputChange("council", e.target.value)
                     }
                     options={COUNCIL_OPTIONS}
+                    disabled={vinculoProprioTravado}
                   />
                   {formData.council !== "CRM" && (
                     <p className="mt-1.5 text-xs text-gray-500">
                       Tem agenda e prontuário próprios. Receita, atestado,
-                      pedido de exame e indicação cirúrgica são do médico
-                      (CRM).
+                      pedido de exame e indicação cirúrgica são do médico (CRM).
                     </p>
                   )}
                 </div>
@@ -872,7 +909,9 @@ export default function AssistenteDetalhePage() {
                       : "UF do conselho (opcional)"
                   }
                   value={formData.crmState}
-                  onChange={(e) => handleInputChange("crmState", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("crmState", e.target.value)
+                  }
                   options={STATE_UF_OPTIONS}
                 />
               </div>
@@ -890,7 +929,8 @@ export default function AssistenteDetalhePage() {
                           : "bg-amber-50 text-amber-700 border-amber-200",
                       )}
                     >
-                      Assinatura: {signaturePreview ? "configurada" : "pendente"}
+                      Assinatura:{" "}
+                      {signaturePreview ? "configurada" : "pendente"}
                     </span>
                     <span
                       className={cn(

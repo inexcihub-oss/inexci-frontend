@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { arquivoDeImagem } from "./foto-paciente.fixtures";
 
 vi.mock("./WebcamCaptureModal", () => ({
   WebcamCaptureModal: ({ onCapture }: { onCapture: (f: File) => void }) => (
     <button
       type="button"
-      onClick={() => onCapture(new File(["x"], "foto.jpg", { type: "image/jpeg" }))}
+      onClick={() => onCapture(arquivoDeImagem("foto.jpg", "image/jpeg"))}
     >
       câmera falsa: usar foto
     </button>
@@ -16,7 +17,7 @@ vi.mock("./WebcamCaptureModal", () => ({
 import { PatientPhotoInput } from "./PatientPhotoInput";
 
 const arquivo = (nome: string, tipo: string, bytes = 10) =>
-  new File([new Uint8Array(bytes)], nome, { type: tipo });
+  arquivoDeImagem(nome, tipo, bytes);
 
 describe("PatientPhotoInput", () => {
   beforeEach(() => {
@@ -42,7 +43,22 @@ describe("PatientPhotoInput", () => {
     expect(onChange).not.toHaveBeenCalled();
 
     await user.upload(input, arquivo("a.png", "image/png"));
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: "a.png" }));
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: "a.png" })),
+    );
+  });
+
+  it("arquivo com extensão de imagem mas conteúdo de outro tipo é recusado", async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    const onChange = vi.fn();
+    render(<PatientPhotoInput value={null} onChange={onChange} />);
+
+    await user.upload(
+      screen.getByTestId("new-patient-photo-input"),
+      new File([new TextEncoder().encode("%PDF-1.7")], "a.png", { type: "image/png" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(/não é uma imagem/);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("foto da câmera também vai para o formulário", async () => {

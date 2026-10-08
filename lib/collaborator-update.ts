@@ -121,6 +121,8 @@ export function buildDoctorProfileUpdatePayload(
 
 /** Registro profissional como a tela de Configurações guarda (campos opcionais). */
 export interface OwnDoctorProfileFields {
+  /** Só é considerado com `allowCouncil` (dono da conta). */
+  council?: ProfessionalCouncil;
   crm?: string;
   crmState?: string;
   specialty?: string;
@@ -137,23 +139,54 @@ export interface OwnDoctorProfileFields {
  * backend valida o registro quando a requisição mexe nele, e reenviar o
  * número vazio sem mudança travaria salvar o resto do perfil.
  *
- * O conselho nunca vai: o próprio profissional não o troca (ato da
- * administração da conta — e, para o admin delegado, de outro admin).
+ * O conselho só vai com `allowCouncil` — ou seja, para o DONO da conta, que é
+ * a própria administração (o backend o deixa trocar o próprio conselho). Para
+ * os demais (inclusive o admin delegado) nunca vai: trocar é ato da
+ * administração da conta.
  *
  * Retorna `null` quando nada mudou.
  */
 export function buildOwnDoctorProfilePayload(
   original: OwnDoctorProfileFields,
   current: OwnDoctorProfileFields,
-): Omit<DoctorProfileUpdatePayload, "council"> | null {
+  options: { allowCouncil?: boolean } = {},
+): DoctorProfileUpdatePayload | null {
   const comoCampos = (p: OwnDoctorProfileFields): DoctorProfileFields => ({
     council: "CRM",
     crm: p.crm ?? "",
     crmState: p.crmState ?? "",
     specialty: p.specialty ?? "",
   });
-  return buildDoctorProfileUpdatePayload(
-    comoCampos(original),
-    comoCampos(current),
-  );
+  const payload: DoctorProfileUpdatePayload = {
+    ...buildDoctorProfileUpdatePayload(
+      comoCampos(original),
+      comoCampos(current),
+    ),
+  };
+  if (
+    options.allowCouncil &&
+    current.council !== undefined &&
+    current.council !== (original.council ?? "CRM")
+  ) {
+    payload.council = current.council;
+  }
+  return Object.keys(payload).length > 0 ? payload : null;
+}
+
+/**
+ * Trecho do `PUT /users/profile` que mexe no avatar.
+ *
+ * - Arquivo novo enviado: manda o caminho devolvido pelo upload.
+ * - Havia avatar gravado e agora não há prévia nem arquivo (o usuário clicou
+ *   em remover): manda `null` — o backend apaga o campo e o arquivo antigo.
+ * - Qualquer outro caso: não manda o campo (não mexer).
+ */
+export function buildAvatarUpdate(params: {
+  savedAvatarUrl: string | null | undefined;
+  uploadedPath: string | undefined;
+  hasPreview: boolean;
+}): { avatarUrl?: string | null } {
+  if (params.uploadedPath) return { avatarUrl: params.uploadedPath };
+  if (params.savedAvatarUrl && !params.hasPreview) return { avatarUrl: null };
+  return {};
 }

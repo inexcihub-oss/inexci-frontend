@@ -76,6 +76,12 @@ export interface Appointment {
   healthPlan?: { id: string; name: string } | null;
   /** Quem agendou (ausente em consultas antigas). */
   createdBy?: { id: string; name: string } | null;
+  /**
+   * Situação da ficha vinculada: `draft` (em aberto), `finalized` ou `null`
+   * (sem ficha). Só vem nas leituras (agenda, histórico, por id) — ausente
+   * nas respostas de criar/editar.
+   */
+  clinicalRecordStatus?: ClinicalRecordStatus | null;
 }
 
 interface BackendAppointment {
@@ -103,6 +109,32 @@ interface BackendAppointment {
   healthPlan?: { id: string; name: string } | null;
   /** Quem agendou (ausente em consultas antigas). */
   createdBy?: { id: string; name: string } | null;
+  /**
+   * Situação da ficha vinculada: `draft` (em aberto), `finalized` ou `null`
+   * (sem ficha). Só vem nas leituras (agenda, histórico, por id) — ausente
+   * nas respostas de criar/editar.
+   */
+  clinicalRecordStatus?: ClinicalRecordStatus | null;
+}
+
+/** Situação da ficha de atendimento vinculada à consulta. */
+export type ClinicalRecordStatus = "draft" | "finalized";
+
+/**
+ * Rótulo da ação de atendimento. A ficha decide quando a API informa a
+ * situação dela; o status da agenda é só o fallback (ele pode ser mexido à
+ * mão e não acompanha a exclusão da ficha).
+ */
+export function rotuloDoAtendimento(
+  a: Pick<Appointment, "status" | "clinicalRecordStatus">,
+): "Ver atendimento" | "Continuar atendimento" | "Iniciar atendimento" {
+  if (a.status === "completed" || a.clinicalRecordStatus === "finalized")
+    return "Ver atendimento";
+  if (a.clinicalRecordStatus === "draft") return "Continuar atendimento";
+  if (a.clinicalRecordStatus === null) return "Iniciar atendimento";
+  return a.status === "in_progress"
+    ? "Continuar atendimento"
+    : "Iniciar atendimento";
 }
 
 function mapAppointment(a: BackendAppointment): Appointment {
@@ -128,6 +160,9 @@ function mapAppointment(a: BackendAppointment): Appointment {
     healthPlanId: a.healthPlanId ?? null,
     healthPlan: a.healthPlan ?? null,
     createdBy: a.createdBy ?? null,
+    ...(a.clinicalRecordStatus !== undefined
+      ? { clinicalRecordStatus: a.clinicalRecordStatus }
+      : {}),
     ...(a.warnings?.length ? { warnings: a.warnings } : {}),
   };
 }

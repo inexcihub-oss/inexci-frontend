@@ -1,8 +1,12 @@
 import { StrictMode } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { WebcamCaptureModal } from "./WebcamCaptureModal";
+import {
+  MENSAGEM_PRAZO_CAMERA,
+  PRAZO_CAMERA_MS,
+  WebcamCaptureModal,
+} from "./WebcamCaptureModal";
 
 const stop = vi.fn();
 const getUserMedia = vi.fn();
@@ -167,5 +171,69 @@ describe("WebcamCaptureModal", () => {
 
     unmount();
     expect(stops[1]).toHaveBeenCalled();
+  });
+
+  describe("prazo para abrir a câmera", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("permissão sem resposta: após o prazo explica e oferece tentar de novo", async () => {
+      let entregarTarde: (s: MediaStream) => void = () => undefined;
+      getUserMedia.mockReturnValueOnce(
+        new Promise<MediaStream>((resolve) => {
+          entregarTarde = resolve;
+        }),
+      );
+      render(<WebcamCaptureModal onClose={vi.fn()} onCapture={vi.fn()} />);
+      expect(screen.getByText(/Abrindo a câmera/)).toBeInTheDocument();
+
+      await act(async () => {
+        vi.advanceTimersByTime(PRAZO_CAMERA_MS - 1);
+      });
+      expect(screen.queryByRole("alert")).toBeNull();
+      await act(async () => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(screen.getByRole("alert")).toHaveTextContent(MENSAGEM_PRAZO_CAMERA);
+      expect(screen.queryByText(/Abrindo a câmera/)).toBeNull();
+
+      // O navegador entrega a câmera depois do prazo: o stream é parado na
+      // hora (sem prévia, a luz da webcam não pode ficar acesa).
+      await act(async () => {
+        entregarTarde(cameraFalsa());
+      });
+      expect(stop).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("alert")).toHaveTextContent(MENSAGEM_PRAZO_CAMERA);
+
+      // Tentar de novo faz um pedido novo, que agora abre.
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
+      });
+      expect(getUserMedia).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole("button", { name: /Capturar/ })).toBeEnabled();
+    });
+
+    it("câmera que abre dentro do prazo não é interrompida depois", async () => {
+      render(<WebcamCaptureModal onClose={vi.fn()} onCapture={vi.fn()} />);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(screen.getByRole("button", { name: /Capturar/ })).toBeEnabled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(PRAZO_CAMERA_MS * 2);
+      });
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(stop).not.toHaveBeenCalled();
+    });
+
+    it("fechar antes do prazo cancela o aviso", async () => {
+      getUserMedia.mockReturnValueOnce(new Promise<MediaStream>(() => undefined));
+      const { unmount } = render(
+        <WebcamCaptureModal onClose={vi.fn()} onCapture={vi.fn()} />,
+      );
+      unmount();
+      expect(vi.getTimerCount()).toBe(0);
+    });
   });
 });

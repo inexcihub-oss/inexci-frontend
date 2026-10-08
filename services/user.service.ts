@@ -32,7 +32,8 @@ export interface UpdateProfileData {
   document?: string;
   birthDate?: string;
   gender?: string;
-  avatarUrl?: string;
+  /** `null` remove o avatar gravado; ausente = não mexer. */
+  avatarUrl?: string | null;
   signatureUrl?: string | null;
   cpf?: string;
   specialty?: string;
@@ -103,10 +104,16 @@ export const userService = {
   async updateProfile(data: UpdateProfileData): Promise<UserProfileResponse> {
     invalidateProfileCache();
     const response = await api.put<UserProfileResponse>("/users/profile", data);
-    profileCache = {
-      data: response.data,
-      expiresAt: Date.now() + 2000,
-    };
+    // O backend devolve o mesmo formato do GET /users/profile. Ainda assim, só
+    // cacheia como perfil uma resposta completa: uma parcial (sem `isDoctor`)
+    // fazia a tela ler "não é profissional" e esconder Dados Profissionais,
+    // Assinatura e Cabeçalho até recarregar.
+    if (response.data && typeof response.data.isDoctor === "boolean") {
+      profileCache = {
+        data: response.data,
+        expiresAt: Date.now() + 2000,
+      };
+    }
     return response.data;
   },
 

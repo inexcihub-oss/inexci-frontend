@@ -120,6 +120,37 @@ describe("ScheduleBlockModal (MIG-05)", () => {
     expect(onSaved).toHaveBeenLastCalledWith("Bloqueio removido.");
   });
 
+  it("desmarcar 'Dia inteiro' de um bloqueio de dia inteiro preenche 08:00–12:00", async () => {
+    const user = userEvent.setup();
+    const block = {
+      id: "b-dia",
+      doctorId: "d1",
+      clinicId: null,
+      startsAt: new Date(2026, 9, 5, 0, 0).toISOString(),
+      endsAt: new Date(2026, 9, 6, 0, 0).toISOString(),
+      allDay: true,
+      reason: "Férias",
+    };
+    abrir({ block });
+    expect(screen.getByLabelText("Dia inteiro")).toBeChecked();
+
+    await user.click(screen.getByLabelText("Dia inteiro"));
+
+    expect(screen.getByLabelText("De")).toHaveValue("08:00");
+    expect(screen.getByLabelText("Até")).toHaveValue("12:00");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() =>
+      expect(service.updateBlock).toHaveBeenCalledWith(
+        "b-dia",
+        expect.objectContaining({
+          allDay: false,
+          startsAt: new Date(2026, 9, 5, 8, 0).toISOString(),
+          endsAt: new Date(2026, 9, 5, 12, 0).toISOString(),
+        }),
+      ),
+    );
+  });
+
   it("mostra o erro da API", async () => {
     service.createBlock.mockRejectedValue({});
     const user = userEvent.setup();

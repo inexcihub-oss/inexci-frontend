@@ -18,6 +18,7 @@ import {
   useCpfRepetido,
 } from "@/components/patients/useCpfRepetido";
 import { createPatientSchema } from "@/lib/schemas/patient.schema";
+import { phoneOptionalSchema } from "@/lib/schemas/shared";
 import { unmask } from "@/lib/masks";
 import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
@@ -26,6 +27,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyArea } from "@/lib/permissions";
 import { uploadService } from "@/services/upload.service";
 import { PatientPhotoInput } from "@/components/patients/PatientPhotoInput";
+
+/**
+ * Telefone secundário (fixo, recado) tem a mesma máscara e a mesma validação
+ * do principal. Fica aqui, e não no schema compartilhado, porque o cadastro
+ * rápido do wizard de SC não pede o segundo número.
+ */
+const novoPacienteSchema = createPatientSchema.extend({
+  secondaryPhone: phoneOptionalSchema,
+});
 
 interface NewPatientModalProps {
   isOpen: boolean;
@@ -38,6 +48,7 @@ const FIELD_LABELS: Record<string, string> = {
   name: "Nome completo",
   cpf: "CPF",
   phone: "Telefone",
+  secondaryPhone: "Telefone secundário",
   email: "E-mail",
   birthDate: "Data de nascimento",
   gender: "Gênero",
@@ -69,11 +80,12 @@ export function NewPatientModal({
   const { toast, showToast, hideToast } = useToast();
 
   const form = useZodForm({
-    schema: createPatientSchema,
+    schema: novoPacienteSchema,
     initialValues: {
       name: "",
       cpf: "",
       phone: "",
+      secondaryPhone: "",
       email: "",
       birthDate: "",
       gender: "",
@@ -84,6 +96,9 @@ export function NewPatientModal({
 
   useEffect(() => {
     if (isOpen) {
+      // O pai pode fechar só trocando `isOpen` (sem passar pelo X): um erro
+      // da tentativa anterior não pode reaparecer ao reabrir.
+      setError("");
       loadHealthPlans();
     }
   }, [isOpen]);
@@ -150,6 +165,9 @@ export function NewPatientModal({
           name: data.name.trim(),
           cpf: data.cpf ? unmask(data.cpf) : undefined,
           phone: data.phone ? unmask(data.phone) : undefined,
+          secondaryPhone: data.secondaryPhone
+            ? unmask(data.secondaryPhone)
+            : undefined,
           email: data.email || undefined,
           birthDate: data.birthDate || undefined,
           gender: data.gender || undefined,
@@ -273,7 +291,7 @@ export function NewPatientModal({
               </p>
             )}
 
-            {/* Row 2: Telefone + E-mail */}
+            {/* Row 2: Telefone + Telefone secundário; E-mail abaixo */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Telefone (opcional)"
@@ -283,12 +301,20 @@ export function NewPatientModal({
                 {...form.getFieldProps("phone")}
               />
               <Input
-                label="E-mail (opcional)"
-                type="email"
-                placeholder="paciente@mail.com"
-                {...form.getFieldProps("email")}
+                label="Telefone secundário (opcional)"
+                type="tel"
+                mask="phone"
+                placeholder="Fixo ou recado"
+                {...form.getFieldProps("secondaryPhone")}
               />
             </div>
+
+            <Input
+              label="E-mail (opcional)"
+              type="email"
+              placeholder="paciente@mail.com"
+              {...form.getFieldProps("email")}
+            />
 
             {/* Row 3: Data de nascimento + Gênero */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -299,8 +325,11 @@ export function NewPatientModal({
                 className={inputClass}
               />
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Gênero (opcional)</label>
+                <label htmlFor="novo-paciente-genero" className={labelClass}>
+                  Gênero (opcional)
+                </label>
                 <select
+                  id="novo-paciente-genero"
                   value={form.values.gender ?? ""}
                   onChange={(e) => form.setField("gender", e.target.value)}
                   className={inputClass}

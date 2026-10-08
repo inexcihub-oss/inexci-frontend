@@ -4,8 +4,11 @@ import Image from "next/image";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
+import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
+import { Permission } from "@/lib/permissions";
 import {
   AtendimentoFicha,
   FichaFields,
@@ -47,6 +50,7 @@ import {
   IdCard,
   Lock,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 
 export type AtendimentoTabId =
@@ -64,6 +68,8 @@ const TAB_IDS = TABS.map((t) => t.id);
 function isTabId(value: string | null): value is AtendimentoTabId {
   return !!value && (TAB_IDS as string[]).includes(value);
 }
+
+const INDICACAO_SO_MEDICO = "Indicação cirúrgica é ato de médico (CRM).";
 
 function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -110,8 +116,10 @@ export function AtendimentoTabs({
   initialRecord: ClinicalRecord | null;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
-  const { isDoctor, isPhysician, canIssueClinicalDocuments } = useAuth();
+  const { user, isDoctor, isPhysician, canIssueClinicalDocuments, can } =
+    useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
   const { emTour } = useOnboarding();
   // Guarda por PROVENIÊNCIA, não só pelo estado do tour: `/atendimento/tour-demo`
@@ -156,6 +164,11 @@ export function AtendimentoTabs({
     };
   }, [availableDoctors, appointment.doctorId]);
   const consultaDeMedico = assinante?.medico !== false;
+  // Receita, atestado e pedido de exame (inclusive a prévia) só saem pelas
+  // mãos do próprio profissional da consulta: o backend recusa com 403 quem
+  // não é ele, mesmo admin ou outro médico da clínica.
+  const ehProfissionalDaConsulta =
+    !!user?.id && user.id === appointment.doctorId;
   // Médico sem número ou sem UF do CRM (veio assim do Feegow): o backend
   // recusa a indicação até alguém completar o registro.
   const crmSemNumeroDe =
@@ -169,6 +182,8 @@ export function AtendimentoTabs({
   );
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [confirmarExclusao, setConfirmarExclusao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const [documentsVersion, setDocumentsVersion] = useState(0);
   // O paciente guarda só o id do convênio; o nome vem do cadastro de convênios.
   // `healthPlanType` (Apartamento / Enfermaria) é a acomodação, não o plano —
@@ -232,7 +247,12 @@ export function AtendimentoTabs({
       diagnosis: fields.diagnosis,
       conduct: fields.conduct,
       cidCodes: fields.cidCodes,
-      surgicalIndication: fields.surgicalIndication,
+      // Só vai quando mudou: o backend checa a indicação na transição
+      // false→true, e reenviar o valor gravado a cada salvar fazia um rascunho
+      // antigo (indicação marcada) falhar por motivo alheio ao que mudou.
+      ...(fields.surgicalIndication !== baseline.surgicalIndication
+        ? { surgicalIndication: fields.surgicalIndication }
+        : {}),
       procedureId: fields.procedureId,
     };
     if (record) {
@@ -285,6 +305,12 @@ export function AtendimentoTabs({
       );
       return;
     }
+    // Quem está logado não é médico (CRM): mesma regra e mesma mensagem do
+    // cartão de indicação — o backend recusaria a SC depois de gravar a ficha.
+    if (fields.surgicalIndication && !isPhysician) {
+      showError(INDICACAO_SO_MEDICO);
+      return;
+    }
     if (fields.surgicalIndication && crmSemNumeroDe) {
       showError(
         `Preencha o número e a UF do CRM de ${crmSemNumeroDe} em Colaboradores ou desmarque "Paciente cirúrgico" para finalizar.`,
@@ -308,6 +334,37 @@ export function AtendimentoTabs({
       setFinalizing(false);
     }
   };
+
+  /**
+   * Excluir o rascunho é a saída para a consulta iniciada por engano: com a
+   * ficha, a consulta não pode ser excluída nem cancelada. O backend devolve
+   * a consulta ao status de antes do atendimento. Ficha finalizada não tem
+   * esta ação (é imutável; o backend também recusa).
+   */
+  const handleDeleteDraft = async () => {
+    if (!record) return;
+    setExcluindo(true);
+    try {
+      await clinicalRecordService.delete(record.id);
+      // A consulta volta ao status anterior no backend: sem isto a Agenda e o
+      // hub mostrariam "Em atendimento" do cache até expirar.
+      void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      setConfirmarExclusao(false);
+      // Nada mais a salvar: sem isto o aviso de "não salvo" seguraria a saída.
+      setBaseline(fields);
+      router.push(can(Permission.AGENDA) ? "/agenda" : "/atendimento");
+    } catch (err) {
+      setConfirmarExclusao(false);
+      showError(
+        getApiErrorMessage(err, "Não foi possível excluir o rascunho."),
+      );
+    } finally {
+      setExcluindo(false);
+    }
+  };
+  // Escrever (e excluir) a ficha é ato do médico — mesma regra do backend
+  // (`assertIsDoctor` + acesso ao médico da ficha, que quem a carregou tem).
+  const podeExcluirRascunho = !!record && !finalized && isDoctor && !bloqueado;
 
   const patientAge = useMemo(() => {
     if (!patient.birthDate) return null;
@@ -529,7 +586,7 @@ export function AtendimentoTabs({
                   !consultaDeMedico
                     ? `${assinante?.nome ?? "O profissional da consulta"} não é médico e não pode indicar cirurgia.`
                     : !isPhysician
-                      ? "Indicação cirúrgica é ato de médico (CRM)."
+                      ? INDICACAO_SO_MEDICO
                       : crmSemNumeroDe
                         ? `Preencha o número e a UF do CRM de ${crmSemNumeroDe} em Colaboradores para indicar cirurgia.`
                         : undefined
@@ -548,6 +605,7 @@ export function AtendimentoTabs({
                   patientId={patient.id}
                   doctorId={appointment.doctorId}
                   assinante={assinante}
+                  profissionalDaConsulta={ehProfissionalDaConsulta}
                   dadosFabricados={bloqueado}
                   onEmitted={(document) => {
                     showSuccess(`${document.name} emitido.`);
@@ -577,6 +635,20 @@ export function AtendimentoTabs({
                   >
                     Finalizar atendimento
                   </Button>
+                </div>
+              )}
+
+              {podeExcluirRascunho && (
+                <div className="flex justify-end pb-4">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmarExclusao(true)}
+                    disabled={saving || finalizing || excluindo}
+                    className="inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
+                    Excluir rascunho
+                  </button>
                 </div>
               )}
             </div>
@@ -614,6 +686,16 @@ export function AtendimentoTabs({
           )}
         </div>
       </div>
+
+      <ConfirmDeleteModal
+        isOpen={confirmarExclusao}
+        title="Excluir rascunho do atendimento"
+        description={`Excluir o rascunho da ficha de ${patient.name}? A consulta volta para a agenda como antes de o atendimento ser iniciado.`}
+        softDelete
+        loading={excluindo}
+        onCancel={() => setConfirmarExclusao(false)}
+        onConfirm={handleDeleteDraft}
+      />
 
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={hideToast} />

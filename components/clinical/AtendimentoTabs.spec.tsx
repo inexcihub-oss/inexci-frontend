@@ -1,14 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const replace = vi.fn();
 const back = vi.fn();
+const push = vi.fn();
 let searchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace, back, push: vi.fn() }),
+  useRouter: () => ({ replace, back, push }),
   useSearchParams: () => searchParams,
   usePathname: () => "/atendimento/a-1",
 }));
@@ -54,6 +55,7 @@ vi.mock("@/services/clinical-record.service", () => ({
     create: vi.fn(),
     update: vi.fn(),
     finalize: vi.fn(),
+    delete: vi.fn(),
     generatePrescription: vi.fn(),
     generateMedicalCertificate: vi.fn(),
     generateExamReferral: vi.fn(),
@@ -75,12 +77,14 @@ import { Permission } from "@/lib/permissions";
 // `can` concede tudo por padrão — os testes deste arquivo focam no eixo
 // `isDoctor`; a permissão Solicitações é exercida à parte, mais abaixo.
 let authState: {
+  user?: { id: string } | null;
   isDoctor: boolean;
   isPhysician?: boolean;
   canIssueClinicalDocuments?: boolean;
   can: (p: Permission) => boolean;
   permissions: Permission[];
 } = {
+  user: { id: "d-1" },
   isDoctor: true,
   isPhysician: true,
   canIssueClinicalDocuments: true,
@@ -197,6 +201,7 @@ describe("AtendimentoTabs", () => {
     vi.clearAllMocks();
     searchParams = new URLSearchParams();
     authState = {
+      user: { id: "d-1" },
       isDoctor: true,
       isPhysician: true,
       canIssueClinicalDocuments: true,
@@ -513,6 +518,7 @@ describe("AtendimentoTabs", () => {
    */
   it("esconde o link da SC para quem não tem a permissão Solicitações", async () => {
     authState = {
+      user: { id: "d-1" },
       isDoctor: true,
       isPhysician: true,
       canIssueClinicalDocuments: true,
@@ -865,6 +871,7 @@ describe("AtendimentoTabs", () => {
   describe("dentista (CRO)", () => {
     beforeEach(() => {
       authState = {
+        user: { id: "d-1" },
         isDoctor: true,
         isPhysician: false,
         canIssueClinicalDocuments: true,
@@ -926,6 +933,7 @@ describe("AtendimentoTabs", () => {
   describe("profissional de saúde que não é médico", () => {
     beforeEach(() => {
       authState = {
+        user: { id: "d-1" },
         isDoctor: true,
         isPhysician: false,
         canIssueClinicalDocuments: false,
@@ -1201,6 +1209,223 @@ describe("AtendimentoTabs", () => {
     vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue(
       [],
     );
+  });
+
+  // Decisão (a) da API: a indicação só é checada na transição false→true.
+  // Reenviar o valor gravado a cada salvar fazia um rascunho antigo falhar.
+  it("não reenvia a indicação cirúrgica quando ela não mudou", async () => {
+    (
+      clinicalRecordService.update as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(recordFixture({ surgicalIndication: true }));
+    const user = userEvent.setup();
+    renderTabs(recordFixture({ surgicalIndication: true }));
+
+    await user.type(screen.getByLabelText(/Queixa principal/i), "Dor");
+    await user.click(
+      screen.getAllByRole("button", { name: /Salvar rascunho/i })[0],
+    );
+
+    await waitFor(() =>
+      expect(clinicalRecordService.update).toHaveBeenCalled(),
+    );
+    expect(
+      vi.mocked(clinicalRecordService.update).mock.calls[0][1],
+    ).not.toHaveProperty("surgicalIndication");
+  });
+
+  it("ficha nova sem indicação não manda o campo", async () => {
+    (
+      clinicalRecordService.create as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(recordFixture());
+    const user = userEvent.setup();
+    renderTabs();
+
+    await user.type(screen.getByLabelText(/Queixa principal/i), "Dor");
+    await user.click(
+      screen.getAllByRole("button", { name: /Salvar rascunho/i })[0],
+    );
+
+    await waitFor(() =>
+      expect(clinicalRecordService.create).toHaveBeenCalled(),
+    );
+    expect(
+      vi.mocked(clinicalRecordService.create).mock.calls[0][0],
+    ).not.toHaveProperty("surgicalIndication");
+  });
+
+  // Dentista (CRO) logado com um rascunho que já tinha a indicação: o backend
+  // recusaria a SC depois de gravar a ficha.
+  it("não finaliza indicação cirúrgica quando quem está logado não é médico (CRM)", async () => {
+    authState = {
+      user: { id: "d-1" },
+      isDoctor: true,
+      isPhysician: false,
+      canIssueClinicalDocuments: true,
+      can: () => true,
+      permissions: [Permission.ATENDIMENTO],
+    };
+    const user = userEvent.setup();
+    renderTabs(recordFixture({ surgicalIndication: true }));
+
+    await user.click(screen.getByRole("button", { name: "Finalizar" }));
+
+    // Cartão + toast: a mesma mensagem nos dois lugares.
+    await waitFor(() =>
+      expect(
+        screen.getAllByText("Indicação cirúrgica é ato de médico (CRM)."),
+      ).toHaveLength(2),
+    );
+    expect(clinicalRecordService.update).not.toHaveBeenCalled();
+    expect(clinicalRecordService.finalize).not.toHaveBeenCalled();
+  });
+
+  // Decisão (b): o backend só aceita receita/atestado/exame (e a prévia) do
+  // próprio profissional da consulta — admin ou outro médico recebe 403.
+  it("médico que não é o profissional da consulta vê os documentos desabilitados", async () => {
+    authState = {
+      user: { id: "outro-medico" },
+      isDoctor: true,
+      isPhysician: true,
+      canIssueClinicalDocuments: true,
+      can: () => true,
+      permissions: [Permission.ATENDIMENTO],
+    };
+    renderTabs();
+
+    expect(screen.getByRole("button", { name: /receita/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /atestado/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /exames/i })).toBeDisabled();
+    expect(
+      screen.getByText("Só o profissional da consulta pode emitir documentos."),
+    ).toBeInTheDocument();
+  });
+
+  describe("excluir rascunho", () => {
+    const excluir = () =>
+      screen.queryByRole("button", { name: /Excluir rascunho/i });
+
+    it("não aparece sem ficha salva nem em ficha finalizada", () => {
+      const { unmount } = renderTabs(null);
+      expect(excluir()).not.toBeInTheDocument();
+      unmount();
+
+      renderTabs(recordFixture({ finalizedAt: "2026-07-29T19:00:00.000Z" }));
+      expect(excluir()).not.toBeInTheDocument();
+    });
+
+    it("não aparece para quem não é médico", () => {
+      authState = { ...authState, isDoctor: false };
+      renderTabs(recordFixture());
+
+      expect(excluir()).not.toBeInTheDocument();
+    });
+
+    it("não aparece durante o tour", () => {
+      onboardingMockState.emTour = true;
+      renderTabs(recordFixture());
+
+      expect(excluir()).not.toBeInTheDocument();
+    });
+
+    it("pede confirmação, exclui e volta para a agenda", async () => {
+      const user = userEvent.setup();
+      (
+        clinicalRecordService.delete as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
+      renderTabs(recordFixture());
+
+      await user.click(excluir()!);
+      const dialogo = screen.getByRole("alertdialog", {
+        name: "Excluir rascunho do atendimento",
+      });
+      expect(clinicalRecordService.delete).not.toHaveBeenCalled();
+
+      await user.click(
+        within(dialogo).getByRole("button", { name: "Excluir" }),
+      );
+
+      await waitFor(() =>
+        expect(clinicalRecordService.delete).toHaveBeenCalledWith("r-1"),
+      );
+      expect(push).toHaveBeenCalledWith("/agenda");
+    });
+
+    it("invalida o cache das consultas para a Agenda não mostrar 'Em atendimento'", async () => {
+      const user = userEvent.setup();
+      (
+        clinicalRecordService.delete as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AtendimentoTabs
+            appointment={appointment}
+            patient={patient}
+            initialRecord={recordFixture()}
+          />
+        </QueryClientProvider>,
+      );
+
+      await user.click(excluir()!);
+      await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+      await waitFor(() =>
+        expect(invalidate).toHaveBeenCalledWith({
+          queryKey: ["appointments"],
+        }),
+      );
+    });
+
+    it("sem a permissão Agenda volta para o hub de atendimento", async () => {
+      const user = userEvent.setup();
+      authState = {
+        ...authState,
+        can: (p: Permission) => p !== Permission.AGENDA,
+      };
+      (
+        clinicalRecordService.delete as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(undefined);
+      renderTabs(recordFixture());
+
+      await user.click(excluir()!);
+      await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+      await waitFor(() => expect(push).toHaveBeenCalledWith("/atendimento"));
+    });
+
+    it("cancelar não exclui; erro do backend mostra a mensagem e fica na tela", async () => {
+      const user = userEvent.setup();
+      (
+        clinicalRecordService.delete as ReturnType<typeof vi.fn>
+      ).mockRejectedValue({
+        isAxiosError: true,
+        response: {
+          data: { message: "Um atendimento finalizado não pode ser excluído." },
+        },
+      });
+      renderTabs(recordFixture());
+
+      await user.click(excluir()!);
+      await user.click(screen.getByRole("button", { name: "Cancelar" }));
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+      expect(clinicalRecordService.delete).not.toHaveBeenCalled();
+
+      await user.click(excluir()!);
+      await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+      await waitFor(() =>
+        expect(clinicalRecordService.delete).toHaveBeenCalledTimes(1),
+      );
+      expect(push).not.toHaveBeenCalled();
+      expect(
+        await screen.findByText(
+          /não pode ser excluído|Não foi possível excluir/,
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("usuário não-médico", () => {

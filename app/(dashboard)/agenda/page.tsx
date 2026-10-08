@@ -236,8 +236,10 @@ export default function AgendaPage() {
     appointmentsQuery.refetch();
   }, [podeVerCirurgias, surgeriesQuery, appointmentsQuery]);
 
+  // Prefixo ["appointments"]: além da agenda, o hub do Atendimento
+  // (["appointments", "hub", ...]) e a exportação leem as mesmas consultas.
   const invalidateAppointments = () =>
-    queryClient.invalidateQueries({ queryKey: ["appointments", "agenda"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments"] });
 
   // ── Eventos unificados ──────────────────────────────────────────────────────
   const allEvents = useMemo<CalEvent[]>(() => {

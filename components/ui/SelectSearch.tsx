@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useId } from "react";
 import ReactDOM from "react-dom";
 import { Search, ChevronDown, X, Loader2 } from "lucide-react";
 import { useAnchoredDropdown } from "@/hooks/useAnchoredDropdown";
@@ -21,6 +21,8 @@ interface SelectSearchProps {
   error?: string;
   clearable?: boolean;
   initialLabel?: string;
+  /** Nome acessível do campo quando o rótulo visível fica fora do componente. */
+  ariaLabel?: string;
 }
 
 // Custom debounce function
@@ -60,7 +62,9 @@ export function SelectSearch({
   error,
   clearable = true,
   initialLabel,
+  ariaLabel,
 }: SelectSearchProps) {
+  const listboxId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [options, setOptions] = useState<SelectSearchOption[]>([]);
@@ -169,6 +173,18 @@ export function SelectSearch({
           ${isOpen ? "ring-2 ring-blue-500 border-blue-500" : ""}
         `}
         onClick={handleToggle}
+        role="combobox"
+        aria-label={ariaLabel ?? label}
+        aria-expanded={isOpen}
+        aria-controls={listboxId}
+        aria-haspopup="listbox"
+        aria-disabled={disabled || undefined}
+        tabIndex={disabled || isOpen ? -1 : 0}
+        onKeyDown={(e) => {
+          if (isOpen || (e.key !== "Enter" && e.key !== " ")) return;
+          e.preventDefault();
+          handleToggle();
+        }}
       >
         <div className="flex-1 flex items-center min-h-[36px] md:min-h-10 px-3 md:px-3.5 min-w-0 overflow-hidden">
           {isOpen ? (
@@ -180,6 +196,7 @@ export function SelectSearch({
                 value={searchTerm}
                 onChange={handleInputChange}
                 placeholder={placeholder}
+                aria-label={ariaLabel ?? label}
                 className="flex-1 outline-none text-base md:text-sm bg-transparent"
                 onClick={(e) => e.stopPropagation()}
                 disabled={disabled}
@@ -222,6 +239,9 @@ export function SelectSearch({
         ReactDOM.createPortal(
           <div
             ref={dropdownRef}
+            id={listboxId}
+            role="listbox"
+            aria-label={ariaLabel ?? label}
             style={{
               position: "fixed",
               top: dropdownPosition.top,
@@ -248,6 +268,8 @@ export function SelectSearch({
               options.map((option) => (
                 <div
                   key={option.value}
+                  role="option"
+                  aria-selected={option.value === value}
                   className={`
                     px-3.5 py-3 md:py-2 cursor-pointer text-sm min-h-[44px] md:min-h-0 flex items-center active:bg-gray-100
                     ${option.value === value ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"}

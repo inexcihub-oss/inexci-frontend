@@ -33,6 +33,7 @@ vi.mock("@/services/appointment.service", async () => {
 
 import {
   AppointmentDetailModal,
+  formatWhen,
   statusAntesDaChegada,
 } from "./AppointmentDetailModal";
 
@@ -508,6 +509,40 @@ describe("AppointmentDetailModal — sala de espera e dados da consulta (MIG-03)
     ).toBeInTheDocument();
   });
 
+  // O rótulo segue a ficha quando a API informa a situação dela — o status da
+  // agenda pode estar dessincronizado (mexido à mão, ficha excluída).
+  it("ficha rascunho salva vira 'Continuar atendimento' mesmo com a consulta confirmada", () => {
+    renderAppointment({ ...consultaBase, clinicalRecordStatus: "draft" });
+
+    expect(
+      screen.getByRole("button", { name: "Continuar atendimento" }),
+    ).toBeInTheDocument();
+  });
+
+  it("sem ficha volta a 'Iniciar atendimento' mesmo com a consulta em atendimento", () => {
+    renderAppointment({
+      ...consultaBase,
+      status: "in_progress",
+      clinicalRecordStatus: null,
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Iniciar atendimento" }),
+    ).toBeInTheDocument();
+  });
+
+  it("ficha finalizada mostra 'Ver atendimento'", () => {
+    renderAppointment({
+      ...consultaBase,
+      status: "in_progress",
+      clinicalRecordStatus: "finalized",
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Ver atendimento" }),
+    ).toBeInTheDocument();
+  });
+
   it("mostra encaixe, sala, convênio e quem agendou", () => {
     renderAppointment({
       ...consultaBase,
@@ -553,5 +588,21 @@ describe("AppointmentDetailModal — histórico (MIG-04)", () => {
     expect(
       screen.queryByRole("button", { name: /Histórico/ }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("formatWhen — dia e horas no mesmo fuso", () => {
+  it("formata as horas em America/Sao_Paulo, independente do fuso do navegador", () => {
+    // 12:00 UTC = 09:00 em Brasília (UTC-3).
+    expect(formatWhen("2026-08-17T12:00:00.000Z", 30)).toBe(
+      "Segunda-feira, 17 de agosto · 09:00 às 09:30",
+    );
+  });
+
+  it("perto da meia-noite UTC, dia e hora continuam do mesmo fuso", () => {
+    // 02:30 UTC de 18/08 = 23:30 de 17/08 em Brasília.
+    expect(formatWhen("2026-08-18T02:30:00.000Z", 60)).toBe(
+      "Segunda-feira, 17 de agosto · 23:30 às 00:30",
+    );
   });
 });

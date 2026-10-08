@@ -68,6 +68,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 import AgendaPage from "./page";
+import { appointmentService } from "@/services/appointment.service";
 
 // jsdom não implementa matchMedia; `CalendarTimeGrid` usa para detectar telas
 // estreitas.
@@ -86,10 +87,11 @@ beforeEach(() => {
     }));
 });
 
-function renderPage() {
-  const queryClient = new QueryClient({
+function renderPage(
+  queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
-  });
+  }),
+) {
   return render(
     <QueryClientProvider client={queryClient}>
       <AgendaPage />
@@ -242,6 +244,10 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
       renderPage();
       const bloco = await screen.findByTitle("Clínica: Reforma");
       expect(bloco.tagName).toBe("DIV");
+      expect(bloco.className).toContain("pointer-events-none");
+      expect(
+        screen.queryByRole("button", { name: /Editar bloqueio/ }),
+      ).toBeNull();
     });
 
     it("com Administração abre o modal de edição", async () => {
@@ -253,8 +259,16 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
       renderPage();
       const user = userEvent.setup();
       const bloco = await screen.findByTitle("Clínica: Reforma");
-      expect(bloco.tagName).toBe("BUTTON");
-      await user.click(bloco);
+      // A faixa cobre a coluna: o corpo dela deixa o clique passar para a
+      // linha de hora (nova consulta); só o rótulo abre o bloqueio.
+      expect(bloco.tagName).toBe("DIV");
+      expect(bloco.className).toContain("pointer-events-none");
+      const rotulo = screen.getByRole("button", {
+        name: "Editar bloqueio: Clínica: Reforma",
+      });
+      expect(bloco).toContainElement(rotulo);
+      expect(rotulo.className).toContain("pointer-events-auto");
+      await user.click(rotulo);
       expect(await screen.findByRole("button", { name: "Remover" })).toBeInTheDocument();
     });
   });
@@ -391,5 +405,56 @@ describe("AgendaPage — visão mensal desenha feriados e bloqueios", () => {
     await user.click(screen.getByRole("button", { name: "Mês" }));
     await waitFor(() => expect(availability.getHolidays).toHaveBeenCalled());
     expect(screen.queryByTitle("Feriado: Ponto facultativo")).toBeNull();
+  });
+});
+
+describe("AgendaPage — invalidação das consultas", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState = { can: (p) => p === Permission.AGENDA };
+    availability.getBlocks.mockResolvedValue([]);
+    availability.getHolidays.mockResolvedValue([]);
+  });
+
+  it("mudar o status invalida todo o prefixo ['appointments'] (inclui o hub do Atendimento)", async () => {
+    const inicio = new Date();
+    inicio.setHours(10, 0, 0, 0);
+    getAgendaCompleta.mockResolvedValue({
+      total: 1,
+      records: [
+        {
+          id: "a-1",
+          doctorId: "d-1",
+          patientId: "p-1",
+          patient: { id: "p-1", name: "Paciente Teste" },
+          type: "first_visit",
+          status: "scheduled",
+          scheduledAt: inicio.toISOString(),
+          durationMinutes: 30,
+          notes: null,
+          cancellationReason: null,
+          clinicId: null,
+          isWalkIn: false,
+        },
+      ],
+    });
+    vi.mocked(appointmentService.updateStatus).mockResolvedValue(
+      {} as never,
+    );
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const hubKey = ["appointments", "hub", "proximas"];
+    queryClient.setQueryData(hubKey, []);
+    renderPage(queryClient);
+
+    const user = userEvent.setup();
+    const evento = await screen.findByTitle(/Paciente Teste/);
+    await user.click(evento);
+    await user.click(await screen.findByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() =>
+      expect(queryClient.getQueryState(hubKey)?.isInvalidated).toBe(true),
+    );
   });
 });

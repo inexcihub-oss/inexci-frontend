@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   PATIENT_PHOTO_MAX_BYTES,
+  assinaturaDeImagemConfere,
   desenharReduzido,
   prepararFotoPaciente,
 } from "./foto-paciente";
+import { arquivoDeImagem } from "./foto-paciente.fixtures";
 
 const arquivo = (nome: string, tipo: string, bytes = 10) =>
-  new File([new Uint8Array(bytes)], nome, { type: tipo });
+  arquivoDeImagem(nome, tipo, bytes);
 
 /** Navegador com decode e canvas falsos; `jpegBytes` é o tamanho do JPEG gerado. */
 function navegadorFalso(jpegBytes: number) {
@@ -38,6 +40,28 @@ describe("prepararFotoPaciente", () => {
     const r = await prepararFotoPaciente(arquivo("a.gif", "image/gif"));
     expect(r.erro).toMatch(/JPG, PNG ou WEBP/);
     expect(toBlob).not.toHaveBeenCalled();
+  });
+
+  it("conteúdo que não é JPG/PNG/WEBP (ex.: PDF renomeado para .png) é recusado", async () => {
+    const { toBlob } = navegadorFalso(10);
+    const pdfComoPng = new File(
+      [new TextEncoder().encode("%PDF-1.7 ...")],
+      "laudo.png",
+      { type: "image/png" },
+    );
+    const r = await prepararFotoPaciente(pdfComoPng);
+    expect(r.erro).toMatch(/não é uma imagem JPG, PNG ou WEBP válida/);
+    expect(toBlob).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a.jpg", "image/jpeg"],
+    ["a.jpg", "image/jpg"],
+    ["a.png", "image/png"],
+    ["a.webp", "image/webp"],
+  ])("aceita %s (%s) com a assinatura correta", async (nome, tipo) => {
+    const f = arquivoDeImagem(nome, tipo);
+    await expect(prepararFotoPaciente(f)).resolves.toEqual({ foto: f });
   });
 
   it("até 2 MB passa como está", async () => {
@@ -79,6 +103,29 @@ describe("prepararFotoPaciente", () => {
       arquivo("ana.png", "image/png", 5 * 1024 * 1024),
     );
     expect(r.erro).toMatch(/2 MB/);
+  });
+});
+
+describe("assinaturaDeImagemConfere", () => {
+  it("reconhece JPEG, PNG e WEBP e recusa o resto", async () => {
+    await expect(
+      assinaturaDeImagemConfere(arquivoDeImagem("a", "image/jpeg")),
+    ).resolves.toBe(true);
+    await expect(
+      assinaturaDeImagemConfere(arquivoDeImagem("a", "image/png")),
+    ).resolves.toBe(true);
+    await expect(
+      assinaturaDeImagemConfere(arquivoDeImagem("a", "image/webp")),
+    ).resolves.toBe(true);
+    // GIF e RIFF que não é WEBP (ex.: WAV)
+    await expect(
+      assinaturaDeImagemConfere(new Blob([new TextEncoder().encode("GIF89a")])),
+    ).resolves.toBe(false);
+    await expect(
+      assinaturaDeImagemConfere(
+        new Blob([new TextEncoder().encode("RIFF\0\0\0\0WAVE")]),
+      ),
+    ).resolves.toBe(false);
   });
 });
 

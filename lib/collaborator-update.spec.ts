@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  buildAvatarUpdate,
   buildCollaboratorUpdatePayload,
   buildDoctorProfileUpdatePayload,
   buildOwnDoctorProfilePayload,
@@ -245,5 +246,76 @@ describe("buildOwnDoctorProfilePayload (Configurações)", () => {
       crm: "5",
     });
     expect(payload).not.toHaveProperty("council");
+  });
+
+  it("sem allowCouncil, conselho trocado é ignorado (admin delegado e demais)", () => {
+    expect(
+      buildOwnDoctorProfilePayload(
+        { ...salvo, council: "CRN" },
+        { ...salvo, council: "CRM" },
+      ),
+    ).toBeNull();
+  });
+
+  it("dono da conta (allowCouncil) manda o conselho quando mudou", () => {
+    expect(
+      buildOwnDoctorProfilePayload(
+        { ...salvo, council: "CRN" },
+        { ...salvo, council: "CRP" },
+        { allowCouncil: true },
+      ),
+    ).toEqual({ council: "CRP" });
+  });
+
+  it("dono da conta sem trocar o conselho não o reenvia", () => {
+    expect(
+      buildOwnDoctorProfilePayload(
+        { ...salvo, council: "CRM" },
+        { ...salvo, council: "CRM", crm: "9" },
+        { allowCouncil: true },
+      ),
+    ).toEqual({ crm: "9" });
+  });
+});
+
+describe("buildAvatarUpdate (Configurações)", () => {
+  it("arquivo novo: manda o caminho do upload", () => {
+    expect(
+      buildAvatarUpdate({
+        savedAvatarUrl: "avatars/c/antigo.png",
+        uploadedPath: "avatars/c/novo.png",
+        hasPreview: true,
+      }),
+    ).toEqual({ avatarUrl: "avatars/c/novo.png" });
+  });
+
+  it("havia avatar e o usuário removeu: manda null", () => {
+    expect(
+      buildAvatarUpdate({
+        savedAvatarUrl: "avatars/c/antigo.png",
+        uploadedPath: undefined,
+        hasPreview: false,
+      }),
+    ).toEqual({ avatarUrl: null });
+  });
+
+  it("avatar mantido: não manda o campo", () => {
+    expect(
+      buildAvatarUpdate({
+        savedAvatarUrl: "avatars/c/antigo.png",
+        uploadedPath: undefined,
+        hasPreview: true,
+      }),
+    ).toEqual({});
+  });
+
+  it("nunca teve avatar: não manda o campo", () => {
+    expect(
+      buildAvatarUpdate({
+        savedAvatarUrl: null,
+        uploadedPath: undefined,
+        hasPreview: false,
+      }),
+    ).toEqual({});
   });
 });

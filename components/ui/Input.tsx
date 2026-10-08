@@ -1,4 +1,4 @@
-import { ChangeEvent, InputHTMLAttributes, forwardRef } from "react";
+import { ChangeEvent, InputHTMLAttributes, forwardRef, useId } from "react";
 import { cn } from "@/lib/utils";
 import { applyMask, MaskKind } from "@/lib/masks";
 
@@ -25,9 +25,23 @@ const INPUT_MODE_BY_MASK: Record<MaskKind, InputHTMLAttributes<HTMLInputElement>
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
   (
-    { className, label, error, type = "text", mask, onChange, inputMode, ...props },
+    {
+      className,
+      label,
+      error,
+      type = "text",
+      mask,
+      onChange,
+      inputMode,
+      id,
+      ...props
+    },
     ref,
   ) => {
+    // Sem `id` vindo de fora, gera um para ligar o <label> ao <input> —
+    // senão leitor de tela e `getByLabelText` não encontram o campo.
+    const generatedId = useId();
+    const inputId = id ?? generatedId;
     const handleChange = mask
       ? (e: ChangeEvent<HTMLInputElement>) => {
           const masked = applyMask(mask, e.target.value);
@@ -43,7 +57,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label htmlFor={props.id} className="ds-label">
+          <label htmlFor={inputId} className="ds-label">
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -60,6 +74,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           onChange={handleChange}
           aria-invalid={error ? "true" : undefined}
           {...props}
+          id={inputId}
         />
         {error && (
           <p className="mt-1 text-xs md:text-sm text-red-600" role="alert">

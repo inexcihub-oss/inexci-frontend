@@ -67,6 +67,18 @@ const CERTIFICATE_TEXT_MAX = 4000;
 
 /** O texto do atestado ainda traz `{{dias}}`/`{{inicio}}` para a emissão. */
 const PLACEHOLDER_DE_AFASTAMENTO = /\{\{\s*(dias|inicio)\s*\}\}/i;
+const PLACEHOLDER_DIAS = /\{\{\s*dias\s*\}\}/i;
+const PLACEHOLDER_INICIO = /\{\{\s*inicio\s*\}\}/i;
+
+/** Aviso para quem não é o profissional da consulta (o backend responde 403). */
+export const SO_PROFISSIONAL_DA_CONSULTA =
+  "Só o profissional da consulta pode emitir documentos.";
+
+/** Dias de afastamento do formulário; vazio ou 0 = comparecimento. */
+const diasDeAfastamento = (valor: string): number | undefined => {
+  const dias = Number(valor);
+  return valor.trim() && Number.isInteger(dias) && dias > 0 ? dias : undefined;
+};
 
 /**
  * Atestado de comparecimento: fala em comparecer e não em afastamento. Mesma
@@ -134,6 +146,7 @@ export function ClinicalDocumentActions({
   patientId,
   doctorId,
   assinante = null,
+  profissionalDaConsulta = true,
   dadosFabricados,
 }: {
   ensureRecordId: () => Promise<string>;
@@ -153,6 +166,12 @@ export function ClinicalDocumentActions({
    */
   assinante?: AssinanteConsulta | null;
   /**
+   * Quem está logado é o profissional da consulta. Só ele emite ou
+   * pré-visualiza receita, atestado e pedido de exame — o backend recusa
+   * (403) qualquer outro, inclusive admin ou outro médico da clínica.
+   */
+  profissionalDaConsulta?: boolean;
+  /**
    * Marca que o atendimento em tela é o fabricado do tour. Bloqueia a
    * emissão por PROVENIÊNCIA do dado, não pelo estado do tour — sair do tour
    * na página sentinela não pode reabilitar a emissão real.
@@ -167,7 +186,8 @@ export function ClinicalDocumentActions({
   // Registro sem número/UF (veio assim do Feegow): o backend recusa a emissão.
   const crmSemNumero = emite && !!assinante?.semNumero;
   const conselho = assinante?.conselho ?? "CRM";
-  const soMedico = naoMedico || crmSemNumero;
+  const outroProfissional = !profissionalDaConsulta;
+  const soMedico = outroProfissional || naoMedico || crmSemNumero;
   const [submitting, setSubmitting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -181,6 +201,10 @@ export function ClinicalDocumentActions({
 
   // Atestado
   const [restDays, setRestDays] = useState("1");
+  // Os dias foram zerados por um modelo de comparecimento (não pelo médico):
+  // trocar para um modelo de afastamento, ou voltar ao texto padrão, devolve
+  // o "1 dia" com que o formulário começa.
+  const diasZeradosPeloModelo = useRef(false);
   const [startDate, setStartDate] = useState("");
   const [includeCid, setIncludeCid] = useState(false);
   const [certificateCid, setCertificateCid] = useState<ClinicalCidCode[]>([]);
@@ -241,6 +265,12 @@ export function ClinicalDocumentActions({
     setApplyingTemplate(false);
   };
 
+  const restaurarDiasZeradosPeloModelo = () => {
+    if (!diasZeradosPeloModelo.current) return;
+    diasZeradosPeloModelo.current = false;
+    setRestDays("1");
+  };
+
   /**
    * Preenche o texto com o modelo, já com os dados do paciente e do médico
    * que estão na tela. O campo continua editável; trocar de modelo substitui.
@@ -266,6 +296,7 @@ export function ClinicalDocumentActions({
       if (openKind === "certificate") {
         setCertificateText("");
         setTextoAplicado("");
+        restaurarDiasZeradosPeloModelo();
       }
       return;
     }
@@ -289,7 +320,12 @@ export function ClinicalDocumentActions({
         setTextoAplicado(body);
         // Comparecimento declara presença, não afastamento: o "1 dia" com
         // que o formulário começa não pode ir para o atestado.
-        if (ehComparecimentoSemAfastamento(body)) setRestDays("");
+        if (ehComparecimentoSemAfastamento(body)) {
+          setRestDays("");
+          diasZeradosPeloModelo.current = true;
+        } else {
+          restaurarDiasZeradosPeloModelo();
+        }
       } else setNotes(body);
     } catch (err) {
       if (seq !== applySeq.current) return;
@@ -309,6 +345,7 @@ export function ClinicalDocumentActions({
     setRows([emptyRow()]);
     setNotes("");
     setRestDays("1");
+    diasZeradosPeloModelo.current = false;
     setStartDate("");
     setIncludeCid(false);
     // Começa com o CID da ficha; o médico troca se o afastamento for por outro
@@ -345,10 +382,11 @@ export function ClinicalDocumentActions({
       };
     }
     if (openKind === "certificate") {
-      const days = Number(restDays);
       return {
         ...target,
-        restDays: Number.isFinite(days) && days > 0 ? days : undefined,
+        // Vazio ou 0 = comparecimento: o campo nem vai (o servidor só aceita
+        // 1 a 365).
+        restDays: diasDeAfastamento(restDays),
         startDate: startDate || undefined,
         includeCid: includeCid || undefined,
         cid: includeCid ? certificateCid[0] : undefined,
@@ -378,8 +416,34 @@ export function ClinicalDocumentActions({
     ...(openKind !== "prescription" && cidCodes.length ? { cidCodes } : {}),
   });
 
+  /**
+   * `{{dias}}`/`{{inicio}}` sem valor: o servidor recusa (400). Avisa no
+   * formulário, antes de enviar. `{{inicio}}` sem data cai na data de emissão
+   * quando há afastamento.
+   */
+  const placeholderSemValor = (): string | null => {
+    if (openKind !== "certificate" || !certificateText) return null;
+    const dias = diasDeAfastamento(restDays);
+    if (PLACEHOLDER_DIAS.test(certificateText) && !dias) {
+      return "O texto usa {{dias}}: informe os dias de afastamento ou tire {{dias}} do texto.";
+    }
+    if (PLACEHOLDER_INICIO.test(certificateText) && !dias && !startDate) {
+      return "O texto usa {{inicio}}: informe o início do afastamento ou tire {{inicio}} do texto.";
+    }
+    return null;
+  };
+
   /** Valida o mínimo comum a emitir e pré-visualizar. */
   const isIncomplete = (): boolean => {
+    if (outroProfissional) {
+      setError(SO_PROFISSIONAL_DA_CONSULTA);
+      return true;
+    }
+    const placeholder = placeholderSemValor();
+    if (placeholder) {
+      setError(placeholder);
+      return true;
+    }
     if (openKind !== "certificate" && filledRows.length === 0) {
       setError(
         openKind === "prescription"
@@ -445,6 +509,12 @@ export function ClinicalDocumentActions({
     }
   };
 
+  // Aviso ao vivo no campo de dias, antes mesmo de tentar enviar.
+  const diasFaltandoNoTexto =
+    openKind === "certificate" &&
+    PLACEHOLDER_DIAS.test(certificateText) &&
+    !diasDeAfastamento(restDays);
+
   const isList = openKind === "prescription" || openKind === "referral";
   const itemLabel = openKind === "prescription" ? "Medicamento" : "Exame";
 
@@ -489,13 +559,18 @@ export function ClinicalDocumentActions({
             Solicitar exames
           </Button>
         </div>
-        {naoMedico && (
+        {outroProfissional && (
+          <p className="mt-2 text-xs text-neutral-500">
+            {SO_PROFISSIONAL_DA_CONSULTA}
+          </p>
+        )}
+        {!outroProfissional && naoMedico && (
           <p className="mt-2 text-xs text-neutral-500">
             Receita, atestado e pedido de exame só podem ser emitidos por médico
             (CRM) ou dentista (CRO). Esta consulta é de {assinante?.nome}.
           </p>
         )}
-        {crmSemNumero && (
+        {!outroProfissional && crmSemNumero && (
           <p className="mt-2 text-xs text-neutral-500">
             Preencha o número e a UF do {conselho} de {assinante?.nome} em
             Colaboradores para emitir documentos.
@@ -542,16 +617,21 @@ export function ClinicalDocumentActions({
                   )}
                 </>
               )}
-              <a
-                href="/configuracoes?tab=document-templates"
-                target="_blank"
-                rel="noopener"
-                className="self-start text-xs font-semibold text-teal-700 hover:underline min-h-[44px] md:min-h-[32px] inline-flex items-center"
-              >
-                {templates.length > 0
-                  ? "Gerenciar modelos"
-                  : "Criar modelo de texto"}
-              </a>
+              {/* O modelo criado em Configurações é do próprio usuário
+                  (doctorId = ele): o atalho só faz sentido para o profissional
+                  da consulta, o único que emite. */}
+              {profissionalDaConsulta && (
+                <a
+                  href="/configuracoes?tab=document-templates"
+                  target="_blank"
+                  rel="noopener"
+                  className="self-start text-xs font-semibold text-teal-700 hover:underline min-h-[44px] md:min-h-[32px] inline-flex items-center"
+                >
+                  {templates.length > 0
+                    ? "Gerenciar modelos"
+                    : "Criar modelo de texto"}
+                </a>
+              )}
             </div>
           )}
 
@@ -709,10 +789,18 @@ export function ClinicalDocumentActions({
                   id="clinical-doc-rest-days"
                   label="Dias de afastamento"
                   type="number"
-                  min={1}
+                  min={0}
                   max={365}
                   value={restDays}
-                  onChange={(e) => setRestDays(e.target.value)}
+                  onChange={(e) => {
+                    diasZeradosPeloModelo.current = false;
+                    setRestDays(e.target.value);
+                  }}
+                  error={
+                    diasFaltandoNoTexto
+                      ? "O texto usa {{dias}}: informe os dias."
+                      : undefined
+                  }
                 />
                 <Input
                   id="clinical-doc-start-date"
@@ -722,6 +810,10 @@ export function ClinicalDocumentActions({
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
+
+              <p className="-mt-2 text-xs text-neutral-500">
+                Dias vazios ou 0: atestado de comparecimento, sem afastamento.
+              </p>
 
               <div className="flex flex-col gap-2">
                 <div className="flex items-start gap-2">

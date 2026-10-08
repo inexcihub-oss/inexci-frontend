@@ -78,6 +78,9 @@ export interface AvailabilitySlot {
   end: string;
   free: boolean;
   reason?: SlotReason;
+  /** Clínica/sala do período da grade (null = grade sem local). */
+  clinicId?: string | null;
+  roomId?: string | null;
 }
 
 export interface AvailabilityDay {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import { Camera, ImagePlus, Loader2, Maximize2, Trash2, X } from "lucide-react";
@@ -44,6 +44,31 @@ export function PatientPhotoField({
   const [ampliada, setAmpliada] = useState(false);
   const [escolhendo, setEscolhendo] = useState(false);
   const [camera, setCamera] = useState(false);
+  // Remover a foto pede confirmação, dentro da própria foto ampliada (um
+  // modal à parte ficaria por baixo dela).
+  const [confirmandoRemocao, setConfirmandoRemocao] = useState(false);
+
+  // Abrir ou fechar uma camada (foto ampliada, escolha, câmera) é "a próxima
+  // ação": um erro de envio anterior não fica pendurado na tela.
+  const abrirAmpliada = () => {
+    setError(null);
+    setConfirmandoRemocao(false);
+    setAmpliada(true);
+  };
+  // Estável: o visualizador refaz o efeito (foco, Esc, scroll) quando muda.
+  const fecharAmpliada = useCallback(() => {
+    setError(null);
+    setConfirmandoRemocao(false);
+    setAmpliada(false);
+  }, []);
+  const abrirEscolha = () => {
+    setError(null);
+    setEscolhendo(true);
+  };
+  const fecharEscolha = () => {
+    setError(null);
+    setEscolhendo(false);
+  };
 
   const abrirArquivo = () => {
     setEscolhendo(false);
@@ -52,8 +77,10 @@ export function PatientPhotoField({
   // A câmera substitui a foto ampliada em vez de empilhar por cima dela:
   // duas camadas abertas fechariam juntas no mesmo Esc.
   const abrirCamera = () => {
+    setError(null);
     setEscolhendo(false);
     setAmpliada(false);
+    setConfirmandoRemocao(false);
     setCamera(true);
   };
 
@@ -100,6 +127,7 @@ export function PatientPhotoField({
     setBusy(true);
     try {
       onChange(await patientService.update(patient.id, { photoPath: null }));
+      setConfirmandoRemocao(false);
       setAmpliada(false);
     } catch (err) {
       setError(getApiErrorMessage(err, "Não foi possível remover a foto."));
@@ -117,7 +145,7 @@ export function PatientPhotoField({
           ampliada); sem foto, abre o seletor para adicionar. */}
       <button
         type="button"
-        onClick={() => (hasPhoto ? setAmpliada(true) : setEscolhendo(true))}
+        onClick={() => (hasPhoto ? abrirAmpliada() : abrirEscolha())}
         disabled={busy}
         aria-label={hasPhoto ? "Ver foto" : "Adicionar foto"}
         title={
@@ -178,7 +206,7 @@ export function PatientPhotoField({
       </button>
 
 
-      {error && (
+      {error && !ampliada && (
         <p
           role="alert"
           className="absolute left-0 top-full mt-1 w-56 text-xs text-red-600"
@@ -191,9 +219,61 @@ export function PatientPhotoField({
         <PatientPhotoViewer
           src={patient.photoUrl}
           nome={patient.name}
-          onClose={() => setAmpliada(false)}
+          onClose={fecharAmpliada}
           acoes={
+            confirmandoRemocao ? (
+              <div
+                role="group"
+                aria-label="Confirmar remoção da foto"
+                className="flex flex-col items-center gap-2"
+              >
+                <p className="text-sm text-white">
+                  Remover a foto de {patient.name}? Esta ação não pode ser
+                  desfeita.
+                </p>
+                {error && (
+                  <p role="alert" className="text-xs text-red-300">
+                    {error}
+                  </p>
+                )}
+                <div className="flex flex-wrap justify-center gap-2">
+                  <button
+                    type="button"
+                    autoFocus
+                    onClick={() => {
+                      setError(null);
+                      setConfirmandoRemocao(false);
+                    }}
+                    disabled={busy}
+                    className="inline-flex min-h-[44px] items-center rounded-xl bg-white px-4 text-sm font-semibold text-neutral-800 hover:bg-neutral-100 disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRemove}
+                    disabled={busy}
+                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {busy ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    Remover foto
+                  </button>
+                </div>
+              </div>
+            ) : (
             <>
+              {error && (
+                <p
+                  role="alert"
+                  className="basis-full text-center text-xs text-red-300"
+                >
+                  {error}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
@@ -214,7 +294,10 @@ export function PatientPhotoField({
               </button>
               <button
                 type="button"
-                onClick={handleRemove}
+                onClick={() => {
+                  setError(null);
+                  setConfirmandoRemocao(true);
+                }}
                 disabled={busy}
                 className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-white/10 px-4 text-sm font-semibold text-white ring-1 ring-white/30 hover:bg-red-600 hover:ring-red-600 disabled:opacity-50"
               >
@@ -222,6 +305,7 @@ export function PatientPhotoField({
                 Remover
               </button>
             </>
+            )
           }
         />
       )}
@@ -234,8 +318,8 @@ export function PatientPhotoField({
             aria-modal="true"
             aria-label="Adicionar foto"
             className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-neutral-950/60 backdrop-blur-sm"
-            onClick={() => setEscolhendo(false)}
-            onKeyDown={(e) => e.key === "Escape" && setEscolhendo(false)}
+            onClick={fecharEscolha}
+            onKeyDown={(e) => e.key === "Escape" && fecharEscolha()}
           >
             <div
               className="w-full rounded-t-3xl bg-white p-5 shadow-xl sm:mx-4 sm:max-w-sm sm:rounded-2xl"
@@ -245,7 +329,7 @@ export function PatientPhotoField({
                 <h2 className="ds-modal-title">Adicionar foto</h2>
                 <button
                   type="button"
-                  onClick={() => setEscolhendo(false)}
+                  onClick={fecharEscolha}
                   aria-label="Fechar"
                   className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-50"
                 >
@@ -281,7 +365,10 @@ export function PatientPhotoField({
 
       {camera && (
         <WebcamCaptureModal
-          onClose={() => setCamera(false)}
+          onClose={() => {
+            setError(null);
+            setCamera(false);
+          }}
           onCapture={(foto) => {
             setCamera(false);
             handleFile(foto);

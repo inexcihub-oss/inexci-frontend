@@ -12,7 +12,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import api from "@/lib/api";
-import { appointmentService } from "./appointment.service";
+import { appointmentService, rotuloDoAtendimento } from "./appointment.service";
 
 const mockAppt = {
   id: "a1",
@@ -228,5 +228,44 @@ describe("appointmentService", () => {
         status: "confirmed",
       });
     });
+  });
+
+  it("getAgenda preserva a situação da ficha e não a inventa quando ausente", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        total: 3,
+        records: [
+          { ...mockAppt, id: "a1", clinicalRecordStatus: "draft" },
+          { ...mockAppt, id: "a2", clinicalRecordStatus: null },
+          { ...mockAppt, id: "a3" },
+        ],
+      },
+    });
+
+    const [rascunho, semFicha, semInfo] = await appointmentService.getAgenda({
+      from: "2026-08-01",
+      to: "2026-08-31",
+    });
+
+    expect(rascunho.clinicalRecordStatus).toBe("draft");
+    expect(semFicha.clinicalRecordStatus).toBeNull();
+    expect(semInfo).not.toHaveProperty("clinicalRecordStatus");
+  });
+});
+
+describe("rotuloDoAtendimento", () => {
+  it.each([
+    ["completed", undefined, "Ver atendimento"],
+    ["confirmed", "finalized", "Ver atendimento"],
+    ["confirmed", "draft", "Continuar atendimento"],
+    ["in_progress", null, "Iniciar atendimento"],
+    ["scheduled", null, "Iniciar atendimento"],
+    // Sem a informação da ficha (resposta de criar/editar): status decide.
+    ["in_progress", undefined, "Continuar atendimento"],
+    ["waiting", undefined, "Iniciar atendimento"],
+  ] as const)("%s + ficha %s → %s", (status, ficha, esperado) => {
+    expect(rotuloDoAtendimento({ status, clinicalRecordStatus: ficha })).toBe(
+      esperado,
+    );
   });
 });

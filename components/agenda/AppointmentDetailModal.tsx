@@ -16,6 +16,7 @@ import {
   appointmentService,
   APPOINTMENT_STATUS_LABELS,
   APPOINTMENT_TYPE_LABELS,
+  rotuloDoAtendimento,
 } from "@/services/appointment.service";
 import { cn } from "@/lib/utils";
 import { capitalizeFirst, formatDoctorName } from "@/lib/formatters";
@@ -86,17 +87,26 @@ export function statusAntesDaChegada(
     : "confirmed";
 }
 
-function formatWhen(iso: string, durationMinutes: number): string {
+const AGENDA_TIME_ZONE = "America/Sao_Paulo";
+const HORA_SP = new Intl.DateTimeFormat("pt-BR", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: AGENDA_TIME_ZONE,
+});
+
+export function formatWhen(iso: string, durationMinutes: number): string {
   const start = new Date(iso);
   const end = new Date(start.getTime() + durationMinutes * 60_000);
   const day = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
     day: "2-digit",
     month: "long",
-    timeZone: "America/Sao_Paulo",
+    timeZone: AGENDA_TIME_ZONE,
   }).format(start);
-  const t = (d: Date) =>
-    `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+  // Mesmo fuso do dia: `getHours()` usaria o fuso do navegador e, fora de
+  // Brasília, misturava o dia de um fuso com a hora de outro.
+  const t = (d: Date) => HORA_SP.format(d);
   // Só a inicial em maiúscula: `capitalize` de CSS subia também as
   // preposições ("Quarta-Feira, 05 De Agosto").
   return capitalizeFirst(`${day} · ${t(start)} às ${t(end)}`);
@@ -139,6 +149,7 @@ export function AppointmentDetailModal({
   // não têm atendimento nenhum.
   const canAttend =
     appointment.status === "completed" ||
+    appointment.clinicalRecordStatus === "finalized" ||
     (isDoctor &&
       (appointment.status === "scheduled" ||
         appointment.status === "confirmed" ||
@@ -333,11 +344,7 @@ export function AppointmentDetailModal({
               data-tour="atendimento-iniciar"
               className="w-full sm:w-auto"
             >
-              {appointment.status === "completed"
-                ? "Ver atendimento"
-                : appointment.status === "in_progress"
-                  ? "Continuar atendimento"
-                  : "Iniciar atendimento"}
+              {rotuloDoAtendimento(appointment)}
             </SpinnerButton>
           )}
         </div>

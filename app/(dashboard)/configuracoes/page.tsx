@@ -28,6 +28,7 @@ import PasswordInput from "@/components/ui/PasswordInput";
 import api from "@/lib/api";
 import { userService } from "@/services/user.service";
 import {
+  buildAvatarUpdate,
   buildOwnDoctorProfilePayload,
   type OwnDoctorProfileFields,
 } from "@/lib/collaborator-update";
@@ -84,7 +85,10 @@ interface UserProfile {
   gender: string;
   // Campos específicos do profissional (lidos de doctor_profile)
   specialty?: string;
-  /** Só leitura aqui: quem troca o conselho é a administração da conta. */
+  /**
+   * Editável só pelo DONO da conta (ele é a administração). Para os demais,
+   * inclusive o admin delegado, é só leitura.
+   */
   council?: ProfessionalCouncil;
   crm?: string;
   crmState?: string;
@@ -455,6 +459,9 @@ function ConfiguracoesPageInner() {
   // Registro profissional como veio do servidor: o save manda só o que mudou
   // (e "" para o que foi apagado) — ver `buildOwnDoctorProfilePayload`.
   const registroSalvoRef = useRef<OwnDoctorProfileFields>({});
+  // Avatar gravado no servidor: remover só vira `avatarUrl: null` no save
+  // quando havia um gravado (ver `buildAvatarUpdate`).
+  const avatarSalvoRef = useRef<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
@@ -520,10 +527,12 @@ function ConfiguracoesPageInner() {
         const dp = profileData.doctorProfile;
         if (!isMounted) return;
         registroSalvoRef.current = {
+          council: councilOf(dp),
           crm: dp?.crm || "",
           crmState: dp?.crmState || "",
           specialty: dp?.specialty || "",
         };
+        avatarSalvoRef.current = profileData.avatarUrl || null;
         setProfile({
           name: profileData.name || "",
           email: profileData.email || "",
@@ -572,6 +581,7 @@ function ConfiguracoesPageInner() {
         if (isMounted && user) {
           const dp = user.doctorProfile;
           registroSalvoRef.current = {
+            council: councilOf(dp),
             crm: dp?.crm || "",
             crmState: dp?.crmState || "",
             specialty: dp?.specialty || "",
@@ -752,9 +762,11 @@ function ConfiguracoesPageInner() {
         cpf: documentDigits || undefined,
         birthDate: profile.birthDate || undefined,
         gender: profile.gender || undefined,
-        ...(avatarFile
-          ? { avatarUrl }
-          : { avatarUrl: avatarPreview ? undefined : undefined }),
+        ...buildAvatarUpdate({
+          savedAvatarUrl: avatarSalvoRef.current,
+          uploadedPath: avatarFile ? avatarUrl : undefined,
+          hasPreview: !!avatarPreview,
+        }),
         ...(signatureFile
           ? { signatureUrl: signaturePath }
           : signatureDeleted
@@ -768,19 +780,26 @@ function ConfiguracoesPageInner() {
       //    número/UF de conselho que não exige registro.
       if (profile.isDoctor && user?.id) {
         const registro: OwnDoctorProfileFields = {
+          council: profile.council,
           crm: profile.crm,
           crmState: profile.crmState,
           specialty: profile.specialty,
         };
+        // O dono da conta é a administração: troca o próprio conselho. Os
+        // demais (inclusive o admin delegado) não — o campo nem é editável.
         const payloadRegistro = buildOwnDoctorProfilePayload(
           registroSalvoRef.current,
           registro,
+          { allowCouncil: isAccountOwner },
         );
         if (payloadRegistro) {
           await userService.updateDoctorProfile(user.id, payloadRegistro);
           registroSalvoRef.current = registro;
         }
       }
+
+      if (avatarFile && avatarUrl) avatarSalvoRef.current = avatarUrl;
+      else if (!avatarPreview) avatarSalvoRef.current = null;
 
       await updateUser();
       setAvatarFile(null);
@@ -1069,17 +1088,31 @@ function ConfiguracoesPageInner() {
             </CardHeader>
             <CardContent className="p-6 pt-0">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Input
-                  label="Conselho"
-                  value={
-                    COUNCIL_OPTIONS.find(
-                      (opt) => opt.value === (profile.council ?? "CRM"),
-                    )?.label ?? "CRM"
-                  }
-                  disabled
-                  readOnly
-                  title="Para trocar o conselho, fale com a administração da conta."
-                />
+                {isAccountOwner ? (
+                  <Select
+                    label="Conselho"
+                    value={profile.council ?? "CRM"}
+                    onChange={(e) =>
+                      setProfile({
+                        ...profile,
+                        council: e.target.value as ProfessionalCouncil,
+                      })
+                    }
+                    options={COUNCIL_OPTIONS}
+                  />
+                ) : (
+                  <Input
+                    label="Conselho"
+                    value={
+                      COUNCIL_OPTIONS.find(
+                        (opt) => opt.value === (profile.council ?? "CRM"),
+                      )?.label ?? "CRM"
+                    }
+                    disabled
+                    readOnly
+                    title="Para trocar o conselho, fale com a administração da conta."
+                  />
+                )}
                 <Input
                   label="Especialidade"
                   value={profile.specialty || ""}

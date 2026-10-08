@@ -227,31 +227,35 @@ export function CalendarTimeGrid({
                   16,
                   ((fimMin - iniMin) / 60) * HOUR_PX,
                 );
-                const Tag = b.onClick ? "button" : "div";
+                // A faixa cobre a coluna inteira no período: o corpo dela é
+                // `pointer-events-none` para o clique chegar à linha de hora
+                // (nova consulta). Só o rótulo é clicável (abre o bloqueio).
                 return (
-                  <Tag
+                  <div
                     key={`blk-${b.id}`}
-                    type={b.onClick ? "button" : undefined}
-                    onClick={
-                      b.onClick
-                        ? (e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            b.onClick!();
-                          }
-                        : undefined
-                    }
                     data-testid="agenda-bloqueio"
                     title={b.label}
-                    className={cn(
-                      "absolute left-0 right-0 border-y border-neutral-300/70 text-left px-1.5 overflow-hidden",
-                      b.onClick ? "cursor-pointer" : "pointer-events-none",
-                    )}
+                    className="absolute left-0 right-0 border-y border-neutral-300/70 text-left px-1.5 overflow-hidden pointer-events-none"
                     style={{ top, height, backgroundImage: HACHURA }}
                   >
-                    <span className="text-[10px] font-semibold text-neutral-500 truncate block">
-                      {b.label}
-                    </span>
-                  </Tag>
+                    {b.onClick ? (
+                      <button
+                        type="button"
+                        aria-label={`Editar bloqueio: ${b.label}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          b.onClick!();
+                        }}
+                        className="pointer-events-auto max-w-full text-left text-[10px] font-semibold text-neutral-500 truncate block cursor-pointer hover:text-neutral-700 hover:underline"
+                      >
+                        {b.label}
+                      </button>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-neutral-500 truncate block">
+                        {b.label}
+                      </span>
+                    )}
+                  </div>
                 );
               })}
 

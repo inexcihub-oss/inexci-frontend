@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { arquivoDeImagem } from "./foto-paciente.fixtures";
 
 vi.mock("@/services/patient.service", () => ({
   patientService: { update: vi.fn(), discardPhoto: vi.fn() },
@@ -9,7 +10,7 @@ vi.mock("./WebcamCaptureModal", () => ({
   WebcamCaptureModal: ({ onCapture }: { onCapture: (f: File) => void }) => (
     <button
       type="button"
-      onClick={() => onCapture(new File(["x"], "cam.jpg", { type: "image/jpeg" }))}
+      onClick={() => onCapture(arquivoDeImagem("cam.jpg", "image/jpeg"))}
     >
       câmera falsa: usar foto
     </button>
@@ -27,7 +28,7 @@ const semFoto = { id: "p-1", name: "Ana Souza", photoUrl: null };
 const comFoto = { ...semFoto, photoUrl: "https://r2/foto.png" };
 
 function arquivo(nome: string, tipo: string, bytes = 10) {
-  return new File([new Uint8Array(bytes)], nome, { type: tipo });
+  return arquivoDeImagem(nome, tipo, bytes);
 }
 
 const input = () =>
@@ -180,11 +181,92 @@ describe("PatientPhotoField", () => {
     render(<PatientPhotoField patient={comFoto} onChange={onChange} />);
     await user.click(screen.getByRole("button", { name: "Ver foto" }));
     await user.click(screen.getByRole("button", { name: /remover/i }));
+    // Pede confirmação antes de apagar.
+    expect(patientService.update).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("group", { name: /confirmar remoção da foto/i }),
+    ).toHaveTextContent(/Remover a foto de Ana Souza\?/);
+    await user.click(screen.getByRole("button", { name: "Remover foto" }));
 
     await waitFor(() => expect(onChange).toHaveBeenCalledWith(semFoto));
     expect(patientService.update).toHaveBeenCalledWith("p-1", {
       photoPath: null,
     });
+  });
+
+  it("cancelar a confirmação não remove a foto e volta às ações", async () => {
+    const user = userEvent.setup();
+    render(<PatientPhotoField patient={comFoto} onChange={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Ver foto" }));
+    await user.click(screen.getByRole("button", { name: /remover/i }));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(patientService.update).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("group", { name: /confirmar remoção/i }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /trocar foto/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("fechar a foto ampliada no meio da confirmação não remove nada e reabre sem ela", async () => {
+    const user = userEvent.setup();
+    render(<PatientPhotoField patient={comFoto} onChange={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Ver foto" }));
+    await user.click(screen.getByRole("button", { name: /remover/i }));
+    await user.click(screen.getByRole("button", { name: "Fechar foto" }));
+    await user.click(screen.getByRole("button", { name: "Ver foto" }));
+
+    expect(patientService.update).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("group", { name: /confirmar remoção/i }),
+    ).toBeNull();
+  });
+
+  it("erro de envio na foto ampliada aparece nela e some ao fechá-la", async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    vi.mocked(uploadService.uploadSingle).mockRejectedValue(
+      new Error("Tipo de arquivo inválido"),
+    );
+    render(<PatientPhotoField patient={comFoto} onChange={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Ver foto" }));
+    await user.upload(input(), arquivo("foto.png", "image/png"));
+
+    const dialogo = screen.getByRole("dialog", { name: /foto de ana souza/i });
+    expect(await within(dialogo).findByRole("alert")).toHaveTextContent(
+      "Tipo de arquivo inválido",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Fechar foto" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("erro de envio some ao reabrir a escolha de foto", async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    render(<PatientPhotoField patient={semFoto} onChange={vi.fn()} />);
+    await user.upload(input(), arquivo("laudo.pdf", "application/pdf"));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Adicionar foto" }));
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("recusa arquivo com extensão de imagem e conteúdo de outro tipo, sem enviar", async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    render(<PatientPhotoField patient={semFoto} onChange={vi.fn()} />);
+    await user.upload(
+      input(),
+      new File([new TextEncoder().encode("%PDF-1.7")], "foto.png", {
+        type: "image/png",
+      }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /não é uma imagem JPG, PNG ou WEBP válida/,
+    );
+    expect(uploadService.uploadSingle).not.toHaveBeenCalled();
   });
 
   it("mostra o erro do backend quando o envio falha", async () => {

@@ -82,8 +82,11 @@ export function ScheduleBlockModal({
       setClinicId(block.clinicId ?? "");
       setDate(dateKey(ini));
       setAllDay(block.allDay);
-      setFrom(hhmm(ini));
-      setTo(hhmm(fim));
+      // Dia inteiro vai de 00:00 a 00:00 do dia seguinte: copiar isso para
+      // os campos deixava "00:00–00:00" (inválido) ao desmarcar "Dia
+      // inteiro". Nesse caso os campos voltam ao período padrão.
+      setFrom(block.allDay ? "08:00" : hhmm(ini));
+      setTo(block.allDay ? "12:00" : hhmm(fim));
       setReason(block.reason ?? "");
     } else {
       setDoctorId("");

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Permission } from "@/lib/permissions";
+import { arquivoDeImagem } from "./foto-paciente.fixtures";
 
 vi.mock("@/services/patient.service", () => ({
   patientService: { create: vi.fn(), discardPhoto: vi.fn() },
@@ -152,6 +153,107 @@ describe("NewPatientModal — CPF opcional", () => {
   });
 });
 
+describe("NewPatientModal — telefone secundário", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(healthPlanService.getAll).mockResolvedValue([]);
+    vi.mocked(patientService.create).mockResolvedValue({
+      id: "p-1",
+      name: "Ana Souza",
+    } as never);
+  });
+
+  it("mascara e envia o telefone secundário só com dígitos", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    const campo = screen.getByPlaceholderText("Fixo ou recado");
+    await user.type(campo, "2422334455");
+    expect(campo).toHaveValue("(24) 2233-4455");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+
+    await waitFor(() => expect(patientService.create).toHaveBeenCalled());
+    expect(vi.mocked(patientService.create).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ secondaryPhone: "2422334455" }),
+    );
+  });
+
+  it("vazio não manda o campo", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+
+    await waitFor(() => expect(patientService.create).toHaveBeenCalled());
+    expect(
+      vi.mocked(patientService.create).mock.calls[0][0].secondaryPhone,
+    ).toBeUndefined();
+  });
+
+  it("valida como o telefone principal (DDD + 8 ou 9 dígitos)", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.type(
+      screen.getByPlaceholderText("Fixo ou recado"),
+      "2422",
+    );
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+
+    expect(
+      (await screen.findAllByText(/Informe um telefone válido com DDD/i))
+        .length,
+    ).toBeGreaterThan(0);
+    expect(patientService.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("NewPatientModal — erro não sobrevive ao fechamento", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(healthPlanService.getAll).mockResolvedValue([]);
+  });
+
+  it("fechado pelo pai (isOpen=false) e reaberto, o erro anterior some", async () => {
+    vi.mocked(patientService.create).mockRejectedValue({
+      response: { data: { message: "Tipo de arquivo inválido" } },
+    });
+    const user = userEvent.setup();
+    const props = { onClose: vi.fn(), onSuccess: vi.fn() };
+    const { rerender } = render(<NewPatientModal isOpen {...props} />);
+
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+    expect(await screen.findByText("Tipo de arquivo inválido")).toBeInTheDocument();
+
+    rerender(<NewPatientModal isOpen={false} {...props} />);
+    rerender(<NewPatientModal isOpen {...props} />);
+    expect(screen.queryByText("Tipo de arquivo inválido")).toBeNull();
+  });
+
+  it("fechado pelo X e reaberto, o erro anterior some", async () => {
+    vi.mocked(patientService.create).mockRejectedValue({
+      response: { data: { message: "Tipo de arquivo inválido" } },
+    });
+    const user = userEvent.setup();
+    const props = { onClose: vi.fn(), onSuccess: vi.fn() };
+    const { rerender } = render(<NewPatientModal isOpen {...props} />);
+
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+    await screen.findByText("Tipo de arquivo inválido");
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(props.onClose).toHaveBeenCalled();
+
+    rerender(<NewPatientModal isOpen={false} {...props} />);
+    rerender(<NewPatientModal isOpen {...props} />);
+    expect(screen.queryByText("Tipo de arquivo inválido")).toBeNull();
+  });
+});
+
 describe("NewPatientModal — foto no cadastro", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -161,7 +263,7 @@ describe("NewPatientModal — foto no cadastro", () => {
     URL.revokeObjectURL = vi.fn();
   });
 
-  const foto = () => new File([new Uint8Array(10)], "ana.png", { type: "image/png" });
+  const foto = () => arquivoDeImagem("ana.png", "image/png");
 
   it("envia a foto antes e cria o paciente já com o caminho", async () => {
     uploadSingle.mockResolvedValue({ data: { path: "patient-photos/o/ana.webp", url: "u" } });
@@ -315,5 +417,18 @@ describe("NewPatientModal — acessibilidade", () => {
     } finally {
       document.removeEventListener("keydown", deBaixo);
     }
+  });
+});
+
+describe("NewPatientModal — nomes acessíveis", () => {
+  it("liga Data de nascimento e Gênero aos seus labels", () => {
+    renderModal();
+    expect(screen.getByLabelText(/Data de nascimento/)).toHaveAttribute(
+      "placeholder",
+      "DD/MM/AAAA",
+    );
+    expect(
+      screen.getByRole("combobox", { name: /Gênero/ }),
+    ).toBeInTheDocument();
   });
 });
