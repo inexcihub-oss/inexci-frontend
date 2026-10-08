@@ -98,7 +98,11 @@ export function DateInput({
       {label && (
         <label htmlFor={inputId} className="ds-label mb-0">
           {label}
-          {required && <span className="text-red-500 ml-0.5">*</span>}
+          {required && (
+            <span className="text-red-500 ml-0.5" aria-hidden="true">
+              *
+            </span>
+          )}
         </label>
       )}
       <input

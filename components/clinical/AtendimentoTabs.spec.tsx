@@ -284,6 +284,35 @@ describe("AtendimentoTabs", () => {
     expect(replace).toHaveBeenCalledWith("?tab=historico", { scroll: false });
   });
 
+  it("a primeira gravação invalida o cache das consultas (Agenda passa a 'Em atendimento')", async () => {
+    const user = userEvent.setup();
+    (
+      clinicalRecordService.create as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(recordFixture({ anamnesis: "Dor lombar" }));
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AtendimentoTabs
+          appointment={appointment}
+          patient={patient}
+          initialRecord={null}
+        />
+      </QueryClientProvider>,
+    );
+
+    await user.type(screen.getByLabelText(/Queixa principal/i), "Dor lombar");
+    await user.click(
+      screen.getAllByRole("button", { name: /Salvar rascunho/i })[0],
+    );
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ["appointments"] }),
+    );
+  });
+
   it("mostra o indicador de não salvo ao editar e o esconde após salvar", async () => {
     const user = userEvent.setup();
     (

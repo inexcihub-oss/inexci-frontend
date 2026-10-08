@@ -524,7 +524,7 @@ export function NewAppointmentModal({
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <label className="ds-label mb-0">
-              Paciente<span className="text-red-500 ml-0.5">*</span>
+              Paciente<span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
             </label>
             {!isEdit && (
               <button
@@ -562,7 +562,7 @@ export function NewAppointmentModal({
         {doctors.length > 1 && (
           <div className="flex flex-col gap-1">
             <label htmlFor="consulta-profissional" className="ds-label mb-0">
-              Profissional<span className="text-red-500 ml-0.5">*</span>
+              Profissional<span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
             </label>
             <select
               id="consulta-profissional"
@@ -687,7 +687,7 @@ export function NewAppointmentModal({
         <div className="grid grid-cols-2 gap-3" data-tour="agenda-modal-horario">
           <div className="flex flex-col gap-1">
             <label htmlFor="consulta-data" className="ds-label mb-0">
-              Data<span className="text-red-500 ml-0.5">*</span>
+              Data<span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
             </label>
             <div className="flex items-stretch gap-2">
               <div className="flex-1">
@@ -717,7 +717,7 @@ export function NewAppointmentModal({
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="horario" className="ds-label mb-0">
-              Horário<span className="text-red-500 ml-0.5">*</span>
+              Horário<span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
             </label>
             <input
               id="horario"

@@ -258,12 +258,16 @@ export function AtendimentoTabs({
     if (record) {
       return clinicalRecordService.update(record.id, payload);
     }
-    return clinicalRecordService.create({
+    const criada = await clinicalRecordService.create({
       patientId: patient.id,
       doctorId: appointment.doctorId,
       appointmentId: appointment.id,
       ...payload,
     });
+    // A primeira gravação põe a consulta "em atendimento" no backend: sem
+    // isto a Agenda e o hub mostrariam "Agendada" do cache até expirar.
+    void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    return criada;
   };
 
   /**
@@ -325,6 +329,8 @@ export function AtendimentoTabs({
       // a ficha criada e uma nova tentativa vai atualizar, não duplicar.
       setRecord(saved);
       const done = await clinicalRecordService.finalize(saved.id);
+      // Finalizar conclui a consulta no backend (status "realizada").
+      void queryClient.invalidateQueries({ queryKey: ["appointments"] });
       setRecord(done);
       setBaseline(fields);
       showSuccess(finalizeMessage(done));

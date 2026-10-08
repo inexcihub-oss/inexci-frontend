@@ -167,7 +167,7 @@ export function EditDateOptionsModal({
                   <label className="block ds-label mb-0">
                     Data {index + 1}
                     {index === 0 ? (
-                      <span className="text-red-500 ml-0.5">*</span>
+                      <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
                     ) : (
                       <span className="text-gray-400 ml-1 text-xs font-normal">
                         (opcional)

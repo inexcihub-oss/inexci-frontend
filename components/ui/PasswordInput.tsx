@@ -109,7 +109,11 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
         {label && (
           <label className="ds-label">
             {label}
-            {props.required && <span className="text-red-500 ml-1">*</span>}
+            {props.required && (
+              <span className="text-red-500 ml-1" aria-hidden="true">
+                *
+              </span>
+            )}
           </label>
         )}
 

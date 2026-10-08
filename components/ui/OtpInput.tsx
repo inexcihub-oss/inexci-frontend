@@ -125,7 +125,7 @@ export function OtpInput({
       {label && (
         <label className="ds-label">
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="text-red-500 ml-1" aria-hidden="true">*</span>}
         </label>
       )}
 

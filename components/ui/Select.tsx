@@ -18,7 +18,11 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label className="ds-label" htmlFor={selectId}>
             {label}
-            {props.required && <span className="text-red-500 ml-1">*</span>}
+            {props.required && (
+              <span className="text-red-500 ml-1" aria-hidden="true">
+                *
+              </span>
+            )}
           </label>
         )}
         <div className="relative w-full">
