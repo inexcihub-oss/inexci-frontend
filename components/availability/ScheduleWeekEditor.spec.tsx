@@ -142,4 +142,32 @@ describe("ScheduleWeekEditor (MIG-05)", () => {
     expect(screen.queryByRole("button", { name: /Adicionar período/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Desativar" })).toBeNull();
   });
+
+  it("trocar de profissional descarta a grade atrasada do anterior", async () => {
+    let soltarDoc1!: (v: unknown[]) => void;
+    service.getSchedules.mockImplementation((id: string) =>
+      id === "doc-1"
+        ? new Promise((res) => {
+            soltarDoc1 = res;
+          })
+        : Promise.resolve([{ ...periodo, id: "g2", doctorId: "doc-2", startTime: "14:00:00", endTime: "18:00:00" }]),
+    );
+    const { rerender } = render(<ScheduleWeekEditor doctorId="doc-1" />);
+    rerender(<ScheduleWeekEditor doctorId="doc-2" />);
+    expect(await screen.findByText("14:00–18:00")).toBeInTheDocument();
+
+    soltarDoc1([periodo]);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByText("08:00–12:00")).toBeNull();
+    expect(screen.getByText("14:00–18:00")).toBeInTheDocument();
+  });
+
+  it("erro de carga some quando a grade do próximo profissional carrega", async () => {
+    service.getSchedules.mockRejectedValueOnce(new Error("rede"));
+    const { rerender } = render(<ScheduleWeekEditor doctorId="doc-1" />);
+    expect(await screen.findByRole("alert")).toHaveTextContent("rede");
+    rerender(<ScheduleWeekEditor doctorId="doc-2" />);
+    expect(await screen.findByText("08:00–12:00")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

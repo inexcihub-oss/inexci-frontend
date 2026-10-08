@@ -71,6 +71,23 @@ describe("PatientPhotoField", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("tirar foto a partir da foto ampliada fecha a ampliada antes de abrir a câmera", async () => {
+    const user = userEvent.setup();
+    render(<PatientPhotoField patient={comFoto} onChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Ver foto" }));
+    await user.click(screen.getByRole("button", { name: /tirar foto/i }));
+
+    // Uma camada só: o Esc da câmera não tem uma foto ampliada embaixo para
+    // fechar junto.
+    expect(
+      screen.queryByRole("dialog", { name: "Foto de Ana Souza" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "câmera falsa: usar foto" }),
+    ).toBeInTheDocument();
+  });
+
   it("sem foto, clicar oferece enviar arquivo ou tirar foto", async () => {
     const user = userEvent.setup();
     render(<PatientPhotoField patient={semFoto} onChange={vi.fn()} />);

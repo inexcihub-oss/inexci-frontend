@@ -238,4 +238,42 @@ describe("página do paciente", () => {
     expect(clinicalRecordService.getByPatient).not.toHaveBeenCalled();
     expect(patientDocumentService.list).not.toHaveBeenCalled();
   });
+
+  it("?tab= é respeitado quando as permissões chegam depois do primeiro render", async () => {
+    search = new URLSearchParams({ tab: "documentos" });
+    // Sessão ainda sem permissões: a aba pedida não existe, cai no Cadastro.
+    authState = { can: () => false };
+    const { rerender } = render(<PacienteDetalhePage />);
+
+    expect(await screen.findByRole("tab", { name: "Cadastro" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.queryByRole("tab", { name: "Documentos" })).toBeNull();
+
+    authState = { can: () => true };
+    rerender(<PacienteDetalhePage />);
+
+    expect(
+      await screen.findByRole("tab", { name: "Documentos" }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("lista-de-documentos")).toBeVisible();
+  });
+
+  it("perder Atendimento com a aba Documentos aberta volta para o Cadastro", async () => {
+    search = new URLSearchParams({ tab: "documentos" });
+    const { rerender } = render(<PacienteDetalhePage />);
+    expect(
+      await screen.findByRole("tab", { name: "Documentos" }),
+    ).toHaveAttribute("aria-selected", "true");
+
+    authState = { can: (p) => p === Permission.AGENDA };
+    rerender(<PacienteDetalhePage />);
+
+    expect(screen.getByRole("tab", { name: "Cadastro" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.queryByText("lista-de-documentos")).toBeNull();
+  });
 });

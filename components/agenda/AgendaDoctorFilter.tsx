@@ -53,11 +53,17 @@ export function AgendaDoctorFilter({
       return;
     }
     buscaRef.current?.focus();
+    // Captura em `window`, antes de qualquer listener de `document`: dentro
+    // de um <Modal> (ex.: exportar agenda), o Esc com a lista aberta fecha só
+    // a lista — o Modal também escuta Esc em `document` e fecharia junto.
     const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setAberto(false);
+      if (e.key !== "Escape") return;
+      e.stopImmediatePropagation();
+      e.stopPropagation();
+      setAberto(false);
     };
-    document.addEventListener("keydown", aoTeclar);
-    return () => document.removeEventListener("keydown", aoTeclar);
+    window.addEventListener("keydown", aoTeclar, true);
+    return () => window.removeEventListener("keydown", aoTeclar, true);
   }, [aberto]);
 
   // Quem tem mais consultas no período primeiro; empate por nome.
@@ -112,9 +118,10 @@ export function AgendaDoctorFilter({
         aria-haspopup="dialog"
         aria-expanded={aberto}
         aria-label={`Profissionais: ${rotulo}`}
-        // Mesma medida do "Ver agenda" ao lado (h-8, px-3, ícone 3.5).
+        // Mesma medida do "Ver agenda" ao lado (h-8, px-3, ícone 3.5) a
+        // partir do md; no celular, alvo de toque de 44px.
         className={cn(
-          "flex h-8 max-w-full shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors",
+          "flex min-h-[44px] md:min-h-0 md:h-8 max-w-full shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors",
           todos
             ? "border-neutral-200 text-neutral-700 hover:bg-neutral-50"
             : "border-teal-600 bg-teal-50 text-teal-800 hover:bg-teal-100",
@@ -197,7 +204,7 @@ export function AgendaDoctorFilter({
                 <button
                   type="button"
                   onClick={() => onChange([])}
-                  className="min-h-[36px] px-2 text-xs font-semibold text-teal-700 hover:underline"
+                  className="min-h-[44px] md:min-h-[36px] px-2 text-xs font-semibold text-teal-700 hover:underline"
                 >
                   Limpar
                 </button>
@@ -224,7 +231,7 @@ function Opcao({
   return (
     <button
       type="button"
-      role="menuitemcheckbox"
+      role="checkbox"
       aria-checked={marcado}
       onClick={onClick}
       className="flex min-h-[44px] w-full items-center gap-2.5 px-3 text-left text-sm text-neutral-800 hover:bg-neutral-50"

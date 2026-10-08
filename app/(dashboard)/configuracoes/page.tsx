@@ -143,6 +143,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
+      aria-current={active ? "true" : undefined}
       className={cn(
         "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-left whitespace-nowrap min-h-[44px] active:scale-[0.98]",
         active
@@ -233,12 +234,36 @@ const BILLING_TAB_ENABLED = true;
  * `?tab=profile` via `router.push` sem trocar de rota, o que o App Router não
  * remonta). `null` significa "não decide nada" — quem chama escolhe o que
  * fazer (cair para `profile` no primeiro render, ignorar na reação).
+ *
+ * Aba que existe mas não está liberada para quem está logado cai em
+ * `profile` — as mesmas condições que mostram o botão e o conteúdo. Antes
+ * ela era aceita e a página abria com o conteúdo em branco, sem nenhuma aba
+ * marcada no menu.
  */
+interface SettingsTabAccess {
+  isAccountOwner: boolean;
+  /** Médico (CRM) ou dentista (CRO): modelos de documento. */
+  emiteDocumentos: boolean;
+  /** Profissional de saúde (qualquer conselho): Minha Agenda. */
+  isDoctor: boolean;
+  /** `Permission.ADMINISTRACAO`: feriados. */
+  podeAdministrar: boolean;
+  hasUser: boolean;
+}
+
 function resolveSettingsTab(
   tab: string | null,
-  isAccountOwner: boolean,
+  acesso: SettingsTabAccess,
 ): SettingsTab | null {
-  if (tab === "plan" && !isAccountOwner) return "profile";
+  if (tab === "plan" && !acesso.isAccountOwner) return "profile";
+  if (
+    tab === "document-templates" &&
+    !(acesso.emiteDocumentos && acesso.hasUser)
+  )
+    return "profile";
+  if (tab === "my-schedule" && !(acesso.isDoctor && acesso.hasUser))
+    return "profile";
+  if (tab === "holidays" && !acesso.podeAdministrar) return "profile";
   if (
     tab === "header" ||
     tab === "profile" ||
@@ -261,7 +286,7 @@ function ConfiguracoesPageInner() {
     user,
     updateUser,
     isAccountOwner,
-    isPhysician,
+    canIssueClinicalDocuments,
     isDoctor,
     can,
     subscription,
@@ -287,8 +312,17 @@ function ConfiguracoesPageInner() {
     window.history.replaceState({}, "", url.toString());
   };
 
+  const podeAdministrar = can(Permission.ADMINISTRACAO);
+  const hasUser = !!user?.id;
+  const acessoAbas: SettingsTabAccess = {
+    isAccountOwner,
+    emiteDocumentos: canIssueClinicalDocuments,
+    isDoctor,
+    podeAdministrar,
+    hasUser,
+  };
   const initialTab = (): SettingsTab =>
-    resolveSettingsTab(searchParams.get("tab"), isAccountOwner) ?? "profile";
+    resolveSettingsTab(searchParams.get("tab"), acessoAbas) ?? "profile";
 
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [saving, setSaving] = useState(false);
@@ -306,9 +340,23 @@ function ConfiguracoesPageInner() {
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (!tab) return;
-    const resolvido = resolveSettingsTab(tab, isAccountOwner);
+    const resolvido = resolveSettingsTab(tab, {
+      isAccountOwner,
+      emiteDocumentos: canIssueClinicalDocuments,
+      isDoctor,
+      podeAdministrar,
+      hasUser,
+    });
     if (resolvido) setActiveTab(resolvido);
-  }, [searchParams, isAccountOwner]);
+    // Reage também ao acesso: a sessão pode chegar depois do primeiro render.
+  }, [
+    searchParams,
+    isAccountOwner,
+    canIssueClinicalDocuments,
+    isDoctor,
+    podeAdministrar,
+    hasUser,
+  ]);
 
   useEffect(() => {
     if (!checkoutParam || checkoutMessageShownRef.current) return;
@@ -1394,7 +1442,7 @@ function ConfiguracoesPageInner() {
                   label="Feriados"
                 />
               )}
-              {isPhysician && user?.id && (
+              {canIssueClinicalDocuments && user?.id && (
                 <TabButton
                   active={activeTab === "document-templates"}
                   onClick={() => setActiveTab("document-templates")}
@@ -1451,9 +1499,9 @@ function ConfiguracoesPageInner() {
             {activeTab === "holidays" && can(Permission.ADMINISTRACAO) && (
               <HolidaysSettings />
             )}
-            {activeTab === "document-templates" && isPhysician && user?.id && (
-              <DocumentTemplatesSettings doctorId={user.id} />
-            )}
+            {activeTab === "document-templates" &&
+              canIssueClinicalDocuments &&
+              user?.id && <DocumentTemplatesSettings doctorId={user.id} />}
             {activeTab === "onboarding" && <OnboardingSettingsTab />}
           </div>
         </div>

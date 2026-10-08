@@ -279,12 +279,39 @@ export function NewAppointmentModal({
   }, [clinics, clinicId, date, time, duration]);
 
   /**
+   * Em edição, horário/duração só vão no PATCH quando mudaram: o backend
+   * revalida bloqueio/feriado e devolve o aviso "fora da grade" sempre que
+   * eles chegam — reenviá-los sem mudança barrava (ou avisava) a edição de
+   * uma simples observação numa consulta antiga.
+   */
+  const mudouHorario = useMemo(() => {
+    if (!isEdit || !appointment) return true;
+    if (duration !== appointment.durationMinutes) return true;
+    if (!parseDate(date) || !/^\d{2}:\d{2}$/.test(time)) return true;
+    return (
+      new Date(partsToIso(date, time)).getTime() !==
+      new Date(appointment.scheduledAt).getTime()
+    );
+  }, [isEdit, appointment, date, time, duration]);
+
+  const mudouClinica =
+    isEdit && !!appointment
+      ? (clinicId || null) !== (appointment.clinicId ?? null)
+      : true;
+
+  /**
+   * Na edição, o backend só reconfere bloqueio/feriado quando o horário ou a
+   * clínica mudam; fora disso o aviso da tela não deve travar o "Salvar".
+   */
+  const conferirGrade = mudouHorario || mudouClinica;
+
+  /**
    * Feriado que bloqueia e bloqueio de agenda são recusados pelo backend
    * (409) até para encaixe — não há "mesmo assim". Só "fora da grade" é
    * aviso que deixa agendar.
    */
   const bloqueioGrade = useMemo(() => {
-    if (!diaDaGrade) return null;
+    if (!diaDaGrade || !conferirGrade) return null;
     if (diaDaGrade.holiday?.blocksAgenda) {
       return `Feriado (${diaDaGrade.holiday.name}): a agenda está bloqueada neste dia.`;
     }
@@ -303,11 +330,11 @@ export function NewAppointmentModal({
     return bloqueado
       ? "Horário bloqueado na agenda do profissional: não será possível agendar."
       : null;
-  }, [diaDaGrade, date, time, duration]);
+  }, [diaDaGrade, conferirGrade, date, time, duration]);
 
   /** Fora da grade do profissional: avisa, mas deixa agendar. */
   const avisoGrade = useMemo(() => {
-    if (!diaDaGrade || bloqueioGrade) return null;
+    if (!diaDaGrade || bloqueioGrade || !mudouHorario) return null;
     const parsed = parseDate(date);
     if (!parsed || !/^\d{2}:\d{2}$/.test(time)) return null;
     const [hh, mm] = time.split(":").map(Number);
@@ -316,7 +343,7 @@ export function NewAppointmentModal({
     return dentroDaGrade(diaDaGrade.slots, inicio, duration) === false
       ? "Fora da grade de atendimento do profissional."
       : null;
-  }, [diaDaGrade, bloqueioGrade, date, time, duration]);
+  }, [diaDaGrade, bloqueioGrade, mudouHorario, date, time, duration]);
 
   const handleSubmit = async () => {
     if (!canSubmit) {
@@ -334,16 +361,13 @@ export function NewAppointmentModal({
         // preenchimento carrega o uuid dela mesmo assim — reenviá-lo sem
         // mudança faria o backend (que filtra soft delete) recusar o PATCH
         // inteiro com 404, e mandar `null` apagaria o vínculo histórico.
-        const mudouClinica =
-          (clinicId || null) !== (appointment.clinicId ?? null);
         const mudouSala = (roomId || null) !== (appointment.roomId ?? null);
         const mudouConvenio =
           (healthPlanId || null) !== (appointment.healthPlanId ?? null);
         salva = await appointmentService.update(appointment.id, {
           type,
-          scheduledAt,
-          durationMinutes: duration,
           notes,
+          ...(mudouHorario ? { scheduledAt, durationMinutes: duration } : {}),
           ...(mudouClinica ? { clinicId: clinicId || null } : {}),
           ...(mudouSala ? { roomId: roomId || null } : {}),
           ...(mudouConvenio ? { healthPlanId: healthPlanId || null } : {}),
@@ -584,11 +608,18 @@ export function NewAppointmentModal({
               {diaDaGrade.slots.map((slot) => {
                 const rotulo = hhmm(new Date(slot.start));
                 const escolhido = rotulo === time;
+                // Encaixe passa por cima de consulta, nunca de bloqueio ou
+                // feriado (o backend recusa esses até para encaixe).
+                const indisponivel =
+                  !slot.free &&
+                  (!isWalkIn ||
+                    slot.reason === "block" ||
+                    slot.reason === "holiday");
                 return (
                   <button
                     key={slot.start}
                     type="button"
-                    disabled={!slot.free}
+                    disabled={indisponivel}
                     aria-pressed={escolhido}
                     aria-label={
                       slot.free
@@ -598,12 +629,14 @@ export function NewAppointmentModal({
                     title={slot.free ? undefined : SLOT_REASON_LABELS[slot.reason ?? "appointment"]}
                     onClick={() => setTime(rotulo)}
                     className={cn(
-                      "px-2.5 py-1 rounded-full border text-xs font-semibold tabular-nums min-h-[32px]",
+                      "px-3 py-1 rounded-full border text-xs font-semibold tabular-nums min-h-[44px] min-w-[44px] md:min-h-[32px] md:min-w-0",
                       escolhido
                         ? "bg-teal-700 text-white border-teal-700"
                         : slot.free
                           ? "border-teal-200 text-teal-800 hover:bg-teal-50"
-                          : "border-neutral-200 text-neutral-400 line-through cursor-not-allowed",
+                          : indisponivel
+                            ? "border-neutral-200 text-neutral-400 line-through cursor-not-allowed"
+                            : "border-amber-200 text-amber-800 hover:bg-amber-50",
                     )}
                   >
                     {rotulo}
@@ -700,7 +733,7 @@ export function NewAppointmentModal({
           </div>
         )}
 
-        {[avisoHorario, avisoGrade].filter(Boolean).map((aviso) => (
+        {[conferirGrade ? avisoHorario : null, avisoGrade].filter(Boolean).map((aviso) => (
           <div
             key={aviso}
             role="alert"
@@ -727,7 +760,7 @@ export function NewAppointmentModal({
           }
           loadingText="Salvando..."
         >
-          {!bloqueioGrade && (avisoHorario || avisoGrade)
+          {!bloqueioGrade && ((conferirGrade && avisoHorario) || avisoGrade)
             ? "Agendar mesmo assim"
             : isEdit
               ? "Salvar alterações"

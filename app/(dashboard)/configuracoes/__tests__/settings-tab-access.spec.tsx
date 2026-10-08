@@ -3,10 +3,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 /**
- * MIG-06: a aba "Modelos de Documentos" só aparece para médico com CRM —
- * atestado e pedido de exame são atos dele — e abre por deep-link
- * (`?tab=document-templates`), que é o link "Gerenciar modelos" do modal de
- * emissão.
+ * `?tab=` de uma aba que existe mas não está liberada para quem está logado
+ * caía no estado e abria a página com o conteúdo em branco. Agora cai na aba
+ * padrão (Perfil), com as mesmas condições que mostram o botão e o conteúdo.
  */
 
 let authState: {
@@ -18,6 +17,8 @@ let authState: {
   isAccountOwner: boolean;
   isPhysician: boolean;
   canIssueClinicalDocuments?: boolean;
+  isDoctor: boolean;
+  can: (p: string) => boolean;
   subscription: unknown;
   updateUser: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
@@ -26,7 +27,7 @@ let authState: {
 let searchParamsValue = new URLSearchParams();
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ can: () => false, isDoctor: false, ...authState }),
+  useAuth: () => authState,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -51,6 +52,15 @@ vi.mock("@/components/clinical/DocumentTemplatesSettings", () => ({
   DocumentTemplatesSettings: ({ doctorId }: { doctorId: string }) => (
     <p>Gestão de modelos de {doctorId}</p>
   ),
+}));
+
+vi.mock("@/components/availability/ScheduleWeekEditor", () => ({
+  ScheduleWeekEditor: ({ doctorId }: { doctorId: string }) => (
+    <p>Grade de {doctorId}</p>
+  ),
+}));
+vi.mock("@/components/availability/HolidaysSettings", () => ({
+  HolidaysSettings: () => <p>Gestão de feriados</p>,
 }));
 
 vi.mock("@/services/user.service", () => ({
@@ -94,57 +104,61 @@ function renderPage() {
   );
 }
 
-describe("Configurações — aba Modelos de Documentos (MIG-06)", () => {
+describe("Configurações — deep-link para aba não liberada", () => {
   beforeEach(() => {
     searchParamsValue = new URLSearchParams();
+    // Colaborador sem perfil de saúde, sem CRM e sem Administração.
     authState = {
-      user: { id: "doc-1", accountId: "doc-1", role: "admin" },
-      isAccountOwner: true,
-      isPhysician: true,
-      canIssueClinicalDocuments: true,
+      user: { id: "col-1", accountId: "doc-1", role: "collaborator" },
+      isAccountOwner: false,
+      isPhysician: false,
+      isDoctor: false,
+      can: () => false,
       subscription: null,
       updateUser: vi.fn().mockResolvedValue(undefined),
       refreshSubscription: vi.fn().mockResolvedValue(undefined),
     };
   });
 
-  it("médico com CRM vê a aba e abre a gestão por deep-link", async () => {
-    searchParamsValue = new URLSearchParams("tab=document-templates");
+  it.each([
+    ["document-templates", "Gestão de modelos de col-1"],
+    ["my-schedule", "Grade de col-1"],
+    ["holidays", "Gestão de feriados"],
+  ])("?tab=%s sem acesso abre o Perfil", async (tab, conteudo) => {
+    searchParamsValue = new URLSearchParams(`tab=${tab}`);
     renderPage();
 
-    expect(
-      await screen.findByRole("button", { name: /Modelos de Documentos/ }),
-    ).toBeInTheDocument();
-    await waitFor(() =>
-      expect(
-        screen.getByText("Gestão de modelos de doc-1"),
-      ).toBeInTheDocument(),
-    );
+    const perfil = await screen.findByRole("button", { name: /Perfil/ });
+    expect(perfil).toHaveAttribute("aria-current", "true");
+    expect(await screen.findByText("Foto do Perfil")).toBeInTheDocument();
+    expect(screen.queryByText(conteudo)).toBeNull();
   });
 
-  it("dentista (CRO) também vê a aba de modelos", async () => {
-    authState.isPhysician = false;
+  it("profissional de saúde sem CRM abre a própria agenda, mas não os modelos", async () => {
+    authState.isDoctor = true;
+    searchParamsValue = new URLSearchParams("tab=my-schedule");
+    const { unmount } = renderPage();
+    await waitFor(() =>
+      expect(screen.getByText("Grade de col-1")).toBeInTheDocument(),
+    );
+    unmount();
+
+    searchParamsValue = new URLSearchParams("tab=document-templates");
+    renderPage();
+    expect(await screen.findByText("Foto do Perfil")).toBeInTheDocument();
+    expect(screen.queryByText("Gestão de modelos de col-1")).toBeNull();
+  });
+
+  it("médico (CRM) continua abrindo os modelos por deep-link", async () => {
+    authState.isDoctor = true;
+    authState.isPhysician = true;
     authState.canIssueClinicalDocuments = true;
     searchParamsValue = new URLSearchParams("tab=document-templates");
     renderPage();
-
     await waitFor(() =>
       expect(
-        screen.getByText("Gestão de modelos de doc-1"),
+        screen.getByText("Gestão de modelos de col-1"),
       ).toBeInTheDocument(),
     );
-  });
-
-  it("quem não tem CRM nem CRO não vê a aba nem o conteúdo pelo deep-link", async () => {
-    authState.isPhysician = false;
-    authState.canIssueClinicalDocuments = false;
-    searchParamsValue = new URLSearchParams("tab=document-templates");
-    renderPage();
-
-    await screen.findByRole("button", { name: /Segurança/ });
-    expect(
-      screen.queryByRole("button", { name: /Modelos de Documentos/ }),
-    ).toBeNull();
-    expect(screen.queryByText(/Gestão de modelos/)).toBeNull();
   });
 });

@@ -1,7 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render as rtlRender,
+  type RenderOptions,
+  screen,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement, ReactNode } from "react";
+
 import userEvent from "@testing-library/user-event";
 import { NewCollaboratorModal } from "./NewCollaboratorModal";
+
+// O componente invalida a lista de médicos em cache ao salvar
+// (`useInvalidateAvailableDoctors`), então precisa de um QueryClient.
+function render(ui: ReactElement, options?: RenderOptions) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return rtlRender(ui, { wrapper: Wrapper, ...options });
+}
 
 // Mock do collaboratorService
 vi.mock("@/services/collaborator.service", () => ({
@@ -120,6 +141,7 @@ describe("NewCollaboratorModal", () => {
   });
 
   it('deve enviar dados ao clicar em "Adicionar colaborador"', async () => {
+    const invalidate = vi.spyOn(QueryClient.prototype, "invalidateQueries");
     (collaboratorService.create as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "new-1",
     });
@@ -150,6 +172,12 @@ describe("NewCollaboratorModal", () => {
         }),
       );
     });
+
+    // Profissional novo precisa aparecer já na lista de médicos em cache.
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["available-doctors"],
+    });
+    invalidate.mockRestore();
 
     // Não deve enviar is_doctor no payload (campo gerenciado pelo backend)
     const callArgs = (collaboratorService.create as ReturnType<typeof vi.fn>)

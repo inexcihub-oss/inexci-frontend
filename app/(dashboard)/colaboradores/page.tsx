@@ -14,6 +14,7 @@ import { councilOf, professionalKindLabel } from "@/lib/professional-council";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useInvalidateAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { NewCollaboratorModal } from "@/components/colaboradores/NewCollaboratorModal";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
@@ -45,6 +46,7 @@ export default function ColaboradoresPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
   // Passo "areas" da trilha Administração: abre o modal de novo colaborador
   // ao entrar no passo — é lá dentro que vive `admin-areas`.
@@ -128,6 +130,8 @@ export default function ColaboradoresPage() {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await collaboratorService.delete(deleteModal.id);
+      // Excluído some da lista de médicos do wizard de SC e da agenda.
+      void invalidateAvailableDoctors();
       setCollaborators((prev) => prev.filter((c) => c.id !== deleteModal.id));
       setDeleteModal({ open: false, id: null, name: null, loading: false });
     } catch (error) {
@@ -146,6 +150,7 @@ export default function ColaboradoresPage() {
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await collaboratorService.deleteMany(ids);
+      void invalidateAvailableDoctors();
       setCollaborators((prev) => prev.filter((c) => !ids.includes(c.id)));
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });

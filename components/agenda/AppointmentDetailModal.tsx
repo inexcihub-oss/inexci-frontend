@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Modal } from "@/components/ui/Modal";
 import { SpinnerButton } from "@/components/shared/ModalFooter";
@@ -150,23 +150,38 @@ export function AppointmentDetailModal({
   const [desfazendo, setDesfazendo] = useState(false);
   const actions = podeAgenda ? QUICK[appointment.status] : [];
 
+  // "Desfazer chegada" espera o histórico antes de mudar o status. Se o
+  // modal fechar (ou passar a mostrar outra consulta) nesse meio-tempo, a
+  // resposta chega tarde e não pode mais mexer em nada.
+  const vivo = useRef(true);
+  const consultaAtual = useRef(appointment.id);
+  consultaAtual.current = appointment.id;
+  useEffect(() => {
+    vivo.current = true;
+    return () => {
+      vivo.current = false;
+    };
+  }, []);
+
   const aplicarAcao = async (acao: (typeof actions)[number]) => {
     if (acao !== ACAO.desfazerChegada) {
       onChangeStatus(acao.status);
       return;
     }
+    const id = appointment.id;
     setDesfazendo(true);
+    let destino: AppointmentStatus;
     try {
-      onChangeStatus(
-        statusAntesDaChegada(
-          await appointmentService.listActivities(appointment.id),
-        ),
+      destino = statusAntesDaChegada(
+        await appointmentService.listActivities(id),
       );
     } catch {
-      onChangeStatus(ACAO.desfazerChegada.status);
-    } finally {
-      setDesfazendo(false);
+      destino = ACAO.desfazerChegada.status;
     }
+    if (!vivo.current) return;
+    setDesfazendo(false);
+    if (consultaAtual.current !== id) return;
+    onChangeStatus(destino);
   };
 
   return (
@@ -237,7 +252,7 @@ export function AppointmentDetailModal({
               type="button"
               aria-expanded={historicoAberto}
               onClick={() => setHistoricoAberto((v) => !v)}
-              className="flex w-full items-center justify-between text-xs font-semibold text-neutral-600 hover:text-neutral-800 min-h-[36px]"
+              className="flex w-full items-center justify-between text-xs font-semibold text-neutral-600 hover:text-neutral-800 min-h-[44px] md:min-h-[36px]"
             >
               Histórico
               <ChevronDown
@@ -267,7 +282,7 @@ export function AppointmentDetailModal({
                 disabled={busy || desfazendo || emTour || dadosFabricados}
                 onClick={() => aplicarAcao(a)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold border bg-white transition-colors disabled:opacity-40 min-h-[36px]",
+                  "px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold border bg-white transition-colors disabled:opacity-40 min-h-[44px] md:min-h-[36px]",
                   a.cls,
                 )}
               >

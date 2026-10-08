@@ -56,7 +56,9 @@ vi.mock("@/services/available-doctors.service", () => ({
   },
 }));
 
-let authState = { can: (p: Permission) => p === Permission.AGENDA };
+let authState: { can: (p: Permission) => boolean } = {
+  can: (p: Permission) => p === Permission.AGENDA,
+};
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
@@ -196,7 +198,61 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Bloquear horário" }));
     expect(await screen.findByLabelText("Profissional")).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Toda a clínica" })).toBeInTheDocument();
+    // Sem Administração, não bloqueia a clínica inteira.
+    expect(screen.queryByRole("option", { name: "Toda a clínica" })).toBeNull();
+  });
+
+  it("com Administração, o modal oferece 'Toda a clínica'", async () => {
+    authState = {
+      can: (p: Permission) =>
+        p === Permission.AGENDA || p === Permission.ADMINISTRACAO,
+    };
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Bloquear horário" }));
+    expect(await screen.findByRole("option", { name: "Toda a clínica" })).toBeInTheDocument();
+  });
+
+  describe("bloqueio de toda a clínica na grade", () => {
+    const bloqueios = () => {
+      const ini = new Date();
+      ini.setHours(14, 0, 0, 0);
+      const fim = new Date(ini);
+      fim.setHours(16, 0, 0, 0);
+      return [
+        {
+          id: "bc",
+          doctorId: null,
+          clinicId: null,
+          startsAt: ini.toISOString(),
+          endsAt: fim.toISOString(),
+          allDay: false,
+          reason: "Reforma",
+        },
+      ];
+    };
+
+    it("sem Administração aparece, mas não abre para editar/remover", async () => {
+      authState = { can: (p) => p === Permission.AGENDA };
+      availability.getBlocks.mockResolvedValue(bloqueios());
+      renderPage();
+      const bloco = await screen.findByTitle("Clínica: Reforma");
+      expect(bloco.tagName).toBe("DIV");
+    });
+
+    it("com Administração abre o modal de edição", async () => {
+      authState = {
+        can: (p: Permission) =>
+          p === Permission.AGENDA || p === Permission.ADMINISTRACAO,
+      };
+      availability.getBlocks.mockResolvedValue(bloqueios());
+      renderPage();
+      const user = userEvent.setup();
+      const bloco = await screen.findByTitle("Clínica: Reforma");
+      expect(bloco.tagName).toBe("BUTTON");
+      await user.click(bloco);
+      expect(await screen.findByRole("button", { name: "Remover" })).toBeInTheDocument();
+    });
   });
 
   it("sem Agenda não há botão de bloqueio", async () => {

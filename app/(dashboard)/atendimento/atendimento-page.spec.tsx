@@ -180,4 +180,49 @@ describe("AtendimentoHubPage — paginação", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Mostrando 25 de 25 consultas");
     expect(screen.queryByRole("button", { name: /Carregar mais/ })).toBeNull();
   });
+
+  // Antes, a falha da página seguinte trocava a lista inteira pela tela de
+  // erro — o médico perdia as 20 consultas que já estava vendo.
+  it("falha ao carregar mais mantém a lista e oferece tentar de novo no rodapé", async () => {
+    const primeira = Array.from({ length: 20 }, (_, i) => consulta(i));
+    const segunda = Array.from({ length: 5 }, (_, i) => consulta(20 + i));
+    getAgendaPage
+      .mockResolvedValueOnce({ records: primeira, total: 25 })
+      .mockRejectedValueOnce(new Error("rede"))
+      .mockResolvedValueOnce({ records: segunda, total: 25 });
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByText("Paciente 00")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Carregar mais 5" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível carregar mais consultas.",
+    );
+    expect(screen.getByText("Paciente 00")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Não foi possível carregar as consultas."),
+    ).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Tentar de novo" }));
+
+    expect(await screen.findByText("Paciente 24")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText("Paciente 00")).toBeInTheDocument();
+  });
+
+  it("botões do rodapé têm alvo de toque de 44px no celular", async () => {
+    getAgendaPage.mockResolvedValue({
+      records: Array.from({ length: 20 }, (_, i) => consulta(i)),
+      total: 25,
+    });
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: "Carregar mais 5" }),
+    ).toHaveClass("min-h-[44px]");
+    expect(screen.getByRole("button", { name: /Ver na agenda/ })).toHaveClass(
+      "min-h-[44px]",
+    );
+  });
 });

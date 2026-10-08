@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AgendaDoctorFilter } from "@/components/agenda/AgendaDoctorFilter";
+import { Modal } from "@/components/ui/Modal";
 
 const doctors = [
   { id: "d1", name: "Dr. Carlos Mendonça", crm: "1", crmState: "SP" },
@@ -65,7 +66,7 @@ describe("AgendaDoctorFilter", () => {
 
     await user.click(screen.getByRole("button", { name: /Profissionais:/ }));
     const lista = screen.getByRole("dialog", { name: "Filtrar por profissional" });
-    const opcoes = within(lista).getAllByRole("menuitemcheckbox");
+    const opcoes = within(lista).getAllByRole("checkbox");
     expect(opcoes.map((o) => o.textContent)).toEqual([
       "Todos os profissionais",
       "Dra. Ana Paula5",
@@ -73,15 +74,15 @@ describe("AgendaDoctorFilter", () => {
     ]);
     expect(opcoes[0]).toHaveAttribute("aria-checked", "true");
 
-    await user.click(within(lista).getByRole("menuitemcheckbox", { name: /Dr. Carlos Mendonça/ }));
+    await user.click(within(lista).getByRole("checkbox", { name: /Dr. Carlos Mendonça/ }));
     expect(onChange).toHaveBeenCalledWith(["d1"]);
 
     rerender(
       <AgendaDoctorFilter doctors={doctors} selectedDoctorIds={["d1"]} onChange={onChange} />,
     );
-    await user.click(screen.getByRole("menuitemcheckbox", { name: /Dra. Ana Paula/ }));
+    await user.click(screen.getByRole("checkbox", { name: /Dra. Ana Paula/ }));
     expect(onChange).toHaveBeenLastCalledWith(["d1", "d2"]);
-    await user.click(screen.getByRole("menuitemcheckbox", { name: /Dr. Carlos Mendonça/ }));
+    await user.click(screen.getByRole("checkbox", { name: /Dr. Carlos Mendonça/ }));
     expect(onChange).toHaveBeenLastCalledWith([]);
   });
 
@@ -92,7 +93,7 @@ describe("AgendaDoctorFilter", () => {
       <AgendaDoctorFilter doctors={doctors} selectedDoctorIds={["d1"]} onChange={onChange} />,
     );
     await user.click(screen.getByRole("button", { name: /Profissionais:/ }));
-    await user.click(screen.getByRole("menuitemcheckbox", { name: "Todos os profissionais" }));
+    await user.click(screen.getByRole("checkbox", { name: "Todos os profissionais" }));
     expect(onChange).toHaveBeenCalledWith([]);
     await user.click(screen.getByRole("button", { name: "Limpar" }));
     expect(onChange).toHaveBeenCalledTimes(2);
@@ -104,7 +105,7 @@ describe("AgendaDoctorFilter", () => {
     await user.click(screen.getByRole("button", { name: /Profissionais:/ }));
 
     await user.type(screen.getByRole("searchbox", { name: "Buscar profissional" }), "fabio");
-    const opcoes = screen.getAllByRole("menuitemcheckbox");
+    const opcoes = screen.getAllByRole("checkbox");
     expect(opcoes.map((o) => o.textContent)).toEqual(["Fábio Soares Segall"]);
 
     await user.clear(screen.getByRole("searchbox"));
@@ -119,5 +120,37 @@ describe("AgendaDoctorFilter", () => {
     expect(screen.queryByRole("searchbox")).toBeNull();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("dentro de um Modal, Esc fecha só a lista; o segundo Esc fecha o Modal", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <Modal isOpen onClose={onClose} title="Exportar agenda">
+        <AgendaDoctorFilter doctors={doctors} selectedDoctorIds={[]} onChange={vi.fn()} />
+      </Modal>,
+    );
+    await user.click(screen.getByRole("button", { name: /Profissionais:/ }));
+    expect(screen.getByRole("dialog", { name: "Filtrar por profissional" })).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Filtrar por profissional" })).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("opções são checkboxes com aria-checked (não menuitem sem menu)", async () => {
+    const user = userEvent.setup();
+    render(
+      <AgendaDoctorFilter doctors={doctors} selectedDoctorIds={["d2"]} onChange={vi.fn()} />,
+    );
+    await user.click(screen.getByRole("button", { name: /Profissionais:/ }));
+    expect(screen.queryAllByRole("menuitemcheckbox")).toHaveLength(0);
+    expect(screen.getByRole("checkbox", { name: /Dra. Ana Paula/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   });
 });

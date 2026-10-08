@@ -20,6 +20,13 @@ interface Props {
   block?: ScheduleBlock | null;
   doctors: { id: string; name: string; isPhysician?: boolean }[];
   defaultDate?: string | null;
+  /**
+   * Bloqueio de toda a clínica trava a agenda de todos os profissionais da
+   * conta: criar, editar, remover ou converter um bloqueio nele exige
+   * `Permission.ADMINISTRACAO` (o backend recusa com 403). Sem ela, a opção
+   * "Toda a clínica" some e um bloqueio da clínica abre só para leitura.
+   */
+  podeClinicaToda?: boolean;
 }
 
 /** `YYYY-MM-DD` + `HH:mm` no fuso do navegador → ISO. */
@@ -30,9 +37,9 @@ function iso(data: string, hora: string): string {
 }
 
 /**
- * Bloquear horário na agenda (MIG-05): um profissional ou a clínica toda, num
- * período do dia ou no dia inteiro. Bloqueio impede marcar consulta, inclusive
- * encaixe.
+ * Bloquear horário na agenda (MIG-05): um profissional ou a clínica toda
+ * (só com Administração), num período do dia ou no dia inteiro. Bloqueio
+ * impede marcar consulta, inclusive encaixe.
  */
 export function ScheduleBlockModal({
   isOpen,
@@ -41,6 +48,7 @@ export function ScheduleBlockModal({
   block,
   doctors,
   defaultDate,
+  podeClinicaToda = false,
 }: Props) {
   const [doctorId, setDoctorId] = useState("");
   const [date, setDate] = useState("");
@@ -52,6 +60,10 @@ export function ScheduleBlockModal({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Preenche só ao abrir ou trocar o bloqueio em edição. `doctors` fica de
+  // fora de propósito: vindo de `data: doctors = []`, é um array novo a cada
+  // render enquanto a query não resolve (ou se falha), e rebobinava o
+  // formulário apagando o que o usuário já tinha digitado.
   useEffect(() => {
     if (!isOpen) return;
     setError(null);
@@ -65,16 +77,31 @@ export function ScheduleBlockModal({
       setTo(hhmm(fim));
       setReason(block.reason ?? "");
     } else {
-      setDoctorId(doctors.length === 1 ? doctors[0].id : "");
+      setDoctorId("");
       setDate(defaultDate ?? dateKey(new Date()));
       setAllDay(false);
       setFrom("08:00");
       setTo("12:00");
       setReason("");
     }
-  }, [isOpen, block, doctors, defaultDate]);
+  }, [isOpen, block, defaultDate]);
+
+  // Um profissional só: já vem escolhido (quando a lista chegar), sem
+  // sobrescrever uma escolha feita.
+  const unicoProfissional = doctors.length === 1 ? doctors[0].id : null;
+  useEffect(() => {
+    if (!isOpen || block || !unicoProfissional) return;
+    setDoctorId((atual) => atual || unicoProfissional);
+  }, [isOpen, block, unicoProfissional]);
+
+  const somenteLeitura = !!block && !block.doctorId && !podeClinicaToda;
 
   const salvar = async () => {
+    if (somenteLeitura) return;
+    if (!doctorId && !podeClinicaToda) {
+      setError("Escolha o profissional.");
+      return;
+    }
     if (!date) {
       setError("Informe a data.");
       return;
@@ -109,7 +136,7 @@ export function ScheduleBlockModal({
   };
 
   const remover = async () => {
-    if (!block) return;
+    if (!block || somenteLeitura) return;
     setDeleting(true);
     setError(null);
     try {
@@ -130,7 +157,16 @@ export function ScheduleBlockModal({
       title={block ? "Bloqueio de agenda" : "Bloquear horário"}
       size="sm"
     >
-      <div className="px-5 py-4 flex flex-col gap-3">
+      <fieldset
+        disabled={somenteLeitura}
+        className="px-5 py-4 flex flex-col gap-3 min-w-0"
+      >
+        {somenteLeitura && (
+          <p className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+            Bloqueio de toda a clínica: só administradores da conta podem
+            alterar ou remover.
+          </p>
+        )}
         <div className="flex flex-col gap-1">
           <label htmlFor="bloqueio-profissional" className="ds-label mb-0">
             Profissional
@@ -141,7 +177,13 @@ export function ScheduleBlockModal({
             value={doctorId}
             onChange={(e) => setDoctorId(e.target.value)}
           >
-            <option value="">Toda a clínica</option>
+            {podeClinicaToda || somenteLeitura ? (
+              <option value="">Toda a clínica</option>
+            ) : (
+              <option value="" disabled>
+                Selecione o profissional
+              </option>
+            )}
             {doctors.map((d) => (
               <option key={d.id} value={d.id}>
                 {formatDoctorName(d.name, d.isPhysician)}
@@ -210,10 +252,10 @@ export function ScheduleBlockModal({
             {error}
           </p>
         )}
-      </div>
+      </fieldset>
 
       <ModalFooter align="end">
-        {block && (
+        {block && !somenteLeitura && (
           <SpinnerButton
             variant="danger"
             onClick={remover}
@@ -225,17 +267,19 @@ export function ScheduleBlockModal({
           </SpinnerButton>
         )}
         <SpinnerButton variant="secondary" onClick={onClose}>
-          Cancelar
+          {somenteLeitura ? "Fechar" : "Cancelar"}
         </SpinnerButton>
-        <SpinnerButton
-          variant="primary"
-          onClick={salvar}
-          isLoading={saving}
-          disabled={deleting}
-          loadingText="Salvando..."
-        >
-          {block ? "Salvar" : "Bloquear"}
-        </SpinnerButton>
+        {!somenteLeitura && (
+          <SpinnerButton
+            variant="primary"
+            onClick={salvar}
+            isLoading={saving}
+            disabled={deleting}
+            loadingText="Salvando..."
+          >
+            {block ? "Salvar" : "Bloquear"}
+          </SpinnerButton>
+        )}
       </ModalFooter>
     </Modal>
   );

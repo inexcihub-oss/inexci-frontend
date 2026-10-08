@@ -21,6 +21,7 @@ import {
   ProfessionalCouncil,
 } from "@/lib/professional-council";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { useInvalidateAvailableDoctors } from "@/hooks/useAvailableDoctors";
 
 interface NewCollaboratorModalProps {
   isOpen: boolean;
@@ -83,6 +84,7 @@ export function NewCollaboratorModal({
   const [error, setError] = useState("");
   const { toast, showToast, hideToast } = useToast();
   const { emTour } = useOnboarding();
+  const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
   const form = useZodForm({
     schema: createCollaboratorSchema,
@@ -161,6 +163,8 @@ export function NewCollaboratorModal({
           }),
         };
         await collaboratorService.create(payload);
+        // Profissional novo entra na lista de médicos do wizard e da agenda.
+        void invalidateAvailableDoctors();
         onSuccess();
         form.reset({
           name: "",

@@ -162,7 +162,7 @@ export function ClinicalTemplateActions({
                 ? undefined
                 : "Escreva algo na ficha para salvar como modelo"
             }
-            className="ds-btn-inline inline-flex shrink-0 items-center gap-1.5 text-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="ds-btn-inline min-h-[44px] inline-flex shrink-0 items-center gap-1.5 text-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <BookmarkPlus className="h-4 w-4" />
             <span className="hidden sm:inline">Salvar como modelo</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Clock, Pencil, Plus, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import { DateInput } from "@/components/ui/DateInput";
@@ -69,18 +69,38 @@ export function ScheduleWeekEditor({
   const { data: clinics = [] } = useClinics();
   const { data: rooms = [] } = useClinicRooms(rascunho?.clinicId || null);
 
+  // Só a resposta da última busca vale: ao trocar de profissional, a grade
+  // do anterior (se chegar depois) não pode aparecer como a do novo.
+  const ultimaBusca = useRef(0);
+
   const carregar = useCallback(async () => {
+    const busca = ++ultimaBusca.current;
     try {
-      setGrades(await availabilityService.getSchedules(doctorId));
+      const lista = await availabilityService.getSchedules(doctorId);
+      if (busca !== ultimaBusca.current) return;
+      setGrades(lista);
+      setError(null);
     } catch (err) {
+      if (busca !== ultimaBusca.current) return;
       setError(getApiErrorMessage(err, "Não foi possível carregar a grade."));
     } finally {
-      setLoading(false);
+      if (busca === ultimaBusca.current) setLoading(false);
     }
   }, [doctorId]);
 
   useEffect(() => {
+    // Outro profissional: nada do anterior (lista, rascunho, erro) fica na tela.
+    setGrades([]);
+    setRascunho(null);
+    setExcluindo(null);
+    setError(null);
+    setLoading(true);
     carregar();
+    // Contador (não nó do DOM): a cleanup quer mesmo o valor atual.
+    const buscas = ultimaBusca;
+    return () => {
+      buscas.current++;
+    };
   }, [carregar]);
 
   const editar = (g: DoctorSchedule) => {
@@ -220,7 +240,7 @@ export function ScheduleWeekEditor({
                           <button
                             type="button"
                             onClick={() => alternarAtivo(g)}
-                            className="px-2 text-xs font-medium text-gray-500 hover:text-gray-800 min-h-[36px]"
+                            className="px-2 text-xs font-medium text-gray-500 hover:text-gray-800 min-h-[44px] md:min-h-[36px]"
                           >
                             {g.active ? "Desativar" : "Ativar"}
                           </button>
@@ -228,7 +248,7 @@ export function ScheduleWeekEditor({
                             type="button"
                             aria-label={`Editar ${WEEKDAY_LABELS[dia]} ${hhmm(g.startTime)}`}
                             onClick={() => editar(g)}
-                            className="p-2 rounded-lg text-gray-500 hover:bg-gray-50 min-h-[36px] min-w-[36px] flex items-center justify-center"
+                            className="p-2 rounded-lg text-gray-500 hover:bg-gray-50 min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px] flex items-center justify-center"
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
@@ -236,7 +256,7 @@ export function ScheduleWeekEditor({
                             type="button"
                             aria-label={`Remover ${WEEKDAY_LABELS[dia]} ${hhmm(g.startTime)}`}
                             onClick={() => setExcluindo(g)}
-                            className="p-2 rounded-lg text-red-500 hover:bg-red-50 min-h-[36px] min-w-[36px] flex items-center justify-center"
+                            className="p-2 rounded-lg text-red-500 hover:bg-red-50 min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px] flex items-center justify-center"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

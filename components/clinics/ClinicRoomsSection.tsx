@@ -169,7 +169,7 @@ function SalaLinha({
   onExcluir: () => void;
 }) {
   const botao =
-    "inline-flex items-center justify-center min-h-[36px] min-w-[36px] rounded-lg text-neutral-500 hover:bg-neutral-100 disabled:opacity-40";
+    "inline-flex items-center justify-center min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-[36px] rounded-lg text-neutral-500 hover:bg-neutral-100 disabled:opacity-40";
 
   if (editando !== null) {
     return (
@@ -219,7 +219,7 @@ function SalaLinha({
       </span>
       <button
         type="button"
-        className="text-xs font-medium text-neutral-600 hover:underline disabled:opacity-40"
+        className="min-h-[44px] px-2 md:min-h-[36px] text-xs font-medium text-neutral-600 hover:underline disabled:opacity-40"
         disabled={ocupado}
         onClick={onAlternarAtiva}
       >

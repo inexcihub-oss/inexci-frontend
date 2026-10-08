@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import {
   patientService,
@@ -58,6 +58,10 @@ export function NewPatientModal({
   const [error, setError] = useState("");
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [foto, setFoto] = useState<File | null>(null);
+  // Foto já enviada nesta tentativa de cadastro, amarrada ao arquivo: se o
+  // cadastro falhar, a próxima tentativa reaproveita o caminho em vez de
+  // subir outra cópia (que ficaria órfã no storage). Trocar a foto invalida.
+  const fotoEnviadaRef = useRef<{ file: File; path: string } | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
   const form = useZodForm({
@@ -92,6 +96,7 @@ export function NewPatientModal({
     if (loading) return;
     form.reset();
     setFoto(null);
+    fotoEnviadaRef.current = null;
     setError("");
     onClose();
   };
@@ -114,11 +119,16 @@ export function NewPatientModal({
         // falho não deixa paciente criado pela metade.
         if (foto) {
           try {
-            const enviada = await uploadService.uploadSingle(
-              foto,
-              "patient-photos",
-            );
-            payload.photoPath = enviada.data.path;
+            let enviada = fotoEnviadaRef.current;
+            if (enviada?.file !== foto) {
+              const resposta = await uploadService.uploadSingle(
+                foto,
+                "patient-photos",
+              );
+              enviada = { file: foto, path: resposta.data.path };
+              fotoEnviadaRef.current = enviada;
+            }
+            payload.photoPath = enviada.path;
           } catch {
             setError(
               "Não foi possível enviar a foto. Tente de novo ou cadastre sem foto.",
@@ -130,6 +140,7 @@ export function NewPatientModal({
         onSuccess(created);
         form.reset();
         setFoto(null);
+        fotoEnviadaRef.current = null;
         onClose();
       } catch (err) {
         const apiError = err as {

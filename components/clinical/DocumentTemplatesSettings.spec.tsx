@@ -69,6 +69,17 @@ describe("DocumentTemplatesSettings (MIG-06)", () => {
     await waitFor(() => expect(service.getAll).toHaveBeenCalledTimes(2));
   });
 
+  it("os botões de placeholder têm alvo de toque de 44px no celular", async () => {
+    const user = userEvent.setup();
+    render(<DocumentTemplatesSettings doctorId="doc-1" />);
+    await screen.findByText("Atestado padrão");
+    await user.click(screen.getByRole("button", { name: /Novo modelo/ }));
+
+    expect(
+      screen.getByRole("button", { name: "Nome do paciente" }),
+    ).toHaveClass("min-h-[44px]");
+  });
+
   it("não salva sem nome ou texto", async () => {
     const user = userEvent.setup();
     render(<DocumentTemplatesSettings doctorId="doc-1" />);

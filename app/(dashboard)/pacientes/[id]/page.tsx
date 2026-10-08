@@ -102,14 +102,19 @@ export default function PacienteDetalhePage() {
     [podeAtendimento],
   );
 
-  // Sem `?tab=` (ou com uma aba que o usuário não tem), abre no Cadastro.
-  const abaPedida = searchParams.get("tab") as Aba | null;
-  const abaInicial: Aba =
+  // Guarda a aba PEDIDA (`?tab=` ou o clique) e deriva a efetiva a cada
+  // render: se as permissões mudarem depois da montagem (sessão recarregada,
+  // permissão concedida/revogada), `?tab=documentos` passa a valer quando a
+  // aba existir, e cai no Cadastro enquanto o usuário não a tiver — sem
+  // depender do valor que `can()` tinha no primeiro render.
+  const [abaPedida, setAbaPedida] = useState<Aba | null>(
+    () => searchParams.get("tab") as Aba | null,
+  );
+  const aba: Aba =
     abaPedida && abas.some((a) => a.id === abaPedida) ? abaPedida : "cadastro";
-  const [aba, setAba] = useState<Aba>(abaInicial);
 
   const irParaAba = (proxima: Aba) => {
-    setAba(proxima);
+    setAbaPedida(proxima);
     const query = new URLSearchParams(searchParams.toString());
     query.set("tab", proxima);
     router.replace(`?${query.toString()}`, { scroll: false });

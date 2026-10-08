@@ -68,6 +68,7 @@ export function AtendimentoFicha({
   surgeryRequestId,
   allowSurgicalIndication = true,
   surgicalIndicationBlockedReason,
+  keepSurgicalIndicationVisible = false,
 }: {
   /**
    * Motivo para o cartão aparecer desabilitado (ex.: CRM sem número). Diferente
@@ -81,6 +82,12 @@ export function AtendimentoFicha({
    * já tenha a indicação gravada, caso em que o resultado continua visível.
    */
   allowSurgicalIndication?: boolean;
+  /**
+   * Mantém o cartão na tela mesmo desmarcado e sem permissão de marcar — ex.:
+   * a indicação estava gravada e quem não pode indicar acabou de desmarcá-la.
+   * Sem isto o cartão sumiria no clique, sem como conferir o que mudou.
+   */
+  keepSurgicalIndicationVisible?: boolean;
   fields: FichaFields;
   onFieldChange: <K extends keyof FichaFields>(
     key: K,
@@ -150,7 +157,9 @@ export function AtendimentoFicha({
         />
       </SectionCard>
 
-      {(allowSurgicalIndication || fields.surgicalIndication) && (
+      {(allowSurgicalIndication ||
+        fields.surgicalIndication ||
+        keepSurgicalIndicationVisible) && (
         <IndicacaoCirurgicaCard
           checked={fields.surgicalIndication}
           onChange={(v) => onFieldChange("surgicalIndication", v)}
@@ -160,10 +169,13 @@ export function AtendimentoFicha({
             onFieldChange("procedureId", id);
             onFieldChange("procedureName", name);
           }}
+          // Desmarcar é sempre possível para quem escreve a ficha: é o que
+          // destrava salvar/finalizar um rascunho com indicação que não pode
+          // mais seguir. Só MARCAR depende de permissão (e de nada bloqueando).
           readOnly={
             readOnly ||
-            !allowSurgicalIndication ||
-            (!!surgicalIndicationBlockedReason && !fields.surgicalIndication)
+            (!fields.surgicalIndication &&
+              (!allowSurgicalIndication || !!surgicalIndicationBlockedReason))
           }
           blockedReason={readOnly ? undefined : surgicalIndicationBlockedReason}
           surgeryRequestId={surgeryRequestId}
@@ -245,9 +257,7 @@ export function IndicacaoCirurgicaCard({
             <Search className="w-4 h-4 text-neutral-400 shrink-0" />
             <span
               className={
-                procedureName
-                  ? "text-neutral-900 truncate"
-                  : "text-neutral-400"
+                procedureName ? "text-neutral-900 truncate" : "text-neutral-400"
               }
             >
               {procedureName || "Selecionar procedimento"}
@@ -352,6 +362,10 @@ function EditorField({
     );
   }
   return (
-    <RichTextEditor value={value} onChange={onChange} placeholder={placeholder} />
+    <RichTextEditor
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+    />
   );
 }

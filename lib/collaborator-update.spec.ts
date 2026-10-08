@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { buildCollaboratorUpdatePayload } from "./collaborator-update";
+import {
+  buildCollaboratorUpdatePayload,
+  buildDoctorProfileUpdatePayload,
+} from "./collaborator-update";
 import { Permission } from "./permissions";
 
 const original = {
@@ -162,5 +165,47 @@ describe("buildCollaboratorUpdatePayload", () => {
         crmState: "SP",
       });
     });
+  });
+});
+
+describe("buildDoctorProfileUpdatePayload", () => {
+  const perfil = {
+    council: "CRN" as const,
+    crm: "4567",
+    crmState: "RJ",
+    specialty: "Nutrição clínica",
+  };
+
+  it("devolve null quando nada mudou", () => {
+    expect(buildDoctorProfileUpdatePayload(perfil, { ...perfil })).toBeNull();
+  });
+
+  // Antes ia `crm: undefined` ("não mexer") e o número continuava gravado.
+  it("número e UF apagados vão como string vazia", () => {
+    expect(
+      buildDoctorProfileUpdatePayload(perfil, {
+        ...perfil,
+        crm: "",
+        crmState: "",
+      }),
+    ).toEqual({ crm: "", crmState: "" });
+  });
+
+  it("especialidade apagada também vai vazia", () => {
+    expect(
+      buildDoctorProfileUpdatePayload(perfil, { ...perfil, specialty: "  " }),
+    ).toEqual({ specialty: "" });
+  });
+
+  it("só envia o que mudou, aparado", () => {
+    expect(
+      buildDoctorProfileUpdatePayload(perfil, { ...perfil, crm: " 9999 " }),
+    ).toEqual({ crm: "9999" });
+  });
+
+  it("conselho só vai quando mudou", () => {
+    expect(
+      buildDoctorProfileUpdatePayload(perfil, { ...perfil, council: "CRP" }),
+    ).toEqual({ council: "CRP" });
   });
 });

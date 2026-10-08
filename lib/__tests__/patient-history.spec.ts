@@ -116,6 +116,29 @@ describe("montarHistorico", () => {
     expect(porConsulta).toEqual({ "a-1": "r-solta", "a-2": "r-ligada" });
   });
 
+  it("ficha vinculada a consulta que não veio na lista aparece sozinha, sem casar por dia", () => {
+    // A consulta "a-sumida" (do mesmo profissional, mesmo dia) não está na
+    // lista; "a-1" é outra consulta do mesmo dia e não pode herdar a ficha.
+    const { itens } = montarHistorico({
+      appointments: [consulta({ id: "a-1", status: "completed" })],
+      records: [ficha({ id: "r-1", appointmentId: "a-sumida" })],
+      surgeries: [],
+      agora: AGORA,
+    });
+
+    expect(itens).toHaveLength(2);
+    expect(itens).toContainEqual(
+      expect.objectContaining({
+        kind: "consulta",
+        appointment: expect.objectContaining({ id: "a-1" }),
+        record: null,
+      }),
+    );
+    expect(itens).toContainEqual(
+      expect.objectContaining({ kind: "ficha", id: "ficha-r-1" }),
+    );
+  });
+
   it("separa as próximas consultas em aberto, da mais próxima à mais distante", () => {
     const { proximas, itens } = montarHistorico({
       appointments: [

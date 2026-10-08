@@ -60,6 +60,10 @@ function surgeryAt(surgery: SurgeryRequestListItem): number {
  * (prontuário migrado, ou ficha aberta fora da agenda), casa com a consulta do
  * mesmo profissional no mesmo dia que ainda não tem ficha — a de horário mais
  * próximo.
+ *
+ * Ficha COM `appointmentId` nunca passa pelo casamento heurístico: se a
+ * consulta dela não veio na lista (excluída, de outro recorte), ela aparece
+ * sozinha, como ficha avulsa — senão seria pendurada na consulta errada.
  */
 function ligarFichas(
   appointments: Appointment[],
@@ -67,21 +71,22 @@ function ligarFichas(
 ): { porConsulta: Map<string, ClinicalRecord>; avulsas: ClinicalRecord[] } {
   const porConsulta = new Map<string, ClinicalRecord>();
   const semVinculo: ClinicalRecord[] = [];
+  const avulsas: ClinicalRecord[] = [];
   const consultas = new Set(appointments.map((a) => a.id));
 
   for (const record of records) {
-    if (
-      record.appointmentId &&
+    if (!record.appointmentId) {
+      semVinculo.push(record);
+    } else if (
       consultas.has(record.appointmentId) &&
       !porConsulta.has(record.appointmentId)
     ) {
       porConsulta.set(record.appointmentId, record);
     } else {
-      semVinculo.push(record);
+      avulsas.push(record);
     }
   }
 
-  const avulsas: ClinicalRecord[] = [];
   for (const record of semVinculo) {
     const dia = diaEmSaoPaulo(record.createdAt);
     const alvo = new Date(record.createdAt).getTime();

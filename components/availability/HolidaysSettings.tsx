@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarOff,
   ChevronLeft,
@@ -14,7 +15,10 @@ import Input from "@/components/ui/Input";
 import { DateInput } from "@/components/ui/DateInput";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { getApiErrorMessage } from "@/lib/http-error";
-import { NATIONAL_FIXED_HOLIDAYS } from "@/lib/availability";
+import {
+  AVAILABILITY_QUERY_KEYS,
+  NATIONAL_FIXED_HOLIDAYS,
+} from "@/lib/availability";
 import {
   availabilityService,
   Holiday,
@@ -47,19 +51,40 @@ export function HolidaysSettings() {
   const [excluindo, setExcluindo] = useState<Holiday | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const queryClient = useQueryClient();
+  // Só a resposta da última busca vale: trocar de ano rápido dispara várias,
+  // e uma mais lenta de um ano anterior não pode sobrescrever a lista.
+  const ultimaBusca = useRef(0);
+
   const carregar = useCallback(async () => {
+    const busca = ++ultimaBusca.current;
     try {
-      setFeriados(await availabilityService.getHolidays(ano));
+      const lista = await availabilityService.getHolidays(ano);
+      if (busca !== ultimaBusca.current) return;
+      setFeriados(lista);
+      setError(null);
     } catch (err) {
+      if (busca !== ultimaBusca.current) return;
       setError(getApiErrorMessage(err, "Não foi possível carregar os feriados."));
     } finally {
-      setLoading(false);
+      if (busca === ultimaBusca.current) setLoading(false);
     }
   }, [ano]);
 
   useEffect(() => {
+    setLoading(true);
     carregar();
+    // Contador (não nó do DOM): a cleanup quer mesmo o valor atual.
+    const buscas = ultimaBusca;
+    return () => {
+      // Descarta a busca em voo ao trocar de ano ou desmontar.
+      buscas.current++;
+    };
   }, [carregar]);
+
+  /** A Agenda guarda os feriados em cache: avisa que mudaram. */
+  const avisarAgenda = () =>
+    queryClient.invalidateQueries({ queryKey: AVAILABILITY_QUERY_KEYS.holidays });
 
   /** Ordena pelo dia/mês: os recorrentes de outros anos ficam no lugar certo. */
   const ordenados = [...feriados].sort((a, b) =>
@@ -87,6 +112,7 @@ export function HolidaysSettings() {
         await availabilityService.createHoliday(payload);
       }
       setRascunho(null);
+      avisarAgenda();
       await carregar();
     } catch (err) {
       setError(getApiErrorMessage(err, "Não foi possível salvar o feriado."));
@@ -114,6 +140,8 @@ export function HolidaysSettings() {
     } catch (err) {
       setError(getApiErrorMessage(err, "Não foi possível importar os feriados."));
     } finally {
+      // Mesmo com falha no meio, os que já foram criados valem na Agenda.
+      avisarAgenda();
       setImportando(false);
     }
   };
@@ -124,6 +152,7 @@ export function HolidaysSettings() {
     try {
       await availabilityService.deleteHoliday(excluindo.id);
       setExcluindo(null);
+      avisarAgenda();
       await carregar();
     } catch (err) {
       setError(getApiErrorMessage(err, "Não foi possível remover o feriado."));

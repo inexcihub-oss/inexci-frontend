@@ -1,4 +1,4 @@
-import { forwardRef, SelectHTMLAttributes } from "react";
+import { forwardRef, SelectHTMLAttributes, useId } from "react";
 import { cn } from "@/lib/utils";
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
@@ -8,11 +8,15 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className, label, error, options, ...props }, ref) => {
+  ({ className, label, error, options, id, ...props }, ref) => {
+    // Sem `id` vindo de fora, gera um para ligar o <label> ao <select> —
+    // senão leitor de tela e `getByLabelText` não encontram o campo.
+    const generatedId = useId();
+    const selectId = id ?? generatedId;
     return (
       <div className="w-full">
         {label && (
-          <label className="ds-label">
+          <label className="ds-label" htmlFor={selectId}>
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -26,6 +30,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
               className,
             )}
             ref={ref}
+            id={selectId}
             {...props}
           >
             {options.map((option) => (

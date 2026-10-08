@@ -40,6 +40,11 @@ export interface User {
    * indica cirurgia. Vem do backend; ausente = false.
    */
   isPhysician?: boolean;
+  /**
+   * Emite receita, atestado e pedido de exame: médico (CRM) ou dentista
+   * (CRO). Vem do backend; ausente = deduz do conselho do perfil.
+   */
+  canIssueClinicalDocuments?: boolean;
   /** Permissão **efetiva**, já derivada no backend. */
   permissions?: Permission[];
   emailVerified?: boolean;
@@ -87,6 +92,8 @@ export interface AvailableDoctor {
    * médicos. Ausente = trata como médico (resposta anterior ao conselho).
    */
   isPhysician?: boolean;
+  /** Emite receita, atestado e pedido de exame (CRM ou CRO). */
+  canIssueClinicalDocuments?: boolean;
   status?: "pending" | "active" | "inactive" | string;
 }
 
@@ -149,11 +156,7 @@ export interface SubscriptionPlan {
 }
 
 export type SubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "suspended"
-  | "canceled";
+  "trialing" | "active" | "past_due" | "suspended" | "canceled";
 
 export interface Subscription {
   id: string;

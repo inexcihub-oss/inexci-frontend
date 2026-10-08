@@ -53,8 +53,11 @@ export function PatientPhotoField({
     setEscolhendo(false);
     inputRef.current?.click();
   };
+  // A câmera substitui a foto ampliada em vez de empilhar por cima dela:
+  // duas camadas abertas fechariam juntas no mesmo Esc.
   const abrirCamera = () => {
     setEscolhendo(false);
+    setAmpliada(false);
     setCamera(true);
   };
 

@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { ChevronRight, Upload, X, Loader2, Settings2 } from "lucide-react";
+import { useInvalidateAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 import { CollaboratorActionsSection } from "@/components/colaboradores/CollaboratorActionsSection";
 import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
@@ -45,10 +46,14 @@ import { useCepLookup } from "@/hooks/useCepLookup";
 import { maskCep, maskCpf, maskPhone, unmask } from "@/lib/masks";
 import { isValidCpf } from "@/lib/validators";
 import { Permission } from "@/lib/permissions";
-import { buildCollaboratorUpdatePayload } from "@/lib/collaborator-update";
+import {
+  buildCollaboratorUpdatePayload,
+  buildDoctorProfileUpdatePayload,
+} from "@/lib/collaborator-update";
 import {
   COUNCIL_OPTIONS,
   councilOf,
+  professionalKindLabel,
   ProfessionalCouncil,
 } from "@/lib/professional-council";
 import {
@@ -78,6 +83,7 @@ export default function AssistenteDetalhePage() {
   const [isScConfigModalOpen, setIsScConfigModalOpen] = useState(false);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const { toast, showToast, hideToast } = useToast();
+  const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
   /**
    * "É médico" **já salvo**. Governa o que depende de um `doctor_profile` real
@@ -384,25 +390,33 @@ export default function AssistenteDetalhePage() {
       // especialidade já foram no payload acima (que é quem cria o perfil);
       // chamar aqui usaria um `doctorProfile` que ainda não existe.
       const jaEraMedico = originalData?.isDoctor === true;
-      if (formData.isDoctor && jaEraMedico && collaborator.doctorProfile?.id) {
-        await userService.updateDoctorProfile(collaborator.id, {
-          // Conselho só vai quando mudou: trocar é ato de Administração no
-          // backend, e reenviar o mesmo valor não muda nada.
-          ...(formData.council !== originalData?.council
-            ? { council: formData.council }
-            : {}),
-          crm: formData.crm || undefined,
-          crmState: formData.crmState || undefined,
-          specialty: formData.specialty || undefined,
-        });
+      // Só o que mudou; campo apagado vai como "" (o backend grava null).
+      const doctorProfilePayload =
+        formData.isDoctor && jaEraMedico && originalData
+          ? buildDoctorProfileUpdatePayload(originalData, formData)
+          : null;
+      if (doctorProfilePayload && collaborator.doctorProfile?.id) {
+        await userService.updateDoctorProfile(
+          collaborator.id,
+          doctorProfilePayload,
+        );
       }
 
       setOriginalData(formData);
-      // Promoção/despromoção muda o que a tela mostra (dados profissionais,
-      // cabeçalho, permissões fixas) — recarrega para refletir o servidor.
-      if (formData.isDoctor !== jaEraMedico) {
+      // Promoção/despromoção e troca de conselho/registro mudam o que a tela
+      // mostra (dados profissionais, subtítulo, cabeçalho, permissões fixas)
+      // e o que outras telas sabem do colaborador — recarrega do servidor.
+      const mudouRegistro =
+        !!doctorProfilePayload &&
+        ("council" in doctorProfilePayload ||
+          "crm" in doctorProfilePayload ||
+          "crmState" in doctorProfilePayload);
+      if (formData.isDoctor !== jaEraMedico || mudouRegistro) {
         await loadData();
       }
+      // Lista de médicos do wizard de SC / agenda (nome, conselho, registro,
+      // especialidade) pode ter mudado com qualquer gravação desta tela.
+      void invalidateAvailableDoctors();
       showToast("Colaborador atualizado com sucesso!", "success");
     } catch (error) {
       logger.error("Erro ao salvar:", error);
@@ -673,7 +687,12 @@ export default function AssistenteDetalhePage() {
         sectionTitle="Colaboradores"
         backHref="/colaboradores"
         itemName={formData.name}
-        itemSubtitle={isDoctor ? formData.specialty || "Médico" : "Colaborador"}
+        itemSubtitle={
+          isDoctor
+            ? formData.specialty ||
+              professionalKindLabel(collaborator.doctorProfile)
+            : "Colaborador"
+        }
         sidebarContent={sidebarContent}
       >
         {/* Seção: Informações pessoais */}

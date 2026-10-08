@@ -49,6 +49,10 @@ export interface ApplyDocumentTemplatePayload {
   patientId?: string;
   doctorId?: string;
   restDays?: number;
+  /** Início do afastamento (YYYY-MM-DD) para `{{inicio}}`; ausente, fica literal. */
+  startDate?: string;
+  /** Só atualiza o texto na tela (ex.: dias mudaram): não conta outro uso. */
+  refresh?: boolean;
 }
 
 export const clinicalDocumentTemplateService = {

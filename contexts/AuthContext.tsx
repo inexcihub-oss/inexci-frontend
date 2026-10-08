@@ -20,6 +20,7 @@ import { billingService } from "@/services/billing.service";
 import type { ConsentStatus, ConsentType } from "@/types/consent.types";
 import { useRouter } from "next/navigation";
 import { Permission, resolveHome } from "@/lib/permissions";
+import { emiteDocumentosClinicos } from "@/lib/professional-council";
 import { QUOTA_QUERY_KEY } from "@/lib/query-keys";
 import { useQueryClient } from "@tanstack/react-query";
 import type { BillingBlockReason } from "@/lib/http-error";
@@ -36,6 +37,12 @@ interface AuthContextData {
    * cirurgia. Use este, não `isDoctor`, para esses gates.
    */
   isPhysician: boolean;
+  /**
+   * Emite receita, atestado e pedido de exame e mantém modelos de documento:
+   * médico (CRM) ou dentista (CRO). Use este, não `isPhysician`, para esses
+   * gates — indicação cirúrgica e Solicitações continuam em `isPhysician`.
+   */
+  canIssueClinicalDocuments: boolean;
   isAdmin: boolean;
   /**
    * True apenas para o **dono** da conta (`user.id === user.accountId`).
@@ -329,6 +336,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useMemo(() => !!user, [user]);
   const isDoctor = useMemo(() => user?.isDoctor ?? false, [user]);
   const isPhysician = useMemo(() => user?.isPhysician ?? false, [user]);
+  // Resposta anterior ao campo: deduz do conselho do perfil.
+  const canIssueClinicalDocuments = useMemo(
+    () =>
+      user?.canIssueClinicalDocuments ??
+      (!!user?.isDoctor && emiteDocumentosClinicos(user.doctorProfile)),
+    [user],
+  );
   const isAdmin = useMemo(() => user?.role === "admin", [user]);
   const accountId = useMemo(() => user?.accountId ?? null, [user]);
   const isAccountOwner = useMemo(
@@ -412,6 +426,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated,
       isDoctor,
       isPhysician,
+      canIssueClinicalDocuments,
       isAdmin,
       isAccountOwner,
       accountId,
@@ -440,6 +455,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated,
       isDoctor,
       isPhysician,
+      canIssueClinicalDocuments,
       isAdmin,
       isAccountOwner,
       accountId,

@@ -18,6 +18,7 @@ import { logger } from "@/lib/logger";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyArea } from "@/lib/permissions";
+import { cpfOptionalSchema } from "@/lib/schemas/shared";
 
 interface FormData {
   name: string;
@@ -129,11 +130,18 @@ export function PatientRegistrationForm({
   const handleSave = async () => {
     const cpf = formData.cpf.replace(/\D/g, "");
     // CPF é opcional (estrangeiros, menores, pacientes migrados), mas quando
-    // informado tem que estar completo. A SC continua cobrando CPF como
-    // pendência antes de avançar.
-    if (cpf && cpf.length !== 11) {
-      setError("CPF deve ter 11 dígitos.");
-      return;
+    // informado passa pela mesma validação do cadastro (11 dígitos + dígitos
+    // verificadores). A SC continua cobrando CPF como pendência antes de
+    // avançar. Só valida se o CPF mudou: paciente migrado com CPF inválido
+    // gravado continua editável nos outros campos sem ser obrigado a mexer
+    // no CPF.
+    const cpfMudou = cpf !== baseline.cpf.replace(/\D/g, "");
+    if (cpfMudou) {
+      const validacao = cpfOptionalSchema.safeParse(cpf);
+      if (!validacao.success) {
+        setError(validacao.error.issues[0]?.message ?? "CPF inválido.");
+        return;
+      }
     }
 
     setSaving(true);

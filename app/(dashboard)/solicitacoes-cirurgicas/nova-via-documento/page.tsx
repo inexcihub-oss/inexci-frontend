@@ -217,7 +217,8 @@ export default function NovaViaDocumentoPage() {
   const [isTussModalOpen, setIsTussModalOpen] = useState(false);
   const [isOpmeModalOpen, setIsOpmeModalOpen] = useState(false);
 
-  const { data: allDoctors = [] } = useAvailableDoctors();
+  // `fresh`: a lista decide quem pode ser dono da SC — revalida ao montar.
+  const { data: allDoctors = [] } = useAvailableDoctors({ fresh: true });
   // SC é de médico (CRM) — ver `canOwnSurgeryRequest`.
   const availableDoctors = useMemo(
     () => allDoctors.filter(canOwnSurgeryRequest),

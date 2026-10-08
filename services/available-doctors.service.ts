@@ -3,6 +3,7 @@ import { getApiRecords } from "@/lib/api-response";
 import { AvailableDoctor } from "@/types";
 import {
   councilOf,
+  emiteDocumentosClinicos,
   ProfessionalCouncil,
 } from "@/lib/professional-council";
 
@@ -46,6 +47,9 @@ export const availableDoctorsService = {
       specialty: user.doctorProfile?.specialty ?? undefined,
       council: councilOf(user.doctorProfile),
       isPhysician: councilOf(user.doctorProfile) === "CRM",
+      canIssueClinicalDocuments: emiteDocumentosClinicos(
+        user.doctorProfile ?? { council: "CRM" },
+      ),
       status: user.status,
     }));
   },

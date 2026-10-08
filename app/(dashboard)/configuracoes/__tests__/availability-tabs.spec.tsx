@@ -8,9 +8,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  */
 
 let authState: {
-  user: { id: string; accountId: string; role: "admin" | "collaborator" } | null;
+  user: {
+    id: string;
+    accountId: string;
+    role: "admin" | "collaborator";
+  } | null;
   isAccountOwner: boolean;
   isPhysician: boolean;
+  canIssueClinicalDocuments?: boolean;
   isDoctor: boolean;
   can: (p: string) => boolean;
   subscription: unknown;
@@ -127,7 +132,9 @@ describe("Configurações — Minha Agenda e Feriados (MIG-05)", () => {
   it("Administração abre os feriados por deep-link", async () => {
     searchParamsValue = new URLSearchParams("tab=holidays");
     renderPage();
-    expect(await screen.findByRole("button", { name: /Feriados/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Feriados/ }),
+    ).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByText("Gestão de feriados")).toBeInTheDocument(),
     );

@@ -18,13 +18,23 @@ describe("formatRegistration", () => {
     ).toBe("CRN 4567/RJ");
   });
 
-  it("mostra só o conselho quando não há número", () => {
-    expect(formatRegistration({ council: "CRP", crm: null })).toBe("CRP");
+  it("não mostra nada sem número — nem a sigla do conselho sozinha", () => {
+    expect(formatRegistration({ council: "CRP", crm: null })).toBe("");
+    expect(formatRegistration({ council: "OUTRO", crm: null })).toBe("");
+    expect(formatRegistration({ council: "CRM", crm: "   " })).toBe("");
+    expect(formatRegistration(null)).toBe("");
   });
 
-  it("não mostra nada para OUTRO sem número nem sem perfil", () => {
-    expect(formatRegistration({ council: "OUTRO", crm: null })).toBe("");
-    expect(formatRegistration(null)).toBe("");
+  // Entrada sintética do próprio colaborador em DoctorAccessSection: sem
+  // conselho e sem número. Antes saía "CRM" como subtítulo.
+  it("perfil sem conselho e com número vazio não vira 'CRM'", () => {
+    expect(formatRegistration({ crm: "", crmState: "" })).toBe("");
+  });
+
+  it("conselho OUTRO com número não exibe o valor cru do enum", () => {
+    expect(
+      formatRegistration({ council: "OUTRO", crm: "123", crmState: "RJ" }),
+    ).toBe("Registro 123/RJ");
   });
 
   it("omite a UF quando ausente", () => {

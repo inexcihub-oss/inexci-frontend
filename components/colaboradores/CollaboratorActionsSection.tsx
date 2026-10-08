@@ -6,6 +6,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { collaboratorService } from "@/services/collaborator.service";
 import { useToast } from "@/hooks/useToast";
+import { useInvalidateAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import {
@@ -37,6 +38,7 @@ export function CollaboratorActionsSection({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const { toast, showToast, hideToast } = useToast();
+  const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
   const isActive = currentStatus === "active";
   const isPending = currentStatus === "pending";
@@ -50,6 +52,8 @@ export function CollaboratorActionsSection({
     try {
       const result = await collaboratorService.toggleStatus(collaboratorId);
       onStatusChange?.(result.status);
+      // Inativo sai da lista de médicos do wizard de SC e da agenda.
+      void invalidateAvailableDoctors();
       showToast(
         result.status === "active"
           ? "Usuário ativado com sucesso!"

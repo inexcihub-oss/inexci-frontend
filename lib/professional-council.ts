@@ -2,8 +2,9 @@
  * Conselho profissional — espelha `ProfessionalCouncil` do backend
  * (`inexci-api/src/database/entities/doctor-profile.entity.ts`).
  *
- * Só CRM é médico: emite receita, atestado e pedido de exame, indica cirurgia
- * e enxerga Solicitações. Os demais têm agenda e prontuário próprios.
+ * Só CRM é médico: indica cirurgia e enxerga Solicitações. Receita, atestado
+ * e pedido de exame saem de médico (CRM) ou dentista (CRO). Os demais têm
+ * agenda e prontuário próprios.
  */
 export type ProfessionalCouncil =
   | "CRM"
@@ -39,8 +40,11 @@ export function councilOf(
 }
 
 /**
- * Registro para exibição: `CRM 12345/RJ`, `CRN 4567/RJ` ou só `CRP` quando o
- * profissional não tem número cadastrado. Vazio quando não há perfil.
+ * Registro para exibição: `CRM 12345/RJ`, `CRN 4567/RJ`; conselho "Outro" sai
+ * como `Registro 123/RJ` (o valor cru do enum não é rótulo). Vazio quando não
+ * há perfil ou não há número — a sigla sozinha ("CRM") vira subtítulo sem
+ * informação, e é o que aparece para o próprio colaborador na lista de
+ * acesso a médicos, que é montada sem registro.
  */
 export function formatRegistration(
   profile:
@@ -52,10 +56,26 @@ export function formatRegistration(
     | null
     | undefined,
 ): string {
-  if (!profile) return "";
+  const numero = profile?.crm?.trim();
+  if (!profile || !numero) return "";
   const conselho = councilOf(profile);
-  if (!profile.crm) return conselho === "OUTRO" ? "" : conselho;
-  return `${conselho} ${profile.crm}${profile.crmState ? `/${profile.crmState}` : ""}`;
+  const rotulo = conselho === "OUTRO" ? "Registro" : conselho;
+  return `${rotulo} ${numero}${profile.crmState ? `/${profile.crmState}` : ""}`;
+}
+
+/** Conselhos que emitem receita, atestado e pedido de exame. */
+export const CONSELHOS_QUE_EMITEM_DOCUMENTOS: readonly ProfessionalCouncil[] = [
+  "CRM",
+  "CRO",
+];
+
+/** Emite receita, atestado e pedido de exame (CRM ou CRO). */
+export function emiteDocumentosClinicos(
+  profile: { council?: ProfessionalCouncil | string | null } | null | undefined,
+): boolean {
+  return (
+    !!profile && CONSELHOS_QUE_EMITEM_DOCUMENTOS.includes(councilOf(profile))
+  );
 }
 
 /**

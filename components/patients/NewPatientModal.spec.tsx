@@ -192,6 +192,51 @@ describe("NewPatientModal — foto no cadastro", () => {
     expect(patientService.create).not.toHaveBeenCalled();
   });
 
+  it("cadastro falhou: a nova tentativa reaproveita a foto já enviada", async () => {
+    uploadSingle.mockResolvedValue({ data: { path: "patient-photos/o/ana.webp", url: "u" } });
+    vi.mocked(patientService.create)
+      .mockRejectedValueOnce({ response: { data: { message: "CPF já cadastrado" } } })
+      .mockResolvedValueOnce({ id: "p-1", name: "Ana" } as never);
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.upload(screen.getByTestId("new-patient-photo-input"), foto());
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+    expect(await screen.findByText("CPF já cadastrado")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+    await waitFor(() => expect(patientService.create).toHaveBeenCalledTimes(2));
+    expect(uploadSingle).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(patientService.create).mock.calls[1][0]).toEqual(
+      expect.objectContaining({ photoPath: "patient-photos/o/ana.webp" }),
+    );
+  });
+
+  it("trocar a foto depois da falha envia a nova", async () => {
+    uploadSingle
+      .mockResolvedValueOnce({ data: { path: "patient-photos/o/1.webp", url: "u" } })
+      .mockResolvedValueOnce({ data: { path: "patient-photos/o/2.webp", url: "u" } });
+    vi.mocked(patientService.create)
+      .mockRejectedValueOnce({ response: { data: { message: "Falhou" } } })
+      .mockResolvedValueOnce({ id: "p-1", name: "Ana" } as never);
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.upload(screen.getByTestId("new-patient-photo-input"), foto());
+    await user.type(screen.getByPlaceholderText("Nome completo"), "Ana Souza");
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+    expect(await screen.findByText("Falhou")).toBeInTheDocument();
+
+    await user.upload(screen.getByTestId("new-patient-photo-input"), foto());
+    await user.click(screen.getByRole("button", { name: /adicionar paciente/i }));
+    await waitFor(() => expect(patientService.create).toHaveBeenCalledTimes(2));
+    expect(uploadSingle).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(patientService.create).mock.calls[1][0]).toEqual(
+      expect.objectContaining({ photoPath: "patient-photos/o/2.webp" }),
+    );
+  });
+
   it("sem foto não envia nada", async () => {
     const user = userEvent.setup();
     renderModal();

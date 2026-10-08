@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -105,5 +106,66 @@ describe("WebcamCaptureModal", () => {
     expect(onClose).toHaveBeenCalledTimes(2);
     unmount();
     expect(stop).toHaveBeenCalled();
+  });
+
+  it("o Esc da câmera não chega às outras camadas abertas", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const outraCamada = vi.fn();
+    document.addEventListener("keydown", outraCamada);
+    try {
+      render(<WebcamCaptureModal onClose={onClose} onCapture={vi.fn()} />);
+      await waitFor(() => expect(screen.getByRole("button", { name: /Capturar/ })).toBeEnabled());
+
+      await user.keyboard("{Escape}");
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(outraCamada).not.toHaveBeenCalled();
+    } finally {
+      document.removeEventListener("keydown", outraCamada);
+    }
+  });
+
+  it("câmera que só abre depois do fechamento é desligada na hora", async () => {
+    let entregar: (s: MediaStream) => void = () => undefined;
+    getUserMedia.mockReturnValueOnce(
+      new Promise<MediaStream>((resolve) => {
+        entregar = resolve;
+      }),
+    );
+    const { unmount } = render(<WebcamCaptureModal onClose={vi.fn()} onCapture={vi.fn()} />);
+
+    unmount();
+    expect(stop).not.toHaveBeenCalled();
+    entregar(cameraFalsa());
+
+    await waitFor(() => expect(stop).toHaveBeenCalledTimes(1));
+  });
+
+  it("em StrictMode (monta, desmonta, monta) nenhum stream fica ligado", async () => {
+    const stops = [vi.fn(), vi.fn()];
+    const entregas: Array<(s: MediaStream) => void> = [];
+    getUserMedia.mockImplementation(
+      () =>
+        new Promise<MediaStream>((resolve) => {
+          entregas.push(resolve);
+        }),
+    );
+    const { unmount } = render(
+      <StrictMode>
+        <WebcamCaptureModal onClose={vi.fn()} onCapture={vi.fn()} />
+      </StrictMode>,
+    );
+    await waitFor(() => expect(entregas).toHaveLength(2));
+
+    // O pedido do primeiro efeito (já desmontado) resolve depois do segundo.
+    entregas[1]({ getTracks: () => [{ stop: stops[1] }] } as unknown as MediaStream);
+    await waitFor(() => expect(screen.getByRole("button", { name: /Capturar/ })).toBeEnabled());
+    entregas[0]({ getTracks: () => [{ stop: stops[0] }] } as unknown as MediaStream);
+    await waitFor(() => expect(stops[0]).toHaveBeenCalled());
+    expect(stops[1]).not.toHaveBeenCalled();
+
+    unmount();
+    expect(stops[1]).toHaveBeenCalled();
   });
 });

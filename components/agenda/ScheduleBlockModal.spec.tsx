@@ -68,7 +68,7 @@ describe("ScheduleBlockModal (MIG-05)", () => {
 
   it("dia inteiro da clínica toda vai da meia-noite à meia-noite seguinte", async () => {
     const user = userEvent.setup();
-    abrir();
+    abrir({ podeClinicaToda: true });
     await user.click(screen.getByLabelText("Dia inteiro"));
     expect(screen.queryByLabelText("De")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Bloquear" }));
@@ -87,7 +87,7 @@ describe("ScheduleBlockModal (MIG-05)", () => {
 
   it("início depois do fim não chama a API", async () => {
     const user = userEvent.setup();
-    abrir();
+    abrir({ podeClinicaToda: true });
     await user.clear(screen.getByLabelText("Até"));
     await user.type(screen.getByLabelText("Até"), "07:00");
     await user.click(screen.getByRole("button", { name: "Bloquear" }));
@@ -122,10 +122,94 @@ describe("ScheduleBlockModal (MIG-05)", () => {
   it("mostra o erro da API", async () => {
     service.createBlock.mockRejectedValue({});
     const user = userEvent.setup();
-    abrir();
+    abrir({ podeClinicaToda: true });
     await user.click(screen.getByRole("button", { name: "Bloquear" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível salvar o bloqueio.",
     );
+  });
+
+  it("lista de profissionais instável (query falhando) não apaga o que foi digitado", async () => {
+    const user = userEvent.setup();
+    const props = {
+      isOpen: true,
+      onClose: vi.fn(),
+      onSaved: vi.fn(),
+      defaultDate: "2026-10-05",
+    };
+    const { rerender } = render(<ScheduleBlockModal {...props} doctors={[]} />);
+    await user.type(screen.getByLabelText("Motivo"), "Férias");
+    await user.click(screen.getByLabelText("Dia inteiro"));
+
+    // Como `data: doctors = []`: array novo a cada render.
+    rerender(<ScheduleBlockModal {...props} doctors={[]} />);
+    rerender(<ScheduleBlockModal {...props} doctors={[]} />);
+
+    expect(screen.getByLabelText("Motivo")).toHaveValue("Férias");
+    expect(screen.getByLabelText("Dia inteiro")).toBeChecked();
+  });
+
+  it("com um profissional só, ele já vem escolhido quando a lista chega", async () => {
+    const user = userEvent.setup();
+    const props = {
+      isOpen: true,
+      onClose: vi.fn(),
+      onSaved: vi.fn(),
+      defaultDate: "2026-10-05",
+    };
+    const { rerender } = render(<ScheduleBlockModal {...props} doctors={[]} />);
+    await user.type(screen.getByLabelText("Motivo"), "Congresso");
+    rerender(<ScheduleBlockModal {...props} doctors={[doctors[0]]} />);
+    expect(screen.getByLabelText("Profissional")).toHaveValue("d1");
+    expect(screen.getByLabelText("Motivo")).toHaveValue("Congresso");
+  });
+
+  describe("bloqueio de toda a clínica só com Administração", () => {
+    const blocoClinica = {
+      id: "bc",
+      doctorId: null,
+      clinicId: null,
+      startsAt: new Date(2026, 9, 5, 9, 0).toISOString(),
+      endsAt: new Date(2026, 9, 5, 11, 0).toISOString(),
+      allDay: false,
+      reason: "Reforma",
+    };
+
+    it("sem Administração, 'Toda a clínica' não aparece e é preciso escolher o profissional", async () => {
+      const user = userEvent.setup();
+      abrir({ podeClinicaToda: false });
+      expect(screen.queryByRole("option", { name: "Toda a clínica" })).toBeNull();
+      await user.click(screen.getByRole("button", { name: "Bloquear" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("Escolha o profissional.");
+      expect(service.createBlock).not.toHaveBeenCalled();
+    });
+
+    it("com Administração, a opção aparece", () => {
+      abrir({ podeClinicaToda: true });
+      expect(screen.getByRole("option", { name: "Toda a clínica" })).toBeInTheDocument();
+    });
+
+    it("sem Administração, bloqueio da clínica abre só para leitura", () => {
+      abrir({ block: blocoClinica, podeClinicaToda: false });
+      expect(screen.getByLabelText("Motivo")).toHaveValue("Reforma");
+      expect(screen.getByLabelText("Motivo")).toBeDisabled();
+      expect(screen.queryByRole("button", { name: "Salvar" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Remover" })).toBeNull();
+      expect(screen.getByText(/só administradores da conta/)).toBeInTheDocument();
+    });
+
+    it("com Administração, edita e remove o bloqueio da clínica", async () => {
+      const user = userEvent.setup();
+      abrir({ block: blocoClinica, podeClinicaToda: true });
+      await user.click(screen.getByRole("button", { name: "Salvar" }));
+      await waitFor(() =>
+        expect(service.updateBlock).toHaveBeenCalledWith(
+          "bc",
+          expect.objectContaining({ doctorId: null }),
+        ),
+      );
+      await user.click(screen.getByRole("button", { name: "Remover" }));
+      await waitFor(() => expect(service.deleteBlock).toHaveBeenCalledWith("bc"));
+    });
   });
 });

@@ -4,6 +4,17 @@ import type {
   ScheduleBlock,
 } from "@/services/availability.service";
 
+/**
+ * Chaves do TanStack Query da disponibilidade. A Agenda lê feriados e
+ * bloqueios por elas (com cache); quem altera esses dados em outra tela
+ * precisa invalidar a mesma chave, senão a Agenda segue desenhando o dado
+ * velho até o `staleTime` vencer.
+ */
+export const AVAILABILITY_QUERY_KEYS = {
+  holidays: ["availability", "holidays"] as const,
+  blocks: ["availability", "blocks"] as const,
+};
+
 export const WEEKDAY_LABELS = [
   "Domingo",
   "Segunda",

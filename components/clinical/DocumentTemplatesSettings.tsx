@@ -209,7 +209,7 @@ export function DocumentTemplatesSettings({ doctorId }: { doctorId: string }) {
                   key={p.key}
                   type="button"
                   onClick={() => inserirPlaceholder(p.key)}
-                  className="px-2.5 py-1 rounded-full border border-teal-200 bg-teal-50 text-xs font-medium text-teal-800 hover:bg-teal-100 min-h-[32px]"
+                  className="px-2.5 py-1 rounded-full border border-teal-200 bg-teal-50 text-xs font-medium text-teal-800 hover:bg-teal-100 min-h-[44px] md:min-h-[32px]"
                 >
                   {p.label}
                 </button>

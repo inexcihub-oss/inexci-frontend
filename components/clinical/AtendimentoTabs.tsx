@@ -12,7 +12,10 @@ import {
   fichaFieldsFrom,
 } from "@/components/clinical/AtendimentoFicha";
 import { PatientHistoryTab } from "@/components/clinical/PatientHistoryTab";
-import { ClinicalDocumentActions } from "@/components/clinical/ClinicalDocumentActions";
+import {
+  AssinanteConsulta,
+  ClinicalDocumentActions,
+} from "@/components/clinical/ClinicalDocumentActions";
 import { ClinicalTemplateActions } from "@/components/clinical/ClinicalTemplateActions";
 import { PatientDocuments } from "@/components/clinical/PatientDocuments";
 import { PatientRegistrationForm } from "@/components/patients/PatientRegistrationForm";
@@ -26,7 +29,7 @@ import {
   ClinicalRecord,
 } from "@/services/clinical-record.service";
 import { healthPlanService } from "@/services/health-plan.service";
-import { availableDoctorsService } from "@/services/available-doctors.service";
+import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
@@ -46,10 +49,7 @@ import {
 } from "lucide-react";
 
 export type AtendimentoTabId =
-  | "atendimento"
-  | "historico"
-  | "cadastro"
-  | "documentos";
+  "atendimento" | "historico" | "cadastro" | "documentos";
 
 const TABS: Array<{ id: AtendimentoTabId; label: string }> = [
   { id: "atendimento", label: "Atendimento" },
@@ -110,7 +110,7 @@ export function AtendimentoTabs({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isDoctor, isPhysician } = useAuth();
+  const { isDoctor, isPhysician, canIssueClinicalDocuments } = useAuth();
   const { toast, showSuccess, showError, hideToast } = useToast();
   const { emTour } = useOnboarding();
   // Guarda por PROVENIÊNCIA, não só pelo estado do tour: `/atendimento/tour-demo`
@@ -126,34 +126,35 @@ export function AtendimentoTabs({
   // Abas já abertas: o conteúdo pesado (histórico, documentos) só monta na
   // primeira visita e permanece montado depois.
   const [visited, setVisited] = useState<Set<AtendimentoTabId>>(
-    () => new Set<AtendimentoTabId>([isTabId(tabFromUrl) ? tabFromUrl : "atendimento"]),
+    () =>
+      new Set<AtendimentoTabId>([
+        isTabId(tabFromUrl) ? tabFromUrl : "atendimento",
+      ]),
   );
 
   const [patient, setPatient] = useState<Patient>(initialPatient);
-  // Indicação cirúrgica sai em nome do profissional da consulta, e o backend
-  // só aceita se ele for médico (CRM) — não basta quem está logado ser. Sem
-  // a lista (falha de rede), presume médico e deixa o backend decidir.
-  const [consultaDeMedico, setConsultaDeMedico] = useState(true);
+  // Indicação cirúrgica, receita, atestado e pedido de exame saem em nome do
+  // profissional da consulta, e o backend só aceita se ele for médico (CRM)
+  // com número — não basta quem está logado ser. Derivado a cada render (não
+  // guardado em estado): trocou o profissional, a tela acompanha. Fora da
+  // lista ou sem rede, `null` presume médico e deixa o backend decidir.
+  const { data: availableDoctors } = useAvailableDoctors({ fresh: true });
+  const assinante = useMemo<AssinanteConsulta | null>(() => {
+    const d = availableDoctors?.find((x) => x.id === appointment.doctorId);
+    if (!d) return null;
+    return {
+      nome: d.name,
+      medico: d.isPhysician !== false,
+      emiteDocumentos: d.canIssueClinicalDocuments ?? d.isPhysician !== false,
+      conselho: d.council ?? "CRM",
+      semNumero: !d.crm?.trim() || !d.crmState?.trim(),
+    };
+  }, [availableDoctors, appointment.doctorId]);
+  const consultaDeMedico = assinante?.medico !== false;
   // Médico sem número de CRM (veio assim do Feegow): o backend recusa a
   // indicação até alguém preencher o número.
-  const [crmSemNumeroDe, setCrmSemNumeroDe] = useState<string | null>(null);
-  useEffect(() => {
-    let ativo = true;
-    availableDoctorsService
-      .getAvailableDoctors()
-      .then((lista) => {
-        const d = lista.find((x) => x.id === appointment.doctorId);
-        if (!ativo || !d) return;
-        setConsultaDeMedico(d.isPhysician !== false);
-        setCrmSemNumeroDe(
-          d.isPhysician !== false && !d.crm?.trim() ? d.name : null,
-        );
-      })
-      .catch(() => undefined);
-    return () => {
-      ativo = false;
-    };
-  }, [appointment.doctorId]);
+  const crmSemNumeroDe =
+    assinante?.medico && assinante.semNumero ? assinante.nome : null;
   const [record, setRecord] = useState<ClinicalRecord | null>(initialRecord);
   const [fields, setFields] = useState<FichaFields>(() =>
     fichaFieldsFrom(initialRecord),
@@ -269,6 +270,22 @@ export function AtendimentoTabs({
   };
 
   const handleFinalize = async () => {
+    // Indicação marcada num rascunho antigo, mas o profissional da consulta
+    // não é médico ou está com o CRM sem número: o backend recusaria a SC e
+    // a ficha ficaria parada no outbox, com a mensagem dizendo que a
+    // solicitação "está sendo criada".
+    if (fields.surgicalIndication && !consultaDeMedico) {
+      showError(
+        `${assinante?.nome ?? "O profissional da consulta"} não é médico e não pode indicar cirurgia. Desmarque "Paciente cirúrgico" para finalizar.`,
+      );
+      return;
+    }
+    if (fields.surgicalIndication && crmSemNumeroDe) {
+      showError(
+        `Preencha o número do CRM de ${crmSemNumeroDe} em Colaboradores ou desmarque "Paciente cirúrgico" para finalizar.`,
+      );
+      return;
+    }
     setFinalizing(true);
     try {
       const saved = await persist();
@@ -497,24 +514,35 @@ export function AtendimentoTabs({
                 onFieldChange={handleFieldChange}
                 readOnly={readOnly}
                 surgeryRequestId={record?.surgeryRequestId ?? null}
+                // Marcar é ato de médico (CRM) numa consulta de médico. Um
+                // rascunho com a indicação já marcada mostra o cartão mesmo
+                // assim, editável só para desmarcar — é o que destrava salvar
+                // e finalizar (o backend recusa a indicação nesses casos).
                 allowSurgicalIndication={isPhysician && consultaDeMedico}
+                keepSurgicalIndicationVisible={baseline.surgicalIndication}
                 surgicalIndicationBlockedReason={
-                  crmSemNumeroDe
-                    ? `Preencha o número do CRM de ${crmSemNumeroDe} em Colaboradores para indicar cirurgia.`
-                    : undefined
+                  !consultaDeMedico
+                    ? `${assinante?.nome ?? "O profissional da consulta"} não é médico e não pode indicar cirurgia.`
+                    : !isPhysician
+                      ? "Indicação cirúrgica é ato de médico (CRM)."
+                      : crmSemNumeroDe
+                        ? `Preencha o número do CRM de ${crmSemNumeroDe} em Colaboradores para indicar cirurgia.`
+                        : undefined
                 }
               />
 
-              {/* Receita, atestado e pedido de exame saem com o CRM e a
-                  assinatura do médico da consulta — só médico (CRM) emite.
-                  Psicologia, nutrição, enfermagem etc. registram a ficha,
-                  mas não veem estes botões (o backend também recusa). */}
-              {isPhysician && (
+              {/* Receita, atestado e pedido de exame saem com o registro e a
+                  assinatura do profissional da consulta — médico (CRM) ou
+                  dentista (CRO). Psicologia, nutrição, enfermagem etc.
+                  registram a ficha, mas não veem estes botões (o backend
+                  também recusa). */}
+              {canIssueClinicalDocuments && (
                 <ClinicalDocumentActions
                   ensureRecordId={ensureRecordId}
                   cidCodes={fields.cidCodes}
                   patientId={patient.id}
                   doctorId={appointment.doctorId}
+                  assinante={assinante}
                   dadosFabricados={bloqueado}
                   onEmitted={(document) => {
                     showSuccess(`${document.name} emitido.`);

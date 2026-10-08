@@ -386,6 +386,67 @@ describe("AppointmentDetailModal — sala de espera e dados da consulta (MIG-03)
         expect(onChangeStatus).toHaveBeenCalledWith("confirmed"),
       );
     });
+    it("modal fechado antes do histórico chegar não muda o status", async () => {
+      let soltar!: (v: AppointmentActivity[]) => void;
+      vi.mocked(appointmentService.listActivities).mockReturnValue(
+        new Promise((res) => {
+          soltar = res;
+        }),
+      );
+      const onChangeStatus = vi.fn();
+      const { unmount } = render(
+        <AppointmentDetailModal
+          appointment={appointmentFixture("waiting")}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onStartAttendance={vi.fn()}
+          onChangeStatus={onChangeStatus}
+          onDelete={vi.fn()}
+        />,
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Desfazer chegada" }),
+      );
+      unmount();
+      soltar([mudanca("scheduled", "waiting", "2026-07-01T10:00:00Z")]);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(onChangeStatus).not.toHaveBeenCalled();
+    });
+
+    it("trocar de consulta antes do histórico chegar não muda o status", async () => {
+      let soltar!: (v: AppointmentActivity[]) => void;
+      vi.mocked(appointmentService.listActivities).mockReturnValue(
+        new Promise((res) => {
+          soltar = res;
+        }),
+      );
+      const onChangeStatus = vi.fn();
+      const props = {
+        onClose: vi.fn(),
+        onEdit: vi.fn(),
+        onStartAttendance: vi.fn(),
+        onChangeStatus,
+        onDelete: vi.fn(),
+      };
+      const { rerender } = render(
+        <AppointmentDetailModal appointment={appointmentFixture("waiting")} {...props} />,
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Desfazer chegada" }),
+      );
+      rerender(
+        <AppointmentDetailModal
+          appointment={{ ...appointmentFixture("waiting"), id: "a-2" }}
+          {...props}
+        />,
+      );
+      soltar([]);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(onChangeStatus).not.toHaveBeenCalled();
+    });
   });
 
   it("em atendimento oferece continuar o atendimento", () => {

@@ -210,7 +210,7 @@ export default function AtendimentoHubPage() {
               <button
                 onClick={() => setNewModal({})}
                 data-tour="atendimento-nova-consulta"
-                className="ml-auto flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+                className="ml-auto flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-0 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -270,7 +270,9 @@ export default function AtendimentoHubPage() {
 
         {/* ── Corpo ──────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-4">
-          {query.isError ? (
+          {/* Erro só da página seguinte ("Carregar mais") não apaga o que já
+              foi carregado: ele aparece no rodapé, com o tentar de novo. */}
+          {query.isError && !query.isFetchNextPageError ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16">
               <p className="text-sm text-red-500">
                 Não foi possível carregar as consultas.
@@ -295,7 +297,7 @@ export default function AtendimentoHubPage() {
                 podeAgenda ? (
                   <button
                     onClick={() => setNewModal({})}
-                    className="h-9 px-4 rounded-lg bg-teal-700 text-white text-xs font-semibold hover:bg-teal-800 transition-colors"
+                    className="min-h-[44px] md:min-h-[36px] px-4 rounded-lg bg-teal-700 text-white text-xs font-semibold hover:bg-teal-800 transition-colors"
                   >
                     Nova consulta
                   </button>
@@ -339,24 +341,31 @@ export default function AtendimentoHubPage() {
                     Mostrando {(records?.length ?? 0).toLocaleString("pt-BR")} de{" "}
                     {totalNoServidor.toLocaleString("pt-BR")} consultas
                   </p>
+                  {query.isFetchNextPageError && !query.isFetchingNextPage && (
+                    <p role="alert" className="text-xs text-red-600">
+                      Não foi possível carregar mais consultas.
+                    </p>
+                  )}
                   <div className="flex flex-wrap justify-center gap-2">
                     {query.hasNextPage && (
                       <button
                         type="button"
                         onClick={() => query.fetchNextPage()}
                         disabled={query.isFetchingNextPage}
-                        className="h-9 px-4 rounded-lg border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                        className="min-h-[44px] md:min-h-[36px] px-4 rounded-lg border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors disabled:opacity-50"
                       >
                         {query.isFetchingNextPage
                           ? "Carregando..."
-                          : `Carregar mais ${Math.min(HUB_PAGE_SIZE, faltam)}`}
+                          : query.isFetchNextPageError
+                            ? "Tentar de novo"
+                            : `Carregar mais ${Math.min(HUB_PAGE_SIZE, faltam)}`}
                       </button>
                     )}
                     {podeAgenda && (
                       <button
                         type="button"
                         onClick={() => router.push("/agenda")}
-                        className="h-9 px-4 rounded-lg text-xs font-semibold text-teal-700 hover:bg-teal-50 transition-colors flex items-center gap-1.5"
+                        className="min-h-[44px] md:min-h-[36px] px-4 rounded-lg text-xs font-semibold text-teal-700 hover:bg-teal-50 transition-colors flex items-center gap-1.5"
                       >
                         <CalendarDays className="w-3.5 h-3.5" />
                         Ver na agenda

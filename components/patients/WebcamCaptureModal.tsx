@@ -44,12 +44,22 @@ export function WebcamCaptureModal({
     null,
   );
 
+  // Componente montado? Um `getUserMedia` que resolve depois do unmount (ou
+  // depois que o StrictMode desmontou o primeiro efeito) não tem mais dono:
+  // as tracks precisam ser paradas ali mesmo, senão a webcam fica acesa.
+  const montadoRef = useRef(false);
+  // Cada pedido de câmera ganha um número; só o mais recente pode assumir o
+  // stream — um "tentar de novo" sobrepondo um pedido ainda pendente não
+  // deixa o anterior ligado.
+  const pedidoRef = useRef(0);
+
   const desligar = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }, []);
 
   const ligar = useCallback(async () => {
+    const pedido = ++pedidoRef.current;
     setEstado("abrindo");
     setErro("");
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -64,29 +74,49 @@ export function WebcamCaptureModal({
         video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 960 } },
         audio: false,
       });
+      if (!montadoRef.current || pedido !== pedidoRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      if (streamRef.current && streamRef.current !== stream) desligar();
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play().catch(() => undefined);
       }
+      if (!montadoRef.current) return;
       setEstado("ao-vivo");
     } catch (e) {
+      if (!montadoRef.current || pedido !== pedidoRef.current) return;
       setErro(mensagemDeErro(e));
       setEstado("erro");
     }
-  }, []);
+  }, [desligar]);
 
   useEffect(() => {
+    montadoRef.current = true;
     ligar();
-    return desligar;
+    return () => {
+      montadoRef.current = false;
+      // Invalida o pedido em andamento: quando ele resolver, para as tracks.
+      pedidoRef.current += 1;
+      desligar();
+    };
   }, [ligar, desligar]);
 
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      // A câmera é a camada de cima: o Esc é dela e não chega às de baixo
+      // (modal do cadastro, foto ampliada).
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      onClose();
     };
-    document.addEventListener("keydown", aoTeclar);
-    return () => document.removeEventListener("keydown", aoTeclar);
+    // Captura na janela: roda antes dos ouvintes de `document`/`window` das
+    // outras camadas, que então não recebem o Esc.
+    window.addEventListener("keydown", aoTeclar, true);
+    return () => window.removeEventListener("keydown", aoTeclar, true);
   }, [onClose]);
 
   // Libera a prévia anterior ao tirar outra ou fechar.

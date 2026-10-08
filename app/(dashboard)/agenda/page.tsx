@@ -40,7 +40,11 @@ import {
   availabilityService,
   ScheduleBlock,
 } from "@/services/availability.service";
-import { blockAppliesTo, holidayOn } from "@/lib/availability";
+import {
+  AVAILABILITY_QUERY_KEYS,
+  blockAppliesTo,
+  holidayOn,
+} from "@/lib/availability";
 import { formatDoctorName } from "@/lib/formatters";
 import { CalendarMonthView } from "@/components/agenda/CalendarMonthView";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
@@ -80,6 +84,9 @@ export default function AgendaPage() {
   // um eixo diferente de Agenda. Quem só tem Agenda enxerga só as consultas.
   const podeVerCirurgias = can(Permission.SOLICITACOES);
   const podeAgenda = can(Permission.AGENDA);
+  // Bloqueio de toda a clínica trava a agenda de todos: só Administração
+  // cria, edita ou remove (o backend recusa os demais com 403).
+  const podeBloquearClinica = can(Permission.ADMINISTRACAO);
 
   const [view, setView] = useState<CalView>("week");
   const [anchor, setAnchor] = useState<Date>(() => new Date());
@@ -193,12 +200,12 @@ export default function AgendaPage() {
   // Bloqueios e feriados (MIG-05): só desenham a agenda; quem impede marcar
   // é o backend. Falha aqui não derruba a agenda.
   const blocksQuery = useQuery({
-    queryKey: ["availability", "blocks", fromISO, toISO],
+    queryKey: [...AVAILABILITY_QUERY_KEYS.blocks, fromISO, toISO],
     queryFn: () => availabilityService.getBlocks({ from: fromISO, to: toISO }),
     placeholderData: keepPreviousData,
   });
   const holidaysQuery = useQuery({
-    queryKey: ["availability", "holidays"],
+    queryKey: AVAILABILITY_QUERY_KEYS.holidays,
     queryFn: () => availabilityService.getHolidays(),
     staleTime: 1000 * 60 * 30,
   });
@@ -280,7 +287,10 @@ export default function AgendaPage() {
           start: new Date(b.startsAt),
           end: new Date(b.endsAt),
           label: `${quem}: ${b.reason ?? "bloqueado"}`,
-          onClick: podeAgenda ? () => setBlockModal({ block: b }) : undefined,
+          onClick:
+            podeAgenda && (b.doctorId || podeBloquearClinica)
+              ? () => setBlockModal({ block: b })
+              : undefined,
         };
       });
     for (const day of days) {
@@ -303,6 +313,7 @@ export default function AgendaPage() {
     doctorNameById,
     physicianById,
     podeAgenda,
+    podeBloquearClinica,
   ]);
 
   // ── Mutations ───────────────────────────────────────────────────────────────
@@ -448,7 +459,7 @@ export default function AgendaPage() {
             {podeAgenda && (
               <button
                 onClick={() => setBlockModal({})}
-                className="flex items-center justify-center gap-1.5 h-8 px-2 sm:px-3 border border-neutral-200 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors shrink-0"
+                className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 md:h-8 px-2 sm:px-3 border border-neutral-200 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors shrink-0"
                 title="Bloquear horário"
                 aria-label="Bloquear horário"
               >
@@ -635,6 +646,7 @@ export default function AgendaPage() {
           isOpen
           block={blockModal.block ?? null}
           doctors={doctors}
+          podeClinicaToda={podeBloquearClinica}
           defaultDate={
             view === "month"
               ? null
@@ -644,7 +656,7 @@ export default function AgendaPage() {
           onSaved={(mensagem) => {
             showSuccess(mensagem);
             queryClient.invalidateQueries({
-              queryKey: ["availability", "blocks"],
+              queryKey: AVAILABILITY_QUERY_KEYS.blocks,
             });
           }}
         />

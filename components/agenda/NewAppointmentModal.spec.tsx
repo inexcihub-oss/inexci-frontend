@@ -735,3 +735,124 @@ describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
   });
 });
 
+
+describe("NewAppointmentModal — edição sem mexer no horário", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+    getSlots.mockResolvedValue([]);
+  });
+
+  /** Consulta às 09:00 locais de 17/08, num horário que hoje está bloqueado. */
+  const consulta = {
+    id: "appt-1",
+    doctorId: "doctor-1",
+    patientId: "patient-1",
+    patient: { id: "patient-1", name: "João" },
+    type: "first_visit" as const,
+    status: "scheduled" as const,
+    scheduledAt: new Date(2026, 7, 17, 9, 0, 0, 0).toISOString(),
+    durationMinutes: 30,
+    notes: null,
+    cancellationReason: null,
+    clinicId: null,
+    isWalkIn: false,
+  };
+
+  function abrirEdicao() {
+    return render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={consulta}
+      />,
+    );
+  }
+
+  it("só observação: não manda scheduledAt nem durationMinutes", async () => {
+    abrirEdicao();
+    fireEvent.change(screen.getByPlaceholderText(/motivo da consulta/i), {
+      target: { value: "Trazer exames" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    const corpo = update.mock.calls[0][1];
+    expect(corpo).toEqual(expect.objectContaining({ notes: "Trazer exames" }));
+    expect(corpo).not.toHaveProperty("scheduledAt");
+    expect(corpo).not.toHaveProperty("durationMinutes");
+  });
+
+  it("trocar horário ou duração manda os dois", async () => {
+    abrirEdicao();
+    fireEvent.change(screen.getByLabelText(/horário/i), {
+      target: { value: "10:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    expect(update.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        scheduledAt: new Date(2026, 7, 17, 10, 0, 0, 0).toISOString(),
+        durationMinutes: 30,
+      }),
+    );
+  });
+
+  it("bloqueio no horário atual não trava o salvar quando o horário não muda", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [slotLocal("09:00", 60, { free: false, reason: "block" })],
+      },
+    ]);
+    abrirEdicao();
+    await screen.findByRole("group", { name: "Horários da grade" });
+
+    expect(screen.queryByText(/Horário bloqueado/)).toBeNull();
+    expect(screen.queryByText(/Fora da grade/)).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /salvar alterações/i }),
+    ).toBeEnabled();
+
+    // Mudou a duração: volta a conferir a grade.
+    fireEvent.change(screen.getByDisplayValue("30 min"), {
+      target: { value: "45" },
+    });
+    expect(screen.getByText(/Horário bloqueado/)).toBeInTheDocument();
+  });
+});
+
+describe("NewAppointmentModal — encaixe libera horário ocupado", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+  });
+
+  it("com encaixe, ocupado por consulta fica clicável; bloqueio e feriado não", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [
+          slotLocal("08:00", 30, { free: false, reason: "appointment" }),
+          slotLocal("08:30", 30, { free: false, reason: "block" }),
+          slotLocal("09:00", 30, { free: false, reason: "holiday" }),
+        ],
+      },
+    ]);
+    abrirModal();
+    const ocupado = await screen.findByRole("button", { name: "08:00 (ocupado)" });
+    expect(ocupado).toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText(/encaixe/i));
+
+    expect(ocupado).toBeEnabled();
+    expect(screen.getByRole("button", { name: "08:30 (bloqueado)" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "09:00 (feriado)" })).toBeDisabled();
+    fireEvent.click(ocupado);
+    expect(document.getElementById("horario")).toHaveValue("08:00");
+  });
+});

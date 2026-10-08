@@ -51,6 +51,9 @@ export function usePatientHistory(patientId: string) {
   const { can } = useAuth();
   const podeConsultas = can(Permission.AGENDA) || can(Permission.ATENDIMENTO);
   const podeProntuario = can(Permission.ATENDIMENTO);
+  // `GET /surgery-requests` exige SOLICITACOES ou ATENDIMENTO no backend.
+  const podeCirurgias =
+    can(Permission.SOLICITACOES) || can(Permission.ATENDIMENTO);
   const [data, setData] = useState<PatientHistoryData>(VAZIO);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -77,11 +80,16 @@ export function usePatientHistory(patientId: string) {
             podeProntuario
               ? clinicalRecordService.getByPatient(patientId)
               : Promise.resolve([] as ClinicalRecord[]),
-            complemento(
-              surgeryRequestService.getAll({ patientId }),
-              { total: 0, records: [] as SurgeryRequestListItem[] },
-              "cirurgias",
-            ),
+            podeCirurgias
+              ? complemento(
+                  surgeryRequestService.getAll({ patientId }),
+                  { total: 0, records: [] as SurgeryRequestListItem[] },
+                  "cirurgias",
+                )
+              : Promise.resolve({
+                  total: 0,
+                  records: [] as SurgeryRequestListItem[],
+                }),
             podeProntuario
               ? complemento(
                   patientDocumentService.list(patientId),
@@ -119,7 +127,7 @@ export function usePatientHistory(patientId: string) {
     return () => {
       active = false;
     };
-  }, [patientId, podeConsultas, podeProntuario, reloadToken]);
+  }, [patientId, podeConsultas, podeProntuario, podeCirurgias, reloadToken]);
 
   const reload = useCallback(() => setReloadToken((t) => t + 1), []);
 

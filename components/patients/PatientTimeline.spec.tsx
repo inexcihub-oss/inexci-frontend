@@ -62,7 +62,7 @@ describe("PatientTimeline — filtro de profissional", () => {
     await user.click(
       screen.getByRole("button", { name: "Profissionais: Todos os profissionais" }),
     );
-    const opcao = screen.getByRole("menuitemcheckbox", {
+    const opcao = screen.getByRole("checkbox", {
       name: /Ana Nutricionista/,
     });
     expect(opcao).toHaveTextContent("2");

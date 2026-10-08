@@ -197,6 +197,41 @@ describe("PatientRegistrationForm", () => {
     ).toBeInTheDocument();
   });
 
+  it("bloqueia o salvamento com CPF de 11 dígitos mas inválido", async () => {
+    const user = userEvent.setup();
+    await renderForm({ onSaved: vi.fn() });
+
+    const cpf = fieldByLabel(/^CPF/i);
+    await user.clear(cpf);
+    await user.type(cpf, "11111111111");
+    await user.click(
+      screen.getByRole("button", { name: /Salvar dados do paciente/i }),
+    );
+
+    expect(patientService.update).not.toHaveBeenCalled();
+    expect(await screen.findByText("CPF inválido.")).toBeInTheDocument();
+  });
+
+  it("aceita CPF válido digitado", async () => {
+    const user = userEvent.setup();
+    (patientService.update as ReturnType<typeof vi.fn>).mockResolvedValue(patient);
+    await renderForm({ onSaved: vi.fn() });
+
+    const cpf = fieldByLabel(/^CPF/i);
+    await user.clear(cpf);
+    await user.type(cpf, "52998224725");
+    await user.click(
+      screen.getByRole("button", { name: /Salvar dados do paciente/i }),
+    );
+
+    await waitFor(() =>
+      expect(patientService.update).toHaveBeenCalledWith(
+        "p-1",
+        expect.objectContaining({ cpf: "52998224725" }),
+      ),
+    );
+  });
+
   it("salva e limpa o telefone secundário", async () => {
     const user = userEvent.setup();
     (patientService.update as ReturnType<typeof vi.fn>).mockResolvedValue(
