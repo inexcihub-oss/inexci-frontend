@@ -25,6 +25,19 @@ export interface UpdateNotificationSettingsData {
   mentionEmails?: boolean;
 }
 
+/**
+ * Avisos automáticos que a conta manda ao paciente. Configuração da conta
+ * (vale para toda a equipe) — só quem tem a área de administração lê e altera.
+ */
+export interface PatientNotificationSettings {
+  /** WhatsApp quando a consulta é marcada, remarcada ou reativada. */
+  appointmentScheduled: boolean;
+  /** Lembrete 24h antes (e-mail + WhatsApp com confirmar/cancelar). */
+  appointmentReminder: boolean;
+  /** WhatsApp quando a consulta é cancelada. */
+  appointmentCancelled: boolean;
+}
+
 export interface NotificationMetadata {
   actorId?: string;
   actorName?: string;
@@ -76,6 +89,23 @@ export const notificationService = {
   ): Promise<NotificationSettings> {
     const response = await api.put<NotificationSettings>(
       "/notifications/settings",
+      data,
+    );
+    return response.data;
+  },
+
+  async getPatientSettings(): Promise<PatientNotificationSettings> {
+    const response = await api.get<PatientNotificationSettings>(
+      "/notifications/patient-settings",
+    );
+    return response.data;
+  },
+
+  async updatePatientSettings(
+    data: Partial<PatientNotificationSettings>,
+  ): Promise<PatientNotificationSettings> {
+    const response = await api.put<PatientNotificationSettings>(
+      "/notifications/patient-settings",
       data,
     );
     return response.data;

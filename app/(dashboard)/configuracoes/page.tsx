@@ -32,7 +32,10 @@ import {
   buildOwnDoctorProfilePayload,
   type OwnDoctorProfileFields,
 } from "@/lib/collaborator-update";
-import { notificationService } from "@/services/notification.service";
+import {
+  notificationService,
+  type PatientNotificationSettings,
+} from "@/services/notification.service";
 import { uploadService } from "@/services/upload.service";
 import {
   COUNCIL_OPTIONS,
@@ -67,6 +70,9 @@ import {
   FileText,
   CalendarClock,
   CalendarOff,
+  CalendarCheck,
+  CalendarX,
+  BellRing,
 } from "lucide-react";
 import { OnboardingSettingsTab } from "@/components/onboarding/OnboardingSettingsTab";
 import { PrivacySection } from "@/components/privacy/PrivacySection";
@@ -612,6 +618,31 @@ function ConfiguracoesPageInner() {
     };
   }, [user]);
 
+  // Avisos ao paciente: configuração da conta, só para a administração.
+  // `null` = não carregou (sem permissão ou falha) — o card não aparece e o
+  // salvar não manda nada para a rota da conta.
+  const [patientNotifications, setPatientNotifications] =
+    useState<PatientNotificationSettings | null>(null);
+
+  useEffect(() => {
+    if (!podeAdministrar) {
+      setPatientNotifications(null);
+      return;
+    }
+    let ativo = true;
+    notificationService
+      .getPatientSettings()
+      .then((settings) => {
+        if (ativo) setPatientNotifications(settings);
+      })
+      .catch((error) => {
+        logger.error("Erro ao carregar avisos aos pacientes:", error);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [podeAdministrar]);
+
   // Carregar configurações de notificação
   useEffect(() => {
     const loadNotificationSettings = async () => {
@@ -845,6 +876,11 @@ function ConfiguracoesPageInner() {
         weeklyReport: notifications.weeklyReport,
         mentionEmails: notifications.mentionEmails,
       });
+      if (podeAdministrar && patientNotifications) {
+        setPatientNotifications(
+          await notificationService.updatePatientSettings(patientNotifications),
+        );
+      }
       showToast("Configurações de notificação atualizadas!", "success");
     } catch (error: unknown) {
       showToast(
@@ -1367,6 +1403,59 @@ function ConfiguracoesPageInner() {
             />
           </CardContent>
         </Card>
+
+        {/* Avisos aos pacientes — configuração da conta */}
+        {podeAdministrar && patientNotifications && (
+          <Card className="border border-gray-200 rounded-2xl">
+            <CardHeader className="p-6 pb-4">
+              <h3 className="text-base font-semibold text-gray-900">
+                Avisos aos pacientes
+              </h3>
+              <p className="text-sm text-gray-500">
+                Mensagens automáticas enviadas aos pacientes. Vale para toda a
+                clínica.
+              </p>
+            </CardHeader>
+            <CardContent className="p-6 pt-0">
+              <NotificationItem
+                icon={CalendarCheck}
+                title="Consulta agendada"
+                description="WhatsApp ao paciente quando a consulta é marcada, remarcada ou reativada"
+                checked={patientNotifications.appointmentScheduled}
+                onChange={(checked) =>
+                  setPatientNotifications({
+                    ...patientNotifications,
+                    appointmentScheduled: checked,
+                  })
+                }
+              />
+              <NotificationItem
+                icon={BellRing}
+                title="Lembrete e confirmação de consulta"
+                description="E-mail e WhatsApp 24 horas antes, com as opções de confirmar ou cancelar"
+                checked={patientNotifications.appointmentReminder}
+                onChange={(checked) =>
+                  setPatientNotifications({
+                    ...patientNotifications,
+                    appointmentReminder: checked,
+                  })
+                }
+              />
+              <NotificationItem
+                icon={CalendarX}
+                title="Consulta cancelada"
+                description="WhatsApp ao paciente quando a consulta é cancelada"
+                checked={patientNotifications.appointmentCancelled}
+                onChange={(checked) =>
+                  setPatientNotifications({
+                    ...patientNotifications,
+                    appointmentCancelled: checked,
+                  })
+                }
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Botão salvar */}
         <div className="flex justify-end">
