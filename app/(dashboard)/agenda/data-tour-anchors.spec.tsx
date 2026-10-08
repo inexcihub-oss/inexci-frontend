@@ -67,6 +67,7 @@ vi.mock("@/services/appointment.service", async (importOriginal) => {
     appointmentService: {
       ...original.appointmentService,
       getAgenda: vi.fn().mockResolvedValue([]),
+      getAgendaCompleta: vi.fn().mockResolvedValue({ total: 0, records: [] }),
     },
   };
 });

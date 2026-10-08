@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/Card";
 import type { QuotaSnapshot } from "@/types";
-import { formatDateBR } from "@/lib/billing-format";
+import { formatDateBR, remainingQuotaLabel } from "@/lib/billing-format";
 import { Activity } from "lucide-react";
 
 interface Props {
@@ -65,9 +65,7 @@ export function QuotaUsageCard({ quota }: Props) {
             )}
           </span>
           <span className="text-xs font-medium text-gray-500">
-            {isUnlimited
-              ? "Ilimitado"
-              : `${remaining} solicitação${remaining === 1 ? "" : "ões"} restantes`}
+            {isUnlimited ? "Ilimitado" : remainingQuotaLabel(remaining)}
           </span>
         </div>
 

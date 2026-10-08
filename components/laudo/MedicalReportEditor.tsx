@@ -32,6 +32,7 @@ import {
   MAX_DOCUMENT_FILE_SIZE_MB,
 } from "@/lib/file-upload";
 import type { DoctorHeader } from "@/types/doctor-header.types";
+import { safeExternalUrl } from "@/lib/safe-url";
 
 // P14: Tiptap (RichTextEditor) carregado sob demanda — fora do chunk estático
 // da rota /solicitacao/[id] (que hoje puxa ~243 kB); baixa só ao editar.
@@ -1268,7 +1269,7 @@ export function MedicalReportEditor() {
                     className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-xl"
                   >
                     <a
-                      href={doc.uri}
+                      href={safeExternalUrl(doc.uri)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 text-xs md:text-sm font-semibold text-gray-900 truncate hover:text-teal-700 hover:underline transition-colors"

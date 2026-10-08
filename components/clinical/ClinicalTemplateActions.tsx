@@ -130,13 +130,48 @@ export function ClinicalTemplateActions({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-neutral-100 bg-white px-4 py-3 shadow-sm">
+      <div className="flex flex-col gap-3 rounded-xl border border-neutral-100 bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-50">
+            <LayoutTemplate className="h-4 w-4 text-teal-700" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-neutral-900">
+              Modelos de anamnese
+            </p>
+            {/* Sem modelo salvo, a barra explica para que serve em vez de
+                ficar só com um link solto. */}
+            <p className="text-xs text-neutral-500">
+              {templates.length > 0
+                ? "Escolha um modelo para preencher a ficha."
+                : hasContent(fields)
+                  ? "Salve o que está escrito para reaproveitar nas próximas consultas."
+                  : "Escreva a ficha e salve como modelo para reaproveitar nas próximas consultas."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setIsSaveOpen(true);
+            }}
+            disabled={!hasContent(fields)}
+            aria-label="Salvar como modelo"
+            title={
+              hasContent(fields)
+                ? undefined
+                : "Escreva algo na ficha para salvar como modelo"
+            }
+            className="ds-btn-inline min-h-[44px] inline-flex shrink-0 items-center gap-1.5 text-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <BookmarkPlus className="h-4 w-4" />
+            <span className="hidden sm:inline">Salvar como modelo</span>
+            <span className="sm:hidden">Salvar</span>
+          </button>
+        </div>
+
         {templates.length > 0 && (
-          <>
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
-              <LayoutTemplate className="w-4 h-4" />
-              Aplicar modelo:
-            </span>
+          <div className="flex flex-wrap gap-2 sm:pl-12">
             {templates.map((template) => (
               <button
                 key={template.id}
@@ -149,21 +184,8 @@ export function ClinicalTemplateActions({
                 {template.name}
               </button>
             ))}
-          </>
+          </div>
         )}
-
-        <button
-          type="button"
-          onClick={() => {
-            setError(null);
-            setIsSaveOpen(true);
-          }}
-          disabled={!hasContent(fields)}
-          className="w-full sm:w-auto sm:ml-auto inline-flex items-center justify-center sm:justify-start gap-1.5 min-h-[44px] text-xs font-semibold text-teal-700 hover:underline disabled:text-neutral-400 disabled:no-underline disabled:cursor-not-allowed"
-        >
-          <BookmarkPlus className="w-4 h-4" />
-          Salvar como modelo
-        </button>
       </div>
 
       <Modal

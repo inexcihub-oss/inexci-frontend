@@ -93,10 +93,27 @@ describe("patientService", () => {
         cpf: "12345678900",
         email: "ana@example.com",
         phone: "11988880000",
+        // Sem foto no cadastro: a listagem devolve `null`, não omite.
+        photoUrl: null,
+        // Sem convênio no cadastro.
+        healthPlanId: undefined,
         birthDate: "1990-05-02",
         createdAt: "2024-01-01",
         updatedAt: "2024-01-01",
       });
+    });
+
+    it("mantém a URL da foto na listagem (avatar da lista)", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: {
+          total: 1,
+          records: [{ ...CADASTRO_COMPLETO, photoUrl: "https://r2/foto.png" }],
+        },
+      });
+
+      const { records } = await patientService.list();
+
+      expect(records[0].photoUrl).toBe("https://r2/foto.png");
     });
   });
 

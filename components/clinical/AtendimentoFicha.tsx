@@ -66,7 +66,28 @@ export function AtendimentoFicha({
   onFieldChange,
   readOnly,
   surgeryRequestId,
+  allowSurgicalIndication = true,
+  surgicalIndicationBlockedReason,
+  keepSurgicalIndicationVisible = false,
 }: {
+  /**
+   * Motivo para o cartão aparecer desabilitado (ex.: CRM sem número). Diferente
+   * de `allowSurgicalIndication = false`, que esconde o cartão: aqui o médico
+   * precisa saber o que falta para poder indicar.
+   */
+  surgicalIndicationBlockedReason?: string;
+  /**
+   * Indicação cirúrgica é ato de médico (CRM): abre uma SC em nome dele. Para
+   * psicologia, nutrição, enfermagem etc. o card some — a não ser que a ficha
+   * já tenha a indicação gravada, caso em que o resultado continua visível.
+   */
+  allowSurgicalIndication?: boolean;
+  /**
+   * Mantém o cartão na tela mesmo desmarcado e sem permissão de marcar — ex.:
+   * a indicação estava gravada e quem não pode indicar acabou de desmarcá-la.
+   * Sem isto o cartão sumiria no clique, sem como conferir o que mudou.
+   */
+  keepSurgicalIndicationVisible?: boolean;
   fields: FichaFields;
   onFieldChange: <K extends keyof FichaFields>(
     key: K,
@@ -136,18 +157,30 @@ export function AtendimentoFicha({
         />
       </SectionCard>
 
-      <IndicacaoCirurgicaCard
-        checked={fields.surgicalIndication}
-        onChange={(v) => onFieldChange("surgicalIndication", v)}
-        procedureId={fields.procedureId}
-        procedureName={fields.procedureName}
-        onProcedureChange={(id, name) => {
-          onFieldChange("procedureId", id);
-          onFieldChange("procedureName", name);
-        }}
-        readOnly={readOnly}
-        surgeryRequestId={surgeryRequestId}
-      />
+      {(allowSurgicalIndication ||
+        fields.surgicalIndication ||
+        keepSurgicalIndicationVisible) && (
+        <IndicacaoCirurgicaCard
+          checked={fields.surgicalIndication}
+          onChange={(v) => onFieldChange("surgicalIndication", v)}
+          procedureId={fields.procedureId}
+          procedureName={fields.procedureName}
+          onProcedureChange={(id, name) => {
+            onFieldChange("procedureId", id);
+            onFieldChange("procedureName", name);
+          }}
+          // Desmarcar é sempre possível para quem escreve a ficha: é o que
+          // destrava salvar/finalizar um rascunho com indicação que não pode
+          // mais seguir. Só MARCAR depende de permissão (e de nada bloqueando).
+          readOnly={
+            readOnly ||
+            (!fields.surgicalIndication &&
+              (!allowSurgicalIndication || !!surgicalIndicationBlockedReason))
+          }
+          blockedReason={readOnly ? undefined : surgicalIndicationBlockedReason}
+          surgeryRequestId={surgeryRequestId}
+        />
+      )}
     </div>
   );
 }
@@ -167,6 +200,7 @@ export function IndicacaoCirurgicaCard({
   onProcedureChange,
   readOnly,
   surgeryRequestId,
+  blockedReason,
 }: {
   checked: boolean;
   onChange: (value: boolean) => void;
@@ -175,6 +209,7 @@ export function IndicacaoCirurgicaCard({
   onProcedureChange: (id: string, name: string) => void;
   readOnly: boolean;
   surgeryRequestId: string | null;
+  blockedReason?: string;
 }) {
   const { can } = useAuth();
   const podeVerSolicitacoes = can(Permission.SOLICITACOES);
@@ -196,11 +231,15 @@ export function IndicacaoCirurgicaCard({
           <p className="text-sm font-medium text-neutral-900">
             Paciente cirúrgico
           </p>
-          {!readOnly && (
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Ao finalizar o atendimento, uma solicitação cirúrgica será criada
-              em Pendente para este paciente.
-            </p>
+          {blockedReason ? (
+            <p className="text-xs text-neutral-500 mt-0.5">{blockedReason}</p>
+          ) : (
+            !readOnly && (
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Ao finalizar o atendimento, uma solicitação cirúrgica será
+                criada em Pendente para este paciente.
+              </p>
+            )
           )}
         </div>
       </div>
@@ -218,9 +257,7 @@ export function IndicacaoCirurgicaCard({
             <Search className="w-4 h-4 text-neutral-400 shrink-0" />
             <span
               className={
-                procedureName
-                  ? "text-neutral-900 truncate"
-                  : "text-neutral-400"
+                procedureName ? "text-neutral-900 truncate" : "text-neutral-400"
               }
             >
               {procedureName || "Selecionar procedimento"}
@@ -325,6 +362,10 @@ function EditorField({
     );
   }
   return (
-    <RichTextEditor value={value} onChange={onChange} placeholder={placeholder} />
+    <RichTextEditor
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+    />
   );
 }

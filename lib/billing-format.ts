@@ -14,9 +14,21 @@ export function billingPeriodLabel(period: BillingPeriod): string {
   return period === "MONTHLY" ? "/mês" : "/ano";
 }
 
+/**
+ * "solicitação" / "solicitações" — troca a palavra inteira. Concatenar sufixo
+ * ("solicitação" + "ões") gerava "solicitaçãoões".
+ */
+export function solicitacoesLabel(n: number): string {
+  return `${n} ${n === 1 ? "solicitação" : "solicitações"}`;
+}
+
 export function quotaLabel(quota: number): string {
   if (quota === -1) return "Solicitações ilimitadas";
-  return `${quota} solicitação${quota === 1 ? "" : "ões"} por mês`;
+  return `${solicitacoesLabel(quota)} por mês`;
+}
+
+export function remainingQuotaLabel(remaining: number): string {
+  return `${solicitacoesLabel(remaining)} ${remaining === 1 ? "restante" : "restantes"}`;
 }
 
 export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {

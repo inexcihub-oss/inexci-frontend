@@ -5,6 +5,7 @@ import {
   CalEvent,
   WEEKDAYS_SHORT,
   addDays,
+  dateKey,
   eventColors,
   hhmm,
   isSameDay,
@@ -15,11 +16,25 @@ import {
 
 const MAX_PER_DAY = 3;
 
+/**
+ * Marca de dia na visão mensal: feriado que trava a agenda ou bloqueio que
+ * toca o dia. Na grade de horas viram faixa hachurada; aqui, um selo no topo
+ * da célula — sem ele o mês parecia livre num dia em que nada pode ser marcado.
+ */
+export interface AgendaDayMark {
+  id: string;
+  kind: "holiday" | "block";
+  label: string;
+  onClick?: () => void;
+}
+
 interface Props {
   anchor: Date; // qualquer dia do mês exibido
   events: CalEvent[];
   onEventClick: (ev: CalEvent) => void;
   onSelectDay: (day: Date) => void;
+  /** Marcas por dia (`dateKey`). */
+  dayMarks?: Record<string, AgendaDayMark[]>;
 }
 
 export function CalendarMonthView({
@@ -27,6 +42,7 @@ export function CalendarMonthView({
   events,
   onEventClick,
   onSelectDay,
+  dayMarks = {},
 }: Props) {
   const monthStart = startOfMonth(anchor);
   const gridStart = startOfWeek(monthStart);
@@ -80,6 +96,43 @@ export function CalendarMonthView({
               >
                 {day.getDate()}
               </div>
+
+              {(dayMarks[dateKey(day)] ?? []).map((mark) => (
+                <span
+                  key={mark.id}
+                  title={mark.label}
+                  data-testid="agenda-day-mark"
+                  role={mark.onClick ? "button" : undefined}
+                  tabIndex={mark.onClick ? 0 : undefined}
+                  onClick={
+                    mark.onClick
+                      ? (e) => {
+                          e.stopPropagation();
+                          mark.onClick?.();
+                        }
+                      : undefined
+                  }
+                  onKeyDown={
+                    mark.onClick
+                      ? (e) => {
+                          if (e.key !== "Enter" && e.key !== " ") return;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          mark.onClick?.();
+                        }
+                      : undefined
+                  }
+                  className={cn(
+                    "w-full text-[10px] font-medium rounded px-1 py-0.5 truncate border",
+                    mark.kind === "holiday"
+                      ? "bg-amber-50 text-amber-800 border-amber-200"
+                      : "bg-neutral-100 text-neutral-600 border-neutral-200",
+                    mark.onClick && "cursor-pointer hover:bg-neutral-200",
+                  )}
+                >
+                  {mark.label}
+                </span>
+              ))}
 
               <div className="flex flex-col gap-0.5 w-full">
                 {dayEvents.slice(0, MAX_PER_DAY).map((ev) => {

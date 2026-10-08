@@ -8,7 +8,7 @@
  * - Aceita value no formato YYYY-MM-DD ou DD/MM/AAAA
  */
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
 
 interface DateInputProps {
   id?: string;
@@ -63,6 +63,10 @@ export function DateInput({
   error,
 }: DateInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  // Sem `id` vindo de fora, gera um para ligar o <label> ao <input> —
+  // senão o campo é anunciado pelo placeholder ("DD/MM/AAAA").
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
 
   const displayValue = toDisplay(value);
 
@@ -92,14 +96,14 @@ export function DateInput({
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <label htmlFor={id} className="ds-label mb-0">
+        <label htmlFor={inputId} className="ds-label mb-0">
           {label}
           {required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
       )}
       <input
         ref={inputRef}
-        id={id}
+        id={inputId}
         type="text"
         inputMode="numeric"
         value={displayValue}

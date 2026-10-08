@@ -1,6 +1,25 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import {
+  render as rtlRender,
+  type RenderOptions,
+  screen,
+} from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement, ReactNode } from "react";
+
 import ColaboradoresPage from "./page";
+
+// O componente invalida a lista de médicos em cache ao salvar
+// (`useInvalidateAvailableDoctors`), então precisa de um QueryClient.
+function render(ui: ReactElement, options?: RenderOptions) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return rtlRender(ui, { wrapper: Wrapper, ...options });
+}
 
 /**
  * Prova que a tela real de colaboradores carrega a âncora `data-tour` que o

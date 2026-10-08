@@ -29,8 +29,16 @@ let authState: {
   refreshSubscription: () => Promise<void>;
 };
 
+// Mesmos padrões dos outros specs da página: a tela também consulta `can`,
+// `isDoctor` e `canIssueClinicalDocuments` para montar as abas.
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => authState,
+  useAuth: () => ({
+    can: () => false,
+    isDoctor: false,
+    isPhysician: false,
+    canIssueClinicalDocuments: false,
+    ...authState,
+  }),
 }));
 
 vi.mock("next/navigation", () => ({

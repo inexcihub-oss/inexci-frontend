@@ -16,6 +16,7 @@ vi.mock("@/contexts/AuthContext", () => ({
     isAccountOwner: true,
     subscription: null,
     updateUser: vi.fn(),
+    can: () => false,
     refreshSubscription: vi.fn(),
   }),
 }));
@@ -71,7 +72,7 @@ function renderPage() {
 }
 
 describe("Configurações — âncora do tour na Assinatura Digital", () => {
-  it("expõe data-tour=\"config-assinatura\" na seção do médico", async () => {
+  it('expõe data-tour="config-assinatura" na seção do médico', async () => {
     renderPage();
 
     const titulo = await screen.findByText("Assinatura Digital");

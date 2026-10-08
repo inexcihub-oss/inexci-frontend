@@ -10,20 +10,26 @@ import { HealthPlanComboboxField } from "@/components/patients/HealthPlanCombobo
 import { patientService, Patient } from "@/services/patient.service";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { GENDER_OPTIONS, STATE_OPTIONS } from "@/lib/options";
-import { formatCPF, formatPhone } from "@/lib/formatters";
+import { maskCpf, maskPhone } from "@/lib/masks";
 import { maskCep } from "@/lib/masks";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { logger } from "@/lib/logger";
 import { Loader2 } from "lucide-react";
+import {
+  mensagemCpfRepetido,
+  useCpfRepetido,
+} from "@/components/patients/useCpfRepetido";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyArea } from "@/lib/permissions";
+import { cpfOptionalSchema } from "@/lib/schemas/shared";
 
 interface FormData {
   name: string;
   cpf: string;
   email: string;
   phone: string;
+  secondaryPhone: string;
   birthDate: string;
   gender: string;
   address: string;
@@ -45,6 +51,7 @@ function formDataFrom(patient: Patient): FormData {
     cpf: patient.cpf || "",
     email: patient.email || "",
     phone: patient.phone || "",
+    secondaryPhone: patient.secondaryPhone || "",
     birthDate: patient.birthDate || "",
     gender: patient.gender || "",
     address: patient.address || "",
@@ -84,6 +91,9 @@ export function PatientRegistrationForm({
   const podeCriarConvenio = hasAnyArea(permissions);
   const [formData, setFormData] = useState<FormData>(() =>
     formDataFrom(patient),
+  );
+  const avisoCpf = mensagemCpfRepetido(
+    useCpfRepetido(formData.cpf, patient.id),
   );
   const [baseline, setBaseline] = useState<FormData>(() =>
     formDataFrom(patient),
@@ -126,16 +136,29 @@ export function PatientRegistrationForm({
 
   const handleSave = async () => {
     const cpf = formData.cpf.replace(/\D/g, "");
-    if (!cpf) {
-      setError("CPF é obrigatório.");
-      return;
+    // CPF é opcional (estrangeiros, menores, pacientes migrados), mas quando
+    // informado passa pela mesma validação do cadastro (11 dígitos + dígitos
+    // verificadores). A SC continua cobrando CPF como pendência antes de
+    // avançar. Só valida se o CPF mudou: paciente migrado com CPF inválido
+    // gravado continua editável nos outros campos sem ser obrigado a mexer
+    // no CPF.
+    const cpfMudou = cpf !== baseline.cpf.replace(/\D/g, "");
+    if (cpfMudou) {
+      const validacao = cpfOptionalSchema.safeParse(cpf);
+      if (!validacao.success) {
+        setError(validacao.error.issues[0]?.message ?? "CPF inválido.");
+        return;
+      }
     }
 
     setSaving(true);
     try {
       const saved = await patientService.update(patient.id, {
         name: formData.name,
+        // Vão sempre, mesmo vazios: `""` é como o backend sabe que é para
+        // apagar (vira `null`). `undefined` significaria "não mexer".
         cpf,
+        secondaryPhone: formData.secondaryPhone,
         email: formData.email || undefined,
         phone: formData.phone || undefined,
         birthDate: formData.birthDate || undefined,
@@ -183,12 +206,11 @@ export function PatientRegistrationForm({
           />
           <Input
             label="CPF"
-            value={formatCPF(formData.cpf)}
+            value={maskCpf(formData.cpf)}
             onChange={(e) =>
               setField("cpf", e.target.value.replace(/\D/g, ""))
             }
             placeholder="000.000.000-00"
-            required
           />
           <DateInput
             label="Data de nascimento"
@@ -203,11 +225,19 @@ export function PatientRegistrationForm({
           />
           <Input
             label="Telefone"
-            value={formatPhone(formData.phone)}
+            value={maskPhone(formData.phone)}
             onChange={(e) =>
               setField("phone", e.target.value.replace(/\D/g, ""))
             }
             placeholder="(00) 00000-0000"
+          />
+          <Input
+            label="Telefone secundário"
+            value={maskPhone(formData.secondaryPhone)}
+            onChange={(e) =>
+              setField("secondaryPhone", e.target.value.replace(/\D/g, ""))
+            }
+            placeholder="Fixo ou recado"
           />
           <Input
             label="E-mail"
@@ -216,6 +246,14 @@ export function PatientRegistrationForm({
             onChange={(e) => setField("email", e.target.value)}
           />
         </div>
+        {avisoCpf && (
+          <p
+            role="status"
+            className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+          >
+            {avisoCpf}
+          </p>
+        )}
       </FormSection>
 
       <FormSection title="Endereço">

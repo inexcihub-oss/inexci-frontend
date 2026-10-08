@@ -3,6 +3,9 @@ import { addDays, startOfDay } from "./calendar";
 
 export type HubTab = "today" | "upcoming" | "done";
 
+/** Consultas por página nas listas do hub ("carregar mais" de 20 em 20). */
+export const HUB_PAGE_SIZE = 20;
+
 export const HUB_TABS: { key: HubTab; label: string }[] = [
   { key: "today", label: "Hoje" },
   { key: "upcoming", label: "Próximas" },
@@ -27,8 +30,16 @@ export function hubTabQuery(tab: HubTab, now: Date = new Date()): HubTabQuery {
     return {
       from: today.toISOString(),
       to: addDays(today, 1).toISOString(),
-      // Cancelada não aparece na lista do dia.
-      status: ["scheduled", "confirmed", "completed", "no_show"],
+      // Cancelada não aparece na lista do dia. Aguardando e em atendimento
+      // aparecem: é a sala de espera do dia.
+      status: [
+        "scheduled",
+        "confirmed",
+        "waiting",
+        "in_progress",
+        "completed",
+        "no_show",
+      ],
       order: "ASC",
     };
   }

@@ -165,6 +165,40 @@ describe("ClinicalTemplateActions", () => {
     expect(screen.queryByText(/aplicar modelo/i)).toBeNull();
   });
 
+  it("sem modelos, explica para que serve em vez de mostrar só o botão", async () => {
+    (
+      clinicalRecordTemplateService.getAll as ReturnType<typeof vi.fn>
+    ).mockResolvedValue([]);
+    const { rerender } = setup();
+
+    expect(screen.getByText("Modelos de anamnese")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Escreva a ficha e salve como modelo/),
+    ).toBeInTheDocument();
+
+    rerender(
+      <ClinicalTemplateActions
+        doctorId="d-1"
+        fields={{ ...currentFields, anamnesis: "<p>Dor</p>" } as never}
+        onApply={onApply}
+      />,
+    );
+    expect(
+      screen.getByText(/Salve o que está escrito para reaproveitar/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /salvar como modelo/i }),
+    ).toBeEnabled();
+  });
+
+  it("com modelos, convida a escolher um", async () => {
+    setup();
+
+    expect(
+      await screen.findByText("Escolha um modelo para preencher a ficha."),
+    ).toBeInTheDocument();
+  });
+
   /**
    * Aplicar um modelo chama `apply`, que incrementa o contador de uso real;
    * salvar cria um registro persistente. Nenhum dos dois pode acontecer com o

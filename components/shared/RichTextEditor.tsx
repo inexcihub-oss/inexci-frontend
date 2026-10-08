@@ -10,7 +10,6 @@ import React, {
 import { createPortal } from "react-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import FontFamily from "@tiptap/extension-font-family";
@@ -399,8 +398,9 @@ export function RichTextEditor({
         blockquote: false,
         codeBlock: false,
         horizontalRule: false,
+        // StarterKit v3 já registra o Underline — registrar a extensão de
+        // novo gerava "Duplicate extension names found: ['underline']".
       }),
-      Underline,
       FontSize,
       Color,
       FontFamily,

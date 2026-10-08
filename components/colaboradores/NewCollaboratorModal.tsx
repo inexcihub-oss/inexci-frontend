@@ -16,7 +16,12 @@ import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
 import { PROFILE_PRESETS } from "@/lib/permissions";
+import {
+  COUNCIL_OPTIONS,
+  ProfessionalCouncil,
+} from "@/lib/professional-council";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
+import { useInvalidateAvailableDoctors } from "@/hooks/useAvailableDoctors";
 
 interface NewCollaboratorModalProps {
   isOpen: boolean;
@@ -60,8 +65,9 @@ const FIELD_LABELS: Record<string, string> = {
   name: "Nome completo",
   email: "E-mail",
   phone: "Telefone",
-  crm: "CRM",
-  crmState: "UF do CRM",
+  council: "Conselho",
+  crm: "Número no conselho",
+  crmState: "UF do conselho",
 };
 
 const inputClass = "ds-input";
@@ -78,6 +84,7 @@ export function NewCollaboratorModal({
   const [error, setError] = useState("");
   const { toast, showToast, hideToast } = useToast();
   const { emTour } = useOnboarding();
+  const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
   const form = useZodForm({
     schema: createCollaboratorSchema,
@@ -86,6 +93,7 @@ export function NewCollaboratorModal({
       email: "",
       phone: "",
       isDoctor: defaultIsDoctor,
+      council: "CRM",
       crm: "",
       crmState: "",
       specialty: "",
@@ -94,6 +102,7 @@ export function NewCollaboratorModal({
       permissions: PROFILE_PRESETS.completo,
     },
   });
+  const isCrm = (form.values.council ?? "CRM") === "CRM";
 
   // Mantém is_doctor sincronizado quando defaultIsDoctor mudar
   useEffect(() => {
@@ -108,6 +117,7 @@ export function NewCollaboratorModal({
       email: "",
       phone: "",
       isDoctor: defaultIsDoctor,
+      council: "CRM",
       crm: "",
       crmState: "",
       specialty: "",
@@ -142,22 +152,26 @@ export function NewCollaboratorModal({
           email: data.email.trim(),
           phone: unmask(data.phone),
           permissions: data.permissions,
-          ...(data.isDoctor &&
-            data.crm &&
-            data.crm.trim() && {
-              isDoctor: true,
-              crm: data.crm.trim(),
-              crmState: data.crmState || undefined,
-              specialty: data.specialty?.trim() || undefined,
-            }),
+          // Médico (CRM) sem número não chega aqui (o schema barra). Para os
+          // demais conselhos, número e UF vão só se preenchidos.
+          ...(data.isDoctor && {
+            isDoctor: true,
+            council: data.council,
+            crm: data.crm?.trim() || undefined,
+            crmState: data.crmState || undefined,
+            specialty: data.specialty?.trim() || undefined,
+          }),
         };
         await collaboratorService.create(payload);
+        // Profissional novo entra na lista de médicos do wizard e da agenda.
+        void invalidateAvailableDoctors();
         onSuccess();
         form.reset({
           name: "",
           email: "",
           phone: "",
           isDoctor: defaultIsDoctor,
+          council: "CRM",
           crm: "",
           crmState: "",
           specialty: "",
@@ -285,19 +299,56 @@ export function NewCollaboratorModal({
                 />
               </button>
               <span className="text-sm font-medium text-gray-700">
-                Este colaborador é médico(a)
+                Este colaborador é profissional de saúde (atende pacientes)
               </span>
             </div>
 
             {/* Doctor Fields (conditional) */}
             {form.values.isDoctor && (
               <div className="space-y-3 p-4 bg-teal-50 rounded-xl border border-teal-100">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="collaborator-council" className={labelClass}>
+                    Conselho
+                  </label>
+                  <select
+                    id="collaborator-council"
+                    value={form.values.council ?? "CRM"}
+                    onChange={(e) =>
+                      form.setField(
+                        "council",
+                        e.target.value as ProfessionalCouncil,
+                      )
+                    }
+                    className={inputClass}
+                  >
+                    {COUNCIL_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  {!isCrm && (
+                    <span className="text-xs text-gray-500">
+                      Tem agenda e prontuário próprios. Receita, atestado,
+                      pedido de exame e indicação cirúrgica são do médico (CRM).
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <label className={labelClass}>CRM</label>
+                    <label className={labelClass}>
+                      Número no conselho
+                      {!isCrm && (
+                        <span className="text-gray-400 font-normal">
+                          {" "}
+                          (opcional)
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="text"
-                      required={form.values.isDoctor}
+                      aria-label="Número no conselho"
+                      required={form.values.isDoctor && isCrm}
                       value={form.values.crm}
                       onChange={(e) => form.setField("crm", e.target.value)}
                       placeholder="123456"
@@ -310,9 +361,18 @@ export function NewCollaboratorModal({
                     )}
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className={labelClass}>UF do CRM</label>
+                    <label className={labelClass}>
+                      UF do conselho
+                      {!isCrm && (
+                        <span className="text-gray-400 font-normal">
+                          {" "}
+                          (opcional)
+                        </span>
+                      )}
+                    </label>
                     <select
-                      required={form.values.isDoctor}
+                      aria-label="UF do conselho"
+                      required={form.values.isDoctor && isCrm}
                       value={form.values.crmState}
                       onChange={(e) =>
                         form.setField("crmState", e.target.value)
@@ -357,6 +417,7 @@ export function NewCollaboratorModal({
               <PermissionsSection
                 value={form.values.permissions ?? []}
                 isDoctor={!!form.values.isDoctor}
+                isPhysician={isCrm}
                 onChange={(p) => form.setField("permissions", p)}
               />
             </div>

@@ -21,6 +21,38 @@ vi.mock("@/hooks/useClinics", () => ({
   CLINICS_QUERY_KEY: ["clinics"],
   useClinics: () => ({ data: clinics, isLoading: false }),
 }));
+
+const salas = vi.hoisted(() => ({
+  "clinic-1": [
+    {
+      id: "room-1",
+      clinicId: "clinic-1",
+      name: "Consultório 01",
+      active: true,
+    },
+    {
+      id: "room-2",
+      clinicId: "clinic-1",
+      name: "Consultório 02",
+      active: false,
+    },
+  ],
+}));
+vi.mock("@/hooks/useClinicRooms", () => ({
+  useClinicRooms: (clinicId: string | null) => ({
+    data: clinicId
+      ? ((salas as Record<string, unknown[]>)[clinicId] ?? [])
+      : [],
+  }),
+}));
+vi.mock("@/hooks/useHealthPlans", () => ({
+  useHealthPlans: () => ({
+    data: [
+      { id: "hp-1", name: "UNIMED" },
+      { id: "hp-2", name: "AMIL" },
+    ],
+  }),
+}));
 /**
  * Estado compartilhado entre o factory (hoisted, roda antes do resto do
  * arquivo) e os testes: alterna o mock de `useAvailableDoctors` entre
@@ -30,7 +62,7 @@ vi.mock("@/hooks/useClinics", () => ({
  * `vi.hoisted` é o jeito suportado de expor essa mutável ao factory do
  * `vi.mock`, que também é hoisted.
  */
-const doctorsMockState = vi.hoisted(() => ({ unstable: false }));
+const doctorsMockState = vi.hoisted(() => ({ unstable: false, two: false }));
 
 vi.mock("@/hooks/useAvailableDoctors", () => {
   const stableData = [
@@ -38,16 +70,20 @@ vi.mock("@/hooks/useAvailableDoctors", () => {
   ];
   return {
     useAvailableDoctors: () => ({
-      data: doctorsMockState.unstable
-        ? [{ id: "doctor-1", name: "Dra. Ana", specialty: "Ortopedia" }]
-        : stableData,
+      data: doctorsMockState.two
+        ? [
+            ...stableData,
+            { id: "doctor-2", name: "Dr. Bruno", specialty: "Clínica" },
+          ]
+        : doctorsMockState.unstable
+          ? [{ id: "doctor-1", name: "Dra. Ana", specialty: "Ortopedia" }]
+          : stableData,
     }),
   };
 });
 vi.mock("@/services/appointment.service", async (importOriginal) => {
-  const original = await importOriginal<
-    typeof import("@/services/appointment.service")
-  >();
+  const original =
+    await importOriginal<typeof import("@/services/appointment.service")>();
   return {
     ...original,
     appointmentService: {
@@ -57,10 +93,47 @@ vi.mock("@/services/appointment.service", async (importOriginal) => {
     },
   };
 });
+const getSlots = vi.hoisted(() => vi.fn());
+const getBlocks = vi.hoisted(() => vi.fn());
+vi.mock("@/services/availability.service", () => ({
+  availabilityService: {
+    getSlots: (...a: unknown[]) => getSlots(...a) ?? Promise.resolve([]),
+    getBlocks: (...a: unknown[]) => getBlocks(...a) ?? Promise.resolve([]),
+  },
+}));
+const listPatients = vi.hoisted(() => vi.fn());
 vi.mock("@/services/patient.service", () => ({
   patientService: {
-    list: vi.fn().mockResolvedValue({ records: [] }),
+    list: (...a: unknown[]) => listPatients(...a),
   },
+}));
+// Busca de paciente simplificada: um botão que busca e escolhe o primeiro
+// resultado — o que importa aqui é o que o modal faz com a escolha.
+vi.mock("@/components/ui/SelectSearch", () => ({
+  SelectSearch: ({
+    initialLabel,
+    onSearch,
+    onChange,
+    ariaLabel,
+  }: {
+    initialLabel?: string;
+    ariaLabel?: string;
+    onSearch: (t: string) => Promise<{ value: string; label: string }[]>;
+    onChange: (v: string, label?: string) => void;
+  }) => (
+    <div role="group" aria-label={ariaLabel}>
+      <span>{initialLabel}</span>
+      <button
+        type="button"
+        onClick={async () => {
+          const [primeiro] = await onSearch("ma");
+          if (primeiro) onChange(primeiro.value, primeiro.label);
+        }}
+      >
+        buscar paciente
+      </button>
+    </div>
+  ),
 }));
 // NewAppointmentModal sempre monta o <NewPatientModal> (só o "isOpen" muda),
 // e ele usa useAuth() para decidir se mostra o atalho de criar convênio.
@@ -74,6 +147,7 @@ vi.mock("@/components/onboarding/OnboardingProvider", () => ({
 }));
 
 import { NewAppointmentModal } from "./NewAppointmentModal";
+import { appointmentService } from "@/services/appointment.service";
 
 /** Segunda-feira, 17/08/2026. */
 const SEGUNDA = "2026-08-17";
@@ -155,9 +229,7 @@ describe("NewAppointmentModal — clínica e aviso de horário", () => {
     fireEvent.change(screen.getByLabelText(/clínica/i), {
       target: { value: "clinic-1" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: /agendar consulta/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /agendar consulta/i }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0]).toEqual(
@@ -167,9 +239,7 @@ describe("NewAppointmentModal — clínica e aviso de horário", () => {
 
   it("envia clinicId null quando nenhuma clínica é escolhida", async () => {
     abrirModal();
-    fireEvent.click(
-      screen.getByRole("button", { name: /agendar consulta/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /agendar consulta/i }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0]).toEqual(
@@ -196,9 +266,7 @@ describe("NewAppointmentModal — clínica e aviso de horário", () => {
       expect(screen.getByLabelText(/clínica/i)).toHaveValue("clinic-1"),
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /agendar consulta/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /agendar consulta/i }));
 
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(create.mock.calls[0][0]).toEqual(
@@ -243,13 +311,9 @@ describe("NewAppointmentModal — edição com clínica excluída (C1)", () => {
   it("exibe o nome da unidade excluída no select em vez de 'Nenhuma'", () => {
     abrirModalEdicao();
 
-    const select = screen.getByLabelText(
-      /clínica/i,
-    ) as HTMLSelectElement;
+    const select = screen.getByLabelText(/clínica/i) as HTMLSelectElement;
     expect(select).toHaveValue("clinic-excluida");
-    expect(
-      screen.getByText("Unidade Antiga (excluída)"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Unidade Antiga (excluída)")).toBeInTheDocument();
   });
 
   it("não envia clinicId ao salvar sem trocar a clínica excluída (só o horário)", async () => {
@@ -258,9 +322,7 @@ describe("NewAppointmentModal — edição com clínica excluída (C1)", () => {
     fireEvent.change(screen.getByLabelText(/horário/i), {
       target: { value: "10:00" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: /salvar alterações/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
 
     await waitFor(() => expect(update).toHaveBeenCalled());
     expect(update.mock.calls[0][1]).not.toHaveProperty("clinicId");
@@ -272,9 +334,7 @@ describe("NewAppointmentModal — edição com clínica excluída (C1)", () => {
     fireEvent.change(screen.getByLabelText(/clínica/i), {
       target: { value: "clinic-1" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: /salvar alterações/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
 
     await waitFor(() => expect(update).toHaveBeenCalled());
     expect(update.mock.calls[0][1]).toEqual(
@@ -353,5 +413,860 @@ describe("NewAppointmentModal — tour de onboarding", () => {
     expect(
       screen.getByRole("button", { name: /salvar alterações/i }),
     ).toBeDisabled();
+  });
+});
+
+describe("NewAppointmentModal — sala, convênio e encaixe (MIG-03)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+  });
+
+  const escolherClinica = () =>
+    fireEvent.change(screen.getByLabelText(/clínica/i), {
+      target: { value: "clinic-1" },
+    });
+  const agendar = () =>
+    fireEvent.click(screen.getByRole("button", { name: /agendar consulta/i }));
+
+  it("sem clínica não mostra o campo de sala", () => {
+    abrirModal();
+
+    expect(screen.queryByLabelText(/^sala$/i)).not.toBeInTheDocument();
+  });
+
+  it("lista só as salas ativas da clínica escolhida e envia a sala", async () => {
+    abrirModal();
+    escolherClinica();
+
+    const select = screen.getByLabelText(/^sala$/i);
+    expect(screen.getByText("Consultório 01")).toBeInTheDocument();
+    expect(screen.queryByText(/Consultório 02/)).not.toBeInTheDocument();
+
+    fireEvent.change(select, { target: { value: "room-1" } });
+    agendar();
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ clinicId: "clinic-1", roomId: "room-1" }),
+    );
+  });
+
+  it("trocar a clínica limpa a sala escolhida", async () => {
+    abrirModal();
+    escolherClinica();
+    fireEvent.change(screen.getByLabelText(/^sala$/i), {
+      target: { value: "room-1" },
+    });
+    fireEvent.change(screen.getByLabelText(/clínica/i), {
+      target: { value: "" },
+    });
+    agendar();
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ clinicId: null, roomId: null }),
+    );
+  });
+
+  it("convênio começa em particular e envia o escolhido", async () => {
+    abrirModal();
+
+    const convenio = screen.getByLabelText(/convênio/i) as HTMLSelectElement;
+    expect(convenio).toHaveValue("");
+    fireEvent.change(convenio, { target: { value: "hp-1" } });
+    agendar();
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ healthPlanId: "hp-1", isWalkIn: false }),
+    );
+  });
+
+  it("envia o encaixe marcado", async () => {
+    abrirModal();
+    fireEvent.click(screen.getByLabelText(/encaixe/i));
+    agendar();
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ isWalkIn: true }),
+    );
+  });
+
+  it("na edição só manda o que mudou", async () => {
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={{
+          id: "appt-1",
+          doctorId: "doctor-1",
+          patientId: "patient-1",
+          patient: { id: "patient-1", name: "João" },
+          type: "first_visit",
+          status: "scheduled",
+          scheduledAt: "2026-08-17T12:00:00.000Z",
+          durationMinutes: 30,
+          notes: null,
+          cancellationReason: null,
+          clinicId: "clinic-1",
+          clinic: { id: "clinic-1", name: "Unidade Centro" },
+          roomId: "room-1",
+          healthPlanId: null,
+          isWalkIn: false,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText(/encaixe/i));
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    const corpo = update.mock.calls[0][1];
+    expect(corpo).toEqual(expect.objectContaining({ isWalkIn: true }));
+    expect(corpo).not.toHaveProperty("roomId");
+    expect(corpo).not.toHaveProperty("healthPlanId");
+  });
+});
+
+describe("NewAppointmentModal — convênio do paciente como sugestão", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+    listPatients.mockResolvedValue({
+      records: [{ id: "p-2", name: "Maria", healthPlanId: "hp-1" }],
+    });
+  });
+
+  const convenio = () =>
+    screen.getByLabelText(/convênio/i) as HTMLSelectElement;
+
+  it("aberto pela página do paciente, já vem com o convênio dele", () => {
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        defaultDate={SEGUNDA}
+        defaultPatientId="p-2"
+        defaultPatientLabel="Maria"
+        defaultHealthPlanId="hp-1"
+      />,
+    );
+
+    expect(convenio()).toHaveValue("hp-1");
+  });
+
+  it("escolher o paciente na busca sugere o convênio dele", async () => {
+    render(<NewAppointmentModal isOpen onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "buscar paciente" }));
+
+    await waitFor(() => expect(convenio()).toHaveValue("hp-1"));
+  });
+
+  it("não sobrescreve o convênio escolhido à mão", async () => {
+    render(<NewAppointmentModal isOpen onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    fireEvent.change(convenio(), { target: { value: "hp-2" } });
+    fireEvent.click(screen.getByRole("button", { name: "buscar paciente" }));
+    // Espera a escolha do paciente chegar ao modal antes de conferir.
+    expect(await screen.findByText("Maria")).toBeInTheDocument();
+
+    expect(convenio()).toHaveValue("hp-2");
+  });
+
+  it("convênio do paciente que não está na lista da conta não é sugerido", async () => {
+    listPatients.mockResolvedValue({
+      records: [{ id: "p-4", name: "Ana", healthPlanId: "hp-de-outra-conta" }],
+    });
+    render(<NewAppointmentModal isOpen onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "buscar paciente" }));
+    expect(await screen.findByText("Ana")).toBeInTheDocument();
+
+    expect(convenio()).toHaveValue("");
+  });
+
+  it("paciente sem convênio deixa particular", async () => {
+    listPatients.mockResolvedValue({
+      records: [{ id: "p-3", name: "João", healthPlanId: undefined }],
+    });
+    render(<NewAppointmentModal isOpen onClose={vi.fn()} onSaved={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "buscar paciente" }));
+    expect(await screen.findByText("João")).toBeInTheDocument();
+
+    expect(convenio()).toHaveValue("");
+  });
+});
+
+/** Horário local de São Paulo → ISO (os testes rodam com TZ do Vitest). */
+function slotLocal(hhmm: string, minutos = 30, extra: object = {}) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const ini = new Date(2026, 7, 17, h, m, 0, 0);
+  return {
+    start: ini.toISOString(),
+    end: new Date(ini.getTime() + minutos * 60_000).toISOString(),
+    free: true,
+    ...extra,
+  };
+}
+
+describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+    getSlots.mockResolvedValue([]);
+    getBlocks.mockResolvedValue([]);
+  });
+
+  it("mostra os horários da grade; livre vira o horário escolhido, ocupado fica desabilitado", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [
+          slotLocal("08:00"),
+          slotLocal("08:30", 30, { free: false, reason: "appointment" }),
+          slotLocal("09:00"),
+        ],
+      },
+    ]);
+    abrirModal();
+
+    const grupo = await screen.findByRole("group", {
+      name: "Horários da grade",
+    });
+    expect(getSlots).toHaveBeenCalledWith({
+      doctorId: "doctor-1",
+      from: SEGUNDA,
+      to: SEGUNDA,
+    });
+    expect(
+      screen.getByRole("button", { name: "08:30 (ocupado)" }),
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "08:00" }));
+    expect(document.getElementById("horario")).toHaveValue("08:00");
+    expect(grupo).toBeInTheDocument();
+    expect(screen.queryByText(/Fora da grade/)).toBeNull();
+  });
+
+  it("escolher um horário da grade preenche a clínica e a sala do período", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [
+          slotLocal("08:00", 30, { clinicId: "clinic-1", roomId: "room-1" }),
+        ],
+      },
+    ]);
+    abrirModal();
+
+    fireEvent.click(await screen.findByRole("button", { name: "08:00" }));
+    expect(screen.getByLabelText(/clínica/i)).toHaveValue("clinic-1");
+    expect(screen.getByLabelText(/^sala$/i)).toHaveValue("room-1");
+
+    fireEvent.click(screen.getByRole("button", { name: /agendar consulta/i }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ clinicId: "clinic-1", roomId: "room-1" }),
+    );
+  });
+
+  it("horário de grade sem local não mexe na clínica", async () => {
+    getSlots.mockResolvedValue([
+      { date: SEGUNDA, holiday: null, slots: [slotLocal("08:00")] },
+    ]);
+    abrirModal();
+
+    fireEvent.click(await screen.findByRole("button", { name: "08:00" }));
+    expect(screen.getByLabelText(/clínica/i)).toHaveValue("");
+  });
+
+  it("não sobrescreve a clínica escolhida à mão", async () => {
+    clinics.push({ ...clinics[0], id: "clinic-2", name: "Unidade Sul" });
+    try {
+      getSlots.mockResolvedValue([
+        {
+          date: SEGUNDA,
+          holiday: null,
+          slots: [
+            slotLocal("08:00", 30, { clinicId: "clinic-1", roomId: "room-1" }),
+          ],
+        },
+      ]);
+      abrirModal();
+      fireEvent.change(screen.getByLabelText(/clínica/i), {
+        target: { value: "clinic-2" },
+      });
+
+      fireEvent.click(await screen.findByRole("button", { name: "08:00" }));
+      expect(screen.getByLabelText(/clínica/i)).toHaveValue("clinic-2");
+    } finally {
+      clinics.pop();
+    }
+  });
+
+  it("clínica vinda de um horário da grade acompanha o próximo horário escolhido", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [
+          slotLocal("08:00", 30, { clinicId: "clinic-1", roomId: "room-1" }),
+          slotLocal("14:00", 30, { clinicId: null, roomId: null }),
+          slotLocal("15:00", 30, { clinicId: "clinic-1", roomId: null }),
+        ],
+      },
+    ]);
+    abrirModal();
+
+    fireEvent.click(await screen.findByRole("button", { name: "08:00" }));
+    expect(screen.getByLabelText(/^sala$/i)).toHaveValue("room-1");
+    fireEvent.click(screen.getByRole("button", { name: "15:00" }));
+    expect(screen.getByLabelText(/clínica/i)).toHaveValue("clinic-1");
+    expect(screen.getByLabelText(/^sala$/i)).toHaveValue("");
+  });
+
+  it("horário fora da grade mostra o aviso e o botão vira 'Agendar mesmo assim'", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [slotLocal("14:00"), slotLocal("14:30")],
+      },
+    ]);
+    abrirModal();
+
+    expect(
+      await screen.findByText("Fora da grade de atendimento do profissional."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Agendar mesmo assim" }),
+    ).toBeInTheDocument();
+  });
+
+  it("sem a lista de bloqueios, o 'block' da grade trava o salvar (fallback)", async () => {
+    getBlocks.mockRejectedValue(new Error("rede"));
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [
+          slotLocal("08:00", 60),
+          slotLocal("09:00", 60, { free: false, reason: "block" }),
+        ],
+      },
+    ]);
+    abrirModal();
+
+    expect(
+      await screen.findByText(
+        /Horário bloqueado na agenda do profissional: não será possível agendar\./,
+      ),
+    ).toBeInTheDocument();
+    // Bloqueio é recusado pelo backend até para encaixe: não há "mesmo assim".
+    expect(
+      screen.queryByRole("button", { name: /agendar mesmo assim/i }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Agendar consulta" }),
+    ).toBeDisabled();
+  });
+
+  it("'block' da grade não trava o salvar quando a lista de bloqueios carregou e nenhum atinge a consulta", async () => {
+    // O backend marca o horário como "block" pela clínica do período da
+    // grade (aqui, um bloqueio só da clínica X); a consulta é de outra
+    // clínica, então o bloqueio não a atinge e o backend aceita.
+    getBlocks.mockResolvedValue([
+      {
+        id: "b-x",
+        doctorId: null,
+        clinicId: "clinic-x",
+        startsAt: new Date(2026, 7, 17, 9, 0).toISOString(),
+        endsAt: new Date(2026, 7, 17, 10, 0).toISOString(),
+        allDay: false,
+        reason: null,
+      },
+    ]);
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [
+          slotLocal("08:00", 60),
+          slotLocal("09:00", 60, { free: false, reason: "block" }),
+        ],
+      },
+    ]);
+    abrirModal();
+    fireEvent.change(screen.getByLabelText("Clínica"), {
+      target: { value: "clinic-1" },
+    });
+
+    const slot = await screen.findByRole("button", {
+      name: "09:00 (bloqueado)",
+    });
+    await waitFor(() => expect(getBlocks).toHaveBeenCalled());
+    // Só aviso visual: o horário continua clicável.
+    expect(slot).toBeEnabled();
+    expect(screen.queryByText(/Horário bloqueado/)).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Agendar consulta" }),
+    ).toBeEnabled();
+  });
+
+  it("bloqueio fora da grade também é avisado antes de enviar", async () => {
+    // Profissional sem grade no dia: nenhum horário da grade revela o
+    // bloqueio, só a lista de bloqueios do dia.
+    getSlots.mockResolvedValue([]);
+    getBlocks.mockResolvedValue([
+      {
+        id: "b-1",
+        doctorId: "doctor-1",
+        clinicId: null,
+        startsAt: new Date(2026, 7, 17, 8, 0).toISOString(),
+        endsAt: new Date(2026, 7, 17, 10, 0).toISOString(),
+        allDay: false,
+        reason: "Congresso",
+      },
+    ]);
+    abrirModal();
+
+    expect(
+      await screen.findByText(
+        /Horário bloqueado na agenda do profissional \(Congresso\): não será possível agendar\./,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Agendar consulta" }),
+    ).toBeDisabled();
+    const [{ doctorId, from, to }] = getBlocks.mock.calls[0] as [
+      { doctorId: string; from: string; to: string },
+    ];
+    expect(doctorId).toBe("doctor-1");
+    expect(new Date(from)).toEqual(new Date(2026, 7, 17));
+    expect(new Date(to)).toEqual(new Date(2026, 7, 18));
+  });
+
+  it("bloqueio de outro horário ou de outra clínica não avisa", async () => {
+    getBlocks.mockResolvedValue([
+      {
+        id: "b-1",
+        doctorId: "doctor-1",
+        clinicId: null,
+        startsAt: new Date(2026, 7, 17, 14, 0).toISOString(),
+        endsAt: new Date(2026, 7, 17, 15, 0).toISOString(),
+        allDay: false,
+        reason: null,
+      },
+      {
+        // Só da clínica X: não alcança consulta sem clínica.
+        id: "b-2",
+        doctorId: null,
+        clinicId: "clinic-x",
+        startsAt: new Date(2026, 7, 17, 8, 0).toISOString(),
+        endsAt: new Date(2026, 7, 17, 12, 0).toISOString(),
+        allDay: false,
+        reason: null,
+      },
+    ]);
+    abrirModal();
+
+    await waitFor(() => expect(getBlocks).toHaveBeenCalled());
+    expect(screen.queryByText(/Horário bloqueado/)).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Agendar consulta" }),
+    ).toBeEnabled();
+  });
+
+  it("feriado que bloqueia a agenda é avisado", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: { name: "Aniversário da cidade", blocksAgenda: true },
+        slots: [slotLocal("09:00", 30, { free: false, reason: "holiday" })],
+      },
+    ]);
+    abrirModal();
+
+    expect(
+      await screen.findByText(
+        /Feriado \(Aniversário da cidade\): a agenda está bloqueada neste dia\. Escolha outra data ou horário\./,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /agendar mesmo assim/i }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Agendar consulta" }),
+    ).toBeDisabled();
+  });
+
+  it("sem grade no dia não mostra horários nem aviso", async () => {
+    abrirModal();
+    await waitFor(() => expect(getSlots).toHaveBeenCalled());
+    expect(
+      screen.queryByRole("group", { name: "Horários da grade" }),
+    ).toBeNull();
+    expect(screen.queryByText(/Fora da grade/)).toBeNull();
+  });
+
+  it("falha ao buscar a grade não atrapalha o agendamento", async () => {
+    getSlots.mockRejectedValue(new Error("rede"));
+    abrirModal();
+    await waitFor(() => expect(getSlots).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("repassa os avisos da consulta salva para quem abriu o modal", async () => {
+    create.mockResolvedValue({ id: "a1", warnings: ["fora_da_grade"] });
+    const onSaved = vi.fn();
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={onSaved}
+        defaultDate={SEGUNDA}
+        defaultTime="09:00"
+        defaultPatientId="patient-1"
+        defaultPatientLabel="João"
+      />,
+    );
+    await waitFor(() => expect(getSlots).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: /Agendar consulta/ }));
+    await waitFor(() =>
+      expect(onSaved).toHaveBeenCalledWith({
+        id: "a1",
+        warnings: ["fora_da_grade"],
+      }),
+    );
+  });
+});
+
+describe("NewAppointmentModal — edição sem mexer no horário", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+    getSlots.mockResolvedValue([]);
+    getBlocks.mockResolvedValue([]);
+  });
+
+  /** Consulta às 09:00 locais de 17/08, num horário que hoje está bloqueado. */
+  const consulta = {
+    id: "appt-1",
+    doctorId: "doctor-1",
+    patientId: "patient-1",
+    patient: { id: "patient-1", name: "João" },
+    type: "first_visit" as const,
+    status: "scheduled" as const,
+    scheduledAt: new Date(2026, 7, 17, 9, 0, 0, 0).toISOString(),
+    durationMinutes: 30,
+    notes: null,
+    cancellationReason: null,
+    clinicId: null,
+    isWalkIn: false,
+  };
+
+  function abrirEdicao() {
+    return render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={consulta}
+      />,
+    );
+  }
+
+  it("só observação: não manda scheduledAt nem durationMinutes", async () => {
+    abrirEdicao();
+    fireEvent.change(screen.getByPlaceholderText(/motivo da consulta/i), {
+      target: { value: "Trazer exames" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    const corpo = update.mock.calls[0][1];
+    expect(corpo).toEqual(expect.objectContaining({ notes: "Trazer exames" }));
+    expect(corpo).not.toHaveProperty("scheduledAt");
+    expect(corpo).not.toHaveProperty("durationMinutes");
+  });
+
+  it("trocar horário ou duração manda os dois", async () => {
+    abrirEdicao();
+    fireEvent.change(screen.getByLabelText(/horário/i), {
+      target: { value: "10:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(update).toHaveBeenCalled());
+    expect(update.mock.calls[0][1]).toEqual(
+      expect.objectContaining({
+        scheduledAt: new Date(2026, 7, 17, 10, 0, 0, 0).toISOString(),
+        durationMinutes: 30,
+      }),
+    );
+  });
+
+  it("bloqueio no horário atual não trava o salvar quando o horário não muda", async () => {
+    getBlocks.mockResolvedValue([
+      {
+        id: "b-1",
+        doctorId: "doctor-1",
+        clinicId: null,
+        startsAt: new Date(2026, 7, 17, 9, 0).toISOString(),
+        endsAt: new Date(2026, 7, 17, 10, 0).toISOString(),
+        allDay: false,
+        reason: null,
+      },
+    ]);
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [slotLocal("09:00", 60, { free: false, reason: "block" })],
+      },
+    ]);
+    abrirEdicao();
+    await screen.findByRole("group", { name: "Horários da grade" });
+
+    expect(screen.queryByText(/Horário bloqueado/)).toBeNull();
+    expect(screen.queryByText(/Fora da grade/)).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /salvar alterações/i }),
+    ).toBeEnabled();
+
+    // Mudou a duração: volta a conferir a grade.
+    fireEvent.change(screen.getByDisplayValue("30 min"), {
+      target: { value: "45" },
+    });
+    expect(screen.getByText(/Horário bloqueado/)).toBeInTheDocument();
+  });
+
+  it("trocar só a clínica também avisa 'fora da grade' (o backend reconfere)", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [slotLocal("14:00"), slotLocal("14:30")],
+      },
+    ]);
+    abrirEdicao();
+    await screen.findByRole("group", { name: "Horários da grade" });
+    // Sem mudança, nada a avisar.
+    expect(screen.queryByText(/Fora da grade/)).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Clínica"), {
+      target: { value: "clinic-1" },
+    });
+
+    expect(
+      screen.getByText("Fora da grade de atendimento do profissional."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Agendar mesmo assim" }),
+    ).toBeEnabled();
+  });
+});
+
+describe("NewAppointmentModal — consulta que não ocupa a agenda", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+    getSlots.mockResolvedValue([]);
+    vi.mocked(appointmentService.getAgenda).mockResolvedValue([]);
+  });
+
+  const base = {
+    id: "appt-2",
+    doctorId: "doctor-1",
+    patientId: "patient-1",
+    patient: { id: "patient-1", name: "João" },
+    type: "first_visit" as const,
+    scheduledAt: new Date(2026, 7, 17, 11, 0, 0, 0).toISOString(),
+    durationMinutes: 30,
+    notes: null,
+    cancellationReason: null,
+    clinicId: null,
+    isWalkIn: false,
+  };
+
+  // A API só confere bloqueio/feriado quando a consulta ocupa a agenda
+  // (`OCCUPYING_APPOINTMENT_STATUSES`). Cancelada/falta remarcada para um
+  // horário bloqueado é aceita — a tela não pode travar o "Salvar".
+  it.each(["cancelled", "no_show"] as const)(
+    "%s remarcada para bloqueio ou feriado não trava o salvar",
+    async (status) => {
+      getSlots.mockResolvedValue([
+        {
+          date: SEGUNDA,
+          holiday: { name: "Aniversário da cidade", blocksAgenda: true },
+          slots: [slotLocal("09:00", 60, { free: false, reason: "block" })],
+        },
+      ]);
+      render(
+        <NewAppointmentModal
+          isOpen
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+          appointment={{ ...base, status }}
+        />,
+      );
+      fireEvent.change(screen.getByLabelText(/horário/i), {
+        target: { value: "09:00" },
+      });
+      // A grade (com o feriado e o bloqueio) já chegou.
+      await screen.findByRole("group", { name: "Horários da grade" });
+
+      expect(screen.queryByText(/Horário bloqueado/)).toBeNull();
+      expect(screen.queryByText(/a agenda está bloqueada/)).toBeNull();
+      const salvar = screen.getByRole("button", { name: /salvar alterações/i });
+      expect(salvar).toBeEnabled();
+      fireEvent.click(salvar);
+      await waitFor(() => expect(update).toHaveBeenCalled());
+    },
+  );
+
+  it("consulta agendada remarcada para feriado continua travada", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: { name: "Aniversário da cidade", blocksAgenda: true },
+        slots: [slotLocal("09:00", 30, { free: false, reason: "holiday" })],
+      },
+    ]);
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={{ ...base, status: "scheduled" }}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText(/horário/i), {
+      target: { value: "09:00" },
+    });
+    expect(
+      await screen.findByText(/a agenda está bloqueada neste dia/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /salvar alterações/i }),
+    ).toBeDisabled();
+  });
+
+  it("'Consultas nesse dia' não lista cancelada nem falta", async () => {
+    const outra = (id: string, status: string, nome: string, h: number) => ({
+      ...base,
+      id,
+      status,
+      patient: { id: `p-${id}`, name: nome },
+      scheduledAt: new Date(2026, 7, 17, h, 0, 0, 0).toISOString(),
+    });
+    vi.mocked(appointmentService.getAgenda).mockResolvedValue([
+      outra("a1", "scheduled", "Maria Agendada", 8),
+      outra("a2", "completed", "Carla Realizada", 9),
+      outra("a3", "cancelled", "Pedro Cancelado", 10),
+      outra("a4", "no_show", "Lucas Faltou", 14),
+    ] as never);
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={{ ...base, status: "scheduled" }}
+      />,
+    );
+
+    expect(
+      await screen.findByText("Consultas nesse dia (2)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Maria Agendada")).toBeInTheDocument();
+    expect(screen.getByText("Carla Realizada")).toBeInTheDocument();
+    expect(screen.queryByText("Pedro Cancelado")).toBeNull();
+    expect(screen.queryByText("Lucas Faltou")).toBeNull();
+  });
+});
+
+describe("NewAppointmentModal — encaixe libera horário ocupado", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+  });
+
+  it("com encaixe, ocupado por consulta fica clicável; feriado não; bloqueio é só aviso visual", async () => {
+    getSlots.mockResolvedValue([
+      {
+        date: SEGUNDA,
+        holiday: null,
+        slots: [
+          slotLocal("08:00", 30, { free: false, reason: "appointment" }),
+          slotLocal("08:30", 30, { free: false, reason: "block" }),
+          slotLocal("09:00", 30, { free: false, reason: "holiday" }),
+        ],
+      },
+    ]);
+    abrirModal();
+    const ocupado = await screen.findByRole("button", {
+      name: "08:00 (ocupado)",
+    });
+    expect(ocupado).toBeDisabled();
+    // "block" não desabilita: quem trava é a lista de bloqueios do dia.
+    expect(
+      screen.getByRole("button", { name: "08:30 (bloqueado)" }),
+    ).toBeEnabled();
+
+    fireEvent.click(screen.getByLabelText(/encaixe/i));
+
+    expect(ocupado).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "08:30 (bloqueado)" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "09:00 (feriado)" }),
+    ).toBeDisabled();
+    fireEvent.click(ocupado);
+    expect(document.getElementById("horario")).toHaveValue("08:00");
+  });
+});
+
+describe("NewAppointmentModal — nomes acessíveis dos campos", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+    doctorsMockState.two = false;
+  });
+
+  it("nomeia os combobox Tipo e Duração pelo label", () => {
+    abrirModal();
+    expect(screen.getByRole("combobox", { name: "Tipo" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Duração" }),
+    ).toBeInTheDocument();
+  });
+
+  it("nomeia o combobox Profissional quando há mais de um médico", () => {
+    doctorsMockState.two = true;
+    abrirModal();
+    expect(
+      screen.getByRole("combobox", { name: /Profissional/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('o campo de data é nomeado "Data", não pelo placeholder', () => {
+    abrirModal();
+    const data = screen.getByRole("textbox", { name: /^Data/ });
+    expect(data).toBe(screen.getByPlaceholderText("DD/MM/AAAA"));
+    expect(screen.getByLabelText(/^Data/)).toBe(data);
+  });
+
+  it("nomeia a busca de Paciente e o campo Observações", () => {
+    abrirModal();
+    expect(screen.getByRole("group", { name: "Paciente" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Observações").tagName).toBe("TEXTAREA");
   });
 });

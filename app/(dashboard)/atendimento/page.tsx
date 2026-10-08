@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import {
-  useQuery,
+  useInfiniteQuery,
   useMutation,
   useQueryClient,
   keepPreviousData,
@@ -24,6 +24,7 @@ import {
   APPOINTMENT_STATUS_LABELS,
 } from "@/services/appointment.service";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { diaParaData, useDiaAtual } from "@/hooks/useDiaAtual";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
 import { useToast } from "@/hooks/useToast";
@@ -33,6 +34,7 @@ import { formatDoctorName } from "@/lib/formatters";
 import { MONTHS, WEEKDAYS_SHORT, dateKey, hhmm, isToday } from "@/lib/calendar";
 import {
   HUB_EMPTY_DESCRIPTION,
+  HUB_PAGE_SIZE,
   HUB_TABS,
   HubTab,
   hubTabQuery,
@@ -43,6 +45,8 @@ import { criarConsultaDemo } from "@/lib/onboarding/demo-data";
 const STATUS_BADGE: Record<AppointmentStatus, string> = {
   scheduled: "bg-blue-50 text-blue-700 border-blue-200",
   confirmed: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  waiting: "bg-orange-50 text-orange-700 border-orange-200",
+  in_progress: "bg-cyan-50 text-cyan-800 border-cyan-200",
   completed: "bg-green-50 text-green-700 border-green-200",
   cancelled: "bg-red-50 text-red-600 border-red-200",
   no_show: "bg-amber-50 text-amber-700 border-amber-200",
@@ -76,13 +80,27 @@ export default function AtendimentoHubPage() {
     doctors.forEach((d) => m.set(d.id, d.name));
     return m;
   }, [doctors]);
+  const physicianById = useMemo(
+    () => new Map(doctors.map((d) => [d.id, d.isPhysician] as const)),
+    [doctors],
+  );
 
   // O recorte de cada aba (janela de datas + status + ordem) é resolvido no
   // servidor; aqui só agrupamos por dia.
-  const tabQuery = useMemo(() => hubTabQuery(tab), [tab]);
+  // `hoje` entra no memo: com a tela aberta na virada da meia-noite, a aba
+  // "Hoje" (e "Próximas", que começa hoje) passa para o dia novo — a janela
+  // muda, a query key muda e a lista é buscada de novo.
+  const hoje = useDiaAtual();
+  const tabQuery = useMemo(
+    () => hubTabQuery(tab, diaParaData(hoje)),
+    [tab, hoje],
+  );
   const { from, to, status, order } = tabQuery;
 
-  const query = useQuery({
+  // Lista paginada: 20 por vez, com "carregar mais". O filtro de
+  // profissionais vai para o servidor — filtrar só o que já foi carregado
+  // mostraria uma página vazia com consultas do profissional ainda por vir.
+  const query = useInfiniteQuery({
     queryKey: [
       "appointments",
       "hub",
@@ -90,32 +108,38 @@ export default function AtendimentoHubPage() {
       to ?? null,
       status.join(","),
       order,
+      selectedDoctorIds.join(","),
     ],
-    queryFn: () => appointmentService.getAgendaPage(tabQuery),
+    queryFn: ({ pageParam }) =>
+      appointmentService.getAgendaPage({
+        ...tabQuery,
+        doctorIds: selectedDoctorIds,
+        skip: pageParam,
+        take: HUB_PAGE_SIZE,
+        // As contagens do filtro valem para a aba inteira; basta a 1ª página.
+        withDoctorCounts: pageParam === 0,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (ultima, paginas) => {
+      const carregadas = paginas.reduce((n, p) => n + p.records.length, 0);
+      return carregadas < ultima.total ? carregadas : undefined;
+    },
     placeholderData: keepPreviousData,
   });
 
-  const records = query.data?.records;
-
-  // O backend tem um teto por requisição. Quando ele corta, `total` (a
-  // contagem real) fica maior que o número de registros devolvidos — a aba
-  // "Realizadas" é a candidata, por não ter janela de datas. Sem este aviso o
-  // usuário leria uma lista incompleta achando que era o histórico inteiro.
-  const listaCortada =
-    !!query.data && query.data.total > query.data.records.length;
-  const totalNoServidor = query.data?.total ?? 0;
+  const records = useMemo(
+    () => query.data?.pages.flatMap((p) => p.records),
+    [query.data],
+  );
+  const totalNoServidor = query.data?.pages[0]?.total ?? 0;
+  const faltam = Math.max(0, totalNoServidor - (records?.length ?? 0));
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["appointments"] });
 
   // Filtra por médico, ordena e agrupa por dia.
   const groups = useMemo(() => {
-    const list = (records ?? [])
-      .filter(
-        (a) =>
-          selectedDoctorIds.length === 0 ||
-          selectedDoctorIds.includes(a.doctorId),
-      )
+    const list = [...(records ?? [])]
       .sort((a, b) => {
         const diff =
           new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
@@ -130,17 +154,11 @@ export default function AtendimentoHubPage() {
       else byDay.set(key, [a]);
     }
     return Array.from(byDay.entries());
-  }, [records, order, selectedDoctorIds]);
+  }, [records, order]);
 
   const total = groups.reduce((n, [, arr]) => n + arr.length, 0);
 
-  const countByDoctorId = useMemo(() => {
-    const m: Record<string, number> = {};
-    (records ?? []).forEach((a) => {
-      m[a.doctorId] = (m[a.doctorId] ?? 0) + 1;
-    });
-    return m;
-  }, [records]);
+  const countByDoctorId = query.data?.pages[0]?.countByDoctorId;
 
   // ── Mutations (usadas pelo modal de detalhe) ────────────────────────────────
   const statusMutation = useMutation({
@@ -200,7 +218,7 @@ export default function AtendimentoHubPage() {
               <button
                 onClick={() => setNewModal({})}
                 data-tour="atendimento-nova-consulta"
-                className="ml-auto flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+                className="ml-auto flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-0 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -260,7 +278,9 @@ export default function AtendimentoHubPage() {
 
         {/* ── Corpo ──────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-4">
-          {query.isError ? (
+          {/* Erro só da página seguinte ("Carregar mais") não apaga o que já
+              foi carregado: ele aparece no rodapé, com o tentar de novo. */}
+          {query.isError && !query.isFetchNextPageError ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16">
               <p className="text-sm text-red-500">
                 Não foi possível carregar as consultas.
@@ -285,7 +305,7 @@ export default function AtendimentoHubPage() {
                 podeAgenda ? (
                   <button
                     onClick={() => setNewModal({})}
-                    className="h-9 px-4 rounded-lg bg-teal-700 text-white text-xs font-semibold hover:bg-teal-800 transition-colors"
+                    className="min-h-[44px] md:min-h-[36px] px-4 rounded-lg bg-teal-700 text-white text-xs font-semibold hover:bg-teal-800 transition-colors"
                   >
                     Nova consulta
                   </button>
@@ -294,18 +314,6 @@ export default function AtendimentoHubPage() {
             />
           ) : (
             <div className="flex flex-col gap-6 max-w-3xl mx-auto">
-              {/* Aviso honesto de lista incompleta: diz quantas existem e o
-                  que fazer, sem prometer paginação que não existe. */}
-              {listaCortada && (
-                <p
-                  role="status"
-                  className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"
-                >
-                  Mostrando as {records?.length ?? 0} consultas mais recentes de{" "}
-                  {totalNoServidor}. Use a agenda para consultar um período
-                  específico.
-                </p>
-              )}
               {groups.map(([key, items]) => {
                 const d = new Date(`${key}T00:00:00`);
                 return (
@@ -323,6 +331,7 @@ export default function AtendimentoHubPage() {
                           key={a.id}
                           appointment={a}
                           doctorName={doctorNameById.get(a.doctorId)}
+                          doctorIsPhysician={physicianById.get(a.doctorId)}
                           showDoctor={doctors.length > 1}
                           onOpen={() => setDetail(a)}
                         />
@@ -331,6 +340,48 @@ export default function AtendimentoHubPage() {
                   </div>
                 );
               })}
+
+              {/* Rodapé da lista: quanto falta, carregar mais e a agenda para
+                  quem procura um período específico. */}
+              {totalNoServidor > HUB_PAGE_SIZE && (
+                <div className="flex flex-col items-center gap-2 pt-2 pb-4">
+                  <p className="text-xs text-neutral-500" role="status">
+                    Mostrando {(records?.length ?? 0).toLocaleString("pt-BR")} de{" "}
+                    {totalNoServidor.toLocaleString("pt-BR")} consultas
+                  </p>
+                  {query.isFetchNextPageError && !query.isFetchingNextPage && (
+                    <p role="alert" className="text-xs text-red-600">
+                      Não foi possível carregar mais consultas.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {query.hasNextPage && (
+                      <button
+                        type="button"
+                        onClick={() => query.fetchNextPage()}
+                        disabled={query.isFetchingNextPage}
+                        className="min-h-[44px] md:min-h-[36px] px-4 rounded-lg border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                      >
+                        {query.isFetchingNextPage
+                          ? "Carregando..."
+                          : query.isFetchNextPageError
+                            ? "Tentar de novo"
+                            : `Carregar mais ${Math.min(HUB_PAGE_SIZE, faltam)}`}
+                      </button>
+                    )}
+                    {podeAgenda && (
+                      <button
+                        type="button"
+                        onClick={() => router.push("/agenda")}
+                        className="min-h-[44px] md:min-h-[36px] px-4 rounded-lg text-xs font-semibold text-teal-700 hover:bg-teal-50 transition-colors flex items-center gap-1.5"
+                      >
+                        <CalendarDays className="w-3.5 h-3.5" />
+                        Ver na agenda
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -356,6 +407,7 @@ export default function AtendimentoHubPage() {
         <AppointmentDetailModal
           appointment={detail}
           doctorName={doctorNameById.get(detail.doctorId)}
+          doctorIsPhysician={physicianById.get(detail.doctorId)}
           busy={busyId === detail.id}
           onClose={() => setDetail(null)}
           onEdit={() => {
@@ -382,11 +434,13 @@ export default function AtendimentoHubPage() {
 function AppointmentRow({
   appointment: a,
   doctorName,
+  doctorIsPhysician,
   showDoctor,
   onOpen,
 }: {
   appointment: Appointment;
   doctorName?: string;
+  doctorIsPhysician?: boolean;
   showDoctor: boolean;
   onOpen: () => void;
 }) {
@@ -417,7 +471,7 @@ function AppointmentRow({
         </p>
         <p className="text-xs text-neutral-500 truncate">
           {APPOINTMENT_TYPE_LABELS[a.type]}
-          {showDoctor && doctorName ? ` · ${formatDoctorName(doctorName)}` : ""}
+          {showDoctor && doctorName ? ` · ${formatDoctorName(doctorName, doctorIsPhysician)}` : ""}
         </p>
       </div>
 

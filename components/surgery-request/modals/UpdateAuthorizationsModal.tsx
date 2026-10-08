@@ -1049,7 +1049,7 @@ function AuthorizationTable({
                         onSupplierChange?.(item.id, e.target.value)
                       }
                       disabled={supplierOptions.length === 0}
-                      className="ds-input h-10 w-full pr-8 text-xs md:text-sm appearance-none disabled:bg-gray-100 disabled:text-gray-400"
+                      className="ds-input h-10 w-full text-xs md:text-sm disabled:bg-gray-100 disabled:text-gray-400"
                     >
                       <option value="">Selecionar</option>
                       {supplierOptions.map((supplier) => (
@@ -1058,21 +1058,6 @@ function AuthorizationTable({
                         </option>
                       ))}
                     </select>
-                    <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="m6 9 6 6 6-6" />
-                      </svg>
-                    </span>
                   </div>
                 </div>
               )}

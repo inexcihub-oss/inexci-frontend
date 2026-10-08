@@ -31,8 +31,26 @@ import { AgendaExportModal } from "@/components/agenda/AgendaExportModal";
 import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
 import { AppointmentDetailModal } from "@/components/agenda/AppointmentDetailModal";
 import { DatePickerPopover } from "@/components/ui/DatePickerPopover";
-import { CalendarTimeGrid } from "@/components/agenda/CalendarTimeGrid";
-import { CalendarMonthView } from "@/components/agenda/CalendarMonthView";
+import {
+  AgendaBlockOverlay,
+  CalendarTimeGrid,
+} from "@/components/agenda/CalendarTimeGrid";
+import { ScheduleBlockModal } from "@/components/agenda/ScheduleBlockModal";
+import {
+  availabilityService,
+  ScheduleBlock,
+} from "@/services/availability.service";
+import {
+  AVAILABILITY_QUERY_KEYS,
+  blockAppliesTo,
+  bloqueioNoDia,
+  holidayOn,
+} from "@/lib/availability";
+import { formatDoctorName } from "@/lib/formatters";
+import {
+  AgendaDayMark,
+  CalendarMonthView,
+} from "@/components/agenda/CalendarMonthView";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useClinics } from "@/hooks/useClinics";
 import { useToast } from "@/hooks/useToast";
@@ -51,6 +69,7 @@ import {
   appointmentToEvent,
   dateKey,
   hhmm,
+  isToday,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -68,6 +87,10 @@ export default function AgendaPage() {
   // Cirurgias vêm de `GET /surgery-requests/agenda`, que exige Solicitações —
   // um eixo diferente de Agenda. Quem só tem Agenda enxerga só as consultas.
   const podeVerCirurgias = can(Permission.SOLICITACOES);
+  const podeAgenda = can(Permission.AGENDA);
+  // Bloqueio de toda a clínica trava a agenda de todos: só Administração
+  // cria, edita ou remove (o backend recusa os demais com 403).
+  const podeBloquearClinica = can(Permission.ADMINISTRACAO);
 
   const [view, setView] = useState<CalView>("week");
   const [anchor, setAnchor] = useState<Date>(() => new Date());
@@ -83,6 +106,9 @@ export default function AgendaPage() {
     appointment?: Appointment;
   } | null>(null);
   const [detail, setDetail] = useState<Appointment | null>(null);
+  const [blockModal, setBlockModal] = useState<{
+    block?: ScheduleBlock;
+  } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   // Passo "horario" da trilha Agenda: abre o formulário de nova consulta ao
@@ -139,6 +165,10 @@ export default function AgendaPage() {
     doctors.forEach((d) => m.set(d.id, d.name));
     return m;
   }, [doctors]);
+  const physicianById = useMemo(
+    () => new Map(doctors.map((d) => [d.id, d.isPhysician] as const)),
+    [doctors],
+  );
 
   // ── Intervalo visível + dias ────────────────────────────────────────────────
   const { rangeFrom, rangeTo, days } = useMemo(() => {
@@ -164,11 +194,30 @@ export default function AgendaPage() {
     placeholderData: keepPreviousData,
     enabled: podeVerCirurgias,
   });
+  // Todas as páginas do recorte: o backend corta cada resposta em 1000, e a
+  // agenda não pode sumir com consulta em silêncio. Se nem paginando couber
+  // (`total > records`), a tela avisa — ver `agendaIncompleta`.
   const appointmentsQuery = useQuery({
     queryKey: ["appointments", "agenda", fromISO, toISO],
     queryFn: () =>
-      appointmentService.getAgenda({ from: fromISO, to: toISO }),
+      appointmentService.getAgendaCompleta({ from: fromISO, to: toISO }),
     placeholderData: keepPreviousData,
+  });
+  const agendaIncompleta =
+    !!appointmentsQuery.data &&
+    appointmentsQuery.data.total > appointmentsQuery.data.records.length;
+
+  // Bloqueios e feriados (MIG-05): só desenham a agenda; quem impede marcar
+  // é o backend. Falha aqui não derruba a agenda.
+  const blocksQuery = useQuery({
+    queryKey: [...AVAILABILITY_QUERY_KEYS.blocks, fromISO, toISO],
+    queryFn: () => availabilityService.getBlocks({ from: fromISO, to: toISO }),
+    placeholderData: keepPreviousData,
+  });
+  const holidaysQuery = useQuery({
+    queryKey: AVAILABILITY_QUERY_KEYS.holidays,
+    queryFn: () => availabilityService.getHolidays(),
+    staleTime: 1000 * 60 * 30,
   });
 
   // `enabled: false` livra a busca inicial de 403, mas `refetch()` ignora
@@ -187,12 +236,14 @@ export default function AgendaPage() {
     appointmentsQuery.refetch();
   }, [podeVerCirurgias, surgeriesQuery, appointmentsQuery]);
 
+  // Prefixo ["appointments"]: além da agenda, o hub do Atendimento
+  // (["appointments", "hub", ...]) e a exportação leem as mesmas consultas.
   const invalidateAppointments = () =>
-    queryClient.invalidateQueries({ queryKey: ["appointments", "agenda"] });
+    queryClient.invalidateQueries({ queryKey: ["appointments"] });
 
   // ── Eventos unificados ──────────────────────────────────────────────────────
   const allEvents = useMemo<CalEvent[]>(() => {
-    const appts = (appointmentsQuery.data ?? []).map((a) =>
+    const appts = (appointmentsQuery.data?.records ?? []).map((a) =>
       appointmentToEvent(a, APPOINTMENT_TYPE_LABELS[a.type]),
     );
     const surgeries = (surgeriesQuery.data?.records ?? [])
@@ -232,6 +283,103 @@ export default function AgendaPage() {
       );
     return list;
   }, [allEvents, filters]);
+
+  const clinicNameById = useMemo(
+    () => new Map(clinics.map((c) => [c.id, c.name] as const)),
+    [clinics],
+  );
+
+  // Bloqueios visíveis, já rotulados — a grade de horas os desenha como faixa
+  // e a visão mensal, como selo no dia.
+  const blocosVisiveis = useMemo(
+    () =>
+      (blocksQuery.data ?? [])
+        .filter((b) => blockAppliesTo(b, filters.doctorIds))
+        .map((b) => {
+          const quem = b.doctorId
+            ? formatDoctorName(
+                doctorNameById.get(b.doctorId) ?? "Profissional",
+                physicianById.get(b.doctorId) ?? false,
+              )
+            : b.clinicId
+              ? (clinicNameById.get(b.clinicId) ?? "Clínica")
+              : "Clínica";
+          return {
+            block: b,
+            label: `${quem}: ${b.reason ?? "bloqueado"}`,
+            onClick:
+              podeAgenda && (b.doctorId || podeBloquearClinica)
+                ? () => setBlockModal({ block: b })
+                : undefined,
+          };
+        }),
+    [
+      blocksQuery.data,
+      filters.doctorIds,
+      doctorNameById,
+      physicianById,
+      clinicNameById,
+      podeAgenda,
+      podeBloquearClinica,
+    ],
+  );
+
+  const feriadoQueTrava = useCallback(
+    (day: Date) => {
+      const feriado = holidayOn(holidaysQuery.data ?? [], dateKey(day));
+      return feriado?.blocksAgenda ? feriado : undefined;
+    },
+    [holidaysQuery.data],
+  );
+
+  const blockOverlays = useMemo<AgendaBlockOverlay[]>(() => {
+    const overlays: AgendaBlockOverlay[] = blocosVisiveis.map(
+      ({ block: b, label, onClick }) => ({
+        id: b.id,
+        start: new Date(b.startsAt),
+        end: new Date(b.endsAt),
+        label,
+        onClick,
+      }),
+    );
+    for (const day of days) {
+      const feriado = feriadoQueTrava(day);
+      if (!feriado) continue;
+      const fim = addDays(day, 1);
+      overlays.push({
+        id: `feriado-${dateKey(day)}`,
+        start: startOfDay(day),
+        end: startOfDay(fim),
+        label: `Feriado: ${feriado.name}`,
+      });
+    }
+    return overlays;
+  }, [blocosVisiveis, days, feriadoQueTrava]);
+
+  // Visão mensal: `days` é vazio no mês, então percorre as 42 células da grade.
+  const monthDayMarks = useMemo<Record<string, AgendaDayMark[]>>(() => {
+    if (view !== "month") return {};
+    const marks: Record<string, AgendaDayMark[]> = {};
+    for (let i = 0; i < 42; i++) {
+      const day = addDays(rangeFrom, i);
+      const key = dateKey(day);
+      const lista: AgendaDayMark[] = [];
+      const feriado = feriadoQueTrava(day);
+      if (feriado) {
+        lista.push({
+          id: `feriado-${key}`,
+          kind: "holiday",
+          label: `Feriado: ${feriado.name}`,
+        });
+      }
+      for (const { block, label, onClick } of blocosVisiveis) {
+        if (!bloqueioNoDia(block, day)) continue;
+        lista.push({ id: `${block.id}-${key}`, kind: "block", label, onClick });
+      }
+      if (lista.length) marks[key] = lista;
+    }
+    return marks;
+  }, [view, rangeFrom, blocosVisiveis, feriadoQueTrava]);
 
   // ── Mutations ───────────────────────────────────────────────────────────────
   const statusMutation = useMutation({
@@ -373,6 +521,21 @@ export default function AgendaPage() {
               <span className="text-xs font-semibold hidden sm:inline">Nova consulta</span>
             </button>
 
+            {podeAgenda && (
+              <button
+                onClick={() => setBlockModal({})}
+                className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 md:h-8 px-2 sm:px-3 border border-neutral-200 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors shrink-0"
+                title="Bloquear horário"
+                aria-label="Bloquear horário"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <line x1="5.6" y1="5.6" x2="18.4" y2="18.4" />
+                </svg>
+                <span className="text-xs font-semibold hidden md:inline">Bloquear</span>
+              </button>
+            )}
+
             <button
               onClick={() => setIsExportOpen(true)}
               data-tour="agenda-exportar"
@@ -452,6 +615,17 @@ export default function AgendaPage() {
           </div>
         </div>
 
+        {agendaIncompleta && appointmentsQuery.data && (
+          <div
+            role="status"
+            className="mx-3 lg:mx-6 mt-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800"
+          >
+            Mostrando {appointmentsQuery.data.records.length} de{" "}
+            {appointmentsQuery.data.total} consultas deste período. Use o filtro
+            de profissional ou uma visão menor (dia/semana) para ver todas.
+          </div>
+        )}
+
         {/* ── Corpo ──────────────────────────────────────────────── */}
         {isError ? (
           <div className="flex flex-col items-center justify-center flex-1 gap-3 px-4">
@@ -469,6 +643,7 @@ export default function AgendaPage() {
           <CalendarMonthView
             anchor={anchor}
             events={events}
+            dayMarks={monthDayMarks}
             onEventClick={handleEventClick}
             onSelectDay={(day) => {
               setAnchor(day);
@@ -481,6 +656,7 @@ export default function AgendaPage() {
             events={events}
             onEventClick={handleEventClick}
             onSlotClick={handleSlotClick}
+            blocks={blockOverlays}
           />
         )}
       </div>
@@ -501,9 +677,14 @@ export default function AgendaPage() {
         <NewAppointmentModal
           isOpen
           onClose={() => setNewModal(null)}
-          onSaved={() => {
+          onSaved={(salva) => {
+            const base = newModal.appointment
+              ? "Consulta atualizada"
+              : "Consulta agendada";
             showSuccess(
-              newModal.appointment ? "Consulta atualizada." : "Consulta agendada.",
+              salva?.warnings?.includes("fora_da_grade")
+                ? `${base} fora da grade de atendimento do profissional.`
+                : `${base}.`,
             );
             invalidateAppointments();
           }}
@@ -519,6 +700,9 @@ export default function AgendaPage() {
           doctorName={
             detail.doctorId ? doctorNameById.get(detail.doctorId) : undefined
           }
+          doctorIsPhysician={
+            detail.doctorId ? physicianById.get(detail.doctorId) : undefined
+          }
           busy={busyId === detail.id}
           onClose={() => setDetail(null)}
           onEdit={() => {
@@ -531,6 +715,28 @@ export default function AgendaPage() {
             statusMutation.mutate({ id: detail.id, status })
           }
           onDelete={() => deleteMutation.mutate(detail.id)}
+        />
+      )}
+
+      {blockModal && (
+        <ScheduleBlockModal
+          isOpen
+          block={blockModal.block ?? null}
+          doctors={doctors}
+          clinics={clinics}
+          podeClinicaToda={podeBloquearClinica}
+          defaultDate={
+            view === "month"
+              ? null
+              : dateKey(days.find((d) => isToday(d)) ?? days[0] ?? anchor)
+          }
+          onClose={() => setBlockModal(null)}
+          onSaved={(mensagem) => {
+            showSuccess(mensagem);
+            queryClient.invalidateQueries({
+              queryKey: AVAILABILITY_QUERY_KEYS.blocks,
+            });
+          }}
         />
       )}
 

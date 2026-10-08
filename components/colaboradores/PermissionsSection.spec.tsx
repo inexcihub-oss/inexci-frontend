@@ -141,4 +141,41 @@ describe("PermissionsSection", () => {
 
     expect(onChange).not.toHaveBeenCalled();
   });
+  describe("profissional que não é médico (MIG-02)", () => {
+    it("trava agenda e atendimento, mas deixa solicitações livre", () => {
+      render(
+        <PermissionsSection
+          value={[]}
+          isDoctor
+          isPhysician={false}
+          onChange={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByRole("checkbox", { name: /Agenda/i })).toBeDisabled();
+      expect(
+        screen.getByRole("checkbox", { name: /Atendimento/i }),
+      ).toBeDisabled();
+      const solicitacoes = screen.getByRole("checkbox", {
+        name: /Solicitações/i,
+      });
+      expect(solicitacoes).not.toBeDisabled();
+      expect(solicitacoes).not.toBeChecked();
+    });
+
+    it("explica que solicitações são do médico", () => {
+      render(
+        <PermissionsSection
+          value={[]}
+          isDoctor
+          isPhysician={false}
+          onChange={vi.fn()}
+        />,
+      );
+
+      expect(
+        screen.getByText(/Solicitações cirúrgicas são do médico/i),
+      ).toBeInTheDocument();
+    });
+  });
 });

@@ -4,9 +4,14 @@ import {
   emailOptionalSchema,
   phoneOptionalSchema,
   cpfSchema,
+  cpfOptionalSchema,
 } from "./shared";
 
-/** Schema enxuto usado pela criação rápida no wizard. */
+/**
+ * Schema enxuto usado pela criação rápida no wizard de Solicitação Cirúrgica.
+ * Aqui o CPF continua obrigatório: o paciente nasce para uma SC, e a SC não
+ * avança sem CPF — pedir agora evita a pendência logo em seguida.
+ */
 export const createPatientQuickSchema = z.object({
   name: fullNameSchema,
   cpf: cpfSchema,
@@ -16,10 +21,14 @@ export const createPatientQuickSchema = z.object({
 
 export type CreatePatientQuickInput = z.infer<typeof createPatientQuickSchema>;
 
-/** Schema completo (NewPatientModal). */
+/**
+ * Schema completo (NewPatientModal — tela de pacientes e agenda). CPF é
+ * opcional: estrangeiros, menores e pacientes migrados podem não ter. Quando
+ * informado, continua validado.
+ */
 export const createPatientSchema = z.object({
   name: fullNameSchema,
-  cpf: cpfSchema,
+  cpf: cpfOptionalSchema,
   phone: phoneOptionalSchema,
   email: emailOptionalSchema,
   birthDate: z.string().optional().or(z.literal("")),

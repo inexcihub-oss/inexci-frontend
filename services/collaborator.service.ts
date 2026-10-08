@@ -2,6 +2,7 @@ import api from "@/lib/api";
 import { getApiRecords } from "@/lib/api-response";
 import { DoctorProfile, DoctorSummary } from "@/types";
 import { Permission } from "@/lib/permissions";
+import type { ProfessionalCouncil } from "@/lib/professional-council";
 
 export interface Collaborator {
   id: string;
@@ -58,6 +59,8 @@ export interface CreateCollaboratorPayload {
   email: string;
   phone?: string;
   isDoctor?: boolean;
+  /** Conselho do perfil. Ausente = CRM (médico). */
+  council?: ProfessionalCouncil;
   crm?: string;
   crmState?: string;
   specialty?: string;

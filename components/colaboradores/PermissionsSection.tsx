@@ -3,7 +3,6 @@
 import {
   CalendarDays,
   Check,
-  ChevronDown,
   Info,
   LayoutGrid,
   LucideIcon,
@@ -22,17 +21,16 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * Áreas que todo médico tem por definição — ver `resolveEffectivePermissions`
+ * Áreas que vêm com o perfil profissional — ver `resolveEffectivePermissions`
  * no backend (`inexci-api/src/shared/permissions/resolve-permissions.ts`).
- * O médico agenda a própria consulta, marca o atendimento como realizado e
- * agenda o retorno a partir da ficha do paciente (sem Agenda ele não
- * conseguiria atender); e finalizar uma ficha com indicação cirúrgica abre a
- * SC — um médico sem Atendimento/Solicitações criaria uma solicitação
- * invisível para si mesmo.
+ * Todo profissional de saúde agenda a própria consulta e registra o
+ * atendimento (Agenda + Atendimento). Só o médico (CRM) indica cirurgia, e a
+ * ficha com indicação cria a SC em nome dele — por isso só ele tem
+ * Solicitações travada.
  */
+const TRAVADAS_PARA_PROFISSIONAL = [Permission.AGENDA, Permission.ATENDIMENTO];
 const TRAVADAS_PARA_MEDICO = [
-  Permission.AGENDA,
-  Permission.ATENDIMENTO,
+  ...TRAVADAS_PARA_PROFISSIONAL,
   Permission.SOLICITACOES,
 ];
 
@@ -46,19 +44,32 @@ const PERMISSION_ICONS: Record<Permission, LucideIcon> = {
 
 interface Props {
   value: Permission[];
+  /** Tem perfil profissional (qualquer conselho). */
   isDoctor: boolean;
+  /**
+   * O perfil é de médico (CRM). Default `true` porque, antes do conselho,
+   * todo perfil era médico.
+   */
+  isPhysician?: boolean;
   onChange: (permissions: Permission[]) => void;
 }
 
-export function PermissionsSection({ value, isDoctor, onChange }: Props) {
-  const efetivas = isDoctor
-    ? ALL_PERMISSIONS.filter(
-        (p) => value.includes(p) || TRAVADAS_PARA_MEDICO.includes(p),
-      )
-    : value;
+export function PermissionsSection({
+  value,
+  isDoctor,
+  isPhysician = true,
+  onChange,
+}: Props) {
+  const fixas = !isDoctor
+    ? []
+    : isPhysician
+      ? TRAVADAS_PARA_MEDICO
+      : TRAVADAS_PARA_PROFISSIONAL;
+  const efetivas = ALL_PERMISSIONS.filter(
+    (p) => value.includes(p) || fixas.includes(p),
+  );
 
-  const travada = (p: Permission) =>
-    isDoctor && TRAVADAS_PARA_MEDICO.includes(p);
+  const travada = (p: Permission) => fixas.includes(p);
 
   const alternar = (p: Permission) => {
     if (travada(p)) return;
@@ -92,7 +103,7 @@ export function PermissionsSection({ value, isDoctor, onChange }: Props) {
             id="perfil-colaborador"
             value={presetFor(efetivas)}
             onChange={(e) => aplicarPreset(e.target.value)}
-            className="ds-input appearance-none pr-9"
+            className="ds-input"
           >
             {Object.entries(PROFILE_LABELS).map(([chave, rotulo]) => (
               <option key={chave} value={chave}>
@@ -100,7 +111,6 @@ export function PermissionsSection({ value, isDoctor, onChange }: Props) {
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
         <p className="ds-caption mt-1.5">
           Escolha um perfil pronto ou marque as áreas uma a uma.
@@ -183,10 +193,9 @@ export function PermissionsSection({ value, isDoctor, onChange }: Props) {
         <p className="flex items-start gap-2 rounded-xl bg-primary-50/60 px-3 py-2.5 text-xs leading-snug text-primary-800">
           <Info className="mt-px h-4 w-4 shrink-0" />
           <span>
-            O médico sempre tem acesso a Agenda, Atendimento e Solicitações
-            cirúrgicas: ele agenda a própria consulta, marca o atendimento como
-            realizado e a ficha com indicação cirúrgica cria a solicitação em
-            nome dele.
+            {isPhysician
+              ? "O médico sempre tem acesso a Agenda, Atendimento e Solicitações cirúrgicas: ele agenda a própria consulta, marca o atendimento como realizado e a ficha com indicação cirúrgica cria a solicitação em nome dele."
+              : "O profissional sempre tem acesso a Agenda e Atendimento: ele agenda a própria consulta e registra o atendimento. Solicitações cirúrgicas são do médico (CRM) e só aparecem se marcadas abaixo."}
           </span>
         </p>
       )}

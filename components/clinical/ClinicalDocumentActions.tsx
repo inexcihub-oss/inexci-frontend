@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileText, Stethoscope, ClipboardList, Eye } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -20,6 +20,31 @@ import {
   GeneratedClinicalDocument,
 } from "@/services/clinical-record.service";
 import { getApiErrorMessage } from "@/lib/http-error";
+import {
+  clinicalDocumentTemplateService,
+  ClinicalDocumentTemplate,
+  ClinicalDocumentTemplateKind,
+} from "@/services/clinical-document-template.service";
+import { safeExternalUrl } from "@/lib/safe-url";
+
+/** Profissional que assina os documentos da consulta. */
+export interface AssinanteConsulta {
+  nome: string;
+  /** Médico (CRM): indica cirurgia. */
+  medico: boolean;
+  /**
+   * Emite receita, atestado e pedido de exame: médico (CRM) ou dentista
+   * (CRO). Ausente = segue `medico`.
+   */
+  emiteDocumentos?: boolean;
+  /** Sigla do conselho, para as mensagens ("CRM", "CRO"). */
+  conselho?: string;
+  /**
+   * Registro sem número ou sem UF (veio assim do Feegow): o backend recusa a
+   * emissão até alguém preencher.
+   */
+  semNumero: boolean;
+}
 
 type DocumentKind = "prescription" | "certificate" | "referral";
 
@@ -28,6 +53,40 @@ const MODAL_TITLE: Record<DocumentKind, string> = {
   certificate: "Emitir atestado",
   referral: "Solicitar exames",
 };
+
+/** Documentos que aceitam modelo de texto (MIG-06) e o tipo do modelo. */
+const TEMPLATE_KIND: Partial<
+  Record<DocumentKind, ClinicalDocumentTemplateKind>
+> = {
+  certificate: "medical_certificate",
+  referral: "exam_referral",
+};
+
+/** Limite do texto do atestado — o mesmo `MaxLength` do DTO no backend. */
+const CERTIFICATE_TEXT_MAX = 4000;
+
+/** O texto do atestado ainda traz `{{dias}}`/`{{inicio}}` para a emissão. */
+const PLACEHOLDER_DE_AFASTAMENTO = /\{\{\s*(dias|inicio)\s*\}\}/i;
+const PLACEHOLDER_DIAS = /\{\{\s*dias\s*\}\}/i;
+const PLACEHOLDER_INICIO = /\{\{\s*inicio\s*\}\}/i;
+
+/** Aviso para quem não é o profissional da consulta (o backend responde 403). */
+export const SO_PROFISSIONAL_DA_CONSULTA =
+  "Só o profissional da consulta pode emitir documentos.";
+
+/** Dias de afastamento do formulário; vazio ou 0 = comparecimento. */
+const diasDeAfastamento = (valor: string): number | undefined => {
+  const dias = Number(valor);
+  return valor.trim() && Number.isInteger(dias) && dias > 0 ? dias : undefined;
+};
+
+/**
+ * Atestado de comparecimento: fala em comparecer e não em afastamento. Mesma
+ * regra do servidor (`montarNotaDeAfastamento`), que não anexa o afastamento
+ * a ele.
+ */
+export const ehComparecimentoSemAfastamento = (texto: string): boolean =>
+  /comparec/i.test(texto) && !/afast/i.test(texto);
 
 /** Tipo do documento na API (rota e payload). */
 const API_KIND: Record<DocumentKind, ClinicalDocumentKind> = {
@@ -86,6 +145,8 @@ export function ClinicalDocumentActions({
   cidCodes,
   patientId,
   doctorId,
+  assinante = null,
+  profissionalDaConsulta = true,
   dadosFabricados,
 }: {
   ensureRecordId: () => Promise<string>;
@@ -97,6 +158,20 @@ export function ClinicalDocumentActions({
   /** Médico que assina o documento. */
   doctorId: string;
   /**
+   * Profissional da consulta, resolvido pela casca do atendimento. Receita,
+   * atestado e pedido de exame só saem em nome de médico (CRM) ou dentista
+   * (CRO) — o backend recusa quando quem assina é, por exemplo, nutricionista
+   * ou técnico. `null` (fora da lista ou falha de rede) presume que emite e
+   * deixa o backend decidir.
+   */
+  assinante?: AssinanteConsulta | null;
+  /**
+   * Quem está logado é o profissional da consulta. Só ele emite ou
+   * pré-visualiza receita, atestado e pedido de exame — o backend recusa
+   * (403) qualquer outro, inclusive admin ou outro médico da clínica.
+   */
+  profissionalDaConsulta?: boolean;
+  /**
    * Marca que o atendimento em tela é o fabricado do tour. Bloqueia a
    * emissão por PROVENIÊNCIA do dado, não pelo estado do tour — sair do tour
    * na página sentinela não pode reabilitar a emissão real.
@@ -104,6 +179,15 @@ export function ClinicalDocumentActions({
   dadosFabricados?: boolean;
 }) {
   const [openKind, setOpenKind] = useState<DocumentKind | null>(null);
+  const emite = assinante
+    ? (assinante.emiteDocumentos ?? assinante.medico)
+    : true;
+  const naoMedico = !emite;
+  // Registro sem número/UF (veio assim do Feegow): o backend recusa a emissão.
+  const crmSemNumero = emite && !!assinante?.semNumero;
+  const conselho = assinante?.conselho ?? "CRM";
+  const outroProfissional = !profissionalDaConsulta;
+  const soMedico = outroProfissional || naoMedico || crmSemNumero;
   const [submitting, setSubmitting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -117,29 +201,167 @@ export function ClinicalDocumentActions({
 
   // Atestado
   const [restDays, setRestDays] = useState("1");
+  // Os dias foram zerados por um modelo de comparecimento (não pelo médico):
+  // trocar para um modelo de afastamento, ou voltar ao texto padrão, devolve
+  // o "1 dia" com que o formulário começa.
+  const diasZeradosPeloModelo = useRef(false);
   const [startDate, setStartDate] = useState("");
   const [includeCid, setIncludeCid] = useState(false);
   const [certificateCid, setCertificateCid] = useState<ClinicalCidCode[]>([]);
   const [observations, setObservations] = useState("");
+  // Texto do atestado vindo do modelo: substitui a declaração padrão do PDF.
+  // Vazio = declaração padrão. Não é a mesma coisa que observações — antes o
+  // modelo caía em observações e o atestado saía com o texto duas vezes.
+  const [certificateText, setCertificateText] = useState("");
+
+  // Modelos de texto do documento aberto (atestado e pedido de exame).
+  const [templates, setTemplates] = useState<ClinicalDocumentTemplate[]>([]);
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
+  // Modelo escolhido fica visível no seletor (antes ele voltava ao
+  // placeholder e parecia que nada tinha sido escolhido).
+  const [templateId, setTemplateId] = useState("");
+  // Último texto que veio do servidor. Enquanto o texto na tela for este (o
+  // médico não editou), o atestado sai pelo `templateId`. O texto aplicado
+  // mantém `{{dias}}`/`{{inicio}}` literais — editado ou não, quem os
+  // preenche é a prévia/emissão, com o afastamento escolhido naquela hora.
+  // Antes o apply gravava "1 dia" no texto: editado, ele congelava os dias
+  // antigos e o PDF saía com "1 dia" no texto e "3 dias" logo abaixo.
+  const [textoAplicado, setTextoAplicado] = useState("");
+  const templateKind = openKind ? TEMPLATE_KIND[openKind] : undefined;
+  const textoDoModelo =
+    openKind === "certificate" &&
+    !!templateId &&
+    certificateText === textoAplicado;
+
+  useEffect(() => {
+    setTemplates([]);
+    if (!templateKind) return;
+    let ativo = true;
+    clinicalDocumentTemplateService
+      .getAll({ kind: templateKind, doctorId })
+      .then((lista) => {
+        if (ativo) setTemplates(lista);
+      })
+      // Modelo é atalho: sem a lista, o médico escreve o texto à mão.
+      .catch(() => undefined);
+    return () => {
+      ativo = false;
+    };
+  }, [templateKind, doctorId]);
+
+  // Só a resposta do último apply vale. Mudar os dias, trocar de modelo,
+  // voltar ao texto padrão, digitar no campo ou fechar o modal invalida o que
+  // estiver em voo — senão uma resposta atrasada sobrescreve a mais nova.
+  const applySeq = useRef(0);
+  // Modelo que estava no seletor antes do apply em voo: se ele for
+  // invalidado, o seletor volta para o que de fato está no texto.
+  const modeloAntesDoApply = useRef<string | null>(null);
+  const invalidateApply = () => {
+    applySeq.current += 1;
+    if (modeloAntesDoApply.current !== null) {
+      setTemplateId(modeloAntesDoApply.current);
+      modeloAntesDoApply.current = null;
+    }
+    setApplyingTemplate(false);
+  };
+
+  const restaurarDiasZeradosPeloModelo = () => {
+    if (!diasZeradosPeloModelo.current) return;
+    diasZeradosPeloModelo.current = false;
+    setRestDays("1");
+  };
+
+  /**
+   * Preenche o texto com o modelo, já com os dados do paciente e do médico
+   * que estão na tela. O campo continua editável; trocar de modelo substitui.
+   * `{{dias}}`/`{{inicio}}` seguem literais (ver `textoAplicado`).
+   */
+  const applyTemplate = async (id: string) => {
+    if (!id) {
+      // "Nenhum": no atestado volta à declaração padrão; no pedido de exame o
+      // texto digitado fica onde está. Texto editado à mão só sai com
+      // confirmação — ele não volta.
+      if (
+        openKind === "certificate" &&
+        certificateText.trim() &&
+        certificateText !== textoAplicado &&
+        !window.confirm(
+          "Voltar ao texto padrão descarta o texto do atestado que você editou. Continuar?",
+        )
+      ) {
+        return;
+      }
+      invalidateApply();
+      setTemplateId("");
+      if (openKind === "certificate") {
+        setCertificateText("");
+        setTextoAplicado("");
+        restaurarDiasZeradosPeloModelo();
+      }
+      return;
+    }
+    // Um apply anterior em voo perde a vez; o seletor que vale é o de antes
+    // dele, não o que ele deixou marcado.
+    const anterior = modeloAntesDoApply.current ?? templateId;
+    const seq = ++applySeq.current;
+    modeloAntesDoApply.current = anterior;
+    setApplyingTemplate(true);
+    setTemplateId(id);
+    setError(null);
+    try {
+      const { body } = await clinicalDocumentTemplateService.apply(id, {
+        patientId,
+        doctorId,
+      });
+      if (seq !== applySeq.current) return;
+      modeloAntesDoApply.current = null;
+      if (openKind === "certificate") {
+        setCertificateText(body);
+        setTextoAplicado(body);
+        // Comparecimento declara presença, não afastamento: o "1 dia" com
+        // que o formulário começa não pode ir para o atestado.
+        if (ehComparecimentoSemAfastamento(body)) {
+          setRestDays("");
+          diasZeradosPeloModelo.current = true;
+        } else {
+          restaurarDiasZeradosPeloModelo();
+        }
+      } else setNotes(body);
+    } catch (err) {
+      if (seq !== applySeq.current) return;
+      modeloAntesDoApply.current = null;
+      setTemplateId(anterior);
+      setError(getApiErrorMessage(err, "Não foi possível aplicar o modelo."));
+    } finally {
+      if (seq === applySeq.current) setApplyingTemplate(false);
+    }
+  };
 
   const closePreview = () => setPreviewHtml(null);
 
   const openModal = (kind: DocumentKind) => {
+    // Resposta de um modelo pedido no modal anterior não pode cair neste.
+    invalidateApply();
     setRows([emptyRow()]);
     setNotes("");
     setRestDays("1");
+    diasZeradosPeloModelo.current = false;
     setStartDate("");
     setIncludeCid(false);
     // Começa com o CID da ficha; o médico troca se o afastamento for por outro
     // motivo.
     setCertificateCid(cidCodes.slice(0, 1));
     setObservations("");
+    setCertificateText("");
+    setTemplateId("");
+    setTextoAplicado("");
     setError(null);
     setOpenKind(kind);
   };
 
   const closeModal = () => {
     if (submitting || previewing) return;
+    invalidateApply();
     setOpenKind(null);
   };
 
@@ -160,13 +382,19 @@ export function ClinicalDocumentActions({
       };
     }
     if (openKind === "certificate") {
-      const days = Number(restDays);
       return {
         ...target,
-        restDays: Number.isFinite(days) && days > 0 ? days : undefined,
+        // Vazio ou 0 = comparecimento: o campo nem vai (o servidor só aceita
+        // 1 a 365).
+        restDays: diasDeAfastamento(restDays),
         startDate: startDate || undefined,
         includeCid: includeCid || undefined,
         cid: includeCid ? certificateCid[0] : undefined,
+        // Texto do modelo intacto: o servidor preenche o modelo na hora,
+        // com os dias deste atestado. Editado à mão: vai o texto da tela.
+        ...(textoDoModelo
+          ? { templateId }
+          : { text: certificateText.trim() || undefined }),
         observations: observations.trim() || undefined,
       };
     }
@@ -188,8 +416,34 @@ export function ClinicalDocumentActions({
     ...(openKind !== "prescription" && cidCodes.length ? { cidCodes } : {}),
   });
 
+  /**
+   * `{{dias}}`/`{{inicio}}` sem valor: o servidor recusa (400). Avisa no
+   * formulário, antes de enviar. `{{inicio}}` sem data cai na data de emissão
+   * quando há afastamento.
+   */
+  const placeholderSemValor = (): string | null => {
+    if (openKind !== "certificate" || !certificateText) return null;
+    const dias = diasDeAfastamento(restDays);
+    if (PLACEHOLDER_DIAS.test(certificateText) && !dias) {
+      return "O texto usa {{dias}}: informe os dias de afastamento ou tire {{dias}} do texto.";
+    }
+    if (PLACEHOLDER_INICIO.test(certificateText) && !dias && !startDate) {
+      return "O texto usa {{inicio}}: informe o início do afastamento ou tire {{inicio}} do texto.";
+    }
+    return null;
+  };
+
   /** Valida o mínimo comum a emitir e pré-visualizar. */
   const isIncomplete = (): boolean => {
+    if (outroProfissional) {
+      setError(SO_PROFISSIONAL_DA_CONSULTA);
+      return true;
+    }
+    const placeholder = placeholderSemValor();
+    if (placeholder) {
+      setError(placeholder);
+      return true;
+    }
     if (openKind !== "certificate" && filledRows.length === 0) {
       setError(
         openKind === "prescription"
@@ -243,7 +497,8 @@ export function ClinicalDocumentActions({
         );
       }
 
-      window.open(document.uri, "_blank", "noopener");
+      const uri = safeExternalUrl(document.uri);
+      if (uri) window.open(uri, "_blank", "noopener");
       onEmitted(document);
       closePreview();
       setOpenKind(null);
@@ -253,6 +508,12 @@ export function ClinicalDocumentActions({
       setSubmitting(false);
     }
   };
+
+  // Aviso ao vivo no campo de dias, antes mesmo de tentar enviar.
+  const diasFaltandoNoTexto =
+    openKind === "certificate" &&
+    PLACEHOLDER_DIAS.test(certificateText) &&
+    !diasDeAfastamento(restDays);
 
   const isList = openKind === "prescription" || openKind === "referral";
   const itemLabel = openKind === "prescription" ? "Medicamento" : "Exame";
@@ -274,6 +535,7 @@ export function ClinicalDocumentActions({
             variant="outline"
             className="rounded-xl min-h-[44px] justify-center"
             onClick={() => openModal("prescription")}
+            disabled={soMedico}
           >
             <FileText className="w-4 h-4 mr-2" />
             Receita
@@ -282,6 +544,7 @@ export function ClinicalDocumentActions({
             variant="outline"
             className="rounded-xl min-h-[44px] justify-center"
             onClick={() => openModal("certificate")}
+            disabled={soMedico}
           >
             <Stethoscope className="w-4 h-4 mr-2" />
             Atestado
@@ -290,11 +553,29 @@ export function ClinicalDocumentActions({
             variant="outline"
             className="rounded-xl min-h-[44px] justify-center"
             onClick={() => openModal("referral")}
+            disabled={soMedico}
           >
             <ClipboardList className="w-4 h-4 mr-2" />
             Solicitar exames
           </Button>
         </div>
+        {outroProfissional && (
+          <p className="mt-2 text-xs text-neutral-500">
+            {SO_PROFISSIONAL_DA_CONSULTA}
+          </p>
+        )}
+        {!outroProfissional && naoMedico && (
+          <p className="mt-2 text-xs text-neutral-500">
+            Receita, atestado e pedido de exame só podem ser emitidos por médico
+            (CRM) ou dentista (CRO). Esta consulta é de {assinante?.nome}.
+          </p>
+        )}
+        {!outroProfissional && crmSemNumero && (
+          <p className="mt-2 text-xs text-neutral-500">
+            Preencha o número e a UF do {conselho} de {assinante?.nome} em
+            Colaboradores para emitir documentos.
+          </p>
+        )}
       </div>
 
       <Modal
@@ -304,6 +585,56 @@ export function ClinicalDocumentActions({
         size="lg"
       >
         <div className="px-4 md:px-6 py-4 flex flex-col gap-4">
+          {templateKind && (
+            <div className="flex flex-col gap-1.5">
+              {templates.length > 0 && (
+                <>
+                  <label htmlFor="clinical-doc-template" className="ds-label">
+                    Usar modelo
+                  </label>
+                  <select
+                    id="clinical-doc-template"
+                    className="ds-input min-h-[44px]"
+                    value={templateId}
+                    disabled={applyingTemplate}
+                    onChange={(e) => applyTemplate(e.target.value)}
+                  >
+                    <option value="">
+                      {openKind === "certificate"
+                        ? "Nenhum (texto padrão do atestado)"
+                        : "Nenhum"}
+                    </option>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                  {applyingTemplate && (
+                    <p role="status" className="text-xs text-neutral-500">
+                      Aplicando modelo...
+                    </p>
+                  )}
+                </>
+              )}
+              {/* O modelo criado em Configurações é do próprio usuário
+                  (doctorId = ele): o atalho só faz sentido para o profissional
+                  da consulta, o único que emite. */}
+              {profissionalDaConsulta && (
+                <a
+                  href="/configuracoes?tab=document-templates"
+                  target="_blank"
+                  rel="noopener"
+                  className="self-start text-xs font-semibold text-teal-700 hover:underline min-h-[44px] md:min-h-[32px] inline-flex items-center"
+                >
+                  {templates.length > 0
+                    ? "Gerenciar modelos"
+                    : "Criar modelo de texto"}
+                </a>
+              )}
+            </div>
+          )}
+
           {isList && (
             <>
               {rows.map((row, index) => (
@@ -398,7 +729,10 @@ export function ClinicalDocumentActions({
                     : "Indicação clínica"
                 }
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => {
+                  invalidateApply();
+                  setNotes(e.target.value);
+                }}
                 rows={3}
                 placeholder={
                   openKind === "prescription"
@@ -411,15 +745,62 @@ export function ClinicalDocumentActions({
 
           {openKind === "certificate" && (
             <>
+              {(templateId || certificateText) && (
+                <div className="flex flex-col gap-1">
+                  <Textarea
+                    id="clinical-doc-certificate-text"
+                    label="Texto do atestado"
+                    value={certificateText}
+                    onChange={(e) => {
+                      invalidateApply();
+                      setCertificateText(e.target.value);
+                    }}
+                    rows={5}
+                    maxLength={CERTIFICATE_TEXT_MAX}
+                  />
+                  {PLACEHOLDER_DE_AFASTAMENTO.test(certificateText) && (
+                    <p className="text-xs text-neutral-500">
+                      {"{{dias}}"} e {"{{inicio}}"} são preenchidos ao
+                      visualizar e ao emitir, com o afastamento informado abaixo
+                      (sem início, vale a data de emissão).
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-neutral-500">
+                      Substitui o texto padrão. Cabeçalho, dados do paciente e
+                      assinatura entram sozinhos.
+                    </p>
+                    <p className="text-xs text-neutral-400 shrink-0">
+                      {certificateText.length}/{CERTIFICATE_TEXT_MAX}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => applyTemplate("")}
+                      className="min-h-[44px] text-xs font-semibold text-teal-700 hover:underline"
+                    >
+                      Usar texto padrão
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
                   id="clinical-doc-rest-days"
                   label="Dias de afastamento"
                   type="number"
-                  min={1}
+                  min={0}
                   max={365}
                   value={restDays}
-                  onChange={(e) => setRestDays(e.target.value)}
+                  onChange={(e) => {
+                    diasZeradosPeloModelo.current = false;
+                    setRestDays(e.target.value);
+                  }}
+                  error={
+                    diasFaltandoNoTexto
+                      ? "O texto usa {{dias}}: informe os dias."
+                      : undefined
+                  }
                 />
                 <Input
                   id="clinical-doc-start-date"
@@ -429,6 +810,10 @@ export function ClinicalDocumentActions({
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
+
+              <p className="-mt-2 text-xs text-neutral-500">
+                Dias vazios ou 0: atestado de comparecimento, sem afastamento.
+              </p>
 
               <div className="flex flex-col gap-2">
                 <div className="flex items-start gap-2">
@@ -483,7 +868,7 @@ export function ClinicalDocumentActions({
             variant="outline"
             onClick={handlePreview}
             isLoading={previewing}
-            disabled={submitting || bloqueado}
+            disabled={submitting || bloqueado || applyingTemplate}
             className="min-h-[44px]"
           >
             <Eye className="w-4 h-4 mr-2" />
@@ -492,7 +877,7 @@ export function ClinicalDocumentActions({
           <Button
             onClick={handleSubmit}
             isLoading={submitting}
-            disabled={previewing || bloqueado}
+            disabled={previewing || bloqueado || applyingTemplate}
             className="min-h-[44px]"
           >
             Emitir
@@ -537,7 +922,6 @@ export function ClinicalDocumentActions({
           </Button>
         </ModalFooter>
       </Modal>
-
     </>
   );
 }

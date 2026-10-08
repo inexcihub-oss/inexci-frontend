@@ -17,6 +17,7 @@ import {
   resolveDoctorSignatureUrl,
 } from "./SurgeryRequestLaudoDocument";
 import { useAuth } from "@/contexts/AuthContext";
+import { safeExternalUrl } from "@/lib/safe-url";
 
 interface SurgeryRequestDocumentPreviewModalProps {
   isOpen: boolean;
@@ -236,7 +237,7 @@ export function SurgeryRequestDocumentPreviewModal({
                     className="flex items-center justify-between gap-3 text-xs"
                   >
                     <a
-                      href={doc.uri}
+                      href={safeExternalUrl(doc.uri)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-gray-900 hover:text-teal-700 hover:underline truncate"

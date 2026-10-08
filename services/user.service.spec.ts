@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock do módulo api
 vi.mock("@/lib/api", () => ({
@@ -96,6 +96,51 @@ describe("userService", () => {
   // `getAll`/`getById` (GET /users e /users/one) foram removidos junto com os
   // seus testes: nenhuma tela os chamava e o primeiro trazia o diretório do
   // staff com dado pessoal de cada colega.
+
+  describe("updateProfile — cache do perfil", () => {
+    // O cache é desligado em NODE_ENV=test (avaliado no load do módulo):
+    // recarrega o módulo com outro NODE_ENV para exercitá-lo.
+    async function carregarComCache() {
+      vi.stubEnv("NODE_ENV", "development");
+      vi.resetModules();
+      const apiMod = (await import("@/lib/api")).default;
+      const { userService: svc } = await import("./user.service");
+      return { apiMod, svc };
+    }
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("resposta completa (formato do GET) é reaproveitada pelo getProfile", async () => {
+      const { apiMod, svc } = await carregarComCache();
+      (apiMod.put as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { id: "u-1", name: "Dr. A", isDoctor: true },
+      });
+
+      await svc.updateProfile({ name: "Dr. A" });
+      const perfil = await svc.getProfile();
+
+      expect(apiMod.get).not.toHaveBeenCalled();
+      expect(perfil.isDoctor).toBe(true);
+    });
+
+    it("resposta parcial (sem isDoctor) não vira cache: getProfile busca de novo", async () => {
+      const { apiMod, svc } = await carregarComCache();
+      (apiMod.put as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { id: "u-1", name: "Dr. A" },
+      });
+      (apiMod.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { id: "u-1", name: "Dr. A", isDoctor: true },
+      });
+
+      await svc.updateProfile({ name: "Dr. A" });
+      const perfil = await svc.getProfile();
+
+      expect(apiMod.get).toHaveBeenCalledWith("/users/profile");
+      expect(perfil.isDoctor).toBe(true);
+    });
+  });
 
   describe("uploadAvatar", () => {
     it("deve fazer upload e atualizar perfil com avatar_url", async () => {

@@ -179,9 +179,18 @@ const DOCTOR_TITLE_PREFIX = /^(dr|dra|dr\(a\))\.?\s/i;
  * Muito cadastro guarda o nome já como "Dr. Carlos Mendonça"; prefixar às
  * cegas mostrava "Dr(a). Dr. Carlos Mendonça" na tela.
  */
-export function formatDoctorName(name: string | null | undefined): string {
+export function formatDoctorName(
+  name: string | null | undefined,
+  /**
+   * "Dr(a)." é só de médico (CRM). Nutricionista, psicóloga e técnica de
+   * enfermagem aparecem pelo nome. Ausente = médico, como em `AvailableDoctor`
+   * (respostas anteriores ao conselho profissional).
+   */
+  isPhysician?: boolean,
+): string {
   const trimmed = (name ?? "").trim();
   if (!trimmed) return "";
+  if (isPhysician === false) return trimmed;
   return DOCTOR_TITLE_PREFIX.test(trimmed) ? trimmed : `Dr(a). ${trimmed}`;
 }
 

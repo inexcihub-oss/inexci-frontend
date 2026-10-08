@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyArea, Permission } from "@/lib/permissions";
@@ -27,6 +27,7 @@ import { extractTemplateTussItemsForCreate } from "@/components/procedures/norma
 import { tussService } from "@/services/tuss.service";
 import { AvailableDoctor } from "@/types";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { canOwnSurgeryRequest } from "@/lib/professional-council";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 import { priorityColors } from "@/lib/design-system";
@@ -112,9 +113,17 @@ export function CreateSurgeryRequestWizard({
   const [selectedHealthPlan, setSelectedHealthPlan] =
     useState<HealthPlan | null>(null);
 
-  // Available doctors — usa React Query para evitar re-fetch a cada abertura do modal
-  const { data: availableDoctors = [], isLoading: loadingDoctors } =
-    useAvailableDoctors();
+  // `fresh`: a lista decide quem pode ser dono da SC (conselho CRM, ativo).
+  // O cache aparece na hora e é revalidado em segundo plano a cada abertura —
+  // senão um médico promovido/rebaixado em outra aba seguiria errado por 5 min.
+  const { data: allDoctors = [], isLoading: loadingDoctors } =
+    useAvailableDoctors({ fresh: true });
+  // SC é de médico (CRM): psicóloga, nutricionista etc. aparecem na Agenda,
+  // mas não aqui. O backend também recusa.
+  const availableDoctors = useMemo(
+    () => allDoctors.filter(canOwnSurgeryRequest),
+    [allDoctors],
+  );
   const [selectedDoctor, setSelectedDoctor] = useState<AvailableDoctor | null>(
     null,
   );

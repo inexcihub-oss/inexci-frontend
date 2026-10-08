@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  buildOwnDoctorProfilePayload,
+  type OwnDoctorProfileFields,
+} from "@/lib/collaborator-update";
 
 /**
  * Testes para validar a lógica de save do perfil na página de configurações.
@@ -45,6 +49,7 @@ async function handleSaveProfile(
   user: { doctorProfile?: { id: string } } | null,
   updateProfile: typeof mockUpdateProfile,
   updateDoctorProfile: typeof mockUpdateDoctorProfile,
+  registroSalvo: OwnDoctorProfileFields = {},
 ) {
   // 1. Salvar dados básicos do perfil
   await updateProfile({
@@ -56,12 +61,14 @@ async function handleSaveProfile(
   });
 
   // 2. Se é médico e tem doctor_profile, salvar dados profissionais
+  // Só o que mudou; apagado vai "" (mesma regra da página).
   if (profile.isDoctor && user?.doctorProfile?.id) {
-    await updateDoctorProfile(user.doctorProfile.id, {
-      crm: profile.crm || undefined,
-      crmState: profile.crmState || undefined,
-      specialty: profile.specialty || undefined,
+    const payload = buildOwnDoctorProfilePayload(registroSalvo, {
+      crm: profile.crm,
+      crmState: profile.crmState,
+      specialty: profile.specialty,
     });
+    if (payload) await updateDoctorProfile(user.doctorProfile.id, payload);
   }
 }
 
@@ -181,7 +188,7 @@ describe("Configurações — handleSaveProfile", () => {
     expect(mockUpdateDoctorProfile).not.toHaveBeenCalled();
   });
 
-  it("deve converter campos vazios para undefined no payload", async () => {
+  it("campos básicos vazios viram undefined; registro vazio sem mudança não é enviado", async () => {
     const profile = {
       name: "Dr. Mínimo",
       phone: "",
@@ -210,10 +217,34 @@ describe("Configurações — handleSaveProfile", () => {
       gender: undefined,
     });
 
-    expect(mockUpdateDoctorProfile).toHaveBeenCalledWith("dp-002", {
-      crm: undefined,
-      crmState: undefined,
-      specialty: undefined,
+    // Registro vazio e sem mudança: não há o que mandar.
+    expect(mockUpdateDoctorProfile).not.toHaveBeenCalled();
+  });
+
+  it("apagar número e UF do conselho manda string vazia (o backend grava null)", async () => {
+    const profile = {
+      name: "Nutri",
+      phone: "",
+      document: "",
+      birthDate: "",
+      gender: "",
+      isDoctor: true,
+      crm: "",
+      crmState: "",
+      specialty: "Nutrição",
+    };
+
+    await handleSaveProfile(
+      profile,
+      { doctorProfile: { id: "dp-003" } },
+      mockUpdateProfile,
+      mockUpdateDoctorProfile,
+      { crm: "4567", crmState: "RJ", specialty: "Nutrição" },
+    );
+
+    expect(mockUpdateDoctorProfile).toHaveBeenCalledWith("dp-003", {
+      crm: "",
+      crmState: "",
     });
   });
 });

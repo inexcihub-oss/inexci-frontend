@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useId } from "react";
 import ReactDOM from "react-dom";
 import { Search, ChevronDown, X, Loader2 } from "lucide-react";
+import { useAnchoredDropdown } from "@/hooks/useAnchoredDropdown";
 
 interface SelectSearchOption {
   value: string;
@@ -20,6 +21,8 @@ interface SelectSearchProps {
   error?: string;
   clearable?: boolean;
   initialLabel?: string;
+  /** Nome acessível do campo quando o rótulo visível fica fora do componente. */
+  ariaLabel?: string;
 }
 
 // Custom debounce function
@@ -59,20 +62,23 @@ export function SelectSearch({
   error,
   clearable = true,
   initialLabel,
+  ariaLabel,
 }: SelectSearchProps) {
+  const listboxId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [options, setOptions] = useState<SelectSearchOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(initialLabel || "");
-  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const [dropdownPosition, setDropdownPosition] = useState({
-    top: 0,
-    left: 0,
-    width: 0,
-  });
+  // Lista em portal ancorada ao campo: acompanha a rolagem do corpo do modal
+  // (sem isso ela ficava parada onde o campo estava quando abriu) e fecha no
+  // clique fora considerando campo e lista.
+  const {
+    anchorRef,
+    dropdownRef,
+    position: dropdownPosition,
+  } = useAnchoredDropdown(isOpen, () => setIsOpen(false));
 
   // Mantém referência estável para onSearch para não recriar a fn debounced a cada render
   const onSearchRef = useRef(onSearch);
@@ -121,25 +127,6 @@ export function SelectSearch({
     }
   }, [value, initialLabel, selectedLabel]);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node) &&
-        !(
-          dropdownRef.current &&
-          dropdownRef.current.contains(event.target as Node)
-        )
-      ) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const handleSelect = (option: SelectSearchOption) => {
     onChange(option.value, option.label);
     setSelectedLabel(option.label);
@@ -163,14 +150,6 @@ export function SelectSearch({
 
   const handleToggle = () => {
     if (!disabled) {
-      if (!isOpen && containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setDropdownPosition({
-          top: rect.bottom,
-          left: rect.left,
-          width: rect.width,
-        });
-      }
       setIsOpen(!isOpen);
       if (!isOpen) {
         setTimeout(() => inputRef.current?.focus(), 100);
@@ -179,13 +158,14 @@ export function SelectSearch({
   };
 
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
+    <div className={`relative ${className}`}>
       {label && (
         <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 break-words">
           {label}
         </label>
       )}
       <div
+        ref={anchorRef}
         className={`
           relative flex items-center w-full border rounded-xl bg-white cursor-pointer
           ${error ? "border-red-500" : "border-gray-300"}
@@ -193,6 +173,18 @@ export function SelectSearch({
           ${isOpen ? "ring-2 ring-blue-500 border-blue-500" : ""}
         `}
         onClick={handleToggle}
+        role="combobox"
+        aria-label={ariaLabel ?? label}
+        aria-expanded={isOpen}
+        aria-controls={listboxId}
+        aria-haspopup="listbox"
+        aria-disabled={disabled || undefined}
+        tabIndex={disabled || isOpen ? -1 : 0}
+        onKeyDown={(e) => {
+          if (isOpen || (e.key !== "Enter" && e.key !== " ")) return;
+          e.preventDefault();
+          handleToggle();
+        }}
       >
         <div className="flex-1 flex items-center min-h-[36px] md:min-h-10 px-3 md:px-3.5 min-w-0 overflow-hidden">
           {isOpen ? (
@@ -204,6 +196,7 @@ export function SelectSearch({
                 value={searchTerm}
                 onChange={handleInputChange}
                 placeholder={placeholder}
+                aria-label={ariaLabel ?? label}
                 className="flex-1 outline-none text-base md:text-sm bg-transparent"
                 onClick={(e) => e.stopPropagation()}
                 disabled={disabled}
@@ -246,6 +239,9 @@ export function SelectSearch({
         ReactDOM.createPortal(
           <div
             ref={dropdownRef}
+            id={listboxId}
+            role="listbox"
+            aria-label={ariaLabel ?? label}
             style={{
               position: "fixed",
               top: dropdownPosition.top,
@@ -272,6 +268,8 @@ export function SelectSearch({
               options.map((option) => (
                 <div
                   key={option.value}
+                  role="option"
+                  aria-selected={option.value === value}
                   className={`
                     px-3.5 py-3 md:py-2 cursor-pointer text-sm min-h-[44px] md:min-h-0 flex items-center active:bg-gray-100
                     ${option.value === value ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"}

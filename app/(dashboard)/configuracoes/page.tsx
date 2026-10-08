@@ -27,8 +27,18 @@ import { summarizeErrors } from "@/lib/form-errors";
 import PasswordInput from "@/components/ui/PasswordInput";
 import api from "@/lib/api";
 import { userService } from "@/services/user.service";
+import {
+  buildAvatarUpdate,
+  buildOwnDoctorProfilePayload,
+  type OwnDoctorProfileFields,
+} from "@/lib/collaborator-update";
 import { notificationService } from "@/services/notification.service";
 import { uploadService } from "@/services/upload.service";
+import {
+  COUNCIL_OPTIONS,
+  councilOf,
+  ProfessionalCouncil,
+} from "@/lib/professional-council";
 import { clearAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
 import dynamic from "next/dynamic";
 const BillingSection = dynamic(
@@ -54,9 +64,16 @@ import {
   Loader2,
   LayoutTemplate,
   Compass,
+  FileText,
+  CalendarClock,
+  CalendarOff,
 } from "lucide-react";
 import { OnboardingSettingsTab } from "@/components/onboarding/OnboardingSettingsTab";
 import { PrivacySection } from "@/components/privacy/PrivacySection";
+import { DocumentTemplatesSettings } from "@/components/clinical/DocumentTemplatesSettings";
+import { ScheduleWeekEditor } from "@/components/availability/ScheduleWeekEditor";
+import { HolidaysSettings } from "@/components/availability/HolidaysSettings";
+import { Permission } from "@/lib/permissions";
 
 // Tipos
 interface UserProfile {
@@ -66,8 +83,13 @@ interface UserProfile {
   document: string;
   birthDate: string;
   gender: string;
-  // Campos específicos do médico (lidos de doctor_profile)
+  // Campos específicos do profissional (lidos de doctor_profile)
   specialty?: string;
+  /**
+   * Editável só pelo DONO da conta (ele é a administração). Para os demais,
+   * inclusive o admin delegado, é só leitura.
+   */
+  council?: ProfessionalCouncil;
   crm?: string;
   crmState?: string;
   signatureImageUrl?: string;
@@ -94,7 +116,10 @@ type SettingsTab =
   | "security"
   | "header"
   | "privacy"
-  | "onboarding";
+  | "onboarding"
+  | "document-templates"
+  | "my-schedule"
+  | "holidays";
 
 import { maskPhone, maskCpf } from "@/lib/masks";
 
@@ -126,6 +151,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
+      aria-current={active ? "true" : undefined}
       className={cn(
         "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-left whitespace-nowrap min-h-[44px] active:scale-[0.98]",
         active
@@ -216,12 +242,36 @@ const BILLING_TAB_ENABLED = true;
  * `?tab=profile` via `router.push` sem trocar de rota, o que o App Router não
  * remonta). `null` significa "não decide nada" — quem chama escolhe o que
  * fazer (cair para `profile` no primeiro render, ignorar na reação).
+ *
+ * Aba que existe mas não está liberada para quem está logado cai em
+ * `profile` — as mesmas condições que mostram o botão e o conteúdo. Antes
+ * ela era aceita e a página abria com o conteúdo em branco, sem nenhuma aba
+ * marcada no menu.
  */
+interface SettingsTabAccess {
+  isAccountOwner: boolean;
+  /** Médico (CRM) ou dentista (CRO): modelos de documento. */
+  emiteDocumentos: boolean;
+  /** Profissional de saúde (qualquer conselho): Minha Agenda. */
+  isDoctor: boolean;
+  /** `Permission.ADMINISTRACAO`: feriados. */
+  podeAdministrar: boolean;
+  hasUser: boolean;
+}
+
 function resolveSettingsTab(
   tab: string | null,
-  isAccountOwner: boolean,
+  acesso: SettingsTabAccess,
 ): SettingsTab | null {
-  if (tab === "plan" && !isAccountOwner) return "profile";
+  if (tab === "plan" && !acesso.isAccountOwner) return "profile";
+  if (
+    tab === "document-templates" &&
+    !(acesso.emiteDocumentos && acesso.hasUser)
+  )
+    return "profile";
+  if (tab === "my-schedule" && !(acesso.isDoctor && acesso.hasUser))
+    return "profile";
+  if (tab === "holidays" && !acesso.podeAdministrar) return "profile";
   if (
     tab === "header" ||
     tab === "profile" ||
@@ -229,7 +279,10 @@ function resolveSettingsTab(
     tab === "plan" ||
     tab === "security" ||
     tab === "privacy" ||
-    tab === "onboarding"
+    tab === "onboarding" ||
+    tab === "document-templates" ||
+    tab === "my-schedule" ||
+    tab === "holidays"
   ) {
     return tab as SettingsTab;
   }
@@ -237,8 +290,16 @@ function resolveSettingsTab(
 }
 
 function ConfiguracoesPageInner() {
-  const { user, updateUser, isAccountOwner, subscription, refreshSubscription } =
-    useAuth();
+  const {
+    user,
+    updateUser,
+    isAccountOwner,
+    canIssueClinicalDocuments,
+    isDoctor,
+    can,
+    subscription,
+    refreshSubscription,
+  } = useAuth();
   // O backend recusa checkout/portal do Stripe para quem não é dono da conta
   // — sem esse filtro a aba oferece um botão que sempre falha. A regra vive
   // no AuthContext (`isAccountOwner`) para não divergir dos outros pontos que
@@ -259,8 +320,17 @@ function ConfiguracoesPageInner() {
     window.history.replaceState({}, "", url.toString());
   };
 
+  const podeAdministrar = can(Permission.ADMINISTRACAO);
+  const hasUser = !!user?.id;
+  const acessoAbas: SettingsTabAccess = {
+    isAccountOwner,
+    emiteDocumentos: canIssueClinicalDocuments,
+    isDoctor,
+    podeAdministrar,
+    hasUser,
+  };
   const initialTab = (): SettingsTab =>
-    resolveSettingsTab(searchParams.get("tab"), isAccountOwner) ?? "profile";
+    resolveSettingsTab(searchParams.get("tab"), acessoAbas) ?? "profile";
 
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [saving, setSaving] = useState(false);
@@ -278,9 +348,23 @@ function ConfiguracoesPageInner() {
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (!tab) return;
-    const resolvido = resolveSettingsTab(tab, isAccountOwner);
+    const resolvido = resolveSettingsTab(tab, {
+      isAccountOwner,
+      emiteDocumentos: canIssueClinicalDocuments,
+      isDoctor,
+      podeAdministrar,
+      hasUser,
+    });
     if (resolvido) setActiveTab(resolvido);
-  }, [searchParams, isAccountOwner]);
+    // Reage também ao acesso: a sessão pode chegar depois do primeiro render.
+  }, [
+    searchParams,
+    isAccountOwner,
+    canIssueClinicalDocuments,
+    isDoctor,
+    podeAdministrar,
+    hasUser,
+  ]);
 
   useEffect(() => {
     if (!checkoutParam || checkoutMessageShownRef.current) return;
@@ -372,6 +456,12 @@ function ConfiguracoesPageInner() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signatureDeleted, setSignatureDeleted] = useState(false);
   const [isProcessingSignature, setIsProcessingSignature] = useState(false);
+  // Registro profissional como veio do servidor: o save manda só o que mudou
+  // (e "" para o que foi apagado) — ver `buildOwnDoctorProfilePayload`.
+  const registroSalvoRef = useRef<OwnDoctorProfileFields>({});
+  // Avatar gravado no servidor: remover só vira `avatarUrl: null` no save
+  // quando havia um gravado (ver `buildAvatarUpdate`).
+  const avatarSalvoRef = useRef<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
@@ -436,6 +526,13 @@ function ConfiguracoesPageInner() {
         const profileData = await userService.getProfile();
         const dp = profileData.doctorProfile;
         if (!isMounted) return;
+        registroSalvoRef.current = {
+          council: councilOf(dp),
+          crm: dp?.crm || "",
+          crmState: dp?.crmState || "",
+          specialty: dp?.specialty || "",
+        };
+        avatarSalvoRef.current = profileData.avatarUrl || null;
         setProfile({
           name: profileData.name || "",
           email: profileData.email || "",
@@ -446,6 +543,7 @@ function ConfiguracoesPageInner() {
             : "",
           gender: profileData.gender || "",
           specialty: dp?.specialty || "",
+          council: councilOf(dp),
           crm: dp?.crm || "",
           crmState: dp?.crmState || "",
           signatureImageUrl: dp?.signatureUrl || "",
@@ -482,6 +580,12 @@ function ConfiguracoesPageInner() {
         // Fallback para dados do contexto
         if (isMounted && user) {
           const dp = user.doctorProfile;
+          registroSalvoRef.current = {
+            council: councilOf(dp),
+            crm: dp?.crm || "",
+            crmState: dp?.crmState || "",
+            specialty: dp?.specialty || "",
+          };
           setProfile({
             name: user.name || "",
             email: user.email || "",
@@ -490,6 +594,7 @@ function ConfiguracoesPageInner() {
             birthDate: "",
             gender: "",
             specialty: dp?.specialty || "",
+            council: councilOf(dp),
             crm: dp?.crm || "",
             crmState: dp?.crmState || "",
             isDoctor: user.isDoctor || false,
@@ -657,9 +762,11 @@ function ConfiguracoesPageInner() {
         cpf: documentDigits || undefined,
         birthDate: profile.birthDate || undefined,
         gender: profile.gender || undefined,
-        ...(avatarFile
-          ? { avatarUrl }
-          : { avatarUrl: avatarPreview ? undefined : undefined }),
+        ...buildAvatarUpdate({
+          savedAvatarUrl: avatarSalvoRef.current,
+          uploadedPath: avatarFile ? avatarUrl : undefined,
+          hasPreview: !!avatarPreview,
+        }),
         ...(signatureFile
           ? { signatureUrl: signaturePath }
           : signatureDeleted
@@ -668,13 +775,31 @@ function ConfiguracoesPageInner() {
       });
 
       // 4. Se é médico, salvar dados profissionais (usa user.id, não doctorProfile.id)
+      //    Só o que mudou; campo apagado vai "" (o backend grava null) — o
+      //    `|| undefined` antigo significava "não mexer" e não deixava apagar
+      //    número/UF de conselho que não exige registro.
       if (profile.isDoctor && user?.id) {
-        await userService.updateDoctorProfile(user.id, {
-          crm: profile.crm || undefined,
-          crmState: profile.crmState || undefined,
-          specialty: profile.specialty || undefined,
-        });
+        const registro: OwnDoctorProfileFields = {
+          council: profile.council,
+          crm: profile.crm,
+          crmState: profile.crmState,
+          specialty: profile.specialty,
+        };
+        // O dono da conta é a administração: troca o próprio conselho. Os
+        // demais (inclusive o admin delegado) não — o campo nem é editável.
+        const payloadRegistro = buildOwnDoctorProfilePayload(
+          registroSalvoRef.current,
+          registro,
+          { allowCouncil: isAccountOwner },
+        );
+        if (payloadRegistro) {
+          await userService.updateDoctorProfile(user.id, payloadRegistro);
+          registroSalvoRef.current = registro;
+        }
       }
+
+      if (avatarFile && avatarUrl) avatarSalvoRef.current = avatarUrl;
+      else if (!avatarPreview) avatarSalvoRef.current = null;
 
       await updateUser();
       setAvatarFile(null);
@@ -958,11 +1083,36 @@ function ConfiguracoesPageInner() {
                 Dados Profissionais
               </h3>
               <p className="text-sm text-gray-500">
-                Informações do registro médico
+                Informações do registro profissional
               </p>
             </CardHeader>
             <CardContent className="p-6 pt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {isAccountOwner ? (
+                  <Select
+                    label="Conselho"
+                    value={profile.council ?? "CRM"}
+                    onChange={(e) =>
+                      setProfile({
+                        ...profile,
+                        council: e.target.value as ProfessionalCouncil,
+                      })
+                    }
+                    options={COUNCIL_OPTIONS}
+                  />
+                ) : (
+                  <Input
+                    label="Conselho"
+                    value={
+                      COUNCIL_OPTIONS.find(
+                        (opt) => opt.value === (profile.council ?? "CRM"),
+                      )?.label ?? "CRM"
+                    }
+                    disabled
+                    readOnly
+                    title="Para trocar o conselho, fale com a administração da conta."
+                  />
+                )}
                 <Input
                   label="Especialidade"
                   value={profile.specialty || ""}
@@ -972,7 +1122,7 @@ function ConfiguracoesPageInner() {
                   placeholder="Ex: Ortopedia"
                 />
                 <Input
-                  label="CRM"
+                  label="Número no conselho"
                   value={profile.crm || ""}
                   onChange={(e) =>
                     setProfile({ ...profile, crm: e.target.value })
@@ -980,7 +1130,7 @@ function ConfiguracoesPageInner() {
                   placeholder="00000"
                 />
                 <Select
-                  label="UF do CRM"
+                  label="UF do conselho"
                   value={profile.crmState || ""}
                   onChange={(e) =>
                     setProfile({ ...profile, crmState: e.target.value })
@@ -1337,6 +1487,30 @@ function ConfiguracoesPageInner() {
                   label="Cabeçalho de Documentos"
                 />
               )}
+              {isDoctor && user?.id && (
+                <TabButton
+                  active={activeTab === "my-schedule"}
+                  onClick={() => setActiveTab("my-schedule")}
+                  icon={CalendarClock}
+                  label="Minha Agenda"
+                />
+              )}
+              {can(Permission.ADMINISTRACAO) && (
+                <TabButton
+                  active={activeTab === "holidays"}
+                  onClick={() => setActiveTab("holidays")}
+                  icon={CalendarOff}
+                  label="Feriados"
+                />
+              )}
+              {canIssueClinicalDocuments && user?.id && (
+                <TabButton
+                  active={activeTab === "document-templates"}
+                  onClick={() => setActiveTab("document-templates")}
+                  icon={FileText}
+                  label="Modelos de Documentos"
+                />
+              )}
               <TabButton
                 active={activeTab === "security"}
                 onClick={() => setActiveTab("security")}
@@ -1369,6 +1543,26 @@ function ConfiguracoesPageInner() {
             {activeTab === "security" && renderSecurityTab()}
             {activeTab === "header" && profile.isDoctor && renderHeaderTab()}
             {activeTab === "privacy" && renderPrivacyTab()}
+            {activeTab === "my-schedule" && isDoctor && user?.id && (
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 md:p-6 flex flex-col gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Minha agenda
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Dias e horários em que você atende. A recepção vê esses
+                    horários ao agendar e é avisada quando marca fora deles.
+                  </p>
+                </div>
+                <ScheduleWeekEditor doctorId={user.id} />
+              </div>
+            )}
+            {activeTab === "holidays" && can(Permission.ADMINISTRACAO) && (
+              <HolidaysSettings />
+            )}
+            {activeTab === "document-templates" &&
+              canIssueClinicalDocuments &&
+              user?.id && <DocumentTemplatesSettings doctorId={user.id} />}
             {activeTab === "onboarding" && <OnboardingSettingsTab />}
           </div>
         </div>

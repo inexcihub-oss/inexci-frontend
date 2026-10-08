@@ -9,9 +9,12 @@ import {
 import { logger } from "@/lib/logger";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
+import { councilOf, professionalKindLabel } from "@/lib/professional-council";
 import { Checkbox, SearchInput, Button } from "@/components/ui";
 import PageContainer from "@/components/PageContainer";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useInvalidateAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { NewCollaboratorModal } from "@/components/colaboradores/NewCollaboratorModal";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
@@ -43,6 +46,7 @@ export default function ColaboradoresPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
   // Passo "areas" da trilha Administração: abre o modal de novo colaborador
   // ao entrar no passo — é lá dentro que vive `admin-areas`.
@@ -126,6 +130,8 @@ export default function ColaboradoresPage() {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await collaboratorService.delete(deleteModal.id);
+      // Excluído some da lista de médicos do wizard de SC e da agenda.
+      void invalidateAvailableDoctors();
       setCollaborators((prev) => prev.filter((c) => c.id !== deleteModal.id));
       setDeleteModal({ open: false, id: null, name: null, loading: false });
     } catch (error) {
@@ -144,6 +150,7 @@ export default function ColaboradoresPage() {
     setBulkDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await collaboratorService.deleteMany(ids);
+      void invalidateAvailableDoctors();
       setCollaborators((prev) => prev.filter((c) => !ids.includes(c.id)));
       setRowSelection({});
       setBulkDeleteModal({ open: false, loading: false });
@@ -238,8 +245,15 @@ export default function ColaboradoresPage() {
       meta: { className: "hidden md:table-cell" },
       cell: ({ row }) =>
         row.original.isDoctor ? (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-            Médico
+          <span
+            className={cn(
+              "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold border",
+              councilOf(row.original.doctorProfile) === "CRM"
+                ? "bg-blue-100 text-blue-700 border-blue-200"
+                : "bg-teal-50 text-teal-800 border-teal-200",
+            )}
+          >
+            {professionalKindLabel(row.original.doctorProfile)}
           </span>
         ) : (
           <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">

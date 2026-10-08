@@ -1,29 +1,65 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
-import { DetailPageLayout, FormSection } from "@/components/details";
+import { DetailPageLayout } from "@/components/details";
 import { Spinner } from "@/components/ui";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { patientService, Patient } from "@/services/patient.service";
+import { healthPlanService } from "@/services/health-plan.service";
 import { PatientRegistrationForm } from "@/components/patients/PatientRegistrationForm";
-import { PatientClinicalTimeline } from "@/components/clinical/PatientClinicalTimeline";
-import { PatientDocuments } from "@/components/clinical/PatientDocuments";
-import { PatientTimelineSidebar } from "@/components/clinical/PatientTimelineSidebar";
-import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
+import { PatientPhotoField } from "@/components/patients/PatientPhotoField";
 import {
-  surgeryRequestService,
-  SurgeryRequestListItem,
-} from "@/services/surgery-request.service";
-import { appointmentService, Appointment } from "@/services/appointment.service";
+  PatientTimeline,
+  ProximaConsulta,
+} from "@/components/patients/PatientTimeline";
+import { usePatientHistory } from "@/components/patients/usePatientHistory";
+import { PatientDocuments } from "@/components/clinical/PatientDocuments";
+import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
+import { AppointmentDetailModal } from "@/components/agenda/AppointmentDetailModal";
+import {
+  appointmentService,
+  Appointment,
+  AppointmentStatus,
+} from "@/services/appointment.service";
+import {
+  idadeEmAnos,
+  montarHistorico,
+  ultimaVisita,
+} from "@/lib/patient-history";
+import { formatPhone } from "@/lib/formatters";
+import { getApiErrorMessage } from "@/lib/http-error";
 import { logger } from "@/lib/logger";
 import { resolverReturnUrl } from "@/lib/safe-return-url";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
 import { Plus } from "lucide-react";
+
+type Aba = "historico" | "documentos" | "cadastro";
+
+function dataCurta(value: string | number): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(value));
+}
+
+function dataEHora(value: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  })
+    .format(new Date(value))
+    .replace(",", " às");
+}
 
 export default function PacienteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -38,77 +74,127 @@ export default function PacienteDetalhePage() {
   })();
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [surgeryRequests, setSurgeryRequests] = useState<
-    SurgeryRequestListItem[]
-  >([]);
-  const [loadingSurgeries, setLoadingSurgeries] = useState(true);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loadingAppointments, setLoadingAppointments] = useState(true);
+  const [convenio, setConvenio] = useState<string | null>(null);
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
+  const [consultaAberta, setConsultaAberta] = useState<Appointment | null>(
+    null,
+  );
+  const [consultaEditando, setConsultaEditando] = useState<Appointment | null>(
+    null,
+  );
+  const [busy, setBusy] = useState(false);
   const { toast, showToast, hideToast } = useToast();
   const { can } = useAuth();
   const podeAgenda = can(Permission.AGENDA);
-  // Prontuário e documentos exigem Atendimento no backend (`ATENDIMENTO`
-  // na classe de `clinical-records` e `clinical-records/documents`,
-  // inclusive no GET) — sem a permissão não há nada legítimo para buscar,
-  // então a seção nem monta.
+  // Documentos exigem Atendimento no backend (inclusive o GET): sem a
+  // permissão a aba nem aparece.
   const podeAtendimento = can(Permission.ATENDIMENTO);
 
-  /** Consultas do paciente — vive na página porque o botão "Nova consulta"
-   * também está aqui; a sidebar apenas consome e pede recarga.
-   *
-   * `GET /appointments/patient/:id` exige Agenda **ou** Atendimento. Sem
-   * nenhuma das duas a chamada volta 403 garantido (quem só tem Solicitações,
-   * por exemplo) — o `.catch` escondia o erro, mas a requisição saía a cada
-   * abertura de paciente e sujava o console. */
-  const loadAppointments = useCallback(() => {
-    if (!podeAgenda && !podeAtendimento) {
-      setAppointments([]);
-      setLoadingAppointments(false);
-      return;
-    }
-    setLoadingAppointments(true);
-    appointmentService
-      .getByPatient(params.id)
-      .then(setAppointments)
-      .catch(() => setAppointments([]))
-      .finally(() => setLoadingAppointments(false));
-  }, [params.id, podeAgenda, podeAtendimento]);
+  const abas = useMemo(
+    () =>
+      [
+        { id: "cadastro" as const, label: "Cadastro" },
+        { id: "historico" as const, label: "Histórico" },
+        ...(podeAtendimento
+          ? [{ id: "documentos" as const, label: "Documentos" }]
+          : []),
+      ] satisfies { id: Aba; label: string }[],
+    [podeAtendimento],
+  );
+
+  // Guarda a aba PEDIDA (`?tab=` ou o clique) e deriva a efetiva a cada
+  // render: se as permissões mudarem depois da montagem (sessão recarregada,
+  // permissão concedida/revogada), `?tab=documentos` passa a valer quando a
+  // aba existir, e cai no Cadastro enquanto o usuário não a tiver — sem
+  // depender do valor que `can()` tinha no primeiro render.
+  const [abaPedida, setAbaPedida] = useState<Aba | null>(
+    () => searchParams.get("tab") as Aba | null,
+  );
+  const aba: Aba =
+    abaPedida && abas.some((a) => a.id === abaPedida) ? abaPedida : "cadastro";
+
+  const irParaAba = (proxima: Aba) => {
+    setAbaPedida(proxima);
+    const query = new URLSearchParams(searchParams.toString());
+    query.set("tab", proxima);
+    router.replace(`?${query.toString()}`, { scroll: false });
+  };
+
+  const historicoData = usePatientHistory(params.id);
+  const historico = useMemo(
+    () =>
+      montarHistorico({
+        appointments: historicoData.appointments,
+        records: historicoData.records,
+        surgeries: historicoData.surgeries,
+      }),
+    [historicoData.appointments, historicoData.records, historicoData.surgeries],
+  );
 
   useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let active = true;
+    setLoading(true);
+    patientService
+      .getById(params.id)
+      .then((data) => {
+        if (!active) return;
+        if (!data) logger.error("Paciente não encontrado");
+        setPatient(data ?? null);
+      })
+      .catch((error) => logger.error("Erro ao carregar paciente:", error))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
   }, [params.id]);
 
+  const healthPlanId = patient?.healthPlanId;
   useEffect(() => {
-    loadAppointments();
-  }, [loadAppointments]);
+    if (!healthPlanId) {
+      setConvenio(null);
+      return;
+    }
+    let active = true;
+    healthPlanService
+      .getById(healthPlanId)
+      .then((plan) => active && setConvenio(plan?.name ?? null))
+      .catch(() => active && setConvenio(null));
+    return () => {
+      active = false;
+    };
+  }, [healthPlanId]);
 
-  const loadData = async () => {
-    setLoading(true);
-    setLoadingSurgeries(true);
+  const handleChangeStatus = async (status: AppointmentStatus) => {
+    if (!consultaAberta) return;
+    setBusy(true);
     try {
-      const [patientData, surgeryData] = await Promise.all([
-        patientService.getById(params.id),
-        surgeryRequestService
-          .getAll({ patientId: params.id })
-          .catch(() => ({ total: 0, records: [] })),
-      ]);
-
-      if (!patientData) {
-        logger.error("Paciente não encontrado");
-        setLoading(false);
-        setLoadingSurgeries(false);
-        return;
-      }
-
-      setPatient(patientData);
-      setSurgeryRequests(surgeryData.records ?? []);
+      await appointmentService.updateStatus(consultaAberta.id, status);
+      setConsultaAberta(null);
+      historicoData.reload();
     } catch (error) {
-      logger.error("Erro ao carregar paciente:", error);
+      showToast(
+        getApiErrorMessage(error, "Não foi possível atualizar a consulta."),
+        "error",
+      );
     } finally {
-      setLoading(false);
-      setLoadingSurgeries(false);
+      setBusy(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!consultaAberta) return;
+    setBusy(true);
+    try {
+      await appointmentService.delete(consultaAberta.id);
+      setConsultaAberta(null);
+      historicoData.reload();
+    } catch (error) {
+      showToast(
+        getApiErrorMessage(error, "Não foi possível excluir a consulta."),
+        "error",
+      );
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -132,14 +218,26 @@ export default function PacienteDetalhePage() {
     );
   }
 
-  const sidebarContent = (
-    <PatientTimelineSidebar
-      appointments={appointments}
-      loadingAppointments={loadingAppointments}
-      surgeries={surgeryRequests}
-      loadingSurgeries={loadingSurgeries}
-      onReload={loadAppointments}
-    />
+  const idade = idadeEmAnos(patient.birthDate);
+  const dadosBasicos = [
+    idade !== null ? `${idade} ${idade === 1 ? "ano" : "anos"}` : null,
+    convenio,
+    patient.phone ? formatPhone(patient.phone) : null,
+  ].filter(Boolean);
+  const ultima = historicoData.loading ? null : ultimaVisita(historico);
+  const proxima = historicoData.loading ? null : historico.proximas[0];
+
+  const subtitulo = (
+    <div className="flex flex-col gap-0.5">
+      {dadosBasicos.length > 0 && <span>{dadosBasicos.join(" · ")}</span>}
+      {(ultima || proxima) && (
+        <span>
+          {ultima && <>Última visita {dataCurta(ultima)}</>}
+          {ultima && proxima && " · "}
+          {proxima && <>Próxima consulta {dataEHora(proxima.scheduledAt)}</>}
+        </span>
+      )}
+    </div>
   );
 
   return (
@@ -148,55 +246,192 @@ export default function PacienteDetalhePage() {
         sectionTitle="Pacientes"
         backHref="/pacientes"
         itemName={patient.name}
-        itemSubtitle="Paciente"
+        itemSubtitle={subtitulo}
         sidebarIcon="calendar"
-        sidebarContent={sidebarContent}
-      >
-        {/* Ação principal do paciente */}
-        {podeAgenda && (
-          <div className="flex justify-end">
+        sidebarContent={
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Próximas consultas
+              </h3>
+              {!historicoData.loading && (
+                <span className="text-xs text-gray-400">
+                  {historico.proximas.length}
+                </span>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {historicoData.loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Spinner size="sm" />
+                </div>
+              ) : historico.proximas.length === 0 ? (
+                <p className="px-4 py-8 text-center text-xs text-gray-400">
+                  Nenhuma consulta agendada.
+                </p>
+              ) : (
+                <ul aria-label="Próximas consultas">
+                  {historico.proximas.map((a) => (
+                    <li key={a.id} className="border-b border-gray-100">
+                      <ProximaConsulta
+                        appointment={a}
+                        profissional={historicoData.profissionais.get(
+                          a.doctorId,
+                        )}
+                        onAbrir={setConsultaAberta}
+                        className="px-4 py-3"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        }
+        avatar={
+          <PatientPhotoField
+            patient={patient}
+            onChange={(saved) => {
+              setPatient(saved);
+              showToast("Foto do paciente atualizada.", "success");
+            }}
+          />
+        }
+        profileAction={
+          podeAgenda ? (
             <button
               onClick={() => setIsNewAppointmentOpen(true)}
-              className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+              aria-label="Nova consulta"
+              className="flex items-center justify-center gap-1.5 h-9 w-9 sm:w-auto sm:px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors"
             >
               <Plus className="w-4 h-4" strokeWidth={2.2} />
-              <span className="text-xs font-semibold">Nova consulta</span>
+              <span className="hidden sm:inline text-xs font-semibold">
+                Nova consulta
+              </span>
             </button>
+          ) : undefined
+        }
+      >
+        <div
+          role="tablist"
+          aria-label="Seções do paciente"
+          className="flex items-center border-b border-neutral-100 overflow-x-auto scrollbar-hide"
+        >
+          {abas.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              role="tab"
+              id={`aba-${a.id}`}
+              aria-selected={aba === a.id}
+              aria-controls={`painel-${a.id}`}
+              onClick={() => irParaAba(a.id)}
+              className={`px-4 py-3 text-sm font-semibold transition-all whitespace-nowrap min-h-[44px] -mb-px ${
+                aba === a.id
+                  ? "text-black border-b-[3px] border-teal-700"
+                  : "text-gray-500 hover:text-black"
+              }`}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+
+        {aba === "historico" && (
+          <div role="tabpanel" id="painel-historico" aria-labelledby="aba-historico">
+            {historicoData.loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Spinner size="sm" />
+              </div>
+            ) : historicoData.error ? (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <p className="text-sm text-red-600">
+                  Não foi possível carregar o histórico do paciente.
+                </p>
+                <button
+                  onClick={historicoData.reload}
+                  className="text-sm font-semibold text-teal-700 hover:underline min-h-[44px] px-3"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            ) : (
+              <PatientTimeline
+                historico={historico}
+                documents={historicoData.documents}
+                profissionais={historicoData.profissionais}
+                podeVerSolicitacoes={can(Permission.SOLICITACOES)}
+                onAbrirConsulta={setConsultaAberta}
+                mostrarProximas={false}
+              />
+            )}
           </div>
         )}
 
-        {/* Seção: Prontuário — some inteira sem Atendimento, em vez de
-            mostrar um título com nada embaixo. */}
-        {podeAtendimento && (
-          <FormSection title="Prontuário">
-            <PatientClinicalTimeline patientId={patient.id} />
-          </FormSection>
+        {aba === "documentos" && podeAtendimento && (
+          <div role="tabpanel" id="painel-documentos" aria-labelledby="aba-documentos">
+            <PatientDocuments patientId={patient.id} />
+          </div>
         )}
 
-        {/* Seção: Documentos e exames (card próprio, com ação no header).
-            O componente já se esconde sozinho sem Atendimento. */}
-        <PatientDocuments patientId={patient.id} />
-
-        <PatientRegistrationForm
-          patient={patient}
-          onSaved={(saved) => {
-            setPatient(saved);
-            showToast("Paciente atualizado com sucesso!", "success");
-            if (returnUrl) {
-              setTimeout(() => router.push(returnUrl), 800);
-            }
-          }}
-          onCancel={() => router.push(returnUrl ?? "/pacientes")}
-        />
+        {/* O cadastro fica montado (só escondido) para trocar de aba não
+            descartar o que foi digitado e ainda não salvo. */}
+        <div
+          role="tabpanel"
+          id="painel-cadastro"
+          aria-labelledby="aba-cadastro"
+          hidden={aba !== "cadastro"}
+        >
+          <PatientRegistrationForm
+            patient={patient}
+            onSaved={(saved) => {
+              setPatient(saved);
+              showToast("Paciente atualizado com sucesso!", "success");
+              if (returnUrl) {
+                setTimeout(() => router.push(returnUrl), 800);
+              }
+            }}
+            onCancel={() => router.push(returnUrl ?? "/pacientes")}
+          />
+        </div>
       </DetailPageLayout>
 
       <NewAppointmentModal
         isOpen={isNewAppointmentOpen}
         onClose={() => setIsNewAppointmentOpen(false)}
-        onSaved={loadAppointments}
+        onSaved={historicoData.reload}
         defaultPatientId={patient.id}
         defaultPatientLabel={patient.name}
+        defaultHealthPlanId={patient.healthPlanId ?? null}
       />
+
+      {consultaEditando && (
+        <NewAppointmentModal
+          isOpen
+          onClose={() => setConsultaEditando(null)}
+          onSaved={historicoData.reload}
+          appointment={consultaEditando}
+        />
+      )}
+
+      {consultaAberta && (
+        <AppointmentDetailModal
+          appointment={consultaAberta}
+          doctorName={historicoData.profissionais.get(consultaAberta.doctorId)}
+          doctorIsPhysician={historicoData.medicos.get(consultaAberta.doctorId)}
+          busy={busy}
+          onClose={() => setConsultaAberta(null)}
+          onEdit={() => {
+            setConsultaEditando(consultaAberta);
+            setConsultaAberta(null);
+          }}
+          onStartAttendance={() =>
+            router.push(`/atendimento/${consultaAberta.id}`)
+          }
+          onChangeStatus={handleChangeStatus}
+          onDelete={handleDelete}
+        />
+      )}
 
       {toast && (
         <Toast

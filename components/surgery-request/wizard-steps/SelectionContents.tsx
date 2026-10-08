@@ -1,5 +1,7 @@
 "use client";
 
+import { formatRegistration } from "@/lib/professional-council";
+
 import React, { memo, useState, useEffect } from "react";
 import Image from "next/image";
 import { Trash2 } from "lucide-react";
@@ -638,10 +640,9 @@ export const DoctorSelectionContent = memo(function DoctorSelectionContent({
                   <span className="text-xs md:text-sm text-gray-900">
                     {doctor.name}
                   </span>
-                  {doctor.crm && (
+                  {formatRegistration(doctor) && (
                     <span className="text-xs text-gray-500">
-                      CRM {doctor.crm}
-                      {doctor.crmState ? `/${doctor.crmState}` : ""}
+                      {formatRegistration(doctor)}
                     </span>
                   )}
                 </div>

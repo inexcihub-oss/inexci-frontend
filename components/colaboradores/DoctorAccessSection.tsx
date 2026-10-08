@@ -1,5 +1,7 @@
 "use client";
 
+import { formatRegistration } from "@/lib/professional-council";
+
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { FormSection } from "@/components/details";
@@ -238,12 +240,12 @@ function SearchableMultiSelect({
                       <p className="text-sm text-neutral-700 leading-tight truncate">
                         {opt.name}
                       </p>
-                      {(opt.crm || opt.specialty) && (
+                      {(formatRegistration(opt) || opt.specialty) && (
                         <p className="text-xs text-neutral-400 truncate">
-                          {opt.crm
-                            ? `CRM ${opt.crm}${opt.crmState ? `/${opt.crmState}` : ""}`
+                          {formatRegistration(opt)}
+                          {formatRegistration(opt) && opt.specialty
+                            ? " · "
                             : ""}
-                          {opt.crm && opt.specialty ? " · " : ""}
                           {opt.specialty ?? ""}
                         </p>
                       )}

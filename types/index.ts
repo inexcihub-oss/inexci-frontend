@@ -1,10 +1,15 @@
+import type { ProfessionalCouncil } from "@/lib/professional-council";
 // ─── Doctor Profile ───────────────────────────────────────────────────────────
 
 export interface DoctorProfile {
   id: string;
   userId: string;
-  crm: string;
-  crmState: string;
+  /** Conselho profissional; ausente em respostas antigas = CRM. */
+  council?: ProfessionalCouncil;
+  /** Número no conselho (nome histórico). Opcional fora do CRM. */
+  crm: string | null;
+  /** UF do conselho (nome histórico). */
+  crmState: string | null;
   specialty?: string;
   signatureUrl?: string;
   clinicName?: string;
@@ -28,7 +33,18 @@ export interface User {
   role: "admin" | "collaborator";
   accountId: string;
   avatarUrl?: string | null;
+  /** Tem perfil profissional (qualquer conselho): atende e tem agenda. */
   isDoctor: boolean;
+  /**
+   * Perfil de **médico** (CRM): emite receita/atestado/pedido de exame e
+   * indica cirurgia. Vem do backend; ausente = false.
+   */
+  isPhysician?: boolean;
+  /**
+   * Emite receita, atestado e pedido de exame: médico (CRM) ou dentista
+   * (CRO). Vem do backend; ausente = deduz do conselho do perfil.
+   */
+  canIssueClinicalDocuments?: boolean;
   /** Permissão **efetiva**, já derivada no backend. */
   permissions?: Permission[];
   emailVerified?: boolean;
@@ -66,9 +82,18 @@ export interface UserDoctorAccess {
 export interface AvailableDoctor {
   id: string;
   name: string;
-  crm: string;
-  crmState: string;
+  crm: string | null;
+  crmState: string | null;
   specialty?: string;
+  /** Conselho do profissional; ausente em respostas antigas = CRM. */
+  council?: ProfessionalCouncil;
+  /**
+   * Médico (CRM). A Agenda lista todos os profissionais; o wizard de SC só os
+   * médicos. Ausente = trata como médico (resposta anterior ao conselho).
+   */
+  isPhysician?: boolean;
+  /** Emite receita, atestado e pedido de exame (CRM ou CRO). */
+  canIssueClinicalDocuments?: boolean;
   status?: "pending" | "active" | "inactive" | string;
 }
 
@@ -131,11 +156,7 @@ export interface SubscriptionPlan {
 }
 
 export type SubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "suspended"
-  | "canceled";
+  "trialing" | "active" | "past_due" | "suspended" | "canceled";
 
 export interface Subscription {
   id: string;

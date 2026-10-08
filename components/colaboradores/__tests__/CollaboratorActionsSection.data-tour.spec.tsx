@@ -1,7 +1,28 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import {
+  render as rtlRender,
+  type RenderOptions,
+  screen,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement, ReactNode } from "react";
+
 import { CollaboratorActionsSection } from "../CollaboratorActionsSection";
 import { collaboratorService } from "@/services/collaborator.service";
+
+// O componente invalida a lista de médicos em cache ao salvar
+// (`useInvalidateAvailableDoctors`), então precisa de um QueryClient.
+function render(ui: ReactElement, options?: RenderOptions) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return rtlRender(ui, { wrapper: Wrapper, ...options });
+}
 
 vi.mock("@/services/collaborator.service", () => ({
   collaboratorService: {
@@ -84,5 +105,26 @@ describe("CollaboratorActionsSection — âncora do tour", () => {
     fireEvent.click(saveButton);
 
     expect(collaboratorService.resetPassword).not.toHaveBeenCalled();
+  });
+});
+
+describe("CollaboratorActionsSection — lista de médicos em cache", () => {
+  it("ativar/desativar invalida a lista de médicos (wizard de SC, agenda)", async () => {
+    const invalidate = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+    vi.mocked(collaboratorService.toggleStatus).mockResolvedValue({
+      status: "inactive",
+    } as Awaited<ReturnType<typeof collaboratorService.toggleStatus>>);
+
+    render(
+      <CollaboratorActionsSection collaboratorId="col-1" currentStatus="active" />,
+    );
+    fireEvent.click(screen.getByRole("switch"));
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: ["available-doctors"],
+      }),
+    );
+    invalidate.mockRestore();
   });
 });

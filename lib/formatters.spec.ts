@@ -44,6 +44,13 @@ describe("formatDoctorName", () => {
     expect(formatDoctorName("Carlos Mendonça")).toBe("Dr(a). Carlos Mendonça");
   });
 
+  it("quem não é médico aparece só pelo nome", () => {
+    expect(formatDoctorName("Luana Gomes", false)).toBe("Luana Gomes");
+    expect(formatDoctorName("Carlos Mendonça", true)).toBe(
+      "Dr(a). Carlos Mendonça",
+    );
+  });
+
   it.each([
     "Dr. Carlos Mendonça",
     "Dra. Ana Souza",

@@ -12,13 +12,19 @@ export const createCollaboratorSchema = z
     phone: phoneSchema,
     email: emailSchema,
     isDoctor: z.boolean().default(false),
+    /** Conselho do profissional. CRM = médico (default). */
+    council: z
+      .enum(["CRM", "CRP", "CRN", "COREN", "CREFITO", "CRFA", "CRO", "CRBM", "CREF", "OUTRO"])
+      .default("CRM"),
     crm: z.string().optional().or(z.literal("")),
     crmState: z.string().optional().or(z.literal("")),
     specialty: z.string().optional().or(z.literal("")),
     permissions: z.array(z.nativeEnum(Permission)).default([]),
   })
   .superRefine((data, ctx) => {
-    if (data.isDoctor) {
+    // Número e UF são obrigatórios só para médico (CRM). Os demais conselhos
+    // podem ficar sem registro cadastrado.
+    if (data.isDoctor && (data.council ?? "CRM") === "CRM") {
       if (!data.crm || !data.crm.trim()) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -30,7 +36,7 @@ export const createCollaboratorSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Selecione o estado do CRM.",
-          path: ["crm_state"],
+          path: ["crmState"],
         });
       }
     }

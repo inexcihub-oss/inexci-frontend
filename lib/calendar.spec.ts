@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CalEvent,
   addDays,
+  appointmentToEvent,
   dateKey,
   isSameDay,
   layoutOverlaps,
@@ -63,5 +64,44 @@ describe("layoutOverlaps", () => {
     const c = result.find((r) => r.event.id === "c")!;
     expect(c.cols).toBe(1);
     expect(c.col).toBe(0);
+  });
+});
+
+describe("appointmentToEvent — sala e encaixe (MIG-03)", () => {
+  const base = {
+    id: "a-1",
+    doctorId: "d-1",
+    patientId: "p-1",
+    patient: { id: "p-1", name: "Ana" },
+    type: "return" as const,
+    status: "confirmed" as const,
+    scheduledAt: "2026-08-17T12:00:00.000Z",
+    durationMinutes: 30,
+    notes: null,
+    cancellationReason: null,
+    clinicId: "c-1",
+    clinic: { id: "c-1", name: "Unidade Centro" },
+  };
+
+  it("sem sala mostra a clínica", () => {
+    expect(appointmentToEvent(base, "Retorno").subtitle).toBe(
+      "Retorno · Unidade Centro",
+    );
+  });
+
+  it("a sala ocupa o lugar da clínica", () => {
+    expect(
+      appointmentToEvent(
+        { ...base, room: { id: "r-1", name: "Consultório 02" } },
+        "Retorno",
+      ).subtitle,
+    ).toBe("Retorno · Consultório 02");
+  });
+
+  it("encaixe vem primeiro", () => {
+    expect(
+      appointmentToEvent({ ...base, isWalkIn: true, clinic: null }, "Retorno")
+        .subtitle,
+    ).toBe("Encaixe · Retorno");
   });
 });

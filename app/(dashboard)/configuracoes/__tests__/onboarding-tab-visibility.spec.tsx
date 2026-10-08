@@ -10,7 +10,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
  */
 
 let authState: {
-  user: { id: string; accountId: string; role: "admin" | "collaborator" } | null;
+  user: {
+    id: string;
+    accountId: string;
+    role: "admin" | "collaborator";
+  } | null;
   isAccountOwner: boolean;
   subscription: unknown;
   updateUser: () => Promise<void>;
@@ -20,7 +24,7 @@ let authState: {
 let searchParamsValue = new URLSearchParams();
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => authState,
+  useAuth: () => ({ can: () => false, isDoctor: false, ...authState }),
 }));
 
 vi.mock("next/navigation", () => ({

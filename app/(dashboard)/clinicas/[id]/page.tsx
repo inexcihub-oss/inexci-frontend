@@ -14,6 +14,7 @@ import {
   emptyBusinessHours,
 } from "@/lib/business-hours";
 import { BusinessHoursEditor, validarGrade } from "@/components/clinics/BusinessHoursEditor";
+import { ClinicRoomsSection } from "@/components/clinics/ClinicRoomsSection";
 import { logger } from "@/lib/logger";
 import { maskCep, maskCnpj, maskPhone, unmask } from "@/lib/masks";
 import { STATE_OPTIONS } from "@/lib/options";
@@ -293,6 +294,11 @@ export default function ClinicaDetalhePage() {
             onChange={setBusinessHours}
             disabled={saving}
           />
+        </FormSection>
+
+        {/* Seção: Salas — salva cada ação na hora, fora do "Salvar" abaixo. */}
+        <FormSection title="Salas">
+          <ClinicRoomsSection clinicId={params.id} />
         </FormSection>
 
         {/* Botão de salvar */}

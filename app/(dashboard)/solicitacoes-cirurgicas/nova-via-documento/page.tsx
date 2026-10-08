@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -22,6 +22,7 @@ import { OpmeModal } from "@/components/opme/OpmeModal";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { useZodForm } from "@/hooks/useZodForm";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
+import { canOwnSurgeryRequest } from "@/lib/professional-council";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { maskCpf, unmask } from "@/lib/masks";
 import { STATE_OPTIONS } from "@/lib/options";
@@ -216,7 +217,13 @@ export default function NovaViaDocumentoPage() {
   const [isTussModalOpen, setIsTussModalOpen] = useState(false);
   const [isOpmeModalOpen, setIsOpmeModalOpen] = useState(false);
 
-  const { data: availableDoctors = [] } = useAvailableDoctors();
+  // `fresh`: a lista decide quem pode ser dono da SC — revalida ao montar.
+  const { data: allDoctors = [] } = useAvailableDoctors({ fresh: true });
+  // SC é de médico (CRM) — ver `canOwnSurgeryRequest`.
+  const availableDoctors = useMemo(
+    () => allDoctors.filter(canOwnSurgeryRequest),
+    [allDoctors],
+  );
 
   const form = useZodForm({
     schema: formSchema,

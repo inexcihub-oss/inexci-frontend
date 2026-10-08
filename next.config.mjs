@@ -67,7 +67,10 @@ const nextConfig = {
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            // Câmera só para a própria origem: a foto do paciente pode ser
+            // tirada pela webcam (WebcamCaptureModal). Iframes de terceiros
+            // continuam sem acesso.
+            value: "camera=(self), microphone=(), geolocation=()",
           },
           {
             key: "Cross-Origin-Opener-Policy",

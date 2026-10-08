@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
+import { ScheduleWeekEditor } from "@/components/availability/ScheduleWeekEditor";
 import Input from "@/components/ui/Input";
 import { DateInput } from "@/components/ui/DateInput";
 import Select from "@/components/ui/Select";
@@ -17,10 +18,7 @@ import {
 import { logger } from "@/lib/logger";
 import { userService } from "@/services/user.service";
 import { uploadService } from "@/services/upload.service";
-import {
-  patientService,
-  PatientListItem,
-} from "@/services/patient.service";
+import { patientService, PatientListItem } from "@/services/patient.service";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import {
   SurgeryRequestListItem,
@@ -34,6 +32,7 @@ import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 import { ToastType } from "@/types/toast.types";
 import { ChevronRight, Upload, X, Loader2, Settings2 } from "lucide-react";
+import { useInvalidateAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 import { CollaboratorActionsSection } from "@/components/colaboradores/CollaboratorActionsSection";
 import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
@@ -44,11 +43,24 @@ import { useCepLookup } from "@/hooks/useCepLookup";
 import { maskCep, maskCpf, maskPhone, unmask } from "@/lib/masks";
 import { isValidCpf } from "@/lib/validators";
 import { Permission } from "@/lib/permissions";
-import { buildCollaboratorUpdatePayload } from "@/lib/collaborator-update";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  buildCollaboratorUpdatePayload,
+  buildDoctorProfileUpdatePayload,
+} from "@/lib/collaborator-update";
+import {
+  COUNCIL_OPTIONS,
+  councilOf,
+  professionalKindLabel,
+  ProfessionalCouncil,
+} from "@/lib/professional-council";
 import {
   criarColaboradorDemo,
   TOUR_DEMO_COLLABORATOR_ID,
 } from "@/lib/onboarding/demo-data";
+
+const VINCULO_PROPRIO_TRAVADO =
+  "Só o dono da conta ou outro administrador altera o seu próprio conselho e vínculo profissional.";
 
 export default function AssistenteDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -72,6 +84,7 @@ export default function AssistenteDetalhePage() {
   const [isScConfigModalOpen, setIsScConfigModalOpen] = useState(false);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const { toast, showToast, hideToast } = useToast();
+  const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
   /**
    * "É médico" **já salvo**. Governa o que depende de um `doctor_profile` real
@@ -81,6 +94,16 @@ export default function AssistenteDetalhePage() {
    */
   const isDoctor = collaborator?.isDoctor === true;
   const isFabricado = collaborator?.id === TOUR_DEMO_COLLABORATOR_ID;
+  // Admin delegado editando a si mesmo: o backend recusa (403) que ele troque
+  // o próprio conselho ou o próprio vínculo profissional — senão um
+  // nutricionista com Administração se promoveria a médico sozinho. Quem
+  // troca é o dono ou outro admin. Número, UF e especialidade seguem livres.
+  const { user: usuarioLogado, isAccountOwner } = useAuth();
+  const vinculoProprioTravado =
+    !!collaborator &&
+    !!usuarioLogado?.id &&
+    collaborator.id === usuarioLogado.id &&
+    !isAccountOwner;
   const handleCloseScConfigModal = useCallback(() => {
     setIsScConfigModalOpen(false);
   }, []);
@@ -123,6 +146,7 @@ export default function AssistenteDetalhePage() {
     state: "",
     // Doctor-specific fields
     isDoctor: false,
+    council: "CRM" as ProfessionalCouncil,
     specialty: "",
     crm: "",
     crmState: "",
@@ -181,6 +205,7 @@ export default function AssistenteDetalhePage() {
         city: "",
         state: "",
         isDoctor: false,
+        council: "CRM" as ProfessionalCouncil,
         specialty: "",
         crm: "",
         crmState: "",
@@ -235,6 +260,7 @@ export default function AssistenteDetalhePage() {
         state: collab.state || "",
         // Doctor-specific
         isDoctor: collab.isDoctor === true,
+        council: councilOf(dp),
         specialty: dp?.specialty || "",
         crm: dp?.crm || "",
         crmState: dp?.crmState || "",
@@ -316,12 +342,30 @@ export default function AssistenteDetalhePage() {
       return;
     }
 
-    // O backend exige CRM e UF para gravar alguém como médico.
-    if (formData.isDoctor && (!formData.crm.trim() || !formData.crmState)) {
+    // O backend exige número e UF para médico (CRM); os demais conselhos
+    // podem ficar sem registro cadastrado.
+    if (
+      formData.isDoctor &&
+      formData.council === "CRM" &&
+      (!formData.crm.trim() || !formData.crmState)
+    ) {
       showToast(
         "Para marcar o colaborador como médico, informe CRM e estado do CRM.",
         "error",
       );
+      return;
+    }
+
+    // Os campos já ficam desabilitados; isto cobre um estado antigo no
+    // formulário. Sem esta checagem, o 403 só viria depois de o perfil básico
+    // já ter sido gravado — salvamento pela metade.
+    if (
+      vinculoProprioTravado &&
+      originalData &&
+      (formData.isDoctor !== originalData.isDoctor ||
+        (formData.isDoctor && formData.council !== originalData.council))
+    ) {
+      showToast(VINCULO_PROPRIO_TRAVADO, "error");
       return;
     }
 
@@ -336,6 +380,7 @@ export default function AssistenteDetalhePage() {
         email: normalizedEmail,
         permissions: formData.permissions,
         isDoctor: formData.isDoctor,
+        council: formData.council,
         crm: formData.crm.trim(),
         crmState: formData.crmState,
         specialty: formData.specialty.trim(),
@@ -344,6 +389,24 @@ export default function AssistenteDetalhePage() {
 
     setSaving(true);
     try {
+      // Dados profissionais de quem JÁ era médico. Na promoção, CRM/UF/
+      // especialidade vão no payload do colaborador (que é quem cria o
+      // perfil); chamar aqui usaria um `doctorProfile` que ainda não existe.
+      // Vai PRIMEIRO: é a gravação com mais regra de permissão (conselho) —
+      // se o backend recusar, nada do resto foi gravado pela metade.
+      const jaEraMedico = originalData?.isDoctor === true;
+      // Só o que mudou; campo apagado vai como "" (o backend grava null).
+      const doctorProfilePayload =
+        formData.isDoctor && jaEraMedico && originalData
+          ? buildDoctorProfileUpdatePayload(originalData, formData)
+          : null;
+      if (doctorProfilePayload && collaborator.doctorProfile?.id) {
+        await userService.updateDoctorProfile(
+          collaborator.id,
+          doctorProfilePayload,
+        );
+      }
+
       await collaboratorService.updateProfile(collaborator.id, {
         name: formData.name.trim(),
         phone: unmask(formData.phone),
@@ -365,24 +428,21 @@ export default function AssistenteDetalhePage() {
         );
       }
 
-      // Dados profissionais de quem JÁ era médico. Na promoção, CRM/UF/
-      // especialidade já foram no payload acima (que é quem cria o perfil);
-      // chamar aqui usaria um `doctorProfile` que ainda não existe.
-      const jaEraMedico = originalData?.isDoctor === true;
-      if (formData.isDoctor && jaEraMedico && collaborator.doctorProfile?.id) {
-        await userService.updateDoctorProfile(collaborator.id, {
-          crm: formData.crm || undefined,
-          crmState: formData.crmState || undefined,
-          specialty: formData.specialty || undefined,
-        });
-      }
-
       setOriginalData(formData);
-      // Promoção/despromoção muda o que a tela mostra (dados profissionais,
-      // cabeçalho, permissões fixas) — recarrega para refletir o servidor.
-      if (formData.isDoctor !== jaEraMedico) {
+      // Promoção/despromoção e troca de conselho/registro mudam o que a tela
+      // mostra (dados profissionais, subtítulo, cabeçalho, permissões fixas)
+      // e o que outras telas sabem do colaborador — recarrega do servidor.
+      const mudouRegistro =
+        !!doctorProfilePayload &&
+        ("council" in doctorProfilePayload ||
+          "crm" in doctorProfilePayload ||
+          "crmState" in doctorProfilePayload);
+      if (formData.isDoctor !== jaEraMedico || mudouRegistro) {
         await loadData();
       }
+      // Lista de médicos do wizard de SC / agenda (nome, conselho, registro,
+      // especialidade) pode ter mudado com qualquer gravação desta tela.
+      void invalidateAvailableDoctors();
       showToast("Colaborador atualizado com sucesso!", "success");
     } catch (error) {
       logger.error("Erro ao salvar:", error);
@@ -653,7 +713,12 @@ export default function AssistenteDetalhePage() {
         sectionTitle="Colaboradores"
         backHref="/colaboradores"
         itemName={formData.name}
-        itemSubtitle={isDoctor ? formData.specialty || "Médico" : "Colaborador"}
+        itemSubtitle={
+          isDoctor
+            ? formData.specialty ||
+              professionalKindLabel(collaborator.doctorProfile)
+            : "Colaborador"
+        }
         sidebarContent={sidebarContent}
       >
         {/* Seção: Informações pessoais */}
@@ -765,22 +830,36 @@ export default function AssistenteDetalhePage() {
             bloco inteiro só aparecia para quem já era médico, e não havia
             como promover nem despromover ninguém pela interface. */}
         <FormSection title="Dados profissionais">
-          <label className="flex items-start gap-3 rounded-xl border border-neutral-100 p-3 md:p-3.5 cursor-pointer hover:bg-gray-50">
+          <label
+            className={cn(
+              "flex items-start gap-3 rounded-xl border border-neutral-100 p-3 md:p-3.5",
+              vinculoProprioTravado
+                ? "cursor-not-allowed opacity-70"
+                : "cursor-pointer hover:bg-gray-50",
+            )}
+          >
             <input
               type="checkbox"
               checked={formData.isDoctor}
+              disabled={vinculoProprioTravado}
               onChange={(e) => handleInputChange("isDoctor", e.target.checked)}
               className="mt-0.5 h-5 w-5 shrink-0 rounded-md accent-primary-500"
             />
             <span className="min-w-0 flex-1">
-              <span className="ds-section-title block">É médico</span>
+              <span className="ds-section-title block">
+                É profissional de saúde
+              </span>
               <span className="mt-1 block text-xs leading-snug text-gray-500">
-                Cria o perfil médico e libera Agenda, Atendimento e
-                Solicitações cirúrgicas automaticamente. Desmarcar remove o
-                perfil e devolve o colaborador às áreas marcadas manualmente.
+                Cria o perfil profissional e libera Agenda e Atendimento; se o
+                conselho for CRM (médico), também Solicitações cirúrgicas.
+                Desmarcar remove o perfil e devolve o colaborador às áreas
+                marcadas manualmente.
               </span>
             </span>
           </label>
+          {vinculoProprioTravado && (
+            <p className="text-xs text-gray-500">{VINCULO_PROPRIO_TRAVADO}</p>
+          )}
 
           {formData.isDoctor && (
             <>
@@ -795,17 +874,44 @@ export default function AssistenteDetalhePage() {
                     placeholder="Ex: Ortopedia, Cardiologia..."
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <Select
+                    label="Conselho"
+                    value={formData.council}
+                    onChange={(e) =>
+                      handleInputChange("council", e.target.value)
+                    }
+                    options={COUNCIL_OPTIONS}
+                    disabled={vinculoProprioTravado}
+                  />
+                  {formData.council !== "CRM" && (
+                    <p className="mt-1.5 text-xs text-gray-500">
+                      Tem agenda e prontuário próprios. Receita, atestado,
+                      pedido de exame e indicação cirúrgica são do médico (CRM).
+                    </p>
+                  )}
+                </div>
                 <Input
-                  label="CRM"
+                  label={
+                    formData.council === "CRM"
+                      ? "Número no conselho"
+                      : "Número no conselho (opcional)"
+                  }
                   value={formData.crm}
                   onChange={(e) => handleInputChange("crm", e.target.value)}
                   placeholder="000000"
-                  aria-required="true"
+                  aria-required={formData.council === "CRM"}
                 />
                 <Select
-                  label="Estado do CRM"
+                  label={
+                    formData.council === "CRM"
+                      ? "UF do conselho"
+                      : "UF do conselho (opcional)"
+                  }
                   value={formData.crmState}
-                  onChange={(e) => handleInputChange("crmState", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("crmState", e.target.value)
+                  }
                   options={STATE_UF_OPTIONS}
                 />
               </div>
@@ -823,7 +929,8 @@ export default function AssistenteDetalhePage() {
                           : "bg-amber-50 text-amber-700 border-amber-200",
                       )}
                     >
-                      Assinatura: {signaturePreview ? "configurada" : "pendente"}
+                      Assinatura:{" "}
+                      {signaturePreview ? "configurada" : "pendente"}
                     </span>
                     <span
                       className={cn(
@@ -880,6 +987,14 @@ export default function AssistenteDetalhePage() {
           )}
         </FormSection>
 
+        {/* Seção: Grade de atendimento (MIG-05) — só para profissional já
+            salvo como médico; a grade é de um doctor_profile real. */}
+        {isDoctor && collaborator && !isFabricado && (
+          <FormSection title="Grade de atendimento">
+            <ScheduleWeekEditor doctorId={collaborator.id} />
+          </FormSection>
+        )}
+
         {/* Seção: Permissões de acesso */}
         <FormSection title="Permissões de acesso">
           {/* Usa a marcação em edição, não a salva: ao ligar "é médico" as
@@ -889,6 +1004,7 @@ export default function AssistenteDetalhePage() {
           <PermissionsSection
             value={formData.permissions}
             isDoctor={formData.isDoctor}
+            isPhysician={formData.council === "CRM"}
             onChange={handlePermissionsChange}
           />
           <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end sm:gap-3">

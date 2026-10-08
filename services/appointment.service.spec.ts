@@ -12,7 +12,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import api from "@/lib/api";
-import { appointmentService } from "./appointment.service";
+import { appointmentService, rotuloDoAtendimento } from "./appointment.service";
 
 const mockAppt = {
   id: "a1",
@@ -119,6 +119,76 @@ describe("appointmentService", () => {
     });
   });
 
+  // A Agenda chamava `getAgenda` sem `take` e o backend corta em 1000: o
+  // excedente sumia da tela sem aviso. `getAgendaCompleta` pagina até `total`.
+  describe("getAgendaCompleta", () => {
+    const pagina = (n: number, prefixo: string) =>
+      Array.from({ length: n }, (_, i) => ({
+        ...mockAppt,
+        id: `${prefixo}${i}`,
+      }));
+
+    it("busca todas as páginas até alcançar o total", async () => {
+      const get = api.get as ReturnType<typeof vi.fn>;
+      get
+        .mockResolvedValueOnce({
+          data: { total: 2500, records: pagina(1000, "a") },
+        })
+        .mockResolvedValueOnce({
+          data: { total: 2500, records: pagina(1000, "b") },
+        })
+        .mockResolvedValueOnce({
+          data: { total: 2500, records: pagina(500, "c") },
+        });
+
+      const result = await appointmentService.getAgendaCompleta({
+        from: "2026-08-01",
+        to: "2026-08-31",
+      });
+
+      expect(result.records).toHaveLength(2500);
+      expect(result.total).toBe(2500);
+      expect(get).toHaveBeenCalledTimes(3);
+      expect(get).toHaveBeenNthCalledWith(1, "/appointments", {
+        params: { from: "2026-08-01", to: "2026-08-31", take: "1000" },
+      });
+      expect(get).toHaveBeenNthCalledWith(3, "/appointments", {
+        params: {
+          from: "2026-08-01",
+          to: "2026-08-31",
+          skip: "2000",
+          take: "1000",
+        },
+      });
+    });
+
+    it("uma página só quando o total cabe nela", async () => {
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { total: 1, records: [mockAppt] },
+      });
+
+      const result = await appointmentService.getAgendaCompleta();
+
+      expect(api.get).toHaveBeenCalledTimes(1);
+      expect(result.records).toHaveLength(1);
+    });
+
+    it("página vazia antes do total encerra a busca, preservando o total real", async () => {
+      const get = api.get as ReturnType<typeof vi.fn>;
+      get
+        .mockResolvedValueOnce({
+          data: { total: 1500, records: pagina(1000, "a") },
+        })
+        .mockResolvedValueOnce({ data: { total: 1500, records: [] } });
+
+      const result = await appointmentService.getAgendaCompleta();
+
+      expect(get).toHaveBeenCalledTimes(2);
+      expect(result.records).toHaveLength(1000);
+      expect(result.total).toBe(1500);
+    });
+  });
+
   describe("getByPatient", () => {
     it("busca o histórico do paciente e mapeia os registros", async () => {
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -158,5 +228,44 @@ describe("appointmentService", () => {
         status: "confirmed",
       });
     });
+  });
+
+  it("getAgenda preserva a situação da ficha e não a inventa quando ausente", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        total: 3,
+        records: [
+          { ...mockAppt, id: "a1", clinicalRecordStatus: "draft" },
+          { ...mockAppt, id: "a2", clinicalRecordStatus: null },
+          { ...mockAppt, id: "a3" },
+        ],
+      },
+    });
+
+    const [rascunho, semFicha, semInfo] = await appointmentService.getAgenda({
+      from: "2026-08-01",
+      to: "2026-08-31",
+    });
+
+    expect(rascunho.clinicalRecordStatus).toBe("draft");
+    expect(semFicha.clinicalRecordStatus).toBeNull();
+    expect(semInfo).not.toHaveProperty("clinicalRecordStatus");
+  });
+});
+
+describe("rotuloDoAtendimento", () => {
+  it.each([
+    ["completed", undefined, "Ver atendimento"],
+    ["confirmed", "finalized", "Ver atendimento"],
+    ["confirmed", "draft", "Continuar atendimento"],
+    ["in_progress", null, "Iniciar atendimento"],
+    ["scheduled", null, "Iniciar atendimento"],
+    // Sem a informação da ficha (resposta de criar/editar): status decide.
+    ["in_progress", undefined, "Continuar atendimento"],
+    ["waiting", undefined, "Iniciar atendimento"],
+  ] as const)("%s + ficha %s → %s", (status, ficha, esperado) => {
+    expect(rotuloDoAtendimento({ status, clinicalRecordStatus: ficha })).toBe(
+      esperado,
+    );
   });
 });

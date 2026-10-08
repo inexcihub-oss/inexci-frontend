@@ -119,9 +119,18 @@ export function appointmentToEvent(a: Appointment, typeLabel: string): CalEvent 
     end: new Date(start.getTime() + a.durationMinutes * 60_000),
     allDay: false,
     title: a.patient?.name ?? "Consulta",
-    // O card tem uma linha só para isto; a unidade entra ao lado do tipo em
+    // O card tem uma linha só para isto; o local entra ao lado do tipo em
     // vez de ganhar linha própria, que estouraria a altura do slot de 30min.
-    subtitle: a.clinic ? `${typeLabel} · ${a.clinic.name}` : typeLabel,
+    // A sala, quando há, é mais útil que o nome da clínica (que costuma ser
+    // um só) e ocupa o lugar dele. Encaixe vem primeiro: é o que explica o
+    // card sobreposto a outro.
+    subtitle: [
+      a.isWalkIn ? "Encaixe" : null,
+      typeLabel,
+      a.room?.name ?? a.clinic?.name ?? null,
+    ]
+      .filter(Boolean)
+      .join(" · "),
     doctorId: a.doctorId,
     status: a.status,
     appointment: a,
@@ -168,6 +177,20 @@ export function eventColors(ev: CalEvent): EventColors {
     };
   }
   switch (ev.status) {
+    case "waiting":
+      return {
+        bar: "bg-orange-500",
+        bg: "bg-orange-50 hover:bg-orange-100",
+        text: "text-orange-800",
+        border: "border-orange-200",
+      };
+    case "in_progress":
+      return {
+        bar: "bg-cyan-600",
+        bg: "bg-cyan-50 hover:bg-cyan-100",
+        text: "text-cyan-900",
+        border: "border-cyan-200",
+      };
     case "confirmed":
       return {
         bar: "bg-indigo-500",

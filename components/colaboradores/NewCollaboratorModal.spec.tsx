@@ -1,7 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render as rtlRender,
+  type RenderOptions,
+  screen,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement, ReactNode } from "react";
+
 import userEvent from "@testing-library/user-event";
 import { NewCollaboratorModal } from "./NewCollaboratorModal";
+
+// O componente invalida a lista de médicos em cache ao salvar
+// (`useInvalidateAvailableDoctors`), então precisa de um QueryClient.
+function render(ui: ReactElement, options?: RenderOptions) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return rtlRender(ui, { wrapper: Wrapper, ...options });
+}
 
 // Mock do collaboratorService
 vi.mock("@/services/collaborator.service", () => ({
@@ -58,10 +79,10 @@ describe("NewCollaboratorModal", () => {
     expect(screen.getByPlaceholderText("(21) 98765-4321")).toBeInTheDocument();
   });
 
-  it('deve exibir toggle "Este colaborador é médico(a)"', () => {
+  it("deve exibir o toggle de profissional de saúde", () => {
     render(<NewCollaboratorModal {...defaultProps} />);
     expect(
-      screen.getByText("Este colaborador é médico(a)"),
+      screen.getByText(/Este colaborador é profissional de saúde/i),
     ).toBeInTheDocument();
   });
 
@@ -77,7 +98,9 @@ describe("NewCollaboratorModal", () => {
     await userEvent.click(toggle);
 
     expect(screen.getByPlaceholderText("123456")).toBeInTheDocument();
-    expect(screen.getByText("UF do CRM")).toBeInTheDocument();
+    expect(screen.getByText(/UF do conselho/)).toBeInTheDocument();
+    // Conselho começa em CRM: o comportamento de quem cadastra médico não muda.
+    expect(screen.getByLabelText("Conselho")).toHaveValue("CRM");
     expect(
       screen.getByPlaceholderText(/ortopedia|cardiologia/i),
     ).toBeInTheDocument();
@@ -118,6 +141,7 @@ describe("NewCollaboratorModal", () => {
   });
 
   it('deve enviar dados ao clicar em "Adicionar colaborador"', async () => {
+    const invalidate = vi.spyOn(QueryClient.prototype, "invalidateQueries");
     (collaboratorService.create as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "new-1",
     });
@@ -148,6 +172,12 @@ describe("NewCollaboratorModal", () => {
         }),
       );
     });
+
+    // Profissional novo precisa aparecer já na lista de médicos em cache.
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["available-doctors"],
+    });
+    invalidate.mockRestore();
 
     // Não deve enviar is_doctor no payload (campo gerenciado pelo backend)
     const callArgs = (collaboratorService.create as ReturnType<typeof vi.fn>)
@@ -493,6 +523,65 @@ describe("NewCollaboratorModal — permissões", () => {
           permissions: ["agenda", "atendimento"],
         }),
       );
+    });
+  });
+  describe("conselho profissional (MIG-02)", () => {
+    async function preencherBase() {
+      await userEvent.type(
+        screen.getByPlaceholderText("Nome completo"),
+        "Ana Nutri",
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText("(21) 98765-4321"),
+        "21987654321",
+      );
+      await userEvent.type(
+        screen.getByPlaceholderText("colaborador@mail.com"),
+        "ana@email.com",
+      );
+      await userEvent.click(screen.getByRole("switch"));
+    }
+
+    it("cria nutricionista sem número no conselho", async () => {
+      (collaboratorService.create as ReturnType<typeof vi.fn>).mockResolvedValue(
+        { id: "new-n" },
+      );
+      render(<NewCollaboratorModal {...defaultProps} />);
+      await preencherBase();
+
+      await userEvent.selectOptions(screen.getByLabelText("Conselho"), "CRN");
+      await userEvent.click(screen.getByText("Adicionar colaborador"));
+
+      await waitFor(() => expect(collaboratorService.create).toHaveBeenCalled());
+      const payload = (collaboratorService.create as ReturnType<typeof vi.fn>)
+        .mock.calls[0][0];
+      expect(payload).toEqual(
+        expect.objectContaining({ isDoctor: true, council: "CRN" }),
+      );
+      expect(payload.crm).toBeUndefined();
+    });
+
+    it("médico CRM sem número continua bloqueado", async () => {
+      render(<NewCollaboratorModal {...defaultProps} />);
+      await preencherBase();
+
+      await userEvent.click(screen.getByText("Adicionar colaborador"));
+
+      await waitFor(() =>
+        expect(screen.getAllByText(/Informe o número do CRM/i).length).toBeGreaterThan(0),
+      );
+      expect(collaboratorService.create).not.toHaveBeenCalled();
+    });
+
+    it("explica o que o profissional que não é médico não faz", async () => {
+      render(<NewCollaboratorModal {...defaultProps} />);
+      await userEvent.click(screen.getByRole("switch"));
+
+      await userEvent.selectOptions(screen.getByLabelText("Conselho"), "CRP");
+
+      expect(
+        screen.getByText(/indicação cirúrgica são do médico/i),
+      ).toBeInTheDocument();
     });
   });
 });

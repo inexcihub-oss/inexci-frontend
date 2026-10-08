@@ -15,6 +15,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { useToast } from "@/hooks/useToast";
 import { mergeDocumentsAsPdf } from "@/lib/merge-pdf";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
+import { safeExternalUrl } from "@/lib/safe-url";
 
 const POST_DOC_TYPE_LABELS: Record<string, string> = {
   surgery_room: "Descrição cirúrgica",
@@ -278,7 +279,7 @@ export function PosCirurgicoTab() {
                   />
                 </svg>
                 <a
-                  href={doc.uri}
+                  href={safeExternalUrl(doc.uri)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs font-semibold text-gray-900 hover:text-teal-700 hover:underline transition-colors truncate"

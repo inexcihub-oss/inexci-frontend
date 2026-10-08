@@ -39,6 +39,14 @@ const { update, clinic, push } = vi.hoisted(() => {
 // `push` é compartilhado (vi.hoisted) em vez de recriado a cada chamada de
 // `useRouter()` — só assim dá para afirmar, depois de interagir com a tela,
 // que a navegação para fora NÃO aconteceu.
+// A seção de salas tem spec próprio e usa TanStack Query; aqui só importa
+// que ela é montada com o id da clínica.
+vi.mock("@/components/clinics/ClinicRoomsSection", () => ({
+  ClinicRoomsSection: ({ clinicId }: { clinicId: string }) => (
+    <div data-testid="salas">salas de {clinicId}</div>
+  ),
+}));
+
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "clinic-1" }),
   useRouter: () => ({ push, back: vi.fn() }),
