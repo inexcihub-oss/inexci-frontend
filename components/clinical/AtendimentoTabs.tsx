@@ -151,8 +151,8 @@ export function AtendimentoTabs({
     };
   }, [availableDoctors, appointment.doctorId]);
   const consultaDeMedico = assinante?.medico !== false;
-  // Médico sem número de CRM (veio assim do Feegow): o backend recusa a
-  // indicação até alguém preencher o número.
+  // Médico sem número ou sem UF do CRM (veio assim do Feegow): o backend
+  // recusa a indicação até alguém completar o registro.
   const crmSemNumeroDe =
     assinante?.medico && assinante.semNumero ? assinante.nome : null;
   const [record, setRecord] = useState<ClinicalRecord | null>(initialRecord);
@@ -282,7 +282,7 @@ export function AtendimentoTabs({
     }
     if (fields.surgicalIndication && crmSemNumeroDe) {
       showError(
-        `Preencha o número do CRM de ${crmSemNumeroDe} em Colaboradores ou desmarque "Paciente cirúrgico" para finalizar.`,
+        `Preencha o número e a UF do CRM de ${crmSemNumeroDe} em Colaboradores ou desmarque "Paciente cirúrgico" para finalizar.`,
       );
       return;
     }
@@ -526,7 +526,7 @@ export function AtendimentoTabs({
                     : !isPhysician
                       ? "Indicação cirúrgica é ato de médico (CRM)."
                       : crmSemNumeroDe
-                        ? `Preencha o número do CRM de ${crmSemNumeroDe} em Colaboradores para indicar cirurgia.`
+                        ? `Preencha o número e a UF do CRM de ${crmSemNumeroDe} em Colaboradores para indicar cirurgia.`
                         : undefined
                 }
               />

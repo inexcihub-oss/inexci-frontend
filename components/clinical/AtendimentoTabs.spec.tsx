@@ -1022,7 +1022,32 @@ describe("AtendimentoTabs", () => {
 
     expect(
       await screen.findByText(
-        "Preencha o número do CRM de Karina Clínica em Colaboradores para indicar cirurgia.",
+        "Preencha o número e a UF do CRM de Karina Clínica em Colaboradores para indicar cirurgia.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Paciente cirúrgico" }),
+    ).toBeDisabled();
+    vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue(
+      [],
+    );
+  });
+
+  it("médico com número mas sem UF do CRM também vê o que falta", async () => {
+    vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue([
+      {
+        id: "d-1",
+        name: "Otávio Ortopedista",
+        crm: "52934046",
+        crmState: null,
+        isPhysician: true,
+      },
+    ]);
+    renderTabs();
+
+    expect(
+      await screen.findByText(
+        "Preencha o número e a UF do CRM de Otávio Ortopedista em Colaboradores para indicar cirurgia.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -1050,7 +1075,7 @@ describe("AtendimentoTabs", () => {
     renderTabs(recordFixture({ surgicalIndication: true }));
 
     await screen.findByText(
-      "Preencha o número do CRM de Karina Clínica em Colaboradores para indicar cirurgia.",
+      "Preencha o número e a UF do CRM de Karina Clínica em Colaboradores para indicar cirurgia.",
     );
     // Continua marcado e editável: o médico pode desmarcar para finalizar.
     expect(
@@ -1060,7 +1085,7 @@ describe("AtendimentoTabs", () => {
 
     expect(
       await screen.findByText(
-        /Preencha o número do CRM de Karina Clínica em Colaboradores ou desmarque "Paciente cirúrgico" para finalizar/,
+        /Preencha o número e a UF do CRM de Karina Clínica em Colaboradores ou desmarque "Paciente cirúrgico" para finalizar/,
       ),
     ).toBeInTheDocument();
     expect(clinicalRecordService.finalize).not.toHaveBeenCalled();
