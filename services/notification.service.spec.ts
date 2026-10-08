@@ -130,4 +130,32 @@ describe("notificationService", () => {
       expect(api.delete).toHaveBeenCalledWith("/notifications/notif-10");
     });
   });
+
+  describe("avisos aos pacientes", () => {
+    it("lê a configuração da conta em GET /notifications/patient-settings", async () => {
+      const data = {
+        appointmentScheduled: true,
+        appointmentReminder: false,
+        appointmentCancelled: true,
+      };
+      (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data });
+
+      await expect(notificationService.getPatientSettings()).resolves.toEqual(
+        data,
+      );
+      expect(api.get).toHaveBeenCalledWith("/notifications/patient-settings");
+    });
+
+    it("grava em PUT /notifications/patient-settings", async () => {
+      (api.put as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
+
+      await notificationService.updatePatientSettings({
+        appointmentReminder: false,
+      });
+
+      expect(api.put).toHaveBeenCalledWith("/notifications/patient-settings", {
+        appointmentReminder: false,
+      });
+    });
+  });
 });

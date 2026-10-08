@@ -48,6 +48,11 @@ vi.mock("@/services/user.service", () => ({
 
 vi.mock("@/services/notification.service", () => ({
   notificationService: {
+    getPatientSettings: vi.fn().mockResolvedValue({
+      appointmentScheduled: true,
+      appointmentReminder: true,
+      appointmentCancelled: true,
+    }),
     getSettings: vi.fn().mockResolvedValue({
       pushNotifications: true,
       whatsappNotifications: true,
