@@ -20,6 +20,7 @@ import {
   OpmeItemRef,
 } from "@/services/surgery-request.service";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { safeExternalUrl } from "@/lib/safe-url";
 
 // ─── Helpers (idênticos ao backend) ──────────────────────────────────────────
 
@@ -599,7 +600,7 @@ function ExamImageItem({
   if (failed && doc.name) {
     return (
       <a
-        href={doc.uri}
+        href={safeExternalUrl(doc.uri)}
         target="_blank"
         rel="noopener noreferrer"
         style={{

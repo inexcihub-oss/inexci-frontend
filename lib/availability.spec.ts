@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   blockAppliesTo,
+  bloqueioAtinge,
+  bloqueioNoHorario,
   dentroDaGrade,
   holidayOn,
   NATIONAL_FIXED_HOLIDAYS,
@@ -46,5 +48,55 @@ describe("holidayOn e blockAppliesTo", () => {
 
   it("lista fixa de feriados nacionais tem 9 datas sem repetir", () => {
     expect(new Set(NATIONAL_FIXED_HOLIDAYS.map((h) => h.md)).size).toBe(9);
+  });
+});
+
+describe("bloqueioAtinge (espelho do backend)", () => {
+  const b = (doctorId: string | null, clinicId: string | null) => ({
+    doctorId,
+    clinicId,
+  });
+
+  it.each([
+    // [bloqueio, clínica da consulta, atinge?]
+    [b(null, null), "X", true],
+    [b(null, null), null, true],
+    [b("D", null), "Y", true],
+    [b(null, "X"), "X", true],
+    [b(null, "X"), "Y", false],
+    [b(null, "X"), null, false],
+    [b("D", "X"), "X", true],
+    [b("D", "X"), "Y", false],
+    [b("D", "X"), null, true],
+    [b("OUTRO", null), "X", false],
+  ])("%o na clínica %s → %s", (bloqueio, clinica, esperado) => {
+    expect(bloqueioAtinge(bloqueio, "D", clinica)).toBe(esperado);
+  });
+});
+
+describe("bloqueioNoHorario", () => {
+  const bloqueio = {
+    id: "b",
+    doctorId: "D",
+    clinicId: null,
+    startsAt: "2026-10-15T10:00:00Z",
+    endsAt: "2026-10-15T11:00:00Z",
+    allDay: false,
+    reason: null,
+  };
+
+  it("acha o bloqueio que se sobrepõe à consulta", () => {
+    expect(
+      bloqueioNoHorario([bloqueio], "D", null, new Date("2026-10-15T10:30:00Z"), 30),
+    ).toBe(bloqueio);
+  });
+
+  it("encostar no fim ou no começo não é sobrepor", () => {
+    expect(
+      bloqueioNoHorario([bloqueio], "D", null, new Date("2026-10-15T11:00:00Z"), 30),
+    ).toBeUndefined();
+    expect(
+      bloqueioNoHorario([bloqueio], "D", null, new Date("2026-10-15T09:30:00Z"), 30),
+    ).toBeUndefined();
   });
 });

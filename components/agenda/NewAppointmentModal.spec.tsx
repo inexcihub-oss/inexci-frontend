@@ -78,9 +78,11 @@ vi.mock("@/services/appointment.service", async (importOriginal) => {
   };
 });
 const getSlots = vi.hoisted(() => vi.fn());
+const getBlocks = vi.hoisted(() => vi.fn());
 vi.mock("@/services/availability.service", () => ({
   availabilityService: {
     getSlots: (...a: unknown[]) => getSlots(...a) ?? Promise.resolve([]),
+    getBlocks: (...a: unknown[]) => getBlocks(...a) ?? Promise.resolve([]),
   },
 }));
 const listPatients = vi.hoisted(() => vi.fn());
@@ -674,6 +676,68 @@ describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
     expect(
       screen.getByRole("button", { name: "Agendar consulta" }),
     ).toBeDisabled();
+  });
+
+  it("bloqueio fora da grade também é avisado antes de enviar", async () => {
+    // Profissional sem grade no dia: nenhum horário da grade revela o
+    // bloqueio, só a lista de bloqueios do dia.
+    getSlots.mockResolvedValue([]);
+    getBlocks.mockResolvedValue([
+      {
+        id: "b-1",
+        doctorId: "doctor-1",
+        clinicId: null,
+        startsAt: new Date(2026, 7, 17, 8, 0).toISOString(),
+        endsAt: new Date(2026, 7, 17, 10, 0).toISOString(),
+        allDay: false,
+        reason: "Congresso",
+      },
+    ]);
+    abrirModal();
+
+    expect(
+      await screen.findByText(
+        /Horário bloqueado na agenda do profissional \(Congresso\): não será possível agendar\./,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Agendar consulta" }),
+    ).toBeDisabled();
+    const [{ doctorId, from, to }] = getBlocks.mock.calls[0] as [
+      { doctorId: string; from: string; to: string },
+    ];
+    expect(doctorId).toBe("doctor-1");
+    expect(new Date(from)).toEqual(new Date(2026, 7, 17));
+    expect(new Date(to)).toEqual(new Date(2026, 7, 18));
+  });
+
+  it("bloqueio de outro horário ou de outra clínica não avisa", async () => {
+    getBlocks.mockResolvedValue([
+      {
+        id: "b-1",
+        doctorId: "doctor-1",
+        clinicId: null,
+        startsAt: new Date(2026, 7, 17, 14, 0).toISOString(),
+        endsAt: new Date(2026, 7, 17, 15, 0).toISOString(),
+        allDay: false,
+        reason: null,
+      },
+      {
+        // Só da clínica X: não alcança consulta sem clínica.
+        id: "b-2",
+        doctorId: null,
+        clinicId: "clinic-x",
+        startsAt: new Date(2026, 7, 17, 8, 0).toISOString(),
+        endsAt: new Date(2026, 7, 17, 12, 0).toISOString(),
+        allDay: false,
+        reason: null,
+      },
+    ]);
+    abrirModal();
+
+    await waitFor(() => expect(getBlocks).toHaveBeenCalled());
+    expect(screen.queryByText(/Horário bloqueado/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Agendar consulta" })).toBeEnabled();
   });
 
   it("feriado que bloqueia a agenda é avisado", async () => {

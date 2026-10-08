@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
 import {
   patientService,
@@ -13,6 +13,10 @@ import { DateInput } from "@/components/ui/DateInput";
 import Input from "@/components/ui/Input";
 import { HealthPlanComboboxField } from "@/components/patients/HealthPlanComboboxField";
 import { useZodForm } from "@/hooks/useZodForm";
+import {
+  mensagemCpfRepetido,
+  useCpfRepetido,
+} from "@/components/patients/useCpfRepetido";
 import { createPatientSchema } from "@/lib/schemas/patient.schema";
 import { unmask } from "@/lib/masks";
 import { summarizeErrors } from "@/lib/form-errors";
@@ -76,6 +80,7 @@ export function NewPatientModal({
       healthPlanId: "",
     },
   });
+  const avisoCpf = mensagemCpfRepetido(useCpfRepetido(form.values.cpf ?? ""));
 
   useEffect(() => {
     if (isOpen) {
@@ -100,6 +105,33 @@ export function NewPatientModal({
     setError("");
     onClose();
   };
+
+  const tituloId = useId();
+  const caixaRef = useRef<HTMLDivElement>(null);
+  const handleCloseRef = useRef(handleClose);
+  handleCloseRef.current = handleClose;
+
+  // Esc fecha só este modal. Captura em `window`, antes do listener de
+  // `document` do <Modal>: aberto por cima de "Nova consulta", o Esc
+  // fecharia as duas janelas e perderia o agendamento em andamento.
+  useEffect(() => {
+    if (!isOpen) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // Com o cadastro de convênio aberto por cima, o Esc é dele.
+      const foco = document.activeElement;
+      if (
+        foco &&
+        foco !== document.body &&
+        !caixaRef.current?.contains(foco)
+      )
+        return;
+      e.stopPropagation();
+      handleCloseRef.current();
+    };
+    window.addEventListener("keydown", aoTeclar, true);
+    return () => window.removeEventListener("keydown", aoTeclar, true);
+  }, [isOpen]);
 
   const onSubmit = form.handleSubmit(
     async (data) => {
@@ -168,11 +200,20 @@ export function NewPatientModal({
         onClick={handleClose}
       />
 
-      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset">
+      <div
+        ref={caixaRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={tituloId}
+        className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5 flex-shrink-0">
-          <h2 className="ds-modal-title">Novo paciente</h2>
+          <h2 id={tituloId} className="ds-modal-title">
+            Novo paciente
+          </h2>
           <button
+            type="button"
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
             aria-label="Fechar"
@@ -206,6 +247,14 @@ export function NewPatientModal({
                 {...form.getFieldProps("cpf")}
               />
             </div>
+            {avisoCpf && (
+              <p
+                role="status"
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+              >
+                {avisoCpf}
+              </p>
+            )}
 
             {/* Row 2: Telefone + E-mail */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

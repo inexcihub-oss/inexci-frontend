@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/useToast";
 import { logger } from "@/lib/logger";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
+import { safeExternalUrl } from "@/lib/safe-url";
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   ...Object.fromEntries(PRE_SURGERY_DOCUMENT_TYPES.map((t) => [t.key, t.label])),
@@ -26,8 +27,15 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   exam_referral: "Solicitação de exames",
 };
 
-function formatDocumentType(key: string): string {
-  return DOCUMENT_TYPE_LABELS[key] ?? key ?? "Documento";
+/**
+ * Rótulo do tipo na listagem. A chave crua nunca aparece: anexo importado do
+ * Feegow tem chave única por arquivo (`feegow_<id>`), e o que interessa a
+ * quem lê é de onde ele veio.
+ */
+export function formatDocumentType(key: string, type?: string): string {
+  if (DOCUMENT_TYPE_LABELS[key]) return DOCUMENT_TYPE_LABELS[key];
+  if (key?.startsWith("feegow_")) return "Importado do Feegow";
+  return (type && DOCUMENT_TYPE_LABELS[type]) || "Documento";
 }
 
 function formatDocumentDate(value?: string | null): string {
@@ -168,7 +176,7 @@ export function PatientDocuments({
                     />
                   </svg>
                   <a
-                    href={doc.uri}
+                    href={safeExternalUrl(doc.uri)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs font-semibold text-gray-900 hover:text-teal-700 hover:underline transition-colors truncate"
@@ -186,7 +194,7 @@ export function PatientDocuments({
                 </div>
                 <div className="hidden sm:flex w-48 flex-shrink-0 items-center justify-between">
                   <span className="text-xs text-gray-900">
-                    {formatDocumentType(doc.key)}
+                    {formatDocumentType(doc.key, doc.type)}
                   </span>
                   <button
                     onClick={() => setDocumentToDelete(doc)}

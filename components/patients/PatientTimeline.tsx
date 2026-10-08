@@ -33,6 +33,7 @@ import {
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { capitalizeFirst } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { safeExternalUrl } from "@/lib/safe-url";
 
 const POR_PAGINA = 20;
 
@@ -236,6 +237,7 @@ export function PatientTimeline({
                     setLimite(POR_PAGINA);
                   }}
                   countByDoctorId={visitasPorProfissional}
+                  align="end"
                 />
               </div>
             </div>
@@ -729,7 +731,7 @@ function DetalhesDaFicha({
             {documentos.map((doc) => (
               <li key={doc.id}>
                 <a
-                  href={doc.uri}
+                  href={safeExternalUrl(doc.uri)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm text-teal-700 hover:underline break-all"

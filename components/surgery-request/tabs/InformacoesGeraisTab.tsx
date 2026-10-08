@@ -18,6 +18,7 @@ import { SchedulingSection } from "@/components/surgery-request/sections/Schedul
 import { SectionCard } from "@/components/shared/SectionCard";
 import { Checkbox } from "@/components/ui";
 import { useToast } from "@/hooks/useToast";
+import { safeExternalUrl } from "@/lib/safe-url";
 
 // ─── Tipos de documento exibidos em Informações Gerais ───────────────────────
 
@@ -376,7 +377,7 @@ export function InformacoesGeraisTab({
                     />
                   </svg>
                   <a
-                    href={doc.uri}
+                    href={safeExternalUrl(doc.uri)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs font-semibold text-gray-900 hover:text-teal-700 hover:underline transition-colors truncate"

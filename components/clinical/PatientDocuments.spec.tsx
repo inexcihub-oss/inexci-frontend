@@ -21,7 +21,10 @@ vi.mock("@/services/document.service", async () => {
 
 vi.mock("@/components/documents/DocumentUploadModal", () => ({
   DocumentUploadModal: () => null,
-  PRE_SURGERY_DOCUMENT_TYPES: [{ key: "exam", label: "Exame" }],
+  PRE_SURGERY_DOCUMENT_TYPES: [
+    { key: "exam", label: "Exame" },
+    { key: "additional_document", label: "Outros" },
+  ],
 }));
 
 vi.mock("@/components/documents/DeleteDocumentModal", () => ({
@@ -29,7 +32,7 @@ vi.mock("@/components/documents/DeleteDocumentModal", () => ({
 }));
 
 import { patientDocumentService } from "@/services/document.service";
-import { PatientDocuments } from "./PatientDocuments";
+import { PatientDocuments, formatDocumentType } from "./PatientDocuments";
 
 const doc = (over: Record<string, unknown>) => ({
   id: "doc-1",
@@ -126,5 +129,23 @@ describe("PatientDocuments", () => {
 
     expect(container).toBeEmptyDOMElement();
     expect(patientDocumentService.list).not.toHaveBeenCalled();
+  });
+});
+
+describe("formatDocumentType", () => {
+  it("usa o rótulo da chave conhecida", () => {
+    expect(formatDocumentType("exam", "exam")).toBe("Exame");
+    expect(formatDocumentType("prescription", "prescription")).toBe("Receita");
+  });
+
+  it("anexo do Feegow não mostra a chave crua", () => {
+    expect(formatDocumentType("feegow_12", "additional_document")).toBe(
+      "Importado do Feegow",
+    );
+  });
+
+  it("chave desconhecida cai no rótulo do tipo, nunca na chave", () => {
+    expect(formatDocumentType("x_9", "additional_document")).toBe("Outros");
+    expect(formatDocumentType("x_9")).toBe("Documento");
   });
 });

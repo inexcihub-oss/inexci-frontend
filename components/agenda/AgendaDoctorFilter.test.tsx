@@ -153,4 +153,41 @@ describe("AgendaDoctorFilter", () => {
       "true",
     );
   });
+
+  it.each([
+    ["start", "800px"],
+    ["end", "620px"],
+  ] as const)(
+    "align=%s posiciona a lista pela borda certa do botão",
+    async (align, left) => {
+      const user = userEvent.setup();
+      // Botão em x=800..920 numa janela de 1440: a lista (300px) cabe dos
+      // dois jeitos, então só o alinhamento decide.
+      const rect = vi
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockReturnValue({
+          top: 100, bottom: 132, left: 800, right: 920, width: 120, height: 32,
+          x: 800, y: 100, toJSON: () => ({}),
+        } as DOMRect);
+      const largura = window.innerWidth;
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
+      try {
+        render(
+          <AgendaDoctorFilter
+            doctors={doctors}
+            selectedDoctorIds={[]}
+            onChange={vi.fn()}
+            align={align}
+          />,
+        );
+        await user.click(screen.getByRole("button", { name: /Profissionais:/ }));
+        expect(
+          screen.getByRole("dialog", { name: "Filtrar por profissional" }).style.left,
+        ).toBe(left);
+      } finally {
+        rect.mockRestore();
+        Object.defineProperty(window, "innerWidth", { configurable: true, value: largura });
+      }
+    },
+  );
 });

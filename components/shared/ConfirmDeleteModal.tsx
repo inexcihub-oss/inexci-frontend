@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -24,24 +25,61 @@ export function ConfirmDeleteModal({
   loading = false,
   softDelete = false,
 }: ConfirmDeleteModalProps) {
-  // Fecha com ESC
+  const tituloId = useId();
+  const descricaoId = useId();
+  const cancelarRef = useRef<HTMLButtonElement>(null);
+  const caixaRef = useRef<HTMLDivElement>(null);
+
+  // Esc fecha só a confirmação e Tab circula dentro dela. Captura em
+  // `window`, antes dos listeners de `document`: aberta sobre um <Modal>
+  // (ex.: excluir consulta), o Esc fecharia os dois e o Tab cairia no modal
+  // de baixo.
   useEffect(() => {
+    if (!isOpen) return;
+    cancelarRef.current?.focus();
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) onCancel();
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        e.preventDefault();
+        onCancel();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      e.stopPropagation();
+      const botoes = Array.from(
+        caixaRef.current?.querySelectorAll<HTMLButtonElement>(
+          "button:not([disabled])",
+        ) ?? [],
+      );
+      if (botoes.length === 0) return;
+      const atual = botoes.indexOf(document.activeElement as HTMLButtonElement);
+      const proximo = e.shiftKey
+        ? (atual <= 0 ? botoes.length : atual) - 1
+        : (atual + 1) % botoes.length;
+      e.preventDefault();
+      botoes[proximo].focus();
     };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [isOpen, onCancel]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   const defaultDescription = itemName
     ? `Tem certeza que deseja excluir "${itemName}"?`
     : "Tem certeza que deseja excluir este item?";
+  const texto = description ?? defaultDescription;
+  const aviso = softDelete
+    ? "O registro será removido das listas, mas o histórico vinculado será preservado."
+    : "Esta ação não pode ser desfeita.";
+  // Várias telas já escrevem o aviso na própria descrição: não repetir.
+  const avisoNaDescricao = texto.includes(aviso);
 
-  return (
+  // Portal: dentro de um <Modal> (que tem transform e overflow-hidden), um
+  // `fixed` ficaria preso à caixa do modal e cortado.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-[70] flex items-center justify-center"
       onClick={onCancel}
     >
       {/* Overlay */}
@@ -49,6 +87,11 @@ export function ConfirmDeleteModal({
 
       {/* Modal */}
       <div
+        ref={caixaRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={tituloId}
+        aria-describedby={descricaoId}
         className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4 md:p-6"
         onClick={(e) => e.stopPropagation()}
       >
@@ -71,22 +114,32 @@ export function ConfirmDeleteModal({
         </div>
 
         {/* Título */}
-        <h2 className="text-lg font-semibold text-gray-900 text-center mb-2">
+        <h2
+          id={tituloId}
+          className="text-lg font-semibold text-gray-900 text-center mb-2"
+        >
           {title}
         </h2>
 
         {/* Descrição */}
-        <p className="text-xs md:text-sm text-gray-500 text-center mb-6">
-          {description ?? defaultDescription}
-          <br />
-          {softDelete
-            ? "O registro será removido das listas, mas o histórico vinculado será preservado."
-            : "Esta ação não pode ser desfeita."}
+        <p
+          id={descricaoId}
+          className="text-xs md:text-sm text-gray-500 text-center mb-6"
+        >
+          {texto}
+          {!avisoNaDescricao && (
+            <>
+              <br />
+              {aviso}
+            </>
+          )}
         </p>
 
         {/* Botões */}
         <div className="flex gap-3">
           <button
+            ref={cancelarRef}
+            type="button"
             onClick={onCancel}
             disabled={loading}
             className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-xs md:text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 min-h-[36px] md:min-h-[44px] active:scale-[0.98]"
@@ -94,6 +147,7 @@ export function ConfirmDeleteModal({
             Cancelar
           </button>
           <button
+            type="button"
             onClick={onConfirm}
             disabled={loading}
             className="flex-1 px-4 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-xs md:text-sm font-medium text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-h-[36px] md:min-h-[44px] active:scale-[0.98]"
@@ -128,6 +182,7 @@ export function ConfirmDeleteModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

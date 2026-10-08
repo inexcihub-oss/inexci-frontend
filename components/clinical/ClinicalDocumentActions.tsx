@@ -25,6 +25,7 @@ import {
   ClinicalDocumentTemplate,
   ClinicalDocumentTemplateKind,
 } from "@/services/clinical-document-template.service";
+import { safeExternalUrl } from "@/lib/safe-url";
 
 /** Profissional que assina os documentos da consulta. */
 export interface AssinanteConsulta {
@@ -469,7 +470,8 @@ export function ClinicalDocumentActions({
         );
       }
 
-      window.open(document.uri, "_blank", "noopener");
+      const uri = safeExternalUrl(document.uri);
+      if (uri) window.open(uri, "_blank", "noopener");
       onEmitted(document);
       closePreview();
       setOpenKind(null);

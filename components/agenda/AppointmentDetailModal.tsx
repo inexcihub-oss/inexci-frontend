@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { SpinnerButton } from "@/components/shared/ModalFooter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
@@ -148,6 +149,9 @@ export function AppointmentDetailModal({
   const podeAgenda = can(Permission.AGENDA);
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const [desfazendo, setDesfazendo] = useState(false);
+  // Excluir tira a consulta da agenda e do histórico do paciente: um clique
+  // ao lado de "Cancelar" não pode bastar.
+  const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const actions = podeAgenda ? QUICK[appointment.status] : [];
 
   // "Desfazer chegada" espera o histórico antes de mudar o status. Se o
@@ -301,7 +305,7 @@ export function AppointmentDetailModal({
         {podeAgenda ? (
           <SpinnerButton
             variant="secondary"
-            onClick={onDelete}
+            onClick={() => setConfirmarExclusao(true)}
             disabled={busy || emTour || dadosFabricados}
             className="w-full sm:w-auto !text-red-600 hover:!bg-red-50 !border-red-200"
           >
@@ -338,6 +342,18 @@ export function AppointmentDetailModal({
           )}
         </div>
       </div>
+      <ConfirmDeleteModal
+        isOpen={confirmarExclusao}
+        title="Excluir consulta"
+        description={`Excluir a consulta de ${appointment.patient?.name ?? "este paciente"}? Para registrar que ela não vai acontecer, use "Cancelar" ou "Faltou".`}
+        softDelete
+        loading={busy}
+        onCancel={() => setConfirmarExclusao(false)}
+        onConfirm={() => {
+          setConfirmarExclusao(false);
+          onDelete();
+        }}
+      />
     </Modal>
   );
 }

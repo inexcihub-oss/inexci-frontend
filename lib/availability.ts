@@ -88,3 +88,40 @@ export function holidayOn(
 export function blockAppliesTo(b: ScheduleBlock, doctorIds: string[]): boolean {
   return !b.doctorId || doctorIds.length === 0 || doctorIds.includes(b.doctorId);
 }
+
+/**
+ * O bloqueio atinge uma consulta deste profissional nesta clínica? Espelho de
+ * `bloqueioAtinge` do backend (`availability.service.ts`) — se divergirem, a
+ * tela avisa uma coisa e a API recusa outra.
+ *
+ * Conta toda e médico sem clínica atingem tudo do médico; bloqueio só de uma
+ * clínica não alcança consulta sem clínica, a menos que também seja do médico.
+ */
+export function bloqueioAtinge(
+  b: Pick<ScheduleBlock, "doctorId" | "clinicId">,
+  doctorId: string,
+  clinicId: string | null,
+): boolean {
+  if (b.doctorId && b.doctorId !== doctorId) return false;
+  if (!b.clinicId) return true;
+  if (clinicId) return b.clinicId === clinicId;
+  return !!b.doctorId;
+}
+
+/** Primeiro bloqueio que cobre `[inicio, inicio + duração)` da consulta. */
+export function bloqueioNoHorario(
+  bloqueios: ScheduleBlock[],
+  doctorId: string,
+  clinicId: string | null,
+  inicio: Date,
+  duracaoMin: number,
+): ScheduleBlock | undefined {
+  const ini = inicio.getTime();
+  const fim = ini + duracaoMin * 60_000;
+  return bloqueios.find(
+    (b) =>
+      bloqueioAtinge(b, doctorId, clinicId) &&
+      new Date(b.startsAt).getTime() < fim &&
+      ini < new Date(b.endsAt).getTime(),
+  );
+}

@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
 import { Search, ChevronDown, X, Loader2 } from "lucide-react";
+import { useAnchoredDropdown } from "@/hooks/useAnchoredDropdown";
 
 interface SelectSearchOption {
   value: string;
@@ -65,14 +66,15 @@ export function SelectSearch({
   const [options, setOptions] = useState<SelectSearchOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(initialLabel || "");
-  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const [dropdownPosition, setDropdownPosition] = useState({
-    top: 0,
-    left: 0,
-    width: 0,
-  });
+  // Lista em portal ancorada ao campo: acompanha a rolagem do corpo do modal
+  // (sem isso ela ficava parada onde o campo estava quando abriu) e fecha no
+  // clique fora considerando campo e lista.
+  const {
+    anchorRef,
+    dropdownRef,
+    position: dropdownPosition,
+  } = useAnchoredDropdown(isOpen, () => setIsOpen(false));
 
   // Mantém referência estável para onSearch para não recriar a fn debounced a cada render
   const onSearchRef = useRef(onSearch);
@@ -121,25 +123,6 @@ export function SelectSearch({
     }
   }, [value, initialLabel, selectedLabel]);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node) &&
-        !(
-          dropdownRef.current &&
-          dropdownRef.current.contains(event.target as Node)
-        )
-      ) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const handleSelect = (option: SelectSearchOption) => {
     onChange(option.value, option.label);
     setSelectedLabel(option.label);
@@ -163,14 +146,6 @@ export function SelectSearch({
 
   const handleToggle = () => {
     if (!disabled) {
-      if (!isOpen && containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setDropdownPosition({
-          top: rect.bottom,
-          left: rect.left,
-          width: rect.width,
-        });
-      }
       setIsOpen(!isOpen);
       if (!isOpen) {
         setTimeout(() => inputRef.current?.focus(), 100);
@@ -179,13 +154,14 @@ export function SelectSearch({
   };
 
   return (
-    <div className={`relative ${className}`} ref={containerRef}>
+    <div className={`relative ${className}`}>
       {label && (
         <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1 break-words">
           {label}
         </label>
       )}
       <div
+        ref={anchorRef}
         className={`
           relative flex items-center w-full border rounded-xl bg-white cursor-pointer
           ${error ? "border-red-500" : "border-gray-300"}

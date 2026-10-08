@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   Appointment,
@@ -257,6 +257,48 @@ describe("AppointmentDetailModal", () => {
 
     expect(screen.getByRole("button", { name: "Confirmar" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Excluir" })).toBeDisabled();
+  });
+
+  it("Excluir pede confirmação; Cancelar e Esc não excluem nem fecham a consulta", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <AppointmentDetailModal
+        appointment={appointmentFixture("scheduled")}
+        onClose={onClose}
+        onEdit={vi.fn()}
+        onStartAttendance={vi.fn()}
+        onChangeStatus={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+    const confirmacao = screen.getByRole("alertdialog", {
+      name: "Excluir consulta",
+    });
+    expect(confirmacao).toHaveTextContent(/Ana Beatriz/);
+    expect(onDelete).not.toHaveBeenCalled();
+
+    await user.click(
+      within(confirmacao).getByRole("button", { name: "Cancelar" }),
+    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onDelete).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Excluir",
+      }),
+    );
+    expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
   it("mantém as ações habilitadas fora do tour", () => {

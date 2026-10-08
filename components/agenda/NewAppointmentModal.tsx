@@ -23,10 +23,15 @@ import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 import { mensagemForaDoHorario } from "@/lib/business-hours";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
-import { dentroDaGrade, SLOT_REASON_LABELS } from "@/lib/availability";
+import {
+  bloqueioNoHorario,
+  dentroDaGrade,
+  SLOT_REASON_LABELS,
+} from "@/lib/availability";
 import {
   availabilityService,
   AvailabilityDay,
+  ScheduleBlock,
 } from "@/services/availability.service";
 import { dateKey, hhmm } from "@/lib/calendar";
 import { CalendarDays, UserPlus, AlertTriangle } from "lucide-react";
@@ -120,6 +125,10 @@ export function NewAppointmentModal({
   const [dayAppointments, setDayAppointments] = useState<Appointment[]>([]);
   // Grade do profissional no dia (MIG-05): horários livres e ocupados.
   const [diaDaGrade, setDiaDaGrade] = useState<AvailabilityDay | null>(null);
+  // Bloqueios do dia, à parte da grade: um bloqueio fora do horário de
+  // atendimento não aparece em nenhum horário da grade, e o aviso só viria
+  // na recusa do backend, depois de clicar em Agendar.
+  const [bloqueiosDoDia, setBloqueiosDoDia] = useState<ScheduleBlock[]>([]);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
 
   // Busca as consultas já marcadas no dia/médico selecionado (para o usuário
@@ -171,6 +180,29 @@ export function NewAppointmentModal({
       .then((dias) => active && setDiaDaGrade(dias[0] ?? null))
       // A grade só orienta: sem ela, o agendamento segue como antes.
       .catch(() => active && setDiaDaGrade(null));
+    return () => {
+      active = false;
+    };
+  }, [isOpen, date, doctorId]);
+
+  useEffect(() => {
+    const inicioDoDia = parseDate(date);
+    if (!isOpen || !doctorId || !inicioDoDia) {
+      setBloqueiosDoDia([]);
+      return;
+    }
+    const fimDoDia = new Date(inicioDoDia);
+    fimDoDia.setDate(fimDoDia.getDate() + 1);
+    let active = true;
+    availabilityService
+      .getBlocks({
+        doctorId,
+        from: inicioDoDia.toISOString(),
+        to: fimDoDia.toISOString(),
+      })
+      .then((bloqueios) => active && setBloqueiosDoDia(bloqueios))
+      // Só orienta: o backend continua recusando o horário bloqueado.
+      .catch(() => active && setBloqueiosDoDia([]));
     return () => {
       active = false;
     };
@@ -311,8 +343,8 @@ export function NewAppointmentModal({
    * aviso que deixa agendar.
    */
   const bloqueioGrade = useMemo(() => {
-    if (!diaDaGrade || !conferirGrade) return null;
-    if (diaDaGrade.holiday?.blocksAgenda) {
+    if (!conferirGrade) return null;
+    if (diaDaGrade?.holiday?.blocksAgenda) {
       return `Feriado (${diaDaGrade.holiday.name}): a agenda está bloqueada neste dia.`;
     }
     const parsed = parseDate(date);
@@ -320,6 +352,19 @@ export function NewAppointmentModal({
     const [hh, mm] = time.split(":").map(Number);
     const inicio = new Date(parsed);
     inicio.setHours(hh, mm, 0, 0);
+    const bloqueio = bloqueioNoHorario(
+      bloqueiosDoDia,
+      doctorId,
+      clinicId || null,
+      inicio,
+      duration,
+    );
+    if (bloqueio) {
+      return bloqueio.reason
+        ? `Horário bloqueado na agenda do profissional (${bloqueio.reason}): não será possível agendar.`
+        : "Horário bloqueado na agenda do profissional: não será possível agendar.";
+    }
+    if (!diaDaGrade) return null;
     const fim = inicio.getTime() + duration * 60_000;
     const bloqueado = diaDaGrade.slots.some(
       (s) =>
@@ -330,7 +375,16 @@ export function NewAppointmentModal({
     return bloqueado
       ? "Horário bloqueado na agenda do profissional: não será possível agendar."
       : null;
-  }, [diaDaGrade, conferirGrade, date, time, duration]);
+  }, [
+    diaDaGrade,
+    bloqueiosDoDia,
+    doctorId,
+    clinicId,
+    conferirGrade,
+    date,
+    time,
+    duration,
+  ]);
 
   /** Fora da grade do profissional: avisa, mas deixa agendar. */
   const avisoGrade = useMemo(() => {

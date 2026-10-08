@@ -248,3 +248,32 @@ describe("NewPatientModal — foto no cadastro", () => {
   });
 });
 
+describe("NewPatientModal — acessibilidade", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(healthPlanService.getAll).mockResolvedValue([]);
+  });
+
+  it("é um dialog nomeado pelo título", async () => {
+    renderModal();
+    expect(
+      await screen.findByRole("dialog", { name: "Novo paciente" }),
+    ).toHaveAttribute("aria-modal", "true");
+  });
+
+  it("Esc fecha o modal sem deixar o evento chegar ao modal de baixo", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const deBaixo = vi.fn();
+    document.addEventListener("keydown", deBaixo);
+    try {
+      render(<NewPatientModal isOpen onClose={onClose} onSuccess={vi.fn()} />);
+      await user.click(await screen.findByPlaceholderText("Nome completo"));
+      await user.keyboard("{Escape}");
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(deBaixo).not.toHaveBeenCalled();
+    } finally {
+      document.removeEventListener("keydown", deBaixo);
+    }
+  });
+});

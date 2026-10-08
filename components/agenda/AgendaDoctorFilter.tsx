@@ -13,6 +13,12 @@ interface AgendaDoctorFilterProps {
   onChange: (doctorIds: string[]) => void;
   /** Contagem por profissional no período visível (opcional). */
   countByDoctorId?: Record<string, number>;
+  /**
+   * Borda do botão em que a lista se alinha. `"end"` para botão encostado à
+   * direita (ex.: histórico do paciente): alinhada pela esquerda, a lista
+   * avançava por cima da coluna vizinha.
+   */
+  align?: "start" | "end";
 }
 
 /** A busca só aparece quando a lista deixa de caber de relance. */
@@ -38,6 +44,7 @@ export function AgendaDoctorFilter({
   selectedDoctorIds,
   onChange,
   countByDoctorId,
+  align = "start",
 }: AgendaDoctorFilterProps) {
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
@@ -105,10 +112,12 @@ export function AgendaDoctorFilter({
     typeof window === "undefined"
       ? LARGURA_LISTA
       : Math.min(LARGURA_LISTA, window.innerWidth - 16);
+  const preferida =
+    align === "end" ? position.left + position.width - largura : position.left;
   const esquerda =
     typeof window === "undefined"
-      ? position.left
-      : Math.max(8, Math.min(position.left, window.innerWidth - largura - 8));
+      ? preferida
+      : Math.max(8, Math.min(preferida, window.innerWidth - largura - 8));
 
   return (
     <div ref={anchorRef} className="inline-block max-w-full">

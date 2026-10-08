@@ -16,6 +16,10 @@ import { useCepLookup } from "@/hooks/useCepLookup";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { logger } from "@/lib/logger";
 import { Loader2 } from "lucide-react";
+import {
+  mensagemCpfRepetido,
+  useCpfRepetido,
+} from "@/components/patients/useCpfRepetido";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyArea } from "@/lib/permissions";
 import { cpfOptionalSchema } from "@/lib/schemas/shared";
@@ -87,6 +91,9 @@ export function PatientRegistrationForm({
   const podeCriarConvenio = hasAnyArea(permissions);
   const [formData, setFormData] = useState<FormData>(() =>
     formDataFrom(patient),
+  );
+  const avisoCpf = mensagemCpfRepetido(
+    useCpfRepetido(formData.cpf, patient.id),
   );
   const [baseline, setBaseline] = useState<FormData>(() =>
     formDataFrom(patient),
@@ -239,6 +246,14 @@ export function PatientRegistrationForm({
             onChange={(e) => setField("email", e.target.value)}
           />
         </div>
+        {avisoCpf && (
+          <p
+            role="status"
+            className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800"
+          >
+            {avisoCpf}
+          </p>
+        )}
       </FormSection>
 
       <FormSection title="Endereço">
