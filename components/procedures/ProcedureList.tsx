@@ -50,7 +50,6 @@ const statusStyles: Record<string, { bg: string; text: string }> = {
   Cancelada: { bg: "bg-red-100", text: "text-red-700" },
 };
 
-// Ações contextuais baseadas no status
 const getContextualActions = (status: SurgeryRequestStatus) => {
   switch (status) {
     case "Pendente":
@@ -82,7 +81,6 @@ const getContextualActions = (status: SurgeryRequestStatus) => {
   }
 };
 
-// Componente de linha individual
 const ProcedureRow: React.FC<{
   procedure: SurgeryRequest;
   onProcedureClick?: (procedure: SurgeryRequest) => void;
@@ -94,7 +92,6 @@ const ProcedureRow: React.FC<{
     statusStyles[procedure.status] || statusStyles["Pendente"];
   const contextualActions = getContextualActions(procedure.status);
 
-  // Fechar dropdown ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -115,17 +112,14 @@ const ProcedureRow: React.FC<{
   }, [showActions]);
 
   const handleActionClick = (_action: string) => {
-    // TODO: Implementar lógica de cada ação
     setShowActions(false);
   };
 
-  // Função para processar nome do médico (remover especialidade)
   const getDisplayName = (name: string) => {
     const nameParts = name.split(" - ");
     return nameParts[0].trim();
   };
 
-  // Função para gerar iniciais
   const getInitials = (name: string) => {
     const displayName = getDisplayName(name);
     const parts = displayName.split(" ");
@@ -140,7 +134,6 @@ const ProcedureRow: React.FC<{
       className="grid grid-cols-12 gap-4 px-6 py-4 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-all cursor-pointer"
       onClick={() => onProcedureClick?.(procedure)}
     >
-      {/* Paciente */}
       <div className="col-span-2 flex items-center gap-2.5 min-w-0">
         <div
           className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-gray-200 ${
@@ -178,7 +171,6 @@ const ProcedureRow: React.FC<{
         </div>
       </div>
 
-      {/* Procedimento */}
       <div className="col-span-2 flex items-center min-w-0">
         <span
           className="text-xs md:text-sm text-gray-900 truncate"
@@ -188,7 +180,6 @@ const ProcedureRow: React.FC<{
         </span>
       </div>
 
-      {/* Médico */}
       <div className="col-span-2 flex items-center gap-2 min-w-0">
         <div
           className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border border-gray-200 ${
@@ -220,7 +211,6 @@ const ProcedureRow: React.FC<{
         </div>
       </div>
 
-      {/* Status com barra de progresso */}
       <div className="col-span-1 flex flex-col justify-center gap-1">
         <span
           className={`px-2 py-1 rounded-full text-xs font-semibold ${statusStyle.bg} ${statusStyle.text} text-center whitespace-nowrap`}
@@ -258,7 +248,6 @@ const ProcedureRow: React.FC<{
         </div>
       </div>
 
-      {/* Prioridade e Pendências */}
       <div className="col-span-2 flex items-center gap-1.5 justify-start flex-wrap">
         <span
           className={`px-2.5 py-1 rounded-full text-xs font-medium border ${priorityStyle.bg} ${priorityStyle.text} ${priorityStyle.border} whitespace-nowrap flex-shrink-0`}
@@ -286,7 +275,6 @@ const ProcedureRow: React.FC<{
         )}
       </div>
 
-      {/* Datas */}
       <div className="col-span-2 flex items-center gap-3">
         <div className="flex flex-col gap-0.5 min-w-0 flex-1">
           <span className="text-[0.625rem] text-gray-500 uppercase font-medium">
@@ -301,7 +289,6 @@ const ProcedureRow: React.FC<{
         </div>
       </div>
 
-      {/* Ações */}
       <div className="col-span-1 flex items-center justify-end gap-2">
         <div className="relative" ref={dropdownRef}>
           <button
@@ -314,7 +301,6 @@ const ProcedureRow: React.FC<{
             <MoreVertical className="w-4 h-4 text-gray-500" />
           </button>
 
-          {/* Dropdown de ações contextuais */}
           {showActions && contextualActions.length > 0 && (
             <div className="absolute right-0 top-10 z-10 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-40">
               {contextualActions.map((action, index) => (
@@ -350,7 +336,6 @@ export const ProcedureList: React.FC<ProcedureListProps> = ({
         msOverflowStyle: "none",
       }}
     >
-      {/* Cabeçalho da Tabela */}
       <div className="grid grid-cols-12 gap-4 px-6 py-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wide flex-shrink-0">
         <div className="col-span-2">Paciente</div>
         <div className="col-span-2">Procedimento</div>
@@ -361,7 +346,6 @@ export const ProcedureList: React.FC<ProcedureListProps> = ({
         <div className="col-span-1 text-right">Ações</div>
       </div>
 
-      {/* Linhas da Tabela */}
       {procedures.map((procedure) => (
         <ProcedureRow
           key={procedure.id}
@@ -370,7 +354,6 @@ export const ProcedureList: React.FC<ProcedureListProps> = ({
         />
       ))}
 
-      {/* Estado vazio */}
       {procedures.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <p className="text-lg font-semibold text-neutral-900 mb-2">

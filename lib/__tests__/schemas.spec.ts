@@ -5,8 +5,6 @@ import {
   changePasswordSchema,
 } from "@/lib/schemas/configuracoes.schema";
 
-// ─── step1Schema ──────────────────────────────────────────────────────────────
-
 describe("step1Schema (dados pessoais de cadastro)", () => {
   const valid = {
     name: "João Silva",
@@ -96,8 +94,6 @@ describe("step1Schema (dados pessoais de cadastro)", () => {
   });
 });
 
-// ─── step2Schema ──────────────────────────────────────────────────────────────
-
 describe("step2Schema (perfil de cadastro)", () => {
   it("aceita gestor (isDoctor: false) sem CRM", () => {
     const r = step2Schema.safeParse({
@@ -159,8 +155,6 @@ describe("step2Schema (perfil de cadastro)", () => {
     expect(r.success).toBe(true);
   });
 });
-
-// ─── profileSchema ────────────────────────────────────────────────────────────
 
 describe("profileSchema (perfil em configurações)", () => {
   const valid = {
@@ -249,8 +243,6 @@ describe("profileSchema (perfil em configurações)", () => {
     );
   });
 });
-
-// ─── changePasswordSchema ─────────────────────────────────────────────────────
 
 describe("changePasswordSchema (alterar senha)", () => {
   const valid = {

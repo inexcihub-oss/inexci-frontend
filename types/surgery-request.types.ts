@@ -1,7 +1,5 @@
-// Prioridade como número (conforme backend)
 export type PriorityLevel = 1 | 2 | 3 | 4;
 
-// Constantes de prioridade
 export const PRIORITY = {
   LOW: 1 as const,
   MEDIUM: 2 as const,
@@ -9,7 +7,6 @@ export const PRIORITY = {
   URGENT: 4 as const,
 };
 
-// Mapeamento de número para label
 export const PRIORITY_LABELS: Record<PriorityLevel, string> = {
   1: "Baixa",
   2: "Média",
@@ -17,7 +14,6 @@ export const PRIORITY_LABELS: Record<PriorityLevel, string> = {
   4: "Urgente",
 };
 
-// Mapeamento inverso (opcional, para compatibilidade)
 export const PRIORITY_VALUES: Record<string, PriorityLevel> = {
   Baixa: 1,
   Média: 2,
@@ -25,19 +21,17 @@ export const PRIORITY_VALUES: Record<string, PriorityLevel> = {
   Urgente: 4,
 };
 
-// Status completos da solicitação cirúrgica
 export type SurgeryRequestStatus =
-  | "Pendente" // 1
-  | "Enviada" // 2
-  | "Em Análise" // 3
-  | "Em Agendamento" // 4
-  | "Agendada" // 5
-  | "Realizada" // 6
-  | "Faturada" // 7
-  | "Finalizada" // 8
-  | "Encerrada"; // 9
+  | "Pendente"
+  | "Enviada"
+  | "Em Análise"
+  | "Em Agendamento"
+  | "Agendada"
+  | "Realizada"
+  | "Faturada"
+  | "Finalizada"
+  | "Encerrada";
 
-// Legendas explicativas de cada status (exibidas em tooltip no kanban e na lista)
 export const STATUS_DESCRIPTIONS: Record<SurgeryRequestStatus, string> = {
   Pendente:
     "Neste status a solicitação ainda não foi recepcionada pelo hospital/convênio. Finalize ou informe o recebimento para avançar.",
@@ -59,7 +53,6 @@ export const STATUS_DESCRIPTIONS: Record<SurgeryRequestStatus, string> = {
     "Solicitação encerrada. O fluxo foi interrompido antes da finalização.",
 };
 
-// Interface para pendência
 export interface Pendency {
   id: string;
   key: string;
@@ -84,7 +77,6 @@ export interface Pendency {
   };
 }
 
-// Resumo de pendências
 export interface PendenciesSummary {
   total: number;
   completed: number;
@@ -94,7 +86,6 @@ export interface PendenciesSummary {
   canTransition: boolean;
 }
 
-// Pendências agrupadas
 export interface GroupedPendencies {
   pending: Pendency[];
   completed: Pendency[];
@@ -102,16 +93,12 @@ export interface GroupedPendencies {
   optional: Pendency[];
 }
 
-// ── Sub-tipos de relações ──────────────────────────────────────────────────────
-
-/** Referência genérica a uma entidade relacionada (id + name) */
 export interface EntityRef {
   id: string | number;
   name: string;
   [key: string]: unknown;
 }
 
-/** Referência ao médico (inclui doctorProfile aninhado) */
 export interface DoctorRef extends EntityRef {
   email?: string;
   phone?: string;
@@ -131,7 +118,6 @@ export interface DoctorRef extends EntityRef {
   signatureUrl?: string | null;
 }
 
-/** Referência ao paciente */
 export interface PatientRef extends EntityRef {
   cpf?: string;
   birthDate?: string;
@@ -144,21 +130,18 @@ export interface PatientRef extends EntityRef {
   cep?: string;
 }
 
-/** Referência ao hospital */
 export interface HospitalRef extends EntityRef {
   address?: string;
   email?: string;
   phone?: string;
 }
 
-/** Referência ao convênio */
 export interface HealthPlanRef extends EntityRef {
   email?: string;
   phone?: string;
   defaultPaymentDays?: number | null;
 }
 
-/** Item de procedimento TUSS */
 export interface TussItemRef {
   id: string | number;
   description?: string;
@@ -171,7 +154,6 @@ export interface TussItemRef {
   [key: string]: unknown;
 }
 
-/** Item OPME */
 export interface OpmeItemRef {
   id: string | number;
   name?: string;
@@ -184,7 +166,6 @@ export interface OpmeItemRef {
   selectedSupplier?: {
     id?: string | number;
     name?: string;
-    /** Marca o fornecedor genérico "Outro" da conta. */
     isGeneric?: boolean;
   } | null;
   suppliers?: Array<{
@@ -199,7 +180,6 @@ export interface OpmeItemRef {
   [key: string]: unknown;
 }
 
-/** Dados de faturamento */
 export interface BillingInfo {
   invoiceValue: number | null;
   invoiceProtocol: string | null;
@@ -209,7 +189,6 @@ export interface BillingInfo {
   [key: string]: unknown;
 }
 
-/** Dados de recebimento */
 export interface ReceiptInfo {
   receivedValue: number;
   receivedAt: string | null;
@@ -220,7 +199,6 @@ export interface ReceiptInfo {
   [key: string]: unknown;
 }
 
-/** Dados de agendamento */
 export interface SchedulingInfo {
   dateOptions?: string[];
   confirmedDate?: string | null;
@@ -228,11 +206,9 @@ export interface SchedulingInfo {
   [key: string]: unknown;
 }
 
-// Re-exporta DoctorSummary como Doctor para manter compatibilidade
 export type { DoctorSummary as Doctor } from "@/types";
 import type { DoctorSummary } from "@/types";
 
-// Tipo interno para uso em SurgeryRequest (resolve o import)
 type Doctor = DoctorSummary;
 
 export interface Patient {
@@ -245,7 +221,7 @@ export interface Patient {
 
 export interface SurgeryRequest {
   id: string;
-  protocol?: string; // Protocolo numérico de 6 dígitos
+  protocol?: string;
   patient: Patient;
   procedureName: string;
   doctor: Doctor;
@@ -254,18 +230,15 @@ export interface SurgeryRequest {
   pendenciesCompleted?: number;
   pendenciesWaiting?: number;
   createdAt: string;
-  /** Data formatada da última movimentação/atualização (exibição e ordenação). */
   lastActivityAt: string;
   lastStatusChangedAt?: string;
   updatedAt?: string;
   status: SurgeryRequestStatus;
-  topPendencies?: Pendency[]; // Preview das principais pendências
-  healthPlan?: string; // Convênio
-  /** Fornecedores escolhidos nos itens OPME (vazio até a escolha acontecer). */
+  topPendencies?: Pendency[];
+  healthPlan?: string;
   suppliers?: { id: string; name: string }[];
-  /** Clínica da consulta que indicou a cirurgia (ausente fora do atendimento). */
   clinic?: { id: string; name: string } | null;
-  hasIncompletePayment?: boolean; // Recebimento incompleto
+  hasIncompletePayment?: boolean;
 }
 
 export interface KanbanColumn {
@@ -274,8 +247,6 @@ export interface KanbanColumn {
   status: SurgeryRequestStatus;
   cards: SurgeryRequest[];
 }
-
-// ── Criação de SC via documento ──────────────────────────────────────────────
 
 export type DocumentClassificationKind =
   | "surgery_request"
@@ -306,7 +277,6 @@ export interface ExtractedPatient {
   gender?: string;
   phone?: string;
   rg?: string;
-  /** Logradouro (rua/avenida), sem número/complemento/bairro/cidade/UF. */
   address?: string;
   addressNumber?: string;
   addressComplement?: string;
@@ -359,7 +329,6 @@ export interface ExtractFromDocumentResponse {
   patientMatchedByCpf: boolean;
   candidates: ExtractFromDocumentCandidates;
   tempStoragePath: string;
-  /** Nome original do arquivo enviado (preenchido no frontend após upload) */
   originalFileName?: string;
 }
 

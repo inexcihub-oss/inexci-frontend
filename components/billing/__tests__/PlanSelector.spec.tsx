@@ -5,18 +5,6 @@ import userEvent from "@testing-library/user-event";
 import type { SubscriptionPlan, SubscriptionStatus } from "@/types";
 import { PlanSelector } from "../PlanSelector";
 
-/**
- * O seletor de planos é o único caminho do dono da conta até a Stripe. As duas
- * regras que ele precisa garantir:
- *
- * - enquanto **não existe contrato** (trial em curso ou assinatura cancelada),
- *   `subscription.planId` é só a *escolha* feita no cadastro — nenhum card pode
- *   ser tratado como "Plano atual", senão o plano escolhido no teste vira o
- *   único que o usuário não consegue assinar;
- * - com contrato ativo, a troca precisa **levar o plano escolhido** para a
- *   Stripe; abrir o portal genérico perde a seleção.
- */
-
 const plano = (over: Partial<SubscriptionPlan> & { id: string }): SubscriptionPlan => ({
   slug: over.id,
   name: over.id,
@@ -49,7 +37,6 @@ function renderSelector(status: SubscriptionStatus, currentPlanId: string) {
   );
 }
 
-/** O grid de desktop e o carrossel mobile renderizam o mesmo card. */
 function botaoDoPlano(nome: string, label: RegExp) {
   const botoes = screen.getAllByRole("button", { name: label });
   expect(botoes.length).toBeGreaterThan(0);
@@ -66,7 +53,7 @@ describe("PlanSelector", () => {
     renderSelector("trialing", STARTER.id);
 
     const botoes = screen.getAllByRole("button", { name: /assinar este plano/i });
-    expect(botoes).toHaveLength(4); // 2 planos × (carrossel + grid)
+    expect(botoes).toHaveLength(4);
     expect(botoes.every((b) => !(b as HTMLButtonElement).disabled)).toBe(true);
     expect(screen.queryByText(/plano atual/i)).toBeNull();
 

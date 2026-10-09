@@ -35,8 +35,6 @@ export function CreateHospitalModal({
   onSuccess,
 }: CreateHospitalModalProps) {
   const [loading, setLoading] = useState(false);
-  // Este modal é alcançado pelo passo `cadastro-no-modal` da trilha de
-  // Solicitações; submeter aqui criaria um cadastro real durante o tour.
   const { emTour } = useOnboarding();
   const [error, setError] = useState("");
   const { toast, showToast, hideToast } = useToast();
@@ -89,7 +87,6 @@ export function CreateHospitalModal({
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
       <div className="relative bg-white rounded-xl shadow-xl w-[600px] mx-4 flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5 flex-shrink-0">
           <h2 className="ds-modal-title">Novo hospital</h2>
           <button
@@ -102,7 +99,6 @@ export function CreateHospitalModal({
         </div>
         <div className="h-px bg-gray-200 flex-shrink-0" />
 
-        {/* Body */}
         <form
           onSubmit={onSubmit}
           noValidate
@@ -135,7 +131,6 @@ export function CreateHospitalModal({
             )}
           </div>
 
-          {/* Footer */}
           <div className="h-px bg-gray-200 flex-shrink-0" />
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
             <button

@@ -26,7 +26,6 @@ import {
   SurgeryRequestTemplateSummary,
 } from "@/services/surgery-request.service";
 
-/** Texto padrão do tooltip quando a criação inline exige administração. */
 export const CADASTRO_RESTRITO_HINT =
   "Peça a um administrador da conta para cadastrar.";
 
@@ -47,17 +46,7 @@ export const ProcedureSelectionContent = memo(
     onNewItemCreated: (registerFn: (item: Procedure) => void) => void;
     selectedItemId?: string | number | null;
     isActive?: boolean;
-    /**
-     * Governa o botão "Novo". Procedimento é cadastro transversal:
-     * `POST /procedures` herda o `@RequireAnyArea()` da classe.
-     */
     canCreate?: boolean;
-    /**
-     * Governa a lixeira por linha. Separado de `canCreate` de propósito:
-     * `DELETE /procedures/:id` continua exigindo `administracao`, e enquanto
-     * uma prop só governava os dois, liberar a criação teria liberado a
-     * exclusão junto — cada clique na lixeira terminando em 403.
-     */
     canDelete?: boolean;
   }) {
     const [searchTerm, setSearchTerm] = useState("");
@@ -361,7 +350,6 @@ export const HospitalSelectionContent = memo(function HospitalSelectionContent({
   onNewItemCreated: (registerFn: (item: Hospital) => void) => void;
   selectedItemId?: string | number | null;
   isActive?: boolean;
-  /** Falso quando o usuário não pode cadastrar hospitais (sem `administracao`). */
   canCreate?: boolean;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -478,7 +466,6 @@ export const HealthPlanSelectionContent = memo(
     onNewItemCreated: (registerFn: (item: HealthPlan) => void) => void;
     selectedItemId?: string | number | null;
     isActive?: boolean;
-    /** Falso quando o usuário não pode cadastrar convênios (sem `administracao`). */
     canCreate?: boolean;
   }) {
     const [searchTerm, setSearchTerm] = useState("");

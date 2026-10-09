@@ -6,9 +6,6 @@ interface ToastState {
   type: ToastType;
 }
 
-/**
- * Hook para gerenciar notificações toast
- */
 export function useToast() {
   const [toast, setToast] = useState<ToastState | null>(null);
 

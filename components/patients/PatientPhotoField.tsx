@@ -22,15 +22,6 @@ export {
   validarFotoPaciente,
 } from "./foto-paciente";
 
-/**
- * Foto do paciente no avatar do cartão do nome: clicar no avatar envia ou
- * troca a foto; o botão no canto remove. Sem foto, mostra as iniciais. Salva na hora, independente do formulário de cadastro — a foto não
- * entra no "tem alteração não salva" do formulário ao lado.
- *
- * A pasta `patient-photos` é escopada pela conta no backend: o caminho
- * devolvido pelo upload só é aceito pelo `PATCH /patients/:id` se for da
- * própria conta.
- */
 export function PatientPhotoField({
   patient,
   onChange,
@@ -44,18 +35,13 @@ export function PatientPhotoField({
   const [ampliada, setAmpliada] = useState(false);
   const [escolhendo, setEscolhendo] = useState(false);
   const [camera, setCamera] = useState(false);
-  // Remover a foto pede confirmação, dentro da própria foto ampliada (um
-  // modal à parte ficaria por baixo dela).
   const [confirmandoRemocao, setConfirmandoRemocao] = useState(false);
 
-  // Abrir ou fechar uma camada (foto ampliada, escolha, câmera) é "a próxima
-  // ação": um erro de envio anterior não fica pendurado na tela.
   const abrirAmpliada = () => {
     setError(null);
     setConfirmandoRemocao(false);
     setAmpliada(true);
   };
-  // Estável: o visualizador refaz o efeito (foco, Esc, scroll) quando muda.
   const fecharAmpliada = useCallback(() => {
     setError(null);
     setConfirmandoRemocao(false);
@@ -74,8 +60,6 @@ export function PatientPhotoField({
     setEscolhendo(false);
     inputRef.current?.click();
   };
-  // A câmera substitui a foto ampliada em vez de empilhar por cima dela:
-  // duas camadas abertas fechariam juntas no mesmo Esc.
   const abrirCamera = () => {
     setError(null);
     setEscolhendo(false);
@@ -91,11 +75,8 @@ export function PatientPhotoField({
     setError(null);
 
     setBusy(true);
-    // Caminho enviado e ainda não gravado no paciente: se o PATCH falhar, é
-    // descartado (senão a foto ficava órfã no storage — dado de saúde).
     let enviada: string | null = null;
     try {
-      // Acima de 2 MB, reduz no navegador antes de recusar.
       const { foto, erro } = await prepararFotoPaciente(file);
       if (!foto) {
         setError(erro);
@@ -117,7 +98,6 @@ export function PatientPhotoField({
       setError(getApiErrorMessage(err, "Não foi possível salvar a foto."));
     } finally {
       setBusy(false);
-      // Permite escolher o mesmo arquivo de novo depois de um erro.
       if (inputRef.current) inputRef.current.value = "";
     }
   };
@@ -140,9 +120,6 @@ export function PatientPhotoField({
 
   return (
     <div className="relative shrink-0">
-      {/* O próprio avatar troca a foto: é o lugar onde a foto aparece. */}
-      {/* Com foto, o clique amplia (trocar e remover ficam na foto
-          ampliada); sem foto, abre o seletor para adicionar. */}
       <button
         type="button"
         onClick={() => (hasPhoto ? abrirAmpliada() : abrirEscolha())}
@@ -162,8 +139,6 @@ export function PatientPhotoField({
             alt={`Foto de ${patient.name}`}
             width={80}
             height={80}
-            // URL assinada muda a cada leitura: passar pelo otimizador só
-            // encheria o cache com versões da mesma foto.
             unoptimized
             className={cn("object-cover", tamanho)}
           />
@@ -179,7 +154,6 @@ export function PatientPhotoField({
             {getInitials(patient.name)}
           </span>
         )}
-        {/* Câmera: aparece sempre no toque (sem hover) e no hover do mouse. */}
         <span
           aria-hidden="true"
           className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"

@@ -3,8 +3,6 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Permission } from "@/lib/permissions";
 
-// Médico na tela de atendimento: Atendimento libera consultas, fichas e
-// documentos; Solicitações decide se o link "Abrir solicitação" aparece.
 const comSolicitacoes = (p: Permission) =>
   p === Permission.ATENDIMENTO || p === Permission.SOLICITACOES;
 let authState: { can: (p: Permission) => boolean } = {
@@ -143,7 +141,6 @@ describe("PatientHistoryTab", () => {
     );
 
     const items = await screen.findAllByRole("button", { expanded: false });
-    // Cirurgia 04/01/2026 > consulta 20/12/2025 > consulta 08/11/2025.
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent(/Artroscopia de joelho/);
     expect(items[1]).toHaveTextContent(/Primeira consulta/);
@@ -191,11 +188,6 @@ describe("PatientHistoryTab", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
-  /**
-   * O card da cirurgia é a ponte deliberada da timeline e deve continuar
-   * visível mesmo sem Solicitações — só o link para o detalhe (que o guard de
-   * rota devolveria) não faz sentido.
-   */
   it("mantém o card da cirurgia mas esconde o link para quem não tem Solicitações", async () => {
     authState = { can: (p) => p === Permission.ATENDIMENTO };
     const user = userEvent.setup();
@@ -293,11 +285,6 @@ describe("PatientHistoryTab", () => {
     expect(appointmentService.getByPatient).toHaveBeenCalledTimes(2);
   });
 
-  /**
-   * Tarefa 17, ponto 3: a busca de cirurgias é isolada com `.catch()` — se
-   * falhar sozinha (ex.: colaborador sem acesso a algum médico do paciente),
-   * a aba de Histórico não pode cair inteira. Só a seção de cirurgias some.
-   */
   it("degrada graciosamente quando só a busca de cirurgias falha", async () => {
     mocked(surgeryRequestService.getAll).mockRejectedValue(
       new Error("Sem acesso"),
@@ -325,7 +312,6 @@ describe("PatientHistoryTab", () => {
       name: /Primeira consulta/,
     });
     expect(cartao).toHaveTextContent("Ana Nutricionista");
-    // Diagnóstico resume melhor que a anamnese.
     expect(cartao).toHaveTextContent("Lombalgia");
     expect(cartao).toHaveTextContent("M54.5");
   });

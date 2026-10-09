@@ -28,11 +28,6 @@ interface Rascunho {
   body: string;
 }
 
-/**
- * Modelos de texto de atestado e pedido de exame (MIG-06). O texto é puro,
- * com quebras de linha, e os placeholders são preenchidos na hora de emitir.
- * Só médicos com CRM emitem esses documentos, então só eles veem a aba.
- */
 export function DocumentTemplatesSettings({ doctorId }: { doctorId: string }) {
   const [templates, setTemplates] = useState<ClinicalDocumentTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +54,6 @@ export function DocumentTemplatesSettings({ doctorId }: { doctorId: string }) {
     carregar();
   }, [carregar]);
 
-  /** Insere o placeholder onde está o cursor (ou no fim). */
   const inserirPlaceholder = (key: string) => {
     if (!rascunho) return;
     const marca = `{{${key}}}`;

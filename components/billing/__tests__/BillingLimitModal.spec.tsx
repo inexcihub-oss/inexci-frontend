@@ -3,15 +3,6 @@ import { render, screen } from "@testing-library/react";
 
 import type { BillingBlockReason } from "@/lib/http-error";
 
-/**
- * O aviso de bloqueio comercial precisa dizer coisas diferentes para quem
- * pode resolver e para quem não pode:
- *
- * - **dono da conta** → caminho de upgrade (aba de plano);
- * - **qualquer outro** (inclusive admin delegado) → orientação de procurar o
- *   administrador da conta, sem CTA — a aba de plano não existe para ele.
- */
-
 let authState: {
   isAccountOwner: boolean;
   subscription: unknown;

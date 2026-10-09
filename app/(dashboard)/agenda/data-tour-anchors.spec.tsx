@@ -3,8 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AgendaPage from "./page";
 
-// jsdom não implementa matchMedia; `CalendarTimeGrid` usa para detectar telas
-// estreitas.
 beforeEach(() => {
   window.matchMedia =
     window.matchMedia ||
@@ -19,14 +17,6 @@ beforeEach(() => {
       dispatchEvent: vi.fn(),
     })) as unknown as typeof window.matchMedia;
 });
-
-/**
- * Prova que a tela real de agenda carrega a âncora `data-tour` que o tour de
- * onboarding (`lib/onboarding/tour-registry.ts`) espera encontrar —
- * "agenda-nova-consulta", "agenda-filtros" e "agenda-exportar". Sem este teste, remover o atributo (ou trocar o
- * elemento) quebra o tour em silêncio: `useTargetRect` só reporta "ausente" e
- * o passo é pulado, sem nenhum erro visível em dev.
- */
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),

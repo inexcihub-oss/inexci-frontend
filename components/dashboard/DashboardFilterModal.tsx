@@ -13,8 +13,6 @@ import { healthPlanService } from "@/services/health-plan.service";
 import type { ReportFilters } from "@/services/reports.service";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type PeriodKey = "all" | "7d" | "30d" | "90d" | "12m" | "custom";
 
 export interface DashboardFilters {
@@ -95,8 +93,6 @@ interface DashboardFilterModalProps {
   currentFilters: DashboardFilters;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
   { key: "all", label: "Todos" },
   { key: "7d", label: "7 dias" },
@@ -121,8 +117,6 @@ const MONTH_NAMES = [
   "Dezembro",
 ];
 const DAY_LABELS = ["S", "T", "Q", "Q", "S", "S", "D"];
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function isSameDay(a: Date, b: Date) {
   return (
@@ -163,8 +157,6 @@ function getDaysInMonth(year: number, month: number): Date[] {
   return days;
 }
 
-// ─── PillToggle ───────────────────────────────────────────────────────────────
-
 function PillToggle({
   label,
   selected,
@@ -189,8 +181,6 @@ function PillToggle({
     </button>
   );
 }
-
-// ─── CollapsibleSection ───────────────────────────────────────────────────────
 
 function CollapsibleSection({
   title,
@@ -225,8 +215,6 @@ function CollapsibleSection({
     </div>
   );
 }
-
-// ─── SearchableSingleSelect ───────────────────────────────────────────────────
 
 function SearchableSingleSelect({
   options,
@@ -377,8 +365,6 @@ function SearchableSingleSelect({
   );
 }
 
-// ─── Calendar ─────────────────────────────────────────────────────────────────
-
 function Calendar({
   from,
   to,
@@ -520,8 +506,6 @@ function Calendar({
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 export function DashboardFilterModal({
   isOpen,
   onClose,
@@ -540,12 +524,10 @@ export function DashboardFilterModal({
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(onClose);
 
-  // Sync draft when modal opens
   useEffect(() => {
     if (isOpen) setDraft(currentFilters);
   }, [isOpen, currentFilters]);
 
-  // Load options once
   useEffect(() => {
     hospitalService
       .getAll()
@@ -561,7 +543,6 @@ export function DashboardFilterModal({
       .catch(() => {});
   }, []);
 
-  // Close on Escape
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -586,14 +567,12 @@ export function DashboardFilterModal({
 
   return (
     <div className="fixed inset-0 z-60 flex flex-col justify-end sm:flex-row sm:justify-end">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/30"
         style={{ opacity: isDragging ? Math.max(0.2, 1 - dragY / 300) : 1 }}
         onClick={onClose}
       />
 
-      {/* Panel */}
       <div
         ref={panelRef}
         className="relative z-10 w-full max-h-[92dvh] sm:max-h-full sm:w-[420px] sm:max-w-full sm:h-full bg-white flex flex-col shadow-2xl rounded-t-2xl sm:rounded-none animate-slide-up sm:animate-slide-in-right mobile-sheet-offset"
@@ -603,7 +582,6 @@ export function DashboardFilterModal({
             : undefined
         }
       >
-        {/* Drag handle (mobile only) — captura swipe para baixo */}
         <div
           className="flex-none flex justify-center pt-3 sm:hidden cursor-grab active:cursor-grabbing touch-none"
           onTouchStart={onTouchStart}
@@ -613,7 +591,6 @@ export function DashboardFilterModal({
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="flex-none flex items-center justify-between px-4 py-3 md:px-6 md:py-5 border-b border-neutral-100">
           <h2 className="ds-modal-title">Filtros</h2>
           <button
@@ -632,9 +609,7 @@ export function DashboardFilterModal({
           </button>
         </div>
 
-        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6 md:py-4 space-y-3 md:space-y-5">
-          {/* Período */}
           <div>
             <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
               Período
@@ -658,7 +633,6 @@ export function DashboardFilterModal({
             </div>
           </div>
 
-          {/* Calendário (só para "custom") */}
           {draft.period === "custom" && (
             <CollapsibleSection title="Data de criação">
               <Calendar
@@ -686,7 +660,6 @@ export function DashboardFilterModal({
             </CollapsibleSection>
           )}
 
-          {/* Hospital */}
           {hospitals.length > 0 && (
             <CollapsibleSection title="Hospital">
               <SearchableSingleSelect
@@ -698,7 +671,6 @@ export function DashboardFilterModal({
             </CollapsibleSection>
           )}
 
-          {/* Convênio */}
           {healthPlans.length > 0 && (
             <CollapsibleSection title="Convênio">
               <SearchableSingleSelect
@@ -713,7 +685,6 @@ export function DashboardFilterModal({
           <div className="h-4" />
         </div>
 
-        {/* Footer */}
         <div className="flex-none px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 flex items-center justify-between">
           <button
             type="button"

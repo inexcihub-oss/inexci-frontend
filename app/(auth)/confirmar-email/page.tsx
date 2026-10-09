@@ -70,7 +70,6 @@ function ConfirmarEmailContent() {
       await authService.resendEmailVerification();
       setResendSuccess(true);
     } catch {
-      // silently ignore — user will see toast/feedback elsewhere if needed
     } finally {
       setIsResending(false);
     }
@@ -78,10 +77,8 @@ function ConfirmarEmailContent() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Left Side — Content */}
       <div className="flex-1 flex items-center justify-center px-5 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-8">
-          {/* Logo */}
           <div className="flex justify-center">
             <Image
               src="/brand/logo.png"
@@ -92,7 +89,6 @@ function ConfirmarEmailContent() {
             />
           </div>
 
-          {/* ── LOADING ── */}
           {state === "loading" && (
             <div className="text-center space-y-4">
               <div className="flex justify-center">
@@ -126,7 +122,6 @@ function ConfirmarEmailContent() {
             </div>
           )}
 
-          {/* ── SUCCESS ── */}
           {state === "success" && (
             <div className="text-center space-y-6">
               <div className="flex justify-center">
@@ -161,9 +156,6 @@ function ConfirmarEmailContent() {
                 )}
               </div>
               <div className="space-y-3">
-                {/* A confirmação é por token e independe de qualquer sessão
-                    ativa no navegador. Sempre encaminha para o login para evitar
-                    exibir/assumir o usuário errado (contaminação de sessão). */}
                 <Button
                   onClick={() => router.push("/login")}
                   className="w-full text-sm font-semibold min-h-[48px]"
@@ -174,7 +166,6 @@ function ConfirmarEmailContent() {
             </div>
           )}
 
-          {/* ── ERROR ── */}
           {state === "error" && (
             <div className="text-center space-y-6">
               <div className="flex justify-center">
@@ -209,7 +200,6 @@ function ConfirmarEmailContent() {
               )}
 
               <div className="space-y-3">
-                {/* Botão de reenvio — disponível apenas para usuários autenticados */}
                 {user && !user.emailVerified && (
                   <Button
                     onClick={handleResend}
@@ -232,9 +222,7 @@ function ConfirmarEmailContent() {
         </div>
       </div>
 
-      {/* Right Side — Decorative */}
       <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        {/* Dot pattern */}
         <div className="absolute inset-0 opacity-10">
           <div
             className="absolute inset-0"
@@ -245,17 +233,14 @@ function ConfirmarEmailContent() {
           />
         </div>
 
-        {/* Gradient orbs */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
         <div
           className="absolute bottom-0 left-0 w-96 h-96 bg-secondary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-pulse"
           style={{ animationDelay: "1s" }}
         />
 
-        {/* Content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center p-16">
           <div className="max-w-xl space-y-12 relative z-10">
-            {/* Icon */}
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-secondary-500 rounded-3xl blur-2xl opacity-30" />
               <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-12 border border-white/10">
@@ -274,7 +259,6 @@ function ConfirmarEmailContent() {
               </div>
             </div>
 
-            {/* Quote */}
             <div className="space-y-6 text-center">
               <div className="space-y-4">
                 <svg
@@ -299,7 +283,6 @@ function ConfirmarEmailContent() {
           </div>
         </div>
 
-        {/* Bottom accent line */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-secondary-500 to-teal-500" />
       </div>
     </div>

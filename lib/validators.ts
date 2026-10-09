@@ -1,16 +1,5 @@
-/**
- * Validadores de domínio brasileiros + helpers de senha e nome.
- * Funções puras, sem dependências.
- */
-
 import { unmask } from "./masks";
 
-/* ─── CPF ─────────────────────────────────────────────────────────────────── */
-
-/**
- * Valida um CPF (formato + dígitos verificadores).
- * Aceita string com ou sem máscara.
- */
 export function isValidCpf(input: string | undefined | null): boolean {
   const cpf = unmask(input);
   if (cpf.length !== 11) return false;
@@ -32,8 +21,6 @@ export function isValidCpf(input: string | undefined | null): boolean {
   const dv2 = calc(digits.slice(0, 10), 11);
   return dv2 === digits[10];
 }
-
-/* ─── CNPJ ────────────────────────────────────────────────────────────────── */
 
 const CNPJ_FACTORS_1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
 const CNPJ_FACTORS_2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
@@ -60,12 +47,6 @@ export function isValidCnpj(input: string | undefined | null): boolean {
   return dv2 === digits[13];
 }
 
-/* ─── E-mail ──────────────────────────────────────────────────────────────── */
-
-/**
- * Validação leve de e-mail compatível com a maioria dos casos práticos.
- * Para casos críticos, prefira o `emailSchema` (Zod) que faz mais validações.
- */
 export function isValidEmail(input: string | undefined | null): boolean {
   if (!input) return false;
   const value = input.trim();
@@ -73,13 +54,6 @@ export function isValidEmail(input: string | undefined | null): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
 }
 
-/* ─── Nome completo ───────────────────────────────────────────────────────── */
-
-/**
- * Verifica se há nome e sobrenome (≥ 2 palavras, cada uma com ≥ 2 letras).
- * Aceita acentos, hífen e abreviações com ponto final (ex.: "Dr.", "Sr.").
- * Rejeita nomes com dígitos.
- */
 export function isValidFullName(input: string | undefined | null): boolean {
   if (!input) return false;
   const value = input.trim();
@@ -91,8 +65,6 @@ export function isValidFullName(input: string | undefined | null): boolean {
   return parts.every((p) => wordRe.test(p));
 }
 
-/* ─── Senha forte ─────────────────────────────────────────────────────────── */
-
 export interface PasswordChecks {
   minLength: boolean;
   hasUpper: boolean;
@@ -102,10 +74,6 @@ export interface PasswordChecks {
   allValid: boolean;
 }
 
-/**
- * Avalia uma senha contra os requisitos de força.
- * Use no UI para checklist visual.
- */
 export function passwordChecks(password: string | undefined | null): PasswordChecks {
   const value = password ?? "";
   const minLength = value.length >= 8;
@@ -123,15 +91,12 @@ export function passwordChecks(password: string | undefined | null): PasswordChe
   };
 }
 
-/** Conta quantos requisitos a senha atende (0-5). */
 export function passwordStrength(password: string | undefined | null): number {
   const c = passwordChecks(password);
   return [c.minLength, c.hasUpper, c.hasLower, c.hasNumber, c.hasSpecial].filter(
     Boolean,
   ).length;
 }
-
-/* ─── Telefone, CEP ───────────────────────────────────────────────────────── */
 
 export function isValidPhone(input: string | undefined | null): boolean {
   const d = unmask(input);

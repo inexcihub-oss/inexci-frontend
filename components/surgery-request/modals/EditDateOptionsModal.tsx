@@ -18,12 +18,6 @@ interface EditDateOptionsModalProps {
   onSuccess: () => void;
 }
 
-/**
- * Modal "Editar Datas" — IN_SCHEDULING (4), sem mudança de status.
- * Permite atualizar as opções de data propostas para a cirurgia.
- *
- * Referência visual: telas-inexci/status/em-agendamento/tela-detalhes-em-agendamento.png
- */
 export function EditDateOptionsModal({
   isOpen,
   onClose,
@@ -90,7 +84,6 @@ export function EditDateOptionsModal({
             oldStatus: 4,
           });
         } catch {
-          // Falha no e-mail não bloqueia o fluxo principal
         }
       }
 

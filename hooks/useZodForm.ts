@@ -3,22 +3,9 @@
 import { useCallback, useRef, useState } from "react";
 import { z, ZodIssue } from "zod";
 
-/**
- * Hook leve de formulário com Zod, sem dependência de react-hook-form.
- *
- * - `values`           → estado atual
- * - `errors`           → record `{ [field]: string }` (mensagem do primeiro issue)
- * - `setField(k, v)`   → atualiza um campo e limpa o erro daquele campo
- * - `setValues(p)`     → patch parcial
- * - `getFieldProps(k)` → `{ value, onChange, error }` para casar com `<Input>`
- * - `validate()`       → roda o schema, popula erros, retorna `{ success, data }`
- * - `handleSubmit(onValid, onInvalid?)` → wrapper de form submit
- * - `reset(values?)`   → volta ao initial (ou patch)
- */
 export interface UseZodFormOptions<TSchema extends z.ZodTypeAny> {
   schema: TSchema;
   initialValues: z.input<TSchema>;
-  /** Quando true, valida em cada change (default: false — valida só no submit). */
   validateOnChange?: boolean;
 }
 

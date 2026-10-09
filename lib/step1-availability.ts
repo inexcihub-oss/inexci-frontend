@@ -1,17 +1,3 @@
-/**
- * Decide o que a etapa 1 do cadastro faz com o resultado das checagens de
- * disponibilidade de e-mail e telefone.
- *
- * Vive fora da página por dois motivos: a regra tem casos suficientes para
- * merecer teste próprio (dois campos, três status, falha de rede), e a decisão
- * "bloqueia ou não" precisa ser óbvia de auditar — é ela que segura o usuário
- * na etapa em que ainda dá para corrigir o dado.
- *
- * `null` significa "não deu para checar" (rede caiu, endpoint falhou, throttle
- * estourou). Nesse caso a etapa NÃO bloqueia: a checagem é uma comodidade, e o
- * submit revalida de qualquer jeito — travar o cadastro por indisponibilidade
- * de um endpoint auxiliar seria pior que o problema que ele resolve.
- */
 export type EmailAvailability =
   | "available"
   | "pending_invite"
@@ -21,9 +7,7 @@ export type EmailAvailability =
 export type PhoneAvailability = "available" | "registered" | null;
 
 export interface Step1AvailabilityResult {
-  /** Impede avançar para a etapa 2. */
   blocked: boolean;
-  /** Mensagens a exibir sob cada campo. */
   fieldErrors: { email?: string; phone?: string };
 }
 

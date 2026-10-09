@@ -23,7 +23,6 @@ function render(ui: ReactElement) {
   );
 }
 
-/** Promessa que o teste resolve na hora que quiser. */
 function adiada<T>() {
   let resolve!: (v: T) => void;
   let reject!: (e: unknown) => void;
@@ -133,7 +132,6 @@ describe("HolidaysSettings (MIG-05)", () => {
     await user.click(screen.getByRole("button", { name: /^excluir$/i }));
     await waitFor(() => expect(invalidar).toHaveBeenCalledTimes(2));
 
-    // Importação que falha no meio também avisa (os já criados valem).
     service.createHoliday.mockRejectedValueOnce(new Error("rede"));
     await user.click(screen.getByRole("button", { name: "Importar feriados nacionais" }));
     await waitFor(() => expect(invalidar).toHaveBeenCalledTimes(3));

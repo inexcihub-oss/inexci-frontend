@@ -13,9 +13,6 @@ describe("DocumentPreview", () => {
     expect(host().shadowRoot?.textContent).toContain("RECEITUÁRIO");
   });
 
-  // O template traz `<style>` com regras para `body`, `*` e classes genéricas.
-  // Injetado na página, isso reestilizaria o app inteiro; no shadow root o
-  // efeito para na borda da prévia.
   it("mantém o CSS do documento isolado da página", () => {
     render(
       <DocumentPreview html="<html><head><style>body{background:#000}</style></head><body><p>ok</p></body></html>" />,

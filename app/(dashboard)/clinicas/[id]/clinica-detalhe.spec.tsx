@@ -1,11 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
-// `vi.mock` é hoisted para o topo do arquivo, antes de qualquer `const` comum
-// — referenciar `clinic`/`update` direto dentro da factory dispararia
-// "Cannot access before initialization". `vi.hoisted` sobe a própria
-// declaração junto, que é o padrão já usado em
-// `colaboradores/__tests__/painel-solicitacoes.spec.tsx`.
 const { update, clinic, push } = vi.hoisted(() => {
   const update = vi.fn().mockResolvedValue({});
   const push = vi.fn();
@@ -36,11 +31,6 @@ const { update, clinic, push } = vi.hoisted(() => {
   return { update, clinic, push };
 });
 
-// `push` é compartilhado (vi.hoisted) em vez de recriado a cada chamada de
-// `useRouter()` — só assim dá para afirmar, depois de interagir com a tela,
-// que a navegação para fora NÃO aconteceu.
-// A seção de salas tem spec próprio e usa TanStack Query; aqui só importa
-// que ela é montada com o id da clínica.
 vi.mock("@/components/clinics/ClinicRoomsSection", () => ({
   ClinicRoomsSection: ({ clinicId }: { clinicId: string }) => (
     <div data-testid="salas">salas de {clinicId}</div>
@@ -89,7 +79,6 @@ describe("Detalhe da clínica", () => {
     render(<ClinicaDetalhePage />);
     await screen.findByDisplayValue("Unidade Centro");
 
-    // Deixa o início depois do fim no bloco de segunda.
     fireEvent.change(screen.getByDisplayValue("08:00"), {
       target: { value: "13:00" },
     });
@@ -104,7 +93,6 @@ describe("Detalhe da clínica", () => {
     render(<ClinicaDetalhePage />);
     const nomeInput = await screen.findByDisplayValue("Unidade Centro");
 
-    // Edita um campo do formulário (isDirty) e um bloco da grade.
     fireEvent.change(nomeInput, { target: { value: "Unidade Sul" } });
     fireEvent.change(screen.getByDisplayValue("08:00"), {
       target: { value: "09:00" },
@@ -121,7 +109,6 @@ describe("Detalhe da clínica", () => {
     render(<ClinicaDetalhePage />);
     await screen.findByDisplayValue("Unidade Centro");
 
-    // Só a grade muda — nenhum campo do formulário é tocado.
     fireEvent.change(screen.getByDisplayValue("08:00"), {
       target: { value: "10:00" },
     });

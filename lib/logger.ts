@@ -1,21 +1,3 @@
-/**
- * Logger central do frontend.
- *
- * Em desenvolvimento, espelha `console.*` para que o DX permaneça igual.
- * Em produção:
- *   - `log` e `debug` são silenciados (evita poluir o devtools dos clientes
- *     e vazar informações de debug).
- *   - `warn` e `error` continuam ativos e ganham metadados (`requestId`,
- *     `userAgent`, `url`) para correlação com o backend.
- *
- * Caminhos opcionais:
- *   - `setRequestId` / `getRequestId` permitem que o axios interceptor
- *     anote o último `X-Request-Id` recebido — útil para mostrar em
- *     páginas de erro ("Reporte este ID ao suporte").
- *   - `NEXT_PUBLIC_LOG_LEVEL` (em `.env.local`) sobrescreve o nível mínimo
- *     mesmo em produção (útil para diagnóstico pontual em staging).
- */
-
 type LogLevel = "error" | "warn" | "log" | "debug";
 
 const RANK: Record<LogLevel, number> = {

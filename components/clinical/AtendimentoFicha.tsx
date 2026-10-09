@@ -36,13 +36,10 @@ export interface FichaFields {
   conduct: string;
   cidCodes: ClinicalCidCode[];
   surgicalIndication: boolean;
-  /** Procedimento escolhido (ou criado) para a SC que nasce da indicação. */
   procedureId: string | null;
-  /** Só para exibição — o que persiste no backend é `procedureId`. */
   procedureName: string;
 }
 
-/** Estado inicial da ficha a partir de um registro já persistido (ou vazio). */
 export function fichaFieldsFrom(record: ClinicalRecord | null): FichaFields {
   return {
     anamnesis: record?.anamnesis ?? "",
@@ -56,11 +53,6 @@ export function fichaFieldsFrom(record: ClinicalRecord | null): FichaFields {
   };
 }
 
-/**
- * Conteúdo da aba "Atendimento": as quatro seções clínicas. Componente
- * controlado — o estado, o salvamento e o header vivem no `AtendimentoTabs`,
- * que é quem sabe se a ficha está finalizada e o que já foi persistido.
- */
 export function AtendimentoFicha({
   fields,
   onFieldChange,
@@ -70,23 +62,8 @@ export function AtendimentoFicha({
   surgicalIndicationBlockedReason,
   keepSurgicalIndicationVisible = false,
 }: {
-  /**
-   * Motivo para o cartão aparecer desabilitado (ex.: CRM sem número). Diferente
-   * de `allowSurgicalIndication = false`, que esconde o cartão: aqui o médico
-   * precisa saber o que falta para poder indicar.
-   */
   surgicalIndicationBlockedReason?: string;
-  /**
-   * Indicação cirúrgica é ato de médico (CRM): abre uma SC em nome dele. Para
-   * psicologia, nutrição, enfermagem etc. o card some — a não ser que a ficha
-   * já tenha a indicação gravada, caso em que o resultado continua visível.
-   */
   allowSurgicalIndication?: boolean;
-  /**
-   * Mantém o cartão na tela mesmo desmarcado e sem permissão de marcar — ex.:
-   * a indicação estava gravada e quem não pode indicar acabou de desmarcá-la.
-   * Sem isto o cartão sumiria no clique, sem como conferir o que mudou.
-   */
   keepSurgicalIndicationVisible?: boolean;
   fields: FichaFields;
   onFieldChange: <K extends keyof FichaFields>(
@@ -94,7 +71,6 @@ export function AtendimentoFicha({
     value: FichaFields[K],
   ) => void;
   readOnly: boolean;
-  /** SC já criada a partir desta ficha, se houver. */
   surgeryRequestId: string | null;
 }) {
   return (
@@ -169,9 +145,6 @@ export function AtendimentoFicha({
             onFieldChange("procedureId", id);
             onFieldChange("procedureName", name);
           }}
-          // Desmarcar é sempre possível para quem escreve a ficha: é o que
-          // destrava salvar/finalizar um rascunho com indicação que não pode
-          // mais seguir. Só MARCAR depende de permissão (e de nada bloqueando).
           readOnly={
             readOnly ||
             (!fields.surgicalIndication &&
@@ -185,13 +158,6 @@ export function AtendimentoFicha({
   );
 }
 
-/**
- * O marcador que dispara a criação da solicitação cirúrgica ao finalizar o
- * atendimento. Depois de finalizada, a ficha mostra o resultado: o link da SC
- * criada ou o aviso de que a criação está em andamento — nesse caso o backend
- * retoma sozinho (ver o sweeper do SurgicalIndicationService), então não há
- * ação nenhuma a cobrar do médico.
- */
 export function IndicacaoCirurgicaCard({
   checked,
   onChange,
@@ -318,7 +284,6 @@ function SectionCard({
   icon: React.ReactNode;
   title: string;
   children: React.ReactNode;
-  /** Âncora do tour de onboarding para este card, quando houver. */
   dataTour?: string;
 }) {
   return (

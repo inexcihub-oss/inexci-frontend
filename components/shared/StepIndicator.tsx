@@ -3,20 +3,11 @@
 import React from "react";
 
 interface StepIndicatorProps {
-  /** Total de etapas */
   totalSteps: number;
-  /** Etapa atual (1-indexed) */
   currentStep: number;
   className?: string;
 }
 
-/**
- * Indicador visual de etapas reutilizável.
- * Exibe círculos numerados conectados por linhas.
- * - Etapa atual: fundo teal escuro
- * - Etapas anteriores: fundo teal claro
- * - Etapas futuras: fundo cinza
- */
 export function StepIndicator({
   totalSteps,
   currentStep,

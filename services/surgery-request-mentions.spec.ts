@@ -20,11 +20,6 @@ describe("surgeryRequestService — menções", () => {
 
     const result = await surgeryRequestService.getMentionableUsers("sc-1");
 
-    // A rota vive sob o controller de atividades
-    // (`@Controller('surgery-requests/:id/activities')` +
-    // `@Get('mentionable-users')`). Omitir o segmento `/activities` devolve
-    // 404, e o `.catch` do ActivityComposer transforma isso em "lista vazia" —
-    // o dropdown de @ simplesmente não abre, sem erro na tela.
     expect(api.get).toHaveBeenCalledWith(
       "/surgery-requests/sc-1/activities/mentionable-users",
     );

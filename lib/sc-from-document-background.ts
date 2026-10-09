@@ -9,7 +9,7 @@ export const SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY =
   "sc_from_document_extraction_foreground";
 
 const STORAGE_ENVELOPE_VERSION = 1;
-const DEFAULT_TTL_MS = 2 * 60 * 60 * 1000; // 2h
+const DEFAULT_TTL_MS = 2 * 60 * 60 * 1000;
 
 interface StorageEnvelope<T> {
   v: number;
@@ -79,7 +79,6 @@ export function getScFromDocumentStorage<T>(key: string): T | null {
       return envelope.value;
     }
 
-    // Fallback para formato legado sem envelope/TTL
     return parsed as T;
   } catch {
     localStorage.removeItem(key);

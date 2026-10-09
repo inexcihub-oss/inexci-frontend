@@ -1,29 +1,12 @@
 import { APIRequestContext, request } from "@playwright/test";
 import { API_URL, DOCTOR } from "./credentials";
 
-/**
- * Atalhos de setup/limpeza pela API.
- *
- * Massa de dados criada por rota HTTP, não pela interface: o objetivo do teste
- * é o fluxo da tela, e montar paciente pelo formulário a cada execução só
- * acrescenta pontos de falha que não são o que se quer verificar. O que a UI
- * precisa exercitar (agendar, atender, finalizar) continua sendo feito na tela.
- */
-
 export interface ApiSession {
   ctx: APIRequestContext;
   token: string;
   userId: string;
 }
 
-/**
- * Autentica na API, aguardando o `CustomThrottlerGuard` liberar.
- *
- * `/auth/login` é limitado por janela: com um arquivo de teste por login, mais
- * o login de interface do `auth.setup`, a suíte estoura o limite e recebe 429 —
- * uma falha do ambiente, não do produto. A espera é linear e curta; se o 429
- * persistir depois de todas as tentativas, aí sim é problema de verdade.
- */
 export async function loginApi(): Promise<ApiSession> {
   const ctx = await request.newContext({ baseURL: API_URL });
 
@@ -81,16 +64,6 @@ export async function consultasDoPaciente(session: ApiSession, patientId: string
   return body.records ?? [];
 }
 
-/**
- * Devolve os horários usados pelo teste à agenda.
- *
- * A ficha de rascunho é apagada antes da consulta (desde D-06, consulta com
- * prontuário não pode ser excluída). Quando a ficha está **finalizada** nada
- * disso é possível — é dado clínico imutável, e é o certo — então a consulta é
- * **cancelada**: consulta cancelada não conta para conflito de horário, e o
- * slot fica livre para a próxima execução. Sem isso, cada rodada queimaria um
- * horário permanentemente e a seguinte falharia com 409 no fluxo principal.
- */
 export async function limparConsultas(session: ApiSession, patientId: string) {
   const consultas = await consultasDoPaciente(session, patientId);
   for (const consulta of consultas) {
@@ -137,13 +110,6 @@ export async function agendarViaApi(
   return res.json();
 }
 
-/**
- * Zera o onboarding pelo próprio produto (`POST /onboarding/reset`).
- *
- * O seed não garante `onboarding_state` nulo numa execução repetida da
- * suíte — o cenário "usuário novo vê o modal" exige `welcomeSeenAt` nulo, e
- * escrever isso via SQL direto contornaria a regra de negócio real.
- */
 export async function resetOnboarding(session: ApiSession) {
   const res = await session.ctx.post("/onboarding/reset", {
     headers: auth(session),
@@ -154,7 +120,6 @@ export async function resetOnboarding(session: ApiSession) {
   return res.json();
 }
 
-/** Progresso de onboarding do usuário autenticado (`GET /onboarding/state`). */
 export async function onboardingState(session: ApiSession) {
   const res = await session.ctx.get("/onboarding/state", {
     headers: auth(session),
@@ -165,7 +130,6 @@ export async function onboardingState(session: ApiSession) {
   return res.json();
 }
 
-/** CPF válido gerado a partir de 9 dígitos aleatórios (o backend valida). */
 export function gerarCpf(): string {
   const base = Array.from({ length: 9 }, () => Math.floor(Math.random() * 9));
   const digito = (nums: number[], pesoInicial: number) => {

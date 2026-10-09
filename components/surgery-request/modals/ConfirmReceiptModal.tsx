@@ -27,9 +27,7 @@ import {
 } from "@/lib/file-upload";
 
 const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png";
-const ATTACHMENT_MAX_BYTES = MAX_DOCUMENT_FILE_SIZE_BYTES; // espelha o limite do backend
-
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+const ATTACHMENT_MAX_BYTES = MAX_DOCUMENT_FILE_SIZE_BYTES;
 
 type Step = 1 | 2;
 
@@ -38,13 +36,9 @@ interface ConfirmReceiptModalProps {
   onClose: () => void;
   solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
-  /** Valor numérico para pré-preencher o campo de valor recebido (usado ao editar contestação) */
   initialReceivedValue?: number;
-  /** Quando true, chama updateReceipt (PATCH) em vez de confirmReceipt (POST) */
   isEditMode?: boolean;
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-BR", {
@@ -53,7 +47,6 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-// Interpreta string de data YYYY-MM-DD como horário local (não UTC)
 function parseDate(s: string): Date {
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(s);
@@ -88,22 +81,6 @@ function applyBRLMask(input: string): string {
   return `R$ ${intFormatted},${cents}`;
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
-/**
- * Modal "Confirmar Recebimento" — INVOICED (7) → FINALIZED (8).
- *
- * Etapa 1 (Confirmar recebimento):
- *   - Campos: valor recebido, data do recebimento, observações, anexos.
- *   - Valor OK → "Confirmar" habilitado com banner verde.
- *   - Valor divergente → banner amarelo + botão "Confirmar e recorrer".
- *
- * Etapa 2 (Contestar recebimento — ao clicar em "Confirmar e recorrer"):
- *   - Campos: De, Para, Assunto, Mensagem, Documento de contestação.
- *   - Footer: "Voltar" + "Enviar e-mail".
- *
- * Design: Figma nodes 1-1679 / 1-1714 / 1-1756 / 1-1929
- */
 export function ConfirmReceiptModal({
   isOpen,
   onClose,
@@ -117,10 +94,8 @@ export function ConfirmReceiptModal({
 
   const [step, setStep] = useState<Step>(1);
 
-  // Etapa 1
   const [receivedValue, setReceivedValue] = useState("");
 
-  // Pré-preenche o valor ao abrir com initialReceivedValue (edição de contestação)
   useEffect(() => {
     if (isOpen && initialReceivedValue != null && initialReceivedValue > 0) {
       const cents = Math.round(initialReceivedValue * 100).toString();
@@ -131,7 +106,6 @@ export function ConfirmReceiptModal({
   const [receivedAt, setReceivedAt] = useState(todayStr);
   const [receiptNotes, setReceiptNotes] = useState("");
 
-  // Etapa 2
   const [contestToTags, setContestToTags] = useState<string[]>([]);
   const [contestToInput, setContestToInput] = useState("");
   const [contestFormTouched, setContestFormTouched] = useState(false);
@@ -163,7 +137,6 @@ export function ConfirmReceiptModal({
     }
   };
 
-  // Anexos (etapa 1: comprovante de recebimento / etapa 2: documento de contestação)
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [contestFile, setContestFile] = useState<File | null>(null);
   const receiptFileRef = useRef<HTMLInputElement>(null);
@@ -178,7 +151,7 @@ export function ConfirmReceiptModal({
     setter: (f: File | null) => void,
   ) => {
     const f = e.target.files?.[0];
-    e.target.value = ""; // permite re-selecionar o mesmo arquivo
+    e.target.value = "";
     if (!f) return;
     if (f.size > ATTACHMENT_MAX_BYTES) {
       showToast(
@@ -190,7 +163,6 @@ export function ConfirmReceiptModal({
     setter(f);
   };
 
-  // Sobe o anexo vinculado à SC. Falha não bloqueia (status já mudou).
   const uploadAttachment = async (file: File, key: string) => {
     try {
       await documentService.upload({
@@ -205,7 +177,6 @@ export function ConfirmReceiptModal({
     }
   };
 
-  // ── Billing data ──
   const billing = solicitacao?.billing;
   const invoiceValue: number = Number(billing?.invoiceValue ?? 0);
 
@@ -217,7 +188,6 @@ export function ConfirmReceiptModal({
   const hasDivergence = valueIsValid && parsedReceivedValue !== invoiceValue;
   const valueDifference = valueIsValid ? invoiceValue - parsedReceivedValue : 0;
 
-  // ── Display values ──
   const protocol = billing?.invoiceProtocol || "—";
   const invoiceValueStr = invoiceValue > 0 ? formatCurrency(invoiceValue) : "—";
   const sentAtStr = formatDate(billing?.invoiceSentAt);
@@ -242,7 +212,6 @@ export function ConfirmReceiptModal({
     onClose();
   };
 
-  // Confirma recebimento (novo ou edição de contestação)
   const handleConfirm = async () => {
     const missing: string[] = [];
     if (!receivedValue.trim() || !valueIsValid) missing.push("Valor recebido");
@@ -285,7 +254,6 @@ export function ConfirmReceiptModal({
     }
   };
 
-  // Abre etapa de contestação
   const handleConfirmAndContest = () => {
     const missing: string[] = [];
     if (!receivedValue.trim() || !valueIsValid) missing.push("Valor recebido");
@@ -304,7 +272,6 @@ export function ConfirmReceiptModal({
     setStep(2);
   };
 
-  // Confirma e envia contestação por e-mail
   const handleSubmitContest = async () => {
     const missing: string[] = [];
     if (contestToTags.length === 0) missing.push("Destinatários");
@@ -317,14 +284,12 @@ export function ConfirmReceiptModal({
     }
     setIsSaving(true);
     try {
-      // 1. Confirma o recebimento — muda status para Finalizada
       await surgeryRequestService.confirmReceipt(solicitacao.id, {
         receivedValue: parsedReceivedValue,
         receivedAt: new Date(receivedAt).toISOString(),
         receiptNotes: receiptNotes.trim() || undefined,
       });
 
-      // 2. Tenta enviar o e-mail de contestação (falha não bloqueia o fluxo)
       try {
         await surgeryRequestService.contestPayment(solicitacao.id, {
           to: contestToTags.join(";"),
@@ -363,7 +328,6 @@ export function ConfirmReceiptModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={handleClose}
@@ -377,7 +341,6 @@ export function ConfirmReceiptModal({
             : undefined
         }
       >
-        {/* Drag handle — apenas mobile */}
         <div
           className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none shrink-0"
           onTouchStart={onTouchStart}
@@ -387,7 +350,6 @@ export function ConfirmReceiptModal({
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100 shrink-0">
           {step === 2 && (
             <button
@@ -422,11 +384,9 @@ export function ConfirmReceiptModal({
           </button>
         </div>
 
-        {/* ── Etapa 1: Confirmar recebimento ── */}
         {step === 1 && (
           <>
             <div className="flex flex-col gap-4 md:gap-5 p-4 md:p-6 overflow-y-auto">
-              {/* Billing info card */}
               <div className="rounded-xl border border-primary-100 bg-primary-50/60">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-primary-100/70">
                   <Receipt className="w-3.5 h-3.5 text-primary-600 shrink-0" />
@@ -483,13 +443,11 @@ export function ConfirmReceiptModal({
                 </div>
               </div>
 
-              {/* Seção de confirmação */}
               <div className="flex flex-col gap-3 md:gap-4">
                 <p className="text-xs md:text-sm font-medium text-neutral-500">
                   Informe os valores recebidos do convênio
                 </p>
 
-                {/* Value + Date fields */}
                 <div className="grid grid-cols-2 gap-3 md:gap-4">
                   <div className="flex flex-col gap-1.5">
                     <label className="ds-label mb-0">Valor recebido</label>
@@ -517,7 +475,6 @@ export function ConfirmReceiptModal({
                   </div>
                 </div>
 
-                {/* Value comparison alert */}
                 {valueIsValid &&
                   (hasDivergence ? (
                     <div className="flex items-start gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
@@ -547,7 +504,6 @@ export function ConfirmReceiptModal({
                   ))}
               </div>
 
-              {/* Observations */}
               <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">
                   Observações{" "}
@@ -565,7 +521,6 @@ export function ConfirmReceiptModal({
                 />
               </div>
 
-              {/* Attachments */}
               <div className="flex items-center justify-between gap-3 p-3.5 border border-dashed border-neutral-200 bg-neutral-50 rounded-xl">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-8 h-8 flex items-center justify-center bg-white border border-neutral-200 rounded-lg shrink-0">
@@ -610,7 +565,6 @@ export function ConfirmReceiptModal({
               </div>
             </div>
 
-            {/* Footer Etapa 1 */}
             <div className="flex items-center justify-end gap-2 md:gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 shrink-0 bg-white">
               <button
                 onClick={handleClose}
@@ -640,11 +594,9 @@ export function ConfirmReceiptModal({
           </>
         )}
 
-        {/* ── Etapa 2: Contestar recebimento ── */}
         {step === 2 && (
           <>
             <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
-              {/* De */}
               <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">De</label>
                 <input
@@ -659,7 +611,6 @@ export function ConfirmReceiptModal({
                 />
               </div>
 
-              {/* Para */}
               <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">Para</label>
                 <p className="text-xs text-neutral-400 -mt-0.5">
@@ -717,7 +668,6 @@ export function ConfirmReceiptModal({
                 )}
               </div>
 
-              {/* Assunto */}
               <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">Assunto</label>
                 <input
@@ -732,7 +682,6 @@ export function ConfirmReceiptModal({
                 )}
               </div>
 
-              {/* Mensagem */}
               <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">Mensagem</label>
                 <textarea
@@ -744,7 +693,6 @@ export function ConfirmReceiptModal({
                 />
               </div>
 
-              {/* Documento de contestação */}
               <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">
                   Documento de contestação
@@ -794,7 +742,6 @@ export function ConfirmReceiptModal({
               </div>
             </div>
 
-            {/* Footer Etapa 2 */}
             <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 shrink-0 bg-white">
               <button
                 onClick={() => setStep(1)}

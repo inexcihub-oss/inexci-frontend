@@ -23,8 +23,6 @@ vi.mock("@/hooks/useToast", () => ({
 import { StartAnalysisModal } from "./StartAnalysisModal";
 
 function preencherCamposObrigatorios() {
-  // "Ex: 0000000-0" também é o placeholder dos campos de cotação; o
-  // primeiro da lista é o Nº da solicitação (topo do formulário).
   return {
     requestNumber: screen.getAllByPlaceholderText("Ex: 0000000-0")[0],
   };
@@ -86,8 +84,6 @@ describe("StartAnalysisModal — documento opcional", () => {
   });
 
   it("rejeita extensão não permitida", async () => {
-    // O atributo `accept` do input já filtra no picker do SO; desligamos o
-    // filtro do user-event para simular quem troca para "Todos os arquivos".
     const user = userEvent.setup({ applyAccept: false });
     render(
       <StartAnalysisModal

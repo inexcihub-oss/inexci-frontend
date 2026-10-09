@@ -1,9 +1,3 @@
-/**
- * Testes para headers de segurança configurados em next.config.mjs.
- *
- * Em vitest NODE_ENV = "test", portanto isProd = false (comportamento de dev).
- * Para validar headers de produção (HSTS), fazemos verificação estática do source.
- */
 import { describe, it, expect, beforeAll } from "vitest";
 import nextConfig from "../../next.config.mjs";
 import fs from "fs";
@@ -47,14 +41,10 @@ describe("next.config.mjs — Security Headers (dev/test)", () => {
   it("deve incluir Permissions-Policy restritiva", () => {
     const h = headers.find((h) => h.key === "Permissions-Policy");
     expect(h).toBeDefined();
-    // Câmera liberada só para a própria origem (foto do paciente pela webcam).
     expect(h!.value).toContain("camera=(self)");
     expect(h!.value).toContain("microphone=()");
   });
 
-  // A Content-Security-Policy deixou de ser estática em next.config.mjs e
-  // passou a ser emitida com nonce por requisição pelo middleware (ver
-  // `lib/csp.ts`, `middleware.ts` e `middleware-csp.test.ts`).
   it("NÃO deve incluir Content-Security-Policy (movida para o middleware)", () => {
     const h = headers.find((h) => h.key === "Content-Security-Policy");
     expect(h).toBeUndefined();
@@ -93,7 +83,6 @@ describe("next.config.mjs — HSTS em produção (validação estática)", () =>
   });
 
   it("deve ser condicionado a isProd (não ativar em dev)", () => {
-    // Verifica que HSTS está dentro de um bloco condicional isProd
     expect(configSource).toMatch(/isProd[\s\S]*Strict-Transport-Security/);
   });
 });

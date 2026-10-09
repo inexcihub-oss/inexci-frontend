@@ -8,8 +8,6 @@ import {
   BILLING_BLOCK_REASONS,
 } from "../http-error";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function makeAxiosError(
   status: number,
   data?: Record<string, unknown>,
@@ -23,8 +21,6 @@ function makeAxiosError(
     data: data ?? {},
   });
 }
-
-// ─── isUnauthorizedError ─────────────────────────────────────────────────────
 
 describe("isUnauthorizedError", () => {
   it("retorna true para AxiosError com status 401", () => {
@@ -50,8 +46,6 @@ describe("isUnauthorizedError", () => {
   });
 });
 
-// ─── getApiErrorMessage ──────────────────────────────────────────────────────
-
 describe("getApiErrorMessage", () => {
   it("extrai message string de AxiosError com response.data", () => {
     const error = makeAxiosError(400, { message: "E-mail já cadastrado" });
@@ -69,7 +63,6 @@ describe("getApiErrorMessage", () => {
 
   it("usa Error.message como fallback quando AxiosError não tem response.data.message", () => {
     const error = makeAxiosError(500, {});
-    // AxiosError herda de Error — tem message "Request failed"
     expect(getApiErrorMessage(error)).toBe("Request failed");
   });
 
@@ -100,12 +93,9 @@ describe("getApiErrorMessage", () => {
     const error = makeAxiosError(400, {
       message: "Mensagem da API",
     });
-    // AxiosError herda de Error — deve preferir a data.message
     expect(getApiErrorMessage(error)).toBe("Mensagem da API");
   });
 });
-
-// ─── getBillingBlockError ────────────────────────────────────────────────────
 
 describe("getBillingBlockError", () => {
   it("extrai reason e message de um 402 de cota atingida", () => {
@@ -165,8 +155,6 @@ describe("getBillingBlockError", () => {
     expect(getBillingBlockError(undefined)).toBeNull();
   });
 });
-
-// ─── getTransitionBlockError ─────────────────────────────────────────────────
 
 describe("getTransitionBlockError", () => {
   it("formata a mensagem com as pendências do 400", () => {

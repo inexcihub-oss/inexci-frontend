@@ -51,11 +51,6 @@ const ACAO = {
   reabrir: { status: "scheduled", label: "Reabrir", cls: "text-blue-700 border-blue-200 hover:bg-blue-50" },
 } as const satisfies Record<string, { status: AppointmentStatus; label: string; cls: string }>;
 
-/**
- * Ações rápidas por status. "Chegou" leva à sala de espera (aguardando); abrir
- * a ficha leva a "em atendimento" pelo backend, por isso não há botão para
- * isso aqui.
- */
 const QUICK: Record<
   AppointmentStatus,
   { status: AppointmentStatus; label: string; cls: string }[]
@@ -69,12 +64,6 @@ const QUICK: Record<
   no_show: [ACAO.reabrir],
 };
 
-/**
- * Para onde "Desfazer chegada" volta: o status de antes do último "Chegou",
- * lido do histórico da consulta. Quem só estava agendado volta a agendado —
- * não ganha uma confirmação que o paciente nunca deu. Sem esse registro
- * (consulta antiga, histórico falhou), volta a confirmada.
- */
 export function statusAntesDaChegada(
   atividades: AppointmentActivity[],
 ): AppointmentStatus {
@@ -104,18 +93,13 @@ export function formatWhen(iso: string, durationMinutes: number): string {
     month: "long",
     timeZone: AGENDA_TIME_ZONE,
   }).format(start);
-  // Mesmo fuso do dia: `getHours()` usaria o fuso do navegador e, fora de
-  // Brasília, misturava o dia de um fuso com a hora de outro.
   const t = (d: Date) => HORA_SP.format(d);
-  // Só a inicial em maiúscula: `capitalize` de CSS subia também as
-  // preposições ("Quarta-Feira, 05 De Agosto").
   return capitalizeFirst(`${day} · ${t(start)} às ${t(end)}`);
 }
 
 interface Props {
   appointment: Appointment;
   doctorName?: string;
-  /** Sem CRM (nutricionista, técnica…) o nome sai sem "Dr(a).". */
   doctorIsPhysician?: boolean;
   busy?: boolean;
   onClose: () => void;
@@ -138,15 +122,8 @@ export function AppointmentDetailModal({
 }: Props) {
   const { isDoctor, can } = useAuth();
   const { emTour } = useOnboarding();
-  // Guarda por PROVENIÊNCIA, não só pelo estado do tour: se o usuário sair
-  // do tour ainda olhando esta consulta fabricada, o botão continua
-  // desabilitado — o dado nunca deixa de ser fabricado só porque o tour
-  // acabou.
   const dadosFabricados = appointment.id === TOUR_DEMO_APPOINTMENT_ID;
 
-  // Atender é ato do médico; quem agenda não abre a ficha. A consulta já
-  // realizada abre para todos (leitura do prontuário) — só cancelada/faltou
-  // não têm atendimento nenhum.
   const canAttend =
     appointment.status === "completed" ||
     appointment.clinicalRecordStatus === "finalized" ||
@@ -155,19 +132,12 @@ export function AppointmentDetailModal({
         appointment.status === "confirmed" ||
         appointment.status === "waiting" ||
         appointment.status === "in_progress"));
-  // Mexer na consulta (status, editar, excluir) é ato de quem tem Agenda —
-  // eixo diferente de `isDoctor`, que só decide o botão de atendimento acima.
   const podeAgenda = can(Permission.AGENDA);
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const [desfazendo, setDesfazendo] = useState(false);
-  // Excluir tira a consulta da agenda e do histórico do paciente: um clique
-  // ao lado de "Cancelar" não pode bastar.
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const actions = podeAgenda ? QUICK[appointment.status] : [];
 
-  // "Desfazer chegada" espera o histórico antes de mudar o status. Se o
-  // modal fechar (ou passar a mostrar outra consulta) nesse meio-tempo, a
-  // resposta chega tarde e não pode mais mexer em nada.
   const vivo = useRef(true);
   const consultaAtual = useRef(appointment.id);
   consultaAtual.current = appointment.id;
@@ -259,8 +229,6 @@ export function AppointmentDetailModal({
           )}
         </div>
 
-        {/* Histórico: carrega só ao abrir. A consulta fabricada do tour não
-            existe no banco, então não tem histórico. */}
         {!dadosFabricados && (
           <div className="border-t border-neutral-100 pt-3">
             <button
@@ -288,7 +256,6 @@ export function AppointmentDetailModal({
           </div>
         )}
 
-        {/* Ações de status */}
         {actions.length > 0 && (
           <div className="flex flex-wrap gap-2" data-tour="agenda-consulta-acoes">
             {actions.map((a) => (
@@ -308,7 +275,6 @@ export function AppointmentDetailModal({
         )}
       </div>
 
-      {/* Rodapé */}
       <div
         className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 px-4 md:px-6 py-3 md:py-4 border-t border-neutral-100 sticky bottom-0 bg-white"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}

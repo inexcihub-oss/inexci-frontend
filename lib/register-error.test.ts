@@ -26,9 +26,6 @@ describe("classifyRegisterError", () => {
     ).toBe("phone_active");
   });
 
-  // O erro de telefone não pode cair no ramo de e-mail: o bloco de email_active
-  // oferece "Fazer login" e "Recuperar senha", que não resolvem nada para quem
-  // digitou um telefone repetido — mandaria o usuário para o lugar errado.
   it("não confunde o erro de telefone com o de e-mail", () => {
     expect(
       classifyRegisterError(

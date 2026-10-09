@@ -27,7 +27,6 @@ interface NewCollaboratorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  /** Quando true, o toggle "É médico" é pré-ativado e o título/botão mudam para "Novo médico" */
   defaultIsDoctor?: boolean;
 }
 
@@ -97,14 +96,11 @@ export function NewCollaboratorModal({
       crm: "",
       crmState: "",
       specialty: "",
-      // Nasce com o perfil completo: é o comportamento de hoje (sem o
-      // bloco de permissões, todo colaborador tinha acesso a tudo).
       permissions: PROFILE_PRESETS.completo,
     },
   });
   const isCrm = (form.values.council ?? "CRM") === "CRM";
 
-  // Mantém is_doctor sincronizado quando defaultIsDoctor mudar
   useEffect(() => {
     form.setField("isDoctor", defaultIsDoctor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,8 +148,6 @@ export function NewCollaboratorModal({
           email: data.email.trim(),
           phone: unmask(data.phone),
           permissions: data.permissions,
-          // Médico (CRM) sem número não chega aqui (o schema barra). Para os
-          // demais conselhos, número e UF vão só se preenchidos.
           ...(data.isDoctor && {
             isDoctor: true,
             council: data.council,
@@ -163,7 +157,6 @@ export function NewCollaboratorModal({
           }),
         };
         await collaboratorService.create(payload);
-        // Profissional novo entra na lista de médicos do wizard e da agenda.
         void invalidateAvailableDoctors();
         onSuccess();
         form.reset({
@@ -209,7 +202,6 @@ export function NewCollaboratorModal({
         onClick={handleClose}
       />
       <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 flex-shrink-0">
           <h2 className="ds-modal-title">
             {defaultIsDoctor ? "Novo médico" : "Novo colaborador"}
@@ -224,14 +216,12 @@ export function NewCollaboratorModal({
         </div>
         <div className="h-px bg-gray-200 flex-shrink-0" />
 
-        {/* Body */}
         <form
           onSubmit={onSubmit}
           noValidate
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
-            {/* Row 1: Nome + Telefone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className={labelClass}>Nome completo</label>
@@ -262,7 +252,6 @@ export function NewCollaboratorModal({
               </div>
             </div>
 
-            {/* Row 2: E-mail */}
             <div className="flex flex-col gap-1.5">
               <label className={labelClass}>E-mail</label>
               <input
@@ -281,7 +270,6 @@ export function NewCollaboratorModal({
               )}
             </div>
 
-            {/* Is Doctor Toggle */}
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -303,7 +291,6 @@ export function NewCollaboratorModal({
               </span>
             </div>
 
-            {/* Doctor Fields (conditional) */}
             {form.values.isDoctor && (
               <div className="space-y-3 p-4 bg-teal-50 rounded-xl border border-teal-100">
                 <div className="flex flex-col gap-1.5">
@@ -411,7 +398,6 @@ export function NewCollaboratorModal({
               </div>
             )}
 
-            {/* Permissões */}
             <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 md:pt-5">
               <h3 className="ds-section-title">Permissões de acesso</h3>
               <PermissionsSection
@@ -427,7 +413,6 @@ export function NewCollaboratorModal({
             )}
           </div>
 
-          {/* Footer */}
           <div className="h-px bg-gray-200 flex-shrink-0" />
           <div className="ds-modal-footer">
             <button

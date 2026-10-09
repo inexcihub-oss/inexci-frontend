@@ -1,15 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isSessaoExpirada } from "./api";
 
-/**
- * D-18: um 429 do throttler no `/auth/refresh` derrubava a sessão.
- *
- * `/auth/refresh` é chamado a cada carregamento de página e o backend limita a
- * 10 chamadas por minuto; quem navega rápido, ou tem várias abas abertas,
- * recebia 429 e era mandado para o login com o cookie de refresh ainda válido.
- * A distinção entre "acabou" e "não deu agora" é o que impede isso — por isso
- * ela é testada em separado do interceptor.
- */
 describe("isSessaoExpirada", () => {
   it.each([400, 401, 403])(
     "considera a sessão encerrada no status %i",

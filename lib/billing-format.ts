@@ -14,10 +14,6 @@ export function billingPeriodLabel(period: BillingPeriod): string {
   return period === "MONTHLY" ? "/mês" : "/ano";
 }
 
-/**
- * "solicitação" / "solicitações" — troca a palavra inteira. Concatenar sufixo
- * ("solicitação" + "ões") gerava "solicitaçãoões".
- */
 export function solicitacoesLabel(n: number): string {
   return `${n} ${n === 1 ? "solicitação" : "solicitações"}`;
 }

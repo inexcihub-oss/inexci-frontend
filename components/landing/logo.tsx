@@ -4,10 +4,6 @@ import { cn } from "@/lib/utils";
 type LogoProps = {
   className?: string;
   uniColor?: boolean;
-  /**
-   * When true, adds a subtle light outline around the logo in dark mode
-   * to improve visibility on dark backgrounds.
-   */
   outlinedOnDark?: boolean;
 };
 

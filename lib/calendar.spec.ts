@@ -23,7 +23,6 @@ function ev(id: string, start: string, end: string): CalEvent {
 
 describe("helpers de data", () => {
   it("startOfWeek volta para o domingo", () => {
-    // 2026-07-22 é uma quarta-feira → domingo anterior = 2026-07-19
     const wed = new Date(2026, 6, 22, 15, 0);
     const sunday = startOfWeek(wed);
     expect(sunday.getDay()).toBe(0);

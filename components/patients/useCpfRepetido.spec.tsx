@@ -28,7 +28,6 @@ describe("useCpfRepetido", () => {
       total: 2,
       records: [
         paciente("p-1", "Abigail Rabello", "08623061756"),
-        // A busca é ILIKE: CPF que só contém os dígitos não conta.
         paciente("p-2", "Outra Pessoa", "108623061756"),
       ],
     });

@@ -16,11 +16,6 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ can: () => true, permissions: [] }),
 }));
 
-// A referência precisa ser estável: o wizard auto-seleciona o médico único
-// num efeito que depende do array, e um literal novo a cada render vira loop
-// infinito (ver mesmo gotcha em __tests__/CreateSurgeryRequestWizard.template.spec.tsx
-// e components/agenda/NewAppointmentModal.spec.tsx). Por isso o array vive
-// dentro do factory, que só roda uma vez.
 vi.mock("@/hooks/useAvailableDoctors", () => {
   const stableData = [{ id: "doctor-1", name: "Dra. Ana" }];
   return {

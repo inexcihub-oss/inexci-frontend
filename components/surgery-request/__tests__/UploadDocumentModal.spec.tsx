@@ -201,12 +201,6 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
     expect(surgeryRequestService.extractFromDocument).not.toHaveBeenCalled();
   });
 
-  // Usa `onboardingMockState` (mutable `vi.hoisted`), não `vi.doMock` +
-  // `vi.resetModules` + import dinâmico como no rascunho original da tarefa:
-  // o `vi.mock` estático deste arquivo já hoisteia `useOnboarding` para o
-  // módulo real, e sobrescrever via `doMock`/`resetModules` no meio do
-  // arquivo é frágil (mesma solução já usada em
-  // `NewProcedureModelModal.spec.tsx` — "guard emTour").
   it("mantém a análise simulada aberta até o avanço explícito do tour", async () => {
     onboardingMockState.emTour = true;
 
@@ -248,10 +242,6 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
 
     expect(onClose).toHaveBeenCalledTimes(1);
 
-    // Regressão: `handleClose` deve resetar o estado da simulação
-    // imediatamente (não existe job real em background para continuar
-    // rastreando), senão reabrir o modal mostra "Análise em andamento" para
-    // sempre.
     expect(
       screen.queryByText("Análise em andamento"),
     ).not.toBeInTheDocument();

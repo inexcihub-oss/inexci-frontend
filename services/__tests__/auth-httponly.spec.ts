@@ -1,10 +1,5 @@
-/**
- * Testes para verificar que o refresh_token NÃO é armazenado no localStorage.
- * O refresh_token agora é gerenciado via cookie httpOnly pelo backend.
- */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
@@ -34,7 +29,6 @@ Object.defineProperty(globalThis, "localStorage", {
   writable: true,
 });
 
-// Mock axios
 vi.mock("axios", () => {
   const instance = {
     post: vi.fn(),
@@ -60,10 +54,8 @@ describe("Auth — tokens sensíveis não devem estar no localStorage", () => {
   });
 
   it("authService.logout NÃO deve tentar remover refresh_token do localStorage", async () => {
-    // Import fresh
     const { authService } = await import("@/services/auth.service");
 
-    // Mock api.post for logout call
     const api = (await import("@/lib/api")).default;
     (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
 
@@ -71,10 +63,8 @@ describe("Auth — tokens sensíveis não devem estar no localStorage", () => {
 
     await authService.logout();
 
-    // Deve remover user
     expect(localStorage.removeItem).toHaveBeenCalledWith("user");
 
-    // NÃO deve tentar remover refresh_token
     expect(localStorage.removeItem).not.toHaveBeenCalledWith("refresh_token");
   });
 
@@ -88,7 +78,6 @@ describe("Auth — tokens sensíveis não devem estar no localStorage", () => {
       },
     });
 
-    // Simula chaves legadas presentes
     localStorage.setItem("token", "old-jwt-value");
     localStorage.setItem("token_timestamp", "1234567890");
 
@@ -145,7 +134,6 @@ describe("Auth — tokens sensíveis não devem estar no localStorage", () => {
   });
 
   it("authService.login NÃO deve armazenar access_token nem refresh_token no localStorage", async () => {
-    // Mock the api post to return auth data
     const api = (await import("@/lib/api")).default;
     (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: {
@@ -158,7 +146,6 @@ describe("Auth — tokens sensíveis não devem estar no localStorage", () => {
     const { authService } = await import("@/services/auth.service");
     await authService.login({ email: "a@b.com", password: "123" });
 
-    // NÃO deve armazenar access_token nem refresh_token
     const allSetCalls = (localStorage.setItem as ReturnType<typeof vi.fn>).mock
       .calls;
     const tokenCalls = allSetCalls.filter(

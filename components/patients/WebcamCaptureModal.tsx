@@ -7,11 +7,6 @@ import { desenharReduzido } from "./foto-paciente";
 
 type Estado = "abrindo" | "ao-vivo" | "capturada" | "erro";
 
-/**
- * Prazo para o navegador entregar a câmera. Um pedido de permissão que
- * ninguém responde deixa o `getUserMedia` pendente para sempre — sem prazo, o
- * modal ficava em "Abrindo a câmera…" indefinidamente.
- */
 export const PRAZO_CAMERA_MS = 15_000;
 
 export const MENSAGEM_PRAZO_CAMERA =
@@ -32,12 +27,6 @@ function mensagemDeErro(erro: unknown): string {
   return "Não foi possível abrir a câmera.";
 }
 
-/**
- * Tira a foto do paciente pela câmera (webcam ou câmera frontal do celular).
- * Pré-visualização ao vivo, captura, "tirar outra" e só então "usar esta
- * foto". A câmera é desligada ao fechar — senão a luz da webcam continua
- * acesa depois que o modal some.
- */
 export function WebcamCaptureModal({
   onClose,
   onCapture,
@@ -53,13 +42,7 @@ export function WebcamCaptureModal({
     null,
   );
 
-  // Componente montado? Um `getUserMedia` que resolve depois do unmount (ou
-  // depois que o StrictMode desmontou o primeiro efeito) não tem mais dono:
-  // as tracks precisam ser paradas ali mesmo, senão a webcam fica acesa.
   const montadoRef = useRef(false);
-  // Cada pedido de câmera ganha um número; só o mais recente pode assumir o
-  // stream — um "tentar de novo" sobrepondo um pedido ainda pendente não
-  // deixa o anterior ligado.
   const pedidoRef = useRef(0);
   const prazoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -85,10 +68,6 @@ export function WebcamCaptureModal({
       setEstado("erro");
       return;
     }
-    // Estourado o prazo, o pedido é invalidado: se o navegador entregar a
-    // câmera depois (permissão respondida tarde), as tracks são paradas na
-    // hora pela checagem de `pedidoRef` abaixo — nada fica ligado sem
-    // prévia. "Tentar de novo" faz um pedido novo, já com a permissão dada.
     prazoRef.current = setTimeout(() => {
       prazoRef.current = null;
       if (!montadoRef.current || pedido !== pedidoRef.current) return;
@@ -127,7 +106,6 @@ export function WebcamCaptureModal({
     ligar();
     return () => {
       montadoRef.current = false;
-      // Invalida o pedido em andamento: quando ele resolver, para as tracks.
       pedidoRef.current += 1;
       limparPrazo();
       desligar();
@@ -137,19 +115,14 @@ export function WebcamCaptureModal({
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      // A câmera é a camada de cima: o Esc é dela e não chega às de baixo
-      // (modal do cadastro, foto ampliada).
       e.stopImmediatePropagation();
       e.preventDefault();
       onClose();
     };
-    // Captura na janela: roda antes dos ouvintes de `document`/`window` das
-    // outras camadas, que então não recebem o Esc.
     window.addEventListener("keydown", aoTeclar, true);
     return () => window.removeEventListener("keydown", aoTeclar, true);
   }, [onClose]);
 
-  // Libera a prévia anterior ao tirar outra ou fechar.
   useEffect(
     () => () => {
       if (captura) URL.revokeObjectURL(captura.url);
@@ -160,9 +133,6 @@ export function WebcamCaptureModal({
   const capturar = () => {
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
-    // A prévia é espelhada (como um espelho, mais natural para se enquadrar);
-    // a foto salva não — senão texto e lado ficam invertidos no cadastro.
-    // Maior lado até `LADO_MAX_FOTO` (1280 px), o mesmo da redução de arquivo.
     const canvas = desenharReduzido(video, video.videoWidth, video.videoHeight);
     if (!canvas) return;
     canvas.toBlob(
@@ -216,8 +186,6 @@ export function WebcamCaptureModal({
         </div>
 
         <div className="relative aspect-[4/3] w-full bg-neutral-900">
-          {/* O vídeo fica montado mesmo com a foto capturada: tirar outra
-              volta para a imagem ao vivo sem pedir a câmera de novo. */}
           <video
             ref={videoRef}
             data-testid="webcam-video"

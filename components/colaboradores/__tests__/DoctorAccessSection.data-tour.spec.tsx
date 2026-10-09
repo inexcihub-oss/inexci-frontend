@@ -2,12 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { DoctorAccessSection } from "../DoctorAccessSection";
 
-/**
- * Prova que a ficha do colaborador carrega a âncora `data-tour` que a trilha
- * `administracao` (passo "vinculo") espera encontrar:
- * "colaborador-vinculo-medico".
- */
-
 vi.mock("@/services/available-doctors.service", () => ({
   availableDoctorsService: {
     getDoctorsForAccount: vi.fn().mockResolvedValue([
@@ -76,9 +70,6 @@ describe("DoctorAccessSection — âncora do tour", () => {
 
     await screen.findByPlaceholderText("Buscar médico...");
 
-    // O DOM real suprime o clique num botão `disabled` — removemos o
-    // atributo nativo para provar que é o HANDLER (não só a UI) que recusa
-    // a chamada de rede.
     const saveButton = screen.getByRole("button", {
       name: "Salvar acessos",
     }) as HTMLButtonElement;

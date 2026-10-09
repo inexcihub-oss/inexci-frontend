@@ -40,9 +40,6 @@ export default function ClinicasPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { can } = useAuth();
-  // Local de atendimento é configuração da conta: cadastrar e excluir são do
-  // admin (ou do colaborador com Administração). Diferente de hospitais, que é
-  // cadastro transversal criado por qualquer área.
   const podeCadastrar = can(Permission.ADMINISTRACAO);
   const podeExcluir = can(Permission.ADMINISTRACAO);
   const [searchTerm, setSearchTerm] = useState("");

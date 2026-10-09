@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-/**
- * Testes para validar a lógica do componente DoctorAccessSection.
- * Testa a lógica pura de seleção, dirty state e payload de save.
- */
-
-// Simula a lógica de toggle e save extraída do componente
 function createAccessManager(initialActiveIds: string[]) {
   const selectedIds = new Set(initialActiveIds);
   const originalIds = new Set(initialActiveIds);
@@ -36,7 +30,6 @@ function createAccessManager(initialActiveIds: string[]) {
   };
 }
 
-// Simula a transformação de access data para selectedIds
 function extractActiveIds(
   accessList: Array<{ doctorUserId: string; status: "active" | "inactive" }>,
 ): string[] {
@@ -89,8 +82,8 @@ describe("DoctorAccessSection — Lógica", () => {
 
     it("NÃO deve estar dirty após toggle ida e volta", () => {
       const manager = createAccessManager(["d1", "d2"]);
-      manager.toggle("d2"); // remove
-      manager.toggle("d2"); // re-adiciona
+      manager.toggle("d2");
+      manager.toggle("d2");
       expect(manager.isDirty()).toBe(false);
     });
 
@@ -142,7 +135,6 @@ describe("DoctorAccessSection — Lógica", () => {
       const manager = createAccessManager(["d1"]);
       manager.toggle("d2");
 
-      // Simula o handleSave
       await mockSetAccess(collaboratorId, manager.getPayload());
 
       expect(mockSetAccess).toHaveBeenCalledWith(

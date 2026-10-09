@@ -36,11 +36,6 @@ describe("validarGrade", () => {
     );
   });
 
-  /**
-   * I3: `<input type="time">` devolve "" quando o usuário limpa o campo.
-   * `toMinutes("")` é NaN, e nem `NaN >= NaN` nem `NaN < NaN` disparam as
-   * regras de ordem/sobreposição — o campo vazio passava pelo portão.
-   */
   it("acusa hora em branco antes de comparar início e fim", () => {
     const invalida = normalizeBusinessHours({
       mon: [{ start: "", end: "12:00" }],
@@ -91,12 +86,6 @@ describe("BusinessHoursEditor", () => {
     );
   });
 
-  /**
-   * Minor: o bloco novo nasce a partir do fim do último bloco existente
-   * (aqui, 12:00), não mais fixo em 08:00–18:00 — que nasceria sobreposto
-   * com o bloco 08:00–12:00 já existente e a linha apareceria em vermelho
-   * antes de o usuário sequer digitar.
-   */
   it("acrescenta um segundo bloco no dia, a partir do fim do último", () => {
     const onChange = vi.fn();
     render(<BusinessHoursEditor value={grade} onChange={onChange} />);

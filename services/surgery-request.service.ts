@@ -27,7 +27,6 @@ export interface ApplyDocumentExtractionPayload {
   suggestedSuppliers?: string[]; tempStoragePath?: string; originalFileName?: string;
 }
 
-// Re-exporta sub-tipos para uso nos componentes
 export type {
   EntityRef,
   DoctorRef,
@@ -41,7 +40,6 @@ export type {
   SchedulingInfo,
 } from "@/types/surgery-request.types";
 
-// ── Tipos de Atividades ───────────────────────────────────────────────────────
 export interface ActivityUser {
   id: string;
   name: string;
@@ -66,11 +64,8 @@ export interface Activity {
   pdfUrl?: string;
   createdAt: string;
   user: ActivityUser | null;
-  /** Usuários mencionados com @ no comentário (ausente em atividades antigas). */
   mentions?: ActivityMention[];
 }
-
-// ── Tipos de Seções do Laudo ─────────────────────────────────────────────────
 
 export interface ReportSection {
   id: string;
@@ -82,7 +77,6 @@ export interface ReportSection {
   updatedAt: string;
 }
 
-// Mapeamento de status string para número (conforme backend)
 export const STATUS_MAP: Record<SurgeryRequestStatus, number> = {
   Pendente: 1,
   Enviada: 2,
@@ -95,7 +89,6 @@ export const STATUS_MAP: Record<SurgeryRequestStatus, number> = {
   Encerrada: 9,
 };
 
-// Mapeamento reverso: número para string
 export const STATUS_NUMBER_TO_STRING: Record<number, SurgeryRequestStatus> = {
   1: "Pendente",
   2: "Enviada",
@@ -108,7 +101,6 @@ export const STATUS_NUMBER_TO_STRING: Record<number, SurgeryRequestStatus> = {
   9: "Encerrada",
 };
 
-// Cores de status para UI
 export const STATUS_COLORS: Record<
   SurgeryRequestStatus,
   { bg: string; text: string; border: string }
@@ -160,8 +152,6 @@ export const STATUS_COLORS: Record<
   },
 };
 
-// ─── Payloads de criação/atualização básica ───────────────────────────────────
-
 export interface CreateSurgeryRequestPayload {
   procedureId: string;
   patientId: string;
@@ -189,8 +179,6 @@ export interface UpdateBasicDataPayload {
   doctorId?: string;
 }
 
-// ─── Payloads de transição de status ──────────────────────────────────────────
-
 export interface SendPayload {
   method: "email" | "download" | "document";
   to?: string;
@@ -198,14 +186,7 @@ export interface SendPayload {
   message?: string;
   cc?: string;
   notifyPatient?: boolean;
-  /** Anexa o documento de origem (`sc_creation_source`) em vez do PDF gerado. */
   useSourceDocument?: boolean;
-  /**
-   * Data (YYYY-MM-DD) em que a solicitação foi de fato enviada — só se
-   * aplica a `method: "document"` ("Confirmar com documento de origem"),
-   * quando o envio aconteceu fora da plataforma antes da atualização do
-   * status. Reflete no kanban (`lastStatusChangedAt`) e na timeline.
-   */
   sentAt?: string;
 }
 
@@ -223,7 +204,6 @@ export interface StartAnalysisPayload {
 }
 
 export interface AcceptAuthorizationPayload {
-  /** Datas opcionais (até 3) ISO no formato YYYY-MM-DDTHH:mm:ss */
   dateOptions?: string[];
   notifyPatient?: boolean;
 }
@@ -291,9 +271,7 @@ export interface ClosePayload {
 export interface NotifyPayload {
   template: string;
   to?: string;
-  /** Canais a enviar (quando não informado, o backend decide) */
   channels?: { email?: boolean; whatsapp?: boolean };
-  /** Status anterior (numérico) para templates de mudança de status */
   oldStatus?: number;
 }
 
@@ -302,9 +280,6 @@ export interface CreateTemplatePayload {
   templateData: object;
 }
 
-// ─── Tipos de resposta ────────────────────────────────────────────────────────
-
-/** Registro resumido retornado na listagem (getAll) */
 export interface SurgeryRequestListItem {
   id: number;
   status: number;
@@ -324,24 +299,18 @@ export interface SurgeryRequestListItem {
   procedure: { id: string; name: string } | null;
   tussProcedure: { id: string; description: string } | null;
   procedureName?: string;
-  /** Fornecedores escolhidos no OPME. Referências, não texto: nome de
-   * fornecedor pode conter vírgula e uma string concatenada não teria como ser
-   * separada de volta com segurança. */
   suppliers?: Array<{ id: string; name: string }>;
-  /** Clínica da consulta que indicou a cirurgia. Só o kanban envia. */
   clinic?: { id: string; name: string } | null;
   pendenciesCount?: number;
   hasIncompletePayment?: boolean;
   [key: string]: unknown;
 }
 
-/** Resposta paginada da listagem */
 export interface SurgeryRequestListResponse {
   total: number;
   records: SurgeryRequestListItem[];
 }
 
-/** Registro completo retornado pelo getById — inclui todas as relações */
 export interface SurgeryRequestDetail {
   id: number;
   status: number;
@@ -351,14 +320,12 @@ export interface SurgeryRequestDetail {
   updatedAt: string;
   observations: string | null;
   procedureName?: string;
-  // Relações tipadas
   patient: PatientRef | null;
   doctor: DoctorRef | null;
   hospital: HospitalRef | null;
   healthPlan: HealthPlanRef | null;
   procedure: EntityRef | null;
   tussProcedure: TussItemRef | null;
-  // Arrays
   tussItems: TussItemRef[];
   opmeItems: OpmeItemRef[];
   documents: Document[];
@@ -366,7 +333,6 @@ export interface SurgeryRequestDetail {
   activities: Activity[];
   contestations: Record<string, unknown>[];
   pendencies: Record<string, unknown>[];
-  // Objetos complexos
   analysis: Record<string, unknown> | null;
   billing: BillingInfo | null;
   receipt: ReceiptInfo | null;
@@ -379,7 +345,6 @@ export interface SurgeryRequestDetail {
     optional: number;
     canTransition: boolean;
   } | null;
-  // Campos primitivos adicionais usados por componentes
   cid: { code: string; description: string } | null;
   healthPlanName: string | null;
   healthPlanRegistration: string | null;
@@ -396,24 +361,20 @@ export interface SurgeryRequestDetail {
   [key: string]: unknown;
 }
 
-/** Resposta genérica de mutação (create/update/transition) cujo retorno geralmente não é consumido */
 export interface SurgeryRequestMutationResponse {
   id?: string | number;
   [key: string]: unknown;
 }
 
-/** Resposta do envio com download de PDF */
 export interface SendResponse extends SurgeryRequestMutationResponse {
   pdfBase64?: string;
 }
 
-/** Referência a uma entidade dentro do modelo (procedimento, hospital, convênio). */
 export interface TemplateEntityRef {
   id: string;
   name: string;
 }
 
-/** Conteúdo do modelo — só chega em `getTemplate(id)`, nunca na listagem. */
 export interface SurgeryRequestTemplateData {
   procedure?: TemplateEntityRef;
   procedureName?: string;
@@ -430,15 +391,9 @@ export interface SurgeryRequestTemplateData {
   requiredDocuments?: { type: string; name: string }[];
 }
 
-/**
- * O que a listagem devolve: só o que as telas pintam em lista. Tipo separado do
- * completo de propósito — sem `templateData` aqui, o compilador impede que
- * alguém volte a depender do conteúdo pesado numa listagem.
- */
 export interface SurgeryRequestTemplateSummary {
   id: string;
   name: string;
-  /** Os ids acompanham os nomes porque o formulário de nova SC preenche com eles. */
   procedureId: string | null;
   procedureName: string | null;
   hospitalId: string | null;
@@ -452,7 +407,6 @@ export interface SurgeryRequestTemplateSummary {
   updatedAt: string;
 }
 
-/** Modelo completo, com o conteúdo. Vem de `getTemplate(id)`. */
 export interface SurgeryRequestTemplate {
   id: string;
   name: string;
@@ -467,16 +421,7 @@ export interface IncrementTemplateUsageResponse {
   usageCount: number;
 }
 
-// ─── Serviço ──────────────────────────────────────────────────────────────────
-
 export const surgeryRequestService = {
-  // ── Consultas ──────────────────────────────────────────────────────────────
-
-  /**
-   * Kanban (item 3.4): endpoint enxuto que já devolve os contadores de
-   * pendência calculados no backend — dispensa a chamada separada a
-   * `pendencyService.getBatchSummary` e o over-fetch de `getAll`.
-   */
   async getKanban(): Promise<SurgeryRequestListResponse> {
     const response = await api.get<SurgeryRequestListResponse>(
       "/surgery-requests/kanban",
@@ -484,12 +429,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * Busca solicitações (payload completo). Usado pelas páginas de detalhe de
-   * entidade (paciente/hospital/convênio/colaborador) e pela aba Histórico do
-   * atendimento. Todo filtro informado é aplicado no backend — sem nenhum,
-   * carrega tudo via `FETCH_ALL_TAKE`.
-   */
   async getAll(params?: {
     patientId?: string;
     hospitalId?: string;
@@ -509,11 +448,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * Agenda por intervalo de data (item 3.5): busca apenas as cirurgias com
-   * `surgeryDate` dentro do período visível, em vez de carregar todas as
-   * agendadas (status 5–8).
-   */
   async getAgenda(
     from: string,
     to: string,
@@ -525,7 +459,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Busca uma solicitação específica por ID */
   async getById(requestId: string | number): Promise<SurgeryRequestDetail> {
     const response = await api.get<SurgeryRequestDetail>(
       `/surgery-requests/one?id=${requestId}`,
@@ -533,9 +466,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  // ── Criação e edição básica ────────────────────────────────────────────────
-
-  /** Cria uma nova solicitação cirúrgica (payload completo) */
   async create(
     data: CreateSurgeryRequestPayload,
   ): Promise<SurgeryRequestMutationResponse> {
@@ -543,7 +473,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Cria uma nova solicitação cirúrgica simplificada */
   async createSimple(
     data: SimpleSurgeryRequestPayload,
   ): Promise<SurgeryRequestMutationResponse> {
@@ -551,14 +480,12 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Define se a solicitação possui OPME */
   async setHasOpme(requestId: string, hasOpme: boolean): Promise<void> {
     await api.patch(`/surgery-requests/${requestId}/has-opme`, {
       hasOpme,
     });
   },
 
-  /** Atualiza dados básicos (prioridade) */
   async updateBasicData(
     requestId: string | number,
     data: UpdateBasicDataPayload,
@@ -570,7 +497,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Atualiza dados genéricos do procedimento (laudo, etc.) */
   async update(
     requestId: string | number,
     data: Record<string, unknown>,
@@ -582,12 +508,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  // ── Transições de status ───────────────────────────────────────────────────
-
-  /**
-   * PENDING (1) → SENT (2)
-   * Envia a solicitação ao convênio via e-mail ou download de PDF.
-   */
   async send(
     requestId: string | number,
     data: SendPayload,
@@ -608,10 +528,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * Exporta o PDF da solicitação cirúrgica sem alterar o status.
-   * Disponível para solicitações já enviadas (status ≥ 2).
-   */
   async exportPdf(requestId: string | number): Promise<Blob> {
     const response = await api.get(
       `/surgery-requests/${requestId}/export-pdf`,
@@ -620,10 +536,6 @@ export const surgeryRequestService = {
     return new Blob([response.data], { type: "application/pdf" });
   },
 
-  /**
-   * SENT (2) → IN_ANALYSIS (3)
-   * Registra o início da análise pela operadora, com número e datas de cotação.
-   */
   async startAnalysis(
     requestId: string | number,
     data: StartAnalysisPayload,
@@ -635,10 +547,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * Salva as quantidades autorizadas de procedimentos TUSS e OPME.
-   * Deve ser chamado antes de acceptAuthorization.
-   */
   async authorizeQuantities(
     surgeryRequestId: string | number,
     procedures: { id: string | number; authorizedQuantity: number }[],
@@ -646,7 +554,6 @@ export const surgeryRequestService = {
       id: string | number;
       authorizedQuantity: number;
       selectedSupplierId?: string;
-      /** O convênio aprovou alguém fora dos cotados: grava o genérico "Outro". */
       selectedSupplierIsGeneric?: boolean;
     }[],
   ): Promise<SurgeryRequestMutationResponse> {
@@ -658,10 +565,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * IN_ANALYSIS (3) → IN_SCHEDULING (4)
-   * Aceita a autorização e propõe datas disponíveis para a cirurgia.
-   */
   async acceptAuthorization(
     requestId: string | number,
     data: AcceptAuthorizationPayload,
@@ -673,9 +576,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * IN_ANALYSIS (3) — mantém status, cria contestação de autorização.
-   */
   async contestAuthorization(
     requestId: string | number,
     data: ContestAuthorizationPayload,
@@ -687,10 +587,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * IN_SCHEDULING (4) → SCHEDULED (5)
-   * Confirma a data escolhida pelo convênio.
-   */
   async confirmDate(
     requestId: string | number,
     data: ConfirmDatePayload,
@@ -702,9 +598,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * IN_SCHEDULING (4) — sem mudança de status, atualiza as opções de datas.
-   */
   async updateDateOptions(
     requestId: string | number,
     data: UpdateDateOptionsPayload,
@@ -716,9 +609,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * SCHEDULED (5) — sem mudança de status, reagenda a cirurgia.
-   */
   async reschedule(
     requestId: string | number,
     data: ReschedulePayload,
@@ -730,10 +620,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * SCHEDULED (5) → PERFORMED (6)
-   * Marca a cirurgia como realizada, com data/hora da realização.
-   */
   async markPerformed(
     requestId: string | number,
     data: MarkPerformedPayload,
@@ -745,10 +631,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * PERFORMED (6) → INVOICED (7)
-   * Registra o faturamento enviado ao convênio.
-   */
   async invoice(
     requestId: string | number,
     data: InvoicePayload,
@@ -760,10 +642,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * INVOICED (7) → FINALIZED (8)
-   * Confirma o recebimento do pagamento.
-   */
   async confirmReceipt(
     requestId: string | number,
     data: ConfirmReceiptPayload,
@@ -775,9 +653,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * FINALIZED (8) — sem mudança de status, contesta o pagamento recebido.
-   */
   async contestPayment(
     requestId: string | number,
     data: ContestPaymentPayload,
@@ -789,9 +664,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * FINALIZED (8) — edita os dados do recebimento após contestação.
-   */
   async updateReceipt(
     requestId: string | number,
     data: UpdateReceiptPayload,
@@ -803,10 +675,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /**
-   * Qualquer status (exceto 8 - Finalizada e 9 - Encerrada) → CLOSED (9)
-   * Encerra a solicitação com motivo opcional.
-   */
   async close(
     requestId: string | number,
     data?: ClosePayload,
@@ -818,9 +686,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  // ── Notificações e templates ───────────────────────────────────────────────
-
-  /** Envia notificação por e-mail manualmente */
   async notify(
     requestId: string | number,
     data: NotifyPayload,
@@ -832,7 +697,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Cria um template de solicitação */
   async createTemplate(
     data: CreateTemplatePayload,
   ): Promise<SurgeryRequestTemplate> {
@@ -843,7 +707,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Lista os modelos salvos (resumo — sem o conteúdo do modelo) */
   async getTemplates(): Promise<SurgeryRequestTemplateSummary[]> {
     const response = await api.get<SurgeryRequestTemplateSummary[]>(
       "/surgery-requests/templates",
@@ -851,7 +714,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Busca um modelo com o conteúdo completo (itens TUSS, OPME, documentos) */
   async getTemplate(id: string): Promise<SurgeryRequestTemplate> {
     const response = await api.get<SurgeryRequestTemplate>(
       `/surgery-requests/templates/${id}`,
@@ -859,18 +721,15 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Deleta um template de solicitação */
   async deleteTemplate(id: string): Promise<void> {
     await api.delete(`/surgery-requests/templates/${id}`);
   },
 
-  /** Deleta templates de solicitação em lote */
   async deleteTemplates(ids: string[]): Promise<void> {
     if (!ids.length) return;
     await api.post("/surgery-requests/templates/bulk-delete", { ids });
   },
 
-  /** Atualiza um template de solicitação */
   async updateTemplate(
     id: string,
     data: { name?: string; templateData?: object },
@@ -882,7 +741,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Incrementa o contador de uso de um template */
   async incrementTemplateUsage(
     id: string,
   ): Promise<IncrementTemplateUsageResponse> {
@@ -891,8 +749,6 @@ export const surgeryRequestService = {
     );
     return response.data;
   },
-
-  // ── Downloads de PDF ────────────────────────────────────────────────────
 
   async downloadContestAuthorizationPdf(
     requestId: string | number,
@@ -904,15 +760,11 @@ export const surgeryRequestService = {
     return new Blob([response.data], { type: "application/pdf" });
   },
 
-  // ── Atividades ────────────────────────────────────────────────────────────
-
-  /** Busca o histórico de atividades e comentários de uma solicitação */
   async getActivities(requestId: string | number): Promise<Activity[]> {
     const response = await api.get(`/surgery-requests/${requestId}/activities`);
     return response.data;
   },
 
-  /** Adiciona um comentário/anotação à solicitação */
   async createActivity(
     requestId: string | number,
     content: string,
@@ -923,8 +775,6 @@ export const surgeryRequestService = {
       {
         content,
         type: "comment",
-        // Só manda o campo quando há menção: um array vazio no corpo faria o
-        // backend percorrer o caminho de validação de acesso à toa.
         ...(mentionedUserIds && mentionedUserIds.length > 0
           ? { mentionedUserIds }
           : {}),
@@ -933,7 +783,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Usuários que podem ser mencionados com @ nos comentários desta SC. */
   async getMentionableUsers(
     requestId: string | number,
   ): Promise<MentionableUser[]> {
@@ -943,15 +792,11 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  // ── Seções do laudo ───────────────────────────────────────────────────────
-
-  /** Lista todas as seções do laudo ordenadas */
   async getSections(requestId: string | number): Promise<ReportSection[]> {
     const response = await api.get(`/surgery-requests/${requestId}/sections`);
     return response.data;
   },
 
-  /** Cria uma nova seção no laudo */
   async createSection(
     requestId: string | number,
     data: { title: string; description?: string },
@@ -963,7 +808,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Atualiza título e/ou descrição de uma seção */
   async updateSection(
     requestId: string | number,
     sectionId: string,
@@ -976,7 +820,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Remove uma seção do laudo */
   async deleteSection(
     requestId: string | number,
     sectionId: string,
@@ -987,7 +830,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Reordena as seções do laudo */
   async reorderSections(
     requestId: string | number,
     ids: string[],
@@ -999,9 +841,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  // ── Criação via documento ──────────────────────────────────────────────────
-
-  /** Envia um arquivo para extração de dados via OCR+IA. */
   async extractFromDocument(
     file: File,
     options?: { notifyOnCompletion?: boolean; surgeryRequestId?: number | string },
@@ -1022,7 +861,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Consulta o status do job assíncrono de extração do documento. */
   async getExtractFromDocumentStatus(
     jobId: string,
   ): Promise<ExtractFromDocumentJobStatusResponse> {
@@ -1032,7 +870,6 @@ export const surgeryRequestService = {
     return response.data;
   },
 
-  /** Cria uma SC a partir dos dados revisados pelo usuário. */
   async createFromDocument(
     payload: CreateFromDocumentPayload,
   ): Promise<CreateFromDocumentResponse> {

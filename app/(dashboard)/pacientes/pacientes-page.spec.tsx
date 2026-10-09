@@ -26,9 +26,6 @@ vi.mock("@/services/patient.service", () => ({
   },
 }));
 
-// O mock deriva `can` de `permissions` em vez de trazer os dois soltos: com
-// duas fontes, um teste passa a afirmar uma combinação que o AuthContext real
-// nunca produz (ex.: `can(ADMINISTRACAO)` verdadeiro com `permissions` vazio).
 let permissions: Permission[] = [Permission.ADMINISTRACAO];
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
@@ -39,11 +36,6 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 import PacientesPage from "./page";
 
-/**
- * Grupo 3 do mapa: em pacientes, só excluir (individual, em lote e a coluna
- * de seleção) exige Administração — criar e editar paciente são abertos e
- * NÃO devem ser escondidos.
- */
 describe("PacientesPage — gating por Administração", () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -231,7 +231,6 @@ export default function NotificacoesPage() {
 
   return (
     <PageContainer className="border-gray-200">
-      {/* Header */}
       <div className="flex-none flex items-center justify-between gap-3 px-4 lg:px-8 py-3 border-b border-gray-200">
         <div className="flex items-center gap-2.5">
           <h1 className="ds-page-title">Notificações</h1>
@@ -256,7 +255,6 @@ export default function NotificacoesPage() {
         )}
       </div>
 
-      {/* Filters */}
       <div className="flex-none flex flex-wrap items-center gap-2 px-4 lg:px-8 py-2.5 border-b border-gray-200 bg-gray-50/60">
         <select
           value={filterType}
@@ -292,7 +290,6 @@ export default function NotificacoesPage() {
         </button>
       </div>
 
-      {/* List */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center h-48">
@@ -332,12 +329,10 @@ export default function NotificacoesPage() {
                     !notification.read && "bg-primary-50/40",
                   )}
                 >
-                  {/* Unread dot */}
                   {!notification.read && (
                     <span className="absolute left-2 lg:left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
                   )}
 
-                  {/* Type icon */}
                   {notification.type === "action_by_user" && actor ? (
                     <NotificationActorAvatar
                       actorId={actor.actorId}
@@ -356,7 +351,6 @@ export default function NotificacoesPage() {
                     </div>
                   )}
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     {notification.link ? (
                       <Link
@@ -435,7 +429,6 @@ export default function NotificacoesPage() {
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     {!notification.read && (
                       <button
@@ -461,7 +454,6 @@ export default function NotificacoesPage() {
         )}
       </div>
 
-      {/* Pagination */}
       {!loading && (notifications.length > 0 || page > 0) && (
         <div className="flex-none flex items-center justify-between px-4 lg:px-8 py-3 border-t border-gray-200 bg-gray-50/60">
           <Button

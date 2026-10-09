@@ -368,7 +368,6 @@ export default function FornecedorDetalhePage() {
         itemSubtitle="Fornecedor"
         sidebarContent={sidebarContent}
       >
-        {/* Informações gerais */}
         <FormSection title="Informações gerais">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
@@ -411,7 +410,6 @@ export default function FornecedorDetalhePage() {
           </div>
         </FormSection>
 
-        {/* Endereço */}
         <FormSection title="Endereço">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
@@ -470,7 +468,6 @@ export default function FornecedorDetalhePage() {
           )}
         </FormSection>
 
-        {/* Contato comercial */}
         <FormSection title="Contato comercial">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
@@ -499,7 +496,6 @@ export default function FornecedorDetalhePage() {
           </div>
         </FormSection>
 
-        {/* Condições comerciais */}
         <FormSection title="Condições comerciais">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Select
@@ -521,7 +517,6 @@ export default function FornecedorDetalhePage() {
           </div>
         </FormSection>
 
-        {/* Observações */}
         <FormSection title="Observações">
           <textarea
             className="ds-input w-full min-h-[100px] resize-y"
@@ -531,7 +526,6 @@ export default function FornecedorDetalhePage() {
           />
         </FormSection>
 
-        {/* Ações */}
         <div className="flex justify-end gap-3 pt-4">
           <Button variant="outline" onClick={handleCancel}>
             Cancelar

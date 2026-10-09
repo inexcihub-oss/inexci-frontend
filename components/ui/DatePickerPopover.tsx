@@ -8,17 +8,11 @@ import { MiniMonthCalendar } from "./MiniMonthCalendar";
 interface Props {
   value: Date | null;
   onChange: (date: Date) => void;
-  /** Elemento clicável que abre o calendário. */
   trigger: React.ReactNode;
   align?: "left" | "right";
-  /** Classe extra na raiz (ex.: `flex-1 min-w-0` para o gatilho truncar). */
   className?: string;
 }
 
-/**
- * Abre um calendário ancorado ao `trigger`. Renderiza via portal com posição
- * fixed para não ser recortado por containers com overflow-hidden (ex.: modais).
- */
 export function DatePickerPopover({
   value,
   onChange,
@@ -31,7 +25,7 @@ export function DatePickerPopover({
   const anchorRef = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
 
-  const POP_WIDTH = 272; // 256 (calendário) + padding
+  const POP_WIDTH = 272;
 
   const place = () => {
     const rect = anchorRef.current?.getBoundingClientRect();

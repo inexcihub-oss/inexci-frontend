@@ -3,15 +3,6 @@
 import { useEffect, useRef } from "react";
 import DOMPurify from "isomorphic-dompurify";
 
-/**
- * Exibe o HTML do documento (receita, atestado, solicitação de exames) do jeito
- * que ele será impresso.
- *
- * O conteúdo vai para um **shadow root**, não para a página: o template traz
- * `<style>` com regras para `body`, `*` e classes genéricas, que injetadas
- * direto reestilizariam o app inteiro. O shadow root também evita o `iframe`
- * com `blob:`, que a CSP do app bloqueia (`default-src 'self'`).
- */
 export function DocumentPreview({
   html,
   className = "",
@@ -30,9 +21,6 @@ export function DocumentPreview({
       shadowRef.current = host.shadowRoot ?? host.attachShadow({ mode: "open" });
     }
 
-    // O HTML é do nosso template, mas carrega texto livre digitado pelo médico:
-    // sanitizar mantém a barreira mesmo se algo escapar do escape do Handlebars.
-    // `style` é mantido de propósito — é o CSS do documento.
     shadowRef.current.innerHTML = DOMPurify.sanitize(html, {
       WHOLE_DOCUMENT: true,
       ADD_TAGS: ["style"],

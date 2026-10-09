@@ -3,20 +3,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui";
 
-/**
- * Colunas padrão (seleção + excluir) das tabelas de cadastro básico
- * (hospitais, convênios, fornecedores, fabricantes...). Só existem para
- * alimentar ações que exigem permissão — quem não tem a permissão da tela
- * não deve receber essas colunas, então o próprio caller decide se inclui
- * `createSelectColumn`/`createDeleteActionColumn` no array de `columns`.
- */
-
-/**
- * Coluna de checkbox de seleção. Por padrão usa a paginação da tabela
- * (`getIsAllPageRowsSelected`); passe `allRows: true` para tabelas sem
- * paginação de página (ex.: a lista de modelos de procedimento usa
- * `getIsAllRowsSelected`).
- */
 export function createSelectColumn<T>({
   allRows = false,
 }: { allRows?: boolean } = {}): ColumnDef<T> {
@@ -53,7 +39,6 @@ export function createSelectColumn<T>({
   };
 }
 
-/** Ícone de lixeira usado nas colunas de ação das tabelas de cadastro. */
 function TrashIcon() {
   return (
     <svg
@@ -73,7 +58,6 @@ function TrashIcon() {
   );
 }
 
-/** Coluna com o botão de excluir por linha (abre o modal de confirmação). */
 export function createDeleteActionColumn<T>(
   onDelete: (item: T, e: React.MouseEvent) => void,
   title: string,

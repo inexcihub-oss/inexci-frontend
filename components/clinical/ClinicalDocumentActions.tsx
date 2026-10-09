@@ -27,22 +27,11 @@ import {
 } from "@/services/clinical-document-template.service";
 import { safeExternalUrl } from "@/lib/safe-url";
 
-/** Profissional que assina os documentos da consulta. */
 export interface AssinanteConsulta {
   nome: string;
-  /** Médico (CRM): indica cirurgia. */
   medico: boolean;
-  /**
-   * Emite receita, atestado e pedido de exame: médico (CRM) ou dentista
-   * (CRO). Ausente = segue `medico`.
-   */
   emiteDocumentos?: boolean;
-  /** Sigla do conselho, para as mensagens ("CRM", "CRO"). */
   conselho?: string;
-  /**
-   * Registro sem número ou sem UF (veio assim do Feegow): o backend recusa a
-   * emissão até alguém preencher.
-   */
   semNumero: boolean;
 }
 
@@ -54,7 +43,6 @@ const MODAL_TITLE: Record<DocumentKind, string> = {
   referral: "Solicitar exames",
 };
 
-/** Documentos que aceitam modelo de texto (MIG-06) e o tipo do modelo. */
 const TEMPLATE_KIND: Partial<
   Record<DocumentKind, ClinicalDocumentTemplateKind>
 > = {
@@ -62,33 +50,23 @@ const TEMPLATE_KIND: Partial<
   referral: "exam_referral",
 };
 
-/** Limite do texto do atestado — o mesmo `MaxLength` do DTO no backend. */
 const CERTIFICATE_TEXT_MAX = 4000;
 
-/** O texto do atestado ainda traz `{{dias}}`/`{{inicio}}` para a emissão. */
 const PLACEHOLDER_DE_AFASTAMENTO = /\{\{\s*(dias|inicio)\s*\}\}/i;
 const PLACEHOLDER_DIAS = /\{\{\s*dias\s*\}\}/i;
 const PLACEHOLDER_INICIO = /\{\{\s*inicio\s*\}\}/i;
 
-/** Aviso para quem não é o profissional da consulta (o backend responde 403). */
 export const SO_PROFISSIONAL_DA_CONSULTA =
   "Só o profissional da consulta pode emitir documentos.";
 
-/** Dias de afastamento do formulário; vazio ou 0 = comparecimento. */
 const diasDeAfastamento = (valor: string): number | undefined => {
   const dias = Number(valor);
   return valor.trim() && Number.isInteger(dias) && dias > 0 ? dias : undefined;
 };
 
-/**
- * Atestado de comparecimento: fala em comparecer e não em afastamento. Mesma
- * regra do servidor (`montarNotaDeAfastamento`), que não anexa o afastamento
- * a ele.
- */
 export const ehComparecimentoSemAfastamento = (texto: string): boolean =>
   /comparec/i.test(texto) && !/afast/i.test(texto);
 
-/** Tipo do documento na API (rota e payload). */
 const API_KIND: Record<DocumentKind, ClinicalDocumentKind> = {
   prescription: "prescription",
   certificate: "medical-certificate",
@@ -103,7 +81,6 @@ interface ItemRow {
 
 const emptyRow = (): ItemRow => ({ name: "", quantity: "", instructions: "" });
 
-/** Remove os campos vazios — o backend só aceita o que foi preenchido. */
 function toPayloadItem(row: ItemRow) {
   return {
     name: row.name.trim(),
@@ -124,21 +101,6 @@ function toReferralItem(row: ItemRow) {
   };
 }
 
-/**
- * Documentos emitidos durante o atendimento: receita, atestado e solicitação
- * de exames. O PDF é gerado no servidor e já entra na aba Documentos — aqui só
- * abrimos o arquivo pronto em outra aba para o médico imprimir ou enviar.
- *
- * **Emitir** persiste a ficha antes (`ensureRecordId`): o documento é um
- * registro do atendimento, e o PDF sai da ficha gravada — inclusive de um CID
- * recém-digitado. Quem sabe resolver isso é a casca do atendimento.
- *
- * **Visualizar** não grava nada, nem a ficha. O servidor monta o mesmo HTML a
- * partir do paciente e dos campos que estão na tela. Antes, a prévia também
- * chamava `ensureRecordId` e criava um prontuário vazio só porque o médico
- * quis conferir a receita — o banner "nada foi salvo" mentia, e a consulta
- * ficava com ficha vinculada (logo, não excluível).
- */
 export function ClinicalDocumentActions({
   ensureRecordId,
   onEmitted,
@@ -151,31 +113,11 @@ export function ClinicalDocumentActions({
 }: {
   ensureRecordId: () => Promise<string>;
   onEmitted: (document: GeneratedClinicalDocument) => void;
-  /** CIDs da ficha — sugestão inicial do atestado e base da prévia. */
   cidCodes: ClinicalCidCode[];
-  /** Paciente do atendimento; é o que a prévia usa no lugar da ficha. */
   patientId: string;
-  /** Médico que assina o documento. */
   doctorId: string;
-  /**
-   * Profissional da consulta, resolvido pela casca do atendimento. Receita,
-   * atestado e pedido de exame só saem em nome de médico (CRM) ou dentista
-   * (CRO) — o backend recusa quando quem assina é, por exemplo, nutricionista
-   * ou técnico. `null` (fora da lista ou falha de rede) presume que emite e
-   * deixa o backend decidir.
-   */
   assinante?: AssinanteConsulta | null;
-  /**
-   * Quem está logado é o profissional da consulta. Só ele emite ou
-   * pré-visualiza receita, atestado e pedido de exame — o backend recusa
-   * (403) qualquer outro, inclusive admin ou outro médico da clínica.
-   */
   profissionalDaConsulta?: boolean;
-  /**
-   * Marca que o atendimento em tela é o fabricado do tour. Bloqueia a
-   * emissão por PROVENIÊNCIA do dado, não pelo estado do tour — sair do tour
-   * na página sentinela não pode reabilitar a emissão real.
-   */
   dadosFabricados?: boolean;
 }) {
   const [openKind, setOpenKind] = useState<DocumentKind | null>(null);
@@ -183,7 +125,6 @@ export function ClinicalDocumentActions({
     ? (assinante.emiteDocumentos ?? assinante.medico)
     : true;
   const naoMedico = !emite;
-  // Registro sem número/UF (veio assim do Feegow): o backend recusa a emissão.
   const crmSemNumero = emite && !!assinante?.semNumero;
   const conselho = assinante?.conselho ?? "CRM";
   const outroProfissional = !profissionalDaConsulta;
@@ -195,37 +136,20 @@ export function ClinicalDocumentActions({
   const { emTour } = useOnboarding();
   const bloqueado = emTour || dadosFabricados;
 
-  // Receita e exames compartilham a mesma lista repetível.
   const [rows, setRows] = useState<ItemRow[]>([emptyRow()]);
   const [notes, setNotes] = useState("");
 
-  // Atestado
   const [restDays, setRestDays] = useState("1");
-  // Os dias foram zerados por um modelo de comparecimento (não pelo médico):
-  // trocar para um modelo de afastamento, ou voltar ao texto padrão, devolve
-  // o "1 dia" com que o formulário começa.
   const diasZeradosPeloModelo = useRef(false);
   const [startDate, setStartDate] = useState("");
   const [includeCid, setIncludeCid] = useState(false);
   const [certificateCid, setCertificateCid] = useState<ClinicalCidCode[]>([]);
   const [observations, setObservations] = useState("");
-  // Texto do atestado vindo do modelo: substitui a declaração padrão do PDF.
-  // Vazio = declaração padrão. Não é a mesma coisa que observações — antes o
-  // modelo caía em observações e o atestado saía com o texto duas vezes.
   const [certificateText, setCertificateText] = useState("");
 
-  // Modelos de texto do documento aberto (atestado e pedido de exame).
   const [templates, setTemplates] = useState<ClinicalDocumentTemplate[]>([]);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
-  // Modelo escolhido fica visível no seletor (antes ele voltava ao
-  // placeholder e parecia que nada tinha sido escolhido).
   const [templateId, setTemplateId] = useState("");
-  // Último texto que veio do servidor. Enquanto o texto na tela for este (o
-  // médico não editou), o atestado sai pelo `templateId`. O texto aplicado
-  // mantém `{{dias}}`/`{{inicio}}` literais — editado ou não, quem os
-  // preenche é a prévia/emissão, com o afastamento escolhido naquela hora.
-  // Antes o apply gravava "1 dia" no texto: editado, ele congelava os dias
-  // antigos e o PDF saía com "1 dia" no texto e "3 dias" logo abaixo.
   const [textoAplicado, setTextoAplicado] = useState("");
   const templateKind = openKind ? TEMPLATE_KIND[openKind] : undefined;
   const textoDoModelo =
@@ -242,19 +166,13 @@ export function ClinicalDocumentActions({
       .then((lista) => {
         if (ativo) setTemplates(lista);
       })
-      // Modelo é atalho: sem a lista, o médico escreve o texto à mão.
       .catch(() => undefined);
     return () => {
       ativo = false;
     };
   }, [templateKind, doctorId]);
 
-  // Só a resposta do último apply vale. Mudar os dias, trocar de modelo,
-  // voltar ao texto padrão, digitar no campo ou fechar o modal invalida o que
-  // estiver em voo — senão uma resposta atrasada sobrescreve a mais nova.
   const applySeq = useRef(0);
-  // Modelo que estava no seletor antes do apply em voo: se ele for
-  // invalidado, o seletor volta para o que de fato está no texto.
   const modeloAntesDoApply = useRef<string | null>(null);
   const invalidateApply = () => {
     applySeq.current += 1;
@@ -271,16 +189,8 @@ export function ClinicalDocumentActions({
     setRestDays("1");
   };
 
-  /**
-   * Preenche o texto com o modelo, já com os dados do paciente e do médico
-   * que estão na tela. O campo continua editável; trocar de modelo substitui.
-   * `{{dias}}`/`{{inicio}}` seguem literais (ver `textoAplicado`).
-   */
   const applyTemplate = async (id: string) => {
     if (!id) {
-      // "Nenhum": no atestado volta à declaração padrão; no pedido de exame o
-      // texto digitado fica onde está. Texto editado à mão só sai com
-      // confirmação — ele não volta.
       if (
         openKind === "certificate" &&
         certificateText.trim() &&
@@ -300,8 +210,6 @@ export function ClinicalDocumentActions({
       }
       return;
     }
-    // Um apply anterior em voo perde a vez; o seletor que vale é o de antes
-    // dele, não o que ele deixou marcado.
     const anterior = modeloAntesDoApply.current ?? templateId;
     const seq = ++applySeq.current;
     modeloAntesDoApply.current = anterior;
@@ -318,8 +226,6 @@ export function ClinicalDocumentActions({
       if (openKind === "certificate") {
         setCertificateText(body);
         setTextoAplicado(body);
-        // Comparecimento declara presença, não afastamento: o "1 dia" com
-        // que o formulário começa não pode ir para o atestado.
         if (ehComparecimentoSemAfastamento(body)) {
           setRestDays("");
           diasZeradosPeloModelo.current = true;
@@ -340,7 +246,6 @@ export function ClinicalDocumentActions({
   const closePreview = () => setPreviewHtml(null);
 
   const openModal = (kind: DocumentKind) => {
-    // Resposta de um modelo pedido no modal anterior não pode cair neste.
     invalidateApply();
     setRows([emptyRow()]);
     setNotes("");
@@ -348,8 +253,6 @@ export function ClinicalDocumentActions({
     diasZeradosPeloModelo.current = false;
     setStartDate("");
     setIncludeCid(false);
-    // Começa com o CID da ficha; o médico troca se o afastamento for por outro
-    // motivo.
     setCertificateCid(cidCodes.slice(0, 1));
     setObservations("");
     setCertificateText("");
@@ -372,7 +275,6 @@ export function ClinicalDocumentActions({
 
   const filledRows = rows.filter((row) => row.name.trim());
 
-  /** Payload do documento aberto, montado sobre o alvo (ficha ou paciente). */
   const buildPayload = (target: ClinicalDocumentTarget) => {
     if (openKind === "prescription") {
       return {
@@ -384,14 +286,10 @@ export function ClinicalDocumentActions({
     if (openKind === "certificate") {
       return {
         ...target,
-        // Vazio ou 0 = comparecimento: o campo nem vai (o servidor só aceita
-        // 1 a 365).
         restDays: diasDeAfastamento(restDays),
         startDate: startDate || undefined,
         includeCid: includeCid || undefined,
         cid: includeCid ? certificateCid[0] : undefined,
-        // Texto do modelo intacto: o servidor preenche o modelo na hora,
-        // com os dias deste atestado. Editado à mão: vai o texto da tela.
         ...(textoDoModelo
           ? { templateId }
           : { text: certificateText.trim() || undefined }),
@@ -405,22 +303,12 @@ export function ClinicalDocumentActions({
     };
   };
 
-  /**
-   * Alvo da prévia: o paciente e os CIDs que estão na tela — nunca a ficha,
-   * que a prévia não pode criar nem alterar. A receita não imprime CID, então
-   * não os manda (o payload é validado em modo estrito no servidor).
-   */
   const previewTarget = (): ClinicalDocumentTarget => ({
     patientId,
     doctorId,
     ...(openKind !== "prescription" && cidCodes.length ? { cidCodes } : {}),
   });
 
-  /**
-   * `{{dias}}`/`{{inicio}}` sem valor: o servidor recusa (400). Avisa no
-   * formulário, antes de enviar. `{{inicio}}` sem data cai na data de emissão
-   * quando há afastamento.
-   */
   const placeholderSemValor = (): string | null => {
     if (openKind !== "certificate" || !certificateText) return null;
     const dias = diasDeAfastamento(restDays);
@@ -433,7 +321,6 @@ export function ClinicalDocumentActions({
     return null;
   };
 
-  /** Valida o mínimo comum a emitir e pré-visualizar. */
   const isIncomplete = (): boolean => {
     if (outroProfissional) {
       setError(SO_PROFISSIONAL_DA_CONSULTA);
@@ -509,7 +396,6 @@ export function ClinicalDocumentActions({
     }
   };
 
-  // Aviso ao vivo no campo de dias, antes mesmo de tentar enviar.
   const diasFaltandoNoTexto =
     openKind === "certificate" &&
     PLACEHOLDER_DIAS.test(certificateText) &&
@@ -617,9 +503,6 @@ export function ClinicalDocumentActions({
                   )}
                 </>
               )}
-              {/* O modelo criado em Configurações é do próprio usuário
-                  (doctorId = ele): o atalho só faz sentido para o profissional
-                  da consulta, o único que emite. */}
               {profissionalDaConsulta && (
                 <a
                   href="/configuracoes?tab=document-templates"
@@ -670,8 +553,6 @@ export function ClinicalDocumentActions({
                         label="Código TUSS"
                         value={row.quantity}
                         onChange={({ tussCode, name }) =>
-                          // Escolher no catálogo já nomeia o exame; digitar o
-                          // código à mão não sobrescreve o que foi escrito.
                           updateRow(index, {
                             quantity: tussCode,
                             ...(name ? { name } : {}),
@@ -831,7 +712,6 @@ export function ClinicalDocumentActions({
                   <div className="pl-1">
                     <CidPicker
                       value={certificateCid}
-                      // Um atestado carrega um diagnóstico só; trocar substitui.
                       onChange={(codes) => setCertificateCid(codes.slice(-1))}
                     />
                   </div>

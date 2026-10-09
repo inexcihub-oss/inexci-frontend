@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock do módulo api antes de importar os serviços
 vi.mock("@/lib/api", () => ({
   default: {
     get: vi.fn(),
@@ -14,10 +13,6 @@ vi.mock("@/lib/api", () => ({
 import api from "@/lib/api";
 import { collaboratorService } from "./collaborator.service";
 
-/**
- * PRD: Reformulação Usuários/Permissões — US-004
- * Testa chamadas HTTP do collaboratorService.
- */
 describe("collaboratorService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -88,12 +83,6 @@ describe("collaboratorService", () => {
   });
 
   describe("getById", () => {
-    /**
-     * I2 (revisão final `feat/modulo-atendimento`): a tela de edição precisa
-     * de `grantedPermissions` (a coluna crua), não só `permissions`
-     * (efetiva) — por isso `getById` usa a rota gated por `ADMINISTRACAO`
-     * (`/users/collaborators/:id`), não a genérica `/users/one`.
-     */
     it("deve chamar GET /users/collaborators/:id (não /users/one)", async () => {
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: { id: "c-1", name: "Colaborador 1" },
@@ -150,8 +139,4 @@ describe("collaboratorService", () => {
       expect(api.delete).toHaveBeenCalledWith("/users/collaborators/c-1");
     });
   });
-
-  // `getDoctors`/`getDoctorById` foram removidos junto com os seus testes:
-  // nenhuma tela os chamava. A listagem de médicos vive em
-  // `availableDoctorsService.getDoctorsForAccount()`.
 });

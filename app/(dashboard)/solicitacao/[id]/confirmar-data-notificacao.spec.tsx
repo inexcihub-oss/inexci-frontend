@@ -4,13 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SolicitacaoDetalhePage from "./page";
 
-/**
- * "Em Agendamento" (4) sem datas propostas confirma a cirurgia pelo modal
- * "Definir Data da Cirurgia". A transição é a mesma de quando há datas
- * propostas — logo, o convite para notificar o paciente também precisa
- * aparecer nesse caminho.
- */
-
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "sc-1" }),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -76,7 +69,6 @@ const { solicitacaoFixture } = vi.hoisted(() => ({
     tussProcedure: null,
     tussItems: [],
     opmeItems: [],
-    // Termo de consentimento já anexado: o aviso não-bloqueante não entra no meio.
     documents: [{ id: "doc-file-1", key: "consent_term", type: "consent_term" }],
     sections: [],
     activities: [],
@@ -85,7 +77,6 @@ const { solicitacaoFixture } = vi.hoisted(() => ({
     analysis: null,
     billing: null,
     receipt: null,
-    // Sem datas propostas — é o que leva ao modal "Definir Data da Cirurgia".
     scheduling: null,
     pendenciesSummary: null,
     cid: null,

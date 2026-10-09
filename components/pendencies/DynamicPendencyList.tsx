@@ -156,9 +156,6 @@ export function DynamicPendencyList({
   className,
   onPendencyClick,
 }: DynamicPendencyListProps) {
-  // Filtra itens opcionais que já estão completos — não há nada a exibir para eles.
-  // Ex: 'contest_pending' aparece como completo quando não há contestação ativa;
-  // só deve ser exibido quando há contestação pendente (isOptional && !isComplete).
   const displayPendencies = (pendencies ?? []).filter(
     (p) => !(p.isOptional && p.isComplete),
   );
@@ -172,7 +169,6 @@ export function DynamicPendencyList({
     const guide = currentStatus ? NEXT_STEP_GUIDES[currentStatus] : undefined;
     return (
       <div className={cn("space-y-3", className)}>
-        {/* Ícone de tudo em ordem */}
         <div className="flex flex-col items-center py-4 gap-1.5">
           <div className="w-10 h-10 rounded-full bg-teal-50 flex items-center justify-center">
             <Check className="h-5 w-5 text-teal-600" />
@@ -180,10 +176,8 @@ export function DynamicPendencyList({
           <p className="text-xs font-medium text-teal-700">Nenhuma pendência</p>
         </div>
 
-        {/* Card de próximo passo */}
         {guide && (
           <div className="rounded-xl border border-teal-200 bg-teal-50 overflow-hidden">
-            {/* Header do card */}
             <div className="flex items-start gap-2.5 px-3 pt-3 pb-2">
               <div className="w-6 h-6 rounded-lg bg-teal-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <Lightbulb className="h-3.5 w-3.5 text-teal-600" />
@@ -198,10 +192,8 @@ export function DynamicPendencyList({
               </div>
             </div>
 
-            {/* Separador */}
             <div className="mx-3 border-t border-teal-200" />
 
-            {/* Passos */}
             <div className="px-3 py-2.5 space-y-1.5">
               <p className="text-[10px] font-semibold text-teal-600 uppercase tracking-wide mb-2">
                 O que fazer agora
@@ -223,7 +215,6 @@ export function DynamicPendencyList({
 
   return (
     <div className={cn("space-y-3 md:space-y-4", className)}>
-      {/* Header com resumo */}
       <div className="bg-gray-50 rounded-xl p-3 space-y-2">
         <div className="flex items-center justify-between text-xs md:text-sm">
           <span className="font-medium text-gray-700">
@@ -241,7 +232,6 @@ export function DynamicPendencyList({
           </span>
         </div>
 
-        {/* Barra de progresso */}
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
             className={cn(
@@ -257,7 +247,6 @@ export function DynamicPendencyList({
         </div>
       </div>
 
-      {/* Lista de pendências */}
       <div className={cn(compact ? "space-y-1" : "space-y-2")}>
         {displayPendencies.map((pendency) => (
           <DynamicPendencyItem
@@ -312,7 +301,6 @@ function DynamicPendencyItem({
               : "bg-amber-50 border-amber-200",
       )}
     >
-      {/* Linha principal */}
       <div
         className={cn(
           "flex items-center gap-3 px-3 py-2.5 min-h-[44px]",
@@ -376,7 +364,6 @@ function DynamicPendencyItem({
         </div>
       </div>
 
-      {/* Sub-itens expandidos */}
       {expanded && hasCheckItems && (
         <div
           className={cn(

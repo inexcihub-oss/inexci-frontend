@@ -11,13 +11,7 @@ interface BillingPlanCardProps {
   icon: LucideIcon;
   theme: PlanCardTheme;
   highlight?: boolean;
-  /** Plano já contratado no gateway: card travado. */
   isCurrent: boolean;
-  /**
-   * Plano escolhido no teste/cadastro mas ainda não pago. Ganha o mesmo
-   * destaque visual do plano atual — sem travar o CTA, que é justamente o
-   * caminho para assiná-lo.
-   */
   isTrialSelection?: boolean;
   ctaLabel: string;
   ctaDisabled?: boolean;
@@ -75,7 +69,6 @@ export function BillingPlanCard({
           .filter(Boolean)
           .join(" ")}
       >
-        {/* Gradient header */}
         <div
           className={`px-4 pt-4 pb-4 bg-gradient-to-br ${theme.headerGradient}`}
         >
@@ -90,7 +83,6 @@ export function BillingPlanCard({
           </p>
         </div>
 
-        {/* Price */}
         <div className="px-4 py-3.5 border-b border-gray-50">
           {isEnterprise ? (
             <>
@@ -128,7 +120,6 @@ export function BillingPlanCard({
           )}
         </div>
 
-        {/* Quota — main differentiator */}
         <div className="px-4 py-3.5 flex-1 flex items-center">
           <div className="flex items-center gap-2">
             <div
@@ -140,7 +131,6 @@ export function BillingPlanCard({
           </div>
         </div>
 
-        {/* CTA */}
         <div className="px-4 pb-4">
           {isEnterprise ? (
             <a

@@ -10,10 +10,6 @@ describe("fetchRequisitosPendente", () => {
   it("devolve só os rótulos bloqueantes do status Pendente", async () => {
     getMock.mockResolvedValue({
       data: [
-        // "Em Agendamento" vem PRIMEIRO de propósito, e com pendência
-        // bloqueante: uma implementação que pegasse `data[0]` em vez de
-        // buscar pelo status passaria com um fixture onde Pendente fosse o
-        // primeiro do array. Aqui ela devolveria ["Definir datas"] e falharia.
         {
           status: 4,
           label: "Em Agendamento",
@@ -39,7 +35,6 @@ describe("fetchRequisitosPendente", () => {
     ]);
   });
 
-  /** O tour não pode quebrar porque a API caiu — cai para lista vazia. */
   it("devolve lista vazia se a chamada falhar", async () => {
     getMock.mockRejectedValue(new Error("500"));
 

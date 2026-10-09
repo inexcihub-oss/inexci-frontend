@@ -1,8 +1,6 @@
 import { Appointment, AppointmentStatus } from "@/services/appointment.service";
 import { SurgeryRequestListItem } from "@/services/surgery-request.service";
 
-// ─── Constantes PT ─────────────────────────────────────────────────────────────
-
 export const MONTHS = [
   "Janeiro",
   "Fevereiro",
@@ -35,8 +33,6 @@ export const MONTHS_SHORT = [
 
 export const WEEKDAYS_SHORT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-// ─── Helpers de data (horário local) ───────────────────────────────────────────
-
 export function startOfDay(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
@@ -55,7 +51,6 @@ export function addMonths(d: Date, n: number): Date {
   return x;
 }
 
-/** Início da semana (domingo) do dia informado. */
 export function startOfWeek(d: Date): Date {
   const x = startOfDay(d);
   return addDays(x, -x.getDay());
@@ -90,8 +85,6 @@ export function hhmm(d: Date): string {
     .padStart(2, "0")}`;
 }
 
-// ─── Evento unificado ───────────────────────────────────────────────────────────
-
 export type CalEventKind = "appointment" | "surgery";
 
 export interface CalEvent {
@@ -119,11 +112,6 @@ export function appointmentToEvent(a: Appointment, typeLabel: string): CalEvent 
     end: new Date(start.getTime() + a.durationMinutes * 60_000),
     allDay: false,
     title: a.patient?.name ?? "Consulta",
-    // O card tem uma linha só para isto; o local entra ao lado do tipo em
-    // vez de ganhar linha própria, que estouraria a altura do slot de 30min.
-    // A sala, quando há, é mais útil que o nome da clínica (que costuma ser
-    // um só) e ocupa o lugar dele. Encaixe vem primeiro: é o que explica o
-    // card sobreposto a outro.
     subtitle: [
       a.isWalkIn ? "Encaixe" : null,
       typeLabel,
@@ -158,11 +146,9 @@ export function surgeryToEvent(
   };
 }
 
-// ─── Cores por tipo/status ──────────────────────────────────────────────────────
-
 export interface EventColors {
-  bar: string; // barra lateral / ponto
-  bg: string; // fundo do bloco
+  bar: string;
+  bg: string;
   text: string;
   border: string;
 }
@@ -229,15 +215,12 @@ export function eventColors(ev: CalEvent): EventColors {
   }
 }
 
-// ─── Layout de sobreposição (lanes tipo Google Calendar) ────────────────────────
-
 export interface PositionedEvent {
   event: CalEvent;
   col: number;
   cols: number;
 }
 
-/** Agrupa eventos que se sobrepõem e atribui colunas para dividir a largura. */
 export function layoutOverlaps(events: CalEvent[]): PositionedEvent[] {
   const sorted = [...events].sort(
     (a, b) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime(),

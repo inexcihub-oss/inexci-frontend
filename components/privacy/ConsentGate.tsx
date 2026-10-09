@@ -11,13 +11,6 @@ interface ConsentGateProps {
   children: React.ReactNode;
 }
 
-/**
- * Bloqueia o acesso às rotas autenticadas até que os consentimentos
- * obrigatórios (Política de Privacidade e Termos de Uso) tenham sido aceitos.
- *
- * Aceita o usuário continuar para `/configuracoes/privacidade` mesmo com
- * pendências, para que ele possa rever o que falta aceitar.
- */
 export function ConsentGate({ children }: ConsentGateProps) {
   const { user, consents, refreshConsents } = useAuth();
   const pathname = usePathname() ?? "";

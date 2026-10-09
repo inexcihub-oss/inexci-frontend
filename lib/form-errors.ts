@@ -1,16 +1,3 @@
-/**
- * Helpers para resumir erros de formulário num Toast amigável.
- */
-
-/**
- * Monta uma mensagem unificada de Toast a partir de um record de erros.
- * - Se houver labels (campo => label), usa o label.
- * - Caso contrário, usa o próprio nome do campo (humanizado).
- *
- * Exemplo:
- *   summarizeErrors({ name: "Curto", email: "Inválido" }, { name: "Nome" })
- *   => "Corrija os campos: Nome, email"
- */
 export function summarizeErrors(
   errors: Record<string, string>,
   labels: Record<string, string> = {},
@@ -36,10 +23,6 @@ function humanizeFieldName(name: string): string {
     .toLowerCase();
 }
 
-/**
- * Move o foco para o primeiro input com erro dentro de `container`.
- * Retorna `true` se conseguiu focar.
- */
 export function focusFirstError(
   errors: Record<string, string>,
   container: HTMLElement | null,

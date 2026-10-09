@@ -4,15 +4,10 @@ import React from "react";
 
 interface ModalFooterProps {
   children: React.ReactNode;
-  /** Se true, exibe os botões alinhados à direita (padrão: justify-between) */
   align?: "between" | "end";
   className?: string;
 }
 
-/**
- * Rodapé fixo reutilizável para modais multi-etapa.
- * Mantém posição sticky ao final do modal e exibe botões de navegação.
- */
 export function ModalFooter({
   children,
   align = "between",
@@ -39,18 +34,9 @@ interface SpinnerButtonProps {
   className?: string;
   children: React.ReactNode;
   type?: "button" | "submit";
-  /**
-   * Âncora do tour de onboarding. A interface é fechada de propósito (não faz
-   * spread de `ButtonHTMLAttributes`), então o atributo precisa ser declarado
-   * para chegar ao DOM.
-   */
   "data-tour"?: string;
 }
 
-/**
- * Botão com estado de loading reutilizável.
- * Substitui o padrão de ternário com spinner nos modais.
- */
 export function SpinnerButton({
   onClick,
   disabled,

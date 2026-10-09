@@ -14,13 +14,6 @@ interface UpdateReceiptModalProps {
   onSuccess: () => void;
 }
 
-/**
- * Modal "Editar Recebimento" — FINALIZED (8), sem mudança de status.
- * Permite editar o valor e data do recebimento após contestação.
- *
- * Referência visual:
- *   telas-inexci/status/finalizada/modal-confirmar-recebimento-botao-editar-aba-faturamento.png
- */
 export function UpdateReceiptModal({
   isOpen,
   onClose,
@@ -97,7 +90,6 @@ export function UpdateReceiptModal({
       />
 
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             Editar Recebimento
@@ -118,9 +110,7 @@ export function UpdateReceiptModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-4 md:p-6 space-y-3 md:space-y-5">
-          {/* Valor Recebido */}
           <div className="space-y-1.5">
             <label className="block ds-label mb-0">
               Valor Recebido (R$) <span className="text-red-500">*</span>
@@ -142,7 +132,6 @@ export function UpdateReceiptModal({
             </div>
           </div>
 
-          {/* Data do Recebimento */}
           <div className="space-y-1.5">
             <label className="block ds-label mb-0">
               Data do Recebimento <span className="text-red-500">*</span>
@@ -157,7 +146,6 @@ export function UpdateReceiptModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
           <button
             onClick={handleClose}

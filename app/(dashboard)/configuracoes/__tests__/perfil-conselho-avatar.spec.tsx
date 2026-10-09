@@ -2,13 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-/**
- * Perfil em Configurações:
- * - o DONO da conta troca o próprio conselho (ele é a administração; não
- *   aparece na lista de colaboradores). Admin delegado e demais, não;
- * - remover o avatar gravado manda `avatarUrl: null` (antes nunca mandava).
- */
-
 let authState: {
   user: { id: string; accountId: string; role: "admin" | "collaborator" };
   isAccountOwner: boolean;

@@ -34,8 +34,6 @@ import {
 import type { DoctorHeader } from "@/types/doctor-header.types";
 import { safeExternalUrl } from "@/lib/safe-url";
 
-// P14: Tiptap (RichTextEditor) carregado sob demanda — fora do chunk estático
-// da rota /solicitacao/[id] (que hoje puxa ~243 kB); baixa só ao editar.
 const RichTextEditor = dynamic(
   () =>
     import("@/components/shared/RichTextEditor").then((m) => m.RichTextEditor),
@@ -47,8 +45,6 @@ const RichTextEditor = dynamic(
   },
 );
 
-// ─── Interfaces ──────────────────────────────────────────────────────────────
-
 interface PatientFormData {
   name: string;
   birthDate: string;
@@ -59,8 +55,6 @@ interface PatientFormData {
   zipCode: string;
   healthPlan: string;
 }
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDateBR(dateStr: string | undefined | null): string {
   if (!dateStr) return "";
@@ -91,8 +85,6 @@ function stripHtmlTags(html: string): string {
   return html.replace(/<[^>]*>/g, "").trim();
 }
 
-// ─── Upload helpers ──────────────────────────────────────────────────────────
-
 interface UploadItem {
   id: string;
   name: string;
@@ -105,8 +97,6 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
-
-// ─── Spinner ─────────────────────────────────────────────────────────────────
 
 function Spinner({
   className = "w-4 h-4 text-gray-400",
@@ -136,17 +126,13 @@ function Spinner({
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
 export function MedicalReportEditor() {
   const { solicitacao, statusNum, onUpdate } = useSolicitacao();
   const { user: currentUser } = useAuth();
 
-  // Laudo é editável apenas no status Pendente (1)
   const isReadOnly = statusNum > 1;
   const router = useRouter();
 
-  // ── Estado do formulário ─────────────────────────────────────────────────
   const [patientData, setPatientData] = useState<PatientFormData>({
     name: "",
     birthDate: "",
@@ -158,10 +144,8 @@ export function MedicalReportEditor() {
     healthPlan: "",
   });
 
-  // ── Seções dinâmicas do laudo ────────────────────────────────────────────
   const [sections, setSections] = useState<ReportSection[]>([]);
   const [isLoadingSections, setIsLoadingSections] = useState(false);
-  // Estado local de edição: { [sectionId]: { title, description } }
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [sectionDraft, setSectionDraft] = useState<{
     title: string;
@@ -181,7 +165,6 @@ export function MedicalReportEditor() {
     null,
   );
 
-  // ── Estado de UI ─────────────────────────────────────────────────────────
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
@@ -197,7 +180,6 @@ export function MedicalReportEditor() {
   const imagesInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
-  // ── Tooltip de info sobre a seção de imagens do laudo ─────────────────────
   const [showImagesInfoTooltip, setShowImagesInfoTooltip] = useState(false);
   const [imagesInfoTooltipPos, setImagesInfoTooltipPos] = useState<{
     top: number;
@@ -206,7 +188,6 @@ export function MedicalReportEditor() {
   const imagesInfoTooltipRef = useRef<HTMLDivElement>(null);
   const imagesInfoButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Fecha tooltip de imagens ao clicar fora
   useEffect(() => {
     if (!showImagesInfoTooltip) return;
     function handleClickOutside(e: MouseEvent) {
@@ -223,7 +204,6 @@ export function MedicalReportEditor() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showImagesInfoTooltip]);
 
-  // Fecha tooltip de imagens ao rolar
   useEffect(() => {
     if (!showImagesInfoTooltip) return;
     const close = () => setShowImagesInfoTooltip(false);
@@ -238,17 +218,14 @@ export function MedicalReportEditor() {
     setShowImagesInfoTooltip(true);
   }
 
-  // ── Documentos por tipo ──────────────────────────────────────────────────
   const examImages =
     solicitacao?.documents?.filter((d: any) => d.key === "report_images") ?? [];
 
-  // ── Inicialização ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!solicitacao) return;
     setPatientData(buildPatientData(solicitacao));
   }, [solicitacao]);
 
-  // ── Carregar sections do servidor ────────────────────────────────────────
   useEffect(() => {
     if (!solicitacao?.id) return;
     setIsLoadingSections(true);
@@ -259,9 +236,6 @@ export function MedicalReportEditor() {
       .finally(() => setIsLoadingSections(false));
   }, [solicitacao?.id]);
 
-  // ── Carrega assinatura do médico ─────────────────────────────────────────
-  // Fonte: doctor.signatureUrl (signed URL do findOne) → doctorProfile.signatureUrl
-  // → perfil do usuário autenticado (fallback quando a SC está em cache stale).
   const signatureRefetchAttempted = useRef(false);
   useEffect(() => {
     const doctor = solicitacao?.doctor;
@@ -281,7 +255,6 @@ export function MedicalReportEditor() {
     setSignatureUrl(url);
   }, [solicitacao, currentUser]);
 
-  // Recarrega a SC quando o perfil já tem assinatura mas o detalhe ainda não.
   useEffect(() => {
     if (signatureRefetchAttempted.current) return;
     const doctor = solicitacao?.doctor;
@@ -297,11 +270,10 @@ export function MedicalReportEditor() {
     }
   }, [solicitacao, currentUser, onUpdate]);
 
-  // Upload inline da assinatura do médico (próprio médico ou colaborador vinculado).
   const handleSignatureUpload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      e.target.value = ""; // permite reenviar o mesmo arquivo
+      e.target.value = "";
       const doctorId = solicitacao?.doctor?.id;
       if (!file || !doctorId) return;
 
@@ -331,7 +303,6 @@ export function MedicalReportEditor() {
     [solicitacao?.doctor?.id, onUpdate, showToast],
   );
 
-  // Remove a assinatura cadastrada do médico (próprio ou vinculado).
   const handleSignatureDelete = useCallback(async () => {
     const doctorId = solicitacao?.doctor?.id;
     if (!doctorId) return;
@@ -350,7 +321,6 @@ export function MedicalReportEditor() {
     }
   }, [solicitacao?.doctor?.id, onUpdate, showToast]);
 
-  // ── Carrega cabeçalho do médico autenticado ──────────────────────────────
   useEffect(() => {
     if (!currentUser) return;
     const isOwnRequest =
@@ -364,8 +334,6 @@ export function MedicalReportEditor() {
       .then(setDoctorHeader)
       .catch(() => setDoctorHeader(null));
   }, [currentUser, solicitacao?.doctor]);
-
-  // ── Handlers de Seções ──────────────────────────────────────────────────
 
   const handleAddSection = useCallback(async () => {
     if (!stripHtmlTags(newSectionDraft.title)) {
@@ -614,15 +582,12 @@ export function MedicalReportEditor() {
     }
   }, [solicitacao?.id, showToast]);
 
-  // ── Classes utilitárias ───────────────────────────────────────────────────
-
   const inputClass = (_editing: boolean) =>
     `ds-input bg-gray-50 text-gray-400 border-gray-100 cursor-default select-none`;
 
   const editarBtnClass =
     "flex-shrink-0 flex items-center px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-xl text-xs md:text-sm font-semibold text-black hover:bg-gray-50 transition-colors";
 
-  // ── Progresso do Laudo ───────────────────────────────────────────────────
   const p = solicitacao?.patient;
   const patientComplete = !!(p?.name?.trim() && p?.cpf?.replace(/\D/g, "").length === 11);
 
@@ -663,12 +628,9 @@ export function MedicalReportEditor() {
   const completedCount = requiredSteps.filter((s) => s.complete).length;
   const totalRequired = requiredSteps.length;
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
     <>
       <div className="flex flex-col gap-3 w-full py-4">
-        {/* ─── Progresso do Laudo ──────────────────────────────────────────── */}
         <div className="flex flex-col gap-3 w-full bg-white border border-gray-200 rounded-2xl p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
             <p className="text-xs md:text-sm font-semibold text-gray-900">
@@ -732,13 +694,10 @@ export function MedicalReportEditor() {
           </div>
         </div>
 
-        {/* ─── Cards do laudo ───────────────────────────────────────────────── */}
         <div
           className={`flex flex-col gap-3 w-full ${isReadOnly ? "opacity-70 pointer-events-none" : ""}`}
           style={isReadOnly ? { pointerEvents: "none" } : undefined}
         >
-          {/* Nota: pointer-events é re-habilitado abaixo nos botões de ação */}
-          {/* ── IDENTIFICAÇÃO DO PACIENTE ─────────────────────────────────── */}
           <div
             id="laudo-patient-identification"
             className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-2xl p-4"
@@ -747,7 +706,6 @@ export function MedicalReportEditor() {
               <h3 className="ds-section-title leading-loose">
                 IDENTIFICAÇÃO DO PACIENTE
               </h3>
-              {/* Botão navega para a tela de detalhes do paciente */}
               {!isReadOnly && (
                 <button
                   onClick={() =>
@@ -791,7 +749,6 @@ export function MedicalReportEditor() {
             </div>
           </div>
 
-          {/* ── SEÇÕES DO LAUDO ────────────────────────────────────────── */}
           <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-2xl p-4">
             <div className="flex items-center justify-between w-full gap-2">
               <h3 className="ds-section-title leading-tight flex-1 min-w-0">
@@ -813,7 +770,6 @@ export function MedicalReportEditor() {
               )}
             </div>
 
-            {/* Aviso: sem seções */}
             {!isLoadingSections &&
               sections.length === 0 &&
               !isAddingSection &&
@@ -835,14 +791,12 @@ export function MedicalReportEditor() {
                 </div>
               )}
 
-            {/* Loading */}
             {isLoadingSections && (
               <div className="flex justify-center py-4">
                 <Spinner className="w-5 h-5 text-gray-400" />
               </div>
             )}
 
-            {/* Lista de seções */}
             {!isLoadingSections &&
               sections.map((section, idx) => (
                 <div
@@ -850,7 +804,6 @@ export function MedicalReportEditor() {
                   className="flex flex-col gap-3 border border-gray-200 rounded-xl p-3"
                 >
                   {editingSection === section.id ? (
-                    /* ── Modo edição ── */
                     <>
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center justify-between">
@@ -920,7 +873,6 @@ export function MedicalReportEditor() {
                       </div>
                     </>
                   ) : (
-                    /* ── Modo visualização ── */
                     <div
                       className={`flex gap-2 transition-colors ${
                         dragOverSectionId === section.id &&
@@ -952,7 +904,6 @@ export function MedicalReportEditor() {
                         setDragOverSectionId(null);
                       }}
                     >
-                      {/* Controles de ordem */}
                       {!isReadOnly && (
                         <div className="flex flex-col items-center gap-0.5 pt-0.5">
                           <button
@@ -981,7 +932,6 @@ export function MedicalReportEditor() {
                         </div>
                       )}
 
-                      {/* Conteúdo */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div
@@ -1048,7 +998,6 @@ export function MedicalReportEditor() {
                 </div>
               ))}
 
-            {/* Formulário para nova seção */}
             {isAddingSection && !isReadOnly && (
               <div className="flex flex-col gap-3 border border-teal-200 bg-teal-50/40 rounded-xl p-3">
                 <div className="flex flex-col gap-1">
@@ -1123,7 +1072,6 @@ export function MedicalReportEditor() {
             )}
           </div>
 
-          {/* ── IMAGENS A SEREM ANEXADAS AO LAUDO ───────────────────────────────────────── */}
           <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-2xl p-4">
             <h3 className="ds-section-title leading-loose flex items-center gap-1.5">
               IMAGENS A SEREM ANEXADAS AO LAUDO
@@ -1188,7 +1136,6 @@ export function MedicalReportEditor() {
               )}
             </h3>
 
-            {/* Dropzone */}
             {!isReadOnly && (
               <>
                 <input
@@ -1238,10 +1185,8 @@ export function MedicalReportEditor() {
               </>
             )}
 
-            {/* Arquivos enviados + em envio */}
             {(imageUploadItems.length > 0 || examImages.length > 0) && (
               <div className="flex flex-col gap-2">
-                {/* Em envio */}
                 {imageUploadItems.map((item) => (
                   <div
                     key={item.id}
@@ -1262,7 +1207,6 @@ export function MedicalReportEditor() {
                     <div className="w-6 h-6 flex-shrink-0" />
                   </div>
                 ))}
-                {/* Já carregados */}
                 {examImages.map((doc: any) => (
                   <div
                     key={doc.id}
@@ -1300,7 +1244,6 @@ export function MedicalReportEditor() {
             )}
           </div>
 
-          {/* ─── Cabeçalho Customizado ──────────────────────────────────────────── */}
           {doctorHeader !== undefined && (
             <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-2xl p-4">
               <h3 className="ds-section-title leading-loose">
@@ -1343,7 +1286,6 @@ export function MedicalReportEditor() {
             </div>
           )}
 
-          {/* ─── Assinatura do Médico ────────────────────────────────────────────── */}
           <div className="flex flex-col gap-4 w-full bg-white border border-gray-200 rounded-2xl p-4">
             <h3 className="ds-section-title leading-loose">
               ASSINATURA DO MÉDICO
@@ -1419,10 +1361,8 @@ export function MedicalReportEditor() {
           </div>
         </div>
 
-        {/* ─── Divisor ─────────────────────────────────────────────────────── */}
         <hr className="border-gray-200" />
 
-        {/* ─── Botões de ação ───────────────────────────────────────────────── */}
         <div
           className="flex items-center justify-end gap-2 w-full flex-wrap"
           style={{ opacity: 1, pointerEvents: "auto" }}
@@ -1452,7 +1392,6 @@ export function MedicalReportEditor() {
         </div>
       </div>
 
-      {/* Modal de pré-visualização */}
       <MedicalReportPreviewModal
         isOpen={showPreview}
         onClose={() => setShowPreview(false)}

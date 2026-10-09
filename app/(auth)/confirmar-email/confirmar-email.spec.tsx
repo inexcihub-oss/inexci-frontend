@@ -9,7 +9,6 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
-// Mesmo com um usuário "ambiente" carregado, a página deve permanecer neutra.
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { id: "user-B", email: "outro@b.com" } }),
 }));
@@ -46,7 +45,6 @@ describe("ConfirmarEmailPage", () => {
     expect(
       screen.getByRole("button", { name: "Fazer login" }),
     ).toBeInTheDocument();
-    // Não deve assumir a sessão do usuário ambiente (contaminação de sessão).
     expect(
       screen.queryByRole("button", { name: "Ir para o painel" }),
     ).not.toBeInTheDocument();

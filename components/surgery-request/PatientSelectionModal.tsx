@@ -37,7 +37,6 @@ export function PatientSelectionModal({
       const data = await patientService.getAll();
       setPatients(data);
     } catch {
-      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -58,7 +57,6 @@ export function PatientSelectionModal({
     >
       <div className="p-4 md:p-6">
         <div className="flex gap-4 mb-6">
-          {/* Search */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -70,7 +68,6 @@ export function PatientSelectionModal({
             />
           </div>
 
-          {/* New Button */}
           <button
             onClick={onCreateNew}
             className="ds-btn-primary flex items-center gap-2"
@@ -80,7 +77,6 @@ export function PatientSelectionModal({
           </button>
         </div>
 
-        {/* Patients List */}
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {loading ? (
             <div className="text-center py-8 text-gray-500">Carregando...</div>

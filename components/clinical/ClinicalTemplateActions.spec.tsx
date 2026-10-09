@@ -126,7 +126,6 @@ describe("ClinicalTemplateActions", () => {
         }),
       ),
     );
-    // A lista recarrega para o modelo novo aparecer sem sair da tela.
     await waitFor(() =>
       expect(clinicalRecordTemplateService.getAll).toHaveBeenCalledTimes(2),
     );
@@ -199,12 +198,6 @@ describe("ClinicalTemplateActions", () => {
     ).toBeInTheDocument();
   });
 
-  /**
-   * Aplicar um modelo chama `apply`, que incrementa o contador de uso real;
-   * salvar cria um registro persistente. Nenhum dos dois pode acontecer com o
-   * tour guiado no ar — a região dos modelos é destacada pelos passos
-   * `indicacao`/`documentos` da trilha Atendimento.
-   */
   it("mantém Aplicar e Salvar habilitados fora do tour", async () => {
     const user = userEvent.setup();
     setup({ ...currentFields, anamnesis: "<p>Dor lombar</p>" });

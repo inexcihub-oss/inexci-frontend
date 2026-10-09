@@ -33,7 +33,7 @@ const ACCEPTED_MIME = [
   "image/png",
   "image/webp",
 ];
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_BYTES = 10 * 1024 * 1024;
 const POLLING_TIMEOUT_MS = 90000;
 const USER_CANCELLED_SIGNAL = "__DOC_EXTRACTION_CANCELLED_BY_USER__";
 const DEFAULT_ANALYSIS_ERROR_MESSAGE =
@@ -79,14 +79,8 @@ export function UploadDocumentModal({
   const keepTrackingInBackgroundRef = useRef(false);
   const queuedBackgroundJobRef =
     useRef<BackgroundDocumentExtractionActive | null>(null);
-  /** Mantém a análise demonstrativa viva até o avanço explícito do tour. */
   const analiseSimuladaAtivaRef = useRef(false);
 
-  /**
-   * Passo "documento-enviar" da trilha Solicitações: simula a análise sem
-   * NENHUMA chamada real a `extractFromDocument`/`waitForExtractionResult`.
-   * A análise fica visível até a pessoa clicar em "Próximo" no tour.
-   */
   useOnboardingAction("sc-simular-analise-documento", () => {
     if (!emTour) return;
     analiseSimuladaAtivaRef.current = true;
@@ -95,7 +89,6 @@ export function UploadDocumentModal({
     setUnreadCount((c) => c + 1);
   });
 
-  // O clique em "Próximo" da etapa 7 confirma a simulação e abre a revisão.
   useOnboardingAction("sc-concluir-analise-documento", () => {
     if (!emTour || !analiseSimuladaAtivaRef.current) return;
     analiseSimuladaAtivaRef.current = false;
@@ -123,9 +116,6 @@ export function UploadDocumentModal({
 
   const handleClose = () => {
     if (analiseSimuladaAtivaRef.current) {
-      // Simulação fabricada do tour: não existe job real em background para
-      // continuar rastreando — sem isso, `loading` ficava travado para
-      // sempre (o `setTimeout` fabricado é cancelado dentro de resetState).
       resetState();
       onClose();
       return;
@@ -169,7 +159,6 @@ export function UploadDocumentModal({
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f) applyFile(f);
-    // Limpa o input para permitir re-seleção do mesmo arquivo
     e.target.value = "";
   };
 
@@ -181,9 +170,6 @@ export function UploadDocumentModal({
   };
 
   const handleSubmit = async () => {
-    // Defesa em profundidade: durante o tour não deve existir NENHUMA
-    // chamada real a `extractFromDocument` — a UI já bloqueia isso, mas o
-    // handler não pode depender só do botão desabilitado.
     if (emTour) return;
     if (!file) return;
     setLoading(true);
@@ -315,7 +301,6 @@ export function UploadDocumentModal({
       extractionCancelledRef.current = true;
       abortPendingWaitRef.current?.();
       abortPendingWaitRef.current = null;
-      // A simulação só pode ser concluída enquanto este modal ainda existe.
       analiseSimuladaAtivaRef.current = false;
     };
   }, []);
@@ -333,7 +318,6 @@ export function UploadDocumentModal({
           e você poderá revisar tudo antes de criar a solicitação.
         </p>
 
-        {/* Área de drop */}
         <div
           role="button"
           tabIndex={0}
@@ -411,7 +395,6 @@ export function UploadDocumentModal({
           )}
         </div>
 
-        {/* Erro */}
         {error && (
           <div className="flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -439,7 +422,6 @@ export function UploadDocumentModal({
           </div>
         )}
 
-        {/* Ações */}
         <div className="flex flex-col sm:flex-row gap-2.5 sm:justify-end">
           <Button
             type="button"

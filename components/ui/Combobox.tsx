@@ -20,9 +20,7 @@ export interface ComboboxProps {
   disabled?: boolean;
   className?: string;
   label?: string;
-  /** Quando informado, exibe uma opção para criar um novo item a partir do texto buscado. */
   onCreateNew?: (query: string) => void;
-  /** Nome do tipo de item usado no texto da opção "criar novo" (ex.: "convênio"). */
   createNewLabel?: string;
 }
 
@@ -96,7 +94,6 @@ export function Combobox({
           const margin = 8;
           const spaceBelow = window.innerHeight - rect.bottom - margin;
           const spaceAbove = rect.top - margin;
-          // Abre para cima quando não cabe embaixo e há mais espaço em cima.
           const openUp = spaceBelow < 300 && spaceAbove > spaceBelow;
           setDropdownPosition({
             top: rect.bottom + 4,

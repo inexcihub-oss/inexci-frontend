@@ -9,10 +9,6 @@ const HOSPITAIS = [
   { id: "h2", name: "Hospital São Lucas" },
 ];
 
-/**
- * Espelha o uso real: o combobox vive dentro de um <form> com botão de submit,
- * e começa com um hospital já preenchido (vindo da extração do documento).
- */
 function Harness({
   onSubmit,
   initialId = "h1",

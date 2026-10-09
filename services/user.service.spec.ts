@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Mock do módulo api
 vi.mock("@/lib/api", () => ({
   default: {
     get: vi.fn(),
@@ -19,10 +18,6 @@ vi.mock("@/services/upload.service", () => ({
 import api from "@/lib/api";
 import { userService } from "./user.service";
 
-/**
- * PRD: Reformulação Usuários/Permissões — US-005 / US-007
- * Testa chamadas HTTP do userService (perfil de médico, etc.).
- */
 describe("userService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -93,13 +88,7 @@ describe("userService", () => {
     });
   });
 
-  // `getAll`/`getById` (GET /users e /users/one) foram removidos junto com os
-  // seus testes: nenhuma tela os chamava e o primeiro trazia o diretório do
-  // staff com dado pessoal de cada colega.
-
   describe("updateProfile — cache do perfil", () => {
-    // O cache é desligado em NODE_ENV=test (avaliado no load do módulo):
-    // recarrega o módulo com outro NODE_ENV para exercitá-lo.
     async function carregarComCache() {
       vi.stubEnv("NODE_ENV", "development");
       vi.resetModules();

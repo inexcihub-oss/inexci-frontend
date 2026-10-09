@@ -31,7 +31,6 @@ export default function ClinicaDetalhePage() {
   const [clinic, setClinic] = useState<Clinic | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
-  // Form state (dados da clínica)
   const [formData, setFormData] = useState({
     name: "",
     cnpj: "",
@@ -48,8 +47,6 @@ export default function ClinicaDetalhePage() {
     null,
   );
 
-  // Grade de funcionamento: estado separado do restante do formulário, mas
-  // participa do mesmo `isDirty` — ver `originalBusinessHours` abaixo.
   const [businessHours, setBusinessHours] = useState<BusinessHours>(
     emptyBusinessHours(),
   );
@@ -58,8 +55,6 @@ export default function ClinicaDetalhePage() {
   const errosGrade = validarGrade(businessHours);
   const gradeInvalida = Object.keys(errosGrade).length > 0;
 
-  // `isDirty` cobre formulário e grade: editar só a grade e cancelar não pode
-  // navegar para fora em silêncio, descartando a edição sem reverter nada.
   const isDirty =
     originalData !== null &&
     (JSON.stringify(formData) !== JSON.stringify(originalData) ||
@@ -170,8 +165,6 @@ export default function ClinicaDetalhePage() {
   const handleCancel = () => {
     if (isDirty && originalData) {
       setFormData(originalData);
-      // Mesma fonte original que o `isDirty` usa para comparar — evita as
-      // duas divergirem entre si.
       setBusinessHours(originalBusinessHours ?? emptyBusinessHours());
     } else {
       router.push("/clinicas");
@@ -206,7 +199,6 @@ export default function ClinicaDetalhePage() {
         itemName={formData.name}
         itemSubtitle="Clínica"
       >
-        {/* Seção: Dados da clínica */}
         <FormSection title="Dados da clínica">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
@@ -283,7 +275,6 @@ export default function ClinicaDetalhePage() {
           )}
         </FormSection>
 
-        {/* Seção: Horário de atendimento */}
         <FormSection title="Horário de atendimento">
           <p className="mb-3 text-xs text-neutral-500">
             Dias e horários em que a unidade atende. Ao agendar uma consulta
@@ -296,12 +287,10 @@ export default function ClinicaDetalhePage() {
           />
         </FormSection>
 
-        {/* Seção: Salas — salva cada ação na hora, fora do "Salvar" abaixo. */}
         <FormSection title="Salas">
           <ClinicRoomsSection clinicId={params.id} />
         </FormSection>
 
-        {/* Botão de salvar */}
         <div className="flex justify-end gap-3 pt-4">
           <Button variant="outline" onClick={handleCancel}>
             Cancelar

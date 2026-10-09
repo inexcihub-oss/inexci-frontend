@@ -57,11 +57,9 @@ export function NewProcedureModelModal({
     onClose();
   }, [isLoading, handleReset, onClose]);
 
-  // Focus no primeiro input ao abrir
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
-      // Pequeno delay para garantir que o modal renderizou
       setTimeout(() => modelNameInputRef.current?.focus(), 100);
     }
     return () => {
@@ -69,7 +67,6 @@ export function NewProcedureModelModal({
     };
   }, [isOpen]);
 
-  // Fechar com Escape
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -86,7 +83,6 @@ export function NewProcedureModelModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, showDropdown, handleClose]);
 
-  // Load procedures when modal opens
   useEffect(() => {
     if (!isOpen) return;
     const loadProcedures = async () => {
@@ -95,7 +91,6 @@ export function NewProcedureModelModal({
         const data = await procedureService.getAll();
         setProcedures(data);
       } catch {
-        // silently fail
       } finally {
         setIsLoadingProcedures(false);
       }
@@ -103,7 +98,6 @@ export function NewProcedureModelModal({
     loadProcedures();
   }, [isOpen]);
 
-  // Filter procedures based on search
   const filteredProcedures = procedures.filter((p) =>
     p.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
   );
@@ -112,7 +106,6 @@ export function NewProcedureModelModal({
     (p) => p.name.toLowerCase() === procedureSearch.trim().toLowerCase(),
   );
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (
@@ -144,9 +137,6 @@ export function NewProcedureModelModal({
       setProcedureSearch(created.name);
       setShowDropdown(false);
     } catch (err) {
-      // Antes este catch era um `// silently fail`: o clique em "Criar" não
-      // fazia nada e não dizia nada — nome duplicado e queda de rede eram
-      // indistinguíveis de um botão morto.
       setProcedureError(
         getApiErrorMessage(err, "Erro ao criar procedimento. Tente novamente."),
       );
@@ -174,13 +164,11 @@ export function NewProcedureModelModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         onClick={handleClose}
       />
 
-      {/* Modal */}
       <div
         role="dialog"
         aria-modal="true"
@@ -191,7 +179,6 @@ export function NewProcedureModelModal({
             : undefined
         }
       >
-        {/* Drag handle (mobile) */}
         <div
           className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
           onTouchStart={onTouchStart}
@@ -201,7 +188,6 @@ export function NewProcedureModelModal({
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 md:p-6 border-b border-neutral-100">
           <h2 className="ds-modal-title">Novo modelo</h2>
           <button
@@ -214,9 +200,7 @@ export function NewProcedureModelModal({
           </button>
         </div>
 
-        {/* Body — sem overflow hidden para o dropdown poder vazar */}
         <div className="flex flex-col gap-5 p-5 md:p-6 overflow-visible">
-          {/* Nome do modelo */}
           <div className="flex flex-col gap-1.5" data-tour="procedimentos-modelo-nome">
             <label className="ds-label mb-0">
               Nome do modelo <span className="text-red-500">*</span>
@@ -232,7 +216,6 @@ export function NewProcedureModelModal({
             />
           </div>
 
-          {/* Procedimento - Search com criação */}
           <div className="flex flex-col gap-1.5">
             <label className="ds-label mb-0">Procedimento</label>
             <div className="relative" ref={dropdownRef}>
@@ -256,7 +239,6 @@ export function NewProcedureModelModal({
                 )}
               </div>
 
-              {/* Dropdown de resultados */}
               {showDropdown && (
                 <div className="absolute z-[60] bottom-full mb-1 w-full bg-white border border-neutral-200 rounded-xl shadow-lg max-h-[36vh] overflow-y-auto scrollbar-mobile-visible md:top-full md:bottom-auto md:mt-1 md:mb-0 md:max-h-48">
                   {isLoadingProcedures ? (
@@ -290,7 +272,6 @@ export function NewProcedureModelModal({
                         </div>
                       )}
 
-                      {/* Opção de criar novo procedimento */}
                       {procedureSearch.trim() && !exactMatch && (
                         <button
                           type="button"
@@ -325,7 +306,6 @@ export function NewProcedureModelModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between px-5 py-4 md:px-6 border-t border-neutral-100">
           <Button variant="outline" onClick={handleReset} disabled={isLoading}>
             Limpar

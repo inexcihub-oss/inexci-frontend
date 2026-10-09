@@ -109,9 +109,6 @@ export default async function LandingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // next/script com strategy="afterInteractive" injeta o script via JS, então
-  // strict-dynamic o cobre — mas passar o nonce explícito remove qualquer
-  // ambiguidade e é a forma documentada pelo Next para esse caso.
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <>

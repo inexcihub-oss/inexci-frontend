@@ -13,11 +13,6 @@ interface HealthPlanComboboxFieldProps {
   onHealthPlanCreated: (healthPlan: HealthPlan) => void;
   placeholder?: string;
   className?: string;
-  /**
-   * Falso quando o usuário não pode cadastrar convênios (sem `administracao`):
-   * a opção "Cadastrar novo" some do combobox e uma dica aparece no lugar,
-   * em vez de deixar a criação disponível e devolver 403 ao confirmar.
-   */
   canCreate?: boolean;
 }
 

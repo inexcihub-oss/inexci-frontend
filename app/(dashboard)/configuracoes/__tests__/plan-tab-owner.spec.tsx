@@ -2,13 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-/**
- * Tarefa 18, Passo 6: o backend recusa `checkout`/`portal` do Stripe para
- * quem não é dono da conta (`user.id !== user.accountId`) — mesmo que seja
- * admin. A aba "Plano e Faturamento" precisa parar de aparecer nesse caso,
- * senão o usuário só descobre o bloqueio pelo erro do botão.
- */
-
 let authState: {
   user: {
     id: string;

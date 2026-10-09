@@ -43,10 +43,6 @@ export default function ConveniosPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { can, permissions } = useAuth();
-  // Dois eixos distintos, de propósito: cadastrar segue a regra do cadastro
-  // transversal (qualquer área, igual ao `@RequireAnyArea()` do backend);
-  // excluir continua sendo ato do admin, porque apaga um convênio que
-  // solicitações já referenciam.
   const podeCadastrar = hasAnyArea(permissions);
   const podeExcluir = can(Permission.ADMINISTRACAO);
   const [searchTerm, setSearchTerm] = useState("");

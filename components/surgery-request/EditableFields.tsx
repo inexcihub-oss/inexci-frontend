@@ -11,7 +11,6 @@ import {
 import { logger } from "@/lib/logger";
 import { AvailableDoctor } from "@/types";
 
-// Ícone de chevron para dropdown
 const ChevronDownIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 20 20" fill="currentColor">
     <path
@@ -22,7 +21,6 @@ const ChevronDownIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// Estilos por status (9 status corretos conforme backend)
 const statusStyles: Record<
   number,
   { bg: string; text: string; border: string; label: string }
@@ -107,7 +105,6 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   );
 }
 
-// Cores por prioridade - mesmas do Kanban (design-system.ts)
 const priorityStyles: Record<
   PriorityLevel,
   {
@@ -118,28 +115,24 @@ const priorityStyles: Record<
   }
 > = {
   1: {
-    // Baixa - Verde
     bg: "bg-chip-baixa-bg",
     text: "text-chip-baixa-text",
     border: "border-chip-baixa-bg",
     hoverBg: "hover:bg-chip-baixa-hover",
   },
   2: {
-    // Média - Azul
     bg: "bg-chip-media-bg",
     text: "text-chip-media-text",
     border: "border-chip-media-bg",
     hoverBg: "hover:bg-chip-media-hover",
   },
   3: {
-    // Alta - Amarelo
     bg: "bg-chip-alta-bg",
     text: "text-chip-alta-text",
     border: "border-chip-alta-bg",
     hoverBg: "hover:bg-chip-alta-hover",
   },
   4: {
-    // Urgente - Vermelho
     bg: "bg-chip-urgente-bg",
     text: "text-chip-urgente-text",
     border: "border-chip-urgente-bg",

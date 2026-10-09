@@ -15,8 +15,6 @@ describe("normalize-template-tuss", () => {
       ],
     });
 
-    // `id` é do item da SC de origem e `procedureId` não existe no catálogo
-    // TUSS (vem de tuss.json, sem uuid) — nenhum dos dois pode vazar.
     expect(items).toEqual([
       {
         tussCode: "3.07.15.09-1",

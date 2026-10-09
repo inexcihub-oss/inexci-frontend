@@ -5,21 +5,8 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { resolveHome } from "@/lib/permissions";
 
-/**
- * Rotas de `(auth)` que permanecem acessíveis mesmo com uma sessão ativa. Apenas
- * a confirmação de e-mail: é por token enviado por e-mail e pode ser legitimamente
- * aberta enquanto o usuário está logado. Todas as demais telas de autenticação
- * (login, cadastro, primeiro-acesso, recuperação de senha) só fazem sentido para
- * quem está deslogado — um usuário autenticado é redirecionado para o dashboard.
- */
 const ALLOWED_WHILE_AUTHENTICATED = ["/confirmar-email"];
 
-/**
- * Indício local de sessão (sem request). Usado apenas para decidir se devemos
- * segurar a renderização do formulário enquanto a sessão real é resolvida — assim
- * um usuário logado não vê o form piscar antes do redirect, e um visitante
- * deslogado vê o formulário imediatamente.
- */
 function hasLocalSessionHint(): boolean {
   if (typeof window === "undefined") return false;
   try {
@@ -31,22 +18,6 @@ function hasLocalSessionHint(): boolean {
   }
 }
 
-/**
- * Guard reverso: impede que um usuário já autenticado permaneça em telas públicas
- * de autenticação (login, cadastro, recuperação de senha).
- *
- * Usa navegação dura (`window.location.replace`) em vez de `router.replace`: o
- * redirect cruza do route-group `(auth)` para o `(dashboard)`, e a navegação RSC
- * "soft" do App Router fica dessincronizada nesse cruzamento (a URL muda mas a
- * árvore continua montando a tela de auth). O full reload recarrega a árvore
- * correta do servidor e elimina o desync. Só ocorre para sessão de fato válida
- * (`isAuthenticated` = `/me` ok), então não há risco de loop com o dashboard.
- *
- * O destino sai de `resolveHome(permissions)`, não de uma constante: o antigo
- * `/solicitacoes-cirurgicas` fixo mandava quem não tem a área para uma rota
- * proibida — e, por ser navegação dura, cada ida e volta custava um reload
- * inteiro, o que podia estourar o limite de redirecionamentos do navegador.
- */
 export function RedirectIfAuthenticated({
   children,
 }: {
@@ -60,8 +31,6 @@ export function RedirectIfAuthenticated({
     pathname?.startsWith(p),
   );
 
-  // Evita mismatch de hidratação: a leitura de localStorage só pode ocorrer
-  // após o mount no cliente.
   useEffect(() => {
     setHasSessionHint(hasLocalSessionHint());
   }, []);
@@ -73,14 +42,10 @@ export function RedirectIfAuthenticated({
     }
   }, [isAuthenticated, loading, isExempt, permissions]);
 
-  // Confirmar-email permanece sempre acessível (confirmação por token).
   if (isExempt) return <>{children}</>;
 
-  // Já autenticado: não renderiza o form enquanto o redirect acontece.
   if (isAuthenticated) return null;
 
-  // Sessão ainda resolvendo E há indício de login: segura o form para evitar o
-  // flash antes do redirect. Sem indício, mostra o form imediatamente.
   if (loading && hasSessionHint) return null;
 
   return <>{children}</>;

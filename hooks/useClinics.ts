@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { clinicService } from "@/services/clinic.service";
 
-/** Cadastro estável: muda pouco, cacheado por 20min entre navegações. */
 export const CLINICS_QUERY_KEY = ["clinics"] as const;
 const REGISTRY_STALE_TIME_MS = 1000 * 60 * 20;
 

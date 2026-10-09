@@ -21,11 +21,9 @@ interface SelectSearchProps {
   error?: string;
   clearable?: boolean;
   initialLabel?: string;
-  /** Nome acessível do campo quando o rótulo visível fica fora do componente. */
   ariaLabel?: string;
 }
 
-// Custom debounce function
 function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number,
@@ -71,16 +69,12 @@ export function SelectSearch({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(initialLabel || "");
   const inputRef = useRef<HTMLInputElement>(null);
-  // Lista em portal ancorada ao campo: acompanha a rolagem do corpo do modal
-  // (sem isso ela ficava parada onde o campo estava quando abriu) e fecha no
-  // clique fora considerando campo e lista.
   const {
     anchorRef,
     dropdownRef,
     position: dropdownPosition,
   } = useAnchoredDropdown(isOpen, () => setIsOpen(false));
 
-  // Mantém referência estável para onSearch para não recriar a fn debounced a cada render
   const onSearchRef = useRef(onSearch);
   useEffect(() => {
     onSearchRef.current = onSearch;
@@ -100,7 +94,6 @@ export function SelectSearch({
     }, 300),
   );
 
-  // Dispara busca ao alterar searchTerm ou ao abrir o dropdown
   useEffect(() => {
     if (!isOpen) return;
     const fn = debouncedSearchRef.current;
@@ -108,7 +101,6 @@ export function SelectSearch({
     return () => fn.cancel();
   }, [searchTerm, isOpen]);
 
-  // Effect to set selected label when value changes
   useEffect(() => {
     if (value && options.length > 0) {
       const found = options.find((opt) => opt.value === value);
@@ -120,7 +112,6 @@ export function SelectSearch({
     }
   }, [value, options]);
 
-  // Sync initialLabel when value is set but options haven't loaded yet
   useEffect(() => {
     if (value && initialLabel && !selectedLabel) {
       setSelectedLabel(initialLabel);
@@ -233,7 +224,6 @@ export function SelectSearch({
         </div>
       </div>
 
-      {/* Dropdown via portal */}
       {isOpen &&
         typeof window !== "undefined" &&
         ReactDOM.createPortal(

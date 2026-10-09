@@ -168,7 +168,6 @@ export function NewHospitalModal({
         onClick={handleClose}
       />
       <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 flex-shrink-0">
           <h2 className="ds-modal-title">Novo hospital</h2>
           <button
@@ -181,13 +180,11 @@ export function NewHospitalModal({
         </div>
         <div className="h-px bg-gray-200 flex-shrink-0" />
 
-        {/* Body */}
         <form
           onSubmit={handleSubmit}
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
-            {/* Row 1: Nome + CNPJ */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className={labelClass}>Nome</label>
@@ -214,7 +211,6 @@ export function NewHospitalModal({
               </div>
             </div>
 
-            {/* Row 2: Telefone + E-mail */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className={labelClass}>Telefone (opcional)</label>
@@ -242,7 +238,6 @@ export function NewHospitalModal({
               </div>
             </div>
 
-            {/* Row 3: Cidade + Estado */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className={labelClass}>Cidade (opcional)</label>
@@ -280,7 +275,6 @@ export function NewHospitalModal({
             )}
           </div>
 
-          {/* Footer */}
           <div className="h-px bg-gray-200 flex-shrink-0" />
           <div className="ds-modal-footer">
             <button

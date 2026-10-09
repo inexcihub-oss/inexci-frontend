@@ -15,11 +15,6 @@ interface DefineSurgeryDateModalProps {
   onSuccess: () => void;
 }
 
-/**
- * Modal "Definir Data" — IN_SCHEDULING (4) → SCHEDULED (5).
- * Usado quando nenhuma data foi proposta na análise: o usuário digita
- * data e hora aqui e a confirma direto nesta etapa.
- */
 export function DefineSurgeryDateModal({
   isOpen,
   onClose,
@@ -77,7 +72,6 @@ export function DefineSurgeryDateModal({
       />
 
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             Definir Data da Cirurgia
@@ -98,7 +92,6 @@ export function DefineSurgeryDateModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-4 md:p-6 space-y-3 md:space-y-4">
           <p className="text-xs md:text-sm text-gray-500">
             Nenhuma data foi proposta. Informe a data e hora da cirurgia para
@@ -118,7 +111,6 @@ export function DefineSurgeryDateModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
           <button
             onClick={handleClose}

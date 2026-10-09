@@ -2,14 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-/**
- * Passo 2 (escolha do método de envio) precisa deixar claro que "Download
- * Manual" e "Enviar por e-mail" usam o PDF gerado no modelo do sistema —
- * diferente de "Enviar documento de origem" e "Confirmar com documento de
- * origem", que usam o arquivo original. E o Download Manual precisa avisar
- * que a ação já marca a solicitação como enviada ao convênio.
- */
-
 const showToast = vi.fn();
 
 vi.mock("@/hooks/useToast", () => ({
@@ -91,7 +83,6 @@ describe("SendRequestModal — clareza do passo 2 (método de envio)", () => {
     await irParaEscolhaDeMetodo(user);
 
     const badges = await screen.findAllByText(/modelo do sistema/i);
-    // Uma para "Download Manual", outra para "Enviar por e-mail".
     expect(badges.length).toBeGreaterThanOrEqual(2);
   });
 

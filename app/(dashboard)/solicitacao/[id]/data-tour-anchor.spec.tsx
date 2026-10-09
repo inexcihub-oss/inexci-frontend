@@ -3,14 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SolicitacaoDetalhePage from "./page";
 
-/**
- * Prova que a tela de detalhe da solicitação carrega a âncora `data-tour`
- * que o tour de onboarding espera ("sc-requisitos", passo "requisitos" da
- * trilha "solicitacoes"). O painel de pendências (sidebar direita, aba
- * "Pendências") é irmão do `SolicitacaoProvider`, não filho dele — não exige
- * o contexto para renderizar, só que a query principal resolva com uma SC.
- */
-
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "sc-1" }),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -34,9 +26,6 @@ vi.mock("@/hooks/useAvailableDoctors", () => ({
   useAvailableDoctors: () => ({ data: [] }),
 }));
 
-// Estas telas de conteúdo (abas principais e modais) não fazem parte do que
-// este teste verifica — só a sidebar de pendências. Stub evita que a suíte
-// dependa de tudo que essas telas carregam (upload, laudo, faturamento etc.).
 vi.mock("@/components/surgery-request/tabs/InformacoesGeraisTab", () => ({
   InformacoesGeraisTab: () => <div>Stub Informações Gerais</div>,
 }));

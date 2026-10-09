@@ -14,12 +14,6 @@ interface RescheduleModalProps {
   onSuccess: () => void;
 }
 
-/**
- * Modal "Reagendar Cirurgia" — SCHEDULED (5), sem mudança de status.
- * Permite definir uma nova data de cirurgia.
- *
- * Referência visual: telas-inexci/status/agendada/modal-status-cirurgia-etapa-2-reagendada.png
- */
 export function RescheduleModal({
   isOpen,
   onClose,
@@ -69,7 +63,6 @@ export function RescheduleModal({
       />
 
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             Reagendar Cirurgia
@@ -90,7 +83,6 @@ export function RescheduleModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-4 md:p-6 space-y-3 md:space-y-4">
           <p className="text-xs md:text-sm text-gray-500">
             Informe a nova data para a realização da cirurgia.
@@ -109,7 +101,6 @@ export function RescheduleModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
           <button
             onClick={handleClose}

@@ -20,10 +20,6 @@ const STATUS_LABELS: Record<number, string> = {
   10: "Cancelada",
 };
 
-/**
- * Hook para notificar mudanças de status de solicitação cirúrgica
- * Exibe um toast quando o status muda automaticamente
- */
 export function useStatusChangeNotification({
   currentStatus,
   surgeryRequestId,
@@ -40,7 +36,6 @@ export function useStatusChangeNotification({
       return;
     }
 
-    // Só notificar se o status mudou e não é a primeira renderização
     if (
       previousStatus.current !== currentStatus &&
       previousStatus.current !== 0
@@ -62,9 +57,6 @@ export function useStatusChangeNotification({
   };
 }
 
-/**
- * Função para obter o label de um status
- */
 export function getStatusLabel(status: number): string {
   return STATUS_LABELS[status] || "Desconhecido";
 }

@@ -4,11 +4,6 @@ import { ReactNode, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-/**
- * Foto do paciente ampliada, sobre a página. Fecha no X, no Esc ou clicando
- * fora da foto. `acoes` (trocar/remover) aparecem abaixo da imagem quando
- * quem abriu pode editar.
- */
 export function PatientPhotoViewer({
   src,
   nome,

@@ -2,11 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-/**
- * MIG-05: "Minha Agenda" é do profissional de saúde (qualquer conselho) e
- * "Feriados" é de quem tem Administração. Ambas abrem por deep-link.
- */
-
 let authState: {
   user: {
     id: string;
@@ -37,10 +32,6 @@ vi.mock("@/components/billing/BillingSection", () => ({
   BillingSection: () => <div>Stub do billing</div>,
 }));
 
-// Stub: esta suíte testa se a aba abre via deep-link (`?tab=onboarding`) e se
-// o TabButton/render-branch são incondicionais — não o conteúdo interno da
-// aba, que já tem cobertura própria em OnboardingSettingsTab.spec.tsx. Um
-// stub identificável evita depender de OnboardingProvider aqui.
 vi.mock("@/components/onboarding/OnboardingSettingsTab", () => ({
   OnboardingSettingsTab: () => (
     <button type="button">Refazer o onboarding</button>
@@ -64,8 +55,6 @@ vi.mock("@/components/availability/HolidaysSettings", () => ({
 
 vi.mock("@/services/user.service", () => ({
   userService: {
-    // Colaborador sem doctor_profile e sem nenhuma área liberada: o pior
-    // caso para provar que a aba não depende de nada disso.
     getProfile: vi.fn().mockResolvedValue({
       name: "Colaborador Sem Área",
       email: "semarea@inexci.com",

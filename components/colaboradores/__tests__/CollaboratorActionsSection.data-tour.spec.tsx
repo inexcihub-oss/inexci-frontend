@@ -12,8 +12,6 @@ import type { ReactElement, ReactNode } from "react";
 import { CollaboratorActionsSection } from "../CollaboratorActionsSection";
 import { collaboratorService } from "@/services/collaborator.service";
 
-// O componente invalida a lista de médicos em cache ao salvar
-// (`useInvalidateAvailableDoctors`), então precisa de um QueryClient.
 function render(ui: ReactElement, options?: RenderOptions) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -31,13 +29,6 @@ vi.mock("@/services/collaborator.service", () => ({
     resetPassword: vi.fn(),
   },
 }));
-
-/**
- * Prova que a ficha do colaborador carrega a âncora `data-tour` que a trilha
- * `administracao` (passo "ciclo") espera encontrar:
- * "colaborador-ciclo-status", e que o toggle fica travado para o colaborador
- * fabricado do tour.
- */
 
 describe("CollaboratorActionsSection — âncora do tour", () => {
   it('expõe data-tour="colaborador-ciclo-status"', () => {
@@ -72,10 +63,6 @@ describe("CollaboratorActionsSection — âncora do tour", () => {
       />,
     );
 
-    // O DOM real suprime o evento de clique em elementos `disabled` — para
-    // provar que é o HANDLER (não só a UI) que recusa a chamada, removemos o
-    // atributo nativo antes de disparar o clique. Sem o guard em
-    // `handleToggleStatus`, isso chamaria `toggleStatus` de verdade.
     const switchEl = screen.getByRole("switch") as HTMLButtonElement;
     switchEl.disabled = false;
     fireEvent.click(switchEl);

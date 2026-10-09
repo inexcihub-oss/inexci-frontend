@@ -86,8 +86,6 @@ export default function PacienteDetalhePage() {
   const { toast, showToast, hideToast } = useToast();
   const { can } = useAuth();
   const podeAgenda = can(Permission.AGENDA);
-  // Documentos exigem Atendimento no backend (inclusive o GET): sem a
-  // permissão a aba nem aparece.
   const podeAtendimento = can(Permission.ATENDIMENTO);
 
   const abas = useMemo(
@@ -102,11 +100,6 @@ export default function PacienteDetalhePage() {
     [podeAtendimento],
   );
 
-  // Guarda a aba PEDIDA (`?tab=` ou o clique) e deriva a efetiva a cada
-  // render: se as permissões mudarem depois da montagem (sessão recarregada,
-  // permissão concedida/revogada), `?tab=documentos` passa a valer quando a
-  // aba existir, e cai no Cadastro enquanto o usuário não a tiver — sem
-  // depender do valor que `can()` tinha no primeiro render.
   const [abaPedida, setAbaPedida] = useState<Aba | null>(
     () => searchParams.get("tab") as Aba | null,
   );
@@ -374,8 +367,6 @@ export default function PacienteDetalhePage() {
           </div>
         )}
 
-        {/* O cadastro fica montado (só escondido) para trocar de aba não
-            descartar o que foi digitado e ainda não salvo. */}
         <div
           role="tabpanel"
           id="painel-cadastro"

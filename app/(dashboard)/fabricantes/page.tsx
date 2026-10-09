@@ -40,10 +40,6 @@ import {
 export default function FabricantesPage() {
   const router = useRouter();
   const { can, permissions } = useAuth();
-  // Dois eixos distintos, de propósito: cadastrar segue a regra do cadastro
-  // transversal (qualquer área, igual ao `@RequireAnyArea()` do backend);
-  // excluir continua sendo ato do admin, porque apaga um fabricante que OPMEs
-  // já referenciam.
   const podeCadastrar = hasAnyArea(permissions);
   const podeExcluir = can(Permission.ADMINISTRACAO);
   const [searchTerm, setSearchTerm] = useState("");

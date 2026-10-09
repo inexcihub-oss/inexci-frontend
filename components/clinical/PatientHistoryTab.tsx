@@ -8,12 +8,6 @@ import { montarHistorico } from "@/lib/patient-history";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
 
-/**
- * Histórico do paciente na tela de atendimento: a mesma linha do tempo da
- * página do paciente, sem a consulta em curso (ela é a aba "Atendimento").
- * Expandir é inline e a cirurgia abre em nova aba, para o médico nunca perder
- * a ficha em edição.
- */
 export function PatientHistoryTab({
   patientId,
   currentAppointmentId,

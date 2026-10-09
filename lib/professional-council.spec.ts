@@ -25,8 +25,6 @@ describe("formatRegistration", () => {
     expect(formatRegistration(null)).toBe("");
   });
 
-  // Entrada sintética do próprio colaborador em DoctorAccessSection: sem
-  // conselho e sem número. Antes saía "CRM" como subtítulo.
   it("perfil sem conselho e com número vazio não vira 'CRM'", () => {
     expect(formatRegistration({ crm: "", crmState: "" })).toBe("");
   });

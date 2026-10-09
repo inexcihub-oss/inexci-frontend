@@ -43,12 +43,6 @@ describe("ColaboradoresLayout", () => {
     };
   });
 
-  /**
-   * Regressão do gate por `role`: o admin delegado tem
-   * `role = "collaborator"` + Administração e era expulso da própria tela que
-   * a permissão libera. Como a casa dele aponta para `/colaboradores`, os dois
-   * redirects se encontravam e a aplicação entrava em loop.
-   */
   it("libera o admin delegado (permissão sem role=admin)", () => {
     renderizar();
     expect(screen.getByText("lista de colaboradores")).toBeInTheDocument();
@@ -89,7 +83,6 @@ describe("ColaboradoresLayout", () => {
       isAdmin: false,
     };
     renderizar();
-    // /dashboard exige Solicitações — devolver para lá criaria outro salto.
     expect(replaceMock).toHaveBeenCalledWith("/agenda");
   });
 
@@ -100,13 +93,6 @@ describe("ColaboradoresLayout", () => {
     expect(screen.queryByText("lista de colaboradores")).not.toBeInTheDocument();
   });
 
-  /**
-   * As telas de hospital/convênio/fornecedor/fabricante moram sob este layout
-   * por herança de rota, mas são cadastros transversais: qualquer área edita.
-   * Enquanto o gate era um `Permission.ADMINISTRACAO` fixo, elas ficavam
-   * barradas aqui mesmo já liberadas em `ROUTE_PERMISSIONS` — dois lugares
-   * dizendo coisas diferentes sobre a mesma URL.
-   */
   it.each([
     "/colaboradores/hospital/h-1",
     "/colaboradores/convenio/c-1",

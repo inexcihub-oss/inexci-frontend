@@ -31,8 +31,6 @@ export function CreateProcedureModal({
   onSuccess,
 }: CreateProcedureModalProps) {
   const [loading, setLoading] = useState(false);
-  // Este modal é alcançado pelo passo `cadastro-no-modal` da trilha de
-  // Solicitações; submeter aqui criaria um cadastro real durante o tour.
   const { emTour } = useOnboarding();
   const { toast, showToast, hideToast } = useToast();
 
@@ -78,7 +76,6 @@ export function CreateProcedureModal({
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
-        {/* Header */}
         <div className="px-6 pt-6 pb-5 flex items-center justify-between border-b border-gray-200">
           <h2 className="ds-modal-title">Novo procedimento</h2>
           <button
@@ -89,7 +86,6 @@ export function CreateProcedureModal({
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={onSubmit} noValidate>
           <div className="px-6 pt-5 pb-6">
             <Input
@@ -99,7 +95,6 @@ export function CreateProcedureModal({
             />
           </div>
 
-          {/* Footer */}
           <div className="px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 flex justify-end">
             <button
               type="submit"

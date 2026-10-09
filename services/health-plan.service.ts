@@ -62,16 +62,12 @@ interface BackendHealthPlan {
 }
 
 export const healthPlanService = {
-  /**
-   * Busca todos os convênios
-   */
   async getAll(): Promise<HealthPlan[]> {
     const response = await api.get("/health_plans", {
       params: { take: FETCH_ALL_TAKE },
     });
     const data = getApiRecords<BackendHealthPlan>(response.data);
 
-    // Mapeia os campos do backend para o frontend
     return data.map((h) => ({
       id: h.id,
       name: h.name,
@@ -94,10 +90,6 @@ export const healthPlanService = {
     }));
   },
 
-  /**
-   * Busca um convênio específico por ID
-   * Como o backend não tem endpoint getById, buscamos todos e filtramos
-   */
   async getById(healthPlanId: string): Promise<HealthPlan | null> {
     const allHealthPlans = await this.getAll();
     return (
@@ -106,17 +98,11 @@ export const healthPlanService = {
     );
   },
 
-  /**
-   * Cria um novo convênio
-   */
   async create(payload: CreateHealthPlanPayload): Promise<HealthPlan> {
     const response = await api.post("/health_plans", payload);
     return response.data;
   },
 
-  /**
-   * Atualiza um convênio
-   */
   async update(
     healthPlanId: string,
     payload: Partial<CreateHealthPlanPayload>,
@@ -125,9 +111,6 @@ export const healthPlanService = {
     return response.data;
   },
 
-  /**
-   * Deleta um convênio
-   */
   async delete(healthPlanId: string): Promise<void> {
     await api.delete(`/health_plans/${healthPlanId}`);
   },

@@ -24,16 +24,6 @@ interface ConsentOnboardingModalProps {
   onCompleted: () => Promise<void> | void;
 }
 
-/**
- * Modal de tela cheia, não-fechável, exibido apenas quando o usuário tem
- * consentimentos obrigatórios pendentes (Política e/ou Termos).
- *
- * Estrutura simples:
- *  - Checkbox para Política de Privacidade (obrigatório).
- *  - Checkbox para Termos de Uso (obrigatório).
- *  - Toggle opcional para ativar o assistente de IA.
- *  - Botão único "Continuar" que persiste tudo.
- */
 export function ConsentOnboardingModal({
   consents,
   onCompleted,

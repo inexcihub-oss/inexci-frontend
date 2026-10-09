@@ -4,12 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProcedimentosCirurgicos from "./page";
 
-/**
- * A clínica de uma solicitação é a unidade da consulta cuja ficha indicou a
- * cirurgia. Solicitação criada fora do atendimento não tem clínica e não tem
- * como casar com o filtro.
- */
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
@@ -38,8 +32,6 @@ vi.mock("@/services/surgery-request.service", async (importOriginal) => {
   const original = await importOriginal<
     typeof import("@/services/surgery-request.service")
   >();
-  // Declarado dentro da fábrica: `vi.mock` sobe para o topo do arquivo e não
-  // enxerga constante de módulo.
   const registros = [
     {
       id: 1,
@@ -138,7 +130,6 @@ describe("Kanban — filtro de clínicas", () => {
 
     expect(screen.getByText("Ana Souza")).toBeInTheDocument();
     expect(screen.queryByText("Bruno Lima")).not.toBeInTheDocument();
-    // Sem clínica de origem, não há como casar com o filtro.
     expect(screen.queryByText("Carla Dias")).not.toBeInTheDocument();
   });
 

@@ -1,18 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { formatTimeAgo } from "@/lib/formatters";
 
-/**
- * TASK-FE-I02: Testes para substituição de dados mock por dados reais.
- *
- * Valida a lógica de:
- * 1. formatTimeAgo — formatação de tempo relativo
- * 2. Filtragem de solicitações por doctor_id (médico)
- * 3. Ordenação de pacientes por data de criação (assistente)
- * 4. Mapeamento de registros da API para o formato da sidebar
- */
-
-// ─── Tipos simulados ───
-
 interface RawSurgeryRequest {
   id: number;
   doctorId: string;
@@ -30,8 +18,6 @@ interface RawPatient {
   phone?: string;
   createdAt: string;
 }
-
-// ─── Funções extraídas dos componentes ───
 
 function filterByDoctorId(
   records: RawSurgeryRequest[],
@@ -58,12 +44,9 @@ function sortPatientsByRecent(patients: RawPatient[]): RawPatient[] {
   );
 }
 
-// ─── Testes ───
-
 describe("TASK-FE-I02 — Dados reais nas páginas de detalhe", () => {
   describe("formatTimeAgo", () => {
     beforeEach(() => {
-      // Fixar "agora" = 2026-04-15T12:00:00Z
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-04-15T12:00:00Z"));
     });
@@ -256,7 +239,6 @@ describe("TASK-FE-I02 — Dados reais nas páginas de detalhe", () => {
         createdAt: "2026-04-11T12:00:00Z",
       };
       const mapped = mapToSidebarRequest(record);
-      // Nota: string vazia é falsy, então cai no fallback
       expect(mapped.patientName).toBe("Paciente");
     });
   });
@@ -293,7 +275,6 @@ describe("TASK-FE-I02 — Dados reais nas páginas de detalhe", () => {
       }));
       const sorted = sortPatientsByRecent(manyPatients).slice(0, 5);
       expect(sorted).toHaveLength(5);
-      // O primeiro deve ser o mais recente (dia 10)
       expect(sorted[0].name).toBe("Paciente 9");
     });
   });

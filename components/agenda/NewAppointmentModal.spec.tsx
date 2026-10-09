@@ -53,15 +53,6 @@ vi.mock("@/hooks/useHealthPlans", () => ({
     ],
   }),
 }));
-/**
- * Estado compartilhado entre o factory (hoisted, roda antes do resto do
- * arquivo) e os testes: alterna o mock de `useAvailableDoctors` entre
- * referência estável (o normal, como o TanStack Query memoiza em produção
- * depois que a query resolve) e instável (array novo a cada chamada — a
- * janela real antes da query resolver, ou quando ela nunca é "aquecida").
- * `vi.hoisted` é o jeito suportado de expor essa mutável ao factory do
- * `vi.mock`, que também é hoisted.
- */
 const doctorsMockState = vi.hoisted(() => ({ unstable: false, two: false }));
 
 vi.mock("@/hooks/useAvailableDoctors", () => {
@@ -107,8 +98,6 @@ vi.mock("@/services/patient.service", () => ({
     list: (...a: unknown[]) => listPatients(...a),
   },
 }));
-// Busca de paciente simplificada: um botão que busca e escolhe o primeiro
-// resultado — o que importa aqui é o que o modal faz com a escolha.
 vi.mock("@/components/ui/SelectSearch", () => ({
   SelectSearch: ({
     initialLabel,
@@ -135,8 +124,6 @@ vi.mock("@/components/ui/SelectSearch", () => ({
     </div>
   ),
 }));
-// NewAppointmentModal sempre monta o <NewPatientModal> (só o "isOpen" muda),
-// e ele usa useAuth() para decidir se mostra o atalho de criar convênio.
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ permissions: [] }),
 }));
@@ -149,7 +136,6 @@ vi.mock("@/components/onboarding/OnboardingProvider", () => ({
 import { NewAppointmentModal } from "./NewAppointmentModal";
 import { appointmentService } from "@/services/appointment.service";
 
-/** Segunda-feira, 17/08/2026. */
 const SEGUNDA = "2026-08-17";
 
 function abrirModal() {
@@ -180,11 +166,6 @@ describe("NewAppointmentModal — clínica e aviso de horário", () => {
     ).toBeInTheDocument();
   });
 
-  /**
-   * Âncora do tour de onboarding (trilha "agenda", passo "horario") em
-   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
-   * trocar o elemento) quebra o tour em silêncio.
-   */
   it('expõe data-tour="agenda-modal-horario" no bloco de data e horário', () => {
     abrirModal();
 
@@ -254,10 +235,6 @@ describe("NewAppointmentModal — clínica e aviso de horário", () => {
       target: { value: "clinic-1" },
     });
 
-    // Provoca um re-render do modal (troca de horário, ainda dentro do
-    // funcionamento da clínica). Antes da correção, `doctors` nas
-    // dependências do efeito de preenchimento — com referência nova a cada
-    // chamada do hook — refazia o formulário inteiro e zerava `clinicId`.
     fireEvent.change(screen.getByLabelText(/horário/i), {
       target: { value: "09:30" },
     });
@@ -281,7 +258,6 @@ describe("NewAppointmentModal — edição com clínica excluída (C1)", () => {
     doctorsMockState.unstable = false;
   });
 
-  /** Consulta cuja clínica foi soft-deletada: não está mais em `useClinics`. */
   const consultaComClinicaExcluida = {
     id: "appt-1",
     doctorId: "doctor-1",
@@ -381,11 +357,6 @@ describe("NewAppointmentModal — tour de onboarding", () => {
     ).toBeDisabled();
   });
 
-  /**
-   * Guard por PROVENIÊNCIA: o formulário está completo e o tour já acabou
-   * (`emTour: false`), mas a consulta em edição é a fabricada — salvar
-   * dispararia um PATCH com o id sentinela.
-   */
   it("desabilita o botão mesmo fora do tour, ao editar a consulta fabricada do tour", () => {
     render(
       <NewAppointmentModal
@@ -571,7 +542,6 @@ describe("NewAppointmentModal — convênio do paciente como sugestão", () => {
 
     fireEvent.change(convenio(), { target: { value: "hp-2" } });
     fireEvent.click(screen.getByRole("button", { name: "buscar paciente" }));
-    // Espera a escolha do paciente chegar ao modal antes de conferir.
     expect(await screen.findByText("Maria")).toBeInTheDocument();
 
     expect(convenio()).toHaveValue("hp-2");
@@ -602,7 +572,6 @@ describe("NewAppointmentModal — convênio do paciente como sugestão", () => {
   });
 });
 
-/** Horário local de São Paulo → ISO (os testes rodam com TZ do Vitest). */
 function slotLocal(hhmm: string, minutos = 30, extra: object = {}) {
   const [h, m] = hhmm.split(":").map(Number);
   const ini = new Date(2026, 7, 17, h, m, 0, 0);
@@ -769,7 +738,6 @@ describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
         /Horário bloqueado na agenda do profissional: não será possível agendar\./,
       ),
     ).toBeInTheDocument();
-    // Bloqueio é recusado pelo backend até para encaixe: não há "mesmo assim".
     expect(
       screen.queryByRole("button", { name: /agendar mesmo assim/i }),
     ).toBeNull();
@@ -779,9 +747,6 @@ describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
   });
 
   it("'block' da grade não trava o salvar quando a lista de bloqueios carregou e nenhum atinge a consulta", async () => {
-    // O backend marca o horário como "block" pela clínica do período da
-    // grade (aqui, um bloqueio só da clínica X); a consulta é de outra
-    // clínica, então o bloqueio não a atinge e o backend aceita.
     getBlocks.mockResolvedValue([
       {
         id: "b-x",
@@ -812,7 +777,6 @@ describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
       name: "09:00 (bloqueado)",
     });
     await waitFor(() => expect(getBlocks).toHaveBeenCalled());
-    // Só aviso visual: o horário continua clicável.
     expect(slot).toBeEnabled();
     expect(screen.queryByText(/Horário bloqueado/)).toBeNull();
     expect(
@@ -821,8 +785,6 @@ describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
   });
 
   it("bloqueio fora da grade também é avisado antes de enviar", async () => {
-    // Profissional sem grade no dia: nenhum horário da grade revela o
-    // bloqueio, só a lista de bloqueios do dia.
     getSlots.mockResolvedValue([]);
     getBlocks.mockResolvedValue([
       {
@@ -865,7 +827,6 @@ describe("NewAppointmentModal — grade do profissional (MIG-05)", () => {
         reason: null,
       },
       {
-        // Só da clínica X: não alcança consulta sem clínica.
         id: "b-2",
         doctorId: null,
         clinicId: "clinic-x",
@@ -956,7 +917,6 @@ describe("NewAppointmentModal — edição sem mexer no horário", () => {
     getBlocks.mockResolvedValue([]);
   });
 
-  /** Consulta às 09:00 locais de 17/08, num horário que hoje está bloqueado. */
   const consulta = {
     id: "appt-1",
     doctorId: "doctor-1",
@@ -1041,7 +1001,6 @@ describe("NewAppointmentModal — edição sem mexer no horário", () => {
       screen.getByRole("button", { name: /salvar alterações/i }),
     ).toBeEnabled();
 
-    // Mudou a duração: volta a conferir a grade.
     fireEvent.change(screen.getByDisplayValue("30 min"), {
       target: { value: "45" },
     });
@@ -1058,7 +1017,6 @@ describe("NewAppointmentModal — edição sem mexer no horário", () => {
     ]);
     abrirEdicao();
     await screen.findByRole("group", { name: "Horários da grade" });
-    // Sem mudança, nada a avisar.
     expect(screen.queryByText(/Fora da grade/)).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Clínica"), {
@@ -1096,9 +1054,6 @@ describe("NewAppointmentModal — consulta que não ocupa a agenda", () => {
     isWalkIn: false,
   };
 
-  // A API só confere bloqueio/feriado quando a consulta ocupa a agenda
-  // (`OCCUPYING_APPOINTMENT_STATUSES`). Cancelada/falta remarcada para um
-  // horário bloqueado é aceita — a tela não pode travar o "Salvar".
   it.each(["cancelled", "no_show"] as const)(
     "%s remarcada para bloqueio ou feriado não trava o salvar",
     async (status) => {
@@ -1120,7 +1075,6 @@ describe("NewAppointmentModal — consulta que não ocupa a agenda", () => {
       fireEvent.change(screen.getByLabelText(/horário/i), {
         target: { value: "09:00" },
       });
-      // A grade (com o feriado e o bloqueio) já chegou.
       await screen.findByRole("group", { name: "Horários da grade" });
 
       expect(screen.queryByText(/Horário bloqueado/)).toBeNull();
@@ -1215,7 +1169,6 @@ describe("NewAppointmentModal — encaixe libera horário ocupado", () => {
       name: "08:00 (ocupado)",
     });
     expect(ocupado).toBeDisabled();
-    // "block" não desabilita: quem trava é a lista de bloqueios do dia.
     expect(
       screen.getByRole("button", { name: "08:30 (bloqueado)" }),
     ).toBeEnabled();

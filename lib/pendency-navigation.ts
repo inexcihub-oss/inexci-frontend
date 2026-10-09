@@ -1,5 +1,3 @@
-// Mapeamento de chaves de pendências para ações/navegação
-
 export interface PendencyAction {
   type: "navigate" | "modal" | "scroll" | "external";
   target: string;
@@ -7,9 +5,7 @@ export interface PendencyAction {
   description?: string;
 }
 
-// Mapeamento de chaves de pendência para ações
 export const pendencyActionMap: Record<string, PendencyAction> = {
-  // Dados/Informações
   patient_data: {
     type: "scroll",
     target: "laudo-patient-identification",
@@ -35,7 +31,6 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
     description: "Ir para seção de diagnóstico",
   },
 
-  // Procedimentos e OPME
   insert_tuss: {
     type: "scroll",
     target: "procedures-section",
@@ -49,7 +44,6 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
     description: "Ir para OPME",
   },
 
-  // Relatório médico
   medical_report: {
     type: "scroll",
     target: "medical-report-section",
@@ -57,7 +51,6 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
     description: "Ir para relatório médico",
   },
 
-  // Cotações e fornecedores
   select_suppliers: {
     type: "scroll",
     target: "suppliers-section",
@@ -89,7 +82,6 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
     description: "Ir para cotações",
   },
 
-  // Protocolos
   hospital_protocol: {
     type: "scroll",
     target: "protocols-section",
@@ -103,7 +95,6 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
     description: "Ir para protocolos",
   },
 
-  // Datas e agendamento
   define_dates: {
     type: "scroll",
     target: "scheduling-section",
@@ -123,7 +114,6 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
     description: "Ir para agendamento",
   },
 
-  // Faturamento
   surgery_description: {
     type: "scroll",
     target: "invoice-section",
@@ -143,7 +133,6 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
     description: "Ir para recebimento",
   },
 
-  // Análises (sem ação, apenas aguardando)
   wait_analysis: {
     type: "scroll",
     target: "status-section",
@@ -157,7 +146,6 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
     description: "Aguardando reanálise do convênio",
   },
 
-  // Legacy
   complete_fields: {
     type: "scroll",
     target: "form-section",
@@ -166,16 +154,11 @@ export const pendencyActionMap: Record<string, PendencyAction> = {
   },
 };
 
-/**
- * Obtém a ação de navegação para uma chave de pendência
- */
 export function getPendencyAction(key: string): PendencyAction | null {
-  // Verificar correspondência exata
   if (pendencyActionMap[key]) {
     return pendencyActionMap[key];
   }
 
-  // Verificar se é uma chave de documento (começa com "document_")
   if (key.startsWith("document_")) {
     return {
       type: "scroll",
@@ -185,8 +168,6 @@ export function getPendencyAction(key: string): PendencyAction | null {
     };
   }
 
-  // Verificar chaves customizadas de documentos (criadas pela clínica)
-  // Geralmente são números ou IDs
   if (/^\d+$/.test(key)) {
     return {
       type: "scroll",
@@ -199,9 +180,6 @@ export function getPendencyAction(key: string): PendencyAction | null {
   return null;
 }
 
-/**
- * Executa a navegação para uma pendência
- */
 export function executePendencyNavigation(
   action: PendencyAction,
   surgeryRequestId?: string,
@@ -211,7 +189,6 @@ export function executePendencyNavigation(
       const element = document.getElementById(action.target);
       if (element) {
         element.scrollIntoView({ behavior: "smooth", block: "start" });
-        // Adicionar highlight temporário
         element.classList.add("ring-2", "ring-primary-500", "ring-offset-2");
         setTimeout(() => {
           element.classList.remove(
@@ -233,7 +210,6 @@ export function executePendencyNavigation(
       break;
 
     case "modal":
-      // Dispara evento customizado para abrir modal
       const event = new CustomEvent("openPendencyModal", {
         detail: { modalId: action.target },
       });
@@ -250,16 +226,12 @@ export function executePendencyNavigation(
             window.open(parsed.toString(), "_blank", "noopener,noreferrer");
           }
         } catch {
-          // Ignora URL inválida
         }
       }
       break;
   }
 }
 
-/**
- * Verifica se uma pendência é do tipo "aguardando" (não tem ação do usuário)
- */
 export function isWaitingPendency(key: string): boolean {
   const waitingKeys = ["wait_analysis", "wait_reanalysis"];
   return waitingKeys.includes(key);

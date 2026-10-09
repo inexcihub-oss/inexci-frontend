@@ -103,7 +103,6 @@ export function NewSupplierModal({
         onClick={handleClose}
       />
       <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 flex-shrink-0">
           <h2 className="ds-modal-title">Novo fornecedor</h2>
           <button
@@ -116,14 +115,12 @@ export function NewSupplierModal({
         </div>
         <div className="h-px bg-gray-200 flex-shrink-0" />
 
-        {/* Body */}
         <form
           onSubmit={onSubmit}
           noValidate
           className="flex flex-col flex-1 overflow-hidden"
         >
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
-            {/* Row 1 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Nome"
@@ -138,7 +135,6 @@ export function NewSupplierModal({
               />
             </div>
 
-            {/* Row 2 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Telefone"
@@ -155,14 +151,12 @@ export function NewSupplierModal({
               />
             </div>
 
-            {/* Separator */}
             <div className="pt-1">
               <p className="text-sm font-bold text-gray-700">
                 Contato comercial
               </p>
             </div>
 
-            {/* Row 3 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Nome do contato"
@@ -178,7 +172,6 @@ export function NewSupplierModal({
               />
             </div>
 
-            {/* Row 4 */}
             <Input
               label="E-mail do contato"
               type="email"
@@ -191,7 +184,6 @@ export function NewSupplierModal({
             )}
           </div>
 
-          {/* Footer */}
           <div className="h-px bg-gray-200 flex-shrink-0" />
           <div className="ds-modal-footer">
             <button type="submit" disabled={loading} className="ds-btn-primary">

@@ -16,15 +16,11 @@ import {
   resolveDoctorSignatureUrl,
 } from "./SurgeryRequestLaudoDocument";
 
-// ─── Interface ────────────────────────────────────────────────────────────────
-
 interface MedicalReportPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   solicitacao: SurgeryRequestDetail;
 }
-
-// ─── removeBackground ───────────────────────────────────────────────────────
 
 function removeBackground(imageUrl: string): Promise<string> {
   return new Promise((resolve) => {
@@ -45,7 +41,6 @@ function removeBackground(imageUrl: string): Promise<string> {
         const imageData = ctx.getImageData(0, 0, width, height);
         const data = imageData.data;
 
-        // ── 1. Amostra os 4 cantos para detectar a cor do fundo ──────────────
         function cornerColor(x: number, y: number): [number, number, number] {
           const idx = (y * width + x) * 4;
           return [data[idx], data[idx + 1], data[idx + 2]];
@@ -56,14 +51,12 @@ function removeBackground(imageUrl: string): Promise<string> {
           cornerColor(0, height - 1),
           cornerColor(width - 1, height - 1),
         ];
-        // Média dos cantos = cor dominante do fundo
         const bgR = corners.reduce((s, c) => s + c[0], 0) / 4;
         const bgG = corners.reduce((s, c) => s + c[1], 0) / 4;
         const bgB = corners.reduce((s, c) => s + c[2], 0) / 4;
 
-        // ── 2. Remove pixels próximos ao fundo; suaviza a borda ──────────────
-        const tolerance = 40; // distância máxima para considerar fundo
-        const softRange = 20; // faixa de suavização
+        const tolerance = 40;
+        const softRange = 20;
 
         for (let i = 0; i < data.length; i += 4) {
           const dr = data[i] - bgR;
@@ -90,8 +83,6 @@ function removeBackground(imageUrl: string): Promise<string> {
   });
 }
 
-// ─── Spinner ─────────────────────────────────────────────────────────────────
-
 function Spinner() {
   return (
     <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -112,8 +103,6 @@ function Spinner() {
   );
 }
 
-// ─── Componente ───────────────────────────────────────────────────────────────
-
 export function MedicalReportPreviewModal({
   isOpen,
   onClose,
@@ -126,7 +115,6 @@ export function MedicalReportPreviewModal({
     useState<SurgeryRequestDetail>(solicitacao);
   const request = latestSolicitacao ?? solicitacao;
 
-  // ── Seções dinâmicas do laudo ────────────────────────────────────────────
   const [sections, setSections] = useState<ReportSection[]>([]);
 
   useEffect(() => {
@@ -160,7 +148,6 @@ export function MedicalReportPreviewModal({
       .catch(() => setSections([]));
   }, [isOpen, request?.id]);
 
-  // ── Dados da assinatura do médico ────────────────────────────────────────
   const [doctorSignatureUrl, setDoctorSignatureUrl] = useState<string | null>(
     null,
   );
@@ -217,7 +204,6 @@ export function MedicalReportPreviewModal({
 
   if (!isOpen) return null;
 
-  // ── Dados do laudo ───────────────────────────────────────────────────────
   const patientFields = buildLaudoPatientFields({
     patient: request?.patient,
     healthPlan: request?.healthPlan,
@@ -230,7 +216,6 @@ export function MedicalReportPreviewModal({
 
   const today = new Date().toLocaleDateString("pt-BR");
 
-  // ── Handler PDF ──────────────────────────────────────────────────────────
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
@@ -252,24 +237,19 @@ export function MedicalReportPreviewModal({
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
-      {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Modal — bottom sheet no mobile, centralizado no desktop */}
       <div className="relative z-10 flex flex-col bg-white w-full md:max-w-3xl md:mx-4 md:my-6 rounded-t-3xl md:rounded-2xl max-h-[calc(92vh-64px)] md:max-h-[85vh] shadow-xl overflow-hidden mobile-sheet-offset">
-        {/* Drag handle — apenas mobile */}
         <div className="flex md:hidden justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* ─── Header ────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-5 py-3 md:px-6 md:py-4 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-sm md:text-lg font-semibold text-gray-900">
             Pré-visualização do Laudo Médico
@@ -283,7 +263,6 @@ export function MedicalReportPreviewModal({
           </button>
         </div>
 
-        {/* ─── Scrollable Content ─────────────────────────────────────────── */}
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto overscroll-contain bg-gray-100 p-5 md:p-6">
           <SurgeryRequestLaudoDocument
             today={today}
@@ -304,7 +283,6 @@ export function MedicalReportPreviewModal({
           />
         </div>
 
-        {/* ─── Footer ────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-end gap-2 px-5 py-4 md:px-3 border-t-2 border-gray-200 flex-shrink-0">
           <button
             onClick={onClose}

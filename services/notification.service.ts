@@ -10,7 +10,6 @@ export interface NotificationSettings {
   pendencies: boolean;
   expiringDocuments: boolean;
   weeklyReport: boolean;
-  /** E-mail quando alguém menciona o usuário num comentário da solicitação. */
   mentionEmails: boolean;
 }
 
@@ -25,16 +24,9 @@ export interface UpdateNotificationSettingsData {
   mentionEmails?: boolean;
 }
 
-/**
- * Avisos automáticos que a conta manda ao paciente. Configuração da conta
- * (vale para toda a equipe) — só quem tem a área de administração lê e altera.
- */
 export interface PatientNotificationSettings {
-  /** WhatsApp quando a consulta é marcada, remarcada ou reativada. */
   appointmentScheduled: boolean;
-  /** Lembrete 24h antes (e-mail + WhatsApp com confirmar/cancelar). */
   appointmentReminder: boolean;
-  /** WhatsApp quando a consulta é cancelada. */
   appointmentCancelled: boolean;
 }
 
@@ -69,11 +61,6 @@ export interface NotificationsResponse {
 }
 
 export const notificationService = {
-  // ============ Settings ============
-
-  /**
-   * Busca as configurações de notificação do usuário
-   */
   async getSettings(): Promise<NotificationSettings> {
     const response = await api.get<NotificationSettings>(
       "/notifications/settings",
@@ -81,9 +68,6 @@ export const notificationService = {
     return response.data;
   },
 
-  /**
-   * Atualiza as configurações de notificação
-   */
   async updateSettings(
     data: UpdateNotificationSettingsData,
   ): Promise<NotificationSettings> {
@@ -111,11 +95,6 @@ export const notificationService = {
     return response.data;
   },
 
-  // ============ Notifications ============
-
-  /**
-   * Busca as notificações do usuário
-   */
   async getNotifications(options?: {
     skip?: number;
     take?: number;
@@ -132,23 +111,14 @@ export const notificationService = {
     return response.data;
   },
 
-  /**
-   * Marca uma notificação como lida
-   */
   async markAsRead(notificationId: string): Promise<void> {
     await api.put(`/notifications/${notificationId}/read`);
   },
 
-  /**
-   * Marca todas as notificações como lidas
-   */
   async markAllAsRead(): Promise<void> {
     await api.put("/notifications/read-all");
   },
 
-  /**
-   * Remove uma notificação
-   */
   async deleteNotification(notificationId: string): Promise<void> {
     await api.delete(`/notifications/${notificationId}`);
   },

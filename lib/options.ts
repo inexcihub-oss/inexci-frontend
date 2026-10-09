@@ -1,5 +1,3 @@
-// ─── Opções de Gênero ─────────────────────────────────────────────────────────
-
 export const GENDER_OPTIONS = [
   { value: "", label: "Selecione" },
   { value: "M", label: "Masculino" },
@@ -7,9 +5,6 @@ export const GENDER_OPTIONS = [
   { value: "O", label: "Outro" },
 ];
 
-// ─── Estados Brasileiros ──────────────────────────────────────────────────────
-
-/** Lista dos UFs em ordem alfabética */
 export const BRAZILIAN_STATES = [
   "AC",
   "AL",
@@ -42,7 +37,6 @@ export const BRAZILIAN_STATES = [
 
 export type BrazilianState = (typeof BRAZILIAN_STATES)[number];
 
-/** Mapa de UF → nome completo do estado */
 export const STATE_NAMES: Record<BrazilianState, string> = {
   AC: "Acre",
   AL: "Alagoas",
@@ -73,19 +67,11 @@ export const STATE_NAMES: Record<BrazilianState, string> = {
   TO: "Tocantins",
 };
 
-/**
- * Opções de estado com label = nome completo do estado.
- * Ideal para selects em formulários de endereço.
- */
 export const STATE_OPTIONS = [
   { value: "", label: "Selecione" },
   ...BRAZILIAN_STATES.map((uf) => ({ value: uf, label: STATE_NAMES[uf] })),
 ];
 
-/**
- * Opções de estado com label = UF (sigla).
- * Ideal para selects de UF do CRM e campos compactos.
- */
 export const STATE_UF_OPTIONS = [
   { value: "", label: "UF" },
   ...BRAZILIAN_STATES.map((uf) => ({ value: uf, label: uf })),

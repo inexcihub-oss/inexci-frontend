@@ -12,17 +12,6 @@ interface CloseRequestModalProps {
   onSuccess: () => void;
 }
 
-/**
- * Modal de confirmação de encerramento de solicitação.
- * Disponível para status 1 a 7 (qualquer status exceto Finalizada e Encerrada).
- *
- * Pode ser aberto de múltiplos pontos:
- * - Botão "Encerrar" na tela de detalhes
- * - Botão "Encerrar Solicitação" na Etapa 3 do UpdateAuthorizationsModal
- * - Opção "Cancelada" no SurgeryStatusModal
- *
- * Referência: telas-inexci/status/em-analise/modal-autorizacao-encerrar.png
- */
 export function CloseRequestModal({
   isOpen,
   onClose,
@@ -66,7 +55,6 @@ export function CloseRequestModal({
         onClick={handleClose}
       />
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100">
           <h2 className="flex-1 text-2xl font-light tracking-tight text-neutral-900">
             Deseja encerrar a solicitação?
@@ -87,7 +75,6 @@ export function CloseRequestModal({
           </button>
         </div>
 
-        {/* Body */}
         <div className="px-4 py-4 md:px-6 md:py-6 space-y-4">
           <p className="text-sm md:text-base text-neutral-900 leading-relaxed">
             Essa solicitação será encerrada e movida para o status
@@ -108,7 +95,6 @@ export function CloseRequestModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
           <button
             onClick={handleClose}

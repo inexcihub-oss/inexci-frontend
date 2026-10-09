@@ -15,13 +15,6 @@ interface ProcedureQuickPickerModalProps {
   selectedProcedureId?: string | null;
 }
 
-/**
- * Reaproveita, fora do wizard de criação de SC, a mesma combinação "buscar
- * procedimento no catálogo + botão Novo que cria um" que já existe no
- * primeiro passo do wizard — `ProcedureSelectionContent` (lista/busca) e
- * `CreateProcedureModal` (form de criar) — numa casca fina, sem arrastar
- * paciente/hospital/convênio/médico junto.
- */
 export function ProcedureQuickPickerModal({
   isOpen,
   onClose,
@@ -31,8 +24,6 @@ export function ProcedureQuickPickerModal({
   const [view, setView] = useState<"select" | "create">("select");
   const { permissions } = useAuth();
   const podeCriarCadastroTransversal = hasAnyArea(permissions);
-  // Registrado pelo `ProcedureSelectionContent` para manter o cache do
-  // react-query em dia quando um procedimento é criado por aqui.
   const addToListRef = useRef<((item: Procedure) => void) | null>(null);
 
   const handleClose = () => {

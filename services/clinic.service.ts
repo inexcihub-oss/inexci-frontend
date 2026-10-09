@@ -36,12 +36,10 @@ export interface CreateClinicPayload {
   businessHours?: BusinessHours;
 }
 
-/** Sala (consultório) dentro de uma clínica. */
 export interface ClinicRoom {
   id: string;
   clinicId: string;
   name: string;
-  /** Desativada some do agendamento, mas continua nas consultas antigas. */
   active: boolean;
 }
 
@@ -49,10 +47,6 @@ interface BackendClinic extends Omit<Clinic, "businessHours"> {
   businessHours?: Partial<BusinessHours> | null;
 }
 
-/**
- * Normaliza a grade na borda: da porta para dentro do app, `businessHours`
- * sempre tem os sete dias, e nenhum componente precisa de `?? []`.
- */
 function mapClinic(c: BackendClinic): Clinic {
   return {
     ...c,

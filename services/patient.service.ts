@@ -6,11 +6,8 @@ export interface Patient {
   name: string;
   email?: string;
   phone?: string;
-  /** Telefone adicional (fixo, recado). */
   secondaryPhone?: string;
-  /** Opcional: estrangeiros, menores e pacientes migrados podem não ter. */
   cpf?: string;
-  /** URL assinada da foto (expira); `null` quando não há foto. */
   photoUrl?: string | null;
   birthDate?: string;
   gender?: string;
@@ -33,14 +30,8 @@ export interface UpdatePatientPayload {
   name?: string;
   email?: string;
   phone?: string;
-  /** `""` limpa o segundo telefone. */
   secondaryPhone?: string;
-  /** `""` limpa o CPF (o backend grava `null`). */
   cpf?: string;
-  /**
-   * Caminho devolvido por `uploadService.uploadSingle(file, "patient-photos")`.
-   * `null` remove a foto.
-   */
   photoPath?: string | null;
   birthDate?: string;
   gender?: string;
@@ -117,16 +108,6 @@ function mapBackendPatient(p: BackendPatient): Patient {
   };
 }
 
-/**
- * O que `GET /patients` devolve: as colunas da tela de pacientes e o que os
- * seletores exibem. Endereço, convênio e `medicalNotes` ficam de fora — são do
- * cadastro completo (`getById`), que passa pelo audit de prontuário no backend.
- *
- * É um `Pick` de propósito: um `Patient` completo continua atribuível a este
- * tipo (o formulário de criação devolve um e alimenta as mesmas listas), mas o
- * caminho contrário não compila — ler `medicalNotes` de uma linha de listagem
- * vira erro de tipo em vez de `undefined` silencioso em produção.
- */
 export type PatientListItem = Pick<
   Patient,
   | "id"
@@ -180,10 +161,6 @@ export interface PatientListResult {
 }
 
 export const patientService = {
-  /**
-   * Listagem paginada com busca server-side (item 3.3). Usada pela tela de
-   * pacientes — não carrega a tabela inteira no navegador.
-   */
   async list(params: PatientListParams = {}): Promise<PatientListResult> {
     const response = await api.get("/patients", {
       params: {
@@ -202,11 +179,6 @@ export const patientService = {
     return { records, total };
   },
 
-  /**
-   * Busca todos os pacientes. Usado pelos seletores do wizard/modais, que
-   * filtram em memória; a tela de pacientes usa `list()` paginado. Devolve o
-   * mesmo recorte de `list()` — é a mesma rota.
-   */
   async getAll(): Promise<PatientListItem[]> {
     const response = await api.get("/patients", {
       params: { take: FETCH_ALL_TAKE },
@@ -215,10 +187,6 @@ export const patientService = {
     return data.map(mapPatientListItem);
   },
 
-  /**
-   * Busca um paciente específico por ID (GET /patients/:id — item 3.2).
-   * O backend valida o acesso por owner via AccessControlService.
-   */
   async getById(patientId: string): Promise<Patient | null> {
     try {
       const response = await api.get<BackendPatient>(`/patients/${patientId}`);
@@ -228,31 +196,18 @@ export const patientService = {
     }
   },
 
-  /**
-   * Descarta uma foto enviada que não chegou a ser gravada em nenhum paciente
-   * (troca ou cadastro que falhou). Best-effort: nunca lança — o backend só
-   * apaga caminho da própria conta e não referenciado, e a varredura diária
-   * pega o que escapar.
-   */
   async discardPhoto(path: string): Promise<void> {
     try {
       await api.post("/patients/photos/discard", { path });
     } catch {
-      // ignorado: a varredura diária de fotos órfãs cobre
     }
   },
 
-  /**
-   * Cria um novo paciente
-   */
   async create(payload: CreatePatientPayload): Promise<Patient> {
     const response = await api.post<BackendPatient>("/patients", payload);
     return mapBackendPatient(response.data);
   },
 
-  /**
-   * Atualiza um paciente
-   */
   async update(
     patientId: string,
     payload: UpdatePatientPayload,
@@ -264,9 +219,6 @@ export const patientService = {
     return mapBackendPatient(response.data);
   },
 
-  /**
-   * Deleta um paciente
-   */
   async delete(patientId: string): Promise<void> {
     await api.delete(`/patients/${patientId}`);
   },

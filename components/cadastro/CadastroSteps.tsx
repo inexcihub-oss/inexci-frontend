@@ -14,9 +14,6 @@ import { BRAZILIAN_STATES } from "@/lib/options";
 import type { SubscriptionPlan } from "@/types";
 import { PlanCard, type PlanCardTheme } from "@/components/cadastro/PlanCard";
 
-// ─── Constantes ──────────────────────────────────────────────────────────────
-
-/** @deprecated Use BRAZILIAN_STATES from @/lib/options */
 export { BRAZILIAN_STATES as brazilianStates } from "@/lib/options";
 
 export interface PlanPresentation {
@@ -99,7 +96,6 @@ export const PLAN_PRESENTATION: Record<string, PlanPresentation> = {
 };
 
 export function getPresentation(slug: string): PlanPresentation {
-  // Annual plans (slug ending in -anual) use the base tier presentation
   const baseSlug = slug.endsWith("-anual") ? slug.slice(0, -6) : slug;
   return (
     PLAN_PRESENTATION[baseSlug] ?? {
@@ -108,8 +104,6 @@ export function getPresentation(slug: string): PlanPresentation {
     }
   );
 }
-
-// ─── Indicador de Progresso ──────────────────────────────────────────────────
 
 export function StepIndicator({
   current,
@@ -175,8 +169,6 @@ export function StepIndicator({
   );
 }
 
-// ─── Benefício decorativo (painel direito) ──────────────────────────────────
-
 export function Benefit({ icon, text }: { icon: string; text: string }) {
   return (
     <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
@@ -185,8 +177,6 @@ export function Benefit({ icon, text }: { icon: string; text: string }) {
     </div>
   );
 }
-
-// ─── Etapa 1 — Dados pessoais ────────────────────────────────────────────────
 
 export interface Step1Data {
   name: string;
@@ -273,8 +263,6 @@ export function Step1PersonalData({ data, onChange, fieldErrors }: Step1Props) {
   );
 }
 
-// ─── Etapa 2 — Perfil ────────────────────────────────────────────────────────
-
 export interface Step2Data {
   isDoctor: boolean;
   crm: string;
@@ -295,7 +283,6 @@ export function Step2Profile({ data, onChange, fieldErrors }: Step2Props) {
         Informe como você atua para personalizarmos sua experiência.
       </p>
 
-      {/* Cards de perfil */}
       <div className="grid grid-cols-2 gap-3">
         <ProfileCard
           emoji="🩺"
@@ -313,7 +300,6 @@ export function Step2Profile({ data, onChange, fieldErrors }: Step2Props) {
         />
       </div>
 
-      {/* Campos do médico (condicional) */}
       {data.isDoctor && (
         <div className="space-y-3 p-4 bg-teal-50 rounded-2xl border border-teal-100 animate-in slide-in-from-top-2 duration-200">
           <p className="text-xs font-semibold text-teal-700 uppercase tracking-wide">
@@ -418,8 +404,6 @@ function ProfileCard({
   );
 }
 
-// ─── Etapa 3 — Seleção de plano ────────────────────────────────────────────────
-
 interface Step3PlanProps {
   plans: SubscriptionPlan[];
   plansLoading: boolean;
@@ -456,7 +440,6 @@ export function Step3Plan({
 
   return (
     <div className="space-y-6">
-      {/* Toggle Mensal / Anual */}
       <div className="flex justify-center">
         <div className="inline-flex bg-white border border-gray-200 rounded-full p-1 shadow-sm">
           <button
@@ -499,7 +482,6 @@ export function Step3Plan({
         </div>
       ) : (
         <>
-          {/* Mobile: carrossel */}
           <div className="sm:hidden -mx-4 px-4">
             <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {allPlans.map((plan) => {
@@ -546,7 +528,6 @@ export function Step3Plan({
             </div>
           </div>
 
-          {/* Tablet/Desktop: grid dinâmico */}
           <div className={`hidden sm:grid gap-5 items-stretch ${colClass}`}>
             {allPlans.map((plan) => {
               const presentation = getPresentation(plan.slug);
@@ -568,7 +549,6 @@ export function Step3Plan({
             })}
           </div>
 
-          {/* Features compartilhadas */}
           <SharedFeaturesSection />
         </>
       )}

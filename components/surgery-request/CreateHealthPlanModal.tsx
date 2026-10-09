@@ -22,7 +22,6 @@ interface CreateHealthPlanModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (healthPlan: HealthPlan) => void;
-  /** Pré-preenche o nome (ex.: texto digitado em uma busca que não encontrou resultado). */
   initialName?: string;
 }
 
@@ -39,8 +38,6 @@ export function CreateHealthPlanModal({
   initialName = "",
 }: CreateHealthPlanModalProps) {
   const [loading, setLoading] = useState(false);
-  // Este modal é alcançado pelo passo `cadastro-no-modal` da trilha de
-  // Solicitações; submeter aqui criaria um cadastro real durante o tour.
   const { emTour } = useOnboarding();
   const [error, setError] = useState("");
   const { toast, showToast, hideToast } = useToast();
@@ -95,20 +92,11 @@ export function CreateHealthPlanModal({
   if (!isOpen) return null;
   if (typeof document === "undefined") return null;
 
-  // Portal obrigatório: este modal é aberto de dentro de outros formulários
-  // (ex.: o combobox de convênio do `NewPatientModal`). Renderizado inline,
-  // o `<form>` daqui vira descendente do `<form>` de quem abriu — HTML
-  // inválido cujo efeito prático é grave: o Chrome não propaga o submit do
-  // form interno para além do form externo, então o handler `onSubmit` do
-  // React (delegado na raiz) nunca roda, ninguém chama `preventDefault` e o
-  // browser faz o submit nativo — a página recarrega e o cadastro em
-  // andamento se perde.
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
       <div className="relative bg-white rounded-xl shadow-xl w-[480px] mx-4 flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5">
           <h2 className="ds-modal-title">Novo convênio</h2>
           <button
@@ -121,12 +109,8 @@ export function CreateHealthPlanModal({
         </div>
         <div className="h-px bg-gray-200" />
 
-        {/* Body */}
         <form
           onSubmit={(e) => {
-            // O portal resolve o DOM, não a árvore React: o evento de submit
-            // continua subindo até o `<form>` de quem abriu este modal e
-            // dispararia a validação daquele formulário junto.
             e.stopPropagation();
             void onSubmit(e);
           }}
@@ -159,7 +143,6 @@ export function CreateHealthPlanModal({
             )}
           </div>
 
-          {/* Footer */}
           <div className="h-px bg-gray-200" />
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4">
             <button

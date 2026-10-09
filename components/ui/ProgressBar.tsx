@@ -1,33 +1,12 @@
 import { cn } from "@/lib/utils";
 
 interface ProgressBarProps {
-  /**
-   * Progress value from 0 to 100
-   */
   value: number;
-  /**
-   * Height size of the progress bar
-   */
   size?: "sm" | "md" | "lg";
-  /**
-   * Color variant of the progress bar
-   */
   variant?: "default" | "success" | "warning" | "danger" | "info" | "primary";
-  /**
-   * Show percentage text inside or next to the bar
-   */
   showLabel?: boolean;
-  /**
-   * Label position
-   */
   labelPosition?: "inside" | "right";
-  /**
-   * Additional className for the container
-   */
   className?: string;
-  /**
-   * Animate the progress bar
-   */
   animated?: boolean;
 }
 
@@ -55,7 +34,6 @@ export function ProgressBar({
   className,
   animated = true,
 }: ProgressBarProps) {
-  // Clamp value between 0 and 100
   const clampedValue = Math.min(100, Math.max(0, value));
 
   return (
@@ -91,21 +69,9 @@ export function ProgressBar({
 }
 
 interface StatusProgressBarProps {
-  /**
-   * Current status number (1-10)
-   */
   currentStatus: number;
-  /**
-   * Total number of statuses in the flow
-   */
   totalStatuses?: number;
-  /**
-   * Show step labels
-   */
   showSteps?: boolean;
-  /**
-   * Status labels to display
-   */
   statusLabels?: string[];
   className?: string;
 }
@@ -125,27 +91,24 @@ const defaultStatusLabels = [
 
 export function StatusProgressBar({
   currentStatus,
-  totalStatuses: _totalStatuses = 9, // Excluding Cancelada as it's not a step in the normal flow
+  totalStatuses: _totalStatuses = 9,
   showSteps = false,
   statusLabels = defaultStatusLabels,
   className,
 }: StatusProgressBarProps) {
-  // Cancelada (10) is not part of the normal progress
   const isCancelled = currentStatus === 10;
 
-  // Calculate progress based on status (excluding Em Reanálise and Cancelada from normal flow)
-  // Normal flow: 1 -> 2 -> 3 -> 5 -> 6 -> 7 -> 8 -> 9
   const statusToProgress: Record<number, number> = {
-    1: 12.5, // Pendente
-    2: 25, // Enviada
-    3: 37.5, // Em Análise
-    4: 37.5, // Em Reanálise (same as Em Análise)
-    5: 50, // Autorizada
-    6: 62.5, // Agendada
-    7: 75, // A Faturar
-    8: 87.5, // Faturada
-    9: 100, // Finalizada
-    10: 0, // Cancelada
+    1: 12.5,
+    2: 25,
+    3: 37.5,
+    4: 37.5,
+    5: 50,
+    6: 62.5,
+    7: 75,
+    8: 87.5,
+    9: 100,
+    10: 0,
   };
 
   const progress = statusToProgress[currentStatus] || 0;

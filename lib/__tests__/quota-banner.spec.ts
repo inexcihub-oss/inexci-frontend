@@ -19,7 +19,6 @@ function quota(overrides: Partial<QuotaStatus> = {}): QuotaStatus {
   };
 }
 
-/** Atalho: monta a cota a partir do consumo, com `remaining` coerente. */
 function comConsumo(used: number, limit = 20): QuotaStatus {
   return quota({ used, limit, remaining: Math.max(0, limit - used) });
 }

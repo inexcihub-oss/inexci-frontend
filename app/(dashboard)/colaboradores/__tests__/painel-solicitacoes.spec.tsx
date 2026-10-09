@@ -2,21 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { Permission } from "@/lib/permissions";
 
-/**
- * Hospital e convênio são cadastros transversais: desde que criar/editar passou
- * a herdar o `@RequireAnyArea()`, quem só tem `agenda` ou `atendimento` abre a
- * tela de detalhe para corrigir um telefone.
- *
- * O painel lateral, porém, lê `GET /surgery-requests`, que exige
- * `solicitacoes`. O 403 caía no `.catch(() => {})` que existe ali por outro
- * motivo (evitar unhandled rejection no retorno antecipado) e o painel exibia
- * "0 / Nenhuma solicitação encontrada" para um hospital com 4 cirurgias.
- *
- * Os dois testes que importam são o par: **não chamar** o endpoint e **não
- * renderizar** o painel. Só esconder deixaria o 403 saindo na aba de rede a
- * cada abertura; só não chamar deixaria um painel vazio sem explicação.
- */
-
 const { hospitalGetById, healthPlanGetById, surgeryGetAll } = vi.hoisted(() => ({
   hospitalGetById: vi.fn(),
   healthPlanGetById: vi.fn(),
@@ -115,8 +100,6 @@ describe.each(CENARIOS)(
 
       render(<Page />);
 
-      // Espera a tela de fato carregar antes de afirmar ausência — senão o
-      // teste passaria só porque ainda estava no spinner.
       expect(await screen.findByDisplayValue(registro.name)).toBeInTheDocument();
       await waitFor(() => expect(getById).toHaveBeenCalled());
 

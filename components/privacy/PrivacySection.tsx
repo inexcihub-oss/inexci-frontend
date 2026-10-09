@@ -92,11 +92,6 @@ function ConsentBadge({ row }: { row: ConsentRow }) {
   );
 }
 
-/**
- * Bloco completo de gerenciamento de privacidade (status dos termos + IA).
- * Reutilizado tanto na rota dedicada quanto na aba "Privacidade" da página
- * principal de configurações.
- */
 export function PrivacySection() {
   const { toast, showToast, hideToast } = useToast();
   const {
@@ -110,8 +105,6 @@ export function PrivacySection() {
   const [docLoading, setDocLoading] = useState(false);
   const [revokeAiOpen, setRevokeAiOpen] = useState(false);
 
-  // Reaproveita o estado já carregado pelo AuthContext: evita uma segunda
-  // chamada a /privacy/consent/status sempre que o usuário entra nesta tela.
   const status: ConsentStatus | null = consents;
   const loading = consentsLoading && !status;
 

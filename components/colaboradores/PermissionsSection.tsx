@@ -20,21 +20,12 @@ import {
 } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
-/**
- * Áreas que vêm com o perfil profissional — ver `resolveEffectivePermissions`
- * no backend (`inexci-api/src/shared/permissions/resolve-permissions.ts`).
- * Todo profissional de saúde agenda a própria consulta e registra o
- * atendimento (Agenda + Atendimento). Só o médico (CRM) indica cirurgia, e a
- * ficha com indicação cria a SC em nome dele — por isso só ele tem
- * Solicitações travada.
- */
 const TRAVADAS_PARA_PROFISSIONAL = [Permission.AGENDA, Permission.ATENDIMENTO];
 const TRAVADAS_PARA_MEDICO = [
   ...TRAVADAS_PARA_PROFISSIONAL,
   Permission.SOLICITACOES,
 ];
 
-/** Mesma iconografia do menu lateral, para a área ser reconhecida de imediato. */
 const PERMISSION_ICONS: Record<Permission, LucideIcon> = {
   [Permission.AGENDA]: CalendarDays,
   [Permission.ATENDIMENTO]: Stethoscope,
@@ -44,12 +35,7 @@ const PERMISSION_ICONS: Record<Permission, LucideIcon> = {
 
 interface Props {
   value: Permission[];
-  /** Tem perfil profissional (qualquer conselho). */
   isDoctor: boolean;
-  /**
-   * O perfil é de médico (CRM). Default `true` porque, antes do conselho,
-   * todo perfil era médico.
-   */
   isPhysician?: boolean;
   onChange: (permissions: Permission[]) => void;
 }
@@ -82,7 +68,6 @@ export function PermissionsSection({
   const aplicarPreset = (chave: string) => {
     if (chave === "personalizado") return;
     const preset = PROFILE_PRESETS[chave] ?? [];
-    // Administração é concessão consciente: o preset não tira nem põe.
     const mantemAdmin = value.includes(Permission.ADMINISTRACAO)
       ? [Permission.ADMINISTRACAO]
       : [];
@@ -93,7 +78,6 @@ export function PermissionsSection({
 
   return (
     <div data-tour="admin-areas" className="flex flex-col gap-4 md:gap-5">
-      {/* Perfil pronto */}
       <div className="flex flex-col">
         <label htmlFor="perfil-colaborador" className="ds-label">
           Perfil de acesso
@@ -117,7 +101,6 @@ export function PermissionsSection({
         </p>
       </div>
 
-      {/* Áreas */}
       <fieldset className="flex flex-col gap-2">
         <legend className="ds-label">Áreas liberadas</legend>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 md:gap-3">

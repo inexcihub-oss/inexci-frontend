@@ -2,12 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { exportAgendaToCsv } from "./export-agenda";
 import type { Appointment } from "@/services/appointment.service";
 
-/**
- * Mesma armadilha do relatório do kanban: o Excel em pt-BR lê o CSV pelo
- * separador de lista do locale (";"), então um arquivo separado por vírgula
- * chega com tudo numa coluna só.
- */
-
 const atendimento = {
   id: "ap-1",
   scheduledAt: "2026-08-01T14:00:00",

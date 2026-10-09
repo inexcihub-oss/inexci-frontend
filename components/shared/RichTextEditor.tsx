@@ -34,8 +34,6 @@ import {
   Plus,
 } from "lucide-react";
 
-// ─── Custom FontSize extension ────────────────────────────────────────────────
-
 const FontSize = TextStyle.extend({
   addAttributes() {
     return {
@@ -71,8 +69,6 @@ const FontSize = TextStyle.extend({
   },
 });
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
 interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
@@ -81,8 +77,6 @@ interface RichTextEditorProps {
   disabled?: boolean;
   minHeight?: string;
 }
-
-// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const FONT_FAMILIES = [
   { label: "Padrão", value: "" },
@@ -135,8 +129,6 @@ const HIGHLIGHT_COLORS = [
   { label: "Roxo", value: "#E9D5FF" },
 ];
 
-// ─── Botão da barra de ferramentas ────────────────────────────────────────────
-
 function ToolbarButton({
   onClick,
   isActive,
@@ -169,8 +161,6 @@ function ToolbarButton({
   );
 }
 
-// ─── Hook para posicionamento flutuante fixo ─────────────────────────────────
-
 function useFloatingPosition(
   triggerRef: React.RefObject<HTMLElement | null>,
   open: boolean,
@@ -185,7 +175,6 @@ function useFloatingPosition(
       setPos({ top: rect.bottom + 4, left: rect.left });
     }
     update();
-    // Recalcula ao fazer scroll em qualquer ancestral
     const parents: (HTMLElement | Window)[] = [window];
     let el: HTMLElement | null = triggerRef.current;
     while (el) {
@@ -209,8 +198,6 @@ function useFloatingPosition(
 
   return pos;
 }
-
-// ─── Dropdown genérico ────────────────────────────────────────────────────────
 
 function ToolbarDropdown({
   label,
@@ -286,8 +273,6 @@ function ToolbarDropdown({
     </>
   );
 }
-
-// ─── Color picker inline ──────────────────────────────────────────────────────
 
 function ColorPicker({
   colors,
@@ -380,8 +365,6 @@ function ColorPicker({
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
 export function RichTextEditor({
   value,
   onChange,
@@ -398,8 +381,6 @@ export function RichTextEditor({
         blockquote: false,
         codeBlock: false,
         horizontalRule: false,
-        // StarterKit v3 já registra o Underline — registrar a extensão de
-        // novo gerava "Duplicate extension names found: ['underline']".
       }),
       FontSize,
       Color,
@@ -422,7 +403,6 @@ export function RichTextEditor({
     },
   });
 
-  // Sincronizar conteúdo externo
   useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
@@ -455,7 +435,6 @@ export function RichTextEditor({
     return attrs?.color || undefined;
   }, [editor]);
 
-  // Força re-render ao mudar seleção para atualizar estado dos botões
   const [, forceUpdate] = useState(0);
   useEffect(() => {
     if (!editor) return;
@@ -479,10 +458,8 @@ export function RichTextEditor({
     <div
       className={`border border-gray-200 rounded-xl overflow-hidden bg-white ${className}`}
     >
-      {/* ─── Barra de ferramentas ──────────────────────────── */}
       {!disabled && (
         <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-gray-100 bg-gray-50 flex-wrap">
-          {/* ── Fonte ── */}
           <ToolbarDropdown
             label={currentFontLabel}
             title="Fonte"
@@ -514,7 +491,6 @@ export function RichTextEditor({
 
           <div className="w-px h-4 bg-gray-200 mx-0.5" />
 
-          {/* ── Tamanho da fonte ── */}
           <div className="flex items-center gap-0.5">
             <button
               type="button"
@@ -567,7 +543,6 @@ export function RichTextEditor({
 
           <div className="w-px h-4 bg-gray-200 mx-0.5" />
 
-          {/* ── Formatação básica ── */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             isActive={editor.isActive("bold")}
@@ -594,7 +569,6 @@ export function RichTextEditor({
 
           <div className="w-px h-4 bg-gray-200 mx-0.5" />
 
-          {/* ── Cor do texto ── */}
           <ColorPicker
             colors={TEXT_COLORS}
             currentColor={getCurrentColor()}
@@ -603,7 +577,6 @@ export function RichTextEditor({
             icon={<Palette className="w-3.5 h-3.5" />}
           />
 
-          {/* ── Destaque ── */}
           <ToolbarDropdown
             title="Destaque"
             icon={<Highlighter className="w-3.5 h-3.5" />}
@@ -644,7 +617,6 @@ export function RichTextEditor({
 
           <div className="w-px h-4 bg-gray-200 mx-0.5" />
 
-          {/* ── Alinhamento ── */}
           <ToolbarButton
             onClick={() => editor.chain().focus().setTextAlign("left").run()}
             isActive={editor.isActive({ textAlign: "left" })}
@@ -676,7 +648,6 @@ export function RichTextEditor({
 
           <div className="w-px h-4 bg-gray-200 mx-0.5" />
 
-          {/* ── Listas ── */}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             isActive={editor.isActive("bulletList")}
@@ -694,7 +665,6 @@ export function RichTextEditor({
 
           <div className="w-px h-4 bg-gray-200 mx-0.5" />
 
-          {/* ── Limpar formatação ── */}
           <ToolbarButton
             onClick={() =>
               editor.chain().focus().unsetAllMarks().clearNodes().run()
@@ -706,7 +676,6 @@ export function RichTextEditor({
         </div>
       )}
 
-      {/* ─── Área de edição ───────────────────────────────── */}
       <EditorContent editor={editor} />
     </div>
   );

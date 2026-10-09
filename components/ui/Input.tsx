@@ -5,13 +5,6 @@ import { applyMask, MaskKind } from "@/lib/masks";
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
-  /**
-   * Quando definida, intercepta o `onChange` aplicando a máscara
-   * antes de chamar o handler do consumidor. O valor entregue ao
-   * `onChange` (e mantido no input) já vem mascarado.
-   *
-   * Use `unmask()` antes de enviar ao backend.
-   */
   mask?: MaskKind;
 }
 
@@ -38,8 +31,6 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     },
     ref,
   ) => {
-    // Sem `id` vindo de fora, gera um para ligar o <label> ao <input> —
-    // senão leitor de tela e `getByLabelText` não encontram o campo.
     const generatedId = useId();
     const inputId = id ?? generatedId;
     const handleChange = mask

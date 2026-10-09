@@ -75,7 +75,6 @@ type TabType =
   | "pos-cirurgico"
   | "faturamento";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function getInitialsFromName(name: string): string {
   return name
     .split(" ")
@@ -87,7 +86,6 @@ function getInitialsFromName(name: string): string {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-/** Converte um caminho relativo da API em URL absoluta */
 function getApiFileUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
@@ -109,7 +107,6 @@ function formatActivityDate(dateStr: string): string {
   return date.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
 }
 
-// ── Avatar com fallback para iniciais ────────────────────────────────────────
 function AvatarOrInitials({
   user,
   size = 28,
@@ -122,7 +119,6 @@ function AvatarOrInitials({
 
   useEffect(() => {
     if (!user.avatarUrl) return;
-    // Se já for URL absoluta, usa direto
     if (
       user.avatarUrl.startsWith("http://") ||
       user.avatarUrl.startsWith("https://")
@@ -130,7 +126,6 @@ function AvatarOrInitials({
       setResolvedUrl(user.avatarUrl);
       return;
     }
-    // Verificar cache do localStorage antes de buscar signed URL
     if (user.id) {
       const cached = getAvatarCache(user.id, user.avatarUrl);
       if (cached) {
@@ -172,14 +167,12 @@ function AvatarOrInitials({
   );
 }
 
-// ── Componente de Item de Atividade ───────────────────────────────────────────
 function ActivityItem({ activity }: { activity: Activity }) {
   const isPdfGenerated = activity.type === "pdf_generated";
   const hasActor = Boolean(activity.user);
 
   return (
     <div className="flex items-start gap-3 px-4 py-3 border-b border-neutral-100 last:border-b-0">
-      {/* Avatar / Ícone */}
       <div className="flex-shrink-0 mt-0.5">
         {hasActor && activity.user ? (
           <AvatarOrInitials user={activity.user} size={28} />
@@ -196,7 +189,6 @@ function ActivityItem({ activity }: { activity: Activity }) {
         )}
       </div>
 
-      {/* Conteúdo */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-0.5">
           <span className="text-xs font-medium text-gray-800 truncate">
@@ -231,7 +223,6 @@ function ActivityItem({ activity }: { activity: Activity }) {
   );
 }
 
-// ── Status Timeline Component ─────────────────────────────────────────────
 const ALL_STATUSES: { num: number; label: string }[] = [
   { num: 1, label: "Pendente" },
   { num: 2, label: "Enviada" },
@@ -253,9 +244,8 @@ function StatusTimeline({
   createdAt: string;
   activities: Activity[];
 }) {
-  // Build a map of status transitions from activities
   const statusDates = new Map<number, string>();
-  statusDates.set(1, createdAt); // Status 1 = created_at
+  statusDates.set(1, createdAt);
 
   activities
     .filter((a) => a.type === "status_change")
@@ -264,7 +254,6 @@ function StatusTimeline({
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     )
     .forEach((a) => {
-      // Try to extract status from content like "Status alterado para Enviada"
       const match = a.content.match(/para\s+"?([^"]+)"?\s*$/i);
       if (match) {
         const label = match[1].trim();
@@ -285,13 +274,10 @@ function StatusTimeline({
   const isEncerrada = currentStatus === 9;
   const isFinalizada = currentStatus === 8;
 
-  // For Encerrada: only show statuses actually visited (in statusDates) + Encerrada itself
-  // For others: show all statuses up to and including current (excluding Encerrada)
   const visibleStatuses = isEncerrada
     ? ALL_STATUSES.filter((s) => statusDates.has(s.num) || s.num === 9)
     : ALL_STATUSES.filter((s) => s.num !== 9);
 
-  // Calculate days in each completed stage
   function getDaysInStage(statusNum: number): number | null {
     const enteredAt = statusDates.get(statusNum);
     if (!enteredAt) return null;
@@ -314,7 +300,6 @@ function StatusTimeline({
 
   return (
     <div className="p-4">
-      {/* Total time card */}
       <div
         className={`mb-5 rounded-xl px-4 py-3 flex items-center gap-3 ${
           isEncerrada ? "bg-red-50" : "bg-teal-50"
@@ -355,11 +340,9 @@ function StatusTimeline({
         </div>
       </div>
 
-      {/* Timeline */}
       <div className="relative">
         {visibleStatuses.map((s, idx) => {
           const isThisEncerrada = s.num === 9;
-          // A status is "completed" (green) if it was visited and is not Encerrada
           const isCompleted =
             !isThisEncerrada && statusDates.has(s.num) && s.num < currentStatus;
           const isCurrent =
@@ -373,7 +356,6 @@ function StatusTimeline({
 
           return (
             <div key={s.num} className="flex items-start gap-3 relative">
-              {/* Vertical line */}
               {!isLast && (
                 <div
                   className={`absolute left-[13px] top-[26px] w-0.5 h-[calc(100%-2px)] ${
@@ -386,7 +368,6 @@ function StatusTimeline({
                 />
               )}
 
-              {/* Circle indicator */}
               <div className="flex-shrink-0 z-10 mt-0.5">
                 {isThisEncerrada ? (
                   <div className="w-[26px] h-[26px] rounded-full bg-red-500 flex items-center justify-center">
@@ -420,7 +401,6 @@ function StatusTimeline({
                 )}
               </div>
 
-              {/* Content */}
               <div
                 className={`pb-6 flex-1 min-w-0 ${isFuture ? "opacity-40" : ""}`}
               >
@@ -507,7 +487,6 @@ export default function SolicitacaoDetalhePage() {
       : "informacoes-gerais",
   );
 
-  // Carregar estado do localStorage ou usar valores padrão
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("solicitacao-sidebar-open");
@@ -528,9 +507,6 @@ export default function SolicitacaoDetalhePage() {
     "pendencias" | "atividades" | "timeline"
   >("pendencias");
 
-  // Link da notificação de menção: `/solicitacao/:id?sidebar=atividades`.
-  // No mobile o painel é um bottom-sheet que começa fechado, então além da
-  // aba é preciso abri-lo.
   useEffect(() => {
     const aba = resolveSidebarTabFromQuery(searchParams.get("sidebar"));
     if (!aba) return;
@@ -538,8 +514,6 @@ export default function SolicitacaoDetalhePage() {
     setIsSidebarOpen(true);
   }, [searchParams]);
 
-  // Detalhe da SC via TanStack Query (P5/P10): 3 queries independentes
-  // (sc/pendencies/activities) com invalidação seletiva por mutação.
   const {
     data: solicitacao = null,
     isLoading: loading,
@@ -554,7 +528,6 @@ export default function SolicitacaoDetalhePage() {
     new Set(),
   );
 
-  // Validação dinâmica de pendências (query separada).
   const { data: validation = null, isFetching: loadingPendencies } = useQuery({
     queryKey: ["surgery-request", id, "pendencies"],
     queryFn: () => pendencyService.validate(id),
@@ -563,7 +536,6 @@ export default function SolicitacaoDetalhePage() {
 
   const { toast, showToast, hideToast } = useToast();
 
-  // Estados dos modais de ação
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [isDocumentReviewOpen, setIsDocumentReviewOpen] = useState(false);
   const [documentExtractionInitialResult, setDocumentExtractionInitialResult] =
@@ -589,7 +561,6 @@ export default function SolicitacaoDetalhePage() {
 
   const { data: availableDoctors = [] } = useAvailableDoctors();
 
-  // Estado de exportação de PDF da solicitação
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const handleExportPdf = async () => {
@@ -601,13 +572,11 @@ export default function SolicitacaoDetalhePage() {
       window.open(url, "_blank", "noopener,noreferrer");
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
-      // silencia o erro, sem toast nesta página
     } finally {
       setIsExportingPdf(false);
     }
   };
 
-  // Estados do modal de confirmação de notificação ao paciente (pós-transição)
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [completedActionStatus, setCompletedActionStatus] = useState<{
     previous: string;
@@ -615,7 +584,6 @@ export default function SolicitacaoDetalhePage() {
     previousNumber: number;
   } | null>(null);
 
-  // Atividades (query separada).
   const { data: activities = [], isFetching: loadingActivities } = useQuery({
     queryKey: ["surgery-request", id, "activities"],
     queryFn: () => surgeryRequestService.getActivities(id),
@@ -631,7 +599,6 @@ export default function SolicitacaoDetalhePage() {
   const [mobileCardsCanScrollRight, setMobileCardsCanScrollRight] =
     useState(false);
 
-  // Salvar estado da sidebar no localStorage quando mudar
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem(
@@ -641,12 +608,6 @@ export default function SolicitacaoDetalhePage() {
     }
   }, [isSidebarOpen]);
 
-  // Fechar sidebar no mobile por padrão — exceto quando a URL pede uma aba.
-  // O link da notificação de menção (`?sidebar=atividades`) é tratado por um
-  // efeito declarado ACIMA deste; como os dois rodam na mesma montagem e na
-  // ordem de declaração, sem esta guarda o padrão de mobile fecharia o
-  // painel que o deep-link acabou de abrir. Lê da `window.location` em vez
-  // do `searchParams` para manter o efeito preso à montagem.
   useEffect(() => {
     const pedidoNaUrl =
       typeof window !== "undefined"
@@ -675,25 +636,12 @@ export default function SolicitacaoDetalhePage() {
     }
   }, [solicitacao]);
 
-  // Invalida as 3 queries do detalhe após uma mutação (P5/P10): a SC muda e,
-  // com ela, pendências e atividades derivadas.
   const handleUpdateProcedure = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ["surgery-request", id] });
-    // Kanban e agenda usam cache (staleTime): invalida para refletir a mudança
-    // ao voltar para essas telas.
     queryClient.invalidateQueries({ queryKey: ["surgery-requests", "kanban"] });
     queryClient.invalidateQueries({ queryKey: ["surgery-requests", "agenda"] });
   }, [queryClient, id]);
 
-  // Rolar a lista para o fim quando novas atividades chegam.
-  //
-  // Rola o container diretamente, em vez de `scrollIntoView` no último item:
-  // `scrollIntoView` move TODO ancestral rolável, e o `<main>` do dashboard é
-  // `lg:overflow-hidden` — continua rolável por código, só que sem barra para
-  // o usuário desfazer. Quando o banner do onboarding ocupa altura, o conteúdo
-  // do `main` passa a transbordar e enviar um comentário arrastava a página
-  // inteira para cima: banner cortado no topo, faixa vazia no rodapé e nenhum
-  // jeito de voltar sem recarregar.
   useEffect(() => {
     const lista = listaAtividadesRef.current;
     if (!lista || activities.length === 0) return;
@@ -726,7 +674,6 @@ export default function SolicitacaoDetalhePage() {
     };
   }, [updateMobileCardsScrollHints, solicitacao?.id]);
 
-  // Mapeamento: chave de pendência → aba
   const pendencyKeyToTab: Partial<Record<string, TabType>> = {
     patient_data: "laudo",
     hospital_data: "informacoes-gerais",
@@ -744,25 +691,20 @@ export default function SolicitacaoDetalhePage() {
     const targetTab = pendencyKeyToTab[key];
     if (!targetTab) return;
 
-    // Mudar para a aba correta
     setActiveTab(targetTab);
 
-    // Fechar sidebar no mobile
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
       setIsSidebarOpen(false);
     }
 
-    // Encontrar a pendência nos dados de validação
     const pendency = validation?.pendencies?.find((p) => p.key === key) ?? null;
 
-    // Cancelar timer anterior e definir destaque
     if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     setHighlightedPendency(pendency);
     highlightTimerRef.current = setTimeout(() => {
       setHighlightedPendency(null);
     }, 5000);
 
-    // Rolar para o elemento após a aba ser renderizada
     const action = getPendencyAction(key);
     if (action?.type === "scroll" && action.target) {
       setTimeout(() => {
@@ -778,14 +720,10 @@ export default function SolicitacaoDetalhePage() {
     }
   };
 
-  // Status antes de REALIZADA (6) — exibem modal de notificação
-  // Modal de notificação ao paciente aparece apenas até a confirmação de data de cirurgia
-  // (status anterior < 5 = "Agendada"). A partir de "Agendada" em diante, não exibe mais.
   const isPreRealizadaStatus = (status: number) => status < 5;
   const hasPatientContact =
     !!solicitacao?.patient?.phone || !!solicitacao?.patient?.email;
 
-  // Mapa de ação → status resultante (para exibir no modal de notificação)
   const ACTION_NEXT_STATUS_MAP: Record<string, string> = {
     send: "Enviada",
     startAnalysis: "Em Análise",
@@ -794,7 +732,6 @@ export default function SolicitacaoDetalhePage() {
     surgeryStatus: "Realizada",
   };
 
-  // Abre o modal de notificação APÓS a transição de status ter sido concluída
   const showPostTransitionNotification = (
     action: string,
     previousStatusNum: number,
@@ -819,7 +756,6 @@ export default function SolicitacaoDetalhePage() {
     }
   };
 
-  // Callback do modal de notificação (pós-transição)
   const handleNotificationConfirm = async (
     channels: NotificationChannels | null,
   ) => {
@@ -832,7 +768,6 @@ export default function SolicitacaoDetalhePage() {
           oldStatus: completedActionStatus?.previousNumber,
         });
       } catch {
-        // silently ignore
       }
     }
     setCompletedActionStatus(null);
@@ -841,11 +776,9 @@ export default function SolicitacaoDetalhePage() {
   const handleConfirmDate = async (skipConsentCheck = false) => {
     const dateOptions =
       solicitacao?.scheduling?.dateOptions ?? solicitacao?.dateOptions ?? [];
-    // Sem datas propostas nem seleção pendente: nada a confirmar ainda.
     if (dateOptions.length > 0 && pendingDateIndex === null) {
       return;
     }
-    // Aviso não-bloqueante: termo de consentimento assinado ainda não anexado.
     const hasConsentTerm = solicitacao?.documents?.some(
       (d) => d.key === "consent_term",
     );
@@ -854,7 +787,6 @@ export default function SolicitacaoDetalhePage() {
       return;
     }
     setShowConsentWarning(false);
-    // Sem datas propostas: abre o modal para digitar data e hora nesta etapa.
     if (dateOptions.length === 0) {
       setIsDefineDateModalOpen(true);
       return;
@@ -869,20 +801,17 @@ export default function SolicitacaoDetalhePage() {
       handleUpdateProcedure();
       showPostTransitionNotification("confirmDate", previousStatusNum);
     } catch {
-      // silently ignore
     } finally {
       setIsSavingDate(false);
     }
   };
 
-  // Abrir modal automaticamente quando há query param "action" (vindo do Kanban)
   useEffect(() => {
     if (!solicitacao) return;
 
     const action = searchParams.get("action");
     if (!action) return;
 
-    // Remover o query param da URL sem recarregar a página
     router.replace(`/solicitacao/${params.id}`, { scroll: false });
 
     switch (action) {
@@ -912,10 +841,6 @@ export default function SolicitacaoDetalhePage() {
     }
   }, [solicitacao, searchParams, router, params.id]);
 
-  // Reabre a revisão do documento quando o usuário volta pela notificação de
-  // conclusão da análise em background (fechou o `ApplyDocumentExtractionModal`
-  // enquanto analisava) — mesmo padrão do `docExtractionJobId` da criação de SC
-  // via documento em `/solicitacoes-cirurgicas`.
   useEffect(() => {
     if (!solicitacao) return;
 
@@ -1017,11 +942,9 @@ export default function SolicitacaoDetalhePage() {
     return totalReceived > 0 && totalReceived < invoiceValue;
   })();
 
-  // Função para verificar se uma aba tem pendências não concluídas
   const getTabWarning = (tabId: TabType): boolean => {
     if (!validation || !validation.pendencies) return false;
 
-    // Mapear abas para as keys de pendências correspondentes
     const tabPendencyMap: Record<TabType, string[]> = {
       "informacoes-gerais": ["hospital_data"],
       "codigo-tuss": ["tuss_procedures"],
@@ -1044,13 +967,11 @@ export default function SolicitacaoDetalhePage() {
       return hasValidationWarning || hasPartialBillingPending;
     }
 
-    // Verificar se há pendências não concluídas para esta aba
     return hasValidationWarning;
   };
 
   const statusNum: number = solicitacao?.status ?? 0;
 
-  // Abas dinâmicas com base no status
   const tabs = [
     {
       id: "informacoes-gerais" as TabType,
@@ -1072,7 +993,6 @@ export default function SolicitacaoDetalhePage() {
       label: "Laudo",
       hasWarning: getTabWarning("laudo"),
     },
-    // Aba Pós Cirúrgico: disponível a partir do status 6 (Realizada)
     ...(statusNum >= 6
       ? [
           {
@@ -1082,7 +1002,6 @@ export default function SolicitacaoDetalhePage() {
           },
         ]
       : []),
-    // Aba Faturamento: disponível a partir do status 7 (Faturada)
     ...(statusNum >= 7
       ? [
           {
@@ -1096,11 +1015,8 @@ export default function SolicitacaoDetalhePage() {
 
   return (
     <PageContainer constrainMobileHeight>
-      {/* Container com borda englobando tudo */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
-        {/* Main Content */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          {/* Header */}
           <header className="flex items-center justify-between px-4 lg:px-6 py-0 border-b border-neutral-100 h-13">
             <div className="flex items-center gap-2">
               <button
@@ -1142,16 +1058,12 @@ export default function SolicitacaoDetalhePage() {
                     ({solicitacao.procedure?.name || "Sem procedimento"})
                   </span>
                 </div>
-                {/* Progresso removido conforme solicitação */}
               </div>
             </div>
 
-            {/* Menu de ações */}
             <div className="flex items-center gap-2">
-              {/* Linha separadora */}
               <div className="w-px h-6 bg-gray-200"></div>
 
-              {/* Toggle Sidebar */}
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 className={`w-10 h-10 md:w-8 md:h-8 flex items-center justify-center hover:bg-teal-50 active:scale-[0.95] transition-all rounded-xl ${isSidebarOpen ? "border border-[#DCDFE3] shadow-sm" : ""}`}
@@ -1196,10 +1108,8 @@ export default function SolicitacaoDetalhePage() {
             </div>
           </header>
 
-          {/* Content */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none pb-2.5">
             <div className="px-4 lg:px-6 pt-4 pb-4 space-y-4">
-              {/* Patient Card */}
               <div
                 className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                 style={{
@@ -1228,9 +1138,7 @@ export default function SolicitacaoDetalhePage() {
                   </div>
                 </div>
 
-                {/* Ações contextuais — dependem do status */}
                 <div className="w-full sm:w-auto flex-shrink-0 flex items-center gap-2 min-w-0">
-                  {/* Botão Exportar PDF — visível a partir do status Enviada (≥ 2) */}
                   {statusNum >= 2 && statusNum !== 9 && (
                     <button
                       type="button"
@@ -1283,7 +1191,6 @@ export default function SolicitacaoDetalhePage() {
                       <span className="sm:hidden">Documento</span>
                     </button>
                   )}
-                  {/* Botão primário dinâmico */}
                   <PrimaryActionButton
                     status={statusNum}
                     onSendRequest={() => setIsSendModalOpen(true)}
@@ -1299,15 +1206,11 @@ export default function SolicitacaoDetalhePage() {
                 </div>
               </div>
 
-              {/* Status / Prioridade / Médico
-                  - Mobile: carrossel horizontal (snap)
-                  - sm+    : layout em grid (como antes) */}
               <div className="relative">
                 <div
                   ref={mobileInfoCardsRef}
                   className="flex gap-3 overflow-x-auto overflow-y-visible snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:snap-none lg:grid-cols-3 lg:gap-4"
                 >
-                  {/* Status */}
                   <div className="relative z-20 w-full min-w-full shrink-0 snap-start sm:min-w-0 sm:shrink flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                     <div className="flex items-center gap-1.5 h-5">
                       <Image
@@ -1326,7 +1229,6 @@ export default function SolicitacaoDetalhePage() {
                     </div>
                   </div>
 
-                  {/* Prioridade */}
                   <div className="w-full min-w-full shrink-0 snap-start sm:min-w-0 sm:shrink flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                     <div className="flex items-center gap-1.5 h-5">
                       <Image
@@ -1350,7 +1252,6 @@ export default function SolicitacaoDetalhePage() {
                     </div>
                   </div>
 
-                  {/* Médico */}
                   <div className="w-full min-w-full shrink-0 snap-start sm:min-w-0 sm:shrink flex flex-col gap-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
                     <div className="flex items-center gap-1.5 h-5">
                       <svg
@@ -1395,7 +1296,6 @@ export default function SolicitacaoDetalhePage() {
                 )}
               </div>
 
-              {/* Tabs */}
               <div className="flex items-center border-b border-neutral-100 -mx-4 lg:-mx-6 px-4 lg:px-6 overflow-x-auto scrollbar-hide">
                 {tabs.map((tab) => (
                   <button
@@ -1427,9 +1327,7 @@ export default function SolicitacaoDetalhePage() {
                 ))}
               </div>
 
-              {/* Tab Content */}
               <div className="pb-4">
-                {/* Banner de alerta para pendência em destaque */}
                 {highlightedPendency && !highlightedPendency.isComplete && (
                   <div className="mb-3 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 animate-pulse">
                     <svg
@@ -1518,23 +1416,13 @@ export default function SolicitacaoDetalhePage() {
           </div>
         </div>
 
-        {/* Right Sidebar */}
         {isSidebarOpen && (
           <>
-            {/* Mobile backdrop */}
             <div
               className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[55] lg:hidden animate-fade-in"
               onClick={() => setIsSidebarOpen(false)}
             />
             <div
-              /*
-                Altura FIXA no mobile (não `max-h`): com altura derivada do
-                conteúdo a folha mudava de tamanho a cada comentário enviado,
-                e as abas Pendências/Atividades/Timeline abriam com alturas
-                diferentes. As três já são `flex-1` com rolagem própria, então
-                fixar aqui só estabiliza a moldura. `dvh` porque `vh` ignora a
-                barra de endereço do navegador móvel.
-              */
               data-testid="painel-lateral-sc"
               className="fixed inset-x-0 bottom-16 z-[60] h-[calc(92dvh-64px)] bg-white rounded-t-3xl flex flex-col lg:relative lg:inset-auto lg:bottom-auto lg:z-auto lg:rounded-none lg:h-auto lg:w-88 lg:border-l lg:border-neutral-100 animate-slide-up lg:animate-none"
               style={
@@ -1546,7 +1434,6 @@ export default function SolicitacaoDetalhePage() {
                   : undefined
               }
             >
-              {/* Mobile drag handle */}
               <div
                 className="flex justify-center pt-3 pb-1 lg:hidden cursor-grab active:cursor-grabbing touch-none"
                 onTouchStart={sidebarTouchStart}
@@ -1555,7 +1442,6 @@ export default function SolicitacaoDetalhePage() {
               >
                 <div className="w-10 h-1 bg-gray-300 rounded-full" />
               </div>
-              {/* Mobile close header */}
               <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-100 lg:hidden">
                 <span className="text-sm font-semibold text-gray-900">
                   Pendências
@@ -1576,7 +1462,6 @@ export default function SolicitacaoDetalhePage() {
                   </svg>
                 </button>
               </div>
-              {/* Sidebar Header - Tabs */}
               <div className="flex items-center border-b border-neutral-100 h-13">
                 <button
                   onClick={() => setSidebarTab("pendencias")}
@@ -1619,7 +1504,6 @@ export default function SolicitacaoDetalhePage() {
                 </button>
               </div>
 
-              {/* Sidebar Content */}
               {sidebarTab === "timeline" ? (
                 <div
                   className="flex-1 overflow-auto pb-16 lg:pb-0"
@@ -1636,7 +1520,6 @@ export default function SolicitacaoDetalhePage() {
                 </div>
               ) : sidebarTab === "atividades" ? (
                 <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
-                  {/* Lista de Atividades */}
                   <div
                     ref={listaAtividadesRef}
                     data-testid="lista-atividades"
@@ -1673,12 +1556,10 @@ export default function SolicitacaoDetalhePage() {
                 </div>
               ) : (
                 <>
-                  {/* Pendências Content */}
                   <div
                     data-tour="sc-requisitos"
                     className="flex-1 flex flex-col bg-white overflow-hidden relative"
                   >
-                    {/* Lista de Pendências - Validação Dinâmica */}
                     <div className="flex-1 overflow-auto p-3">
                       {loadingPendencies ? (
                         <div className="flex items-center justify-center py-8">
@@ -1710,7 +1591,6 @@ export default function SolicitacaoDetalhePage() {
         )}
       </div>
 
-      {/* Modal de confirmação de notificação ao paciente (pós-transição) */}
       <NotificationConfirmModal
         isOpen={isNotificationModalOpen && hasPatientContact}
         onClose={() => {
@@ -1724,7 +1604,6 @@ export default function SolicitacaoDetalhePage() {
         patientPhone={solicitacao.patient?.phone}
       />
 
-      {/* Modal de Envio de Solicitação */}
       <SendRequestModal
         isOpen={isSendModalOpen}
         onClose={() => setIsSendModalOpen(false)}
@@ -1749,7 +1628,6 @@ export default function SolicitacaoDetalhePage() {
         initialResult={documentExtractionInitialResult ?? undefined}
       />
 
-      {/* Modal Solicitação em Análise (status 2 → 3) */}
       <StartAnalysisModal
         isOpen={isStartAnalysisModalOpen}
         onClose={() => setIsStartAnalysisModalOpen(false)}
@@ -1762,7 +1640,6 @@ export default function SolicitacaoDetalhePage() {
         }}
       />
 
-      {/* Modal Atualizar Autorizações (status 3) */}
       <UpdateAuthorizationsModal
         isOpen={isUpdateAuthorizationsModalOpen}
         onClose={() => setIsUpdateAuthorizationsModalOpen(false)}
@@ -1774,7 +1651,6 @@ export default function SolicitacaoDetalhePage() {
         onClose2={() => setIsUpdateAuthorizationsModalOpen(false)}
       />
 
-      {/* Modal Editar Datas (status 4, sem transição) */}
       <EditDateOptionsModal
         isOpen={isEditDateOptionsModalOpen}
         onClose={() => setIsEditDateOptionsModalOpen(false)}
@@ -1785,14 +1661,11 @@ export default function SolicitacaoDetalhePage() {
         }}
       />
 
-      {/* Modal Definir Data (status 4 sem datas propostas → Agendada) */}
       <DefineSurgeryDateModal
         isOpen={isDefineDateModalOpen}
         onClose={() => setIsDefineDateModalOpen(false)}
         solicitacao={solicitacao}
         onSuccess={() => {
-          // Mesma transição 4 → 5 do fluxo com datas propostas: o convite para
-          // notificar o paciente vale igual aqui.
           const prevStatus = solicitacao.status;
           handleUpdateProcedure();
           setIsDefineDateModalOpen(false);
@@ -1800,7 +1673,6 @@ export default function SolicitacaoDetalhePage() {
         }}
       />
 
-      {/* Modal Reagendar (status 5, sem transição) */}
       <RescheduleModal
         isOpen={isRescheduleModalOpen}
         onClose={() => setIsRescheduleModalOpen(false)}
@@ -1811,7 +1683,6 @@ export default function SolicitacaoDetalhePage() {
         }}
       />
 
-      {/* Modal Status da Cirurgia (status 5 → 6/9/reagendada) */}
       <SurgeryStatusModal
         isOpen={isSurgeryStatusModalOpen}
         onClose={() => setIsSurgeryStatusModalOpen(false)}
@@ -1822,7 +1693,6 @@ export default function SolicitacaoDetalhePage() {
         }}
       />
 
-      {/* Modal Faturar Solicitação (status 6 → 7) */}
       <InvoiceModal
         isOpen={isInvoiceModalOpen}
         onClose={() => setIsInvoiceModalOpen(false)}
@@ -1833,7 +1703,6 @@ export default function SolicitacaoDetalhePage() {
         }}
       />
 
-      {/* Modal Confirmar Recebimento (status 7 → 8) */}
       <ConfirmReceiptModal
         isOpen={isConfirmReceiptModalOpen}
         onClose={() => setIsConfirmReceiptModalOpen(false)}
@@ -1844,7 +1713,6 @@ export default function SolicitacaoDetalhePage() {
         }}
       />
 
-      {/* Modal de Encerrar Solicitação */}
       <CloseRequestModal
         isOpen={isCloseRequestModalOpen}
         onClose={() => setIsCloseRequestModalOpen(false)}
@@ -1855,7 +1723,6 @@ export default function SolicitacaoDetalhePage() {
         }}
       />
 
-      {/* Aviso: termo de consentimento não anexado ao confirmar agendamento */}
       <ConsentTermWarningModal
         isOpen={showConsentWarning}
         isLoading={_isSavingDate}
@@ -1867,7 +1734,6 @@ export default function SolicitacaoDetalhePage() {
         }}
       />
 
-      {/* Upload do termo de consentimento direto pelo aviso */}
       <DocumentUploadModal
         isOpen={showConsentUpload}
         onClose={() => setShowConsentUpload(false)}

@@ -14,8 +14,6 @@ import {
   MAX_DOCUMENT_FILE_SIZE_MB,
 } from "@/lib/file-upload";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
 type SurgeryOutcome = "realizada" | "cancelada" | "reagendada";
 
 interface SurgeryStatusModalProps {
@@ -40,8 +38,6 @@ interface DocSection {
   multiple: boolean;
   files: UploadFile[];
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function genId(): string {
   return Math.random().toString(36).slice(2, 9);
@@ -89,8 +85,6 @@ function mkSections(): DocSection[] {
     },
   ];
 }
-
-// ─── Ícones ───────────────────────────────────────────────────────────────────
 
 function IconX({ size = 24 }: { size?: number }) {
   return (
@@ -176,16 +170,6 @@ function IconClock({ size = 16 }: { size?: number }) {
   );
 }
 
-// ─── Componente Principal ─────────────────────────────────────────────────────
-
-/**
- * Modal "Status da Cirurgia" — SCHEDULED (5) → PERFORMED (6) / CLOSED (9) / reagendar.
- *
- * Passo 1: Escolher desfecho (Realizada / Cancelada / Reagendada).
- * Passo 2a (Realizada):  Upload de documentos cirúrgicos → markPerformed.
- * Passo 2b (Reagendada): Selecionar nova data/hora → reschedule.
- * Passo 2c (Cancelada):  Confirmação → close.
- */
 export function SurgeryStatusModal({
   isOpen,
   onClose,
@@ -202,8 +186,6 @@ export function SurgeryStatusModal({
 
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  // ── Reset ──────────────────────────────────────────────────────────────────
-
   const reset = () => {
     setStep(1);
     setOutcome(null);
@@ -217,8 +199,6 @@ export function SurgeryStatusModal({
     reset();
     onClose();
   };
-
-  // ── Gerenciamento de arquivos ──────────────────────────────────────────────
 
   const addFiles = (key: string, fl: FileList | null) => {
     if (!fl || fl.length === 0) return;
@@ -259,8 +239,6 @@ export function SurgeryStatusModal({
       ),
     );
   };
-
-  // ── Submit: Realizada ──────────────────────────────────────────────────────
 
   const submitRealizada = async () => {
     if (!solicitacao.surgeryDate) {
@@ -335,8 +313,6 @@ export function SurgeryStatusModal({
     }
   };
 
-  // ── Submit: Reagendada ─────────────────────────────────────────────────────
-
   const submitReagendada = async () => {
     if (!newDate) {
       showToast("Selecione a nova data da cirurgia.", "error");
@@ -357,8 +333,6 @@ export function SurgeryStatusModal({
     }
   };
 
-  // ── Submit: Cancelada ──────────────────────────────────────────────────────
-
   const submitCancelada = async () => {
     setIsSaving(true);
     try {
@@ -376,11 +350,7 @@ export function SurgeryStatusModal({
     }
   };
 
-  // ── Guard ──────────────────────────────────────────────────────────────────
-
   if (!isOpen) return null;
-
-  // ── Título do modal ────────────────────────────────────────────────────────
 
   const title =
     step === 1
@@ -391,8 +361,6 @@ export function SurgeryStatusModal({
           ? "Cirurgia reagendada"
           : "Cirurgia cancelada";
 
-  // ══════════════════════════════════════════════════════════════════════════
-
   return (
     <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
       <div
@@ -401,12 +369,10 @@ export function SurgeryStatusModal({
       />
 
       <div className="relative bg-white rounded-t-3xl md:rounded-2xl shadow-xl w-full md:max-w-2xl md:mx-4 md:my-6 flex flex-col max-h-[calc(92vh-64px)] md:max-h-[90vh] overflow-y-auto mobile-sheet-offset">
-        {/* Drag handle — apenas mobile */}
         <div className="md:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100">
           <h2 className="flex-1 ds-modal-title">{title}</h2>
           <button
@@ -418,7 +384,6 @@ export function SurgeryStatusModal({
           </button>
         </div>
 
-        {/* ══════════ PASSO 1: Status da cirurgia ════════════════════════════ */}
         {step === 1 && (
           <>
             <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6">
@@ -464,7 +429,6 @@ export function SurgeryStatusModal({
               </div>
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
               <button onClick={handleClose} className="ds-btn-outline">
                 Cancelar
@@ -485,7 +449,6 @@ export function SurgeryStatusModal({
           </>
         )}
 
-        {/* ══════════ PASSO 2a: Cirurgia Realizada ═══════════════════════════ */}
         {step === 2 && outcome === "realizada" && (
           <>
             <div className="flex flex-col gap-3 md:gap-4 px-4 py-4 md:px-6 md:py-6">
@@ -518,7 +481,6 @@ export function SurgeryStatusModal({
               <div className="flex flex-col gap-3 md:gap-4">
                 {sections.map((sec) => (
                   <div key={sec.key}>
-                    {/* Input oculto para seleção de arquivo */}
                     <input
                       ref={(el) => {
                         fileRefs.current[sec.key] = el;
@@ -534,7 +496,6 @@ export function SurgeryStatusModal({
                     />
 
                     {sec.files.length === 0 ? (
-                      /* ── Sem arquivo: container pontilhado ── */
                       <div className="flex items-center gap-2 pl-4 pr-2 py-2 bg-neutral-50 border border-dashed border-neutral-100 rounded-xl">
                         <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900">
                           {sec.label}
@@ -551,9 +512,7 @@ export function SurgeryStatusModal({
                         </button>
                       </div>
                     ) : (
-                      /* ── Com arquivos: linhas de arquivo ── */
                       <div className="flex flex-col gap-2">
-                        {/* Cabeçalho: label + "Adicionar arquivo" */}
                         <div className="flex items-center">
                           <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900">
                             {sec.label}
@@ -570,7 +529,6 @@ export function SurgeryStatusModal({
                           </button>
                         </div>
 
-                        {/* Linhas de arquivo */}
                         {sec.files.map((f) => (
                           <div
                             key={f.id}
@@ -583,7 +541,6 @@ export function SurgeryStatusModal({
                               </span>
                             </span>
 
-                            {/* Barra de progresso (durante upload) */}
                             {isSaving && f.uploading && f.progress < 100 && (
                               <div className="w-28 h-3 bg-neutral-50 rounded-full overflow-hidden flex-shrink-0 border border-neutral-100">
                                 <div
@@ -593,7 +550,6 @@ export function SurgeryStatusModal({
                               </div>
                             )}
 
-                            {/* Botão remover */}
                             <button
                               type="button"
                               onClick={() => removeFile(sec.key, f.id)}
@@ -611,7 +567,6 @@ export function SurgeryStatusModal({
               </div>
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
               <button
                 onClick={() => setStep(1)}
@@ -631,7 +586,6 @@ export function SurgeryStatusModal({
           </>
         )}
 
-        {/* ══════════ PASSO 2b: Cirurgia Reagendada ══════════════════════════ */}
         {step === 2 && outcome === "reagendada" && (
           <>
             <div className="flex flex-col gap-5 px-4 py-5 md:px-6 md:py-6">
@@ -639,9 +593,7 @@ export function SurgeryStatusModal({
                 Selecione a nova data e horário para a cirurgia.
               </p>
 
-              {/* Campos de data e hora */}
               <div className="grid grid-cols-2 gap-3">
-                {/* Data */}
                 <div className="flex flex-col gap-1.5">
                   <label className="ds-label mb-0 flex items-center gap-1.5">
                     <IconCalendar size={14} />
@@ -670,7 +622,6 @@ export function SurgeryStatusModal({
                   </div>
                 </div>
 
-                {/* Horário */}
                 <div className="flex flex-col gap-1.5">
                   <label className="ds-label mb-0 flex items-center gap-1.5">
                     <IconClock size={14} />
@@ -687,7 +638,6 @@ export function SurgeryStatusModal({
                 </div>
               </div>
 
-              {/* Card de resumo — exibe quando data selecionada */}
               {newDate && (
                 <div className="flex items-center gap-3 px-4 py-3.5 bg-primary-50 border border-primary-100 rounded-xl">
                   <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary-700 text-white flex-shrink-0">
@@ -719,7 +669,6 @@ export function SurgeryStatusModal({
               )}
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
               <button
                 onClick={() => setStep(1)}
@@ -739,7 +688,6 @@ export function SurgeryStatusModal({
           </>
         )}
 
-        {/* ══════════ PASSO 2c: Cirurgia Cancelada ═══════════════════════════ */}
         {step === 2 && outcome === "cancelada" && (
           <>
             <div className="px-4 py-4 md:px-6 md:py-6">
@@ -749,7 +697,6 @@ export function SurgeryStatusModal({
               </p>
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
               <button
                 onClick={handleClose}

@@ -4,8 +4,6 @@ import React, { useState } from "react";
 import { ModalFooter } from "@/components/shared/ModalFooter";
 import { useToast } from "@/hooks/useToast";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
 type ContestStep = 1 | 2 | 3;
 export type ContestMethod = "email" | "document";
 
@@ -29,20 +27,6 @@ export interface ContestFlowProps {
   onSubmit: () => void;
 }
 
-/**
- * Fluxo interno de contestação — usado em UpdateAuthorizationsModal (Etapa 3).
- * 3 partes:
- *   Parte 1: Motivo da contestação
- *   Parte 2: Escolha do método (E-mail ou Documento)
- *   Parte 3a: Formulário de e-mail
- *   Parte 3b: Confirmação de documento PDF
- *
- * Referências:
- *   - telas-inexci/status/em-analise/modal-autorizacao-contestar-parte-1.png
- *   - telas-inexci/status/em-analise/modal-autorizacao-contestar-parte-2.png
- *   - telas-inexci/status/em-analise/modal-autorizacao-contestar-parte-3-documento.png
- *   - telas-inexci/status/em-analise/modal-autorizacao-contestar-parte-3-email.png
- */
 export function ContestFlow({
   step,
   reason,
@@ -99,7 +83,6 @@ export function ContestFlow({
   return (
     <>
       <div className="p-4 md:p-6 space-y-3 md:space-y-5">
-        {/* Indicador de etapas */}
         <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500">
           {([1, 2, 3] as ContestStep[]).map((s) => (
             <React.Fragment key={s}>
@@ -111,7 +94,6 @@ export function ContestFlow({
           ))}
         </div>
 
-        {/* Parte 1: Motivo */}
         {step === 1 && (
           <div className="space-y-1.5">
             <label className="block ds-label mb-0">
@@ -127,14 +109,12 @@ export function ContestFlow({
           </div>
         )}
 
-        {/* Parte 2: Método */}
         {step === 2 && (
           <div className="space-y-3 md:space-y-4">
             <p className="ds-body text-gray-600">
               Como deseja enviar a solicitação?
             </p>
             <div className="flex flex-col gap-3">
-              {/* Criar documento */}
               <button
                 onClick={() => onMethodChange("document")}
                 className={`flex items-center gap-4 w-full px-4 py-4 border rounded-xl text-left transition-colors ${
@@ -166,7 +146,6 @@ export function ContestFlow({
                 </div>
               </button>
 
-              {/* Enviar por e-mail */}
               <button
                 onClick={() => onMethodChange("email")}
                 className={`flex items-center gap-4 w-full px-4 py-4 border rounded-xl text-left transition-colors ${
@@ -201,7 +180,6 @@ export function ContestFlow({
           </div>
         )}
 
-        {/* Parte 3a: Formulário de e-mail */}
         {step === 3 && method === "email" && (
           <div className="space-y-3 md:space-y-4">
             <div className="space-y-1.5">
@@ -314,7 +292,6 @@ export function ContestFlow({
           </div>
         )}
 
-        {/* Parte 3b: Documento PDF */}
         {step === 3 && method === "document" && (
           <div className="space-y-3 md:space-y-4">
             <p className="text-xs md:text-sm text-gray-600">

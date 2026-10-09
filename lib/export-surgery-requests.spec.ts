@@ -2,13 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { exportToCsv, exportToPdf } from "./export-surgery-requests";
 import type { SurgeryRequest } from "@/types/surgery-request.types";
 
-/**
- * O relatório do kanban é um arquivo que o usuário guarda. Entregá-lo por
- * `window.open` + `window.print()` dependia de o usuário escolher "Salvar como
- * PDF" na caixa de impressão — e morria calado atrás de um bloqueador de
- * pop-up.
- */
-
 const solicitacoes = [
   {
     id: "1",
@@ -88,7 +81,6 @@ describe("exportToCsv — relatório do kanban", () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  /** Divide por `;` respeitando aspas, como faz a planilha. */
   function colunas(linha: string): string[] {
     const campos: string[] = [];
     let atual = "";
@@ -122,9 +114,6 @@ describe("exportToCsv — relatório do kanban", () => {
   it("separa as colunas com ponto e vírgula", async () => {
     const [cabecalho, primeira] = await csvGerado(solicitacoes);
 
-    // O Excel em pt-BR usa a vírgula como separador decimal e lê o CSV pelo
-    // separador de lista do locale (";"). Com vírgula, a planilha inteira cai
-    // numa coluna só.
     expect(colunas(cabecalho)).toHaveLength(9);
     expect(cabecalho.startsWith("Protocolo;Paciente;")).toBe(true);
     expect(colunas(primeira)).toHaveLength(9);

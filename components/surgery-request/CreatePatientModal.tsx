@@ -35,8 +35,6 @@ export function CreatePatientModal({
   onSuccess,
 }: CreatePatientModalProps) {
   const [loading, setLoading] = useState(false);
-  // Este modal é alcançado pelo passo `cadastro-no-modal` da trilha de
-  // Solicitações; submeter aqui criaria um cadastro real durante o tour.
   const { emTour } = useOnboarding();
   const [error, setError] = useState("");
   const { toast, showToast, hideToast } = useToast();
@@ -86,7 +84,6 @@ export function CreatePatientModal({
       <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
 
       <div className="relative bg-white rounded-xl shadow-xl w-[480px] mx-4 flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5">
           <h2 className="ds-modal-title">Novo paciente</h2>
           <button
@@ -99,7 +96,6 @@ export function CreatePatientModal({
         </div>
         <div className="h-px bg-gray-200" />
 
-        {/* Body */}
         <form onSubmit={onSubmit} noValidate>
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
             <Input
@@ -140,7 +136,6 @@ export function CreatePatientModal({
             )}
           </div>
 
-          {/* Footer */}
           <div className="h-px bg-gray-200" />
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4">
             <button

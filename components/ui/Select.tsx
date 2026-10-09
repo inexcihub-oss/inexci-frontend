@@ -9,8 +9,6 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, error, options, id, ...props }, ref) => {
-    // Sem `id` vindo de fora, gera um para ligar o <label> ao <select> —
-    // senão leitor de tela e `getByLabelText` não encontram o campo.
     const generatedId = useId();
     const selectId = id ?? generatedId;
     return (
@@ -24,7 +22,6 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <div className="relative w-full">
           <select
             className={cn(
-              // A seta vem do `select.ds-input` em globals.css.
               "ds-input",
               error && "border-red-500 focus:ring-red-500",
               className,

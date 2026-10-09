@@ -65,7 +65,6 @@ describe("DocumentTemplatesSettings (MIG-06)", () => {
         body: "Investigar {{paciente.nome}}",
       }),
     );
-    // Recarrega a lista depois de salvar.
     await waitFor(() => expect(service.getAll).toHaveBeenCalledTimes(2));
   });
 

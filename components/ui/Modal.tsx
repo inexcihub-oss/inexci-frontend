@@ -26,11 +26,6 @@ export function Modal({
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(onClose);
 
-  // O foco inicial e o trap não podem depender da identidade do `onClose`:
-  // quem consome o modal costuma passar uma arrow function nova a cada render,
-  // o que fazia o efeito rodar a cada tecla digitada e devolver o foco ao
-  // primeiro elemento (o botão de fechar) — digitar um espaço acabava
-  // "clicando" nele e fechando o modal no meio do preenchimento.
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -104,14 +99,12 @@ export function Modal({
 
   return (
     <div className="fixed inset-0 z-60 flex items-end md:items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         style={{ opacity }}
         onClick={onClose}
       />
 
-      {/* Modal - Bottom sheet no mobile, centered no desktop */}
       <div
         ref={modalRef}
         role="dialog"
@@ -129,7 +122,6 @@ export function Modal({
             : undefined
         }
       >
-        {/* Drag handle — apenas mobile, captura eventos de swipe */}
         <div
           className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
           onTouchStart={onTouchStart}
@@ -139,7 +131,6 @@ export function Modal({
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 md:p-6 border-b border-neutral-100">
           <h2 id={titleId} className="ds-modal-title">
             {title}
@@ -154,7 +145,6 @@ export function Modal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>

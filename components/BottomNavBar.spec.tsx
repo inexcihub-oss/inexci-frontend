@@ -22,7 +22,6 @@ vi.mock("@/components/onboarding/useOnboardingAction", () => ({
 
 import BottomNavBar from "./BottomNavBar";
 
-/** Abre o sheet de overflow clicando no botão "Mais". */
 function openOverflow() {
   fireEvent.click(screen.getByText("Mais"));
 }
@@ -49,9 +48,6 @@ describe("BottomNavBar — filtro por permissão", () => {
     openOverflow();
 
     expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
-    // Procedimentos edita `SurgeryRequestTemplate` — exige Solicitações
-    // (correção da classificação anterior, que tratava o item como
-    // transversal a toda a conta).
     expect(screen.queryByText("Procedimentos")).not.toBeInTheDocument();
   });
 
@@ -119,7 +115,6 @@ describe("BottomNavBar — layout se adapta à quantidade de itens", () => {
     authState.permissions = [Permission.AGENDA];
     const { container } = render(<BottomNavBar />);
 
-    // Agenda + Pacientes + "Mais" = 3 itens no total: layout compacto.
     const bar = container.querySelector("nav > div");
     expect(bar).toHaveClass("justify-center");
     expect(bar).not.toHaveClass("justify-around");
@@ -134,7 +129,6 @@ describe("BottomNavBar — layout se adapta à quantidade de itens", () => {
     ];
     const { container } = render(<BottomNavBar />);
 
-    // Atendimento + Agenda + Solicitações + Pacientes + "Mais" = 5 itens: sem limite por item.
     const bar = container.querySelector("nav > div");
     expect(bar).toHaveClass("justify-around");
     expect(bar).not.toHaveClass("justify-center");

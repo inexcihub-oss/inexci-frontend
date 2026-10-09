@@ -32,7 +32,6 @@ describe("sanitizeCsvValue", () => {
   });
 
   it("neutraliza o que a planilha leria como fórmula", () => {
-    // Tem aspas no meio, então sai prefixado *e* entre aspas.
     expect(sanitizeCsvValue('=HYPERLINK("http://x")')).toBe(
       '"\'=HYPERLINK(""http://x"")"',
     );
@@ -56,11 +55,6 @@ describe("pdfText", () => {
     expect(pdfText("Prioridade \u2191 alta")).toBe("Prioridade  alta");
   });
 
-  /**
-   * U+0080-U+009F sao controles C1: caem dentro de Latin-1, mas o WinAnsi nao
-   * os codifica e o pdf-lib lanca ao desenhar. Chegam por colagem de texto de
-   * fora e derrubariam a geracao inteira do relatorio.
-   */
   it("descarta os controles C1, que o Latin-1 aceita e o WinAnsi nao", () => {
     expect(pdfText("Ana\u0085Souza")).toBe("AnaSouza");
     expect(pdfText("Ana\u009fSouza")).toBe("AnaSouza");
@@ -68,7 +62,6 @@ describe("pdfText", () => {
 });
 
 describe("truncatePdfText", () => {
-  // Fonte de mentira: 10pt de largura por caractere, em qualquer tamanho.
   const font = { widthOfTextAtSize: (texto: string) => texto.length * 10 };
 
   it("devolve inteiro o que já cabe", () => {

@@ -4,16 +4,6 @@ import userEvent from "@testing-library/user-event";
 
 import type { QuotaStatus } from "@/types";
 
-/**
- * O banner de cota vive no topo de toda página do dashboard. O que ele precisa
- * garantir:
- *
- * - o **número absoluto** no título (é sobre ele que o usuário age);
- * - CTA de upgrade só para o dono da conta;
- * - dispensa que sobrevive à navegação, mas volta no degrau seguinte;
- * - o degrau crítico **não** pode ser dispensado.
- */
-
 let authState: {
   isAccountOwner: boolean;
   accountId: string | null;
@@ -201,10 +191,6 @@ describe("QuotaBanner", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  /**
-   * `fallback` é o mecanismo de precedência do `GlobalBanners`: quando não há
-   * aviso de cota, o `QuotaBanner` cede o lugar em vez de simplesmente sumir.
-   */
   it("mostra o fallback quando não há aviso de cota a exibir", () => {
     quotaState = comConsumo(14);
     render(<QuotaBanner fallback={<div data-testid="fallback" />} />);

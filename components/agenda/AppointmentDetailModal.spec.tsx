@@ -10,7 +10,6 @@ import {
 import { Permission } from "@/lib/permissions";
 import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 
-// Usuário simulado com Agenda concedida — dono do fluxo de status/editar/excluir.
 let authState: { isDoctor: boolean; can: (p: Permission) => boolean } = {
   isDoctor: true,
   can: (p) => p === Permission.AGENDA,
@@ -56,9 +55,6 @@ function appointmentFixture(status: AppointmentStatus): Appointment {
   return { ...consultaBase, status };
 }
 
-// Helper de baixo nível: renderiza a partir de uma consulta já montada.
-// `renderModal` (abaixo) é o atalho usado pelos testes que só variam o
-// status/nome do médico; os testes de clínica precisam do objeto completo.
 function renderAppointment(appointment: Appointment, doctorName?: string) {
   return render(
     <AppointmentDetailModal
@@ -83,10 +79,6 @@ describe("AppointmentDetailModal", () => {
     onboardingMockState.emTour = false;
   });
 
-  /**
-   * D-07: o nome do médico costuma vir cadastrado com o tratamento, e o modal
-   * prefixava "Dr(a)." de novo — "Dr(a). Dr. Carlos Mendonça".
-   */
   it("não duplica o tratamento do médico", () => {
     renderModal("confirmed", "Dr. Carlos Mendonça");
 
@@ -118,10 +110,6 @@ describe("AppointmentDetailModal", () => {
     expect(screen.queryByText(/Dr\(a\)\. Luana/)).not.toBeInTheDocument();
   });
 
-  /**
-   * D-10: a data vinha de um `capitalize` de CSS, que subia a inicial de cada
-   * palavra ("Quarta-Feira, 29 De Julho").
-   */
   it("capitaliza só a inicial da data", () => {
     renderModal("confirmed");
 
@@ -138,11 +126,6 @@ describe("AppointmentDetailModal", () => {
     ).toBeInTheDocument();
   });
 
-  /**
-   * Âncora do tour de onboarding (trilha "atendimento", passo "iniciar") em
-   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
-   * trocar o elemento) quebra o tour em silêncio.
-   */
   it('expõe data-tour="atendimento-iniciar" no botão de iniciar atendimento', () => {
     renderModal("scheduled");
 
@@ -151,11 +134,6 @@ describe("AppointmentDetailModal", () => {
     ).toHaveAttribute("data-tour", "atendimento-iniciar");
   });
 
-  /**
-   * Âncora do tour de onboarding (trilha "agenda", passo "status") em
-   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
-   * trocar o elemento) quebra o tour em silêncio.
-   */
   it('expõe data-tour="agenda-consulta-acoes" na linha de botões de status', () => {
     renderModal("scheduled");
 
@@ -166,10 +144,6 @@ describe("AppointmentDetailModal", () => {
     ).not.toBeNull();
   });
 
-  /**
-   * Quem agenda não atende: a secretária marca, confirma e cancela a consulta,
-   * mas abrir a ficha é ato do médico.
-   */
   it("não oferece iniciar o atendimento para quem não é médico", () => {
     authState = { isDoctor: false, can: (p) => p === Permission.AGENDA };
     renderModal("confirmed");
@@ -177,7 +151,6 @@ describe("AppointmentDetailModal", () => {
     expect(
       screen.queryByRole("button", { name: /atendimento/i }),
     ).not.toBeInTheDocument();
-    // As ações de agenda continuam disponíveis.
     expect(
       screen.getByRole("button", { name: /Realizada/i }),
     ).toBeInTheDocument();
@@ -192,11 +165,6 @@ describe("AppointmentDetailModal", () => {
     ).toBeInTheDocument();
   });
 
-  /**
-   * Mexer na consulta (status, editar, excluir) exige a permissão Agenda —
-   * eixo diferente de `isDoctor`. Sem ela, os botões de agenda somem, mas
-   * o botão de atendimento (gateado por `isDoctor`) continua intacto.
-   */
   it("esconde as ações de agenda (status, editar, excluir) para quem não tem a permissão Agenda", () => {
     authState = { isDoctor: true, can: () => false };
     renderModal("confirmed");
@@ -213,7 +181,6 @@ describe("AppointmentDetailModal", () => {
     expect(
       screen.queryByRole("button", { name: /Excluir/i }),
     ).not.toBeInTheDocument();
-    // O botão de atendimento é outro eixo (isDoctor) e continua disponível.
     expect(
       screen.getByRole("button", { name: /Iniciar atendimento/i }),
     ).toBeInTheDocument();
@@ -229,11 +196,6 @@ describe("AppointmentDetailModal", () => {
     expect(screen.getByText("Unidade Centro")).toBeInTheDocument();
   });
 
-  /**
-   * Minor: a linha da clínica usava um `div` avulso com `items-center`,
-   * diferente das linhas vizinhas (`Row`, com `items-start`). Fixa o mesmo
-   * padrão visual das outras linhas (Clock, Tag, User, FileText).
-   */
   it("usa o mesmo layout (Row) das outras linhas para a clínica", () => {
     renderAppointment({
       ...consultaBase,
@@ -309,11 +271,6 @@ describe("AppointmentDetailModal", () => {
     expect(screen.getByRole("button", { name: "Excluir" })).toBeEnabled();
   });
 
-  /**
-   * O guard real é a PROVENIÊNCIA do dado, não o estado do tour: sair do tour
-   * (`emTour: false`) na página sentinela não pode devolver os botões de
-   * mutação com o id fabricado ainda em tela.
-   */
   it("desabilita as ações mesmo fora do tour, se a consulta for a fabricada do tour", () => {
     renderAppointment({ ...consultaBase, id: "tour-demo", status: "scheduled" });
 
@@ -509,8 +466,6 @@ describe("AppointmentDetailModal — sala de espera e dados da consulta (MIG-03)
     ).toBeInTheDocument();
   });
 
-  // O rótulo segue a ficha quando a API informa a situação dela — o status da
-  // agenda pode estar dessincronizado (mexido à mão, ficha excluída).
   it("ficha rascunho salva vira 'Continuar atendimento' mesmo com a consulta confirmada", () => {
     renderAppointment({ ...consultaBase, clinicalRecordStatus: "draft" });
 
@@ -593,14 +548,12 @@ describe("AppointmentDetailModal — histórico (MIG-04)", () => {
 
 describe("formatWhen — dia e horas no mesmo fuso", () => {
   it("formata as horas em America/Sao_Paulo, independente do fuso do navegador", () => {
-    // 12:00 UTC = 09:00 em Brasília (UTC-3).
     expect(formatWhen("2026-08-17T12:00:00.000Z", 30)).toBe(
       "Segunda-feira, 17 de agosto · 09:00 às 09:30",
     );
   });
 
   it("perto da meia-noite UTC, dia e hora continuam do mesmo fuso", () => {
-    // 02:30 UTC de 18/08 = 23:30 de 17/08 em Brasília.
     expect(formatWhen("2026-08-18T02:30:00.000Z", 60)).toBe(
       "Segunda-feira, 17 de agosto · 23:30 às 00:30",
     );

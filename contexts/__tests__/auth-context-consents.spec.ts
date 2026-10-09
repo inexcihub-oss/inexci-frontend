@@ -1,6 +1,3 @@
-/**
- * AuthContext — consents embutidos no `/auth/me` (item 4.4b).
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const consentGetStatus = vi.fn();

@@ -3,10 +3,6 @@ import type { ProfessionalCouncil } from "@/lib/professional-council";
 import { DoctorProfile } from "@/types";
 import { uploadService } from "@/services/upload.service";
 
-/**
- * Resposta do endpoint /users/profile.
- * Usa string para id (UUID) consistente com a entidade User.
- */
 export interface UserProfileResponse {
   id: string;
   name: string;
@@ -32,7 +28,6 @@ export interface UpdateProfileData {
   document?: string;
   birthDate?: string;
   gender?: string;
-  /** `null` remove o avatar gravado; ausente = não mexer. */
   avatarUrl?: string | null;
   signatureUrl?: string | null;
   cpf?: string;
@@ -56,15 +51,7 @@ function invalidateProfileCache() {
   profileCache = null;
 }
 
-// `getAll` (GET /users) e `getById` (GET /users/one) foram removidos: nenhuma
-// tela os chamava. O primeiro puxava o diretório do staff inteiro — dado
-// pessoal de cada colega — por uma rota liberada a qualquer área autenticada.
-// A gestão de equipe usa `collaboratorService`, que passa pelas rotas gated
-// por `ADMINISTRACAO`.
 export const userService = {
-  /**
-   * Busca o perfil do usuário logado
-   */
   async getProfile(): Promise<UserProfileResponse> {
     if (disableProfileCache) {
       const response = await api.get<UserProfileResponse>("/users/profile");
@@ -86,7 +73,6 @@ export const userService = {
       .then((response) => {
         profileCache = {
           data: response.data,
-          // cache curto para absorver remount/StrictMode sem staleness relevante
           expiresAt: Date.now() + 2000,
         };
         return response.data;
@@ -98,16 +84,9 @@ export const userService = {
     return profileInFlight;
   },
 
-  /**
-   * Atualiza o perfil do usuário logado
-   */
   async updateProfile(data: UpdateProfileData): Promise<UserProfileResponse> {
     invalidateProfileCache();
     const response = await api.put<UserProfileResponse>("/users/profile", data);
-    // O backend devolve o mesmo formato do GET /users/profile. Ainda assim, só
-    // cacheia como perfil uma resposta completa: uma parcial (sem `isDoctor`)
-    // fazia a tela ler "não é profissional" e esconder Dados Profissionais,
-    // Assinatura e Cabeçalho até recarregar.
     if (response.data && typeof response.data.isDoctor === "boolean") {
       profileCache = {
         data: response.data,
@@ -117,13 +96,9 @@ export const userService = {
     return response.data;
   },
 
-  /**
-   * Atualiza o doctorProfile do médico logado
-   */
   async updateDoctorProfile(
     doctorProfileId: string,
     data: {
-      /** Só a administração da conta troca o conselho (o backend recusa os demais). */
       council?: ProfessionalCouncil;
       crm?: string;
       crmState?: string;
@@ -139,11 +114,6 @@ export const userService = {
     return response.data;
   },
 
-  /**
-   * Faz upload de foto de perfil e atualiza o avatarUrl no perfil do usuário.
-   * @param file Arquivo de imagem selecionado pelo usuário
-   * @returns O perfil atualizado com a nova avatarUrl
-   */
   async uploadAvatar(file: File): Promise<UserProfileResponse> {
     const uploadResponse = await uploadService.uploadSingle(file, "avatars");
     const avatarUrl = uploadResponse.data.url;

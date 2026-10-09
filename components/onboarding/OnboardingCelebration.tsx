@@ -20,7 +20,6 @@ interface Confete {
   cor: string;
 }
 
-/** Mesmo princípio de `useTargetRect.movimentoReduzido()`. */
 function movimentoReduzido(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -39,17 +38,9 @@ function gerarConfetes(): Confete[] {
 }
 
 interface Props {
-  /** Chamado quando a pessoa confirma que pode seguir para a plataforma. */
   onDone: () => void;
 }
 
-/**
- * Celebração de conclusão total do onboarding. `OnboardingGate` monta este
- * componente uma vez, quando o status vira "completed" nesta sessão — não é
- * o card do banner, é uma confirmação explícita por cima da tela. Ela só
- * fecha quando a pessoa escolhe continuar, para a mensagem não desaparecer
- * antes de ser lida.
- */
 export function OnboardingCelebration({ onDone }: Props) {
   const [confetes] = useState<Confete[]>(() =>
     movimentoReduzido() ? [] : gerarConfetes(),

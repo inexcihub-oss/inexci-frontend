@@ -1,20 +1,10 @@
-/**
- * Tipos relacionados a consentimentos LGPD.
- * Mantém alinhamento com `inexci-api/src/modules/privacy/consent.service.ts`.
- *
- * Não há versionamento: cada consentimento é representado por um timestamp
- * de aceite (ou null se ainda não aceito).
- */
-
 export type ConsentType = "privacy_policy" | "terms_of_use" | "ai";
 
 export interface ConsentStatus {
   privacyPolicyAcceptedAt: string | null;
   termsOfUseAcceptedAt: string | null;
   aiConsentAcceptedAt: string | null;
-  /** True quando Política e Termos foram aceitos. */
   requiredConsentsAccepted: boolean;
-  /** Tipos obrigatórios ainda pendentes (subset de privacy_policy/terms_of_use). */
   pendingRequired: ConsentType[];
 }
 

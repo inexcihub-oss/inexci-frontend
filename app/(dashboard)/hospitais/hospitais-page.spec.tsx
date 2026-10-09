@@ -44,16 +44,6 @@ function renderPage() {
   );
 }
 
-/**
- * Grupo 3 do mapa: cadastros básicos (hospitais/convênios/fornecedores/
- * fabricantes) compartilham o mesmo mecanismo — `createSelectColumn` /
- * `createDeleteActionColumn` de `components/shared/cadastro-table-columns`.
- * Este teste cobre o mecanismo através de uma das telas; as outras usam
- * exatamente o mesmo código.
- *
- * São dois eixos, não um: **cadastrar** é transversal (qualquer área, espelho
- * do `@RequireAnyArea()`), **excluir** continua exigindo Administração.
- */
 describe("HospitaisPage — cadastrar vs. excluir", () => {
   beforeEach(() => {
     vi.clearAllMocks();

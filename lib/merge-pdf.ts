@@ -5,23 +5,9 @@ export interface DocumentEntry {
   name: string;
 }
 
-/**
- * Busca todos os documentos fornecidos, mescla PDFs e incorpora imagens
- * (JPEG/PNG) em um único PDF e retorna o resultado como Blob.
- *
- * Tipos de arquivo suportados:
- * - PDF  → as páginas são copiadas diretamente
- * - JPEG / JPG → cada imagem ocupa uma página A4 em modo paisagem/retrato
- * - PNG  → idem
- *
- * Documentos que falham ao ser buscados ou processados são ignorados
- * silenciosamente (um aviso é emitido no console).
- */
 export async function mergeDocumentsAsPdf(
   docs: DocumentEntry[],
 ): Promise<Blob> {
-  // Import dinâmico: mantém o pdf-lib fora do chunk estático da PosCirurgicoTab
-  // (P14) — só é baixado quando o usuário aciona a mesclagem de documentos.
   const { PDFDocument } = await import("pdf-lib");
   const mergedPdf = await PDFDocument.create();
 
@@ -37,7 +23,7 @@ export async function mergeDocumentsAsPdf(
       }
 
       const contentType = response.headers.get("content-type") ?? "";
-      const uriLower = doc.uri.toLowerCase().split("?")[0]; // remove query string
+      const uriLower = doc.uri.toLowerCase().split("?")[0];
       const arrayBuffer = await response.arrayBuffer();
 
       const isPdf = contentType.includes("pdf") || uriLower.endsWith(".pdf");
@@ -96,19 +82,13 @@ export async function mergeDocumentsAsPdf(
   });
 }
 
-/** A4 em pontos PDF (72 dpi): 595 × 842 */
 const A4_WIDTH = 595;
 const A4_HEIGHT = 842;
 
-/**
- * Retorna as dimensões da página em modo retrato ou paisagem,
- * escolhendo o melhor encaixe para a imagem.
- */
 function fitImageToA4(imgWidth: number, imgHeight: number): [number, number] {
   const portrait: [number, number] = [A4_WIDTH, A4_HEIGHT];
   const landscape: [number, number] = [A4_HEIGHT, A4_WIDTH];
 
-  // Usa paisagem se a imagem for mais larga do que alta
   if (imgWidth > imgHeight) return landscape;
   return portrait;
 }

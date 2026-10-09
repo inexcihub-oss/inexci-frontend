@@ -29,20 +29,12 @@ describe("permissionForRoute", () => {
     expect(permissionForRoute("/pacientes/abc")).toBeNull();
   });
 
-  /** /solicitacao/:id é o detalhe da SC e não compartilha prefixo com a lista. */
   it("cobre o detalhe da solicitação", () => {
     expect(permissionForRoute("/solicitacao/abc-123")).toBe(
       Permission.SOLICITACOES,
     );
   });
 
-  /**
-   * Cadastros transversais: as telas de detalhe moram sob /colaboradores por
-   * herança de layout, mas o dado é compartilhado pelas quatro áreas. O
-   * prefixo mais específico precisa vencer o "/colaboradores" — senão o guard
-   * devolve o colaborador para a casa dele assim que ele clica numa linha da
-   * lista de hospitais.
-   */
   it.each([
     "/colaboradores/hospital/abc-123",
     "/colaboradores/convenio/abc-123",
@@ -76,11 +68,6 @@ describe("hasAnyArea", () => {
     ALL_PERMISSIONS.forEach((p) => expect(hasAnyArea([p])).toBe(true));
   });
 
-  /**
-   * Espelha o `@RequireAnyArea()`: o colaborador criado sem área nenhuma não
-   * pode cadastrar hospital/convênio/fornecedor/fabricante. Sem esta checagem
-   * o botão apareceria e o backend responderia 403 no envio.
-   */
   it("recusa quem não tem área nenhuma", () => {
     expect(hasAnyArea([])).toBe(false);
   });
@@ -91,11 +78,6 @@ describe("resolveHome", () => {
     expect(resolveHome([Permission.SOLICITACOES])).toBe("/dashboard");
   });
 
-  /**
-   * O médico tem as três áreas de trabalho. Enquanto `resolveHome`
-   * curto-circuitava em `solicitacoes`, ele caía no /dashboard ao entrar — a
-   * casa dele é o Atendimento.
-   */
   it("prioriza atendimento sobre solicitações", () => {
     expect(
       resolveHome([Permission.ATENDIMENTO, Permission.SOLICITACOES]),
@@ -118,8 +100,6 @@ describe("resolveHome", () => {
   });
 
   it("manda o admin delegado para colaboradores", () => {
-    // Antes ADMINISTRACAO não tinha entrada em HOME_ORDER e caía no fallback
-    // `/configuracoes` — a única área do usuário ficava de fora da casa dele.
     expect(resolveHome([Permission.ADMINISTRACAO])).toBe("/colaboradores");
   });
 
@@ -138,14 +118,6 @@ describe("resolveHome", () => {
 });
 
 describe("resolveHome nunca aponta para uma rota que o guarda bloqueia", () => {
-  /**
-   * Tarefa 17, ponto 1: se `resolveHome` devolvesse uma rota que
-   * `permissionForRoute` exige e a combinação de permissões não cobre, o
-   * `PermissionRouteGuard` entraria em loop de redirecionamento e travaria a
-   * aplicação inteira. As 2^4 combinações de `ALL_PERMISSIONS` (incluindo a
-   * lista vazia e o caso isolado de ADMINISTRACAO) cobrem todo colaborador
-   * possível — não é uma amostra, é a varredura completa.
-   */
   function allCombinations(): Permission[][] {
     const total = 1 << ALL_PERMISSIONS.length;
     const combinations: Permission[][] = [];
@@ -211,12 +183,6 @@ describe("HOME_ORDER", () => {
 });
 
 describe("presetFor", () => {
-  /**
-   * O seletor da Tarefa 18 chama `presetFor` a cada render para destacar o
-   * perfil correspondente. Se a ordem do array recebido mudasse o resultado,
-   * a mesma seleção lógica oscilaria entre "Personalizado" e o perfil certo
-   * dependendo de como o backend/estado devolveu o array.
-   */
   it("reconhece o preset independentemente da ordem do array", () => {
     expect(
       presetFor([Permission.SOLICITACOES, Permission.AGENDA]),

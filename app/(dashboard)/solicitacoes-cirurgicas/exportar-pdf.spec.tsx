@@ -3,18 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProcedimentosCirurgicos from "./page";
-/**
- * Exportar o relatório em PDF é uma ação demorada e falível: monta o documento
- * no próprio navegador. Sem estado de carregamento e sem aviso de erro, o menu
- * simplesmente fechava e o usuário ficava sem arquivo e sem explicação.
- */
 
-/**
- * Função simples, não `vi.fn()`: o spy do Vitest rastreia o resultado de cada
- * chamada e, ao registrar uma promise rejeitada, vira um segundo consumidor
- * sem tratamento — a suíte acusava rejeição não tratada mesmo com a tela
- * tratando o erro corretamente.
- */
 let gerarPdf: () => Promise<void> = async () => {};
 
 vi.mock("@/lib/export-surgery-requests", async (importOriginal) => {

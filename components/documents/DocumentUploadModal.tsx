@@ -17,8 +17,6 @@ import {
   hasAllowedDocumentExtension,
 } from "@/lib/file-upload";
 
-// ─── Tipos de documento por contexto ─────────────────────────────────────────
-
 export const PRE_SURGERY_DOCUMENT_TYPES = [
   { key: "personal_document", label: "RG/CNH" },
   { key: "health_plan_card", label: "Carteirinha do Convênio" },
@@ -45,30 +43,17 @@ const MAX_FILE_SIZE_BYTES = MAX_DOCUMENT_FILE_SIZE_BYTES;
 const FILE_SIZE_ERROR_MESSAGE = `O arquivo deve ter no máximo ${MAX_DOCUMENT_FILE_SIZE_MB}MB.`;
 const FILE_TYPE_ERROR_MESSAGE = DOCUMENT_FILE_TYPE_ERROR_MESSAGE;
 
-// ─── Props ───────────────────────────────────────────────────────────────────
-
 interface DocumentUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Vínculo com solicitação cirúrgica (fluxo de SC). */
   surgeryRequestId?: string | number;
-  /** Vínculo com paciente (fluxo de prontuário/atendimento). */
   patientId?: string;
-  /** Vínculo opcional com a ficha de atendimento. */
   clinicalRecordId?: string;
   onSuccess: () => void;
-  /** Lista de tipos disponíveis para seleção. Padrão: PRE_SURGERY_DOCUMENT_TYPES */
   documentTypes?: readonly DocumentTypeEntry[];
-  /** Pasta de destino no bucket. Padrão: DOCUMENT_FOLDERS.PRE_SURGERY */
   folder?: DocumentFolder;
 }
 
-// ─── Componente ───────────────────────────────────────────────────────────────
-
-/**
- * Wrapper externo: só monta o conteúdo quando o modal está aberto.
- * Isso garante que todos os estados reiniciem do zero a cada abertura.
- */
 export function DocumentUploadModal(props: DocumentUploadModalProps) {
   if (!props.isOpen) return null;
   return <DocumentUploadModalContent {...props} />;
@@ -106,7 +91,6 @@ function DocumentUploadModalContent({
     width: 0,
   });
 
-  // Fechar dropdown ao clicar fora
   useEffect(() => {
     if (!isTypeDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -157,7 +141,6 @@ function DocumentUploadModalContent({
         return;
       }
       setSelectedFile(file);
-      // Auto-preencher nome com o nome do arquivo (sem extensão) apenas se o campo estiver vazio
       if (!documentName.trim()) {
         const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
         setDocumentName(nameWithoutExtension);
@@ -195,7 +178,6 @@ function DocumentUploadModalContent({
         return;
       }
       setSelectedFile(file);
-      // Auto-preencher nome com o nome do arquivo (sem extensão) apenas se o campo estiver vazio
       if (!documentName.trim()) {
         const nameWithoutExtension = file.name.replace(/\.[^/.]+$/, "");
         setDocumentName(nameWithoutExtension);
@@ -268,19 +250,14 @@ function DocumentUploadModalContent({
 
   if (typeof window === "undefined") return null;
 
-  // Renderizado no body: inline, o wrapper fixed herdaria o `margin-top` do
-  // `space-y-*` do container pai e o modal/backdrop desceriam junto.
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
         onClick={!isUploading ? handleCancel : undefined}
       />
 
-      {/* Modal */}
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col max-h-[90vh]">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             Adicionar Documento
@@ -294,7 +271,6 @@ function DocumentUploadModalContent({
           </button>
         </div>
 
-        {/* Content */}
         <div
           ref={contentRef}
           className="flex-1 p-4 md:p-6 space-y-3 md:space-y-4 overflow-y-auto"
@@ -305,7 +281,6 @@ function DocumentUploadModalContent({
             </div>
           )}
 
-          {/* Dropzone */}
           <div
             ref={dropzoneRef}
             onClick={() => !selectedFile && fileInputRef.current?.click()}
@@ -373,7 +348,6 @@ function DocumentUploadModalContent({
             {MAX_DOCUMENT_FILE_SIZE_MB}MB).
           </p>
 
-          {/* Tipo do documento */}
           <div className="space-y-2">
             <label className="block text-xs md:text-sm font-semibold text-gray-900">
               Tipo do documento
@@ -435,7 +409,6 @@ function DocumentUploadModalContent({
             </div>
           </div>
 
-          {/* Nome do documento */}
           <div className="space-y-2">
             <label className="block text-xs md:text-sm font-semibold text-gray-900">
               Nome
@@ -449,10 +422,8 @@ function DocumentUploadModalContent({
             />
           </div>
 
-          {/* Checkbox - Tornar obrigatório */}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
           <button
             onClick={handleCancel}

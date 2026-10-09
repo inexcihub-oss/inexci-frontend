@@ -45,14 +45,11 @@ export function CollaboratorActionsSection({
   const isFabricado = collaboratorId === TOUR_DEMO_COLLABORATOR_ID;
 
   const handleToggleStatus = async () => {
-    // Defesa em profundidade: o toggle já fica desabilitado (`isFabricado`),
-    // mas o handler não pode depender só disso.
     if (isFabricado) return;
     setTogglingStatus(true);
     try {
       const result = await collaboratorService.toggleStatus(collaboratorId);
       onStatusChange?.(result.status);
-      // Inativo sai da lista de médicos do wizard de SC e da agenda.
       void invalidateAvailableDoctors();
       showToast(
         result.status === "active"
@@ -88,8 +85,6 @@ export function CollaboratorActionsSection({
   };
 
   const handleResetPassword = async () => {
-    // Defesa em profundidade: o botão já fica desabilitado (`isFabricado`),
-    // mas o handler não pode depender só disso.
     if (isFabricado) return;
     if (!password) {
       showToast("Informe a nova senha.", "error");
@@ -120,7 +115,6 @@ export function CollaboratorActionsSection({
   return (
     <>
       <FormSection title="Acesso e Segurança">
-        {/* Status do usuário */}
         <div
           data-tour="colaborador-ciclo-status"
           className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
@@ -150,7 +144,6 @@ export function CollaboratorActionsSection({
               </p>
             </div>
           </div>
-          {/* Toggle switch */}
           <button
             type="button"
             role="switch"
@@ -169,7 +162,6 @@ export function CollaboratorActionsSection({
           </button>
         </div>
 
-        {/* Reenviar convite (apenas para usuários pendentes) */}
         {isPending && (
           <div className="mt-5 p-4 rounded-xl border border-yellow-200 bg-yellow-50">
             <div className="flex items-start gap-3">
@@ -195,7 +187,6 @@ export function CollaboratorActionsSection({
           </div>
         )}
 
-        {/* Redefinir senha (apenas para usuários ativos) */}
         {!isPending && (
           <div className="mt-5">
             <div className="flex items-center gap-2 mb-3">

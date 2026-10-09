@@ -3,19 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SolicitacaoDetalhePage from "./page";
 
-/**
- * Rolagem automática da aba Atividades.
- *
- * Ao chegar uma atividade nova a lista precisa ir para o fim — mas SÓ a
- * lista. `scrollIntoView` rola todo ancestral rolável, e no desktop o
- * `<main>` do dashboard é `lg:overflow-hidden`: continua sendo um container
- * rolável por código, só que sem barra de rolagem para o usuário desfazer.
- * Quando o banner do onboarding ocupa altura, o conteúdo do `main` passa a
- * transbordar, e mandar o fim da lista "para a vista" arrastava a página
- * inteira para cima — banner cortado no topo, faixa vazia no rodapé e nenhum
- * jeito de voltar sem recarregar.
- */
-
 const { replaceMock, searchParamsState } = vi.hoisted(() => ({
   replaceMock: vi.fn(),
   searchParamsState: { value: new URLSearchParams() },
@@ -184,7 +171,6 @@ describe("Detalhe da Solicitação — rolagem da aba Atividades", () => {
     localStorage.clear();
     window.history.replaceState({}, "", "/solicitacao/sc-1?sidebar=atividades");
 
-    // jsdom não implementa nenhum dos dois; stubamos para poder observar.
     scrollIntoViewSpy = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoViewSpy;
 

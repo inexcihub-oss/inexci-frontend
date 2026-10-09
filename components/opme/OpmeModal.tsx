@@ -36,8 +36,6 @@ import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
 interface SupplierOption {
   id?: string;
   name: string;
@@ -57,7 +55,6 @@ interface OpmeModalProps {
   surgeryRequestId: string | number;
   onSuccess: () => void;
   editingOpme?: OpmeItem | null;
-  /** Quando fornecido, salva localmente em vez de chamar a API */
   onLocalSave?: (
     items: {
       name: string;
@@ -66,7 +63,6 @@ interface OpmeModalProps {
       quantity: number;
     }[],
   ) => void;
-  /** Pré-popula os itens ao abrir em modo local */
   initialItems?: {
     name: string;
     manufacturers: string[];
@@ -74,8 +70,6 @@ interface OpmeModalProps {
     quantity: number;
   }[];
 }
-
-// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const MIN_OPTIONS = 3;
 
@@ -116,8 +110,6 @@ function formatCreatedNames(names: string[]): string {
   return `${visible} e mais ${names.length - 4}`;
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
 export function OpmeModal({
   isOpen,
   onClose,
@@ -154,7 +146,6 @@ export function OpmeModal({
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(handleClose);
 
-  // ── Carrega listas para autocomplete ao abrir
   useEffect(() => {
     if (!isOpen) return;
 
@@ -171,11 +162,9 @@ export function OpmeModal({
         }
       })
       .catch(() => {
-        // Falha silenciosa: comboboxes seguem funcionando como texto livre.
       });
   }, [isOpen]);
 
-  // ── Inicializa o formulário ao abrir
   useEffect(() => {
     if (!isOpen) return;
     if (editingOpme) {
@@ -213,7 +202,6 @@ export function OpmeModal({
     setEditingNameIndex(null);
   }, [isOpen, editingOpme, initialItems]);
 
-  // ── ESC fecha o modal
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -223,7 +211,6 @@ export function OpmeModal({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isOpen, handleClose]);
 
-  // ── Bloqueia scroll do body
   useEffect(() => {
     if (!isOpen) return;
     document.body.style.overflow = "hidden";
@@ -231,8 +218,6 @@ export function OpmeModal({
       document.body.style.overflow = "";
     };
   }, [isOpen]);
-
-  // ── Handlers de itens
 
   const handleAddOpme = () => {
     const name = newOpmeName.trim();
@@ -378,8 +363,6 @@ export function OpmeModal({
     const value = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
     updateItem(itemIndex, { quantity: value });
   };
-
-  // ── Validação e submit
 
   const validate = (): { ok: boolean; failingIndex: number | null } => {
     for (let i = 0; i < opmeItems.length; i++) {
@@ -581,7 +564,6 @@ export function OpmeModal({
               : undefined
           }
         >
-          {/* Drag handle (mobile) */}
           <div
             className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
             onTouchStart={onTouchStart}
@@ -591,7 +573,6 @@ export function OpmeModal({
             <div className="w-10 h-1 bg-neutral-200 rounded-full" />
           </div>
 
-          {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100 shrink-0">
             <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl bg-primary-50 text-primary-700 shrink-0">
               <Package className="w-5 h-5" strokeWidth={1.75} />
@@ -612,7 +593,6 @@ export function OpmeModal({
             </button>
           </div>
 
-          {/* Content */}
           <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 md:px-6 md:py-5">
             <div className="flex flex-col gap-3 md:gap-4">
               <AddOpmeRow
@@ -670,7 +650,6 @@ export function OpmeModal({
             </div>
           </div>
 
-          {/* Footer */}
           <div className="ds-modal-footer shrink-0 rounded-b-3xl md:rounded-b-2xl">
             <button
               type="button"
@@ -727,8 +706,6 @@ export function OpmeModal({
   );
 }
 
-// ─── EmptyState ───────────────────────────────────────────────────────────────
-
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center text-center py-6 md:py-10 px-4 gap-3">
@@ -747,8 +724,6 @@ function EmptyState() {
     </div>
   );
 }
-
-// ─── Input de adicionar OPME (sempre visível) ────────────────────────────────
 
 function AddOpmeRow({
   value,
@@ -789,8 +764,6 @@ function AddOpmeRow({
     </div>
   );
 }
-
-// ─── OpmeItemCard ─────────────────────────────────────────────────────────────
 
 interface OpmeItemCardProps {
   item: OpmeItemForm;
@@ -894,7 +867,6 @@ function OpmeItemCard({
         expanded ? "border-primary-200" : "border-neutral-100"
       }`}
     >
-      {/* Header */}
       <div className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3">
         <button
           type="button"
@@ -996,10 +968,8 @@ function OpmeItemCard({
         </div>
       </div>
 
-      {/* Body (expanded) */}
       {expanded && (
         <div className="border-t border-neutral-100 bg-gray-50/60 p-3 md:p-4 flex flex-col gap-4 md:gap-5">
-          {/* Quantidade */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col">
               <span className="ds-label mb-0">Quantidade</span>
@@ -1015,7 +985,6 @@ function OpmeItemCard({
             />
           </div>
 
-          {/* Fabricantes */}
           <FieldGroup
             title="Fabricantes"
             description={`Informe ao menos ${MIN_OPTIONS} fabricantes`}
@@ -1048,7 +1017,6 @@ function OpmeItemCard({
             </button>
           </FieldGroup>
 
-          {/* Fornecedores */}
           <FieldGroup
             title="Fornecedores"
             description={`Informe ao menos ${MIN_OPTIONS} fornecedores`}
@@ -1083,8 +1051,6 @@ function OpmeItemCard({
     </div>
   );
 }
-
-// ─── Sub-componentes auxiliares ───────────────────────────────────────────────
 
 function IconButton({
   onClick,
@@ -1211,8 +1177,6 @@ function QuantityStepper({
     </div>
   );
 }
-
-// ─── SupplierAutocomplete ─────────────────────────────────────────────────────
 
 interface SupplierAutocompleteProps {
   value: SupplierOption;

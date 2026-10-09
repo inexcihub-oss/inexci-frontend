@@ -22,12 +22,6 @@ interface BusinessHoursEditorProps {
 const BLOCO_PADRAO: TimeBlock = { start: "08:00", end: "18:00" };
 const FIM_DO_DIA_MINUTOS = 23 * 60 + 59;
 
-/**
- * Bloco novo a partir do fim do último existente (início = fim do último,
- * fim = uma hora depois, sem passar de 23:59). Um bloco fixo em 08:00–18:00
- * nasceria sobreposto quando já existe um bloco no dia, e a linha apareceria
- * em vermelho antes de o usuário digitar qualquer coisa.
- */
 function proximoBloco(blocos: TimeBlock[]): TimeBlock {
   if (blocos.length === 0) return { ...BLOCO_PADRAO };
   const ultimo = blocos[blocos.length - 1];
@@ -36,11 +30,6 @@ function proximoBloco(blocos: TimeBlock[]): TimeBlock {
   return { start: fromMinutes(inicioMin), end: fromMinutes(fimMin) };
 }
 
-/**
- * Valida a grade dia a dia e devolve a mensagem por dia (ou objeto vazio).
- * A tela de detalhe usa isto para travar o botão de salvar antes de o backend
- * recusar — a regra do servidor continua sendo a fonte de verdade.
- */
 export function validarGrade(
   hours: BusinessHours,
 ): Partial<Record<WeekdayKey, string>> {

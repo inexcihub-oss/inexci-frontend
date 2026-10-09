@@ -6,17 +6,11 @@ import { FileWarning, Paperclip } from "lucide-react";
 interface ConsentTermWarningModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Prosseguir com o agendamento mesmo sem o termo. */
   onConfirm: () => void;
-  /** Abrir o fluxo de anexo do termo de consentimento. */
   onAttach: () => void;
   isLoading?: boolean;
 }
 
-/**
- * Aviso não-bloqueante exibido ao confirmar o agendamento sem o termo de
- * consentimento assinado anexado. O usuário pode anexar na hora ou prosseguir.
- */
 export function ConsentTermWarningModal({
   isOpen,
   onClose,
@@ -28,20 +22,16 @@ export function ConsentTermWarningModal({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={() => !isLoading && onClose()}
       />
 
-      {/* Modal — bottom-sheet no mobile, card centralizado no desktop */}
       <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col overflow-hidden pb-20 sm:pb-0">
-        {/* Drag handle (mobile) */}
         <div className="sm:hidden flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="px-5 pt-5 pb-4 sm:pt-6 flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
             <FileWarning className="w-5 h-5 text-amber-600" />
@@ -70,7 +60,6 @@ export function ConsentTermWarningModal({
           </button>
         </div>
 
-        {/* Footer — empilha no mobile, lado a lado no desktop */}
         <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 px-5 py-4 border-t border-neutral-100">
           <button
             onClick={onConfirm}

@@ -43,7 +43,6 @@ function quando(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** Frase principal de cada linha. */
 function titulo(a: AppointmentActivity): string {
   switch (a.type) {
     case "created":
@@ -63,11 +62,6 @@ function titulo(a: AppointmentActivity): string {
   }
 }
 
-/**
- * Linha do tempo da consulta (agendada, confirmada, chegou, remarcada,
- * cancelada, comentários). Só monta quando o usuário abre a seção, para a
- * agenda não pagar uma requisição por consulta.
- */
 export function AppointmentHistory({
   appointmentId,
   podeComentar,
@@ -82,9 +76,6 @@ export function AppointmentHistory({
   const { data: atividades = [], isLoading, isError } = useQuery({
     queryKey: appointmentActivitiesKey(appointmentId),
     queryFn: () => appointmentService.listActivities(appointmentId),
-    // Mudança de status/edição acontece fora daqui e não invalida esta
-    // chave: abrir a seção sempre busca de novo, senão o histórico mostrava
-    // a versão em cache sem a última mudança.
     staleTime: 0,
     refetchOnMount: "always",
   });

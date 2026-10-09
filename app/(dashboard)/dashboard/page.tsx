@@ -23,8 +23,6 @@ import {
   buildReportFilters,
 } from "@/components/dashboard/DashboardFilterModal";
 
-// ─── Constantes ─────────────────────────────────────────────────────────────
-
 const STATUS_CHART_COLORS: Record<string, string> = {
   Pendente: "#f59e0b",
   Enviada: "#3b82f6",
@@ -49,8 +47,6 @@ const STATUS_ORDER = [
   { num: 9, label: "Encerrada", color: "#6b7280" },
 ] as const;
 
-// ─── Interfaces ─────────────────────────────────────────────────────────────
-
 interface ProcessedDashboard {
   total: number;
   totalAuthorized: number;
@@ -73,8 +69,6 @@ interface ProcessedDashboard {
   temporalData: Array<{ date: string; count: number; invoiced: number }>;
   monthlyEvolution: MonthlyEvolutionData[];
 }
-
-// ─── KPI Card ───────────────────────────────────────────────────────────────
 
 function KPICard({
   title,
@@ -148,8 +142,6 @@ function KPICard({
   );
 }
 
-// ─── Financial KPI Card ─────────────────────────────────────────────────────
-
 function FinancialKPICard({
   title,
   value,
@@ -189,8 +181,6 @@ function FinancialKPICard({
     </div>
   );
 }
-
-// ─── Pipeline de Status ─────────────────────────────────────────────────────
 
 function StatusPipeline({
   byStatus,
@@ -240,8 +230,6 @@ function StatusPipeline({
     </div>
   );
 }
-
-// ─── Donut Chart ────────────────────────────────────────────────────────────
 
 function DonutChart({
   data,
@@ -316,8 +304,6 @@ function DonutChart({
   );
 }
 
-// ─── Horizontal Bar Chart ───────────────────────────────────────────────────
-
 function HorizontalBarChart({
   data,
   barColor = "#147471",
@@ -367,8 +353,6 @@ function HorizontalBarChart({
   );
 }
 
-// ─── Monthly Bar Chart ──────────────────────────────────────────────────────
-
 function MonthlyBarChart({ data }: { data: MonthlyEvolutionData[] }) {
   if (data.length === 0) {
     return (
@@ -412,8 +396,6 @@ function MonthlyBarChart({ data }: { data: MonthlyEvolutionData[] }) {
     </div>
   );
 }
-
-// ─── Area Line Chart ────────────────────────────────────────────────────────
 
 function AreaLineChart({
   data,
@@ -474,7 +456,6 @@ function AreaLineChart({
           <stop offset="100%" stopColor="#147471" stopOpacity="0.02" />
         </linearGradient>
       </defs>
-      {/* Grid */}
       {[0.25, 0.5, 0.75].map((pct) => (
         <line
           key={pct}
@@ -494,7 +475,6 @@ function AreaLineChart({
         strokeWidth="2.5"
         strokeLinejoin="round"
       />
-      {/* Pontos de destaque */}
       {highlightIndices.map((idx) => (
         <circle
           key={`highlight-${idx}`}
@@ -506,7 +486,6 @@ function AreaLineChart({
           strokeWidth="2"
         />
       ))}
-      {/* Labels do eixo X */}
       <text
         x={pad.left}
         y={height - 4}
@@ -537,8 +516,6 @@ function AreaLineChart({
     </svg>
   );
 }
-
-// ─── Alert Card ─────────────────────────────────────────────────────────────
 
 function AlertCard({
   title,
@@ -586,8 +563,6 @@ function AlertCard({
     </div>
   );
 }
-
-// ─── Health Plan Table ──────────────────────────────────────────────────────
 
 function HealthPlanTable({
   data,
@@ -642,14 +617,9 @@ function HealthPlanTable({
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// COMPONENTE PRINCIPAL
-// ═══════════════════════════════════════════════════════════════════════════════
-
 async function fetchDashboard(
   filters?: ReportFilters,
 ): Promise<ProcessedDashboard> {
-  // P13: 1 round-trip consolidado em vez de 5 chamadas separadas.
   const full = await reportsService.getDashboardFull(filters);
   const dashData: DashboardData = { surgeryRequest: full.surgeryRequest };
   const evolutionData = full.temporalEvolution ?? [];
@@ -666,18 +636,16 @@ async function fetchDashboard(
       const totalReceived =
         Number(dashData.surgeryRequest.totalReceivedValue) || 0;
 
-      // Calcular "autorizadas" = agendadas + realizadas + faturadas + finalizadas + encerradas
-      // (tudo que passou da análise)
       const statusTotals = new Map(
         dashData.surgeryRequest.totalByStatus.map((s) => [s.status, s.total]),
       );
       const totalAuthorized =
-        (statusTotals.get(4) || 0) + // Em Agendamento
-        (statusTotals.get(5) || 0) + // Agendada
-        (statusTotals.get(6) || 0) + // Realizada
-        (statusTotals.get(7) || 0) + // Faturada
-        (statusTotals.get(8) || 0) + // Finalizada
-        (statusTotals.get(9) || 0); // Encerrada
+        (statusTotals.get(4) || 0) +
+        (statusTotals.get(5) || 0) +
+        (statusTotals.get(6) || 0) +
+        (statusTotals.get(7) || 0) +
+        (statusTotals.get(8) || 0) +
+        (statusTotals.get(9) || 0);
 
       const processed: ProcessedDashboard = {
         total: dashData.surgeryRequest.total,
@@ -722,15 +690,11 @@ async function fetchDashboard(
 }
 
 export default function DashboardPage() {
-  // ─── Filter state ────────────────────────────────────────────────────
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>(
     DEFAULT_DASHBOARD_FILTERS,
   );
 
-  // Dashboard via TanStack Query (P10/P13): cache + `keepPreviousData` para não
-  // piscar vazio ao trocar filtros. As chamadas internas já têm fallback próprio
-  // (`.catch`), então a query raramente rejeita.
   const {
     data: dashboard = null,
     isFetching,
@@ -749,8 +713,6 @@ export default function DashboardPage() {
     () => countActiveDashboardFilters(dashboardFilters),
     [dashboardFilters],
   );
-
-  // ─── Dados derivados ───────────────────────────────────────────────────
 
   const activeRequests = useMemo(() => {
     if (!dashboard) return 0;
@@ -800,8 +762,6 @@ export default function DashboardPage() {
     return dashboard.pendingNotifications.total > 0 || invoicedCount > 0;
   }, [dashboard, invoicedCount]);
 
-  // ─── Loading ──────────────────────────────────────────────────────────
-
   if (loading) {
     return (
       <PageContainer>
@@ -814,8 +774,6 @@ export default function DashboardPage() {
       </PageContainer>
     );
   }
-
-  // ─── Erro ─────────────────────────────────────────────────────────────
 
   if (error || !dashboard) {
     return (
@@ -843,11 +801,8 @@ export default function DashboardPage() {
     );
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────
-
   return (
     <PageContainer>
-      {/* Header */}
       <div className="flex justify-between items-center px-4 lg:px-6 py-4 lg:py-5 border-b border-gray-200">
         <div>
           <h1 className="ds-page-title">Dashboard</h1>
@@ -896,10 +851,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Conteúdo scrollável */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
-          {/* ── KPI Cards ──────────────────────────────────────────── */}
           <div
             className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4"
             data-tour="dashboard-kpis"
@@ -960,7 +913,6 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* ── Pipeline de Status ─────────────────────────────────── */}
           <Card className="border border-gray-200 rounded-2xl">
             <CardContent className="p-4 sm:p-5">
               <div className="flex items-center justify-between mb-3">
@@ -978,7 +930,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* ── Resumo Financeiro ──────────────────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <FinancialKPICard
               title="Total Faturado"
@@ -1000,7 +951,6 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* ── Alertas ────────────────────────────────────────────── */}
           {hasAlerts && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {dashboard.pendingNotifications.pendingAnalysis > 0 && (
@@ -1033,9 +983,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* ── Gráficos: Status + Faturamento ────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Donut: Por Status */}
             <Card className="border border-gray-200 rounded-2xl">
               <CardHeader className="p-4 pb-0">
                 <h3 className="ds-section-title">Distribuição por Status</h3>
@@ -1080,7 +1028,6 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Linha: Evolução de Faturamento */}
             <Card className="border border-gray-200 rounded-2xl">
               <CardHeader className="p-4 pb-0">
                 <h3 className="ds-section-title">Evolução de Faturamento</h3>
@@ -1108,7 +1055,6 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* ── Evolução Mensal + Por Hospital ─────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="border border-gray-200 rounded-2xl">
               <CardHeader className="p-4 pb-0">
@@ -1149,7 +1095,6 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* ── Volume Diário + Convênios ──────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="border border-gray-200 rounded-2xl">
               <CardHeader className="p-4 pb-0">
@@ -1183,7 +1128,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Filter Modal */}
       <DashboardFilterModal
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}

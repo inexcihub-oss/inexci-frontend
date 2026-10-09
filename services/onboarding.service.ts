@@ -18,7 +18,6 @@ export const onboardingService = {
     return response.data;
   },
 
-  /** Botão "Refazer o onboarding" da aba de Configurações. */
   async reset(): Promise<OnboardingState> {
     const response = await api.post<OnboardingState>("/onboarding/reset");
     return response.data;

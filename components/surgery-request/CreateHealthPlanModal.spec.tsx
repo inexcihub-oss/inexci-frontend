@@ -14,11 +14,6 @@ vi.mock("@/components/onboarding/OnboardingProvider", () => ({
 import { healthPlanService } from "@/services/health-plan.service";
 import { CreateHealthPlanModal } from "./CreateHealthPlanModal";
 
-/**
- * Este modal é alcançado pelo botão "Novo" (`data-tour="sc-wizard-novo-cadastro"`),
- * que o passo `cadastro-no-modal` da trilha de Solicitações destaca — o tour
- * chega até aqui sozinho, então o submit precisa ficar inerte durante ele.
- */
 describe("CreateHealthPlanModal — tour de onboarding", () => {
   beforeEach(() => {
     vi.clearAllMocks();

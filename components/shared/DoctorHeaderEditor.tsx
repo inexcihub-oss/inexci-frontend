@@ -9,8 +9,6 @@ import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { LayoutTemplate, Loader2, Upload, X } from "lucide-react";
 
-// P14: Tiptap (RichTextEditor) carregado sob demanda — mantém o Tiptap fora do
-// chunk estático da tela; só baixa quando o editor é renderizado.
 const RichTextEditor = dynamic(
   () =>
     import("@/components/shared/RichTextEditor").then((m) => m.RichTextEditor),

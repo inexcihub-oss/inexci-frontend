@@ -65,7 +65,6 @@ const INITIAL_COLUMNS: KanbanColumn[] = [
   { id: "encerrada", title: "Encerrada", status: "Encerrada", cards: [] },
 ];
 
-/** Query key do kanban — usada para invalidação após mutações (P10). */
 const KANBAN_QUERY_KEY = ["surgery-requests", "kanban"] as const;
 
 export default function ProcedimentosCirurgicos() {
@@ -91,9 +90,6 @@ export default function ProcedimentosCirurgicos() {
   const [isUploadDocumentOpen, setIsUploadDocumentOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
 
-  // Gerar o relatório monta o PDF no próprio navegador: demora e pode falhar.
-  // Sem estado nem aviso, o menu fechava e o usuário ficava sem arquivo e sem
-  // explicação — a mesma falha silenciosa que o `window.open` tinha antes.
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const handleExportPdf = async (registros: SurgeryRequest[]) => {
@@ -133,7 +129,6 @@ export default function ProcedimentosCirurgicos() {
       setHasActiveDoctors(hasAtLeastOneActive);
       return hasAtLeastOneActive;
     } catch {
-      // Não bloquear por falha transitória de rede
       return true;
     } finally {
       setCheckingActiveDoctors(false);
@@ -149,25 +144,13 @@ export default function ProcedimentosCirurgicos() {
     setIsNewRequestOpen(true);
   }, [ensureAdminHasActiveDoctor]);
 
-  // Passo "cadastro-no-modal" da trilha Solicitações: abre o wizard e pede
-  // a ele para já mostrar o painel de procedimento, onde vive o botão "Novo"
-  // (`sc-wizard-novo-cadastro`). O wizard registra
-  // "sc-abrir-selecao-procedimento" desde o próprio mount (Task 5), então já
-  // está disponível quando este passo dispara.
   useOnboardingAction("sc-abrir-cadastro-transversal", () => {
     setIsNewRequestOpen(true);
     executarAcao("sc-abrir-selecao-procedimento");
   });
 
-  // Passo "por-documento": navega para a MESMA rota do passo anterior, que o
-  // Next.js trata como no-op (não remonta a página, não reseta o `useState`
-  // local do wizard) — sem fechar explicitamente aqui, o wizard aberto pelo
-  // passo "cadastro-no-modal" continuava por cima do botão que este passo
-  // deveria destacar.
   useOnboardingAction("sc-fechar-wizard", () => setIsNewRequestOpen(false));
 
-  // Passo "documento-enviar": abre o modal e inicia a simulação visual. A
-  // conclusão/navegação fica para a ação disparada ao clicar em "Próximo".
   useOnboardingAction("sc-abrir-upload-documento", () => {
     setIsUploadDocumentOpen(true);
     executarAcao("sc-simular-analise-documento");
@@ -235,7 +218,6 @@ export default function ProcedimentosCirurgicos() {
     };
   }, [docExtractionJobId, router, showToast]);
 
-  // Fechar dropdown de exportação ao clicar fora
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
@@ -246,7 +228,6 @@ export default function ProcedimentosCirurgicos() {
     return () => document.removeEventListener("mousedown", handler);
   }, [isExportOpen]);
 
-  // Kanban via TanStack Query (P10): cache + dedup; invalidação após mutações.
   const { data: kanbanData, isFetching } = useQuery({
     queryKey: KANBAN_QUERY_KEY,
     queryFn: () => surgeryRequestService.getKanban(),
@@ -270,8 +251,6 @@ export default function ProcedimentosCirurgicos() {
     };
   }, [onSurgeryRequestChanged, queryClient, userId]);
 
-  // Colunas derivadas dos dados do backend. `pendenciesCount` já vem calculado
-  // pelo endpoint /kanban (item 3.4) — sem round-trip extra a getBatchSummary.
   const rawColumns = useMemo<KanbanColumn[]>(() => {
     const records = kanbanData?.records;
     if (!records || !Array.isArray(records)) return INITIAL_COLUMNS;
@@ -364,7 +343,6 @@ export default function ProcedimentosCirurgicos() {
     }));
   }, [kanbanData]);
 
-  // Dados derivados para o modal de filtros
   const availableHealthPlans = useMemo(() => {
     const map = new Map<string, string>();
     rawColumns.forEach((col) =>
@@ -412,19 +390,15 @@ export default function ProcedimentosCirurgicos() {
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [rawColumns]);
 
-  // Filtrar colunas com base na busca E nos filtros
   const filteredColumns = useMemo(() => {
-    // 1. Filtrar por status: ocultar colunas cujo status não está selecionado
     let cols =
       filters.statuses.length > 0
         ? rawColumns.filter((col) => filters.statuses.includes(col.status))
         : rawColumns;
 
-    // 2. Filtrar cards
     cols = cols.map((column) => ({
       ...column,
       cards: column.cards.filter((card) => {
-        // Busca textual
         if (debouncedSearch.trim()) {
           const matchesSearch =
             includesIgnoreCase(card.patient.name, debouncedSearch) ||
@@ -438,7 +412,6 @@ export default function ProcedimentosCirurgicos() {
           if (!matchesSearch) return false;
         }
 
-        // Prioridade
         if (
           filters.priorities.length > 0 &&
           !filters.priorities.includes(card.priority)
@@ -446,7 +419,6 @@ export default function ProcedimentosCirurgicos() {
           return false;
         }
 
-        // Pendências
         if (filters.pendencies.length > 0) {
           const count = card.pendenciesCount;
           const matches = filters.pendencies.some((p) => {
@@ -459,7 +431,6 @@ export default function ProcedimentosCirurgicos() {
           if (!matches) return false;
         }
 
-        // Convênios
         if (
           filters.healthPlanIds.length > 0 &&
           !filters.healthPlanIds.includes(card.healthPlan || "")
@@ -467,13 +438,11 @@ export default function ProcedimentosCirurgicos() {
           return false;
         }
 
-        // Procedimentos
         if (filters.procedureNames.length > 0) {
           const base = card.procedureName.replace(/ \+\d+$/, "");
           if (!filters.procedureNames.includes(base)) return false;
         }
 
-        // Médico
         if (
           filters.doctorIds.length > 0 &&
           !filters.doctorIds.includes(card.doctor.id)
@@ -481,8 +450,6 @@ export default function ProcedimentosCirurgicos() {
           return false;
         }
 
-        // Fornecedores — o escolhido no OPME. Solicitação que ainda não
-        // escolheu fornecedor não casa com nenhum filtro de fornecedor.
         if (filters.supplierIds.length > 0) {
           const matches = card.suppliers?.some((supplier) =>
             filters.supplierIds.includes(supplier.id),
@@ -490,8 +457,6 @@ export default function ProcedimentosCirurgicos() {
           if (!matches) return false;
         }
 
-        // Clínicas — a da consulta que indicou a cirurgia. Solicitação criada
-        // fora do atendimento não casa com nenhum filtro de clínica.
         if (
           filters.clinicIds.length > 0 &&
           (!card.clinic || !filters.clinicIds.includes(card.clinic.id))
@@ -499,7 +464,6 @@ export default function ProcedimentosCirurgicos() {
           return false;
         }
 
-        // Data de criação
         if (filters.createdAtFrom || filters.createdAtTo) {
           const parts = card.createdAt.split("/");
           if (parts.length === 3) {
@@ -515,7 +479,6 @@ export default function ProcedimentosCirurgicos() {
               const fromMs = filters.createdAtFrom
                 ? norm(filters.createdAtFrom)
                 : null;
-              // Se só "from" está definido, tratar como dia exato
               const toMs = filters.createdAtTo
                 ? norm(filters.createdAtTo)
                 : filters.createdAtFrom
@@ -537,7 +500,6 @@ export default function ProcedimentosCirurgicos() {
       }),
     }));
 
-    // 3. Ocultar colunas vazias quando há qualquer filtro ou busca ativa
     const hasActiveFilters =
       debouncedSearch.trim() ||
       filters.statuses.length > 0 ||
@@ -558,7 +520,6 @@ export default function ProcedimentosCirurgicos() {
     return cols;
   }, [rawColumns, debouncedSearch, filters]);
 
-  // Obter todos os procedimentos para visualização em lista (já filtrados)
   const filteredProcedures = useMemo(() => {
     return filteredColumns.flatMap((column) => column.cards);
   }, [filteredColumns]);
@@ -576,21 +537,13 @@ export default function ProcedimentosCirurgicos() {
 
   return (
     <PageContainer>
-      {/*
-        Header — visível só no desktop. No mobile a barra inferior já marca
-        "Solicitações", e o título repetia essa informação ocupando ~52px de
-        uma tela onde o kanban disputa cada pixel. O `<h1>` continua no DOM
-        como `sr-only` para o leitor de tela não perder o marco da página.
-      */}
       <div className="flex-none flex items-center gap-2 px-4 py-0 lg:py-6 lg:border-b border-neutral-100">
         <h1 className="ds-page-title sr-only lg:not-sr-only">
           Solicitações Cirúrgicas
         </h1>
       </div>
 
-      {/* Toolbar */}
       <div className="flex-none border-b border-neutral-100 px-3 lg:px-4 py-0 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center sm:justify-between gap-y-0">
-        {/* View Toggle */}
         <div className="flex items-center shrink-0">
           <button
             onClick={() => setView("kanban")}
@@ -640,9 +593,7 @@ export default function ProcedimentosCirurgicos() {
           </button>
         </div>
 
-        {/* Search and Actions */}
         <div className="flex flex-wrap items-center gap-2 lg:gap-2.5 w-full lg:w-auto pb-3 lg:pb-0 pt-2 sm:pt-0">
-          {/* Search */}
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
@@ -650,7 +601,6 @@ export default function ProcedimentosCirurgicos() {
             className="w-full sm:flex-1 lg:w-85 lg:flex-none"
           />
 
-          {/* Filter Button */}
           {(() => {
             const activeCount = countActiveFilters(filters);
             const isActive = activeCount > 0;
@@ -691,10 +641,8 @@ export default function ProcedimentosCirurgicos() {
             );
           })()}
 
-          {/* Divider */}
           <div className="hidden lg:block w-px h-8 bg-neutral-100" />
 
-          {/* Export Button */}
           <div className="relative" ref={exportRef}>
             <button
               onClick={() => setIsExportOpen((v) => !v)}
@@ -781,7 +729,6 @@ export default function ProcedimentosCirurgicos() {
             )}
           </div>
 
-          {/* Upload document button */}
           <button
             type="button"
             data-tour="sc-por-documento"
@@ -810,7 +757,6 @@ export default function ProcedimentosCirurgicos() {
             <span className="hidden lg:inline">Via documento</span>
           </button>
 
-          {/* New Request Button */}
           <NewSurgeryRequestButton
             data-tour="sc-nova"
             onClick={handleOpenNewRequest}
@@ -824,23 +770,6 @@ export default function ProcedimentosCirurgicos() {
         </div>
       </div>
 
-      {/*
-        Kanban Board ou Lista.
-
-        No mobile a altura é **fixa** em 70svh, não um piso: as colunas são
-        `h-full`, e sem altura definida no pai elas resolvem para a altura do
-        conteúdo — uma coluna com 10 cards virava 2.6 mil pixels, arrastando a
-        página junto e levando o cabeçalho da coluna para fora da tela. Com a
-        altura fechada, o cabeçalho fica parado e os cards rolam por dentro,
-        enquanto a rolagem da página serve para tirar o banner do caminho.
-
-        `svh` e não `vh` porque no Safari do iOS o `vh` é medido com a barra de
-        URL recolhida: a coluna nasceria maior que a tela e teria o rodapé
-        sempre cortado.
-
-        No desktop volta a ser item flex do container (`lg:flex-1 lg:h-auto`),
-        ocupando o que sobra da página.
-      */}
       <div className="h-[70svh] lg:h-auto lg:flex-1 lg:min-h-0 overflow-hidden px-3 sm:px-4 lg:px-4 py-4 flex flex-col">
         {view === "kanban" ? (
           filteredColumns.length === 0 ? (
@@ -887,17 +816,14 @@ export default function ProcedimentosCirurgicos() {
         )}
       </div>
 
-      {/* New Surgery Request Flow */}
       <CreateSurgeryRequestWizard
         isOpen={isNewRequestOpen}
         onClose={() => setIsNewRequestOpen(false)}
         onSuccess={() => {
-          // Invalida o cache do kanban para refletir a nova solicitação (P10).
           reloadKanban();
         }}
       />
 
-      {/* Filter Modal */}
       <FilterModal
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}

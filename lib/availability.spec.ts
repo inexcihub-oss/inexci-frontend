@@ -59,7 +59,6 @@ describe("bloqueioAtinge (espelho do backend)", () => {
   });
 
   it.each([
-    // [bloqueio, clínica da consulta, atinge?]
     [b(null, null), "X", true],
     [b(null, null), null, true],
     [b("D", null), "Y", true],

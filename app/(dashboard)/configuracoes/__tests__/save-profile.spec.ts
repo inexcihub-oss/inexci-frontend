@@ -4,13 +4,6 @@ import {
   type OwnDoctorProfileFields,
 } from "@/lib/collaborator-update";
 
-/**
- * Testes para validar a lógica de save do perfil na página de configurações.
- * Testa que dados profissionais (CRM, specialty, crm_state) são salvos
- * junto com os dados básicos quando o usuário é médico.
- */
-
-// Mock do userService
 const mockUpdateProfile = vi.fn().mockResolvedValue({});
 const mockUpdateDoctorProfile = vi.fn().mockResolvedValue({});
 
@@ -33,7 +26,6 @@ vi.mock("@/services/user.service", () => ({
   },
 }));
 
-// Simula a lógica de handleSaveProfile extraída do componente
 async function handleSaveProfile(
   profile: {
     name: string;
@@ -51,7 +43,6 @@ async function handleSaveProfile(
   updateDoctorProfile: typeof mockUpdateDoctorProfile,
   registroSalvo: OwnDoctorProfileFields = {},
 ) {
-  // 1. Salvar dados básicos do perfil
   await updateProfile({
     name: profile.name,
     phone: profile.phone || undefined,
@@ -60,8 +51,6 @@ async function handleSaveProfile(
     gender: profile.gender || undefined,
   });
 
-  // 2. Se é médico e tem doctor_profile, salvar dados profissionais
-  // Só o que mudou; apagado vai "" (mesma regra da página).
   if (profile.isDoctor && user?.doctorProfile?.id) {
     const payload = buildOwnDoctorProfilePayload(registroSalvo, {
       crm: profile.crm,
@@ -99,7 +88,6 @@ describe("Configurações — handleSaveProfile", () => {
       mockUpdateDoctorProfile,
     );
 
-    // Deve chamar updateProfile com dados básicos
     expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
     expect(mockUpdateProfile).toHaveBeenCalledWith({
       name: "Dr. João Silva",
@@ -109,7 +97,6 @@ describe("Configurações — handleSaveProfile", () => {
       gender: "masculino",
     });
 
-    // Deve chamar updateDoctorProfile com dados profissionais
     expect(mockUpdateDoctorProfile).toHaveBeenCalledTimes(1);
     expect(mockUpdateDoctorProfile).toHaveBeenCalledWith("dp-001", {
       crm: "123456",
@@ -217,7 +204,6 @@ describe("Configurações — handleSaveProfile", () => {
       gender: undefined,
     });
 
-    // Registro vazio e sem mudança: não há o que mandar.
     expect(mockUpdateDoctorProfile).not.toHaveBeenCalled();
   });
 

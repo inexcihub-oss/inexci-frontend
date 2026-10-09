@@ -9,30 +9,17 @@ export interface ComboboxOption {
 }
 
 export interface EntityComboboxDeferredCreateProps {
-  /** id do registro existente selecionado ("" quando é um nome novo) */
   value: string;
-  /** texto digitado — vira o nome do registro criado no submit */
   query: string;
   options: ComboboxOption[];
   placeholder: string;
   emptyText: string;
-  /** rótulo da entidade, usado nas mensagens ("hospital", "convênio"...) */
   createLabel: string;
   onSelect: (id: string) => void;
   onQueryChange: (name: string) => void;
   error?: string;
 }
 
-/**
- * Combobox com criação adiada: o usuário escolhe um registro existente ou
- * digita um nome novo, que só é criado quando a solicitação é salva.
- *
- * O nome digitado precisa ser confirmável de três formas — clicando na linha
- * "será criado como ...", apertando Enter ou simplesmente deixando o texto no
- * campo. Enter é interceptado (`preventDefault`) porque o combobox vive dentro
- * de um `<form>`: sem isso a tecla submetia a solicitação inteira em vez de
- * aceitar o nome digitado.
- */
 export function EntityComboboxDeferredCreate({
   value,
   query,
@@ -78,7 +65,6 @@ export function EntityComboboxDeferredCreate({
     setIsOpen(false);
   };
 
-  /** Aceita o texto digitado como registro novo (criado só no submit). */
   const commitNewName = () => {
     const name = query.trim();
     if (!name) return;
@@ -103,7 +89,6 @@ export function EntityComboboxDeferredCreate({
     }
 
     if (e.key === "Enter") {
-      // Confirma o combobox — nunca submete o formulário que o envolve.
       e.preventDefault();
       const highlighted = highlight >= 0 ? filtered[highlight] : undefined;
       if (highlighted) handleSelect(highlighted);

@@ -64,13 +64,11 @@ export function FileUpload({
 
     if (files.length === 0) return;
 
-    // Validar número máximo de arquivos
     if (selectedFiles.length + files.length > maxFiles) {
       showToast(`Você pode enviar no máximo ${maxFiles} arquivo(s)`, "error");
       return;
     }
 
-    // Validar tipo/extensão de arquivo
     const acceptedFiles = files.filter((f) =>
       isFileAccepted(f, acceptedFileTypes),
     );
@@ -82,7 +80,6 @@ export function FileUpload({
       );
     }
 
-    // Validar tamanho máximo de 5MB por arquivo
     const valid = acceptedFiles.filter((f) => f.size <= 5 * 1024 * 1024);
     const oversized = acceptedFiles.filter((f) => f.size > 5 * 1024 * 1024);
     if (oversized.length > 0) {
@@ -112,7 +109,6 @@ export function FileUpload({
       let result;
 
       if (selectedFiles.length === 1) {
-        // Upload único
         const response = await uploadService.uploadSingle(
           selectedFiles[0],
           folder,
@@ -125,7 +121,6 @@ export function FileUpload({
           },
         ];
       } else {
-        // Upload múltiplo
         const response = await uploadService.uploadMultiple(
           selectedFiles,
           folder,
@@ -139,12 +134,10 @@ export function FileUpload({
         "success",
       );
 
-      // Callback com os arquivos enviados
       if (onUploadComplete) {
         onUploadComplete(result);
       }
 
-      // Limpar seleção
       setSelectedFiles([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -166,7 +159,6 @@ export function FileUpload({
 
   return (
     <div className="w-full space-y-3 md:space-y-4">
-      {/* Área de seleção de arquivos */}
       <div className="border-2 border-dashed border-neutral-200 rounded-2xl p-6 md:p-8 hover:border-neutral-300 transition-colors">
         <div className="flex flex-col items-center justify-center space-y-3">
           <Upload className="h-10 w-10 text-neutral-400" />
@@ -197,7 +189,6 @@ export function FileUpload({
         </div>
       </div>
 
-      {/* Lista de arquivos selecionados */}
       {selectedFiles.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-xs md:text-sm font-semibold text-black">
@@ -231,7 +222,6 @@ export function FileUpload({
             ))}
           </div>
 
-          {/* Botão de upload */}
           <button
             onClick={handleUpload}
             disabled={uploading || disabled}
@@ -252,7 +242,6 @@ export function FileUpload({
         </div>
       )}
 
-      {/* Lista de arquivos enviados */}
       {uploadedFiles.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-xs md:text-sm font-semibold text-green-600">

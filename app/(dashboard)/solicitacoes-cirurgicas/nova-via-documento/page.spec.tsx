@@ -15,13 +15,6 @@ vi.mock("@/services/surgery-request.service", () => ({
   },
 }));
 
-/**
- * Guard de proveniência: o botão "Criar solicitação" precisa ficar
- * desabilitado quando a extração em localStorage é a fabricada do tour
- * (`tempStoragePath === "tour-demo"`) — mesmo fora do tour (`emTour: false`),
- * porque o usuário pode ter saído do tour ainda olhando para esta tela.
- */
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }),
 }));
@@ -88,9 +81,6 @@ describe("NovaViaDocumentoPage — guard de proveniência do tour", () => {
   });
 
   it("handleSubmit não chama createFromDocument mesmo se o form for submetido diretamente com dado fabricado", async () => {
-    // Defesa em profundidade: simula um submit do <form> que ignore o atributo
-    // `disabled` do botão (ex.: Enter dentro de um input) — o handler precisa
-    // checar `isFabricado` por conta própria, não só confiar na UI desabilitada.
     setScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_KEY, criarExtracaoDemo());
     const { container } = renderPagina();
 

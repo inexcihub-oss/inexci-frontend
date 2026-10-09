@@ -4,11 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { UpdateAuthorizationsModal } from "./UpdateAuthorizationsModal";
 import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 
-/**
- * Guarda a ligação entre a etapa 2 e a escolha do vencedor: o módulo
- * `fornecedor-vencedor` pode estar certo e a tela não oferecer a opção.
- */
-
 vi.mock("@/services/document.service", () => ({
   documentService: { upload: vi.fn() },
   DOCUMENT_FOLDERS: {},

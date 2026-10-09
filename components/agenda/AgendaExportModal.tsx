@@ -15,8 +15,6 @@ import { AvailableDoctor } from "@/types";
 import { AgendaDoctorFilter } from "@/components/agenda/AgendaDoctorFilter";
 
 interface AgendaExportModalProps { isOpen: boolean; onClose: () => void; defaultFrom: string; defaultTo: string; availableDoctors?: AvailableDoctor[]; defaultDoctorIds?: string[]; canExportSurgeries: boolean; }
-// Padrões estáveis: um `[]` novo a cada render entraria nas dependências do
-// efeito de abertura e rebobinaria o formulário em laço.
 const NO_DOCTORS: AvailableDoctor[] = [];
 const NO_DOCTOR_IDS: string[] = [];
 const ALL_SOURCES: AgendaExportSource[] = ["appointments", "surgeries"];
@@ -40,7 +38,6 @@ export function AgendaExportModal({ isOpen, onClose, defaultFrom, defaultTo, ava
   const doctorFilterLabel = useMemo(() => selectedDoctorIds.length ? availableDoctors.filter((doctor) => selectedDoctorIds.includes(doctor.id)).map((doctor) => doctor.name).join(", ") : "Todos", [availableDoctors, selectedDoctorIds]);
   const options = useMemo(() => ({ from, to, sources, fields, doctorIds: selectedDoctorIds, doctorFilterLabel, doctorNameById }), [from, to, sources, fields, selectedDoctorIds, doctorFilterLabel, doctorNameById]);
   const previewRows = useMemo(() => getAgendaExportRows(appointments.data?.records ?? [], surgeries.data?.records ?? [], options), [appointments.data, surgeries.data, options]);
-  // Passou do teto de páginas de `getAgendaCompleta`: a lista veio cortada.
   const truncated = appointments.data && appointments.data.total > appointments.data.records.length ? appointments.data : null;
   const isFetching = appointments.isFetching || surgeries.isFetching;
   const isError = appointments.isError || surgeries.isError;

@@ -68,13 +68,6 @@ function formDataFrom(patient: Patient): FormData {
   };
 }
 
-/**
- * Formulário de cadastro do paciente (informações pessoais, endereço e
- * convênio). Compartilhado pela página de detalhe do paciente e pela aba
- * Cadastro da tela de atendimento — por isso ele é dono do próprio estado
- * "sujo" e do próprio salvamento, independente de qualquer outro formulário
- * da tela.
- */
 export function PatientRegistrationForm({
   patient,
   onSaved,
@@ -85,9 +78,6 @@ export function PatientRegistrationForm({
   onCancel?: () => void;
 }) {
   const { permissions } = useAuth();
-  // Convênio é cadastro transversal (`@RequireAnyArea()` em
-  // `HealthPlansController`): qualquer área cria, quem não tem área nenhuma
-  // não. Exigir ADMINISTRACAO aqui escondia o atalho de quem edita paciente.
   const podeCriarConvenio = hasAnyArea(permissions);
   const [formData, setFormData] = useState<FormData>(() =>
     formDataFrom(patient),
@@ -136,12 +126,6 @@ export function PatientRegistrationForm({
 
   const handleSave = async () => {
     const cpf = formData.cpf.replace(/\D/g, "");
-    // CPF é opcional (estrangeiros, menores, pacientes migrados), mas quando
-    // informado passa pela mesma validação do cadastro (11 dígitos + dígitos
-    // verificadores). A SC continua cobrando CPF como pendência antes de
-    // avançar. Só valida se o CPF mudou: paciente migrado com CPF inválido
-    // gravado continua editável nos outros campos sem ser obrigado a mexer
-    // no CPF.
     const cpfMudou = cpf !== baseline.cpf.replace(/\D/g, "");
     if (cpfMudou) {
       const validacao = cpfOptionalSchema.safeParse(cpf);
@@ -155,8 +139,6 @@ export function PatientRegistrationForm({
     try {
       const saved = await patientService.update(patient.id, {
         name: formData.name,
-        // Vão sempre, mesmo vazios: `""` é como o backend sabe que é para
-        // apagar (vira `null`). `undefined` significaria "não mexer".
         cpf,
         secondaryPhone: formData.secondaryPhone,
         email: formData.email || undefined,

@@ -1,14 +1,5 @@
 import { describe, it, expect } from "vitest";
 
-/**
- * TASK-FE-I03: Testes para remoção de fallbacks legacy do available-doctors.service.ts.
- *
- * Valida que o mapeamento de dados do endpoint /users/doctors
- * usa APENAS doctor_profile.* e NÃO faz fallback para campos
- * removidos do model User (user.crm, user.crmState, user.specialty).
- */
-
-// Reproduz a lógica de mapeamento limpa do service
 function mapDoctorRecord(user: any) {
   return {
     id: user.id,
@@ -65,7 +56,6 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
     });
 
     it("NÃO faz fallback para campos legacy no user", () => {
-      // Simula um user com campos legacy que NÃO devem ser usados
       const user = {
         id: "u4",
         name: "Dr. Legacy",
@@ -75,7 +65,6 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
         doctorProfile: null,
       };
       const result = mapDoctorRecord(user);
-      // Deve retornar "" e undefined, NÃO os valores legacy
       expect(result.crm).toBe("");
       expect(result.crmState).toBe("");
       expect(result.specialty).toBeUndefined();
@@ -92,7 +81,6 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
         },
       };
       const result = mapDoctorRecord(user);
-      // ?? não trata "" como nullish, então retorna ""
       expect(result.crm).toBe("");
       expect(result.crmState).toBe("");
       expect(result.specialty).toBe("");
@@ -132,7 +120,7 @@ describe("TASK-FE-I03 — Remoção de fallbacks legacy", () => {
       expect(results).toHaveLength(3);
       expect(results[0].crm).toBe("111");
       expect(results[1].crm).toBe("");
-      expect(results[2].crm).toBe("333"); // usa doctor_profile, ignora legacy
+      expect(results[2].crm).toBe("333");
     });
   });
 });

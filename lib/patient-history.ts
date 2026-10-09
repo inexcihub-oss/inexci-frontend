@@ -6,10 +6,6 @@ import {
 import { ClinicalRecord } from "@/services/clinical-record.service";
 import { SurgeryRequestListItem } from "@/services/surgery-request.service";
 
-/**
- * Linha do tempo do paciente: consulta e ficha viram um item só, para a mesma
- * visita não aparecer duas vezes (uma como consulta, outra como prontuário).
- */
 export type HistoricoItem =
   | {
       kind: "consulta";
@@ -27,9 +23,7 @@ export type HistoricoItem =
     };
 
 export interface Historico {
-  /** Consultas de hoje em diante ainda em aberto, da mais próxima à mais distante. */
   proximas: Appointment[];
-  /** Todo o resto, do mais recente ao mais antigo. */
   itens: HistoricoItem[];
 }
 
@@ -40,7 +34,6 @@ const EM_ABERTO: AppointmentStatus[] = [
   "in_progress",
 ];
 
-/** Dia civil em São Paulo (`AAAA-MM-DD`), que é o que "hoje" quer dizer na clínica. */
 export function diaEmSaoPaulo(value: string | number | Date): string {
   return new Intl.DateTimeFormat("en-CA", {
     year: "numeric",
@@ -55,16 +48,6 @@ function surgeryAt(surgery: SurgeryRequestListItem): number {
   return raw ? new Date(raw).getTime() : 0;
 }
 
-/**
- * Liga cada ficha à sua consulta. Quando a ficha não traz `appointmentId`
- * (prontuário migrado, ou ficha aberta fora da agenda), casa com a consulta do
- * mesmo profissional no mesmo dia que ainda não tem ficha — a de horário mais
- * próximo.
- *
- * Ficha COM `appointmentId` nunca passa pelo casamento heurístico: se a
- * consulta dela não veio na lista (excluída, de outro recorte), ela aparece
- * sozinha, como ficha avulsa — senão seria pendurada na consulta errada.
- */
 function ligarFichas(
   appointments: Appointment[],
   records: ClinicalRecord[],
@@ -121,7 +104,6 @@ export function montarHistorico({
   records: ClinicalRecord[];
   surgeries: SurgeryRequestListItem[];
   agora?: Date;
-  /** Consulta em curso na tela de atendimento — ela é a própria aba. */
   excluirConsultaId?: string;
 }): Historico {
   const visiveis = appointments.filter((a) => a.id !== excluirConsultaId);
@@ -201,12 +183,6 @@ const TOM_DO_STATUS: Record<AppointmentStatus, SituacaoTom> = {
   no_show: "ambar",
 };
 
-/**
- * Status mostrado na linha do tempo. Consulta de um dia que já passou e que
- * ficou "Agendada", "Confirmada", "Aguardando" ou "Em atendimento" não está
- * pendente de nada — ninguém fechou o status. Com ficha, foi realizada; sem
- * ficha, não há registro do que aconteceu.
- */
 export function situacaoConsulta(
   appointment: Pick<Appointment, "status" | "scheduledAt">,
   temFicha: boolean,
@@ -239,10 +215,6 @@ export function textoDeHtml(html: string | null | undefined): string {
     .trim();
 }
 
-/**
- * Uma linha que diz do que foi a visita. Diagnóstico e conduta resumem melhor
- * que a anamnese, que costuma começar com a queixa ou um cabeçalho repetido.
- */
 export function resumoDaFicha(record: ClinicalRecord): string {
   return (
     textoDeHtml(record.diagnosis) ||
@@ -252,7 +224,6 @@ export function resumoDaFicha(record: ClinicalRecord): string {
   );
 }
 
-/** Idade em anos completos; `null` se a data não vier ou for inválida. */
 export function idadeEmAnos(
   birthDate: string | null | undefined,
   agora: Date = new Date(),
@@ -267,7 +238,6 @@ export function idadeEmAnos(
   return idade >= 0 && idade < 150 ? idade : null;
 }
 
-/** Última visita que de fato aconteceu (realizada ou com ficha). */
 export function ultimaVisita(historico: Historico): number | null {
   for (const item of historico.itens) {
     if (item.kind === "ficha") return item.at;

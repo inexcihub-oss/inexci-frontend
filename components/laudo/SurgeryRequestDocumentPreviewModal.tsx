@@ -174,7 +174,6 @@ export function SurgeryRequestDocumentPreviewModal({
       window.open(url, "_blank", "noopener,noreferrer");
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
-      // silently fail
     } finally {
       setIsExporting(false);
     }

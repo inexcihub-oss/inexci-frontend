@@ -1,14 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
-/**
- * `getTypeLabel` cai no `?? type` quando o tipo não está em
- * NOTIFICATION_TYPES — e o badge passa a mostrar a string crua do enum do
- * backend ("mention") para o usuário. Foi o que aconteceu quando o tipo de
- * menção nasceu no backend sem entrar nos mapas desta tela. O teste fixa o
- * rótulo em português; qualquer tipo novo que esqueça o mapa quebra aqui.
- */
-
 vi.mock("next/link", () => ({
   default: ({ children, href }: { children: React.ReactNode; href: string }) => (
     <a href={href}>{children}</a>
@@ -59,8 +51,6 @@ describe("Central de notificações — tipo menção", () => {
       expect(screen.getByText("Dr. Ana mencionou você")).toBeInTheDocument();
     });
 
-    // `selector: "span"` isola o badge da linha: "Menção" também existe
-    // como <option> no filtro de tipo.
     expect(
       screen.getByText("Menção", { selector: "span" }),
     ).toBeInTheDocument();

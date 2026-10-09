@@ -70,8 +70,6 @@ vi.mock("@/contexts/AuthContext", () => ({
 import AgendaPage from "./page";
 import { appointmentService } from "@/services/appointment.service";
 
-// jsdom não implementa matchMedia; `CalendarTimeGrid` usa para detectar telas
-// estreitas.
 beforeEach(() => {
   window.matchMedia =
     window.matchMedia ||
@@ -99,13 +97,6 @@ function renderPage(
   );
 }
 
-/**
- * Grupo 5 (item à parte) do mapa: colaborador com Agenda e sem Solicitações
- * é a combinação inversa do preset "cirurgia" — legítima e antes quebrada,
- * porque a busca de cirurgias falhava e derrubava a tela inteira. A correção
- * é não buscar cirurgias sem a permissão, não deixar essa falha derrubar o
- * calendário e manter a exportação disponível apenas para atendimentos.
- */
 describe("AgendaPage — gating por Solicitações (cirurgias)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -116,7 +107,6 @@ describe("AgendaPage — gating por Solicitações (cirurgias)", () => {
   it("não busca cirurgias e mantém a exportação de atendimentos sem Solicitações", async () => {
     renderPage();
 
-    // A agenda de consultas funciona normalmente.
     await waitFor(() => {
       expect(
         screen.queryByText(/Não foi possível carregar a agenda/i),
@@ -144,13 +134,6 @@ describe("AgendaPage — gating por Solicitações (cirurgias)", () => {
     expect(screen.getByTitle("Exportar")).toBeInTheDocument();
   });
 
-  /**
-   * `refetch()` do TanStack Query ignora `enabled` — dispara a chamada de
-   * qualquer jeito. Sem proteger `refetchAll`, clicar em "Atualizar" rearmava
-   * exatamente o 403 que `enabled: podeVerCirurgias` evitava na carga
-   * inicial, e o ramo de erro substituía o calendário inteiro sem saída
-   * (o próprio "Tentar novamente" chama `refetchAll` de novo).
-   */
   it("não busca cirurgias ao clicar em Atualizar, e o calendário continua de pé", async () => {
     const user = userEvent.setup();
     renderPage();
@@ -164,8 +147,6 @@ describe("AgendaPage — gating por Solicitações (cirurgias)", () => {
 
     await user.click(screen.getByTitle("Atualizar"));
 
-    // `appointmentsQuery` pode recarregar normalmente — só a de cirurgias
-    // fica de fora.
     expect(getAgendaSurgeries).not.toHaveBeenCalled();
     expect(
       screen.queryByText(/Não foi possível carregar a agenda/i),
@@ -204,7 +185,6 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Bloquear horário" }));
     expect(await screen.findByLabelText("Profissional")).toBeInTheDocument();
-    // Sem Administração, não bloqueia a clínica inteira.
     expect(screen.queryByRole("option", { name: "Toda a clínica" })).toBeNull();
   });
 
@@ -259,8 +239,6 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
       renderPage();
       const user = userEvent.setup();
       const bloco = await screen.findByTitle("Clínica: Reforma");
-      // A faixa cobre a coluna: o corpo dela deixa o clique passar para a
-      // linha de hora (nova consulta); só o rótulo abre o bloqueio.
       expect(bloco.tagName).toBe("DIV");
       expect(bloco.className).toContain("pointer-events-none");
       const rotulo = screen.getByRole("button", {
@@ -310,7 +288,6 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
     renderPage();
 
     expect(await screen.findByTitle("Clínica: Reunião geral")).toBeInTheDocument();
-    // O feriado só aparece se "amanhã" estiver na semana exibida.
     const mesmaSemana = amanha.getDay() !== 0;
     if (mesmaSemana) {
       expect(screen.getByTitle("Feriado: Feriado teste")).toBeInTheDocument();
@@ -363,7 +340,6 @@ describe("AgendaPage — visão mensal desenha feriados e bloqueios", () => {
   });
 
   it("mostra o feriado e o bloqueio no dia, na visão Mês", async () => {
-    // Dia 15 do mês corrente: sempre dentro da grade do mês exibido.
     const hoje = new Date();
     const dia = new Date(hoje.getFullYear(), hoje.getMonth(), 15);
     const ini = new Date(dia);

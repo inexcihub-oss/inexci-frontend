@@ -2,14 +2,6 @@ import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 import plugin from "tailwindcss/plugin";
 
-/**
- * INEXCI Design System - Tailwind CSS Configuration
- *
- * Este arquivo serve como a fonte única de verdade para o design system da aplicação.
- * Todas as cores, espaçamentos, tipografia e outros tokens de design são definidos aqui.
- *
- * @see https://tailwindcss.com/docs/configuration
- */
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -19,14 +11,6 @@ const config: Config = {
     "./styles/**/*.css",
   ],
   theme: {
-    /**
-     * Breakpoints Mobile-First
-     * xs: smartphones pequenos
-     * sm: smartphones grandes
-     * md: tablets portrait
-     * lg: tablets landscape / desktop
-     * xl: desktop grande
-     */
     screens: {
       xs: "375px",
       sm: "640px",
@@ -36,17 +20,7 @@ const config: Config = {
       "2xl": "1536px",
     },
     extend: {
-      /**
-       * Sistema de Cores
-       *
-       * primary: Cor principal da marca (teal/turquesa)
-       * secondary: Cor secundária (verde)
-       * teal: Variações específicas de teal para componentes
-       * neutral: Cores neutras para backgrounds, borders e texto
-       * purple: Cores para elementos especiais/status
-       */
       colors: {
-        // Landing page CSS variable tokens (shadcn/ui style)
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -72,35 +46,32 @@ const config: Config = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        // Marca Principal - Teal/Turquesa
         primary: {
           50: "#e6f9f8",
           100: "#ccf3f1",
           200: "#99e7e3",
           300: "#66dbd5",
           400: "#33cfc7",
-          500: "#25b4b0", // Cor principal
+          500: "#25b4b0",
           600: "#1e908d",
           700: "#147471",
           800: "#0f5c5a",
           900: "#072424",
           950: "#041212",
         },
-        // Marca Secundária - Verde
         secondary: {
           50: "#f0f9ed",
           100: "#e1f3db",
           200: "#c3e7b7",
           300: "#a5db93",
           400: "#87cf6f",
-          500: "#6cb764", // Cor secundária
+          500: "#6cb764",
           600: "#569250",
           700: "#416e3c",
           800: "#2b4928",
           900: "#162514",
           950: "#0b120a",
         },
-        // Teal (alias de primary, mantida por compatibilidade)
         teal: {
           50: "#e6f9f8",
           100: "#ccf3f1",
@@ -114,21 +85,18 @@ const config: Config = {
           900: "#072424",
           950: "#041212",
         },
-        // Cores Neutras - Para texto, borders e backgrounds
         neutral: {
-          50: "#F2F2F2", // Background claro
-          100: "#DCDFE3", // Borders
-          200: "#758195", // Texto secundário
-          900: "#111111", // Texto principal
+          50: "#F2F2F2",
+          100: "#DCDFE3",
+          200: "#758195",
+          900: "#111111",
         },
-        // Cores de Status
         status: {
           yellow: {
             bg: "#FFF7D7",
             text: "#805F10",
           },
         },
-        // Cores de Prioridade — badges de listagem/kanban
         priority: {
           baixa: {
             bg: "#D4EFE0",
@@ -147,7 +115,6 @@ const config: Config = {
             text: "#601E17",
           },
         },
-        // Cores de Prioridade — chips editáveis inline (EditableFields)
         chip: {
           baixa: {
             bg: "#D4EFE0",
@@ -170,66 +137,42 @@ const config: Config = {
             hover: "#EDD4D7",
           },
         },
-        // Cores de Erro/Warning
         error: {
           DEFAULT: "#E34935",
           light: "#F0E6E4",
         },
-        // Cores para elementos especiais
         purple: {
-          50: "#F2F0FE", // Background roxo claro
-          100: "#8270DB", // Roxo médio
-          500: "#8E22D7", // Roxo principal
+          50: "#F2F0FE",
+          100: "#8270DB",
+          500: "#8E22D7",
         },
       },
-      /**
-       * Z-Index
-       * Sistema de camadas para controlar sobreposição de elementos
-       */
       zIndex: {
-        60: "60", // Modais e overlays
-        100: "100", // Toasts e notificações
+        60: "60",
+        100: "100",
       },
-      /**
-       * Larguras Customizadas
-       * Valores específicos do design da aplicação
-       */
       width: {
-        60: "240px", // Sidebar width
-        85: "340px", // Search bar width
-        88: "352px", // Detail panel width
-        90: "360px", // Card width
+        60: "240px",
+        85: "340px",
+        88: "352px",
+        90: "360px",
       },
-      /**
-       * Larguras Mínimas
-       */
       minWidth: {
-        8: "32px", // Ícones e badges pequenos
-        40: "160px", // Dropdowns
-        75: "300px", // Modais pequenos
+        8: "32px",
+        40: "160px",
+        75: "300px",
       },
-      /**
-       * Alturas Customizadas
-       */
       height: {
-        13: "52px", // Header height
-        15: "60px", // Min height para containers
+        13: "52px",
+        15: "60px",
       },
-      /**
-       * Alturas Mínimas
-       */
       minHeight: {
-        15: "60px", // Cards e containers mínimos
-        50: "200px", // Content areas
+        15: "60px",
+        50: "200px",
       },
-      /**
-       * Tipografia
-       * Fontes personalizadas do projeto
-       */
       fontFamily: {
         urbanist: ["Urbanist", "sans-serif"],
         gotham: ["Gotham", "sans-serif"],
-        // Landing page fonts
         heading: [
           "var(--font-manrope)",
           "ui-sans-serif",
@@ -251,19 +194,12 @@ const config: Config = {
           "sans-serif",
         ],
       },
-      /**
-       * Border Radius
-       * Arredondamentos mais suaves e modernos para look mobile-friendly
-       */
       borderRadius: {
         xl: "0.75rem",
         "2xl": "1rem",
         "3xl": "1.5rem",
         "4xl": "2rem",
       },
-      /**
-       * Spacing extras para safe areas e mobile
-       */
       spacing: {
         "safe-top": "env(safe-area-inset-top)",
         "safe-bottom": "env(safe-area-inset-bottom)",
@@ -272,9 +208,6 @@ const config: Config = {
         18: "4.5rem",
         22: "5.5rem",
       },
-      /**
-       * Keyframes e animações para mobile
-       */
       keyframes: {
         "slide-up": {
           from: { transform: "translateY(100%)", opacity: "0" },
@@ -296,7 +229,6 @@ const config: Config = {
           from: { transform: "translateX(100%)", opacity: "0" },
           to: { transform: "translateX(0)", opacity: "1" },
         },
-        // Landing page accordion animations
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -305,7 +237,6 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        // Celebração de conclusão do onboarding (OnboardingCelebration)
         "onboarding-confete": {
           "0%": { transform: "translateY(0) rotate(0deg)", opacity: "1" },
           "100%": {

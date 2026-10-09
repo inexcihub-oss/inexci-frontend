@@ -81,7 +81,6 @@ import { ScheduleWeekEditor } from "@/components/availability/ScheduleWeekEditor
 import { HolidaysSettings } from "@/components/availability/HolidaysSettings";
 import { Permission } from "@/lib/permissions";
 
-// Tipos
 interface UserProfile {
   name: string;
   email: string;
@@ -89,17 +88,11 @@ interface UserProfile {
   document: string;
   birthDate: string;
   gender: string;
-  // Campos específicos do profissional (lidos de doctor_profile)
   specialty?: string;
-  /**
-   * Editável só pelo DONO da conta (ele é a administração). Para os demais,
-   * inclusive o admin delegado, é só leitura.
-   */
   council?: ProfessionalCouncil;
   crm?: string;
   crmState?: string;
   signatureImageUrl?: string;
-  // Flags
   isDoctor?: boolean;
 }
 
@@ -114,7 +107,6 @@ interface NotificationSettings {
   mentionEmails: boolean;
 }
 
-// Tabs da página
 type SettingsTab =
   | "profile"
   | "notifications"
@@ -142,7 +134,6 @@ const PASSWORD_FIELD_LABELS: Record<string, string> = {
   confirmPassword: "Confirmar nova senha",
 };
 
-// Componente de Tab
 function TabButton({
   active,
   onClick,
@@ -171,7 +162,6 @@ function TabButton({
   );
 }
 
-// Componente de Toggle/Switch
 function Toggle({
   checked,
   onChange,
@@ -181,7 +171,6 @@ function Toggle({
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
-  /** Nome acessível do switch — sem ele o leitor de tela anuncia só "switch". */
   ariaLabel?: string;
 }) {
   return (
@@ -209,7 +198,6 @@ function Toggle({
   );
 }
 
-// Componente de Notification Item
 function NotificationItem({
   icon: Icon,
   title,
@@ -241,26 +229,10 @@ function NotificationItem({
 
 const BILLING_TAB_ENABLED = true;
 
-/**
- * Único ponto que decide qual `SettingsTab` um `?tab=` de query representa —
- * usado tanto no primeiro render (`initialTab`) quanto na reação a mudanças
- * de query em runtime (ex.: o tour de onboarding navegando para
- * `?tab=profile` via `router.push` sem trocar de rota, o que o App Router não
- * remonta). `null` significa "não decide nada" — quem chama escolhe o que
- * fazer (cair para `profile` no primeiro render, ignorar na reação).
- *
- * Aba que existe mas não está liberada para quem está logado cai em
- * `profile` — as mesmas condições que mostram o botão e o conteúdo. Antes
- * ela era aceita e a página abria com o conteúdo em branco, sem nenhuma aba
- * marcada no menu.
- */
 interface SettingsTabAccess {
   isAccountOwner: boolean;
-  /** Médico (CRM) ou dentista (CRO): modelos de documento. */
   emiteDocumentos: boolean;
-  /** Profissional de saúde (qualquer conselho): Minha Agenda. */
   isDoctor: boolean;
-  /** `Permission.ADMINISTRACAO`: feriados. */
   podeAdministrar: boolean;
   hasUser: boolean;
 }
@@ -306,10 +278,6 @@ function ConfiguracoesPageInner() {
     subscription,
     refreshSubscription,
   } = useAuth();
-  // O backend recusa checkout/portal do Stripe para quem não é dono da conta
-  // — sem esse filtro a aba oferece um botão que sempre falha. A regra vive
-  // no AuthContext (`isAccountOwner`) para não divergir dos outros pontos que
-  // dependem dela (banner de billing, aviso de bloqueio).
   const queryClient = useQueryClient();
   const { toast, showToast, hideToast } = useToast();
   const searchParams = useSearchParams();
@@ -341,16 +309,6 @@ function ConfiguracoesPageInner() {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [saving, setSaving] = useState(false);
 
-  /**
-   * Sincroniza `activeTab` com `?tab=` depois do primeiro render.
-   *
-   * O App Router NÃO remonta a página quando só a query muda — então um
-   * `router.push("/configuracoes?tab=profile")` disparado enquanto o usuário
-   * já está em `/configuracoes?tab=onboarding` (o tour de onboarding faz
-   * exatamente isso) mudava a URL sem nunca reagir aqui, e a aba visível
-   * ficava presa na antiga. `initialTab()` sozinho só resolve a entrada pela
-   * URL; esta é a reação a mudanças depois que a página já está montada.
-   */
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (!tab) return;
@@ -362,7 +320,6 @@ function ConfiguracoesPageInner() {
       hasUser,
     });
     if (resolvido) setActiveTab(resolvido);
-    // Reage também ao acesso: a sessão pode chegar depois do primeiro render.
   }, [
     searchParams,
     isAccountOwner,
@@ -444,7 +401,6 @@ function ConfiguracoesPageInner() {
   ]);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Estados do perfil
   const [profile, setProfile] = useState<UserProfile>({
     name: "",
     email: "",
@@ -462,16 +418,11 @@ function ConfiguracoesPageInner() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signatureDeleted, setSignatureDeleted] = useState(false);
   const [isProcessingSignature, setIsProcessingSignature] = useState(false);
-  // Registro profissional como veio do servidor: o save manda só o que mudou
-  // (e "" para o que foi apagado) — ver `buildOwnDoctorProfilePayload`.
   const registroSalvoRef = useRef<OwnDoctorProfileFields>({});
-  // Avatar gravado no servidor: remover só vira `avatarUrl: null` no save
-  // quando havia um gravado (ver `buildAvatarUpdate`).
   const avatarSalvoRef = useRef<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
-  // Estados de notificações
   const [loadingNotifications, setLoadingNotifications] = useState(true);
   const [notifications, setNotifications] = useState<NotificationSettings>({
     pushNotifications: true,
@@ -484,7 +435,6 @@ function ConfiguracoesPageInner() {
     mentionEmails: true,
   });
 
-  // Estados de segurança
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -494,7 +444,6 @@ function ConfiguracoesPageInner() {
     {},
   );
 
-  // Erros do perfil (após validar Zod)
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>(
     {},
   );
@@ -520,7 +469,6 @@ function ConfiguracoesPageInner() {
     formatError: (error, fallback) => getApiErrorMessage(error, fallback),
   });
 
-  // Carregar dados do usuário
   useEffect(() => {
     if (!user?.id) return;
 
@@ -564,7 +512,6 @@ function ConfiguracoesPageInner() {
               const signedUrl = await uploadService.getSignedUrl(url);
               if (isMounted) setAvatarPreview(signedUrl);
             } catch {
-              // ignora erro de URL assinada
             }
           }
         }
@@ -577,13 +524,11 @@ function ConfiguracoesPageInner() {
               const signedUrl = await uploadService.getSignedUrl(sUrl);
               if (isMounted) setSignaturePreview(signedUrl);
             } catch {
-              // ignora erro de URL assinada
             }
           }
         }
       } catch (error) {
         logger.error("Erro ao carregar perfil:", error);
-        // Fallback para dados do contexto
         if (isMounted && user) {
           const dp = user.doctorProfile;
           registroSalvoRef.current = {
@@ -618,9 +563,6 @@ function ConfiguracoesPageInner() {
     };
   }, [user]);
 
-  // Avisos ao paciente: configuração da conta, só para a administração.
-  // `null` = não carregou (sem permissão ou falha) — o card não aparece e o
-  // salvar não manda nada para a rota da conta.
   const [patientNotifications, setPatientNotifications] =
     useState<PatientNotificationSettings | null>(null);
 
@@ -643,7 +585,6 @@ function ConfiguracoesPageInner() {
     };
   }, [podeAdministrar]);
 
-  // Carregar configurações de notificação
   useEffect(() => {
     const loadNotificationSettings = async () => {
       setLoadingNotifications(true);
@@ -669,7 +610,6 @@ function ConfiguracoesPageInner() {
     loadNotificationSettings();
   }, []);
 
-  // Handlers de upload
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -697,8 +637,6 @@ function ConfiguracoesPageInner() {
     }
     setIsProcessingSignature(true);
     try {
-      // Remove o fundo localmente e guarda o arquivo processado.
-      // O upload e o save só acontecem ao clicar em "Salvar Alterações".
       const processed = await removeBackground(rawFile);
       setSignatureFile(processed);
       const reader = new FileReader();
@@ -715,16 +653,12 @@ function ConfiguracoesPageInner() {
   };
 
   const handleDeleteSignature = () => {
-    // Apenas marca como deletada localmente.
-    // A remoção real no backend/Storage ocorre ao clicar em "Salvar Alterações".
     setSignatureFile(null);
     setSignaturePreview(null);
     setSignatureDeleted(true);
   };
 
-  // Salvar perfil
   const handleSaveProfile = async () => {
-    // Validação Zod antes de qualquer side-effect
     const validation = profileSchema.safeParse({
       name: profile.name,
       email: profile.email,
@@ -750,7 +684,6 @@ function ConfiguracoesPageInner() {
 
     setSaving(true);
     try {
-      // 1. Se há novo avatar, fazer upload primeiro
       let avatarUrl: string | undefined = undefined;
       let avatarResolvedUrl: string | undefined = undefined;
       if (avatarFile) {
@@ -768,7 +701,6 @@ function ConfiguracoesPageInner() {
         }
       }
 
-      // 2. Se há nova assinatura pendente, fazer upload
       let signaturePath: string | undefined = undefined;
       if (signatureFile) {
         try {
@@ -784,7 +716,6 @@ function ConfiguracoesPageInner() {
         }
       }
 
-      // 3. Salvar dados básicos do perfil (telefone e CPF desmascarados)
       const phoneDigits = unmask(profile.phone);
       const documentDigits = unmask(profile.document);
       await userService.updateProfile({
@@ -805,10 +736,6 @@ function ConfiguracoesPageInner() {
             : {}),
       });
 
-      // 4. Se é médico, salvar dados profissionais (usa user.id, não doctorProfile.id)
-      //    Só o que mudou; campo apagado vai "" (o backend grava null) — o
-      //    `|| undefined` antigo significava "não mexer" e não deixava apagar
-      //    número/UF de conselho que não exige registro.
       if (profile.isDoctor && user?.id) {
         const registro: OwnDoctorProfileFields = {
           council: profile.council,
@@ -816,8 +743,6 @@ function ConfiguracoesPageInner() {
           crmState: profile.crmState,
           specialty: profile.specialty,
         };
-        // O dono da conta é a administração: troca o próprio conselho. Os
-        // demais (inclusive o admin delegado) não — o campo nem é editável.
         const payloadRegistro = buildOwnDoctorProfilePayload(
           registroSalvoRef.current,
           registro,
@@ -843,13 +768,10 @@ function ConfiguracoesPageInner() {
         });
       }
 
-      // Atualiza cache do avatar após salvar
       if (user?.id) {
         if (!avatarPreview) {
-          // Avatar removido — limpa o cache
           clearAvatarCache(user.id);
         } else if (avatarUrl && avatarResolvedUrl) {
-          // Novo avatar enviado — armazena path → URL resolvida no cache
           setAvatarCache(user.id, avatarUrl, avatarResolvedUrl);
         }
       }
@@ -862,7 +784,6 @@ function ConfiguracoesPageInner() {
     }
   };
 
-  // Salvar notificações
   const handleSaveNotifications = async () => {
     setSaving(true);
     try {
@@ -892,7 +813,6 @@ function ConfiguracoesPageInner() {
     }
   };
 
-  // Alterar senha
   const handleChangePassword = async () => {
     const result = changePasswordSchema.safeParse(passwordData);
     if (!result.success) {
@@ -948,7 +868,6 @@ function ConfiguracoesPageInner() {
     }
   };
 
-  // Render da aba de Cabeçalho
   const renderHeaderTab = () => (
     <DoctorHeaderEditor
       loading={loadingHeader}
@@ -968,7 +887,6 @@ function ConfiguracoesPageInner() {
     />
   );
 
-  // Render da aba de Perfil
   const renderProfileTab = () => {
     if (loadingProfile) {
       return (
@@ -980,7 +898,6 @@ function ConfiguracoesPageInner() {
 
     return (
       <div className="space-y-6">
-        {/* Foto do perfil */}
         <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
             <h3 className="text-base font-semibold text-gray-900">
@@ -1051,7 +968,6 @@ function ConfiguracoesPageInner() {
           </CardContent>
         </Card>
 
-        {/* Dados pessoais */}
         <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
             <h3 className="text-base font-semibold text-gray-900">
@@ -1111,7 +1027,6 @@ function ConfiguracoesPageInner() {
           </CardContent>
         </Card>
 
-        {/* Dados profissionais (apenas para médicos) */}
         {profile.isDoctor && (
           <Card className="border border-gray-200 rounded-2xl">
             <CardHeader className="p-6 pb-4">
@@ -1178,7 +1093,6 @@ function ConfiguracoesPageInner() {
           </Card>
         )}
 
-        {/* Assinatura digital (apenas para médicos) */}
         {profile.isDoctor && (
           <Card
             data-tour="config-assinatura"
@@ -1266,7 +1180,6 @@ function ConfiguracoesPageInner() {
           </Card>
         )}
 
-        {/* Botão salvar */}
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
           <Button
             onClick={handleSaveProfile}
@@ -1280,7 +1193,6 @@ function ConfiguracoesPageInner() {
     );
   };
 
-  // Render da aba de Notificações
   const renderNotificationsTab = () => {
     if (loadingNotifications) {
       return (
@@ -1292,7 +1204,6 @@ function ConfiguracoesPageInner() {
 
     return (
       <div className="space-y-6">
-        {/* Canais de notificação */}
         <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
             <h3 className="text-base font-semibold text-gray-900">
@@ -1330,7 +1241,6 @@ function ConfiguracoesPageInner() {
           </CardContent>
         </Card>
 
-        {/* Tipos de notificação */}
         <Card className="border border-gray-200 rounded-2xl">
           <CardHeader className="p-6 pb-4">
             <h3 className="text-base font-semibold text-gray-900">
@@ -1404,7 +1314,6 @@ function ConfiguracoesPageInner() {
           </CardContent>
         </Card>
 
-        {/* Avisos aos pacientes — configuração da conta */}
         {podeAdministrar && patientNotifications && (
           <Card className="border border-gray-200 rounded-2xl">
             <CardHeader className="p-6 pb-4">
@@ -1457,7 +1366,6 @@ function ConfiguracoesPageInner() {
           </Card>
         )}
 
-        {/* Botão salvar */}
         <div className="flex justify-end">
           <Button
             onClick={handleSaveNotifications}
@@ -1473,13 +1381,10 @@ function ConfiguracoesPageInner() {
 
   const renderPlanTab = () => <BillingSection />;
 
-  // Render da aba de Privacidade
   const renderPrivacyTab = () => <PrivacySection />;
 
-  // Render da aba de Segurança
   const renderSecurityTab = () => (
     <div className="space-y-6">
-      {/* Alterar senha */}
       <Card className="border border-gray-200 rounded-2xl">
         <CardHeader className="p-6 pb-4">
           <h3 className="text-base font-semibold text-gray-900">
@@ -1535,7 +1440,6 @@ function ConfiguracoesPageInner() {
   return (
     <PageContainer>
       <div className="flex-1 overflow-auto p-4 lg:p-6">
-        {/* Header */}
         <div className="mb-6">
           <h1 className="ds-page-title">Configurações</h1>
           <p className="text-sm md:text-base text-gray-500 mt-1">
@@ -1543,9 +1447,7 @@ function ConfiguracoesPageInner() {
           </p>
         </div>
 
-        {/* Layout com sidebar e conteúdo */}
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-          {/* Sidebar de navegação */}
           <div className="w-full lg:w-64 shrink-0">
             <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible scrollbar-hide pb-2 lg:pb-0">
               <TabButton
@@ -1621,7 +1523,6 @@ function ConfiguracoesPageInner() {
             </nav>
           </div>
 
-          {/* Conteúdo principal */}
           <div className="flex-1 min-w-0">
             {activeTab === "profile" && renderProfileTab()}
             {activeTab === "notifications" && renderNotificationsTab()}

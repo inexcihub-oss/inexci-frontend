@@ -26,8 +26,6 @@ import {
   MAX_DOCUMENT_FILE_SIZE_MB,
 } from "@/lib/file-upload";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────────────
-
 type Step = 1 | 2 | 3 | 4;
 type ContestStep = 1 | 2 | 3;
 type ContestMethod = "email" | "document";
@@ -50,8 +48,6 @@ interface SupplierSelectOption {
   value: string;
   label: string;
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────────────
 
 function getSummaryRowStyles(
   authorized: number | null,
@@ -83,8 +79,6 @@ function getSummaryRowStyles(
     authorizedBox: "bg-emerald-50 border-emerald-300 text-emerald-700",
   };
 }
-
-// ─── Componente principal ─────────────────────────────────────────────────────────────
 
 export function UpdateAuthorizationsModal({
   isOpen,
@@ -247,7 +241,6 @@ export function UpdateAuthorizationsModal({
             oldStatus: 3,
           });
         } catch {
-          // Falha no e-mail não bloqueia o fluxo principal
         }
       }
 
@@ -265,8 +258,6 @@ export function UpdateAuthorizationsModal({
   };
 
   const handleAccept = () => {
-    // Datas são opcionais aqui — podem ser definidas depois, já em Agendamento.
-    // Mas cada opção iniciada precisa ter data E horário juntos.
     const hasPartial = scheduleDates.some(
       (d) => (d.date.trim() !== "") !== (d.time.trim() !== ""),
     );
@@ -279,7 +270,6 @@ export function UpdateAuthorizationsModal({
       return;
     }
 
-    // Sem datas escolhidas: não há o que notificar ao paciente — segue direto.
     if (hasPatientContact && buildDateOptions().length > 0) {
       setIsNotificationModalOpen(true);
       return;
@@ -318,7 +308,6 @@ export function UpdateAuthorizationsModal({
         );
       }
 
-      // Salvar quantidades autorizadas no banco antes de contestar
       await surgeryRequestService.authorizeQuantities(
         solicitacao.id,
         tussAuth.map((e) => ({
@@ -392,7 +381,6 @@ export function UpdateAuthorizationsModal({
             : undefined
         }
       >
-        {/* Drag handle — apenas mobile */}
         <div
           className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
           onTouchStart={onTouchStart}
@@ -402,7 +390,6 @@ export function UpdateAuthorizationsModal({
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 text-lg font-semibold text-gray-900">
             {showContest
@@ -429,7 +416,6 @@ export function UpdateAuthorizationsModal({
           </button>
         </div>
 
-        {/* Contestação */}
         {showContest && (
           <ContestFlow
             step={contestStep}
@@ -459,7 +445,6 @@ export function UpdateAuthorizationsModal({
           />
         )}
 
-        {/* Etapa 1: TUSS */}
         {!showContest && step === 1 && (
           <>
             <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
@@ -495,7 +480,6 @@ export function UpdateAuthorizationsModal({
           </>
         )}
 
-        {/* Etapa 2: OPME */}
         {!showContest && step === 2 && (
           <>
             <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
@@ -551,7 +535,6 @@ export function UpdateAuthorizationsModal({
           </>
         )}
 
-        {/* Etapa 3: Resumo */}
         {!showContest && step === 3 && (
           <>
             <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
@@ -670,11 +653,9 @@ export function UpdateAuthorizationsModal({
           </>
         )}
 
-        {/* Etapa 4: Agendamento */}
         {!showContest && step === 4 && (
           <>
             <div className="flex flex-col gap-4 px-4 py-4 md:px-6 md:py-5 overflow-y-auto">
-              {/* Banner informativo */}
               <div className="flex gap-3 bg-blue-50 border border-blue-100 rounded-2xl p-3.5">
                 <div className="shrink-0 w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
                   <svg
@@ -701,7 +682,6 @@ export function UpdateAuthorizationsModal({
                 </p>
               </div>
 
-              {/* Cards de opção */}
               <div className="flex flex-col gap-3">
                 {(
                   [
@@ -726,7 +706,6 @@ export function UpdateAuthorizationsModal({
                   const dateVal = scheduleDates[index].date;
                   const timeVal = scheduleDates[index].time;
                   const filled = dateVal !== "" && timeVal !== "";
-                  // Só é erro a opção parcial (uma metade preenchida sem a outra).
                   const dateError =
                     scheduleAttempted && dateVal === "" && timeVal !== "";
                   const timeError =
@@ -743,7 +722,6 @@ export function UpdateAuthorizationsModal({
                             : "border-neutral-100 bg-white"
                       }`}
                     >
-                      {/* Cabeçalho do card */}
                       <div className="flex items-center gap-2.5">
                         <span
                           className={`inline-flex items-center justify-center w-7 h-7 rounded-xl text-xs font-bold border ${color}`}
@@ -778,7 +756,6 @@ export function UpdateAuthorizationsModal({
                         )}
                       </div>
 
-                      {/* Campos data e hora lado a lado */}
                       <div className="grid grid-cols-2 gap-2.5">
                         <div className="flex flex-col gap-1">
                           <label className={`text-xs font-medium ${dateError ? "text-red-500" : "text-gray-500"}`}>
@@ -829,7 +806,6 @@ export function UpdateAuthorizationsModal({
               </div>
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-end gap-2.5 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 shrink-0">
               <button onClick={() => setStep(3)} className="ds-btn-outline">
                 Voltar
@@ -862,8 +838,6 @@ export function UpdateAuthorizationsModal({
     </>
   );
 }
-
-// ─── Sub-componentes ──────────────────────────────────────────────────────────────
 
 function ModalFooter({
   children,
@@ -905,7 +879,6 @@ function AuthorizationTable({
 
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
-      {/* Mobile: cards */}
       <div className="md:hidden">
         <div className="px-4 py-2 border-b border-gray-200">
           <span className="text-xs text-gray-900 opacity-50">
@@ -1004,7 +977,6 @@ function AuthorizationTable({
         })}
       </div>
 
-      {/* Desktop/tablet: table (comportamento original) */}
       <div className="hidden md:block">
         <div className="flex items-center gap-2 px-4 py-1 border-b border-gray-200">
           <span className="flex-1 text-xs text-gray-900 opacity-50">
@@ -1197,8 +1169,6 @@ function SummaryTable({ labelHeader, items }: SummaryTableProps) {
   );
 }
 
-// ─── Fluxo de contestação ─────────────────────────────────────────────────────
-
 interface ContestFlowProps {
   step: ContestStep;
   reason: string;
@@ -1235,12 +1205,10 @@ function ContestFlow({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
-  // Tag input para campo Para
   const [toTags, setToTags] = React.useState<string[]>([]);
   const [toInput, setToInput] = React.useState("");
   const [formTouched, setFormTouched] = React.useState(false);
 
-  // CC
   const [ccTags, setCcTags] = React.useState<string[]>([]);
   const [ccInput, setCcInput] = React.useState("");
 
@@ -1345,9 +1313,7 @@ function ContestFlow({
 
   return (
     <>
-      {/* Body */}
       <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
-        {/* Etapa 1: Motivo da contestação */}
         {step === 1 && (
           <div className="flex flex-col gap-1.5">
             <label className="ds-label mb-0">Motivo da contestação</label>
@@ -1361,7 +1327,6 @@ function ContestFlow({
           </div>
         )}
 
-        {/* Etapa 2: Método de envio */}
         {step === 2 && (
           <div className="flex flex-col gap-3 md:gap-4">
             <p className="ds-body text-gray-600">
@@ -1433,7 +1398,6 @@ function ContestFlow({
           </div>
         )}
 
-        {/* Etapa 3a: Formulário de e-mail */}
         {step === 3 && method === "email" && (
           <div className="flex flex-col gap-3 md:gap-4">
             <div className="flex flex-col gap-1.5">
@@ -1652,7 +1616,6 @@ function ContestFlow({
           </div>
         )}
 
-        {/* Etapa 3b: Documento PDF */}
         {step === 3 && method === "document" && (
           <div className="flex flex-col gap-3 md:gap-4">
             <div className="flex flex-col gap-1.5">
@@ -1722,7 +1685,6 @@ function ContestFlow({
         )}
       </div>
 
-      {/* Footer */}
       <ModalFooter className="justify-end">
         <button onClick={onBack} className="ds-btn-outline">
           {step < 3 ? "Cancelar" : "Voltar"}

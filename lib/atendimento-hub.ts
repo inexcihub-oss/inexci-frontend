@@ -3,7 +3,6 @@ import { addDays, startOfDay } from "./calendar";
 
 export type HubTab = "today" | "upcoming" | "done";
 
-/** Consultas por página nas listas do hub ("carregar mais" de 20 em 20). */
 export const HUB_PAGE_SIZE = 20;
 
 export const HUB_TABS: { key: HubTab; label: string }[] = [
@@ -12,10 +11,6 @@ export const HUB_TABS: { key: HubTab; label: string }[] = [
   { key: "done", label: "Realizadas" },
 ];
 
-/**
- * Recorte que cada aba do hub de atendimento pede ao backend. Datas ausentes
- * são intencionais: a janela é aberta daquele lado.
- */
 export interface HubTabQuery {
   from?: string;
   to?: string;
@@ -30,8 +25,6 @@ export function hubTabQuery(tab: HubTab, now: Date = new Date()): HubTabQuery {
     return {
       from: today.toISOString(),
       to: addDays(today, 1).toISOString(),
-      // Cancelada não aparece na lista do dia. Aguardando e em atendimento
-      // aparecem: é a sala de espera do dia.
       status: [
         "scheduled",
         "confirmed",
@@ -45,8 +38,6 @@ export function hubTabQuery(tab: HubTab, now: Date = new Date()): HubTabQuery {
   }
 
   if (tab === "upcoming") {
-    // "De hoje em diante": inclui o restante de hoje e não tem teto — uma
-    // consulta marcada para daqui a três meses precisa aparecer aqui.
     return {
       from: today.toISOString(),
       status: ["scheduled", "confirmed"],
@@ -54,8 +45,6 @@ export function hubTabQuery(tab: HubTab, now: Date = new Date()): HubTabQuery {
     };
   }
 
-  // Todo o histórico de consultas realizadas, mais recente primeiro: a aba é
-  // definida pelo status, não por uma janela de datas.
   return { status: ["completed"], order: "DESC" };
 }
 

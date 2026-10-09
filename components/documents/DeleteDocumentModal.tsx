@@ -26,19 +26,14 @@ export function DeleteDocumentModal({
     onConfirm();
   };
 
-  // Portal no body: inline, o wrapper fixed herdaria o `margin-top` do
-  // `space-y-*` do container pai.
   return ReactDOM.createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50"
         onClick={!isDeleting ? onClose : undefined}
       />
 
-      {/* Modal */}
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             Deletar Documento
@@ -52,7 +47,6 @@ export function DeleteDocumentModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 p-6">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
@@ -73,7 +67,6 @@ export function DeleteDocumentModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
           <button
             onClick={onClose}

@@ -12,8 +12,6 @@ import type { ReactElement, ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import { NewCollaboratorModal } from "./NewCollaboratorModal";
 
-// O componente invalida a lista de médicos em cache ao salvar
-// (`useInvalidateAvailableDoctors`), então precisa de um QueryClient.
 function render(ui: ReactElement, options?: RenderOptions) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -24,7 +22,6 @@ function render(ui: ReactElement, options?: RenderOptions) {
   return rtlRender(ui, { wrapper: Wrapper, ...options });
 }
 
-// Mock do collaboratorService
 vi.mock("@/services/collaborator.service", () => ({
   collaboratorService: {
     create: vi.fn(),
@@ -38,10 +35,6 @@ vi.mock("@/components/onboarding/OnboardingProvider", () => ({
 
 import { collaboratorService } from "@/services/collaborator.service";
 
-/**
- * PRD: Reformulação Usuários/Permissões — US-004
- * Testa o modal de criação de colaborador.
- */
 describe("NewCollaboratorModal", () => {
   const defaultProps = {
     isOpen: true,
@@ -99,7 +92,6 @@ describe("NewCollaboratorModal", () => {
 
     expect(screen.getByPlaceholderText("123456")).toBeInTheDocument();
     expect(screen.getByText(/UF do conselho/)).toBeInTheDocument();
-    // Conselho começa em CRM: o comportamento de quem cadastra médico não muda.
     expect(screen.getByLabelText("Conselho")).toHaveValue("CRM");
     expect(
       screen.getByPlaceholderText(/ortopedia|cardiologia/i),
@@ -173,13 +165,11 @@ describe("NewCollaboratorModal", () => {
       );
     });
 
-    // Profissional novo precisa aparecer já na lista de médicos em cache.
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ["available-doctors"],
     });
     invalidate.mockRestore();
 
-    // Não deve enviar is_doctor no payload (campo gerenciado pelo backend)
     const callArgs = (collaboratorService.create as ReturnType<typeof vi.fn>)
       .mock.calls[0][0];
     expect(callArgs).not.toHaveProperty("is_doctor");
@@ -254,11 +244,9 @@ describe("NewCollaboratorModal", () => {
       "carlos@email.com",
     );
 
-    // Ativar toggle de médico
     const toggle = screen.getByRole("switch");
     await userEvent.click(toggle);
 
-    // Preencher campos de médico
     await userEvent.type(screen.getByPlaceholderText("123456"), "654321");
 
     const select = screen.getByDisplayValue("Selecione");
@@ -299,10 +287,6 @@ describe("NewCollaboratorModal", () => {
   });
 });
 
-/**
- * TASK-FE-Q01: Testes para a prop defaultIsDoctor
- * Garante que o NewCollaboratorModal funciona como substituto do NewDoctorModal.
- */
 describe("NewCollaboratorModal — defaultIsDoctor", () => {
   const defaultProps = {
     isOpen: true,
@@ -399,7 +383,6 @@ describe("NewCollaboratorModal — defaultIsDoctor", () => {
       "teste@email.com",
     );
 
-    // Preencher campos obrigatórios de médico
     await userEvent.type(screen.getByPlaceholderText("123456"), "111222");
     const select = screen.getByDisplayValue("Selecione");
     await userEvent.selectOptions(select, "SP");
@@ -418,22 +401,16 @@ describe("NewCollaboratorModal — defaultIsDoctor", () => {
       <NewCollaboratorModal {...defaultProps} defaultIsDoctor={true} />,
     );
 
-    // Fechar
     await userEvent.click(screen.getByLabelText("Fechar"));
     expect(defaultProps.onClose).toHaveBeenCalled();
 
-    // Reabrir
     rerender(<NewCollaboratorModal {...defaultProps} defaultIsDoctor={true} />);
 
-    // Toggle deve estar ativado novamente
     const toggle = screen.getByRole("switch");
     expect(toggle).toHaveAttribute("aria-checked", "true");
   });
 });
 
-/**
- * Tarefa 18: bloco de permissões dentro do modal de criação.
- */
 describe("NewCollaboratorModal — permissões", () => {
   const defaultProps = {
     isOpen: true,
@@ -482,7 +459,6 @@ describe("NewCollaboratorModal — permissões", () => {
     expect(solicitacoes).toBeChecked();
     expect(solicitacoes).toBeDisabled();
 
-    // Destrava ao desligar de novo, sem precisar salvar/recarregar
     await userEvent.click(screen.getByRole("switch"));
 
     expect(agenda).toBeEnabled();
@@ -510,7 +486,6 @@ describe("NewCollaboratorModal — permissões", () => {
       "maria@email.com",
     );
 
-    // Desmarca Solicitações — não deve mais aparecer no payload
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Solicitações/i }),
     );

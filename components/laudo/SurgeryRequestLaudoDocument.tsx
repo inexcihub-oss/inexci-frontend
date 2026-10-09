@@ -1,18 +1,5 @@
 "use client";
 
-/**
- * SurgeryRequestLaudoDocument
- *
- * Renderiza o corpo do documento "Laudo Médico / Solicitação Cirúrgica" com
- * estilos inline que espelham exatamente o template HBS do backend
- * (surgery-request-laudo.hbs). É o componente compartilhado utilizado por:
- *
- *  - SurgeryRequestDocumentPreviewModal  (pré-visualização da solicitação)
- *  - MedicalReportPreviewModal           (pré-visualização do laudo)
- *
- * Qualquer alteração visual deve ser feita aqui apenas.
- */
-
 import React from "react";
 import {
   ReportSection,
@@ -21,8 +8,6 @@ import {
 } from "@/services/surgery-request.service";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { safeExternalUrl } from "@/lib/safe-url";
-
-// ─── Helpers (idênticos ao backend) ──────────────────────────────────────────
 
 export function digitsOnly(v?: string | null): string {
   return v ? v.replace(/\D/g, "") : "";
@@ -172,7 +157,6 @@ const LAUDO_PATIENT_FIELD_LABELS: Record<keyof LaudoPatientFields, string> = {
   patientHealthPlanNumber: "Número da carteirinha",
 };
 
-/** Rótulos curtos usados no PDF e na pré-visualização do documento. */
 const LAUDO_DOCUMENT_PATIENT_FIELD_LABELS: Record<
   keyof LaudoPatientFields,
   string
@@ -267,8 +251,6 @@ export function resolveDoctorSignatureUrl(
 export function unique<T>(arr: T[]): T[] {
   return [...new Set(arr)];
 }
-
-// ─── Sub-componentes internos ─────────────────────────────────────────────────
 
 function PatientRow({ label, value }: { label: string; value: string }) {
   return (
@@ -588,8 +570,6 @@ function MaterialsTable({ opmeItems }: { opmeItems: OpmeItemRef[] }) {
   );
 }
 
-// ─── ExamImageItem ────────────────────────────────────────────────────────────
-
 function ExamImageItem({
   doc,
 }: {
@@ -675,13 +655,9 @@ function ExamImageItem({
   );
 }
 
-// ─── Interface de props ───────────────────────────────────────────────────────
-
 export interface SurgeryRequestLaudoDocumentProps {
-  /** Data formatada (dd/mm/aaaa) exibida no cabeçalho */
   today: string;
 
-  // — Dados do paciente —
   patientName?: string;
   patientBirthDate?: string;
   patientRg?: string;
@@ -692,32 +668,24 @@ export interface SurgeryRequestLaudoDocumentProps {
   patientHealthPlan?: string;
   patientHealthPlanNumber?: string;
 
-  // — Conteúdo do laudo —
-  /** Seções dinâmicas do laudo */
   sections: ReportSection[];
 
-  // — Imagens de exame —
   examImages?: Array<{ id?: string; name?: string; uri: string }>;
 
-  // — Procedimentos e OPME (somente na solicitação cirúrgica) —
   procedures?: TussItemRef[];
   opmeItems?: OpmeItemRef[];
   fabricantesText?: string;
   fornecedoresText?: string;
 
-  // — Separador + local —
   hasSeparator?: boolean;
   localText?: string;
 
-  // — Dados do médico —
   doctorName?: string;
   doctorEmail?: string;
   doctorPhone?: string;
   doctorSpecialty?: string;
   doctorCrm?: string;
-  /** URL da imagem de assinatura (já processada, se necessário) */
   doctorSignatureUrl?: string;
-  /** Cabeçalho customizado do médico (substitui o cabeçalho padrão "LAUDO MÉDICO" quando presente) */
   customHeader?: {
     logoUrl?: string | null;
     logoPosition?: "left" | "center" | "right";
@@ -725,12 +693,6 @@ export interface SurgeryRequestLaudoDocumentProps {
   } | null;
 }
 
-// ─── Componente ───────────────────────────────────────────────────────────────
-
-/**
- * Renderiza o corpo do documento A4 (sem chrome de modal).
- * Estilos inline garantem fidelidade ao PDF gerado pelo backend.
- */
 export function SurgeryRequestLaudoDocument({
   today,
   patientName,
@@ -785,7 +747,6 @@ export function SurgeryRequestLaudoDocument({
         boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
       }}
     >
-      {/* ── Cabeçalho ── */}
       {customHeader ? (
         <div
           style={{
@@ -871,13 +832,11 @@ export function SurgeryRequestLaudoDocument({
         </div>
       )}
 
-      {/* ── Dados do Paciente ── */}
       <div style={{ marginBottom: "16px" }}>
         <SectionHeading>Dados do paciente</SectionHeading>
         <PatientFieldGrid rows={patientRows} />
       </div>
 
-      {/* ── Seções dinâmicas do laudo ── */}
       {sections.length > 0 &&
         sections.map((section) => (
           <div key={section.id} style={{ marginBottom: "16px" }}>
@@ -916,7 +875,6 @@ export function SurgeryRequestLaudoDocument({
           </div>
         ))}
 
-      {/* ── Imagens de Exame ── */}
       {examImages.length > 0 && (
         <div style={{ marginBottom: "16px" }}>
           <div
@@ -933,7 +891,6 @@ export function SurgeryRequestLaudoDocument({
         </div>
       )}
 
-      {/* ── Procedimentos Solicitados ── */}
       {procedures.length > 0 && (
         <div style={{ marginBottom: "16px" }}>
           <SectionHeading>Procedimento solicitado</SectionHeading>
@@ -941,7 +898,6 @@ export function SurgeryRequestLaudoDocument({
         </div>
       )}
 
-      {/* ── Material Solicitado (OPME) ── */}
       {opmeItems.length > 0 && (
         <div style={{ marginBottom: "16px" }}>
           <SectionHeading>Material solicitado</SectionHeading>
@@ -949,7 +905,6 @@ export function SurgeryRequestLaudoDocument({
         </div>
       )}
 
-      {/* ── Fabricantes ── */}
       {fabricantesText && (
         <p
           style={{
@@ -964,7 +919,6 @@ export function SurgeryRequestLaudoDocument({
         </p>
       )}
 
-      {/* ── Fornecedores ── */}
       {fornecedoresText && (
         <p
           style={{
@@ -979,7 +933,6 @@ export function SurgeryRequestLaudoDocument({
         </p>
       )}
 
-      {/* ── Separador ── */}
       {hasSeparator && (
         <hr
           style={{
@@ -990,7 +943,6 @@ export function SurgeryRequestLaudoDocument({
         />
       )}
 
-      {/* ── Local ── */}
       {localText && (
         <p
           style={{
@@ -1004,7 +956,6 @@ export function SurgeryRequestLaudoDocument({
         </p>
       )}
 
-      {/* ── Encerramento ── */}
       <p
         style={{
           fontSize: "12px",
@@ -1016,7 +967,6 @@ export function SurgeryRequestLaudoDocument({
         Colocando-me a disposição para maiores informações,
       </p>
 
-      {/* ── Assinatura ── */}
       <div
         style={{
           display: "flex",

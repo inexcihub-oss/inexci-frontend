@@ -1,4 +1,3 @@
-// UI Components
 export { default as Avatar } from "./Avatar";
 export { default as Button } from "./Button";
 export { Card } from "./Card";
@@ -12,7 +11,6 @@ export { default as Select } from "./Select";
 export { default as Textarea } from "./Textarea";
 export { Toast } from "./Toast";
 
-// Additional UI Components
 export { Badge } from "./Badge";
 export { Checkbox } from "./Checkbox";
 export { EmptyState } from "./EmptyState";

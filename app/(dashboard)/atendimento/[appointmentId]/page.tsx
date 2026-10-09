@@ -32,9 +32,6 @@ export default function AtendimentoPage() {
     let active = true;
     setLoading(true);
 
-    // Consulta fabricada do tour de onboarding: nunca existe de verdade no
-    // backend, então pular a busca real é o comportamento certo — não um
-    // atalho de performance.
     if (params.appointmentId === TOUR_DEMO_APPOINTMENT_ID) {
       setAppointment(criarConsultaDemo(user?.doctorProfile?.id ?? ""));
       setPatient(criarPacienteDemo());

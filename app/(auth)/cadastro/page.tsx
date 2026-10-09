@@ -70,9 +70,6 @@ const DEFAULT_PLAN_SLUG = "starter";
 export default function CadastroPage() {
   const { register } = useAuth();
 
-  // Usuários já logados são expulsos do `/cadastro` pelo guard reverso
-  // (`RedirectIfAuthenticated`), então não há sessão para limpar aqui.
-
   const [currentStep, setCurrentStep] = useState(1);
 
   const [step1, setStep1] = useState<Step1Data>({
@@ -98,7 +95,6 @@ export default function CadastroPage() {
     Partial<Record<keyof Step2Data, string>>
   >({});
 
-  // ─── Etapa 3 — planos ────────────────────────────────────────────────────
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState<string>(DEFAULT_PLAN_SLUG);
@@ -109,8 +105,6 @@ export default function CadastroPage() {
 
   const handleBillingPeriodChange = (period: "MONTHLY" | "YEARLY") => {
     setBillingPeriod(period);
-    // Mapeia o slug selecionado para o equivalente no outro período
-    // Convenção: slug anual = slug mensal + "-anual"
     if (period === "YEARLY") {
       const annualSlug = selectedSlug.endsWith("-anual")
         ? selectedSlug
@@ -126,7 +120,6 @@ export default function CadastroPage() {
     }
   };
 
-  // Carrega planos quando entrar na etapa 3
   useEffect(() => {
     if (currentStep !== 3 || plans.length > 0) return;
     setPlansLoading(true);
@@ -140,7 +133,6 @@ export default function CadastroPage() {
         }
       })
       .catch(() => {
-        // Silencioso — sem planos, o backend usa o plano default (starter)
       })
       .finally(() => setPlansLoading(false));
   }, [currentStep, plans.length]);
@@ -206,13 +198,6 @@ export default function CadastroPage() {
         return;
       }
 
-      // Detecção antecipada: barra aqui e-mail com conta ativa/convite pendente
-      // e telefone já usado por outra conta, evitando que o usuário percorra a
-      // etapa de perfil e a de seleção de plano para só então tomar o erro.
-      //
-      // As duas checagens vão em paralelo e cada uma falha por conta própria:
-      // se só uma cair, a outra ainda aponta seu campo (ver
-      // `resolveStep1Availability`).
       setIsLoading(true);
       try {
         const [email, phone] = await Promise.all([
@@ -282,10 +267,6 @@ export default function CadastroPage() {
         "Erro ao criar conta. Tente novamente.";
       const tipo = classifyRegisterError(message);
 
-      // Chegar aqui com erro de e-mail/telefone significa que a etapa 1 deixou
-      // passar: corrida com outro cadastro, ou o usuário voltou e editou o
-      // campo. O dado a corrigir está na etapa 1, então é para lá que ele volta,
-      // com a mensagem no campo — em vez de ficar preso na tela de planos.
       if (tipo === "email_active" || tipo === "email_pending") {
         setStep1FieldErrors({ email: message });
         setCurrentStep(1);
@@ -303,7 +284,6 @@ export default function CadastroPage() {
     }
   };
 
-  // A etapa 3 usa um layout dedicado em tela cheia (sem painel direito)
   if (currentStep === 3) {
     return (
       <PlanStepLayout
@@ -452,8 +432,6 @@ export default function CadastroPage() {
   );
 }
 
-// ─── Layout dedicado da etapa 3 (full width, sem painel direito) ────────────
-
 interface PlanStepLayoutProps {
   plans: SubscriptionPlan[];
   plansLoading: boolean;
@@ -485,22 +463,14 @@ function PlanStepLayout({
   const ctaLabel = "Começar 15 dias grátis";
 
   return (
-    /*
-     * Layout: a página não rola inteira — só a área de conteúdo (flex-1 min-h-0
-     * overflow-y-auto). O rodapé com o CTA fica fora do scroll, sempre visível,
-     * inclusive em telas baixas (notebooks, mobile).
-     */
     <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
-      {/* Decorações de fundo */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden -z-0">
         <div className="absolute -top-40 -right-32 w-[360px] sm:w-[520px] h-[360px] sm:h-[520px] bg-purple-200 rounded-full filter blur-3xl opacity-40" />
         <div className="absolute top-1/3 -left-40 w-[280px] sm:w-[420px] h-[280px] sm:h-[420px] bg-teal-200 rounded-full filter blur-3xl opacity-30" />
         <div className="absolute -bottom-40 left-1/3 w-[400px] sm:w-[600px] h-[200px] sm:h-[300px] bg-blue-200 rounded-full filter blur-3xl opacity-30" />
       </div>
 
-      {/* Área de conteúdo — única parte que rola (barra de rolagem escondida) */}
       <div className="relative z-10 flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 lg:pt-8 pb-6 sm:pb-8">
-        {/* Topbar */}
         <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6">
           <Image
             src="/brand/logo.png"
@@ -518,7 +488,6 @@ function PlanStepLayout({
           </Link>
         </div>
 
-        {/* Cabeçalho */}
         <div className="text-center max-w-2xl mx-auto mb-5 sm:mb-6">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-gray-200 shadow-sm text-[11px] text-gray-700 font-semibold">
             <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse" />
@@ -533,12 +502,10 @@ function PlanStepLayout({
           </p>
         </div>
 
-        {/* Indicador de progresso */}
         <div className="hidden sm:block max-w-md mx-auto mb-6 lg:mb-7">
           <PlanStepProgress current={3} total={TOTAL_STEPS} />
         </div>
 
-        {/* Cards de plano + formulário de cartão */}
         <Step3Plan
           plans={plans}
           plansLoading={plansLoading}
@@ -549,7 +516,6 @@ function PlanStepLayout({
 
         />
 
-        {/* Erro */}
         {error && (
           <div className="mt-5 max-w-2xl mx-auto rounded-2xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
             <p>{error}</p>
@@ -557,7 +523,6 @@ function PlanStepLayout({
         )}
       </div>
 
-      {/* Footer — fixo fora da área de scroll */}
       <div className="relative z-10 shrink-0 w-full bg-gray-50/90 backdrop-blur-sm border-t border-gray-200/60 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
         <div className="max-w-7xl mx-auto flex items-center gap-3">
           <div className="hidden sm:flex w-9 h-9 rounded-xl bg-teal-50 items-center justify-center shrink-0">
@@ -625,7 +590,6 @@ function PlanStepLayout({
   );
 }
 
-/** Indicador de progresso fino para o cabeçalho da etapa 3. */
 function PlanStepProgress({
   current,
   total,

@@ -1,13 +1,5 @@
 import { describe, it, expect } from "vitest";
 
-/**
- * Testes para validar que a lógica de extração de dados do médico
- * usa a nova estrutura: doctor = User, doctor.doctorProfile = DoctorProfile
- *
- * Estes testes validam a lógica pura de extração, sem renderizar componentes React.
- */
-
-// Simula a lógica de extração de SurgeryRequestDocumentPreviewModal
 function extractDoctorDataForDocument(solicitacao: any) {
   const doctorUser = solicitacao?.doctor ?? null;
   const doctorProfile = doctorUser?.doctorProfile ?? null;
@@ -33,7 +25,6 @@ function extractDoctorDataForDocument(solicitacao: any) {
   };
 }
 
-// Simula a lógica de extração de MedicalReportPreviewModal
 function extractDoctorDataForReport(solicitacao: any) {
   const doctor = solicitacao?.doctor;
   const dp = doctor?.doctorProfile;
@@ -163,10 +154,8 @@ describe("Extração de dados do médico — Nova estrutura (User → doctor_pro
     });
 
     it("NÃO deve acessar doctor.user.name (estrutura antiga)", () => {
-      // Simula dados na estrutura ANTIGA para garantir que não funciona
       const solicitacaoEstruturaAntiga = {
         doctor: {
-          // DoctorProfile (antigo) — não tem .name
           crm: "123456",
           specialty: "Ortopedia",
           user: { name: "Dr. Antigo" },
@@ -174,24 +163,19 @@ describe("Extração de dados do médico — Nova estrutura (User → doctor_pro
       };
       const result = extractDoctorDataForReport(solicitacaoEstruturaAntiga);
 
-      // Na nova lógica, doctor.name viria do User (que agora É o doctor)
-      // Se alguém mandar a estrutura antiga, o name não deve vir de doctor.user.name
-      // mas sim de doctor.name (que não existe na estrutura antiga → "")
-      expect(result.name).toBe(""); // NÃO deve ser "Dr. Antigo"
+      expect(result.name).toBe("");
     });
 
     it("NÃO deve acessar doctor.signatureUrl diretamente (campo movido para doctor_profile)", () => {
       const solicitacao = {
         doctor: {
           name: "Dr. Test",
-          signatureUrl: "https://old-location.com/sig.png", // campo no nível errado
-          // doctor_profile não tem signature_url
+          signatureUrl: "https://old-location.com/sig.png",
           doctorProfile: { crm: "111", crmState: "RJ" },
         },
       };
       const result = extractDoctorDataForReport(solicitacao);
 
-      // signature_url deve vir de doctor_profile, não de doctor diretamente
       expect(result.signatureUrl).toBeNull();
     });
   });

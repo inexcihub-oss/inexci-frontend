@@ -48,8 +48,6 @@ export default function ColaboradoresPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
-  // Passo "areas" da trilha Administração: abre o modal de novo colaborador
-  // ao entrar no passo — é lá dentro que vive `admin-areas`.
   useOnboardingAction("administracao-abrir-novo-colaborador", () =>
     setCreateModalOpen(true),
   );
@@ -130,7 +128,6 @@ export default function ColaboradoresPage() {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       await collaboratorService.delete(deleteModal.id);
-      // Excluído some da lista de médicos do wizard de SC e da agenda.
       void invalidateAvailableDoctors();
       setCollaborators((prev) => prev.filter((c) => c.id !== deleteModal.id));
       setDeleteModal({ open: false, id: null, name: null, loading: false });
@@ -310,12 +307,10 @@ export default function ColaboradoresPage() {
 
   return (
     <PageContainer className="border-gray-200">
-      {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3 border-b border-gray-200">
         <h1 className="ds-page-title">Colaboradores</h1>
       </div>
 
-      {/* Search and Actions */}
       <div className="flex-none flex flex-wrap items-center gap-2.5 px-4 py-3 border-b border-gray-200">
         <SearchInput
           value={searchTerm}
@@ -361,7 +356,6 @@ export default function ColaboradoresPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center h-full">

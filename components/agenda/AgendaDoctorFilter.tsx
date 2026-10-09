@@ -11,17 +11,10 @@ interface AgendaDoctorFilterProps {
   doctors: AvailableDoctor[];
   selectedDoctorIds: string[];
   onChange: (doctorIds: string[]) => void;
-  /** Contagem por profissional no período visível (opcional). */
   countByDoctorId?: Record<string, number>;
-  /**
-   * Borda do botão em que a lista se alinha. `"end"` para botão encostado à
-   * direita (ex.: histórico do paciente): alinhada pela esquerda, a lista
-   * avançava por cima da coluna vizinha.
-   */
   align?: "start" | "end";
 }
 
-/** A busca só aparece quando a lista deixa de caber de relance. */
 const BUSCA_A_PARTIR_DE = 7;
 const LARGURA_LISTA = 300;
 
@@ -31,14 +24,6 @@ const semAcento = (texto: string) =>
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
 
-/**
- * Filtro de profissionais: um botão compacto ("Todos os profissionais", o
- * nome escolhido ou "3 profissionais") que abre uma lista com busca. Escala
- * para dezenas de profissionais sem tomar a tela — antes eram pílulas, uma
- * por nome, que quebravam em várias linhas no celular.
- *
- * Seleção múltipla, aplicada na hora. Nenhum marcado = todos.
- */
 export function AgendaDoctorFilter({
   doctors,
   selectedDoctorIds,
@@ -60,9 +45,6 @@ export function AgendaDoctorFilter({
       return;
     }
     buscaRef.current?.focus();
-    // Captura em `window`, antes de qualquer listener de `document`: dentro
-    // de um <Modal> (ex.: exportar agenda), o Esc com a lista aberta fecha só
-    // a lista — o Modal também escuta Esc em `document` e fecharia junto.
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.stopImmediatePropagation();
@@ -73,7 +55,6 @@ export function AgendaDoctorFilter({
     return () => window.removeEventListener("keydown", aoTeclar, true);
   }, [aberto]);
 
-  // Quem tem mais consultas no período primeiro; empate por nome.
   const ordenados = useMemo(
     () =>
       [...doctors].sort(
@@ -107,7 +88,6 @@ export function AgendaDoctorFilter({
         : [...selectedDoctorIds, id],
     );
 
-  // A lista é mais larga que o botão; no celular, não pode sair da tela.
   const largura =
     typeof window === "undefined"
       ? LARGURA_LISTA
@@ -127,8 +107,6 @@ export function AgendaDoctorFilter({
         aria-haspopup="dialog"
         aria-expanded={aberto}
         aria-label={`Profissionais: ${rotulo}`}
-        // Mesma medida do "Ver agenda" ao lado (h-8, px-3, ícone 3.5) a
-        // partir do md; no celular, alvo de toque de 44px.
         className={cn(
           "flex min-h-[44px] md:min-h-0 md:h-8 max-w-full shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors",
           todos

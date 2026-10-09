@@ -24,8 +24,6 @@ import {
   MAX_DOCUMENT_FILE_SIZE_MB,
 } from "@/lib/file-upload";
 
-/** Data local (YYYY-MM-DD) de hoje — não usa `toISOString` para não pular de
- * dia perto da meia-noite em fusos atrás de UTC (ex.: Brasil). */
 function todayCalendarDate(): string {
   const now = new Date();
   const y = now.getFullYear();
@@ -34,7 +32,6 @@ function todayCalendarDate(): string {
   return `${y}-${m}-${d}`;
 }
 
-/** Meia-noite local a partir de um YYYY-MM-DD, para comparar com "agora". */
 function parseLocalCalendarDate(iso: string): Date | null {
   const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
@@ -81,7 +78,6 @@ export function SendRequestModal({
     null,
   );
 
-  // Email form state
   const [emailSubject, setEmailSubject] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
   const [emailTags, setEmailTags] = useState<string[]>([]);
@@ -89,13 +85,10 @@ export function SendRequestModal({
   const [emailFormTouched, setEmailFormTouched] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
 
-  // CC state
   const [ccTags, setCcTags] = useState<string[]>([]);
   const [ccInput, setCcInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Data real de envio (método "document"): pré-preenchida com hoje, editável
-  // — cobre o caso de o envio já ter acontecido fora da plataforma.
   const [sentAt, setSentAt] = useState("");
   const [sentAtError, setSentAtError] = useState<string | null>(null);
 
@@ -140,10 +133,6 @@ export function SendRequestModal({
       setCcInput("");
       setSentAt(todayCalendarDate());
       setSentAtError(null);
-      // Quando a assinatura já é conhecida e bloqueia o envio, avisa de
-      // saída em vez de deixar o usuário percorrer o wizard para tomar um
-      // 402 no final. O backend continua sendo a autoridade — este é só o
-      // atalho para quem tem a assinatura carregada em memória.
       setBillingBlock(
         blockReasonCode
           ? {
@@ -214,9 +203,6 @@ export function SendRequestModal({
 
   if (!isOpen) return null;
 
-  // O bloqueio comercial substitui o wizard: com a cota estourada (ou a
-  // assinatura suspensa), nenhum dos métodos de envio vai passar, então não
-  // faz sentido manter os passos atrás do aviso.
   if (billingBlock) {
     return (
       <BillingLimitModal
@@ -241,10 +227,6 @@ export function SendRequestModal({
         name:
           templateName.trim() ||
           `Modelo - ${solicitacao.patient?.name || "Solicitação"} - ${new Date().toLocaleDateString("pt-BR")}`,
-        // O backend sanea o que chega aqui (`sanitizeTemplateData`): entram os
-        // campos do modelo, saem as sobras da SC (ids de item,
-        // `authorizedQuantity`, marcadores de sistema como
-        // `sc_creation_source`).
         templateData: {
           procedure: solicitacao.procedure,
           tussItems: solicitacao.tussItems,
@@ -272,8 +254,6 @@ export function SendRequestModal({
       if (sendMethod === "download") {
         await handleDownload();
       } else if (sendMethod === "document") {
-        // Documento já está na plataforma: só falta confirmar a data real de
-        // envio (step 3, sem os campos de e-mail).
         setCurrentStep(3);
       } else {
         setCurrentStep(3);
@@ -296,16 +276,10 @@ export function SendRequestModal({
     else if (currentStep === 3) setCurrentStep(2);
   };
 
-  /**
-   * Bloqueio comercial (HTTP 402) tem tratamento próprio: abre o aviso com o
-   * caminho de upgrade em vez do toast genérico. Retorna true quando assumiu
-   * o erro, para o chamador parar por aí.
-   */
   const handleBillingError = (err: unknown): boolean => {
     const block = getBillingBlockError(err);
     if (!block) return false;
     setBillingBlock(block);
-    // Sincroniza a cota exibida no aviso com o que o servidor acabou de dizer.
     void refreshSubscription();
     return true;
   };
@@ -313,11 +287,9 @@ export function SendRequestModal({
   const handleDownload = async () => {
     setIsSending(true);
     try {
-      // Primeiro chama o endpoint de envio para mudar o status para "Enviada"
       await surgeryRequestService.send(solicitacao.id, { method: "download" });
       await refreshSubscription();
 
-      // Em seguida abre o PDF da solicitação (com documentos anexados)
       const response = await api.get(
         `/surgery-requests/${solicitacao.id}/export-pdf`,
         { responseType: "arraybuffer" },
@@ -491,8 +463,6 @@ export function SendRequestModal({
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ---- STEP RENDERS ----
-
   const renderStep1 = () => (
     <div className="flex-1 overflow-y-auto min-h-0">
       <div className="flex flex-col gap-4 p-6">
@@ -522,7 +492,6 @@ export function SendRequestModal({
               </div>
             ))}
 
-            {/* Salvar como modelo */}
             <div className="flex flex-col gap-3 px-4 py-4 rounded-xl border border-gray-200 bg-gray-50">
               <label className="flex items-center gap-3 cursor-pointer select-none">
                 <input
@@ -736,7 +705,6 @@ export function SendRequestModal({
           </div>
         )}
 
-        {/* De */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">De:</label>
           <input
@@ -751,7 +719,6 @@ export function SendRequestModal({
           />
         </div>
 
-        {/* Para */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">Para:</label>
           <p className="text-xs text-gray-400">
@@ -802,7 +769,6 @@ export function SendRequestModal({
           )}
         </div>
 
-        {/* CC */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">Cópia (CC):</label>
           <p className="text-xs text-gray-400">
@@ -842,7 +808,6 @@ export function SendRequestModal({
           </div>
         </div>
 
-        {/* Assunto */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">Assunto:</label>
           <input
@@ -858,7 +823,6 @@ export function SendRequestModal({
           )}
         </div>
 
-        {/* Mensagem */}
         <div className="flex flex-col gap-1">
           <label className="ds-label mb-0">Mensagem:</label>
           <textarea
@@ -870,7 +834,6 @@ export function SendRequestModal({
           />
         </div>
 
-        {/* Anexos */}
         <div className="flex flex-col gap-2">
           <label className="ds-label mb-0">Anexos</label>
           <div className="flex items-center justify-between px-4 py-4 rounded-xl border border-dashed border-gray-200 bg-gray-50">
@@ -1080,7 +1043,6 @@ export function SendRequestModal({
         <div className="flex sm:hidden justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
-        {/* Header */}
         <div className="flex items-center gap-2 px-4 sm:px-4 py-3 md:px-6 md:py-4 border-b border-gray-200 shrink-0">
           <h2 className="flex-1 ds-modal-title">{getTitle()}</h2>
           {currentStep !== 4 && (
@@ -1094,17 +1056,14 @@ export function SendRequestModal({
           )}
         </div>
 
-        {/* Content */}
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
         {currentStep === 4 && renderStep4()}
 
-        {/* Footer */}
         <div className="shrink-0">{renderFooter()}</div>
       </div>
 
-      {/* Document preview modal */}
       <SurgeryRequestDocumentPreviewModal
         isOpen={isDocumentPreviewOpen}
         onClose={() => setIsDocumentPreviewOpen(false)}

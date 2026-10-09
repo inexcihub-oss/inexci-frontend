@@ -6,7 +6,6 @@ export interface Document {
   surgeryRequestId: string;
   key: string;
   name: string;
-  /** Caminho raw no bucket (ex: documents/uuid.pdf ou post-surgical/uuid.pdf) */
   path: string;
   uri: string;
   size?: number;
@@ -69,8 +68,6 @@ export const documentService = {
     });
   },
 };
-
-// ── Documentos por paciente (exames/anexos do prontuário) ─────────────────────
 
 export interface PatientDocument {
   id: string;

@@ -58,7 +58,6 @@ export default function PacientesPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
 
-  // Estados do modal de exclusão
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
     patient: PatientListItem | null;
@@ -69,7 +68,6 @@ export default function PacientesPage() {
     loading: false,
   });
 
-  // Estado do modal de exclusão em lote
   const [bulkDeleteModal, setBulkDeleteModal] = useState<{
     open: boolean;
     loading: boolean;
@@ -78,10 +76,8 @@ export default function PacientesPage() {
     loading: false,
   });
 
-  // Estado do modal de novo paciente
   const [newPatientModalOpen, setNewPatientModalOpen] = useState(false);
 
-  // Debounce do termo de pesquisa para evitar requisições excessivas
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const loadPatients = useCallback(async () => {
@@ -101,12 +97,10 @@ export default function PacientesPage() {
     }
   }, [page, debouncedSearchTerm]);
 
-  // Recarrega quando a página ou a busca (debounced) mudam.
   useEffect(() => {
     loadPatients();
   }, [loadPatients]);
 
-  // Volta para a primeira página sempre que o termo de busca muda.
   useEffect(() => {
     setPage(0);
     setRowSelection({});
@@ -148,7 +142,6 @@ export default function PacientesPage() {
   const formatDate = (dateString?: string) => {
     if (!dateString) return "-";
     try {
-      // Parseia a string diretamente (YYYY-MM-DD) para evitar conversão de fuso
       const [year, month, day] = dateString.substring(0, 10).split("-");
       return `${day}/${month}/${year}`;
     } catch {
@@ -223,7 +216,6 @@ export default function PacientesPage() {
     }
   };
 
-  // Definição das colunas
   const columns: ColumnDef<PatientListItem>[] = [
     ...(podeAdministrar
       ? [createSelectColumn<PatientListItem>({ allRows: true })]
@@ -242,7 +234,6 @@ export default function PacientesPage() {
               type="button"
               aria-label={`Ver foto de ${row.original.name}`}
               onClick={(e) => {
-                // A foto amplia; o resto da célula continua abrindo o cadastro.
                 e.stopPropagation();
                 setFotoAmpliada({
                   src: row.original.photoUrl!,
@@ -360,12 +351,10 @@ export default function PacientesPage() {
 
   return (
     <PageContainer className="border-gray-200">
-      {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3.5 border-b border-gray-200">
         <h1 className="ds-page-title">Pacientes</h1>
       </div>
 
-      {/* Search and Actions */}
       <div className="flex-none flex flex-wrap items-center gap-2.5 px-4 py-3 border-b border-gray-200">
         <SearchInput
           value={searchTerm}
@@ -411,7 +400,6 @@ export default function PacientesPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center h-full">
@@ -505,7 +493,6 @@ export default function PacientesPage() {
           </div>
         )}
 
-        {/* Paginação server-side */}
         {!loading && total > 0 && (
           <div className="flex-none flex items-center justify-between gap-2 px-4 py-3 border-t border-gray-200">
             <span className="text-xs text-gray-500">

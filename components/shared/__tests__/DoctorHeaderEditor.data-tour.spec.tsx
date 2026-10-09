@@ -3,14 +3,6 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DoctorHeaderEditor } from "@/components/shared/DoctorHeaderEditor";
 
-/**
- * Prova que o editor de cabeçalho carrega as âncoras `data-tour` que a
- * trilha `documentos-do-medico` (`lib/onboarding/tour-registry.ts`) espera
- * encontrar: "config-header-logo", "config-header-texto" e
- * "config-header-previa". Sem este teste, remover o atributo (ou trocar o
- * elemento) quebra o tour em silêncio.
- */
-
 vi.mock("@/components/shared/RichTextEditor", () => ({
   RichTextEditor: () => <div data-testid="rich-text-editor" />,
 }));

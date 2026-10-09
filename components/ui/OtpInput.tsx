@@ -35,7 +35,6 @@ export function OtpInput({
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Sync external value → internal digits
   useEffect(() => {
     const chars = value.split("").slice(0, length);
     setDigits(Array.from({ length }, (_, i) => chars[i] ?? ""));
@@ -54,7 +53,6 @@ export function OtpInput({
 
   const handleInput = useCallback(
     (index: number, raw: string) => {
-      // Accept only the last digit typed (handles mobile keyboards)
       const digit = raw.replace(/\D/g, "").slice(-1);
       if (!digit) return;
 

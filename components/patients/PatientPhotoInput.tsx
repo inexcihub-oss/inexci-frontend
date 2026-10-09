@@ -5,11 +5,6 @@ import { Camera, ImagePlus, Trash2, User } from "lucide-react";
 import { PATIENT_PHOTO_TYPES, prepararFotoPaciente } from "./foto-paciente";
 import { WebcamCaptureModal } from "./WebcamCaptureModal";
 
-/**
- * Foto no formulário de NOVO paciente: o arquivo fica só no formulário até o
- * cadastro ser salvo (quem envia é o modal, junto com os dados). Pode vir de
- * um arquivo ou da câmera.
- */
 export function PatientPhotoInput({
   value,
   onChange,
@@ -35,7 +30,6 @@ export function PatientPhotoInput({
   const escolher = async (file: File | undefined) => {
     if (inputRef.current) inputRef.current.value = "";
     if (!file) return;
-    // Acima de 2 MB, reduz no navegador antes de recusar.
     const { foto, erro: problema } = await prepararFotoPaciente(file);
     setErro(problema ?? null);
     if (foto) onChange(foto);

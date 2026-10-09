@@ -2,12 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-/**
- * Excluir um colaborador que é profissional de saúde precisa tirá-lo da lista
- * de médicos em cache (`["available-doctors"]`) — senão o wizard de SC e a
- * agenda seguem oferecendo-o por até 5 minutos.
- */
-
 const { getAll, remove } = vi.hoisted(() => ({
   getAll: vi.fn(),
   remove: vi.fn(),

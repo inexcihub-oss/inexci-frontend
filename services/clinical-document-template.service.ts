@@ -1,6 +1,5 @@
 import api from "@/lib/api";
 
-/** Documento que o modelo preenche (mesmos valores da API). */
 export type ClinicalDocumentTemplateKind =
   | "medical_certificate"
   | "exam_referral";
@@ -13,10 +12,6 @@ export const DOCUMENT_TEMPLATE_KIND_LABELS: Record<
   exam_referral: "Pedido de exame",
 };
 
-/**
- * Placeholders aceitos no texto do modelo. Espelho de
- * `DOCUMENT_PLACEHOLDERS` no backend (`shared/pdf/placeholders.util.ts`).
- */
 export const DOCUMENT_TEMPLATE_PLACEHOLDERS: { key: string; label: string }[] =
   [
     { key: "paciente.nome", label: "Nome do paciente" },
@@ -29,16 +24,13 @@ export const DOCUMENT_TEMPLATE_PLACEHOLDERS: { key: string; label: string }[] =
     { key: "inicio", label: "Início do afastamento" },
   ];
 
-/** Mesmo limite dos campos de texto do atestado e do pedido de exame. */
 export const DOCUMENT_TEMPLATE_BODY_MAX = 2000;
 
-/** Modelo de texto de atestado ou pedido de exame. */
 export interface ClinicalDocumentTemplate {
   id: string;
   doctorId: string;
   kind: ClinicalDocumentTemplateKind;
   name: string;
-  /** Texto puro com quebras de linha e placeholders `{{...}}`. */
   body: string;
   usageCount: number;
   createdAt: string;
@@ -49,7 +41,6 @@ export interface ApplyDocumentTemplatePayload {
   clinicalRecordId?: string;
   patientId?: string;
   doctorId?: string;
-  /** Reaplicação sem nova escolha do modelo: não conta outro uso. */
   refresh?: boolean;
 }
 
@@ -92,7 +83,6 @@ export const clinicalDocumentTemplateService = {
     await api.delete(`/clinical-records/document-templates/${id}`);
   },
 
-  /** Texto do modelo já preenchido para o paciente/médico; conta o uso. */
   async apply(
     id: string,
     payload: ApplyDocumentTemplatePayload,

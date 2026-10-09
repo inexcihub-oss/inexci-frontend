@@ -1,8 +1,5 @@
 import { useState, useCallback } from "react";
 
-/**
- * Hook para gerenciar estados booleanos
- */
 export function useToggle(initialValue: boolean = false) {
   const [value, setValue] = useState(initialValue);
 

@@ -3,13 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SolicitacaoDetalhePage from "./page";
 
-/**
- * Cobre a reabertura do `ApplyDocumentExtractionModal` a partir do link da
- * notificação de conclusão da análise em background
- * (`?applyDocExtractionJobId=`) — mesmo padrão do `docExtractionJobId` usado
- * pela criação de SC via documento em `/solicitacoes-cirurgicas`.
- */
-
 const { replaceMock, searchParamsState } = vi.hoisted(() => ({
   replaceMock: vi.fn(),
   searchParamsState: { value: new URLSearchParams() },

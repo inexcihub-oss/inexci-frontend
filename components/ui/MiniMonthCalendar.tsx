@@ -20,7 +20,6 @@ interface Props {
   initialMonth?: Date;
 }
 
-/** Calendário compacto com navegação de mês e seletor de ano. */
 export function MiniMonthCalendar({ selected, onSelect, initialMonth }: Props) {
   const [mode, setMode] = useState<"days" | "years">("days");
   const [cursor, setCursor] = useState<Date>(() =>
@@ -32,13 +31,11 @@ export function MiniMonthCalendar({ selected, onSelect, initialMonth }: Props) {
     addDays(startOfWeek(startOfMonth(cursor)), i),
   );
 
-  // Grade de 12 anos para o seletor de ano.
   const yearsStart = Math.floor(cursorYear / 12) * 12;
   const years = Array.from({ length: 12 }, (_, i) => yearsStart + i);
 
   return (
     <div className="w-64 bg-white rounded-xl">
-      {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <button
           type="button"

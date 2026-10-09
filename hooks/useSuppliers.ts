@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supplierService } from "@/services/supplier.service";
 
-/** Cadastro estável (P5/§8): muda pouco, cacheado por 20min entre navegações. */
 export const SUPPLIERS_QUERY_KEY = ["suppliers"] as const;
 const REGISTRY_STALE_TIME_MS = 1000 * 60 * 20;
 

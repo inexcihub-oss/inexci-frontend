@@ -10,9 +10,6 @@ import Benefits from "@/components/landing/benefits";
 import { SITE_URL } from "@/lib/landing/seo";
 
 export default async function LandingPage() {
-  // script estático no HTML inicial: strict-dynamic não cobre isso (só
-  // scripts inseridos via JS por um script já confiável) — precisa de nonce
-  // explícito, senão a CSP bloqueia o JSON-LD de SEO.
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <>

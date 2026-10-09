@@ -35,10 +35,6 @@ describe("TussCodePicker", () => {
     ).mockResolvedValue(results);
   });
 
-  /**
-   * O campo é controlado pelo formulário, então o teste precisa devolver o
-   * valor digitado — senão nada acumula e a busca nunca dispara.
-   */
   function Harness({ initial = "" }: { initial?: string }) {
     const [value, setValue] = useState(initial);
     return (
@@ -70,7 +66,6 @@ describe("TussCodePicker", () => {
     ).toBeDefined();
   });
 
-  // Sem isso o médico precisa adivinhar o que digitar para o catálogo abrir.
   it("já mostra sugestões ao focar o campo, sem digitar nada", async () => {
     const user = userEvent.setup();
     setup();
@@ -93,7 +88,6 @@ describe("TussCodePicker", () => {
     await user.click(screen.getByLabelText(/código tuss/i));
     const option = await screen.findByText("Hemograma completo");
 
-    // Dentro do container o dropdown seria cortado pelo overflow do modal.
     expect(container.contains(option)).toBe(false);
     expect(document.body.contains(option)).toBe(true);
   });
@@ -111,8 +105,6 @@ describe("TussCodePicker", () => {
     });
   });
 
-  // O catálogo cobre o comum, mas o convênio às vezes exige um código que não
-  // está lá — digitar continua valendo.
   it("aceita um código digitado que não veio do catálogo", async () => {
     const user = userEvent.setup();
     setup();

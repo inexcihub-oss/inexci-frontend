@@ -20,10 +20,6 @@ export interface MultipleUploadResponse {
 }
 
 class UploadService {
-  /**
-   * Gera URL assinada para um arquivo já armazenado
-   * @param path - Caminho do arquivo no bucket (ex: avatars/uuid.png)
-   */
   async getSignedUrl(path: string): Promise<string> {
     const response = await api.get<{ data: { url: string } }>(
       `/upload/signed-url?path=${encodeURIComponent(path)}`,
@@ -31,12 +27,6 @@ class UploadService {
     return response.data.data.url;
   }
 
-  /**
-   * Faz upload de um único arquivo
-   * @param file - Arquivo a ser enviado
-   * @param folder - Pasta de destino no bucket (opcional)
-   * @returns Dados do arquivo enviado
-   */
   async uploadSingle(
     file: File,
     folder: string = "documents",
@@ -59,12 +49,6 @@ class UploadService {
     return response.data;
   }
 
-  /**
-   * Faz upload de múltiplos arquivos
-   * @param files - Array de arquivos a serem enviados
-   * @param folder - Pasta de destino no bucket (opcional)
-   * @returns Dados dos arquivos enviados
-   */
   async uploadMultiple(
     files: File[],
     folder: string = "documents",

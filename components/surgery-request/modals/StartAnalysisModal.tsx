@@ -26,12 +26,6 @@ interface StartAnalysisModalProps {
   onSuccess: () => void;
 }
 
-/**
- * Modal "Indicar análise" — transição SENT (2) → IN_ANALYSIS (3).
- * Registra o número da solicitação na operadora e as datas de cotação.
- *
- * Referência visual: figma.com/design/OXxoQQfGpMYtBNGEMeWGUn — node 7:2273
- */
 export function StartAnalysisModal({
   isOpen,
   onClose,
@@ -176,14 +170,12 @@ export function StartAnalysisModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         style={{ opacity }}
         onClick={handleClose}
       />
 
-      {/* Modal — bottom sheet no mobile, centralizado no desktop */}
       <div
         className="relative bg-white w-full md:max-w-2xl flex flex-col rounded-t-3xl md:rounded-2xl max-h-[92vh] md:max-h-[85vh] animate-slide-up md:animate-scale-in md:mx-4 shadow-xl mobile-sheet-offset"
         style={
@@ -192,7 +184,6 @@ export function StartAnalysisModal({
             : undefined
         }
       >
-        {/* Drag handle — apenas mobile */}
         <div
           className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
           onTouchStart={onTouchStart}
@@ -202,9 +193,7 @@ export function StartAnalysisModal({
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 md:px-6 md:py-4 border-b border-neutral-100 shrink-0">
-          {/* Ícone de análise */}
           <div className="flex md:hidden items-center justify-center w-9 h-9 rounded-xl bg-primary-50 shrink-0">
             <svg
               className="w-5 h-5 text-primary-600"
@@ -251,9 +240,7 @@ export function StartAnalysisModal({
           </button>
         </div>
 
-        {/* Conteúdo com scroll */}
         <div className="flex flex-col gap-5 p-5 md:gap-4 md:p-6 overflow-y-auto">
-          {/* Alert informativo — apenas desktop */}
           <div className="hidden md:flex items-center gap-3 p-3 md:p-4 bg-blue-50 rounded-xl">
             <p className="text-sm md:text-base text-blue-600 leading-normal">
               Este protocolo corresponde ao número gerado pela operadora do
@@ -263,7 +250,6 @@ export function StartAnalysisModal({
             </p>
           </div>
 
-          {/* ── Dados da Solicitação ── */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
@@ -273,7 +259,6 @@ export function StartAnalysisModal({
             </div>
 
             <div className="bg-neutral-50 rounded-2xl p-4 flex flex-col gap-4 md:flex-row md:gap-4">
-              {/* Nº da solicitação */}
               <div className="flex flex-col gap-1.5 flex-1">
                 <label className="ds-label mb-0 text-xs font-medium text-neutral-600">
                   <span className="text-red-500 mr-0.5">*</span>
@@ -289,7 +274,6 @@ export function StartAnalysisModal({
                 />
               </div>
 
-              {/* Data de recebimento */}
               <div className="flex flex-col gap-1.5 flex-1">
                 <label className="ds-label mb-0 text-xs font-medium text-neutral-600">
                   <span className="text-red-500 mr-0.5">*</span>
@@ -307,7 +291,6 @@ export function StartAnalysisModal({
             </div>
           </div>
 
-          {/* ── Dados da cotação ── */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 shrink-0" />
@@ -320,7 +303,6 @@ export function StartAnalysisModal({
             </div>
 
             <div className="flex flex-col gap-3">
-              {/* Cotação 1 */}
               <div className="bg-neutral-50 rounded-2xl p-4 flex flex-col gap-3">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
                   <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary-600 text-white text-[10px] font-bold">
@@ -357,7 +339,6 @@ export function StartAnalysisModal({
                 </div>
               </div>
 
-              {/* Cotação 2 */}
               <div className="bg-neutral-50 rounded-2xl p-4 flex flex-col gap-3">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
                   <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary-600 text-white text-[10px] font-bold">
@@ -394,7 +375,6 @@ export function StartAnalysisModal({
                 </div>
               </div>
 
-              {/* Cotação 3 */}
               <div className="bg-neutral-50 rounded-2xl p-4 flex flex-col gap-3">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-500">
                   <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary-600 text-white text-[10px] font-bold">
@@ -433,7 +413,6 @@ export function StartAnalysisModal({
             </div>
           </div>
 
-          {/* ── Documento ── */}
           <div className="flex flex-col gap-1.5">
             <label className="ds-label mb-0 text-xs font-medium text-neutral-600">
               Documento
@@ -479,7 +458,6 @@ export function StartAnalysisModal({
             )}
           </div>
 
-          {/* ── Observações ── */}
           <div className="flex flex-col gap-1.5">
             <label className="ds-label mb-0 text-xs font-medium text-neutral-600">
               Observações
@@ -494,7 +472,6 @@ export function StartAnalysisModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center gap-3 px-5 py-4 md:px-6 md:py-4 border-t border-neutral-100 shrink-0">
           <button
             onClick={handleClose}

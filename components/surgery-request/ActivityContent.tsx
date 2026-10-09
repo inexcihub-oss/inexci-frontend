@@ -12,14 +12,6 @@ function escaparRegex(texto: string): string {
   return texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/**
- * Renderiza o comentário destacando as menções.
- *
- * O texto guardado é legível ("@Dr. Bruno confere?") e o vínculo real vive na
- * tabela de menções — o destaque aqui é cosmético e casa por nome. Nomes mais
- * longos vêm primeiro na alternância para que "@Ana Paula" não seja marcado
- * como "@Ana" quando os dois existem.
- */
 export function ActivityContent({ content, mentions }: ActivityContentProps) {
   const lista = mentions ?? [];
 

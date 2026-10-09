@@ -1,14 +1,5 @@
 import { describe, it, expect } from "vitest";
 
-/**
- * TASK-FE-I01: Testes de controle de acesso condicional na UI.
- *
- * Valida a lógica de filtragem de menus, proteção de rotas e
- * ocultação de seções com base em isAdmin e isDoctor.
- */
-
-// ─── Sidebar: filtragem de menu ───
-
 interface MenuItem {
   label: string;
   href: string;
@@ -30,8 +21,6 @@ function filterMenuItems(items: MenuItem[], isAdmin: boolean): MenuItem[] {
   });
 }
 
-// ─── BottomNavBar: filtragem de itens ───
-
 interface NavItem {
   label: string;
   href: string;
@@ -49,8 +38,6 @@ const allNavItems: NavItem[] = [
 function filterNavItems(items: NavItem[], isAdmin: boolean): NavItem[] {
   return items.filter((item) => !item.adminOnly || isAdmin);
 }
-
-// ─── Configurações: visibilidade de tabs ───
 
 type SettingsTab = "profile" | "notifications" | "plan" | "security";
 
@@ -71,8 +58,6 @@ function filterSettingsTabs(tabs: TabConfig[], isAdmin: boolean): TabConfig[] {
   return tabs.filter((tab) => !tab.adminOnly || isAdmin);
 }
 
-// ─── Proteção de rota ───
-
 function shouldRedirect(isAdmin: boolean, loading: boolean): boolean {
   return !loading && !isAdmin;
 }
@@ -81,13 +66,9 @@ function shouldRenderContent(isAdmin: boolean, loading: boolean): boolean {
   return !loading && isAdmin;
 }
 
-// ─── Configurações: dados profissionais ───
-
 function shouldShowProfessionalData(isDoctor: boolean): boolean {
   return isDoctor;
 }
-
-// ─── Testes ───
 
 describe("TASK-FE-I01 — Controle de acesso condicional na UI", () => {
   describe("Sidebar — Filtragem de menu por isAdmin", () => {

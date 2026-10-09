@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import NotificationsDropdown from "../NotificationsDropdown";
 
-// Mock next/link
 vi.mock("next/link", () => ({
   default: ({
     children,
@@ -19,7 +18,6 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-// Mock date-fns
 vi.mock("date-fns", () => ({
   formatDistanceToNow: () => "há 2 minutos",
 }));
@@ -41,9 +39,6 @@ vi.mock("@/services/notification.service", () => ({
   },
 }));
 
-// O hook agora vem do NotificationsContext (via socket único). Para os
-// testes deste dropdown não precisamos de socket real — fornecemos um stub
-// que apenas simula o estado compartilhado.
 let mockUnreadCount = 2;
 const mockSetUnreadCount = vi.fn(
   (next: number | ((prev: number) => number)) => {
@@ -149,10 +144,10 @@ describe("NotificationsDropdown", () => {
     fireEvent.click(screen.getByText("Notificações"));
 
     await waitFor(() => {
-      expect(screen.getByText("📋")).toBeInTheDocument(); // status_update
-      expect(screen.getByText("⏰")).toBeInTheDocument(); // stale
-      expect(screen.getByText("👤")).toBeInTheDocument(); // action_by_user
-      expect(screen.getByText("💬")).toBeInTheDocument(); // mention
+      expect(screen.getByText("📋")).toBeInTheDocument();
+      expect(screen.getByText("⏰")).toBeInTheDocument();
+      expect(screen.getByText("👤")).toBeInTheDocument();
+      expect(screen.getByText("💬")).toBeInTheDocument();
     });
   });
 
@@ -164,7 +159,6 @@ describe("NotificationsDropdown", () => {
       expect(screen.getByText("Status alterado")).toBeInTheDocument();
     });
 
-    // Click the link of the first unread notification
     const link = screen.getByText("Status alterado");
     fireEvent.click(link);
 
@@ -244,7 +238,6 @@ describe("NotificationsDropdown", () => {
 
   it("renderiza corretamente quando isCollapsed=true", () => {
     render(<NotificationsDropdown isCollapsed={true} />);
-    // The text "Notificações" should not be visible quando colapsado
     expect(screen.queryByText("Notificações")).not.toBeInTheDocument();
   });
 });

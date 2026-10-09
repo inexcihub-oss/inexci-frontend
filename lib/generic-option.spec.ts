@@ -28,8 +28,6 @@ describe("opção genérica do OPME", () => {
   });
 
   it("traz o plural legado para o nome canônico", () => {
-    // Solicitação antiga e modelo salvo ainda carregam "Outros". Sem
-    // normalizar, a lista de slots aparece com os dois nomes misturados.
     expect(padWithGenericOption(["Outros"])).toEqual([
       "Outro",
       "Outro",

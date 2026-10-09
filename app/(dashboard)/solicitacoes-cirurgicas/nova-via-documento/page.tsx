@@ -51,13 +51,6 @@ import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { TOUR_DEMO_EXTRACTION_MARKER } from "@/lib/onboarding/demo-data";
 import { padWithGenericOption } from "@/lib/generic-option";
 
-// ─── Padding de fornecedor/fabricante OPME ──────────────────────────────────
-//
-// A plataforma exige >=3 fornecedores e >=3 fabricantes por item OPME.
-// Pré-preenchemos com o genérico "Outro" para que o OpmeModal já abra em
-// estado completo: o documento raramente traz três, e o médico quer subir o
-// rascunho sem inventar alternativas.
-
 function dedupeNames(names: (string | undefined)[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -73,8 +66,6 @@ function dedupeNames(names: (string | undefined)[]): string[] {
 }
 
 
-
-// ─── Utils ───────────────────────────────────────────────────────────────────
 
 function normalizeToIsoDate(dateStr: string | undefined): string {
   if (!dateStr) return "";
@@ -95,8 +86,6 @@ function mergeEntityCandidates(
   }
   return Array.from(byId.values());
 }
-
-// ─── Schema ──────────────────────────────────────────────────────────────────
 
 const formSchema = z
   .object({
@@ -192,8 +181,6 @@ interface SectionRow {
   description: string;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
-
 export default function NovaViaDocumentoPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -217,9 +204,7 @@ export default function NovaViaDocumentoPage() {
   const [isTussModalOpen, setIsTussModalOpen] = useState(false);
   const [isOpmeModalOpen, setIsOpmeModalOpen] = useState(false);
 
-  // `fresh`: a lista decide quem pode ser dono da SC — revalida ao montar.
   const { data: allDoctors = [] } = useAvailableDoctors({ fresh: true });
-  // SC é de médico (CRM) — ver `canOwnSurgeryRequest`.
   const availableDoctors = useMemo(
     () => allDoctors.filter(canOwnSurgeryRequest),
     [allDoctors],
@@ -255,7 +240,6 @@ export default function NovaViaDocumentoPage() {
 
   const { values, errors, setField, setValues } = form;
 
-  // Busca automática de endereço por CEP (ViaCEP) — só ativa em modo "novo paciente"
   const { loading: cepLoading } = useCepLookup({
     cep: values.newPatientZipCode,
     enabled: values.patientMode === "new",
@@ -269,16 +253,6 @@ export default function NovaViaDocumentoPage() {
     },
   });
 
-  // Carrega extraction do localStorage com TTL.
-  //
-  // Guard de idempotência (`if (extraction) return;`): esta leitura só deve
-  // acontecer uma vez. Sem o guard, o efeito reexecuta sempre que `router`
-  // trocar de identidade — o que não acontece no `useRouter` real do Next
-  // (referência estável), mas pode acontecer com providers/mocks que devolvem
-  // um objeto novo a cada render — e `getScFromDocumentStorage` faz um
-  // `JSON.parse` novo a cada chamada, então `setExtraction` receberia uma
-  // referência nova (ainda que com o mesmo conteúdo) a cada execução,
-  // realimentando o próprio efeito num loop de render infinito.
   useEffect(() => {
     if (extraction) return;
 
@@ -335,7 +309,6 @@ export default function NovaViaDocumentoPage() {
       .catch(() => {});
   }, []);
 
-  // Preenche o formulário e as listas de TUSS/OPME após carregar a extração
   useEffect(() => {
     if (!extraction) return;
     const e = extraction.extracted ?? {};
@@ -413,12 +386,7 @@ export default function NovaViaDocumentoPage() {
     if (!extraction || !firstAvailableDoctorId) return;
     if (values.doctorId) return;
     setField("doctorId", firstAvailableDoctorId);
-    // Depende do id primitivo, não do array `availableDoctors` — um caller
-    // (real ou de teste) que devolva uma nova referência de array a cada
-    // render não deve fazer este efeito reexecutar.
   }, [extraction, firstAvailableDoctorId, setField, values.doctorId]);
-
-  // ─── OPME/TUSS helpers ─────────────────────────────────────────────────────
 
   const toggleOpmeExpand = (id: string) =>
     setExpandedOpme((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -428,8 +396,6 @@ export default function NovaViaDocumentoPage() {
 
   const removeTussItem = (id: string) =>
     setTussItems((prev) => prev.filter((item) => item.id !== id));
-
-  // ─── Seções do laudo helpers ───────────────────────────────────────────────
 
   const addSectionRow = () =>
     setSectionRows((prev) => [...prev, { title: "", description: "" }]);
@@ -446,12 +412,7 @@ export default function NovaViaDocumentoPage() {
       prev.map((row, idx) => (idx === i ? { ...row, [field]: value } : row)),
     );
 
-  // ─── Submit ────────────────────────────────────────────────────────────────
-
   const handleSubmit = form.handleSubmit(async (values) => {
-    // Defesa em profundidade: o botão já fica desabilitado (`emTour ||
-    // isFabricado`), mas o handler não pode depender só disso — checa a
-    // proveniência do dado, não só `emTour`.
     if (emTour || isFabricado) return;
     if (!extraction) return;
     setSubmitting(true);
@@ -591,8 +552,6 @@ export default function NovaViaDocumentoPage() {
   const ext = extraction.extracted ?? {};
   const extractedPatient = ext.patient;
 
-  // Só exibimos os campos que o documento efetivamente preencheu — o resto
-  // o usuário completa depois, no cadastro do paciente.
   const showBirthDate = !!extractedPatient?.birthDate;
   const showGender = !!extractedPatient?.gender;
   const showPhone = !!extractedPatient?.phone;
@@ -606,18 +565,12 @@ export default function NovaViaDocumentoPage() {
   const showHealthPlanNumber = !!ext.healthPlan?.planId;
   const showHealthPlanSection = true;
   const showHospitalSection = true;
-  /**
-   * Proveniência do dado, não só `emTour`: o usuário pode sair do tour ainda
-   * nesta tela — sem checar `tempStoragePath`, ele poderia criar uma SC de
-   * verdade com dados fabricados.
-   */
   const isFabricado = extraction.tempStoragePath === TOUR_DEMO_EXTRACTION_MARKER;
 
   return (
     <PageContainer>
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-          {/* Header */}
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -642,7 +595,6 @@ export default function NovaViaDocumentoPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            {/* Procedimento */}
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 Procedimento{" "}
@@ -667,7 +619,6 @@ export default function NovaViaDocumentoPage() {
               />
             </div>
 
-            {/* Médico */}
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                 Médico <span className="text-red-500">*</span>
@@ -680,13 +631,11 @@ export default function NovaViaDocumentoPage() {
               />
             </div>
 
-            {/* Paciente */}
             <div className="space-y-3">
               <label className="block text-sm font-medium text-neutral-700">
                 Paciente <span className="text-red-500">*</span>
               </label>
 
-              {/* Toggle existente / novo — só faz sentido quando há candidatos */}
               {patientOptions.length > 0 && (
                 <div className="flex gap-2">
                   <button
@@ -869,8 +818,6 @@ export default function NovaViaDocumentoPage() {
               )}
             </div>
 
-            {/* Convênio — convênio (vínculo da SC) e número da carteirinha ficam
-              juntos no mesmo cartão, como na página de detalhe do paciente. */}
             {showHealthPlanSection && (
               <FormSection title="Convênio">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -903,7 +850,6 @@ export default function NovaViaDocumentoPage() {
               </FormSection>
             )}
 
-            {/* Hospital */}
             {showHospitalSection && (
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-1.5">
@@ -922,7 +868,6 @@ export default function NovaViaDocumentoPage() {
               </div>
             )}
 
-            {/* Códigos TUSS — mesmo design da aba "Código TUSS" da solicitação */}
             <div className="border border-neutral-100 rounded-2xl overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
                 <h3 className="ds-section-title">Códigos TUSS</h3>
@@ -981,7 +926,6 @@ export default function NovaViaDocumentoPage() {
               )}
             </div>
 
-            {/* Materiais OPME — mesmo design da aba "OPME" da solicitação */}
             <div className="border border-neutral-100 rounded-2xl overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
                 <h3 className="ds-section-title">Materiais OPME</h3>
@@ -1059,7 +1003,6 @@ export default function NovaViaDocumentoPage() {
 
                       {expanded && (
                         <div className="flex flex-col sm:flex-row w-full border-b border-neutral-100">
-                          {/* Fabricantes */}
                           <div className="flex-1 flex flex-col sm:border-r border-b sm:border-b-0 border-neutral-100">
                             <div className="flex w-full px-4 py-3 bg-white border-b border-neutral-100">
                               <span className="text-xs font-semibold text-gray-500 w-full">
@@ -1082,7 +1025,6 @@ export default function NovaViaDocumentoPage() {
                             ))}
                           </div>
 
-                          {/* Fornecedores */}
                           <div className="flex-1 flex flex-col">
                             <div className="flex w-full px-4 py-3 bg-white border-b border-neutral-100">
                               <span className="text-xs font-semibold text-gray-500 w-full">
@@ -1112,7 +1054,6 @@ export default function NovaViaDocumentoPage() {
               )}
             </div>
 
-            {/* Seções do laudo */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-neutral-700">
@@ -1182,7 +1123,6 @@ export default function NovaViaDocumentoPage() {
               )}
             </div>
 
-            {/* Ações */}
             <div className="flex flex-col sm:flex-row gap-3 sm:justify-end pt-2">
               <Button
                 type="button"

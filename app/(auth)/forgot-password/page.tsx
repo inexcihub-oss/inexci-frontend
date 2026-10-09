@@ -39,11 +39,8 @@ function ForgotPasswordForm() {
 
   const email = emailForm.values.email;
   const validatingRef = useRef(false);
-  // Reset token de uso único emitido na validação do código (etapa 2) e exigido
-  // na troca de senha (etapa 3).
   const [resetToken, setResetToken] = useState("");
 
-  /* ── Etapa 1: solicitar código ── */
   const handleSendCode = emailForm.handleSubmit(async (data) => {
     setError("");
     setIsLoading(true);
@@ -60,7 +57,6 @@ function ForgotPasswordForm() {
     }
   });
 
-  /* ── Etapa 2: validar código ── */
   const handleValidateCode = codeForm.handleSubmit(async (data) => {
     await runCodeValidation(data.code);
   });
@@ -82,7 +78,6 @@ function ForgotPasswordForm() {
     }
   };
 
-  /* ── Etapa 3: redefinir senha ── */
   const handleChangePassword = passwordForm.handleSubmit(async (data) => {
     setError("");
     setIsLoading(true);
@@ -102,10 +97,8 @@ function ForgotPasswordForm() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* ── Lado esquerdo: formulário ── */}
       <div className="flex-1 flex items-center justify-center px-5 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-6 sm:space-y-8">
-          {/* Logo */}
           <div className="flex justify-center">
             <Image
               src="/brand/logo.png"
@@ -116,7 +109,6 @@ function ForgotPasswordForm() {
             />
           </div>
 
-          {/* ── Tela de sucesso ── */}
           {step === "success" && (
             <div className="text-center space-y-6">
               <div className="flex justify-center">
@@ -142,10 +134,8 @@ function ForgotPasswordForm() {
             </div>
           )}
 
-          {/* ── Etapas 1, 2, 3 ── */}
           {step !== "success" && (
             <>
-              {/* Indicador de etapas */}
               <div className="flex items-center justify-center gap-2">
                 {(["email", "code", "password"] as Step[]).map((s, i) => (
                   <div key={s} className="flex items-center gap-2">
@@ -177,7 +167,6 @@ function ForgotPasswordForm() {
                 ))}
               </div>
 
-              {/* Título por etapa */}
               <div className="text-center">
                 {step === "email" && (
                   <>
@@ -228,7 +217,6 @@ function ForgotPasswordForm() {
                 )}
               </div>
 
-              {/* ── Formulário: Etapa 1 — E-mail ── */}
               {step === "email" && (
                 <form
                   onSubmit={handleSendCode}
@@ -273,7 +261,6 @@ function ForgotPasswordForm() {
                 </form>
               )}
 
-              {/* ── Formulário: Etapa 2 — Código ── */}
               {step === "code" && (
                 <form
                   onSubmit={handleValidateCode}
@@ -322,7 +309,6 @@ function ForgotPasswordForm() {
                 </form>
               )}
 
-              {/* ── Formulário: Etapa 3 — Nova senha ── */}
               {step === "password" && (
                 <form
                   onSubmit={handleChangePassword}
@@ -372,7 +358,6 @@ function ForgotPasswordForm() {
         </div>
       </div>
 
-      {/* ── Lado direito: decorativo (igual ao login) ── */}
       <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <div className="absolute inset-0 opacity-10">
           <div
@@ -440,7 +425,6 @@ export default function ForgotPasswordPage() {
   return <ForgotPasswordForm />;
 }
 
-/* ── helpers ── */
 function extractMessage(err: unknown): string | undefined {
   if (typeof err === "object" && err !== null && "response" in err) {
     return (err as { response?: { data?: { message?: string } } }).response

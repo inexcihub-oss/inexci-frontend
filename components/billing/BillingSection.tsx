@@ -27,7 +27,6 @@ export function BillingSection() {
   const [redirecting, setRedirecting] = useState(false);
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
-  // Passo "planos-disponiveis" da trilha Plano e cota: abre o modal sozinho.
   useOnboardingAction(ACAO_PLANO_ABRIR_SELECAO, () =>
     setIsPlansModalOpen(true),
   );
@@ -53,7 +52,6 @@ export function BillingSection() {
   }, [refreshSubscription]);
 
   const handleCheckout = async (plan: SubscriptionPlan) => {
-    // Redireciona para a Stripe de verdade — nunca durante o tour.
     if (emTour) return;
     try {
       setRedirecting(true);
@@ -65,13 +63,7 @@ export function BillingSection() {
     }
   };
 
-  /**
-   * Abre o Portal da Stripe. Com um plano em mãos (troca de plano a partir do
-   * seletor), o portal já cai na confirmação daquele plano — sem ele, o usuário
-   * aterrissava na home do portal e a seleção se perdia.
-   */
   const handleManage = async (plan?: SubscriptionPlan) => {
-    // Redireciona para a Stripe de verdade — nunca durante o tour.
     if (emTour) return;
     try {
       setRedirecting(true);

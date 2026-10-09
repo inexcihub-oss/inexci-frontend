@@ -3,15 +3,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, AxiosHeaders } from "axios";
 
-/**
- * Bug relatado: ao atingir o limite de solicitações do plano, o envio
- * PENDING → SENT simplesmente parava de funcionar. O backend devolvia
- * 402 com `reason: quota_exceeded`, mas o modal só sabia interpretar o 400
- * de pendências e caía num toast genérico ("Erro ao enviar solicitação").
- *
- * Agora o 402 abre o aviso de bloqueio, com caminho de upgrade.
- */
-
 const showToast = vi.fn();
 const refreshSubscription = vi.fn();
 const sendMock = vi.fn();
@@ -94,11 +85,8 @@ function renderModal() {
   );
 }
 
-/** Percorre o wizard até disparar o envio por download (caminho mais curto). */
 async function enviarPorDownload(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("button", { name: /próximo/i }));
-  // "Download Manual" também aparece no texto do aviso de status abaixo do
-  // botão, então mira no botão pelo nome acessível em vez do texto solto.
   await user.click(
     await screen.findByRole("button", { name: /^download manual/i }),
   );

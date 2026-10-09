@@ -33,8 +33,6 @@ describe("tussService", () => {
         ],
       });
 
-      // Nada de `procedureId`: o catálogo TUSS não tem uuid e o backend
-      // recusava o payload inteiro ao validá-lo como tal.
       expect(api.post).toHaveBeenCalledWith("/surgery-requests/procedures", {
         surgeryRequestId: "sr-1",
         procedures: [
@@ -48,7 +46,6 @@ describe("tussService", () => {
     });
 
     it("não deve aceitar procedures sem tuss_code e name (TypeScript enforced)", () => {
-      // Verifica que a interface requer tuss_code e name
       const validProcedure = {
         tussCode: "30715016",
         name: "Artroscopia",

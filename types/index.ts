@@ -1,14 +1,10 @@
 import type { ProfessionalCouncil } from "@/lib/professional-council";
-// ─── Doctor Profile ───────────────────────────────────────────────────────────
 
 export interface DoctorProfile {
   id: string;
   userId: string;
-  /** Conselho profissional; ausente em respostas antigas = CRM. */
   council?: ProfessionalCouncil;
-  /** Número no conselho (nome histórico). Opcional fora do CRM. */
   crm: string | null;
-  /** UF do conselho (nome histórico). */
   crmState: string | null;
   specialty?: string;
   signatureUrl?: string;
@@ -16,8 +12,6 @@ export interface DoctorProfile {
   clinicCnpj?: string;
   clinicAddress?: string;
 }
-
-// ─── User types ───────────────────────────────────────────────────────────────
 
 import type { ConsentStatus } from "@/types/consent.types";
 import type { OnboardingState } from "@/lib/onboarding/state";
@@ -33,41 +27,22 @@ export interface User {
   role: "admin" | "collaborator";
   accountId: string;
   avatarUrl?: string | null;
-  /** Tem perfil profissional (qualquer conselho): atende e tem agenda. */
   isDoctor: boolean;
-  /**
-   * Perfil de **médico** (CRM): emite receita/atestado/pedido de exame e
-   * indica cirurgia. Vem do backend; ausente = false.
-   */
   isPhysician?: boolean;
-  /**
-   * Emite receita, atestado e pedido de exame: médico (CRM) ou dentista
-   * (CRO). Vem do backend; ausente = deduz do conselho do perfil.
-   */
   canIssueClinicalDocuments?: boolean;
-  /** Permissão **efetiva**, já derivada no backend. */
   permissions?: Permission[];
   emailVerified?: boolean;
   doctorProfile?: DoctorProfile;
   adminId?: string;
-  /**
-   * Conta (tenant) à qual o usuário pertence. Presente apenas quando o usuário
-   * não é o dono da própria conta (ex.: colaboradores), permitindo exibir "de
-   * quem" é a equipe. `null`/ausente para admins.
-   */
   account?: {
     ownerName: string;
     ownerIsDoctor: boolean;
   } | null;
   createdAt: string;
   updatedAt: string;
-  /** Embutido no `/auth/me` (item 4.4b) — evita round-trip extra no boot. */
   consents?: ConsentStatus;
-  /** Embutido no `/auth/me` pelo mesmo motivo de `consents`: evita round-trip no boot. */
   onboardingState?: OnboardingState;
 }
-
-// ─── User Doctor Access ───────────────────────────────────────────────────────
 
 export interface UserDoctorAccess {
   id: string;
@@ -77,27 +52,17 @@ export interface UserDoctorAccess {
   doctor: { id: string; name: string; crm: string; specialty?: string };
 }
 
-// ─── Available Doctor ─────────────────────────────────────────────────────────
-
 export interface AvailableDoctor {
   id: string;
   name: string;
   crm: string | null;
   crmState: string | null;
   specialty?: string;
-  /** Conselho do profissional; ausente em respostas antigas = CRM. */
   council?: ProfessionalCouncil;
-  /**
-   * Médico (CRM). A Agenda lista todos os profissionais; o wizard de SC só os
-   * médicos. Ausente = trata como médico (resposta anterior ao conselho).
-   */
   isPhysician?: boolean;
-  /** Emite receita, atestado e pedido de exame (CRM ou CRO). */
   canIssueClinicalDocuments?: boolean;
   status?: "pending" | "active" | "inactive" | string;
 }
-
-// ─── Doctor Summary (tipo canônico para médicos) ─────────────────────────────
 
 export interface DoctorSummary {
   id: string;
@@ -109,7 +74,6 @@ export interface DoctorSummary {
   doctorProfile?: DoctorProfile;
 }
 
-// Auth types
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -120,24 +84,12 @@ export interface RegisterData {
   email: string;
   phone?: string;
   password: string;
-  /**
-   * Campos enviados em camelCase porque o backend usa
-   * `forbidNonWhitelisted: true` e o `RegisterDto` declara `isDoctor` /
-   * `crmState`. Usar snake_case faz o request retornar 400.
-   */
   isDoctor?: boolean;
   crm?: string;
   crmState?: string;
   specialty?: string;
-  /**
-   * Slug do plano selecionado no cadastro (`starter`, `essencial`,
-   * `profissional`, `avancado`, `enterprise`). Quando omitido, usa o
-   * plano default (starter — 30 dias grátis sem cartão).
-   */
   planSlug?: string;
 }
-
-// ─── Billing ──────────────────────────────────────────────────────────────────
 
 export type BillingPeriod = "MONTHLY" | "YEARLY";
 
@@ -149,7 +101,7 @@ export interface SubscriptionPlan {
   priceCents: number;
   currency: string;
   billingPeriod: BillingPeriod;
-  surgeryRequestQuota: number; // -1 = ilimitado
+  surgeryRequestQuota: number;
   sortOrder: number;
   isTrialDefault: boolean;
   gatewayPriceId?: string | null;
@@ -181,13 +133,6 @@ export interface QuotaSnapshot {
   periodEnd: string;
 }
 
-/**
- * Recorte da cota devolvido por `GET /billing/quota` — visível a qualquer
- * usuário da conta com permissão de solicitações, não só ao dono.
- *
- * `remaining` é `null` quando o plano é ilimitado (o `QuotaSnapshot` usa
- * `Infinity`, que o JSON serializa como `null`).
- */
 export interface QuotaStatus {
   used: number;
   limit: number;
@@ -215,7 +160,6 @@ export interface AuthResponse {
   user: User;
 }
 
-// Surgery Request types
 export interface SurgeryRequest {
   id: string;
   patientId: string;
@@ -228,7 +172,6 @@ export interface SurgeryRequest {
   updatedAt: string;
 }
 
-// Patient types
 export interface Patient {
   id: string;
   name: string;
@@ -241,7 +184,6 @@ export interface Patient {
   updatedAt: string;
 }
 
-// Hospital types
 export interface Hospital {
   id: string;
   name: string;
@@ -253,7 +195,6 @@ export interface Hospital {
   updatedAt: string;
 }
 
-// Supplier types
 export interface Supplier {
   id: string;
   name: string;
@@ -265,7 +206,6 @@ export interface Supplier {
   updatedAt: string;
 }
 
-// Procedure types
 export interface Procedure {
   id: string;
   code: string;
@@ -275,7 +215,6 @@ export interface Procedure {
   updatedAt: string;
 }
 
-// Health Plan types
 export interface HealthPlan {
   id: string;
   name: string;
@@ -286,7 +225,6 @@ export interface HealthPlan {
   updatedAt: string;
 }
 
-// API Response types
 export interface ApiResponse<T> {
   data: T;
   message?: string;

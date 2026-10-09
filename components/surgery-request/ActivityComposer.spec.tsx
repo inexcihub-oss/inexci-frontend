@@ -19,8 +19,6 @@ const usuarios = [
 
 describe("ActivityComposer", () => {
   beforeEach(() => {
-    // Sem isto as chamadas vazam entre os testes e as asserções de
-    // "não enviou nada" passam a ver as chamadas dos testes anteriores.
     vi.clearAllMocks();
     vi.mocked(surgeryRequestService.getMentionableUsers).mockResolvedValue(
       usuarios,
@@ -154,12 +152,6 @@ describe("ActivityComposer", () => {
 
     const campo = screen.getByPlaceholderText("Escreva um comentário");
 
-    // Asserção de classe por falta de alternativa: jsdom não calcula layout,
-    // então o tamanho efetivo não é observável aqui. `text-xs` é o que casa
-    // com as mensagens já publicadas; `ds-input-xs` é o que neutraliza a
-    // regra global que força 16px em input no mobile (anti-zoom do iOS) —
-    // sem ela o texto digitado fica maior que a conversa e que o mesmo campo
-    // no desktop.
     expect(campo).toHaveClass("text-xs");
     expect(campo).toHaveClass("ds-input-xs");
   });

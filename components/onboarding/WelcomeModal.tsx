@@ -21,12 +21,6 @@ export function WelcomeModal({ onFinish, onSkip }: Props) {
   const [slide, setSlide] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * O terceiro slide é montado a partir das áreas do usuário: o médico lê
-   * sobre atender, o assistente de agenda lê sobre marcar consultas. Sem área
-   * nenhuma (colaborador recém-criado), cai numa linha genérica — nunca num
-   * slide vazio.
-   */
   const seuPapelLinhas = useMemo(() => {
     const linhas = ALL_PERMISSIONS.filter((p) =>
       viewer.permissions.includes(p),
@@ -62,22 +56,16 @@ export function WelcomeModal({ onFinish, onSkip }: Props) {
     onSkip();
   }, [marcarComoVisto, onSkip]);
 
-  // Foco inicial na montagem e a cada mudança de slide, assim como em
-  // TourOverlay. Foca o DIÁLOGO, não o primeiro botão: o primeiro botão é
-  // "Pular por agora" (ação dispensiva), e um usuário de teclado que aperta
-  // Enter no reflexo ao abrir o diálogo pularia o onboarding sem querer.
   useEffect(() => {
     dialogRef.current?.focus();
   }, [slide]);
 
-  // Teclado: Esc sai, Tab fica preso no diálogo
   useEffect(() => {
     const aoTeclar = (evento: KeyboardEvent) => {
       if (evento.key === "Escape") {
         evento.preventDefault();
         pular();
       } else if (evento.key === "Tab") {
-        // Tab preso no diálogo: sem deixar sair para a página de trás
         const foco = dialogRef.current?.querySelectorAll<HTMLElement>(
           "button, [href], [tabindex]:not([tabindex=\"-1\"])",
         );
@@ -107,10 +95,6 @@ export function WelcomeModal({ onFinish, onSkip }: Props) {
         tabIndex={-1}
         className="w-full max-w-lg overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl focus:outline-none"
       >
-        {/*
-          Faixa de marca: é o que tira o diálogo de "caixa branca genérica" —
-          ícone da INEXCI + eyebrow, antes de qualquer texto de conteúdo.
-        */}
         <div className="flex items-center gap-3 bg-gradient-to-br from-primary-50 via-white to-primary-50 px-6 py-5 sm:px-8">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-primary-100">
             <Image
@@ -126,11 +110,6 @@ export function WelcomeModal({ onFinish, onSkip }: Props) {
           </p>
         </div>
 
-        {/*
-          Trilho de progresso segmentado — elemento de assinatura do modal.
-          Três segmentos iguais avisam, antes de qualquer leitura, que são só
-          três passos curtos: é isso que desarma o reflexo de pular.
-        */}
         <div className="flex gap-1 px-6 sm:px-8" aria-hidden>
           {slides.map((_, i) => (
             <span
@@ -142,7 +121,6 @@ export function WelcomeModal({ onFinish, onSkip }: Props) {
           ))}
         </div>
 
-        {/* Corpo do slide */}
         <div className="px-6 py-6 sm:px-8 sm:py-7">
           <h2
             id="boas-vindas-titulo"
@@ -151,7 +129,6 @@ export function WelcomeModal({ onFinish, onSkip }: Props) {
             {atual.titulo}
           </h2>
 
-          {/* Renderiza conteúdo diferente se é lista ou parágrafo */}
           {temMultiplasAreas && Array.isArray(atual.corpo) ? (
             <ul className="mt-3 space-y-2 text-sm leading-relaxed text-neutral-600 sm:text-base">
               {atual.corpo.map((linha, idx) => (

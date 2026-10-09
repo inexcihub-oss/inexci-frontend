@@ -12,7 +12,6 @@ export const createCollaboratorSchema = z
     phone: phoneSchema,
     email: emailSchema,
     isDoctor: z.boolean().default(false),
-    /** Conselho do profissional. CRM = médico (default). */
     council: z
       .enum(["CRM", "CRP", "CRN", "COREN", "CREFITO", "CRFA", "CRO", "CRBM", "CREF", "OUTRO"])
       .default("CRM"),
@@ -22,8 +21,6 @@ export const createCollaboratorSchema = z
     permissions: z.array(z.nativeEnum(Permission)).default([]),
   })
   .superRefine((data, ctx) => {
-    // Número e UF são obrigatórios só para médico (CRM). Os demais conselhos
-    // podem ficar sem registro cadastrado.
     if (data.isDoctor && (data.council ?? "CRM") === "CRM") {
       if (!data.crm || !data.crm.trim()) {
         ctx.addIssue({
@@ -44,7 +41,6 @@ export const createCollaboratorSchema = z
 
 export type CreateCollaboratorInput = z.infer<typeof createCollaboratorSchema>;
 
-/** Modal rápido (CreateManagerModal). */
 export const createManagerSchema = z.object({
   name: fullNameSchema,
   phone: phoneSchema,

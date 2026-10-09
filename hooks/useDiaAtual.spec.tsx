@@ -25,7 +25,6 @@ describe("useDiaAtual", () => {
     const { result } = renderHook(() => useDiaAtual());
     expect(result.current).toBe("2026-10-07");
 
-    // Computador suspenso: o relógio pulou sem o timer disparar.
     vi.setSystemTime(new Date(2026, 9, 8, 8, 0, 0));
     act(() => {
       window.dispatchEvent(new Event("focus"));

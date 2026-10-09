@@ -13,7 +13,6 @@ const PLAN_TAB_HREF = "/configuracoes?tab=plan";
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  /** Bloqueio devolvido pelo backend (HTTP 402) ou derivado da assinatura. */
   block: BillingBlockError;
 }
 
@@ -23,11 +22,8 @@ interface Copy {
   tone: Tone;
   icon: React.ElementType;
   title: string;
-  /** Texto para quem pode resolver — o dono da conta. */
   ownerDescription: string;
-  /** Rótulo do CTA que leva à tela de planos. */
   ownerAction: string;
-  /** Texto para quem não gerencia a assinatura. */
   memberDescription: string;
 }
 
@@ -113,16 +109,6 @@ function formatarData(iso: string): string {
       });
 }
 
-/**
- * Aviso de bloqueio comercial (HTTP 402): cota do plano atingida, assinatura
- * suspensa/cancelada, trial expirado.
- *
- * A cópia muda conforme quem está na frente da tela. Só o **dono da conta**
- * (`isAccountOwner`) gerencia plano e pagamento — e só ele enxerga a aba de
- * plano em `/configuracoes`. Para os demais (inclusive o admin delegado), o
- * CTA seria um beco sem saída, então o modal orienta a procurar o
- * administrador da conta.
- */
 export function BillingLimitModal({ isOpen, onClose, block }: Props) {
   const { isAccountOwner, subscription } = useAuth();
 

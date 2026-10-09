@@ -7,8 +7,6 @@ import {
   passwordsMatchRefine,
 } from "./shared";
 
-// ─── Etapa 1 — Dados pessoais ─────────────────────────────────────────────────
-
 export const step1Schema = z
   .object({
     name: fullNameSchema,
@@ -20,8 +18,6 @@ export const step1Schema = z
   .superRefine(passwordsMatchRefine);
 
 export type Step1Input = z.infer<typeof step1Schema>;
-
-// ─── Etapa 2 — Perfil ─────────────────────────────────────────────────────────
 
 export const step2Schema = z
   .object({

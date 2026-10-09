@@ -7,11 +7,6 @@ export const billingService = {
     return data;
   },
 
-  /**
-   * Cota do ciclo corrente. Diferente de `getMySubscription`, não exige ser o
-   * dono da conta — qualquer usuário com permissão de solicitações lê a própria
-   * cota, porque é ele quem esbarra no limite ao enviar.
-   */
   async getQuota(): Promise<QuotaStatus | null> {
     const { data } = await api.get<QuotaStatus | null>("/billing/quota");
     return data ?? null;
@@ -30,10 +25,6 @@ export const billingService = {
     return data;
   },
 
-  /**
-   * `planId` opcional: quando informado, o portal abre direto no fluxo de troca
-   * para aquele plano em vez da home do portal.
-   */
   async openPortal(planId?: string): Promise<{ url: string }> {
     const { data } = await api.post<{ url: string }>(
       "/billing/subscription/portal",

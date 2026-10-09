@@ -1,6 +1,5 @@
 import api from "@/lib/api";
 
-/** Período da grade semanal de um profissional (MIG-05). */
 export interface DoctorSchedule {
   id: string;
   doctorId: string;
@@ -8,9 +7,7 @@ export interface DoctorSchedule {
   roomId: string | null;
   clinic?: { id: string; name: string } | null;
   room?: { id: string; name: string } | null;
-  /** 0 = domingo … 6 = sábado. */
   weekday: number;
-  /** `HH:MM:SS`, horário de São Paulo. */
   startTime: string;
   endTime: string;
   slotMinutes: number;
@@ -25,7 +22,6 @@ export interface DoctorSchedulePayload {
   clinicId?: string | null;
   roomId?: string | null;
   weekday?: number;
-  /** `HH:MM`. */
   startTime?: string;
   endTime?: string;
   slotMinutes?: number;
@@ -35,7 +31,6 @@ export interface DoctorSchedulePayload {
   active?: boolean;
 }
 
-/** Bloqueio de agenda. `doctorId` nulo = toda a clínica. */
 export interface ScheduleBlock {
   id: string;
   doctorId: string | null;
@@ -58,7 +53,6 @@ export interface ScheduleBlockPayload {
 export interface Holiday {
   id: string;
   name: string;
-  /** `YYYY-MM-DD`. */
   date: string;
   recurring: boolean;
   blocksAgenda: boolean;
@@ -78,7 +72,6 @@ export interface AvailabilitySlot {
   end: string;
   free: boolean;
   reason?: SlotReason;
-  /** Clínica/sala do período da grade (null = grade sem local). */
   clinicId?: string | null;
   roomId?: string | null;
 }
@@ -155,7 +148,6 @@ export const availabilityService = {
     await api.delete(`/availability/holidays/${id}`);
   },
 
-  /** Horários da grade com ocupação, por dia (`YYYY-MM-DD`). */
   async getSlots(params: {
     doctorId: string;
     from: string;

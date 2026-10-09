@@ -8,13 +8,6 @@ import { clinicRoomsQueryKey, useClinicRooms } from "@/hooks/useClinicRooms";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
 
-/**
- * Salas (consultórios) da clínica. Opcional: clínica sem sala funciona como
- * antes, e a consulta só oferece "Sala" quando há alguma cadastrada.
- *
- * Salva cada ação na hora, independente do formulário da clínica ao lado.
- * Desativar tira a sala do agendamento sem apagar o histórico das consultas.
- */
 export function ClinicRoomsSection({ clinicId }: { clinicId: string }) {
   const queryClient = useQueryClient();
   const { data: rooms = [], isLoading } = useClinicRooms(clinicId);

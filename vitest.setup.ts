@@ -1,10 +1,5 @@
 import "@testing-library/jest-dom/vitest";
 
-// Node 25 expõe um `globalThis.localStorage` próprio, porém sem a API de
-// Storage quando não recebe `--localstorage-file`. Ele também sombreia o
-// storage que o jsdom tentaria expor. A suíte usa este armazenamento em
-// memória explícito para manter o contrato do navegador independente da
-// versão do Node que executa o Vitest.
 function createMemoryStorage(): Storage {
   const values = new Map<string, string>();
 

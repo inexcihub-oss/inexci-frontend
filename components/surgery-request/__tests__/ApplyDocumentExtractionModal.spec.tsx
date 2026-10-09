@@ -66,7 +66,7 @@ describe("ApplyDocumentExtractionModal", () => {
 
   it("permite fechar o modal durante a análise sem suprimir a notificação de conclusão", async () => {
     vi.mocked(surgeryRequestService.getExtractFromDocumentStatus).mockImplementation(
-      () => new Promise(() => {}), // nunca resolve — mantém "analyzing" true
+      () => new Promise(() => {}),
     );
 
     const { container } = render(

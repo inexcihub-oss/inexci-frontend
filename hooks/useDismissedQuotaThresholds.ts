@@ -10,17 +10,6 @@ import {
 
 const THRESHOLDS: QuotaThreshold[] = ["medium", "high", "critical"];
 
-/**
- * Degraus de cota que o usuário já fechou no ciclo corrente.
- *
- * Vive em `localStorage`, com a chave carimbada pelo fim do ciclo: quando o
- * ciclo vira, a chave muda e o aviso reaparece sozinho. Não vale a pena uma
- * coluna no banco para uma preferência descartável de UI.
- *
- * `pronto` começa `false` e só vira `true` depois do primeiro efeito: no
- * servidor não existe `localStorage`, e renderizar o banner antes de ler a
- * dispensa faria o aviso piscar na tela de quem já o fechou.
- */
 export function useDismissedQuotaThresholds(
   accountId: string | null,
   periodEnd: string | null | undefined,
@@ -45,8 +34,6 @@ export function useDismissedQuotaThresholds(
         ),
       );
     } catch (error) {
-      // Modo privado / storage bloqueado: sem memória de dispensa, o aviso
-      // simplesmente reaparece. Melhor do que derrubar o layout inteiro.
       logger.warn("Não foi possível ler a dispensa do aviso de cota:", error);
       setDismissed([]);
     }

@@ -48,7 +48,6 @@ const TOM_CLASSE: Record<SituacaoTom, string> = {
   cinza: "bg-neutral-100 text-neutral-600",
 };
 
-/** Documentos que o próprio atendimento emite ganham selo com nome. */
 const SELO_DOCUMENTO: Record<string, string> = {
   prescription: "Receita",
   medical_certificate: "Atestado",
@@ -106,11 +105,6 @@ function profissionalDo(item: HistoricoItem): string | null {
   return null;
 }
 
-/**
- * Linha do tempo do paciente: uma visita por cartão (consulta + ficha juntas),
- * cirurgias no meio, do mais recente ao mais antigo. Usada na página do
- * paciente e na aba "Histórico" do atendimento.
- */
 export function PatientTimeline({
   historico,
   documents,
@@ -125,12 +119,9 @@ export function PatientTimeline({
   documents: PatientDocument[];
   profissionais: Map<string, string>;
   podeVerSolicitacoes: boolean;
-  /** Sem ele, a consulta não tem ação (ex.: dentro do atendimento). */
   onAbrirConsulta?: (appointment: Appointment) => void;
-  /** No atendimento, abrir a cirurgia não pode tirar o médico da ficha. */
   cirurgiaEmNovaAba?: boolean;
   mensagemVazia?: string;
-  /** Na página do paciente as próximas vivem na barra lateral. */
   mostrarProximas?: boolean;
 }) {
   const [filtro, setFiltro] = useState<Filtro>("todos");
@@ -151,8 +142,6 @@ export function PatientTimeline({
     return mapa;
   }, [documents]);
 
-  // Mesmo filtro da Agenda: só aparece com mais de um profissional no
-  // histórico, e a contagem é de visitas deste paciente com cada um.
   const { opcoesProfissional, visitasPorProfissional } = useMemo(() => {
     const contagem: Record<string, number> = {};
     for (const item of historico.itens) {
@@ -325,7 +314,6 @@ function ProximasConsultas({
   );
 }
 
-/** Uma consulta futura: dia, hora, tipo, profissional e status. */
 export function ProximaConsulta({
   appointment: a,
   profissional,
@@ -573,11 +561,6 @@ function ItemDoHistorico({
   );
 }
 
-/**
- * Agendada → confirmada → chegou → atendida, remarcações e comentários. Só
- * busca quando aberta, para a linha do tempo não pagar uma requisição por
- * consulta. Aqui é leitura: comentar fica no detalhe da consulta (exige Agenda).
- */
 function HistoricoDaConsulta({ appointmentId }: { appointmentId: string }) {
   const [aberto, setAberto] = useState(false);
   return (

@@ -32,24 +32,11 @@ const PADDING_FURO = 8;
 const LARGURA_BALAO = 320;
 const MARGEM = 16;
 const BREAKPOINT_DESKTOP = 1024;
-// Estimativa conservadora até a primeira medição do DOM. O balão real é
-// medido logo depois por `useLayoutEffect`; 190 px era baixo demais para uma
-// copy de duas linhas + controles e fazia o tour cobrir o alvo no mobile.
 const ALTURA_BALAO_INICIAL = 360;
-// Reserva do rodapé: a `BottomNavBar` cobre a base da tela no mobile e o
-// balão posicionado por `top` cairia atrás dela — o usuário veria o holofote
-// e não veria a instrução.
 const RESERVA_RODAPE = 88;
 
-/** Estático: as quatro descrições não mudam por sessão. */
 const DESCRICOES_DE_AREA = Object.values(PERMISSION_DESCRIPTIONS);
 
-/**
- * Corpo do passo atual. A maioria vem pronta de `passo.corpo`, mas dois
- * passos são montados em runtime a partir de dado assíncrono ou de outro
- * módulo — cada `key` especial ganha um `case` aqui em vez de uma cascata de
- * ternários no JSX.
- */
 function corpoDoPasso(
   passo: TourStep,
   ctx: { requisitos: string[] | null; descricoesDeArea: string[] },
@@ -96,9 +83,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
 
   useEffect(() => setMontado(true), []);
 
-  // Posicionamento não pode supor uma altura fixa: copy dinâmica, zoom do
-  // navegador e fonte do usuário fazem o balão crescer. Mede antes de pintar
-  // e acompanha mudanças de conteúdo/tamanho para nunca encobrir o alvo.
   useLayoutEffect(() => {
     const balao = balaoRef.current;
     if (!balao) return;
@@ -136,8 +120,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
       ? passo.mobileTarget
       : passo?.target;
 
-  // Cada passo começa junto ao elemento que explica. O deslocamento é local
-  // ao passo atual para que mover um card não estrague a posição do próximo.
   useEffect(() => {
     setDeslocamento({ x: 0, y: 0 });
     setArrastando(false);
@@ -196,8 +178,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
 
   const [requisitos, setRequisitos] = useState<string[] | null>(null);
 
-  // Só busca quando o passo dos requisitos entra em cena, e só uma vez por
-  // montagem do overlay.
   useEffect(() => {
     if (passo?.key !== "requisitos" || requisitos !== null) return;
     let cancelado = false;
@@ -209,11 +189,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
     };
   }, [passo?.key, requisitos]);
 
-  // O timeout de 3s do hook é dimensionado para passo com `route`, cuja tela
-  // ainda vai montar. Para um passo que o tour pode simplesmente pular, 3s de
-  // espera viram um buraco morto no caminho NORMAL. `aguardaAcao` tem
-  // prioridade sobre `route`: o alvo só existe depois de o usuário agir, então
-  // o motor precisa esperar bem mais (20s) do que o tempo de uma navegação.
   const { rect, estado } = useTargetRect(alvo, {
     timeoutMs: passo?.aguardaAcao
       ? TIMEOUT_AGUARDA_ACAO_MS
@@ -222,17 +197,10 @@ export function TourOverlay({ trackId, onClose }: Props) {
         : 800,
   });
 
-  // Passo com `route` navega antes de procurar o alvo.
   useEffect(() => {
     if (passo?.route) router.push(passo.route);
   }, [passo?.route, router]);
 
-  // Passo com `acao` aciona o registro externo (abrir modal, trocar estado
-  // interno) ao ENTRAR no passo — em vez de esperar o usuário achar o botão
-  // sozinho, como só `aguardaAcao` fazia até aqui. Tenta por até 3s porque
-  // quem registra a ação pode montar um instante depois do commit em que
-  // `indice` mudou (ex.: acabou de navegar para uma rota nova) — mesmo
-  // idioma de "tenta até achar" do `useTargetRect`.
   useEffect(() => {
     const acao = passo?.acao;
     if (!acao) return;
@@ -253,18 +221,10 @@ export function TourOverlay({ trackId, onClose }: Props) {
   }, [passo?.acao, executarAcao]);
 
   const avancar = useCallback(() => {
-    // A decisão de concluir fica FORA do updater de propósito. Dentro dele,
-    // `onClose` roda durante o render do TourOverlay e o `setActiveTour` do
-    // provider vira "Cannot update a component while rendering a different
-    // component" — e o StrictMode, que executa updaters duas vezes, dobrava o
-    // efeito colateral. Updater é para calcular estado, não para disparar ação.
     if (indice >= passos.length - 1) {
       onClose({ concluido: true });
       return;
     }
-    // Alguns fluxos só devem executar sua transição (por exemplo, concluir a
-    // análise demonstrativa de um documento) depois que a pessoa confirma
-    // que terminou de ler esta etapa.
     if (passo?.acaoAoAvancar) {
       executarAcao(passo.acaoAoAvancar);
     }
@@ -273,14 +233,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
 
   const voltar = useCallback(() => setIndice((i) => Math.max(0, i - 1)), []);
 
-  /**
-   * Degradação por alvo ausente. `required: false` (padrão) pula o passo em
-   * silêncio: alvos somem por motivos rotineiros e travar o tour aí é pior do
-   * que seguir sem aquele destaque. `required: true` encerra com aviso — mas
-   * não fecha calado: o usuário precisa saber que o tour parou por falta da
-   * tela, não porque ele fez algo (`onClose()` puro seria indistinguível de
-   * "Sair do tour").
-   */
   useEffect(() => {
     if (estado !== "ausente" || !alvo) return;
     if (passo.keepOpenWhenTargetMissing) return;
@@ -291,7 +243,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
     avancar();
   }, [estado, alvo, passo?.keepOpenWhenTargetMissing, passo?.required, avancar]);
 
-  // Teclado: Esc sai, setas navegam.
   useEffect(() => {
     const aoTeclar = (evento: KeyboardEvent) => {
       if (evento.key === "Escape") {
@@ -302,8 +253,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
       } else if (evento.key === "ArrowLeft") {
         voltar();
       } else if (evento.key === "Tab") {
-        // Foco preso no balão: fora dele está a página real, e deixar o Tab
-        // escapar faz o usuário perder de vista onde estava o tour.
         const foco = balaoRef.current?.querySelectorAll<HTMLElement>(
           'button, [href], [tabindex]:not([tabindex="-1"])',
         );
@@ -323,17 +272,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
     return () => document.removeEventListener("keydown", aoTeclar);
   }, [avancar, voltar, onClose]);
 
-  // Depende de `montado` e `estado` de propósito: no primeiro commit o
-  // componente ainda devolve `null` e `balaoRef` é nulo. Com dependência só em
-  // `indice` (que não muda entre esse commit e o seguinte), o efeito nunca
-  // reexecutava — e o foco jamais entrava no balão no PRIMEIRO passo do tour.
-  //
-  // Foca o DIÁLOGO (`balaoRef.current`), não o primeiro botão dele. O
-  // primeiro botão focável é sempre "Sair do tour" (spec §3.1) — é a ação
-  // dispensiva, e focar automaticamente nela faz um usuário de teclado que
-  // aperta Enter no reflexo (comum ao abrir qualquer diálogo) sair do tour
-  // sem querer. O `tabIndex={-1}` no `<div role="dialog">` permite o foco
-  // programático sem entrar na ordem de tab normal.
   useEffect(() => {
     if (!montado || estado === "buscando") return;
     balaoRef.current?.focus();
@@ -365,11 +303,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
       Math.max(MARGEM, window.innerWidth - LARGURA_BALAO - MARGEM),
     );
 
-    // O cálculo acima só evita o balão sair da viewport — não evita ele
-    // cair EM CIMA do próprio alvo. Perto de um canto sem espaço livre
-    // (ex.: botão no rodapé de um modal pequeno), "abaixo"/"acima" e o
-    // clamp de viewport podem colidir mesmo assim. Detectada a colisão,
-    // empurra o balão para o lado do alvo em vez de deixá-lo por cima.
     const sobrepoe =
       left < rect.right &&
       left + LARGURA_BALAO > rect.left &&
@@ -428,11 +361,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
 
   if (!track || !passo) return null;
 
-  // Passo comum: a busca dura no máximo 800 ms e termina em holofote ou em
-  // pulo. Mostrar o balão nesse intervalo produziria um piscar. Passo
-  // `aguardaAcao` é o contrário: a espera É o passo — o usuário precisa LER a
-  // instrução para saber o que clicar, e um fundo escurecido mudo por 20 s
-  // parece tour quebrado.
   if (estado === "buscando" && !passo.aguardaAcao) {
     return createPortal(
       <div className="fixed inset-0 z-[100] bg-neutral-950/55" aria-hidden />,
@@ -444,11 +372,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
   const ehUltimo = indice === passos.length - 1;
 
   return createPortal(
-    // `pointer-events-none` aqui é o que devolve o clique ao resto da página
-    // (o furo do spotlight não é suficiente: sem isso, o `<div>` cobre a
-    // viewport inteira e captura todo clique, inclusive sobre o elemento
-    // destacado). Só o balão religa `pointer-events-auto` — é a única parte
-    // clicável do overlay.
     <div className="pointer-events-none fixed inset-0 z-[100]">
       <svg className="pointer-events-none absolute inset-0 h-full w-full">
         <defs>
@@ -510,13 +433,6 @@ export function TourOverlay({ trackId, onClose }: Props) {
           {TOUR_UI.sair}
         </button>
 
-        {/*
-          `aria-live="polite"` no bloco de texto do passo: o balão fica
-          montado entre um passo e outro, só o conteúdo troca, e o
-          `aria-labelledby` do diálogo aponta para um `id` que muda junto —
-          alguns leitores de tela não reanunciam sozinhos. Isso garante que a
-          troca de passo é falada mesmo sem remontar o diálogo.
-        */}
         <div aria-live="polite">
           <p
             className="text-xs font-medium text-neutral-500"

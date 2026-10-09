@@ -1,8 +1,3 @@
-/**
- * Schemas Zod reutilizáveis para todo o app.
- * Use estes building blocks ao montar schemas específicos de cada domínio.
- */
-
 import { z } from "zod";
 import {
   isValidCpf,
@@ -13,16 +8,12 @@ import {
 } from "@/lib/validators";
 import { unmask } from "@/lib/masks";
 
-/* ─── Nome ────────────────────────────────────────────────────────────────── */
-
 export const fullNameSchema = z
   .string({ required_error: "Informe o nome completo." })
   .trim()
   .min(3, "O nome deve ter pelo menos 3 caracteres.")
   .max(100, "O nome deve ter no máximo 100 caracteres.")
   .refine(isValidFullName, "Informe nome e sobrenome (sem números).");
-
-/* ─── E-mail ──────────────────────────────────────────────────────────────── */
 
 export const emailSchema = z
   .string({ required_error: "O e-mail é obrigatório." })
@@ -37,8 +28,6 @@ export const emailOptionalSchema = z
   .optional()
   .or(z.literal(""))
   .refine((v) => !v || isValidEmail(v), "Informe um e-mail válido.");
-
-/* ─── Telefone ────────────────────────────────────────────────────────────── */
 
 export const phoneSchema = z
   .string({ required_error: "O telefone é obrigatório." })
@@ -63,8 +52,6 @@ export const phoneOptionalSchema = z
     "Informe um telefone válido com DDD.",
   );
 
-/* ─── CPF ─────────────────────────────────────────────────────────────────── */
-
 export const cpfSchema = z
   .string({ required_error: "O CPF é obrigatório." })
   .refine((v) => unmask(v).length === 11, "CPF deve ter 11 dígitos.")
@@ -76,8 +63,6 @@ export const cpfOptionalSchema = z
   .or(z.literal(""))
   .refine((v) => !v || unmask(v).length === 11, "CPF deve ter 11 dígitos.")
   .refine((v) => !v || isValidCpf(v), "CPF inválido.");
-
-/* ─── CNPJ ────────────────────────────────────────────────────────────────── */
 
 export const cnpjSchema = z
   .string({ required_error: "O CNPJ é obrigatório." })
@@ -91,8 +76,6 @@ export const cnpjOptionalSchema = z
   .refine((v) => !v || unmask(v).length === 14, "CNPJ deve ter 14 dígitos.")
   .refine((v) => !v || isValidCnpj(v), "CNPJ inválido.");
 
-/* ─── CEP ─────────────────────────────────────────────────────────────────── */
-
 export const cepSchema = z
   .string({ required_error: "O CEP é obrigatório." })
   .refine((v) => unmask(v).length === 8, "CEP deve ter 8 dígitos.");
@@ -103,13 +86,6 @@ export const cepOptionalSchema = z
   .or(z.literal(""))
   .refine((v) => !v || unmask(v).length === 8, "CEP deve ter 8 dígitos.");
 
-/* ─── Senha forte ─────────────────────────────────────────────────────────── */
-
-/**
- * Senha forte: ≥8 caracteres + maiúscula + minúscula + número + especial.
- * Use sempre em criação/alteração de senha. Não use em login (apenas verifica
- * presença).
- */
 export const strongPasswordSchema = z
   .string({ required_error: "A senha é obrigatória." })
   .min(8, "A senha deve ter pelo menos 8 caracteres.")
@@ -119,7 +95,6 @@ export const strongPasswordSchema = z
     "A senha deve ter maiúscula, minúscula, número e caractere especial.",
   );
 
-/** Helper para schemas que tenham confirmPassword. */
 export function passwordsMatchRefine<T extends { password: string; confirmPassword: string }>(
   data: T,
   ctx: z.RefinementCtx,

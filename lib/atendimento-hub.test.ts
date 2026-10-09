@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { HUB_TABS, hubTabQuery } from "./atendimento-hub";
 
-// Meio da tarde: garante que "hoje em diante" inclui o resto do dia, e não só
-// os dias seguintes.
 const NOW = new Date("2026-07-30T15:30:00");
 const START_OF_TODAY = new Date("2026-07-30T00:00:00").toISOString();
 

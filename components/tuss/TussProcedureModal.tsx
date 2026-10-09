@@ -18,8 +18,6 @@ import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/ui/Toast";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
-
 interface TussProcedureModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -32,11 +30,9 @@ interface TussProcedureModalProps {
     quantity: number;
     procedure: TussCode;
   } | null;
-  /** Quando fornecido, salva localmente em vez de chamar a API. */
   onLocalSave?: (
     items: { tussCode: string; name: string; quantity: number }[],
   ) => void;
-  /** Pré-popula os procedimentos selecionados ao abrir em modo local. */
   initialItems?: { tussCode: string; name: string; quantity: number }[];
 }
 
@@ -51,8 +47,6 @@ interface DropdownPosition {
   width: number;
   maxHeight: number;
 }
-
-// ─── Debounce (com cancel) ────────────────────────────────────────────────────
 
 function debounce<T extends (...args: any[]) => any>(
   func: T,
@@ -77,8 +71,6 @@ function debounce<T extends (...args: any[]) => any>(
 
   return debounced as typeof debounced & { cancel: () => void };
 }
-
-// ─── Componente principal ─────────────────────────────────────────────────────
 
 export function TussProcedureModal({
   isOpen,
@@ -116,7 +108,6 @@ export function TussProcedureModal({
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(handleClose);
 
-  // ── Inicializa o estado ao abrir
   useEffect(() => {
     if (!isOpen) return;
     if (initialItems && initialItems.length > 0) {
@@ -139,7 +130,6 @@ export function TussProcedureModal({
     setIsDropdownOpen(false);
   }, [isOpen, initialItems]);
 
-  // ── ESC fecha
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -149,7 +139,6 @@ export function TussProcedureModal({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [isOpen, handleClose]);
 
-  // ── Bloqueia scroll do body
   useEffect(() => {
     if (!isOpen) return;
     document.body.style.overflow = "hidden";
@@ -158,7 +147,6 @@ export function TussProcedureModal({
     };
   }, [isOpen]);
 
-  // ── Fecha dropdown ao clicar fora
   useEffect(() => {
     if (!isDropdownOpen) return;
     const handler = (e: MouseEvent) => {
@@ -175,7 +163,6 @@ export function TussProcedureModal({
     return () => document.removeEventListener("mousedown", handler);
   }, [isDropdownOpen]);
 
-  // ── Busca debounced
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSearch = useCallback(
     debounce(async (term: string) => {
@@ -385,7 +372,6 @@ export function TussProcedureModal({
               : undefined
           }
         >
-          {/* Drag handle (mobile) */}
           <div
             className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
             onTouchStart={onTouchStart}
@@ -395,7 +381,6 @@ export function TussProcedureModal({
             <div className="w-10 h-1 bg-neutral-200 rounded-full" />
           </div>
 
-          {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100 shrink-0">
             <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl bg-primary-50 text-primary-700 shrink-0">
               <ClipboardList className="w-5 h-5" strokeWidth={1.75} />
@@ -417,10 +402,8 @@ export function TussProcedureModal({
             </button>
           </div>
 
-          {/* Content */}
           <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 md:px-6 md:py-5">
             <div className="flex flex-col gap-3 md:gap-4">
-              {/* Campo de busca */}
               <div ref={searchContainerRef} className="relative">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -453,7 +436,6 @@ export function TussProcedureModal({
                 </div>
               </div>
 
-              {/* Lista de procedimentos selecionados */}
               {procedures.length === 0 ? (
                 <EmptyState />
               ) : (
@@ -486,7 +468,6 @@ export function TussProcedureModal({
             </div>
           </div>
 
-          {/* Footer */}
           <div className="ds-modal-footer shrink-0 rounded-b-3xl md:rounded-b-2xl">
             <button
               type="button"
@@ -572,8 +553,6 @@ export function TussProcedureModal({
   );
 }
 
-// ─── EmptyState ───────────────────────────────────────────────────────────────
-
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center text-center py-6 md:py-10 px-4 gap-3">
@@ -592,8 +571,6 @@ function EmptyState() {
     </div>
   );
 }
-
-// ─── ProcedureCard ────────────────────────────────────────────────────────────
 
 interface ProcedureCardProps {
   item: ProcedureItem;
@@ -643,8 +620,6 @@ function ProcedureCard({
     </div>
   );
 }
-
-// ─── QuantityStepper ──────────────────────────────────────────────────────────
 
 function QuantityStepper({
   value,

@@ -35,13 +35,6 @@ describe("PermissionsSection", () => {
     ]);
   });
 
-  /**
-   * O médico agenda a própria consulta, marca a consulta como realizada e
-   * agenda o retorno a partir da ficha do paciente — sem Agenda ele não
-   * conseguiria atender. E finalizar uma ficha com indicação cirúrgica abre
-   * a SC: sem Atendimento/Solicitações, a solicitação ficaria invisível
-   * para o próprio médico. Ver `resolveEffectivePermissions` no backend.
-   */
   it("trava agenda, atendimento e solicitações quando é médico", () => {
     render(<PermissionsSection value={[]} isDoctor onChange={vi.fn()} />);
 
@@ -84,12 +77,6 @@ describe("PermissionsSection", () => {
     ).toBeEnabled();
   });
 
-  /**
-   * O texto diz "excluir cadastros", não "cadastros": criar e editar hospital,
-   * convênio, fornecedor e fabricante são transversais a qualquer área — só a
-   * exclusão ficou em Administração. Prometer o cadastro inteiro aqui faria o
-   * admin conceder a área por um motivo que não existe mais.
-   */
   it("avisa o que a administração concede", () => {
     render(
       <PermissionsSection value={[]} isDoctor={false} onChange={vi.fn()} />,
@@ -118,11 +105,6 @@ describe("PermissionsSection", () => {
     ]);
   });
 
-  /**
-   * Âncora do tour de onboarding (`lib/onboarding/tour-registry.ts`, trilha
-   * `administracao`, passo `areas`). Sem este teste, mover ou remover o
-   * atributo do elemento raiz quebra o tour em silêncio.
-   */
   it('expõe data-tour="admin-areas" no elemento raiz', () => {
     const { container } = render(
       <PermissionsSection value={[]} isDoctor={false} onChange={vi.fn()} />,

@@ -42,12 +42,6 @@ function applyBRLMask(input: string): string {
   return `R$ ${intFormatted},${cents}`;
 }
 
-/**
- * Modal "Faturamento de solicitação cirúrgica" — PERFORMED (6) → INVOICED (7).
- * Registra o faturamento enviado ao convênio.
- *
- * Design: Figma node 1-1537
- */
 export function InvoiceModal({
   isOpen,
   onClose,
@@ -67,7 +61,6 @@ export function InvoiceModal({
   const [attempted, setAttempted] = useState(false);
   const { showToast } = useToast();
 
-  // Pré-preenche o prazo de recebimento com o padrão do convênio ao abrir o modal
   useEffect(() => {
     if (isOpen) {
       const defaultDays = solicitacao?.healthPlan?.defaultPaymentDays;
@@ -114,7 +107,6 @@ export function InvoiceModal({
     }
     setIsSaving(true);
     try {
-      // Converte sentAt (YYYY-MM-DD de input) para data local sem shift UTC
       const [sy, sm, sd] = sentAt.split("-").map(Number);
       const sentAtDate = new Date(sy, sm - 1, sd);
 
@@ -172,7 +164,6 @@ export function InvoiceModal({
             : undefined
         }
       >
-        {/* Drag handle — apenas mobile */}
         <div
           className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
           onTouchStart={onTouchStart}
@@ -182,7 +173,6 @@ export function InvoiceModal({
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100 shrink-0">
           <div className="flex-1 min-w-0">
             <h2 className="ds-modal-title truncate">Faturamento</h2>
@@ -199,12 +189,9 @@ export function InvoiceModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="ds-modal-body">
-          {/* Info card */}
           <div className="rounded-xl border border-neutral-100">
             <div className="flex flex-col divide-y divide-neutral-100">
-              {/* Mobile: label em cima, valor embaixo. Desktop: linha única */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-3 px-3.5 py-2.5">
                 <div className="flex items-center gap-2 shrink-0">
                   <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
@@ -241,9 +228,7 @@ export function InvoiceModal({
             </div>
           </div>
 
-          {/* Form fields */}
           <div className="flex flex-col gap-3 md:gap-4">
-            {/* Row 1: Protocol + Sent date */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">Nº do protocolo</label>
@@ -271,7 +256,6 @@ export function InvoiceModal({
               </div>
             </div>
 
-            {/* Row 2: Value + Payment deadline */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="ds-label mb-0">Valor faturado</label>
@@ -320,7 +304,6 @@ export function InvoiceModal({
             </div>
           </div>
 
-          {/* Save deadline as default */}
           <label
             htmlFor="invoice-set-default"
             className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
@@ -350,7 +333,6 @@ export function InvoiceModal({
           </label>
         </div>
 
-        {/* Footer */}
         <div className="ds-modal-footer shrink-0">
           <button
             onClick={handleClose}

@@ -28,11 +28,6 @@ import { hasAnyArea } from "@/lib/permissions";
 import { uploadService } from "@/services/upload.service";
 import { PatientPhotoInput } from "@/components/patients/PatientPhotoInput";
 
-/**
- * Telefone secundário (fixo, recado) tem a mesma máscara e a mesma validação
- * do principal. Fica aqui, e não no schema compartilhado, porque o cadastro
- * rápido do wizard de SC não pede o segundo número.
- */
 const novoPacienteSchema = createPatientSchema.extend({
   secondaryPhone: phoneOptionalSchema,
 });
@@ -40,7 +35,6 @@ const novoPacienteSchema = createPatientSchema.extend({
 interface NewPatientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Recebe o paciente recém-criado (para seleção automática em outros fluxos). */
   onSuccess: (patient: Patient) => void;
 }
 
@@ -64,18 +58,11 @@ export function NewPatientModal({
   onSuccess,
 }: NewPatientModalProps) {
   const { permissions } = useAuth();
-  // Convênio é cadastro transversal (`@RequireAnyArea()` em
-  // `HealthPlansController`): qualquer área cria, quem não tem área nenhuma
-  // não. Exigir ADMINISTRACAO aqui escondia o atalho de quem cadastra
-  // paciente.
   const podeCriarConvenio = hasAnyArea(permissions);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [foto, setFoto] = useState<File | null>(null);
-  // Foto já enviada nesta tentativa de cadastro, amarrada ao arquivo: se o
-  // cadastro falhar, a próxima tentativa reaproveita o caminho em vez de
-  // subir outra cópia (que ficaria órfã no storage). Trocar a foto invalida.
   const fotoEnviadaRef = useRef<{ file: File; path: string } | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
@@ -96,8 +83,6 @@ export function NewPatientModal({
 
   useEffect(() => {
     if (isOpen) {
-      // O pai pode fechar só trocando `isOpen` (sem passar pelo X): um erro
-      // da tentativa anterior não pode reaparecer ao reabrir.
       setError("");
       loadHealthPlans();
     }
@@ -108,12 +93,9 @@ export function NewPatientModal({
       const data = await healthPlanService.getAll();
       setHealthPlans(data);
     } catch {
-      // silently ignore
     }
   };
 
-  // Foto enviada numa tentativa que falhou e não será mais usada (modal
-  // fechado sem salvar, ou foto trocada): sai do storage em best-effort.
   const descartarFotoEnviada = () => {
     const enviada = fotoEnviadaRef.current;
     fotoEnviadaRef.current = null;
@@ -134,14 +116,10 @@ export function NewPatientModal({
   const handleCloseRef = useRef(handleClose);
   handleCloseRef.current = handleClose;
 
-  // Esc fecha só este modal. Captura em `window`, antes do listener de
-  // `document` do <Modal>: aberto por cima de "Nova consulta", o Esc
-  // fecharia as duas janelas e perderia o agendamento em andamento.
   useEffect(() => {
     if (!isOpen) return;
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      // Com o cadastro de convênio aberto por cima, o Esc é dele.
       const foco = document.activeElement;
       if (
         foco &&
@@ -173,14 +151,10 @@ export function NewPatientModal({
           gender: data.gender || undefined,
           healthPlanId: data.healthPlanId || undefined,
         };
-        // A foto sobe antes e o caminho vai no próprio cadastro: um envio
-        // falho não deixa paciente criado pela metade.
         if (foto) {
           try {
             let enviada = fotoEnviadaRef.current;
             if (enviada?.file !== foto) {
-              // Foto trocada depois de uma tentativa falha: a anterior não
-              // vai mais ser usada.
               descartarFotoEnviada();
               const resposta = await uploadService.uploadSingle(
                 foto,
@@ -201,8 +175,6 @@ export function NewPatientModal({
         onSuccess(created);
         form.reset();
         setFoto(null);
-        // A foto enviada agora está no paciente; uma de tentativa anterior
-        // (removida antes de salvar) não está, e sai do storage.
         if (fotoEnviadaRef.current?.path === payload.photoPath) {
           fotoEnviadaRef.current = null;
         } else {
@@ -242,7 +214,6 @@ export function NewPatientModal({
         aria-labelledby={tituloId}
         className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset"
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-5 flex-shrink-0">
           <h2 id={tituloId} className="ds-modal-title">
             Novo paciente
@@ -258,7 +229,6 @@ export function NewPatientModal({
         </div>
         <div className="h-px bg-gray-200 flex-shrink-0" />
 
-        {/* Body */}
         <form
           onSubmit={onSubmit}
           noValidate
@@ -267,7 +237,6 @@ export function NewPatientModal({
           <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
             <PatientPhotoInput value={foto} onChange={setFoto} />
 
-            {/* Row 1: Nome completo + Telefone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Nome completo"
@@ -291,7 +260,6 @@ export function NewPatientModal({
               </p>
             )}
 
-            {/* Row 2: Telefone + Telefone secundário; E-mail abaixo */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Telefone (opcional)"
@@ -316,7 +284,6 @@ export function NewPatientModal({
               {...form.getFieldProps("email")}
             />
 
-            {/* Row 3: Data de nascimento + Gênero */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <DateInput
                 label="Data de nascimento (opcional)"
@@ -343,7 +310,6 @@ export function NewPatientModal({
               </div>
             </div>
 
-            {/* Row 4: Convênio (full width) */}
             <HealthPlanComboboxField
               label="Convênio (opcional)"
               healthPlans={healthPlans}
@@ -360,13 +326,11 @@ export function NewPatientModal({
               telefone e e-mail.
             </p>
 
-            {/* Error message */}
             {error && (
               <p className="text-sm text-red-500 text-center">{error}</p>
             )}
           </div>
 
-          {/* Footer */}
           <div className="h-px bg-gray-200 flex-shrink-0" />
           <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4 flex-shrink-0">
             <button type="submit" disabled={loading} className="ds-btn-primary">

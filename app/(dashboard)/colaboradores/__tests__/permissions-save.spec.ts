@@ -2,20 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Permission } from "@/lib/permissions";
 import { buildCollaboratorUpdatePayload } from "@/lib/collaborator-update";
 
-/**
- * Tarefa 18: a página de detalhe do colaborador
- * (`assistente/[id]/page.tsx`) precisa persistir `permissions` via
- * `PATCH /users/collaborators/:id` (mesma rota do e-mail), não via
- * `PATCH /users/:id` (perfil genérico) — só o primeiro DTO aceita o campo.
- *
- * `handleSave` delega a decisão do que entra no PATCH a
- * `buildCollaboratorUpdatePayload` (`lib/collaborator-update.ts`) — o mesmo
- * util importado aqui, não uma cópia paralela da lógica. Uma quebra no
- * código de produção (trocar a condição `emailChanged ||
- * permissionsChanged`, parar de incluir `permissions` no corpo) derruba
- * este teste.
- */
-
 describe("buildCollaboratorUpdatePayload", () => {
   it("retorna só as permissões quando somente elas mudaram", () => {
     const payload = buildCollaboratorUpdatePayload(
@@ -57,11 +43,6 @@ describe("buildCollaboratorUpdatePayload", () => {
   });
 });
 
-/**
- * Fecha o laço: a página só chama `collaboratorService.update` quando o
- * util devolve algo. Exercita o mesmo par (util real + service mockado)
- * que `handleSave` usa, na mesma sequência condicional.
- */
 describe("Página do colaborador — decide chamar o service pelo payload do util", () => {
   const mockUpdate = vi.fn().mockResolvedValue({});
 

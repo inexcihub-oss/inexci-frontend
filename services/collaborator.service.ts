@@ -22,17 +22,7 @@ export interface Collaborator {
   status?: string;
   isDoctor?: boolean;
   doctorProfile?: DoctorProfile;
-  /** Permissão **efetiva**, já derivada no backend (inclui as travadas do médico). Só para EXIBIR. */
   permissions?: Permission[];
-  /**
-   * Permissão **crua** (o que foi de fato concedido, sem o bônus de médico).
-   * É este campo que deve semear um formulário de edição e voltar no PATCH —
-   * usar `permissions` (efetiva) para isso regravaria como concessão real o
-   * que só valia por causa de `doctor_profile` (I2 do
-   * PLANO-PERMISSOES-COLABORADORES). Só vem preenchido em respostas de
-   * rotas de gestão de colaborador (`ADMINISTRACAO`); nunca em `/auth/me`
-   * ou `/users/profile`.
-   */
   grantedPermissions?: Permission[];
   createdAt: string;
   updatedAt: string;
@@ -59,7 +49,6 @@ export interface CreateCollaboratorPayload {
   email: string;
   phone?: string;
   isDoctor?: boolean;
-  /** Conselho do perfil. Ausente = CRM (médico). */
   council?: ProfessionalCouncil;
   crm?: string;
   crmState?: string;
@@ -117,30 +106,13 @@ function toCollaborator(user: BackendUserRecord): Collaborator {
   };
 }
 
-// `toDoctor` saiu com `getDoctors`/`getDoctorById`, seus únicos chamadores. O
-// tipo `Doctor` continua exportado — a tela de colaborador e o
-// `availableDoctorsService` usam.
-
 export const collaboratorService = {
-  /**
-   * Busca todos os colaboradores/assistentes
-   */
   async getAll(): Promise<Collaborator[]> {
     const response = await api.get("/users/collaborators");
     const data = getApiRecords<BackendUserRecord>(response.data);
     return data.map(toCollaborator);
   },
 
-  /**
-   * Busca um colaborador específico por ID, para a tela de edição do admin.
-   *
-   * Usa `GET /users/collaborators/:id` (gated por `ADMINISTRACAO`), não
-   * `GET /users/one` (rota genérica, sem gate de permissão, compartilhada
-   * com o autoatendimento e a visão do médico sobre seus colaboradores) —
-   * só a primeira devolve `grantedPermissions` (a coluna crua, necessária
-   * para editar sem regravar o bônus de médico como concessão real; ver I2
-   * do PLANO-PERMISSOES-COLABORADORES).
-   */
   async getById(collaboratorId: string): Promise<Collaborator | null> {
     const response = await api.get<BackendUserRecord>(
       `/users/collaborators/${collaboratorId}`,
@@ -148,17 +120,11 @@ export const collaboratorService = {
     return toCollaborator(response.data);
   },
 
-  /**
-   * Cria um novo colaborador
-   */
   async create(payload: CreateCollaboratorPayload): Promise<Collaborator> {
     const response = await api.post("/users/collaborators", payload);
     return response.data;
   },
 
-  /**
-   * Atualiza um colaborador
-   */
   async update(
     collaboratorId: string,
     payload: Partial<CreateCollaboratorPayload>,
@@ -170,9 +136,6 @@ export const collaboratorService = {
     return response.data;
   },
 
-  /**
-   * Atualiza o perfil de um colaborador ou médico via PATCH /users/:id
-   */
   async updateProfile(
     userId: string,
     payload: {
@@ -194,9 +157,6 @@ export const collaboratorService = {
     return response.data;
   },
 
-  /**
-   * Alterna o status ativo/inativo de um colaborador
-   */
   async toggleStatus(collaboratorId: string): Promise<{ status: string }> {
     const response = await api.patch(
       `/users/collaborators/${collaboratorId}/status`,
@@ -204,9 +164,6 @@ export const collaboratorService = {
     return response.data;
   },
 
-  /**
-   * Redefine a senha de um colaborador
-   */
   async resetPassword(
     collaboratorId: string,
     password: string,
@@ -218,10 +175,6 @@ export const collaboratorService = {
     return response.data;
   },
 
-  /**
-   * Reenvia o e-mail de convite (link de primeiro acesso) para um colaborador
-   * com status pendente. Gera um novo token válido por 72h.
-   */
   async resendInvite(
     collaboratorId: string,
   ): Promise<{ message: string; email: string }> {
@@ -231,9 +184,6 @@ export const collaboratorService = {
     return response.data;
   },
 
-  /**
-   * Deleta um colaborador
-   */
   async delete(collaboratorId: string): Promise<void> {
     await api.delete(`/users/collaborators/${collaboratorId}`);
   },
@@ -244,9 +194,4 @@ export const collaboratorService = {
       ids: collaboratorIds,
     });
   },
-
-  // `getDoctors` e `getDoctorById` foram removidos: nenhuma tela os chamava.
-  // Quem lista médicos usa `availableDoctorsService.getDoctorsForAccount()`,
-  // que consome a mesma `/users/doctors` e já reduz ao que os seletores
-  // exibem. `getDoctorById` era o último chamador de `/users/one`.
 };

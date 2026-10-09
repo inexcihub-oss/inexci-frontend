@@ -19,20 +19,12 @@ interface NotificationConfirmModalProps {
   onClose: () => void;
   currentStatus: string;
   newStatus: string;
-  /** channels = null significa "não notificar" */
   onConfirm: (channels: NotificationChannels | null) => void;
   isLoading?: boolean;
-  /** E-mail do paciente (para mostrar canal disponível) */
   patientEmail?: string | null;
-  /** Telefone do paciente (para mostrar canal WhatsApp disponível) */
   patientPhone?: string | null;
 }
 
-/**
- * Modal de confirmação de notificação ao paciente.
- * Aparece ao alterar status de solicitações antes de "Agendada".
- * O usuário escolhe os canais (e-mail e/ou WhatsApp) para notificar o paciente.
- */
 export function NotificationConfirmModal({
   isOpen,
   onClose,
@@ -50,7 +42,6 @@ export function NotificationConfirmModal({
   const [emailSelected, setEmailSelected] = useState(hasEmail);
   const [whatsappSelected, setWhatsappSelected] = useState(hasPhone);
 
-  // Reseta seleção quando o modal abre
   useEffect(() => {
     if (isOpen) {
       setEmailSelected(hasEmail);
@@ -69,20 +60,16 @@ export function NotificationConfirmModal({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={() => !isLoading && onClose()}
       />
 
-      {/* Modal */}
       <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col overflow-hidden pb-20 sm:pb-0">
-        {/* Drag handle (mobile) */}
         <div className="sm:hidden flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header com gradiente */}
         <div className="relative overflow-hidden px-6 pt-5 pb-6">
           <div className="absolute inset-0 bg-gradient-to-br from-teal-50 via-white to-violet-50 opacity-80 hidden sm:block" />
           <div className="relative flex items-start justify-between">
@@ -114,7 +101,6 @@ export function NotificationConfirmModal({
             </button>
           </div>
 
-          {/* Status change pill */}
           <div className="relative mt-4 flex items-center justify-center gap-2">
             <span className="px-3 py-1.5 bg-white border border-neutral-100 text-gray-600 rounded-lg text-xs font-medium shadow-sm">
               {currentStatus}
@@ -128,7 +114,6 @@ export function NotificationConfirmModal({
           </div>
         </div>
 
-        {/* Body */}
         <div className="px-6 pb-2">
           {hasNoContact ? (
             <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
@@ -147,7 +132,6 @@ export function NotificationConfirmModal({
                 Canais de notificação
               </p>
               <div className="flex gap-3">
-                {/* Card E-mail */}
                 <button
                   type="button"
                   disabled={!hasEmail || isLoading}
@@ -210,7 +194,6 @@ export function NotificationConfirmModal({
                   )}
                 </button>
 
-                {/* Card WhatsApp */}
                 <button
                   type="button"
                   disabled={!hasPhone || isLoading}
@@ -276,7 +259,6 @@ export function NotificationConfirmModal({
                 </button>
               </div>
 
-              {/* Erro: nenhum canal selecionado */}
               {noneSelected && (
                 <p className="mt-2.5 text-xs text-red-500 flex items-center gap-1.5">
                   <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
@@ -287,7 +269,6 @@ export function NotificationConfirmModal({
           )}
         </div>
 
-        {/* Footer */}
         <div className="ds-modal-footer mt-4">
           <button
             onClick={() => onConfirm(null)}

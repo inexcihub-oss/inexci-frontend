@@ -2,8 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { Permission } from "@/lib/permissions";
 
-// Atendimento concedido por padrão — a ausência da permissão é o próprio
-// mecanismo testado mais abaixo.
 let authState: { can: (p: Permission) => boolean } = {
   can: (p: Permission) => p === Permission.ATENDIMENTO,
 };
@@ -101,8 +99,6 @@ describe("PatientDocuments", () => {
     expect(screen.getByText("Solicitação de exames")).toBeInTheDocument();
   });
 
-  // A aba Documentos fica montada depois da primeira visita: sem este gatilho,
-  // um documento emitido na aba Atendimento só apareceria ao recarregar.
   it("recarrega a lista quando um documento novo é emitido", async () => {
     (patientDocumentService.list as ReturnType<typeof vi.fn>).mockResolvedValue([
       doc({ id: "doc-1" }),
@@ -119,12 +115,6 @@ describe("PatientDocuments", () => {
     expect(patientDocumentService.list).toHaveBeenCalledTimes(2);
   });
 
-  /**
-   * `GET/POST/DELETE /clinical-records/documents` exigem Atendimento na
-   * classe do controller — inclusive a listagem, não só upload/exclusão.
-   * Sem a permissão a seção nem tenta buscar (evita um 403 silencioso que
-   * pareceria "nenhum documento anexado").
-   */
   it("não renderiza nem busca documentos para quem não tem Atendimento", () => {
     authState = { can: () => false };
     const { container } = render(<PatientDocuments patientId="p-1" />);

@@ -17,9 +17,6 @@ export interface UpdateProcedurePayload {
 }
 
 export const procedureService = {
-  /**
-   * Busca todos os procedimentos
-   */
   async getAll(): Promise<Procedure[]> {
     try {
       const response = await api.get("/procedures", {
@@ -34,25 +31,16 @@ export const procedureService = {
     }
   },
 
-  /**
-   * Busca um procedimento por ID
-   */
   async getById(id: string): Promise<Procedure> {
     const response = await api.get(`/procedures/${id}`);
     return response.data;
   },
 
-  /**
-   * Cria um novo procedimento
-   */
   async create(payload: CreateProcedurePayload): Promise<Procedure> {
     const response = await api.post("/procedures", payload);
     return response.data;
   },
 
-  /**
-   * Atualiza um procedimento
-   */
   async update(
     id: string,
     payload: UpdateProcedurePayload,
@@ -61,9 +49,6 @@ export const procedureService = {
     return response.data;
   },
 
-  /**
-   * Exclui um procedimento
-   */
   async delete(id: string): Promise<void> {
     await api.delete(`/procedures/${id}`);
   },

@@ -5,8 +5,6 @@ import { cn } from "@/lib/utils";
 import { passwordStrength } from "@/lib/validators";
 import { PasswordRequirements } from "./PasswordRequirements";
 
-// ─── Ícones inline (evita dependência de lib de ícones) ──────────────────────
-
 function EyeIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -49,15 +47,8 @@ function EyeOffIcon({ className }: { className?: string }) {
   );
 }
 
-// ─── Cálculo de força de senha ───────────────────────────────────────────────
-
-/**
- * Mantém compatibilidade com chamadores antigos. Internamente usa
- * `passwordStrength` (0-5) e mapeia para a escala antiga (0-4).
- */
 export function getPasswordStrength(password: string): number {
   const score = passwordStrength(password);
-  // Mapeia 0-5 para 0-4 (5 requisitos atendidos => "Forte")
   return Math.min(4, score === 5 ? 4 : Math.max(0, score - 1));
 }
 
@@ -70,21 +61,15 @@ const STRENGTH_COLORS = [
   "bg-teal-500",
 ];
 
-// ─── Props ───────────────────────────────────────────────────────────────────
-
 export interface PasswordInputProps extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
   "type"
 > {
   label?: string;
   error?: string;
-  /** Exibe barra de força da senha quando true */
   showStrength?: boolean;
-  /** Exibe checklist visual dos requisitos (8 chars, maiúscula, etc.) */
   showRequirements?: boolean;
 }
-
-// ─── Componente ──────────────────────────────────────────────────────────────
 
 const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
   (
@@ -148,7 +133,6 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           </button>
         </div>
 
-        {/* Barra de força */}
         {showStrength && value.length > 0 && (
           <div className="mt-2 space-y-1">
             <div className="flex gap-1">
@@ -171,7 +155,6 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           </div>
         )}
 
-        {/* Checklist de requisitos */}
         {showRequirements && (focused || value.length > 0) && (
           <PasswordRequirements password={value} />
         )}

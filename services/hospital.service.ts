@@ -56,9 +56,6 @@ interface BackendHospital {
 }
 
 export const hospitalService = {
-  /**
-   * Busca todos os hospitais
-   */
   async getAll(): Promise<Hospital[]> {
     const response = await api.get("/hospitals", {
       params: { take: FETCH_ALL_TAKE },
@@ -85,10 +82,6 @@ export const hospitalService = {
     }));
   },
 
-  /**
-   * Busca um hospital específico por ID
-   * Como o backend não tem endpoint getById, buscamos todos e filtramos
-   */
   async getById(hospitalId: string): Promise<Hospital | null> {
     const allHospitals = await this.getAll();
     return (
@@ -96,17 +89,11 @@ export const hospitalService = {
     );
   },
 
-  /**
-   * Cria um novo hospital
-   */
   async create(payload: CreateHospitalPayload): Promise<Hospital> {
     const response = await api.post("/hospitals", payload);
     return response.data;
   },
 
-  /**
-   * Atualiza um hospital
-   */
   async update(
     hospitalId: string,
     payload: Partial<CreateHospitalPayload>,
@@ -115,9 +102,6 @@ export const hospitalService = {
     return response.data;
   },
 
-  /**
-   * Deleta um hospital
-   */
   async delete(hospitalId: string): Promise<void> {
     await api.delete(`/hospitals/${hospitalId}`);
   },

@@ -84,12 +84,8 @@ export default function AgendaPage() {
   const queryClient = useQueryClient();
   const { toast, showSuccess, showError, hideToast } = useToast();
   const { can, user } = useAuth();
-  // Cirurgias vêm de `GET /surgery-requests/agenda`, que exige Solicitações —
-  // um eixo diferente de Agenda. Quem só tem Agenda enxerga só as consultas.
   const podeVerCirurgias = can(Permission.SOLICITACOES);
   const podeAgenda = can(Permission.AGENDA);
-  // Bloqueio de toda a clínica trava a agenda de todos: só Administração
-  // cria, edita ou remove (o backend recusa os demais com 403).
   const podeBloquearClinica = can(Permission.ADMINISTRACAO);
 
   const [view, setView] = useState<CalView>("week");
@@ -111,32 +107,20 @@ export default function AgendaPage() {
   } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Passo "horario" da trilha Agenda: abre o formulário de nova consulta ao
-  // entrar no passo, em vez de esperar o usuário achar o botão real.
   useOnboardingAction("agenda-abrir-novo-horario", () => {
-    // Espelha a limpeza já feita ao ENTRAR no passo seguinte — sem isso,
-    // voltar do passo "status" para "horario" reempilha os dois modais.
     setDetail(null);
     setIsFilterOpen(false);
     setIsExportOpen(false);
     setNewModal({});
   });
 
-  // Passo "status": abre o modal de detalhe com uma consulta fabricada —
-  // nunca existe de verdade, só mostra onde ficam as ações de status.
   useOnboardingAction("agenda-abrir-detalhe-demo", () => {
-    // O passo anterior ("horario") abriu o modal de nova consulta; sem
-    // fechar aqui, os dois modais ficariam empilhados ao entrar neste
-    // passo — `newModal` e `detail` são estados independentes.
     setNewModal(null);
     setIsFilterOpen(false);
     setIsExportOpen(false);
     setDetail(criarConsultaDemo(user?.doctorProfile?.id ?? ""));
   });
 
-  // Os próximos dois passos mostram os próprios componentes já usados na
-  // Agenda. Cada um fecha a demonstração anterior para não empilhar modais e
-  // manter o destaque do tour acessível também em telas pequenas.
   useOnboardingAction("agenda-abrir-filtros", () => {
     setNewModal(null);
     setDetail(null);
@@ -170,7 +154,6 @@ export default function AgendaPage() {
     [doctors],
   );
 
-  // ── Intervalo visível + dias ────────────────────────────────────────────────
   const { rangeFrom, rangeTo, days } = useMemo(() => {
     if (view === "day") {
       const s = startOfDay(anchor);
@@ -194,9 +177,6 @@ export default function AgendaPage() {
     placeholderData: keepPreviousData,
     enabled: podeVerCirurgias,
   });
-  // Todas as páginas do recorte: o backend corta cada resposta em 1000, e a
-  // agenda não pode sumir com consulta em silêncio. Se nem paginando couber
-  // (`total > records`), a tela avisa — ver `agendaIncompleta`.
   const appointmentsQuery = useQuery({
     queryKey: ["appointments", "agenda", fromISO, toISO],
     queryFn: () =>
@@ -207,8 +187,6 @@ export default function AgendaPage() {
     !!appointmentsQuery.data &&
     appointmentsQuery.data.total > appointmentsQuery.data.records.length;
 
-  // Bloqueios e feriados (MIG-05): só desenham a agenda; quem impede marcar
-  // é o backend. Falha aqui não derruba a agenda.
   const blocksQuery = useQuery({
     queryKey: [...AVAILABILITY_QUERY_KEYS.blocks, fromISO, toISO],
     queryFn: () => availabilityService.getBlocks({ from: fromISO, to: toISO }),
@@ -220,11 +198,6 @@ export default function AgendaPage() {
     staleTime: 1000 * 60 * 30,
   });
 
-  // `enabled: false` livra a busca inicial de 403, mas `refetch()` ignora
-  // `enabled` (dispara a chamada de qualquer jeito) — por isso a query de
-  // cirurgias também precisa sair de `loading`/`isError` explicitamente
-  // quando falta a permissão, e `refetchAll` não pode chamar
-  // `surgeriesQuery.refetch()` nesse caso.
   const loading =
     appointmentsQuery.isFetching ||
     (podeVerCirurgias && surgeriesQuery.isFetching);
@@ -236,12 +209,9 @@ export default function AgendaPage() {
     appointmentsQuery.refetch();
   }, [podeVerCirurgias, surgeriesQuery, appointmentsQuery]);
 
-  // Prefixo ["appointments"]: além da agenda, o hub do Atendimento
-  // (["appointments", "hub", ...]) e a exportação leem as mesmas consultas.
   const invalidateAppointments = () =>
     queryClient.invalidateQueries({ queryKey: ["appointments"] });
 
-  // ── Eventos unificados ──────────────────────────────────────────────────────
   const allEvents = useMemo<CalEvent[]>(() => {
     const appts = (appointmentsQuery.data?.records ?? []).map((a) =>
       appointmentToEvent(a, APPOINTMENT_TYPE_LABELS[a.type]),
@@ -289,8 +259,6 @@ export default function AgendaPage() {
     [clinics],
   );
 
-  // Bloqueios visíveis, já rotulados — a grade de horas os desenha como faixa
-  // e a visão mensal, como selo no dia.
   const blocosVisiveis = useMemo(
     () =>
       (blocksQuery.data ?? [])
@@ -356,7 +324,6 @@ export default function AgendaPage() {
     return overlays;
   }, [blocosVisiveis, days, feriadoQueTrava]);
 
-  // Visão mensal: `days` é vazio no mês, então percorre as 42 células da grade.
   const monthDayMarks = useMemo<Record<string, AgendaDayMark[]>>(() => {
     if (view !== "month") return {};
     const marks: Record<string, AgendaDayMark[]> = {};
@@ -381,7 +348,6 @@ export default function AgendaPage() {
     return marks;
   }, [view, rangeFrom, blocosVisiveis, feriadoQueTrava]);
 
-  // ── Mutations ───────────────────────────────────────────────────────────────
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: AppointmentStatus }) =>
       appointmentService.updateStatus(id, status),
@@ -409,7 +375,6 @@ export default function AgendaPage() {
     onSettled: () => setBusyId(null),
   });
 
-  // ── Interações ──────────────────────────────────────────────────────────────
   const handleEventClick = (ev: CalEvent) => {
     if (ev.kind === "appointment" && ev.appointment) {
       setDetail(ev.appointment);
@@ -459,9 +424,7 @@ export default function AgendaPage() {
   return (
     <PageContainer>
       <div className="flex flex-col h-full overflow-hidden">
-        {/* ── Header ─────────────────────────────────────────────── */}
         <div className="flex flex-col gap-2 px-3 lg:px-6 py-2.5 border-b border-neutral-100 shrink-0">
-          {/* Linha 1: navegação + data + ações */}
           <div className="flex items-center gap-1.5">
             <div className="flex items-center gap-0.5 shrink-0">
               <button
@@ -564,7 +527,6 @@ export default function AgendaPage() {
             </button>
           </div>
 
-          {/* Linha 2: Hoje + visão + filtros */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setAnchor(new Date())}
@@ -626,7 +588,6 @@ export default function AgendaPage() {
           </div>
         )}
 
-        {/* ── Corpo ──────────────────────────────────────────────── */}
         {isError ? (
           <div className="flex flex-col items-center justify-center flex-1 gap-3 px-4">
             <p className="text-sm text-red-500 text-center">
@@ -672,7 +633,6 @@ export default function AgendaPage() {
         canFilterSurgeries={podeVerCirurgias}
       />
 
-      {/* ── Modais ─────────────────────────────────────────────── */}
       {newModal && (
         <NewAppointmentModal
           isOpen

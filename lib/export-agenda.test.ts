@@ -36,11 +36,6 @@ function makeItem(
 }
 
 describe("export-agenda", () => {
-  /**
-   * O fornecedor chega como referência `{ id, name }` porque o filtro do kanban
-   * precisa do id. A coluna do relatório é quem junta os nomes — nome de
-   * fornecedor pode ter vírgula, então nunca é o backend que concatena.
-   */
   it("monta a coluna Fornecedor a partir das referências do OPME", () => {
     const rows = getAgendaExportRows(
       [],

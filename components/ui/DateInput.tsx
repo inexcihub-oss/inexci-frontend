@@ -1,27 +1,18 @@
 "use client";
 
-/**
- * DateInput — campo de data com máscara DD/MM/AAAA
- *
- * - Exibe para o usuário no formato DD/MM/AAAA (fácil de digitar em mobile)
- * - Chama onChange com o valor no formato YYYY-MM-DD (compatível com o backend)
- * - Aceita value no formato YYYY-MM-DD ou DD/MM/AAAA
- */
-
 import { useId, useRef } from "react";
 
 interface DateInputProps {
   id?: string;
   label?: string;
-  value: string; // YYYY-MM-DD
-  onChange: (value: string) => void; // retorna YYYY-MM-DD
+  value: string;
+  onChange: (value: string) => void;
   required?: boolean;
   placeholder?: string;
   className?: string;
   error?: string;
 }
 
-/** Converte YYYY-MM-DD → DD/MM/AAAA para exibição */
 function toDisplay(value: string): string {
   if (!value) return "";
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
@@ -32,7 +23,6 @@ function toDisplay(value: string): string {
   return value;
 }
 
-/** Converte DD/MM/AAAA → YYYY-MM-DD para armazenamento */
 function toISO(display: string): string {
   const digits = display.replace(/\D/g, "");
   if (digits.length === 8) {
@@ -44,7 +34,6 @@ function toISO(display: string): string {
   return "";
 }
 
-/** Aplica a máscara DD/MM/AAAA enquanto o usuário digita */
 function applyMask(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 2) return digits;
@@ -63,8 +52,6 @@ export function DateInput({
   error,
 }: DateInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  // Sem `id` vindo de fora, gera um para ligar o <label> ao <input> —
-  // senão o campo é anunciado pelo placeholder ("DD/MM/AAAA").
   const generatedId = useId();
   const inputId = id ?? generatedId;
 
@@ -73,7 +60,6 @@ export function DateInput({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = applyMask(e.target.value);
 
-    // Reposiciona o cursor adequadamente
     const pos = masked.length;
     requestAnimationFrame(() => {
       if (inputRef.current) {
@@ -81,14 +67,12 @@ export function DateInput({
       }
     });
 
-    // Emite no formato ISO apenas quando a data estiver completa
     const iso = toISO(masked);
     if (iso) {
       onChange(iso);
     } else if (masked === "") {
       onChange("");
     } else {
-      // Valor parcial — emite a string de display para não perder o estado
       onChange(masked);
     }
   };

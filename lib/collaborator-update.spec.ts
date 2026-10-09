@@ -99,8 +99,6 @@ describe("buildCollaboratorUpdatePayload", () => {
     });
 
     it("combina despromoção com mudança de áreas na mesma chamada", () => {
-      // O caso do bug I2: ao desligar "é médico", as áreas gravadas são só as
-      // marcadas manualmente — as três fixas nunca viraram concessão.
       expect(
         buildCollaboratorUpdatePayload(
           { ...original, isDoctor: true, permissions: [] },
@@ -182,7 +180,6 @@ describe("buildDoctorProfileUpdatePayload", () => {
     expect(buildDoctorProfileUpdatePayload(perfil, { ...perfil })).toBeNull();
   });
 
-  // Antes ia `crm: undefined` ("não mexer") e o número continuava gravado.
   it("número e UF apagados vão como string vazia", () => {
     expect(
       buildDoctorProfileUpdatePayload(perfil, {

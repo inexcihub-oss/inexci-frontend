@@ -8,7 +8,6 @@ import {
   countActiveFilters,
 } from "../FilterModal";
 
-// Mock next/image
 vi.mock("next/image", () => ({
   default: (props: any) => {
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
@@ -16,10 +15,6 @@ vi.mock("next/image", () => ({
   },
 }));
 
-/**
- * TASK-FE-I06: Filtro por médico no kanban
- * Testa a nova seção "Médico" no FilterModal e a contagem de filtros ativos.
- */
 describe("FilterModal — Filtro por Médico", () => {
   const mockDoctors = [
     { id: "doc-1", name: "Dr. Silva" },
@@ -97,11 +92,9 @@ describe("FilterModal — Filtro por Médico", () => {
     const searchInput = screen.getByPlaceholderText("Pesquisar médico...");
     await userEvent.click(searchInput);
 
-    // Encontrar o item do dropdown e clicar
     const doctorOption = await screen.findByText("Dr. Silva");
     await userEvent.click(doctorOption);
 
-    // Deve mostrar badge de seleção
     await waitFor(() => {
       expect(screen.getByText("1 selecionado")).toBeInTheDocument();
     });
@@ -110,13 +103,11 @@ describe("FilterModal — Filtro por Médico", () => {
   it("deve aplicar filtro de médico ao clicar 'Mostrar resultados'", async () => {
     render(<FilterModal {...defaultProps} />);
 
-    // Abrir dropdown e selecionar médico
     const searchInput = screen.getByPlaceholderText("Pesquisar médico...");
     await userEvent.click(searchInput);
     const doctorOption = await screen.findByText("Dr. Silva");
     await userEvent.click(doctorOption);
 
-    // Aplicar filtros
     await userEvent.click(screen.getByText("Mostrar resultados"));
 
     await waitFor(() => {
@@ -134,21 +125,16 @@ describe("FilterModal — Filtro por Médico", () => {
     const searchInput = screen.getByPlaceholderText("Pesquisar médico...");
     await userEvent.click(searchInput);
 
-    // Selecionar primeiro médico
     await userEvent.click(await screen.findByText("Dr. Silva"));
 
-    // Clicar novamente no input para reabrir dropdown
     await userEvent.click(searchInput);
 
-    // Selecionar segundo médico
     await userEvent.click(await screen.findByText("Dra. Santos"));
 
-    // Deve mostrar "2 selecionados"
     await waitFor(() => {
       expect(screen.getByText("2 selecionados")).toBeInTheDocument();
     });
 
-    // Aplicar e verificar
     await userEvent.click(screen.getByText("Mostrar resultados"));
 
     await waitFor(() => {
@@ -163,12 +149,10 @@ describe("FilterModal — Filtro por Médico", () => {
   it("deve limpar filtro de médico ao clicar 'Limpar filtros'", async () => {
     render(<FilterModal {...defaultProps} />);
 
-    // Selecionar um médico
     const searchInput = screen.getByPlaceholderText("Pesquisar médico...");
     await userEvent.click(searchInput);
     await userEvent.click(await screen.findByText("Dr. Silva"));
 
-    // Limpar
     await userEvent.click(screen.getByText("Limpar filtros"));
 
     expect(defaultProps.onClear).toHaveBeenCalled();

@@ -65,13 +65,10 @@ function PrimeiroAcessoForm() {
 
       await authService.changePassword(email, tokenToUse, data.password);
 
-      // Tenta fazer login automático após ativar a conta.
-      // Mostra a tela de sucesso independentemente do resultado do login.
       setSuccess(true);
       try {
         await login(email, data.password);
       } catch {
-        // Login automático falhou — redireciona para o login manual após breve delay.
         setTimeout(() => router.push("/login"), 2000);
       }
     } catch (err: unknown) {
@@ -102,10 +99,8 @@ function PrimeiroAcessoForm() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Left Side - Form */}
       <div className="flex-1 flex items-center justify-center px-5 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-6 sm:space-y-8">
-          {/* Logo */}
           <div className="flex justify-center">
             <Image
               src="/brand/logo.png"
@@ -117,7 +112,6 @@ function PrimeiroAcessoForm() {
             />
           </div>
 
-          {/* Title */}
           <div className="text-center">
             <h2 className="text-2xl sm:text-3xl font-semibold text-black font-urbanist">
               {hasValidLink ? "Crie sua senha" : "Link inválido"}
@@ -137,7 +131,6 @@ function PrimeiroAcessoForm() {
             )}
           </div>
 
-          {/* Invalid Link State */}
           {!hasValidLink ? (
             <div className="space-y-5">
               <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700 flex items-start gap-2.5">
@@ -155,7 +148,6 @@ function PrimeiroAcessoForm() {
               </Link>
             </div>
           ) : success ? (
-            /* Success State */
             <div className="rounded-xl bg-gradient-to-br from-teal-50 to-emerald-50 border border-teal-200 p-8 text-center space-y-4">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-teal-100">
                 <CheckCircle2 className="w-8 h-8 text-teal-600" />
@@ -175,9 +167,7 @@ function PrimeiroAcessoForm() {
               </div>
             </div>
           ) : (
-            /* Form */
             <form onSubmit={handleSubmit} noValidate className="space-y-5">
-              {/* Error Message */}
               {error && (
                 <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700 flex items-start gap-2.5">
                   <ShieldCheck className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
@@ -185,7 +175,6 @@ function PrimeiroAcessoForm() {
                 </div>
               )}
 
-              {/* Security hint */}
               <div className="flex items-center gap-3 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3">
                 <Lock className="w-4 h-4 text-slate-400 flex-shrink-0" />
                 <p className="text-xs text-slate-500">
@@ -222,7 +211,6 @@ function PrimeiroAcessoForm() {
                 Ativar conta
               </Button>
 
-              {/* Link to login */}
               <div className="text-center text-sm text-gray-600">
                 Já tem acesso?{" "}
                 <Link
@@ -237,9 +225,7 @@ function PrimeiroAcessoForm() {
         </div>
       </div>
 
-      {/* Right Side - Modern Design (matching login page) */}
       <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div
             className="absolute inset-0"
@@ -250,17 +236,14 @@ function PrimeiroAcessoForm() {
           />
         </div>
 
-        {/* Gradient Orbs */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
         <div
           className="absolute bottom-0 left-0 w-96 h-96 bg-secondary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-pulse"
           style={{ animationDelay: "1s" }}
         />
 
-        {/* Content Container */}
         <div className="absolute inset-0 flex flex-col items-center justify-center p-16">
           <div className="max-w-xl space-y-12 relative z-10">
-            {/* Inexci Icon */}
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-secondary-500 rounded-3xl blur-2xl opacity-30" />
               <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-12 border border-white/10">
@@ -279,7 +262,6 @@ function PrimeiroAcessoForm() {
               </div>
             </div>
 
-            {/* Welcome Message */}
             <div className="space-y-6 text-center">
               <div className="space-y-4">
                 <svg
@@ -303,7 +285,6 @@ function PrimeiroAcessoForm() {
               </div>
             </div>
 
-            {/* Feature Highlights */}
             <div className="grid grid-cols-3 gap-8 pt-8">
               <div className="text-center space-y-3">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/5 border border-white/10 mx-auto">
@@ -333,7 +314,6 @@ function PrimeiroAcessoForm() {
           </div>
         </div>
 
-        {/* Bottom Gradient Line */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-secondary-500 to-teal-500" />
       </div>
     </div>

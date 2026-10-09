@@ -6,32 +6,21 @@ import Image from "next/image";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 
 interface DetailPageLayoutProps {
-  /** Título da seção (ex: "Colaboradores", "Pacientes") */
   sectionTitle: string;
-  /** Link para voltar à listagem */
   backHref: string;
-  /** Nome do item sendo visualizado */
   itemName: string;
-  /** Subtítulo opcional (ex: especialidade, tipo, resumo do paciente) */
   itemSubtitle?: ReactNode;
-  /** Imagem do perfil ou iniciais */
   profileImage?: string;
-  /** Avatar próprio (ex.: foto editável do paciente) no lugar da imagem/iniciais. */
   avatar?: ReactNode;
-  /** Ação à direita do cartão do nome (ex.: "Nova consulta"). */
   profileAction?: ReactNode;
-  /** Navegação entre itens */
   navigation?: {
     currentIndex: number;
     totalItems: number;
     onPrevious?: () => void;
     onNext?: () => void;
   };
-  /** Conteúdo principal (formulários) */
   children: ReactNode;
-  /** Conteúdo da sidebar direita */
   sidebarContent?: ReactNode;
-  /** Ícone da sidebar quando fechada */
   sidebarIcon?: "users" | "history" | "info" | "calendar";
 }
 
@@ -54,7 +43,6 @@ export function DetailPageLayout({
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(closeSidebar);
 
-  // Fechar sidebar no mobile por padrão
   useEffect(() => {
     if (window.innerWidth < 1024) {
       setIsSidebarOpen(false);
@@ -156,12 +144,9 @@ export function DetailPageLayout({
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      {/* Conteúdo Principal */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Header com navegação */}
         <div className="flex items-center justify-between px-3 lg:px-6 py-0 border-b border-neutral-100 h-13">
           <div className="flex items-center gap-2">
-            {/* Botão voltar */}
             <Link
               href={backHref}
               className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center border border-neutral-100 rounded-xl md:rounded-lg shadow-sm hover:bg-teal-50 active:scale-[0.95] transition-all p-1"
@@ -177,7 +162,6 @@ export function DetailPageLayout({
               </svg>
             </Link>
 
-            {/* Breadcrumb */}
             <div className="flex items-center min-w-0">
               <div className="hidden md:flex items-center justify-center px-2 py-4">
                 <span className="text-xs md:text-sm text-gray-900">
@@ -205,7 +189,6 @@ export function DetailPageLayout({
             </div>
           </div>
 
-          {/* Navegação entre itens e menu */}
           <div className="flex items-center gap-2">
             {navigation && (
               <>
@@ -251,10 +234,8 @@ export function DetailPageLayout({
               </>
             )}
 
-            {/* Toggle Sidebar - apenas se houver sidebarContent */}
             {sidebarContent && (
               <>
-                {/* Linha separadora */}
                 <div className="w-px h-6 bg-gray-200"></div>
 
                 <button
@@ -281,11 +262,8 @@ export function DetailPageLayout({
           </div>
         </div>
 
-        {/* Área de conteúdo com scroll */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-4 md:p-6 space-y-3 md:space-y-4 lg:space-y-6">
-          {/* Card de perfil */}
           <div className="flex items-center gap-3 lg:gap-4 p-3 lg:p-4 bg-gradient-to-r from-white to-transparent border border-neutral-100 rounded-2xl shadow-sm">
-            {/* Avatar */}
             {avatar ? (
               avatar
             ) : profileImage ? (
@@ -304,7 +282,6 @@ export function DetailPageLayout({
               </div>
             )}
 
-            {/* Nome e subtítulo */}
             <div className="flex flex-1 flex-col justify-center min-w-0">
               <h1 className="text-xl lg:text-2xl font-semibold text-gray-900 truncate">
                 {itemName}
@@ -318,15 +295,12 @@ export function DetailPageLayout({
             {profileAction && <div className="shrink-0">{profileAction}</div>}
           </div>
 
-          {/* Conteúdo dos formulários */}
           {children}
         </div>
       </div>
 
-      {/* Sidebar Direita (opcional) */}
       {sidebarContent && isSidebarOpen && (
         <>
-          {/* Mobile backdrop */}
           <div
             className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 lg:hidden animate-fade-in"
             style={{ opacity: dragY > 0 ? Math.max(0.2, 1 - dragY / 300) : 1 }}
@@ -340,7 +314,6 @@ export function DetailPageLayout({
                 : undefined
             }
           >
-            {/* Mobile drag handle — captura swipe para baixo */}
             <div
               className="flex justify-center pt-3 pb-1 lg:hidden cursor-grab active:cursor-grabbing touch-none"
               onTouchStart={onTouchStart}
@@ -349,7 +322,6 @@ export function DetailPageLayout({
             >
               <div className="w-10 h-1 bg-gray-300 rounded-full" />
             </div>
-            {/* Mobile close header */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-100 lg:hidden">
               <span className="text-sm font-semibold text-gray-900">
                 Detalhes

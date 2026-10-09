@@ -67,14 +67,8 @@ export function ApplyDocumentExtractionModal({ isOpen, onClose, solicitation, on
   const suggestions = useMemo(() => result ? findSuggestions(solicitation, result) : [], [solicitation, result]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => { if (!isOpen) { setFile(null); setError(null); setResult(null); setSelected(new Set()); setAnalyzing(false); } }, [isOpen]);
-  // Reabertura a partir da notificação: o resultado já veio pronto (job concluiu em
-  // background), então pula direto para a revisão em vez de pedir o arquivo de novo.
   useEffect(() => { if (isOpen && initialResult && !result) setResult(initialResult); }, [isOpen, initialResult, result]);
   useEffect(() => { if (result) setSelected(new Set(suggestions.map((x) => x.key))); }, [result, suggestions]);
-  // Fechar durante a análise não cancela o job: ele segue rodando no backend e,
-  // ao terminar, o usuário é avisado pelo sino de notificações — mesmo padrão do
-  // UploadDocumentModal (criação de SC via documento). Só a gravação (`saving`)
-  // continua bloqueando o fechamento, por ser uma mutação em andamento.
   const close = () => { if (saving) return; if (analyzing) removeScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_FOREGROUND_KEY); onClose(); };
   const pick = (candidate: File) => { if (!ACCEPTED.includes(candidate.type)) return setError("Formato não suportado. Use PDF, JPG, PNG ou WEBP."); if (candidate.size > MAX_BYTES) return setError("Arquivo muito grande. O máximo permitido é 10 MB."); setFile(candidate); setError(null); };
   const poll = async (id: string) => { for (let i = 0; i < 60; i++) { const status = await surgeryRequestService.getExtractFromDocumentStatus(id); if (status.status === "done") return status.result; if (status.status === "error") throw new Error(status.message || "Não foi possível concluir a análise."); await new Promise((resolve) => window.setTimeout(resolve, 1500)); } throw new Error("A análise está demorando mais que o esperado. Tente novamente."); };

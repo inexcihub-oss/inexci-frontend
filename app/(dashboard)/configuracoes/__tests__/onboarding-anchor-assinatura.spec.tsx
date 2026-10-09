@@ -2,14 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-/**
- * `config-assinatura` é a âncora que o tour de onboarding usa para o passo
- * obrigatório da trilha "Configurar sua assinatura" (`tour-registry.ts`,
- * `requiresDoctor: true`, `required: true`). Sem este teste, remover o
- * atributo do `<Card>` não quebra nada visível — o passo, sendo obrigatório,
- * encerraria o tour com aviso em produção, mas nenhum teste apontaria a causa.
- */
-
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     user: { id: "user-1", accountId: "user-1", role: "admin" },

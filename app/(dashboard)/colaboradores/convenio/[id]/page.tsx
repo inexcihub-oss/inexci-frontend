@@ -30,13 +30,6 @@ export default function ConvenioDetalhePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { can } = useAuth();
-  /**
-   * Convênio é cadastro transversal, então quem só tem `agenda` ou
-   * `atendimento` chega até aqui — mas `GET /surgery-requests` exige
-   * `solicitacoes`. Ler `can` no corpo é seguro: o layout do dashboard só
-   * monta os filhos depois que a sessão resolve, então a permissão já é
-   * definitiva quando o `loadData` roda.
-   */
   const podeVerSolicitacoes = can(Permission.SOLICITACOES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -47,7 +40,6 @@ export default function ConvenioDetalhePage() {
   const [loadingSurgeries, setLoadingSurgeries] = useState(true);
   const { toast, showToast, hideToast } = useToast();
 
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     cnpj: "",
@@ -103,14 +95,6 @@ export default function ConvenioDetalhePage() {
 
   const loadData = async () => {
     setLoading(true);
-    // Disparada em paralelo com o getById abaixo: o filtro por convênio é
-    // aplicado no backend a partir do id da rota, sem depender de
-    // healthPlanData. `.catch(noop)` evita unhandled rejection em retorno
-    // antecipado.
-    //
-    // Sem `solicitacoes`, a chamada nem sai: o 403 caía nesse mesmo catch e o
-    // painel exibia "0 / Nenhuma solicitação encontrada" — um zero falso,
-    // indistinguível de um convênio que de fato nunca teve cirurgia.
     const surgeryPromise = podeVerSolicitacoes
       ? surgeryRequestService.getAll({ healthPlanId: params.id })
       : null;
@@ -127,7 +111,6 @@ export default function ConvenioDetalhePage() {
 
       setHealthPlan(healthPlanData);
 
-      // Preenche o formulário
       setFormData({
         name: healthPlanData.name || "",
         cnpj: maskCnpj(healthPlanData.cnpj || ""),
@@ -162,7 +145,6 @@ export default function ConvenioDetalhePage() {
         contactPhone: maskPhone(healthPlanData.authorizationPhone || ""),
         contactEmail: healthPlanData.authorizationEmail || "",
       });
-      // Solicitações cirúrgicas deste convênio (já filtradas no backend)
       if (surgeryPromise) {
         setLoadingSurgeries(true);
         try {
@@ -257,7 +239,6 @@ export default function ConvenioDetalhePage() {
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
         <h3 className="text-sm font-semibold text-gray-900">
           Solicitações recentes
@@ -269,7 +250,6 @@ export default function ConvenioDetalhePage() {
         )}
       </div>
 
-      {/* Lista de solicitações */}
       <div className="flex-1 overflow-y-auto">
         {loadingSurgeries ? (
           <div className="flex items-center justify-center py-8">
@@ -333,12 +313,8 @@ export default function ConvenioDetalhePage() {
         backHref="/convenios"
         itemName={formData.name}
         itemSubtitle="Convênio"
-        // `undefined` some com o painel inteiro, inclusive o botão de abrir —
-        // as cirurgias do convênio não são a área de quem só tem `agenda`, e um
-        // aviso fixo sobre algo que ele não veio fazer seria só ruído.
         sidebarContent={podeVerSolicitacoes ? sidebarContent : undefined}
       >
-        {/* Seção: Informações gerais */}
         <FormSection title="Informações gerais">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
@@ -382,7 +358,6 @@ export default function ConvenioDetalhePage() {
           </div>
         </FormSection>
 
-        {/* Seção: Endereço */}
         <FormSection title="Endereço">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
@@ -435,7 +410,6 @@ export default function ConvenioDetalhePage() {
           )}
         </FormSection>
 
-        {/* Seção: Contato */}
         <FormSection title="Contato responsável">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input
@@ -464,7 +438,6 @@ export default function ConvenioDetalhePage() {
           </div>
         </FormSection>
 
-        {/* Botão de salvar */}
         <div className="flex justify-end gap-3 pt-4">
           <Button variant="outline" onClick={handleCancel}>
             Cancelar

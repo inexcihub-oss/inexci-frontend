@@ -14,8 +14,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/atendimento/a-1",
 }));
 
-// O Tiptap não roda bem no jsdom; o editor é substituído por um textarea
-// controlado com o mesmo contrato (value/onChange).
 vi.mock("@/components/shared/RichTextEditor", () => ({
   RichTextEditor: ({
     value,
@@ -74,8 +72,6 @@ vi.mock("@/components/onboarding/OnboardingProvider", () => ({
 
 import { Permission } from "@/lib/permissions";
 
-// `can` concede tudo por padrão — os testes deste arquivo focam no eixo
-// `isDoctor`; a permissão Solicitações é exercida à parte, mais abaixo.
 let authState: {
   user?: { id: string } | null;
   isDoctor: boolean;
@@ -150,7 +146,6 @@ type Record_ = NonNullable<
   Parameters<typeof AtendimentoTabs>[0]["initialRecord"]
 >;
 
-/** Ficha persistida padrão; `over` sobrescreve o que o teste precisa variar. */
 function recordFixture(over: Partial<Record_> = {}): Record_ {
   return {
     id: "r-1",
@@ -173,7 +168,6 @@ function recordFixture(over: Partial<Record_> = {}): Record_ {
   };
 }
 
-/** Cliente novo por render: a lista de médicos não vaza de um teste para outro. */
 function renderWithQuery(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -228,11 +222,6 @@ describe("AtendimentoTabs", () => {
     expect(screen.getByText("Conduta / Plano")).toBeInTheDocument();
   });
 
-  /**
-   * Âncora do tour de onboarding (trilha "atendimento", passo "abas") em
-   * `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo (ou
-   * trocar o elemento) quebra o tour em silêncio.
-   */
   it('expõe data-tour="ficha-abas" na barra de abas', () => {
     renderTabs();
 
@@ -298,11 +287,6 @@ describe("AtendimentoTabs", () => {
     await user.type(screen.getByLabelText(/Queixa principal/i), "Dor lombar");
     expect(screen.getByText(/Alterações não salvas/i)).toBeInTheDocument();
 
-    // Existem dois botões "Salvar rascunho" no DOM (versão desktop no header,
-    // versão mobile no fim da aba) — jsdom não avalia media queries, então
-    // ambos aparecem simultaneamente na árvore de acessibilidade, embora só um
-    // fique visível por vez no navegador real. Clicamos no primeiro; os dois
-    // disparam a mesma ação.
     const saveButtons = screen.getAllByRole("button", {
       name: /Salvar rascunho/i,
     });
@@ -331,7 +315,6 @@ describe("AtendimentoTabs", () => {
     renderTabs(existing);
 
     await user.type(screen.getByLabelText(/Queixa principal/i), " + evolução");
-    // Ver comentário no teste anterior: dois botões equivalentes (desktop/mobile).
     const saveButtons = screen.getAllByRole("button", {
       name: /Salvar rascunho/i,
     });
@@ -352,8 +335,6 @@ describe("AtendimentoTabs", () => {
     (
       clinicalRecordService.create as ReturnType<typeof vi.fn>
     ).mockResolvedValue(created);
-    // finalize() falha na primeira tentativa (rede, timeout...); persist() já
-    // rodou e criou a ficha no servidor antes desse erro.
     (
       clinicalRecordService.finalize as ReturnType<typeof vi.fn>
     ).mockRejectedValue(new Error("Falha de rede"));
@@ -369,15 +350,9 @@ describe("AtendimentoTabs", () => {
     await user.type(screen.getByLabelText(/Queixa principal/i), "Dor lombar");
     await user.click(screen.getByRole("button", { name: "Finalizar" }));
 
-    // O erro de finalize() é mostrado ao médico (getApiErrorMessage usa a
-    // própria mensagem do Error quando não é um AxiosError)...
     await screen.findByText(/Falha de rede/i);
-    // ...e a ficha já criada foi registrada no estado (regressão testada aqui):
-    // create() só deve ter sido chamado uma vez, mesmo após a retentativa abaixo.
     expect(clinicalRecordService.create).toHaveBeenCalledTimes(1);
 
-    // Retentativa: "Salvar rascunho" (existem duas cópias do botão no DOM —
-    // desktop/mobile — ver comentário nos testes anteriores).
     const saveButtons = screen.getAllByRole("button", {
       name: /Salvar rascunho/i,
     });
@@ -389,7 +364,6 @@ describe("AtendimentoTabs", () => {
         expect.objectContaining({ anamnesis: "Dor lombar" }),
       );
     });
-    // O ponto central da regressão: create() nunca é chamado de novo.
     expect(clinicalRecordService.create).toHaveBeenCalledTimes(1);
   });
 
@@ -404,9 +378,6 @@ describe("AtendimentoTabs", () => {
     expect(
       screen.queryByRole("button", { name: /Salvar rascunho/i }),
     ).not.toBeInTheDocument();
-    // Texto exato (em vez de regex) para não colidir com a frase do banner de
-    // aviso ("Atendimento finalizado em ..."), que também contém a palavra
-    // "finalizado" e é uma correspondência legítima e distinta do badge.
     expect(screen.getByText("Finalizado")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Cadastro" })).toBeInTheDocument();
   });
@@ -511,11 +482,6 @@ describe("AtendimentoTabs", () => {
     ).toHaveAttribute("href", "/solicitacao/sc-1");
   });
 
-  /**
-   * O link para o detalhe da SC exige a permissão Solicitações — eixo
-   * diferente de `isDoctor`. Sem ela, o card continua avisando que a SC foi
-   * criada, mas sem um link que o guard de rota devolveria de qualquer jeito.
-   */
   it("esconde o link da SC para quem não tem a permissão Solicitações", async () => {
     authState = {
       user: { id: "d-1" },
@@ -553,8 +519,6 @@ describe("AtendimentoTabs", () => {
     ).not.toBeInTheDocument();
   });
 
-  // Quando a criação inline falha, o backend responde sem surgeryRequestId e o
-  // sweeper retoma — a UI precisa dizer isso em vez de fingir que deu certo.
   it("avisa que a SC está em criação quando o backend não devolve o id", async () => {
     const user = userEvent.setup();
     (
@@ -576,8 +540,6 @@ describe("AtendimentoTabs", () => {
     );
     await user.click(screen.getByRole("button", { name: "Finalizar" }));
 
-    // Texto exato de cada um: o toast e o aviso do card compartilham a frase
-    // "está sendo criada", e uma regex casaria com os dois.
     expect(
       await screen.findByText(
         "Atendimento finalizado. A solicitação cirúrgica está sendo criada.",
@@ -679,7 +641,6 @@ describe("AtendimentoTabs", () => {
             .value,
         ).toBe("<p>Dor lombar há 3 meses</p>"),
       );
-      // Aplicar não grava nada: o médico ainda precisa salvar.
       expect(clinicalRecordService.update).not.toHaveBeenCalled();
       expect(clinicalRecordService.create).not.toHaveBeenCalled();
     });
@@ -761,11 +722,6 @@ describe("AtendimentoTabs", () => {
       );
     });
 
-    /**
-     * D-11: pré-visualizar não pode criar ficha. Num atendimento sem ficha
-     * nenhuma, "Visualizar" gravava um `ClinicalRecord` vazio — e a consulta
-     * passava a ter ficha vinculada, o que impede excluí-la.
-     */
     it("não cria a ficha ao apenas pré-visualizar", async () => {
       const user = userEvent.setup();
       renderTabs();
@@ -811,11 +767,6 @@ describe("AtendimentoTabs", () => {
     });
   });
 
-  /**
-   * D-08: o card mostrava `healthPlanType` — a acomodação (Apartamento /
-   * Enfermaria) — sob o rótulo "Convênio". O nome do plano vem do cadastro de
-   * convênios, resolvido pelo `healthPlanId` do paciente.
-   */
   describe("card de convênio", () => {
     it("mostra o nome do convênio, não a acomodação", async () => {
       (healthPlanService.getById as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -833,7 +784,6 @@ describe("AtendimentoTabs", () => {
 
       expect(await screen.findByText("Unimed Paulistana")).toBeInTheDocument();
       expect(healthPlanService.getById).toHaveBeenCalledWith("hp-1");
-      // A acomodação vira informação secundária, nunca o valor do card.
       expect(screen.getByText(/· Apartamento/)).toBeInTheDocument();
     });
 
@@ -845,10 +795,6 @@ describe("AtendimentoTabs", () => {
     });
   });
 
-  /**
-   * D-10: a data saía de um `capitalize` de CSS, que subia a inicial de cada
-   * palavra ("Quarta-Feira, 05 De Agosto Às 14:30").
-   */
   it("capitaliza só a inicial da data do atendimento", () => {
     renderTabs();
 
@@ -857,17 +803,6 @@ describe("AtendimentoTabs", () => {
     ).toBeInTheDocument();
   });
 
-  /**
-   * Atender é ato do médico. Secretária e assistente continuam entrando na
-   * tela — precisam do histórico, do cadastro e dos exames anexados — mas em
-   * leitura: sem salvar, sem finalizar e sem emitir documento com o CRM e a
-   * assinatura do médico.
-   */
-  /**
-   * MIG-02: psicologia, nutrição, enfermagem etc. têm perfil e registram a
-   * própria ficha, mas receita/atestado/pedido de exame e indicação cirúrgica
-   * são atos de médico (CRM).
-   */
   describe("dentista (CRO)", () => {
     beforeEach(() => {
       authState = {
@@ -892,9 +827,6 @@ describe("AtendimentoTabs", () => {
     });
   });
 
-  // Consulta de dentista: os documentos saem em nome dele. Antes a API não
-  // devolvia `canIssueClinicalDocuments` e a tela caía em `isPhysician`,
-  // desabilitando receita/atestado/pedido de exame do CRO.
   it.each([
     ["com canIssueClinicalDocuments", { canIssueClinicalDocuments: true }],
     ["só com o conselho (resposta sem o campo)", {}],
@@ -914,8 +846,6 @@ describe("AtendimentoTabs", () => {
       ]);
       renderTabs();
 
-      // A indicação some quando a lista chega (dentista não indica cirurgia):
-      // a partir daí os botões refletem o profissional da consulta.
       await waitFor(() =>
         expect(
           screen.queryByRole("checkbox", { name: "Paciente cirúrgico" }),
@@ -956,9 +886,6 @@ describe("AtendimentoTabs", () => {
       ).not.toBeInTheDocument();
     });
 
-    // Rascunho com a indicação já gravada: ela não pode marcar, mas precisa
-    // poder DESMARCAR — senão todo salvar mandaria `surgicalIndication: true`
-    // e o backend recusaria, travando a ficha.
     it("deixa desmarcar a indicação já gravada, mas não marcar de novo", async () => {
       const user = userEvent.setup();
       renderTabs(recordFixture({ surgicalIndication: true }));
@@ -1030,10 +957,6 @@ describe("AtendimentoTabs", () => {
     });
   });
 
-  /**
-   * A indicação abre a SC em nome do profissional da consulta: o backend
-   * recusa se ele não for médico, mesmo que quem está logado seja.
-   */
   it("médico logado numa consulta de profissional não médico não vê a indicação cirúrgica", async () => {
     vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue([
       {
@@ -1106,9 +1029,6 @@ describe("AtendimentoTabs", () => {
     );
   });
 
-  // Rascunho salvo com a indicação antes de o CRM ficar sem número: o backend
-  // recusaria a SC e a ficha ficaria parada no outbox, com a tela dizendo que
-  // a solicitação "está sendo criada".
   it("não finaliza indicação cirúrgica de médico com CRM sem número", async () => {
     vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue([
       {
@@ -1125,7 +1045,6 @@ describe("AtendimentoTabs", () => {
     await screen.findByText(
       "Preencha o número e a UF do CRM de Karina Clínica em Colaboradores para indicar cirurgia.",
     );
-    // Continua marcado e editável: o médico pode desmarcar para finalizar.
     expect(
       screen.getByRole("checkbox", { name: "Paciente cirúrgico" }),
     ).toBeEnabled();
@@ -1211,8 +1130,6 @@ describe("AtendimentoTabs", () => {
     );
   });
 
-  // Decisão (a) da API: a indicação só é checada na transição false→true.
-  // Reenviar o valor gravado a cada salvar fazia um rascunho antigo falhar.
   it("não reenvia a indicação cirúrgica quando ela não mudou", async () => {
     (
       clinicalRecordService.update as ReturnType<typeof vi.fn>
@@ -1253,8 +1170,6 @@ describe("AtendimentoTabs", () => {
     ).not.toHaveProperty("surgicalIndication");
   });
 
-  // Dentista (CRO) logado com um rascunho que já tinha a indicação: o backend
-  // recusaria a SC depois de gravar a ficha.
   it("não finaliza indicação cirúrgica quando quem está logado não é médico (CRM)", async () => {
     authState = {
       user: { id: "d-1" },
@@ -1269,7 +1184,6 @@ describe("AtendimentoTabs", () => {
 
     await user.click(screen.getByRole("button", { name: "Finalizar" }));
 
-    // Cartão + toast: a mesma mensagem nos dois lugares.
     await waitFor(() =>
       expect(
         screen.getAllByText("Indicação cirúrgica é ato de médico (CRM)."),
@@ -1279,8 +1193,6 @@ describe("AtendimentoTabs", () => {
     expect(clinicalRecordService.finalize).not.toHaveBeenCalled();
   });
 
-  // Decisão (b): o backend só aceita receita/atestado/exame (e a prévia) do
-  // próprio profissional da consulta — admin ou outro médico recebe 403.
   it("médico que não é o profissional da consulta vê os documentos desabilitados", async () => {
     authState = {
       user: { id: "outro-medico" },
@@ -1460,7 +1372,6 @@ describe("AtendimentoTabs", () => {
       expect(
         screen.getByText(/Apenas médicos podem registrar/i),
       ).toBeInTheDocument();
-      // Em leitura a ficha troca o editor pelo conteúdo renderizado.
       expect(
         screen.queryByLabelText(/Queixa principal/i),
       ).not.toBeInTheDocument();
@@ -1558,11 +1469,6 @@ describe("AtendimentoTabs", () => {
     expect(screen.getByRole("tab", { name: "Documentos" })).toBeEnabled();
   });
 
-  /**
-   * Guard por PROVENIÊNCIA: `/atendimento/tour-demo` continua na tela com os
-   * dados fabricados depois que o tour termina (`closeTour` não navega), e
-   * nada pode voltar a mutar com o id sentinela.
-   */
   it("mantém os botões e as abas bloqueados mesmo fora do tour, se a consulta for a fabricada", () => {
     renderWithQuery(
       <AtendimentoTabs

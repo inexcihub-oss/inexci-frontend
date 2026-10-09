@@ -20,18 +20,11 @@ import { safeExternalUrl } from "@/lib/safe-url";
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   ...Object.fromEntries(PRE_SURGERY_DOCUMENT_TYPES.map((t) => [t.key, t.label])),
-  // Emitidos pelo sistema a partir da ficha — não aparecem no upload manual,
-  // mas precisam de rótulo na listagem.
   prescription: "Receita",
   medical_certificate: "Atestado médico",
   exam_referral: "Solicitação de exames",
 };
 
-/**
- * Rótulo do tipo na listagem. A chave crua nunca aparece: anexo importado do
- * Feegow tem chave única por arquivo (`feegow_<id>`), e o que interessa a
- * quem lê é de onde ele veio.
- */
 export function formatDocumentType(key: string, type?: string): string {
   if (DOCUMENT_TYPE_LABELS[key]) return DOCUMENT_TYPE_LABELS[key];
   if (key?.startsWith("feegow_")) return "Importado do Feegow";
@@ -49,10 +42,6 @@ function formatDocumentDate(value?: string | null): string {
   });
 }
 
-/**
- * Documentos e exames do paciente. Segue o mesmo padrão de tabela da seção
- * Documentos da solicitação cirúrgica.
- */
 export function PatientDocuments({
   patientId,
   clinicalRecordId,
@@ -60,14 +49,9 @@ export function PatientDocuments({
 }: {
   patientId: string;
   clinicalRecordId?: string;
-  /** Muda quando um documento é emitido fora desta aba, forçando o recarregamento. */
   refreshKey?: number;
 }) {
   const { can } = useAuth();
-  // `GET/POST/DELETE /clinical-records/documents` exigem Atendimento na
-  // classe do controller — não é só upload/exclusão, a própria listagem
-  // falha sem a permissão. Sem ela não há nada legítimo para buscar, então a
-  // seção nem tenta.
   const podeAtendimento = can(Permission.ATENDIMENTO);
   const { showToast } = useToast();
   const [documents, setDocuments] = useState<PatientDocument[]>([]);
@@ -129,7 +113,6 @@ export function PatientDocuments({
         }
       >
         <div className="space-y-0">
-          {/* Cabeçalho da tabela */}
           <div className="flex items-center gap-4 px-4 py-1.5 border-b border-neutral-100">
             <div className="flex-1 min-w-0 text-xs text-gray-900 opacity-70">
               Tipo
@@ -142,7 +125,6 @@ export function PatientDocuments({
             </div>
           </div>
 
-          {/* Linhas de documentos */}
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Spinner size="sm" />

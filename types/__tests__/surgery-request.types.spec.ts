@@ -97,7 +97,6 @@ describe("surgery-request.types", () => {
         status: "Pendente",
       };
 
-      // Nova estrutura: doctor é User, doctor_profile é aninhado
       expect(request.doctor.name).toBe("Dr. João");
       expect(request.doctor.doctorProfile?.crm).toBe("123456");
       expect(request.doctor.doctorProfile?.specialty).toBe("Ortopedia");

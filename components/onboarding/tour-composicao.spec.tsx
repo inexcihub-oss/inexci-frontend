@@ -6,17 +6,6 @@ import { Permission } from "@/lib/permissions";
 import { OnboardingProvider, useOnboarding } from "./OnboardingProvider";
 import { TourOverlay } from "./TourOverlay";
 
-/**
- * Teste de COMPOSIÇÃO: provider real + overlay real, dentro de StrictMode.
- *
- * Os specs de cada componente mockam o vizinho, então nenhum deles enxerga o
- * defeito que este arquivo existe para pegar: efeito colateral disparado de
- * dentro de um updater de `setState`. O React reexecuta updaters em StrictMode
- * e os executa DURANTE o render — chamar `onClose` (que faz `setActiveTour` no
- * provider) ali produz "Cannot update a component while rendering a different
- * component", que chegou ao usuário em produção sem nenhum teste falhar.
- */
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => "/solicitacoes-cirurgicas",
@@ -90,7 +79,6 @@ describe("composição provider + overlay", () => {
 
     await user.click(screen.getByText("abrir tour"));
 
-    // Avança até o botão final e conclui.
     for (let i = 0; i < 10; i++) {
       const proximo = screen.queryByRole("button", { name: /próximo/i });
       if (!proximo) break;

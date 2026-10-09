@@ -43,7 +43,6 @@ import {
   createDeleteActionColumn,
 } from "@/components/shared/cadastro-table-columns";
 
-/** Converte o resumo vindo da API para a linha da tabela. */
 function templateToModel(t: SurgeryRequestTemplateSummary): ProcedureModel {
   return {
     id: t.id,
@@ -82,14 +81,8 @@ export default function ProcedimentosPage() {
   const { canCreateSurgeryRequest, blockReason, blockReasonCode, isAdmin, can } =
     useAuth();
   const [isBillingBlockOpen, setIsBillingBlockOpen] = useState(false);
-  // Os "modelos" desta página são `SurgeryRequestTemplate` — o backend
-  // (`POST/PATCH/DELETE /surgery-requests/templates/*`) herda a permissão de
-  // classe do controller de solicitações cirúrgicas (`Permission.SOLICITACOES`),
-  // não `ADMINISTRACAO` como os demais cadastros básicos.
   const podeGerenciarModelos = can(Permission.SOLICITACOES);
 
-  // Passo "novo-modelo" da trilha Cadastros: abre o modal sozinho, sem o
-  // usuário precisar achar o botão "Novo modelo".
   useOnboardingAction(ACAO_PROCEDIMENTOS_ABRIR_NOVO_MODELO, () =>
     setIsNewModelModalOpen(true),
   );
@@ -109,32 +102,27 @@ export default function ProcedimentosPage() {
       setHasActiveDoctors(hasAtLeastOneActive);
       return hasAtLeastOneActive;
     } catch {
-      // Não bloquear por falha transitória de rede
       return true;
     }
   }, [hasActiveDoctors, isAdmin]);
 
-  // Modal de exclusão individual
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
     procedure: ProcedureModel | null;
     loading: boolean;
   }>({ open: false, procedure: null, loading: false });
 
-  // Modal de exclusão em lote
   const [bulkDeleteModal, setBulkDeleteModal] = useState<{
     open: boolean;
     loading: boolean;
   }>({ open: false, loading: false });
 
-  // ─── Carrega templates da API ─────────────────────────────────────────────
   const loadTemplates = useCallback(async () => {
     setIsLoadingList(true);
     try {
       const data = await surgeryRequestService.getTemplates();
       const models = Array.isArray(data) ? data.map(templateToModel) : [];
       setProcedures(models);
-      // Atualiza selectedProcedure se estiver aberto
       setSelectedProcedure((prev) => {
         if (!prev) return prev;
         const updated = models.find((m) => m.id === prev.id);
@@ -151,7 +139,6 @@ export default function ProcedimentosPage() {
     loadTemplates();
   }, [loadTemplates]);
 
-  // Filtrar procedimentos baseado na busca
   const filteredProcedures = useMemo(() => {
     if (!debouncedSearchTerm) return procedures;
     const search = debouncedSearchTerm.toLowerCase();
@@ -170,7 +157,6 @@ export default function ProcedimentosPage() {
       .filter((p): p is ProcedureModel => Boolean(p));
   }, [rowSelection, filteredProcedures]);
 
-  // ─── Handlers exclusão individual ────────────────────────────────────────────
   const handleDeleteClick = (
     procedure: ProcedureModel,
     e: React.MouseEvent,
@@ -201,7 +187,6 @@ export default function ProcedimentosPage() {
     }
   };
 
-  // ─── Handlers exclusão em lote ───────────────────────────────────────────────
   const handleBulkDeleteClick = () => {
     setBulkDeleteModal({ open: true, loading: false });
   };
@@ -338,8 +323,6 @@ export default function ProcedimentosPage() {
           procedureName: data.procedureName,
         },
       });
-      // A criação devolve o modelo completo, não o resumo da listagem —
-      // recarregar é mais barato que reconstruir a linha na mão.
       await loadTemplates();
       showToast("Modelo criado com sucesso!", "success");
     } catch {
@@ -350,12 +333,10 @@ export default function ProcedimentosPage() {
 
   return (
     <PageContainer className="border-gray-200">
-      {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3 border-b border-gray-200">
         <h1 className="ds-page-title">Procedimentos</h1>
       </div>
 
-      {/* Search + Button Bar */}
       <div className="flex-none flex flex-wrap items-center gap-2.5 px-4 py-3 border-b border-gray-200">
         <SearchInput
           value={searchTerm}
@@ -406,7 +387,6 @@ export default function ProcedimentosPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {isLoadingList ? (
           <div className="flex items-center justify-center h-64">
@@ -485,16 +465,12 @@ export default function ProcedimentosPage() {
         )}
       </div>
 
-      {/* Side Sheet */}
       <ProcedureSideSheet
         isOpen={isSideSheetOpen}
         onClose={handleCloseSideSheet}
         procedure={selectedProcedure}
         onUseTemplate={(template) => {
           if (!canCreateSurgeryRequest) {
-            // Aviso com caminho de upgrade para o dono da conta e orientação
-            // de procurar o administrador para os demais — antes o clique era
-            // um toast seguido de um redirect que só funcionava para o dono.
             setIsBillingBlockOpen(true);
             return;
           }
@@ -523,7 +499,6 @@ export default function ProcedimentosPage() {
         />
       )}
 
-      {/* Create Surgery Request Wizard (from template) */}
       <CreateSurgeryRequestWizard
         isOpen={isWizardOpen}
         onClose={() => {
@@ -538,14 +513,12 @@ export default function ProcedimentosPage() {
         initialTemplate={wizardTemplate}
       />
 
-      {/* New Model Modal */}
       <NewProcedureModelModal
         isOpen={isNewModelModalOpen}
         onClose={() => setIsNewModelModalOpen(false)}
         onSubmit={handleNewModelSubmit}
       />
 
-      {/* Modal exclusão individual */}
       <ConfirmDeleteModal
         isOpen={deleteModal.open}
         title="Excluir modelo"
@@ -555,7 +528,6 @@ export default function ProcedimentosPage() {
         loading={deleteModal.loading}
       />
 
-      {/* Modal exclusão em lote */}
       <ConfirmDeleteModal
         isOpen={bulkDeleteModal.open}
         title={`Excluir ${selectedItems.length} modelo${selectedItems.length !== 1 ? "s" : ""}`}

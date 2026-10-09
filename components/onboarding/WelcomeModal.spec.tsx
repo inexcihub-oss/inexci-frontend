@@ -92,13 +92,6 @@ describe("WelcomeModal", () => {
     expect(onFinish).toHaveBeenCalledTimes(1);
   });
 
-  /**
-   * O foco precisa cair no DIÁLOGO, não no primeiro botão ("Pular por
-   * agora"): senão um Enter no reflexo, ao abrir o modal, pula o onboarding
-   * sem o usuário querer. `dialogo.contains(activeElement)` sozinho passaria
-   * mesmo com o foco no botão — só `toBe(dialogo)` prova qual elemento
-   * recebeu o foco de verdade.
-   */
   it("é um diálogo com nome acessível e o foco cai no diálogo, não no botão de pular", async () => {
     render(<WelcomeModal onFinish={vi.fn()} onSkip={vi.fn()} />);
 
@@ -108,11 +101,6 @@ describe("WelcomeModal", () => {
     expect(document.activeElement).toBe(dialogo);
   });
 
-  /**
-   * Task 9, passo 3: `text-neutral-500` sobre branco fica só marginalmente
-   * acima do limite AA (4.5:1) — sobe para `text-neutral-600` (~7.82:1) para
-   * dar margem de segurança. Ver conta completa no relatório da task.
-   */
   it("usa contraste AA no botão 'Pular por agora'", () => {
     render(<WelcomeModal onFinish={vi.fn()} onSkip={vi.fn()} />);
 

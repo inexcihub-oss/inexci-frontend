@@ -5,8 +5,6 @@ import {
   passwordsMatchRefine,
 } from "./shared";
 
-// ─── Login ────────────────────────────────────────────────────────────────────
-
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1, "Informe sua senha."),
@@ -14,15 +12,11 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
-// ─── Forgot password — etapa 1 (e-mail) ───────────────────────────────────────
-
 export const forgotPasswordEmailSchema = z.object({
   email: emailSchema,
 });
 
 export type ForgotPasswordEmailInput = z.infer<typeof forgotPasswordEmailSchema>;
-
-// ─── Forgot password — etapa 2 (código) ───────────────────────────────────────
 
 export const forgotPasswordCodeSchema = z.object({
   code: z
@@ -32,8 +26,6 @@ export const forgotPasswordCodeSchema = z.object({
 });
 
 export type ForgotPasswordCodeInput = z.infer<typeof forgotPasswordCodeSchema>;
-
-// ─── Forgot password — etapa 3 (nova senha) ───────────────────────────────────
 
 export const newPasswordSchema = z
   .object({

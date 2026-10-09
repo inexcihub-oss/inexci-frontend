@@ -35,8 +35,6 @@ describe("useAvailableDoctors", () => {
     expect(availableDoctorsService.getAvailableDoctors).toHaveBeenCalledTimes(1);
   });
 
-  // CRM corrigido em Colaboradores não pode continuar bloqueando o
-  // atendimento pelo dado do cache.
   it("com fresh, busca de novo ao montar mesmo com o cache preenchido", async () => {
     const primeira = renderHook(() => useAvailableDoctors(), { wrapper });
     await waitFor(() => expect(primeira.result.current.isSuccess).toBe(true));

@@ -18,7 +18,6 @@ describe("CSP", () => {
     const csp = montarCsp("abc123", "https://api.inexci.com.br");
     const connectSrc = csp.split(";").find((d) => d.trim().startsWith("connect-src"));
     expect(connectSrc).toContain("https://api.inexci.com.br");
-    // 'https:' generico permitia exfiltrar para qualquer host.
     expect(connectSrc).not.toMatch(/\shttps:(\s|$)/);
   });
 

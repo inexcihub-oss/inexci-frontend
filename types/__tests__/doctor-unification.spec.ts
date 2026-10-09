@@ -3,16 +3,6 @@ import type { DoctorSummary } from "@/types";
 import type { Doctor as SurgeryDoctor } from "@/types/surgery-request.types";
 import type { Doctor as CollaboratorDoctor } from "@/services/collaborator.service";
 
-/**
- * TASK-FE-I04: Testes para unificação de interfaces Doctor.
- *
- * Valida que:
- * 1. DoctorSummary é o tipo canônico em types/index.ts
- * 2. Doctor de surgery-request.types.ts é alias de DoctorSummary
- * 3. Doctor de collaborator.service.ts estende DoctorSummary com campos CRUD
- * 4. Todos os tipos são compatíveis entre si (assignability)
- */
-
 describe("TASK-FE-I04 — Unificação de interfaces Doctor", () => {
   describe("DoctorSummary — tipo canônico", () => {
     it("aceita Doctor com campos mínimos (id + name)", () => {
@@ -49,7 +39,6 @@ describe("TASK-FE-I04 — Unificação de interfaces Doctor", () => {
 
   describe("SurgeryDoctor — alias de DoctorSummary", () => {
     it("SurgeryDoctor é compatível com DoctorSummary", () => {
-      // Se compila, os tipos são compatíveis
       const summary: DoctorSummary = { id: "1", name: "Dr. A" };
       const surgeryDoc: SurgeryDoctor = summary;
       expect(surgeryDoc.id).toBe("1");
@@ -111,7 +100,6 @@ describe("TASK-FE-I04 — Unificação de interfaces Doctor", () => {
         createdAt: "2026-01-01T00:00:00Z",
         updatedAt: "2026-01-01T00:00:00Z",
       };
-      // CollaboratorDoctor estende DoctorSummary, então é assignable
       const summary: DoctorSummary = collabDoc;
       expect(summary.id).toBe("6");
       expect(summary.email).toBe("f@test.com");
@@ -149,7 +137,6 @@ describe("TASK-FE-I04 — Unificação de interfaces Doctor", () => {
 
   describe("Não há definições duplicadas", () => {
     it("DoctorSummary e SurgeryDoctor são o mesmo tipo", () => {
-      // Prova bidirecional de compatibilidade
       const a: DoctorSummary = { id: "x", name: "A" };
       const b: SurgeryDoctor = a;
       const c: DoctorSummary = b;
@@ -164,11 +151,8 @@ describe("TASK-FE-I04 — Unificação de interfaces Doctor", () => {
         createdAt: "2026-01-01T00:00:00Z",
         updatedAt: "2026-01-01T00:00:00Z",
       };
-      // Pode ser atribuído a DoctorSummary (perde campos extras)
       const summary: DoctorSummary = doc;
       expect(summary.name).toBe("B");
-      // Mas NÃO pode ir na direção oposta sem os campos obrigatórios
-      // (isso é validado pelo TypeScript em compile-time)
     });
   });
 });

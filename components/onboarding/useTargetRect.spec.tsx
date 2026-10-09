@@ -5,7 +5,6 @@ import { useTargetRect } from "./useTargetRect";
 describe("useTargetRect", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
-    // jsdom não implementa ResizeObserver.
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -14,9 +13,6 @@ describe("useTargetRect", () => {
         disconnect() {}
       },
     );
-    // jsdom não implementa ResizeObserver nem scrollIntoView. A acomodação
-    // fica AQUI, no teste — não no código de produção: navegador real tem os
-    // dois, e um `?.` na fonte esconderia uma falha real sem sinal nenhum.
     Element.prototype.scrollIntoView = vi.fn();
   });
 
@@ -50,11 +46,6 @@ describe("useTargetRect", () => {
     await waitFor(() => expect(result.current.estado).toBe("encontrado"));
   });
 
-  /**
-   * O caso que sustenta a regra "alvo ausente não trava o tour": lista vazia,
-   * viewport mobile, permissão parcial. Sem o timeout, o overlay giraria
-   * para sempre sobre uma tela onde o elemento nunca vai existir.
-   */
   it("desiste depois do timeout e reporta ausente", async () => {
     vi.useFakeTimers();
     const { result } = renderHook(() =>
@@ -97,10 +88,6 @@ describe("useTargetRect", () => {
     await waitFor(() => expect(result.current.estado).toBe("encontrado"));
     expect(result.current.rect?.top).toBe(10);
 
-    // `scroll` de container interno NÃO borbulha até window — este `Event`
-    // nasce com `bubbles: false` de propósito. Só um listener em fase de
-    // captura o enxerga: trocar o `true` por `false` na fonte faz este teste
-    // falhar.
     topo = 90;
     await act(async () => {
       container.dispatchEvent(new Event("scroll"));
@@ -109,14 +96,6 @@ describe("useTargetRect", () => {
     await waitFor(() => expect(result.current.rect?.top).toBe(90));
   });
 
-  /**
-   * Bug real achado pelo usuário: o container do alvo pode estar no meio de
-   * uma animação de entrada (`animate-scale-in`/`animate-slide-up`) quando o
-   * hook o acha pela primeira vez — `transform` não dispara `ResizeObserver`
-   * (tamanho da caixa não muda) nem `MutationObserver` (nenhum nó é
-   * inserido/removido), então sem remedir de novo o retângulo do spotlight
-   * ficava congelado num quadro intermediário da animação.
-   */
   it("remede repetidamente por um tempo após achar o alvo, sem depender de scroll/resize/ResizeObserver", async () => {
     const alvo = document.createElement("div");
     alvo.setAttribute("data-tour", "alvo-anim");
@@ -136,9 +115,6 @@ describe("useTargetRect", () => {
     await waitFor(() => expect(result.current.estado).toBe("encontrado"));
     expect(result.current.rect?.top).toBe(10);
 
-    // Simula o container ainda se movendo (mid-animação): nenhum evento é
-    // disparado, nenhum nó é inserido/removido, o tamanho não muda — só uma
-    // remedição por tempo (não por evento) pegaria isso.
     topo = 40;
 
     await waitFor(() => expect(result.current.rect?.top).toBe(40));
@@ -151,7 +127,6 @@ describe("useTargetRect", () => {
     );
     expect(result.current.estado).toBe("buscando");
 
-    // 5s depois do início — muito além dos 800ms do passo comum.
     await act(async () => {
       vi.advanceTimersByTime(5000);
     });
@@ -210,8 +185,6 @@ describe("useTargetRect", () => {
     unmount();
 
     expect(desconectar).toHaveBeenCalled();
-    // O `true` no fim importa: remover sem o mesmo flag de captura deixa o
-    // listener vivo.
     expect(removeSpy).toHaveBeenCalledWith(
       "scroll",
       expect.any(Function),
@@ -240,9 +213,6 @@ describe("useTargetRect", () => {
     });
     expect(result.current.estado).toBe("buscando");
 
-    // O alvo não volta. Sem rearmar o teto de desistência quando o elemento
-    // já encontrado sai do DOM, o hook ficaria em "buscando" para sempre — é
-    // exatamente o que este teste prova que não acontece mais.
     await act(async () => {
       vi.advanceTimersByTime(1000);
     });

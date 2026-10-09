@@ -73,21 +73,9 @@ export function CreateSurgeryRequestWizard({
 }: CreateSurgeryRequestWizardProps) {
   const { can, permissions } = useAuth();
   const { emTour } = useOnboarding();
-  // Excluir procedimento do catálogo (a lixeira na lista) segue em
-  // ADMINISTRACAO: apaga um item que outras solicitações e modelos usam.
   const podeAdministrarCadastros = can(Permission.ADMINISTRACAO);
-  // Procedimento, hospital e convênio são cadastros transversais
-  // (`@RequireAnyArea()`) — é justamente aqui, no meio do wizard, que quem
-  // monta a solicitação descobre que o item não está cadastrado.
   const podeCriarCadastroTransversal = hasAnyArea(permissions);
   const [modalState, setModalState] = useState<ModalState>("none");
-  // Alvo do tour "cadastro-no-modal" vive dentro de `ProcedureSelectionContent`
-  // (o botão "Novo", `data-tour="sc-wizard-novo-cadastro"`), que só monta
-  // quando `modalState === "procedure-select"`. O tour aciona esta troca ao
-  // entrar no passo — ver `tour-registry.ts` (Task 10) e a página que abre o
-  // wizard (Task 9). Registrado incondicionalmente: o wizard fica sempre
-  // montado (`isOpen` só controla o próprio JSX interno), então a ação já
-  // está disponível antes mesmo de o usuário abrir o modal pela primeira vez.
   useOnboardingAction("sc-abrir-selecao-procedimento", () =>
     setModalState("procedure-select"),
   );
@@ -96,13 +84,11 @@ export function CreateSurgeryRequestWizard({
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(onClose);
 
-  // Toast state
   const [toast, setToast] = useState<{
     message: string;
     type: ToastType;
   } | null>(null);
 
-  // Selected data
   const [selectedProcedure, setSelectedProcedure] = useState<Procedure | null>(
     null,
   );
@@ -113,13 +99,8 @@ export function CreateSurgeryRequestWizard({
   const [selectedHealthPlan, setSelectedHealthPlan] =
     useState<HealthPlan | null>(null);
 
-  // `fresh`: a lista decide quem pode ser dono da SC (conselho CRM, ativo).
-  // O cache aparece na hora e é revalidado em segundo plano a cada abertura —
-  // senão um médico promovido/rebaixado em outra aba seguiria errado por 5 min.
   const { data: allDoctors = [], isLoading: loadingDoctors } =
     useAvailableDoctors({ fresh: true });
-  // SC é de médico (CRM): psicóloga, nutricionista etc. aparecem na Agenda,
-  // mas não aqui. O backend também recusa.
   const availableDoctors = useMemo(
     () => allDoctors.filter(canOwnSurgeryRequest),
     [allDoctors],
@@ -130,11 +111,9 @@ export function CreateSurgeryRequestWizard({
 
   const [priority, setPriority] = useState<PriorityLevel>(PRIORITY.LOW);
 
-  // Template selecionado para pré-popular OPME/TUSS após criação
   const [activeTemplate, setActiveTemplate] =
     useState<SurgeryRequestTemplateSummary | null>(null);
 
-  // Callbacks para adicionar novos itens às listas
   const [addProcedureToList, setAddProcedureToList] = useState<
     ((item: Procedure) => void) | null
   >(null);
@@ -148,7 +127,6 @@ export function CreateSurgeryRequestWizard({
     ((item: HealthPlan) => void) | null
   >(null);
 
-  // Auto-selecionar médico único quando o modal abre e só há um disponível
   useEffect(() => {
     if (!isOpen || loadingDoctors) return;
     if (availableDoctors.length === 1) {
@@ -156,7 +134,6 @@ export function CreateSurgeryRequestWizard({
     }
   }, [isOpen, loadingDoctors, availableDoctors]);
 
-  // Aplicar template inicial quando o wizard abre com um template pré-selecionado
   useEffect(() => {
     if (isOpen && initialTemplate) {
       handleTemplateSelected(initialTemplate);
@@ -234,11 +211,6 @@ export function CreateSurgeryRequestWizard({
     setModalState("healthplan-select");
   };
 
-  /**
-   * O resumo da listagem já traz tudo que o formulário preenche. O conteúdo do
-   * modelo (TUSS, OPME, documentos) é buscado só no submit — assim espiar
-   * vários modelos antes de decidir não custa uma requisição por clique.
-   */
   const handleTemplateSelected = (template: SurgeryRequestTemplateSummary) => {
     setActiveTemplate(template);
 
@@ -264,12 +236,10 @@ export function CreateSurgeryRequestWizard({
       setPriority(template.priority as PriorityLevel);
     }
 
-    // Navegar para seleção de paciente (deve ser preenchido manualmente)
     setModalState("patient-select");
   };
 
   const handleSubmit = async () => {
-    // Validar todos os campos obrigatórios para criar a solicitação
     if (!selectedDoctor || !selectedPatient || !selectedProcedure) {
       setToast({
         message:
@@ -282,8 +252,6 @@ export function CreateSurgeryRequestWizard({
     setLoading(true);
 
     try {
-      // O conteúdo do modelo é buscado antes de criar a SC: se falhar, nada é
-      // criado e o erro aparece inteiro, em vez de deixar uma SC pela metade.
       const templateData = activeTemplate
         ? (await surgeryRequestService.getTemplate(activeTemplate.id))
             .templateData
@@ -308,15 +276,11 @@ export function CreateSurgeryRequestWizard({
 
       const newRequest = await surgeryRequestService.createSimple(payload);
 
-      // Pré-popular OPME e TUSS do template, se existirem.
-      // Cada falha aqui é não-fatal (a SC já existe), mas nenhuma é silenciosa:
-      // o que não foi copiado precisa ser completado à mão na solicitação.
       const avisos: string[] = [];
       if (templateData) {
         const requestId = newRequest.id;
 
         if (requestId) {
-          // Adicionar OPME
           const opmeItems = extractTemplateOpmeItemsForCreate(
             (templateData ?? {}) as Record<string, unknown>,
           );
@@ -356,7 +320,6 @@ export function CreateSurgeryRequestWizard({
             );
           }
 
-          // Se OPME foi adicionado, marcar has_opme = true para resolver a pendência
           if (opmeCreated > 0) {
             try {
               await surgeryRequestService.setHasOpme(String(requestId), true);
@@ -365,7 +328,6 @@ export function CreateSurgeryRequestWizard({
             }
           }
 
-          // Adicionar TUSS
           const { items: tussItems, duplicadosIgnorados } =
             extractTemplateTussItemsForCreate(
               (templateData ?? {}) as Record<string, unknown>,
@@ -393,7 +355,6 @@ export function CreateSurgeryRequestWizard({
         }
       }
 
-      // Incrementar contador de uso do template
       if (activeTemplate?.id) {
         surgeryRequestService
           .incrementTemplateUsage(activeTemplate.id)
@@ -404,7 +365,6 @@ export function CreateSurgeryRequestWizard({
       handleClose();
       onSuccess();
 
-      // Mostrar toast após fechar o modal
       setTimeout(() => {
         setToast({
           message:
@@ -435,7 +395,6 @@ export function CreateSurgeryRequestWizard({
     onClose();
   };
 
-  // No mobile, quando um painel de seleção está ativo, oculta o formulário principal
   const isSelectionOpen = modalState !== "none";
   const selectionTitle: Record<string, string> = {
     "template-select": "Usar modelo",
@@ -448,7 +407,6 @@ export function CreateSurgeryRequestWizard({
 
   return (
     <>
-      {/* Toast Notification */}
       {toast && (
         <Toast
           message={toast.message}
@@ -457,14 +415,12 @@ export function CreateSurgeryRequestWizard({
         />
       )}
 
-      {/* Main Modal */}
       <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
         <div
           className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
           onClick={handleClose}
         />
 
-        {/* Loading Overlay */}
         {loading && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
             <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-4 shadow-2xl">
@@ -487,7 +443,6 @@ export function CreateSurgeryRequestWizard({
               : undefined
           }
         >
-          {/* Drag handle — apenas mobile */}
           <div
             className="flex sm:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
             onTouchStart={onTouchStart}
@@ -496,13 +451,10 @@ export function CreateSurgeryRequestWizard({
           >
             <div className="w-10 h-1 bg-neutral-200 rounded-full" />
           </div>
-          {/* ── LAYOUT PRINCIPAL ── */}
           <div className="flex flex-col sm:flex-row flex-1 overflow-hidden min-h-0">
-            {/* LEFT PANEL — formulário (no mobile, fica oculto quando um painel de seleção está aberto) */}
             <div
               className={`w-full sm:w-3/5 flex flex-col bg-white sm:border-r border-gray-200 ${isSelectionOpen ? "hidden sm:flex" : "flex"}`}
             >
-              {/* Header */}
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                 <h2 className="text-lg font-bold text-gray-900">
                   Nova solicitação
@@ -555,9 +507,7 @@ export function CreateSurgeryRequestWizard({
                 </div>
               </div>
 
-              {/* Form Fields */}
               <div className="flex-1 overflow-y-auto">
-                {/* Procedimento */}
                 <button
                   onClick={() => setModalState("procedure-select")}
                   className={`w-full min-h-[60px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${modalState === "procedure-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
@@ -608,7 +558,6 @@ export function CreateSurgeryRequestWizard({
                   </span>
                 </button>
 
-                {/* Paciente */}
                 <button
                   disabled={!selectedProcedure}
                   onClick={() =>
@@ -662,7 +611,6 @@ export function CreateSurgeryRequestWizard({
                   </span>
                 </button>
 
-                {/* Médico */}
                 <button
                   disabled={!selectedPatient}
                   onClick={() =>
@@ -716,7 +664,6 @@ export function CreateSurgeryRequestWizard({
                   </span>
                 </button>
 
-                {/* Convênio - OPCIONAL */}
                 <button
                   disabled={!selectedDoctor}
                   onClick={() =>
@@ -799,7 +746,6 @@ export function CreateSurgeryRequestWizard({
                   </span>
                 </button>
 
-                {/* Hospital - OPCIONAL */}
                 <button
                   disabled={!selectedDoctor}
                   onClick={() =>
@@ -883,7 +829,6 @@ export function CreateSurgeryRequestWizard({
                 </button>
               </div>
 
-              {/* Footer */}
               <div className="px-5 py-4 border-t border-gray-100 bg-white flex-shrink-0">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -934,13 +879,10 @@ export function CreateSurgeryRequestWizard({
               </div>
             </div>
 
-            {/* RIGHT PANEL — painel de seleção (no mobile, ocupa tela inteira quando ativo) */}
             <div
               className={`w-full sm:w-2/5 bg-white flex flex-col min-h-0 flex-1 ${isSelectionOpen ? "flex" : "hidden sm:flex"}`}
             >
-              {/* Header do painel de seleção */}
               <div className="px-4 py-3 md:px-5 md:py-4 border-b border-gray-200 flex items-center gap-3 flex-shrink-0 min-h-[57px]">
-                {/* Botão voltar — apenas mobile */}
                 <button
                   onClick={() => setModalState("none")}
                   className="sm:hidden w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors flex-shrink-0"
@@ -962,7 +904,6 @@ export function CreateSurgeryRequestWizard({
                 <h3 className="text-sm md:text-base font-semibold text-gray-900 flex-1">
                   {selectionTitle[modalState] ?? ""}
                 </h3>
-                {/* Fechar — apenas desktop */}
                 <button
                   onClick={handleClose}
                   className="hidden sm:flex p-1 hover:bg-gray-100 rounded transition-colors"
@@ -983,7 +924,6 @@ export function CreateSurgeryRequestWizard({
                 </button>
               </div>
 
-              {/* Content */}
               <div className="flex-1 overflow-y-auto min-h-0">
                 {modalState === "none" && (
                   <div className="flex items-center justify-center h-full text-gray-300">
@@ -1063,7 +1003,6 @@ export function CreateSurgeryRequestWizard({
         </div>
       </div>
 
-      {/* Modals for Creating New Items */}
       <CreateProcedureModal
         isOpen={modalState === "procedure-create"}
         onClose={() => setModalState("procedure-select")}

@@ -30,7 +30,6 @@ export function AddDocumentModal({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Fecha dropdown ao clicar fora
   useEffect(() => {
     if (!isTypeDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
@@ -45,7 +44,6 @@ export function AddDocumentModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isTypeDropdownOpen]);
 
-  // Gerencia overflow do body e foca o input de nome ao abrir
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -90,20 +88,16 @@ export function AddDocumentModal({
       className="fixed inset-0 z-[60] flex items-end md:items-center justify-center"
       onKeyDown={handleKeyDown}
     >
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
         onClick={handleCancel}
       />
 
-      {/* Modal */}
       <div className="relative bg-white w-full md:max-w-md flex flex-col rounded-t-3xl md:rounded-2xl max-h-[92vh] md:max-h-[85vh] animate-slide-up md:animate-scale-in md:mx-4 shadow-xl mobile-sheet-offset">
-        {/* Drag handle (mobile) */}
         <div className="flex md:hidden justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 md:p-5 border-b border-neutral-100">
           <h2 className="ds-modal-title">Adicionar documento ou exame</h2>
           <button
@@ -116,9 +110,7 @@ export function AddDocumentModal({
           </button>
         </div>
 
-        {/* Body */}
         <div className="ds-modal-body overflow-visible">
-          {/* Tipo do documento */}
           <div className="flex flex-col gap-1.5">
             <label className="ds-label mb-0">
               Tipo do documento <span className="text-red-500">*</span>
@@ -170,7 +162,6 @@ export function AddDocumentModal({
             </div>
           </div>
 
-          {/* Nome */}
           <div className="flex flex-col gap-1.5">
             <label className="ds-label mb-0">
               Nome <span className="text-red-500">*</span>
@@ -186,7 +177,6 @@ export function AddDocumentModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="ds-modal-footer">
           <button
             type="button"

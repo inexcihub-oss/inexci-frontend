@@ -53,8 +53,6 @@ vi.mock("@/services/available-doctors.service", () => ({
   availableDoctorsService: { getAvailableDoctors: vi.fn() },
 }));
 
-// Componentes com vida própria (formulário, foto, modais) ficam fora do teste
-// da página: aqui interessa a composição — abas, resumo e linha do tempo.
 vi.mock("@/components/patients/PatientRegistrationForm", () => ({
   PatientRegistrationForm: () => <div>formulario-de-cadastro</div>,
 }));
@@ -241,7 +239,6 @@ describe("página do paciente", () => {
 
   it("?tab= é respeitado quando as permissões chegam depois do primeiro render", async () => {
     search = new URLSearchParams({ tab: "documentos" });
-    // Sessão ainda sem permissões: a aba pedida não existe, cai no Cadastro.
     authState = { can: () => false };
     const { rerender } = render(<PacienteDetalhePage />);
 
