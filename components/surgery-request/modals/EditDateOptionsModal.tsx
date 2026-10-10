@@ -6,6 +6,9 @@ import {
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
+import { Modal } from "@/components/ui/Modal";
+import { ModalFooter } from "@/components/shared/ModalFooter";
+import Input from "@/components/ui/Input";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { SurgeryRequestStatusCode } from "@/lib/surgery-request-status";
 import {
@@ -64,14 +67,14 @@ export function EditDateOptionsModal({
     onClose();
   };
 
-  const submitUpdateDateOptions = async (channels: NotificationChannels | null) => {
+  const submitUpdateDateOptions = async (
+    channels: NotificationChannels | null,
+  ) => {
     setIsSaving(true);
     try {
       const isoDates = validDates.map((d) => new Date(d).toISOString());
       const shouldNotifySchedulingOptions =
-        channels !== null &&
-        channels.whatsapp &&
-        !!solicitacao?.patient?.phone;
+        channels !== null && channels.whatsapp && !!solicitacao?.patient?.phone;
 
       await surgeryRequestService.updateDateOptions(solicitacao.id, {
         dateOptions: isoDates,
@@ -134,70 +137,14 @@ export function EditDateOptionsModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-        <div
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          onClick={handleClose}
-        />
-
-        <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md flex flex-col overflow-hidden pb-20 sm:pb-0 max-h-[92vh] sm:max-h-[90vh]">
-          <div className="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
-            <div className="w-10 h-1 bg-neutral-200 rounded-full" />
-          </div>
-
-          <div className="flex items-center justify-between px-5 py-4 sm:px-6 sm:py-4 border-b border-gray-100 flex-shrink-0">
-            <h2 className="text-lg font-semibold text-gray-900">Editar Datas</h2>
-            <button
-              onClick={handleClose}
-              disabled={isSaving}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M18 6L6 18M6 6L18 18"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <div className="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
-            <p className="text-sm text-gray-500">
-              Atualize as opções de data disponíveis para a realização da
-              cirurgia. Pelo menos <strong>1 data é obrigatória</strong>.
-            </p>
-            <div className="space-y-4">
-              {dateOptions.map((date, index) => (
-                <div key={index} className="space-y-1.5">
-                  <label className="block ds-label mb-0">
-                    Data {index + 1}
-                    {index === 0 ? (
-                      <span className="text-red-500 ml-0.5">*</span>
-                    ) : (
-                      <span className="text-gray-400 ml-1 text-xs font-normal">
-                        (opcional)
-                      </span>
-                    )}
-                  </label>
-                  <input
-                    type="datetime-local"
-                    value={date}
-                    onChange={(e) => {
-                      const next = [...dateOptions];
-                      next[index] = e.target.value;
-                      setDateOptions(next);
-                    }}
-                    disabled={isSaving}
-                    className="ds-input disabled:opacity-50"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 px-5 py-4 sm:px-6 border-t border-gray-100 flex-shrink-0">
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title="Editar Datas"
+        size="sm"
+        disableClose={isSaving}
+        footer={
+          <ModalFooter align="end">
             <button
               onClick={handleClose}
               disabled={isSaving}
@@ -212,9 +159,47 @@ export function EditDateOptionsModal({
             >
               {isSaving ? "Salvando..." : "Salvar Datas"}
             </button>
+          </ModalFooter>
+        }
+      >
+        <div className="p-5 sm:p-6 space-y-4 sm:space-y-5">
+          <p className="text-sm text-gray-500">
+            Atualize as opções de data disponíveis para a realização da
+            cirurgia. Pelo menos <strong>1 data é obrigatória</strong>.
+          </p>
+          <div className="space-y-4">
+            {dateOptions.map((date, index) => (
+              <div key={index} className="space-y-1.5">
+                <label
+                  htmlFor={`edit-date-option-${index}`}
+                  className="block ds-label mb-0"
+                >
+                  Data {index + 1}
+                  {index === 0 ? (
+                    <span className="text-red-500 ml-0.5">*</span>
+                  ) : (
+                    <span className="text-gray-400 ml-1 text-xs font-normal">
+                      (opcional)
+                    </span>
+                  )}
+                </label>
+                <Input
+                  id={`edit-date-option-${index}`}
+                  type="datetime-local"
+                  value={date}
+                  onChange={(e) => {
+                    const next = [...dateOptions];
+                    next[index] = e.target.value;
+                    setDateOptions(next);
+                  }}
+                  disabled={isSaving}
+                  className="disabled:opacity-50"
+                />
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </Modal>
 
       <NotificationConfirmModal
         isOpen={isNotificationModalOpen && hasPatientContact}

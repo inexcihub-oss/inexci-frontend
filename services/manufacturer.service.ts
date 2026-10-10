@@ -1,3 +1,4 @@
+import type { ApiSchema } from "@/types/api";
 import { createCrudService, createGetById } from "@/services/crud-service";
 
 export interface Manufacturer {
@@ -17,9 +18,7 @@ export interface Manufacturer {
   updatedAt: string;
 }
 
-export type CreateManufacturerPayload = Partial<
-  Omit<Manufacturer, "id" | "createdAt" | "updatedAt">
->;
+export type CreateManufacturerPayload = ApiSchema<"CreateManufacturerDto">;
 
 export const manufacturerService = {
   ...createCrudService<Manufacturer, CreateManufacturerPayload>(

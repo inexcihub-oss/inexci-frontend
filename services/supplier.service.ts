@@ -1,3 +1,4 @@
+import type { ApiSchema } from "@/types/api";
 import { createCrudService, createGetById } from "@/services/crud-service";
 
 export interface SupplierQuotation {
@@ -51,12 +52,7 @@ export interface Supplier {
   updatedAt: string;
 }
 
-export type CreateSupplierPayload = Partial<
-  Omit<
-    Supplier,
-    "id" | "createdAt" | "updatedAt" | "quotations" | "suppliedSurgeryRequests"
-  >
->;
+export type CreateSupplierPayload = ApiSchema<"CreateSupplierDto">;
 
 export const supplierService = {
   ...createCrudService<Supplier, CreateSupplierPayload>("/suppliers"),

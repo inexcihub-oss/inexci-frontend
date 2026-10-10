@@ -21,8 +21,8 @@ vi.mock("@/services/user.service", () => ({
         specialty: "Ortopedia",
       },
     }),
-    updateProfile: (...args: any[]) => mockUpdateProfile(...args),
-    updateDoctorProfile: (...args: any[]) => mockUpdateDoctorProfile(...args),
+    updateProfile: (...args: unknown[]) => mockUpdateProfile(...args),
+    updateDoctorProfile: (...args: unknown[]) => mockUpdateDoctorProfile(...args),
   },
 }));
 

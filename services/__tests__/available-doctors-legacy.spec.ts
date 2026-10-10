@@ -1,6 +1,16 @@
 import { describe, it, expect } from "vitest";
 
-function mapDoctorRecord(user: any) {
+type UsuarioMedico = {
+  id: string;
+  name: string;
+  doctorProfile?: {
+    crm?: string;
+    crmState?: string;
+    specialty?: string;
+  } | null;
+};
+
+function mapDoctorRecord(user: UsuarioMedico) {
   return {
     id: user.id,
     name: user.name,

@@ -1,34 +1,17 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import React from "react";
+import { ChevronLeft, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyArea, Permission } from "@/lib/permissions";
+import { Modal } from "@/components/ui/Modal";
+import { ModalFooter, SpinnerButton } from "@/components/shared/ModalFooter";
 import { CreateProcedureModal } from "./CreateProcedureModal";
 import { CreatePatientModal } from "./CreatePatientModal";
 import { CreateHospitalModal } from "./CreateHospitalModal";
 import { CreateHealthPlanModal } from "./CreateHealthPlanModal";
-import { useToast } from "@/hooks/useToast";
-import { getApiErrorMessage } from "@/lib/http-error";
-import {
-  surgeryRequestService,
-  SimpleSurgeryRequestPayload,
-  SurgeryRequestTemplateSummary,
-} from "@/services/surgery-request.service";
-import { logger } from "@/lib/logger";
-import { Procedure } from "@/services/procedure.service";
-import { PatientListItem } from "@/services/patient.service";
-import { Hospital } from "@/services/hospital.service";
-import { HealthPlan } from "@/services/health-plan.service";
-import { opmeService } from "@/services/opme.service";
-import { extractTemplateOpmeItemsForCreate } from "@/components/procedures/normalize-template-opme";
-import { extractTemplateTussItemsForCreate } from "@/components/procedures/normalize-template-tuss";
-import { tussService } from "@/services/tuss.service";
-import { AvailableDoctor } from "@/types";
-import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
-import { canOwnSurgeryRequest } from "@/lib/professional-council";
+import { SurgeryRequestTemplateSummary } from "@/services/surgery-request.service";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
-import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 import { priorityColors } from "@/lib/design-system";
 import {
   PriorityLevel,
@@ -43,6 +26,11 @@ import {
   DoctorSelectionContent,
   TemplateSelectionContent,
 } from "./wizard-steps/SelectionContents";
+import { WizardStepRow } from "./wizard-steps/WizardStepRow";
+import {
+  useCreateSurgeryRequestWizard,
+  WIZARD_PANEL_TITLES,
+} from "./useCreateSurgeryRequestWizard";
 
 interface CreateSurgeryRequestWizardProps {
   isOpen: boolean;
@@ -51,18 +39,12 @@ interface CreateSurgeryRequestWizardProps {
   initialTemplate?: SurgeryRequestTemplateSummary | null;
 }
 
-type ModalState =
-  | "none"
-  | "template-select"
-  | "procedure-select"
-  | "procedure-create"
-  | "patient-select"
-  | "patient-create"
-  | "hospital-select"
-  | "hospital-create"
-  | "healthplan-select"
-  | "healthplan-create"
-  | "doctor-select";
+const PRIORITIES: PriorityLevel[] = [
+  PRIORITY.LOW,
+  PRIORITY.MEDIUM,
+  PRIORITY.HIGH,
+  PRIORITY.URGENT,
+];
 
 export function CreateSurgeryRequestWizard({
   isOpen,
@@ -74,342 +56,78 @@ export function CreateSurgeryRequestWizard({
   const { emTour } = useOnboarding();
   const podeAdministrarCadastros = can(Permission.ADMINISTRACAO);
   const podeCriarCadastroTransversal = hasAnyArea(permissions);
-  const [modalState, setModalState] = useState<ModalState>("none");
-  useOnboardingAction("sc-abrir-selecao-procedimento", () =>
-    setModalState("procedure-select"),
-  );
-  const [loading, setLoading] = useState(false);
-  const [isClosing, _setIsClosing] = useState(false);
-  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
-    useSwipeToClose(onClose);
-
-  const { showToast } = useToast();
-
-  const [selectedProcedure, setSelectedProcedure] = useState<Procedure | null>(
-    null,
-  );
-  const [selectedPatient, setSelectedPatient] = useState<PatientListItem | null>(null);
-  const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(
-    null,
-  );
-  const [selectedHealthPlan, setSelectedHealthPlan] =
-    useState<HealthPlan | null>(null);
-
-  const { data: allDoctors = [], isLoading: loadingDoctors } =
-    useAvailableDoctors({ fresh: true });
-  const availableDoctors = useMemo(
-    () => allDoctors.filter(canOwnSurgeryRequest),
-    [allDoctors],
-  );
-  const [selectedDoctor, setSelectedDoctor] = useState<AvailableDoctor | null>(
-    null,
-  );
-
-  const [priority, setPriority] = useState<PriorityLevel>(PRIORITY.LOW);
-
-  const [activeTemplate, setActiveTemplate] =
-    useState<SurgeryRequestTemplateSummary | null>(null);
-
-  const [addProcedureToList, setAddProcedureToList] = useState<
-    ((item: Procedure) => void) | null
-  >(null);
-  const [addPatientToList, setAddPatientToList] = useState<
-    ((item: PatientListItem) => void) | null
-  >(null);
-  const [addHospitalToList, setAddHospitalToList] = useState<
-    ((item: Hospital) => void) | null
-  >(null);
-  const [addHealthPlanToList, setAddHealthPlanToList] = useState<
-    ((item: HealthPlan) => void) | null
-  >(null);
-
-  useEffect(() => {
-    if (!isOpen || loadingDoctors) return;
-    if (availableDoctors.length === 1) {
-      setSelectedDoctor(availableDoctors[0]);
-    }
-  }, [isOpen, loadingDoctors, availableDoctors]);
-
-  useEffect(() => {
-    if (isOpen && initialTemplate) {
-      handleTemplateSelected(initialTemplate);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialTemplate]);
+  const wizard = useCreateSurgeryRequestWizard({
+    isOpen,
+    onClose,
+    onSuccess,
+    initialTemplate,
+  });
 
   if (!isOpen) return null;
 
-  const handleProcedureSelected = (procedure: Procedure) => {
-    setSelectedProcedure(procedure);
-    setModalState("patient-select");
-  };
-
-  const handleProcedureCreated = (procedure: Procedure) => {
-    if (addProcedureToList) {
-      addProcedureToList(procedure);
-    }
-    setSelectedProcedure(procedure);
-    setModalState("patient-select");
-  };
-
-  const handleProcedureDeleted = (deletedId: string) => {
-    if (selectedProcedure?.id === deletedId) {
-      setSelectedProcedure(null);
-      setSelectedPatient(null);
-      setSelectedDoctor(null);
-      setSelectedHealthPlan(null);
-      setSelectedHospital(null);
-      setModalState("procedure-select");
-    }
-  };
-
-  const handlePatientSelected = (patient: PatientListItem) => {
-    setSelectedPatient(patient);
-    setModalState("doctor-select");
-  };
-
-  const handlePatientCreated = (patient: PatientListItem) => {
-    if (addPatientToList) {
-      addPatientToList(patient);
-    }
-    setSelectedPatient(patient);
-    setModalState("doctor-select");
-  };
-
-  const handleHospitalSelected = (hospital: Hospital) => {
-    setSelectedHospital(hospital);
-    setModalState("none");
-  };
-
-  const handleHospitalCreated = (hospital: Hospital) => {
-    if (addHospitalToList) {
-      addHospitalToList(hospital);
-    }
-    setSelectedHospital(hospital);
-    setModalState("none");
-  };
-
-  const handleHealthPlanSelected = (healthPlan: HealthPlan) => {
-    setSelectedHealthPlan(healthPlan);
-    setModalState("hospital-select");
-  };
-
-  const handleHealthPlanCreated = (healthPlan: HealthPlan) => {
-    if (addHealthPlanToList) {
-      addHealthPlanToList(healthPlan);
-    }
-    setSelectedHealthPlan(healthPlan);
-    setModalState("hospital-select");
-  };
-
-  const handleDoctorSelected = (doctor: AvailableDoctor) => {
-    setSelectedDoctor(doctor);
-    setModalState("healthplan-select");
-  };
-
-  const handleTemplateSelected = (template: SurgeryRequestTemplateSummary) => {
-    setActiveTemplate(template);
-
-    if (template.procedureId && template.procedureName) {
-      setSelectedProcedure({
-        id: template.procedureId,
-        name: template.procedureName,
-      } as Procedure);
-    }
-    if (template.hospitalId && template.hospitalName) {
-      setSelectedHospital({
-        id: template.hospitalId,
-        name: template.hospitalName,
-      } as Hospital);
-    }
-    if (template.healthPlanId && template.healthPlanName) {
-      setSelectedHealthPlan({
-        id: template.healthPlanId,
-        name: template.healthPlanName,
-      } as HealthPlan);
-    }
-    if (template.priority) {
-      setPriority(template.priority as PriorityLevel);
-    }
-
-    setModalState("patient-select");
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedDoctor || !selectedPatient || !selectedProcedure) {
-      showToast(
-        "Por favor, preencha todos os campos obrigatórios: Médico, Paciente e Procedimento.",
-        "error",
-      );
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const templateData = activeTemplate
-        ? (await surgeryRequestService.getTemplate(activeTemplate.id))
-            .templateData
-        : undefined;
-
-      const payload: SimpleSurgeryRequestPayload = {
-        procedureId: selectedProcedure.id,
-        patientId: selectedPatient.id,
-        doctorId: selectedDoctor.id,
-        healthPlanId: selectedHealthPlan?.id,
-        hospitalId: selectedHospital?.id,
-        priority: priority,
-        requiredDocuments:
-          Array.isArray(templateData?.requiredDocuments) &&
-          templateData.requiredDocuments.length
-            ? (templateData.requiredDocuments as {
-                type: string;
-                name: string;
-              }[])
-            : undefined,
-      };
-
-      const newRequest = await surgeryRequestService.createSimple(payload);
-
-      const avisos: string[] = [];
-      if (templateData) {
-        const requestId = newRequest.id;
-
-        if (requestId) {
-          const opmeItems = extractTemplateOpmeItemsForCreate(
-            (templateData ?? {}) as Record<string, unknown>,
-          );
-          let opmeCreated = 0;
-          let opmeFalhou = 0;
-          for (const item of opmeItems) {
-            try {
-              await opmeService.create({
-                surgeryRequestId: requestId,
-                name: item.name,
-                manufacturerIds:
-                  item.manufacturerIds.length > 0
-                    ? item.manufacturerIds
-                    : undefined,
-                manufacturerNames:
-                  item.manufacturerNames.length > 0
-                    ? item.manufacturerNames
-                    : undefined,
-                supplierIds:
-                  item.supplierIds.length > 0 ? item.supplierIds : undefined,
-                supplierNames:
-                  item.supplierNames.length > 0
-                    ? item.supplierNames
-                    : undefined,
-                quantity: item.quantity,
-              });
-              opmeCreated++;
-            } catch (e) {
-              logger.warn("Erro ao adicionar OPME do template:", e);
-              opmeFalhou++;
-            }
-          }
-
-          if (opmeFalhou > 0) {
-            avisos.push(
-              `${opmeFalhou} item(ns) OPME do modelo não foram copiados`,
-            );
-          }
-
-          if (opmeCreated > 0) {
-            try {
-              await surgeryRequestService.setHasOpme(String(requestId), true);
-            } catch (e) {
-              logger.warn("Erro ao marcar has_opme:", e);
-            }
-          }
-
-          const { items: tussItems, duplicadosIgnorados } =
-            extractTemplateTussItemsForCreate(
-              (templateData ?? {}) as Record<string, unknown>,
-            );
-
-          if (duplicadosIgnorados.length > 0) {
-            avisos.push(
-              `TUSS com código repetido não copiado(s): ${duplicadosIgnorados.join(", ")}`,
-            );
-          }
-
-          if (tussItems.length > 0) {
-            try {
-              await tussService.addProcedures({
-                surgeryRequestId: requestId,
-                procedures: tussItems,
-              });
-            } catch (e) {
-              logger.warn("Erro ao adicionar TUSS do template:", e);
-              avisos.push(
-                `códigos TUSS do modelo não copiados (${getApiErrorMessage(e, "erro desconhecido")})`,
-              );
-            }
-          }
-        }
-      }
-
-      if (activeTemplate?.id) {
-        surgeryRequestService
-          .incrementTemplateUsage(activeTemplate.id)
-          .catch(() => {});
-      }
-
-      setLoading(false);
-      handleClose();
-      onSuccess();
-
-      showToast(
-        avisos.length > 0
-          ? `Solicitação criada, mas ${avisos.join("; ")} — complete na solicitação.`
-          : "Solicitação cirúrgica criada com sucesso!",
-        avisos.length > 0 ? "warning" : "success",
-      );
-    } catch (error: unknown) {
-      showToast(
-        `Erro ao criar solicitação: ${getApiErrorMessage(error, "Erro desconhecido ao criar solicitação cirúrgica")}`,
-        "error",
-      );
-      setLoading(false);
-    }
-  };
-
-  const handleClose = () => {
-    setModalState("none");
-    setSelectedProcedure(null);
-    setSelectedPatient(null);
-    setSelectedHospital(null);
-    setSelectedHealthPlan(null);
-    setSelectedDoctor(null);
-    setPriority(PRIORITY.LOW);
-    setActiveTemplate(null);
-    onClose();
-  };
-
-  const isSelectionOpen = modalState !== "none";
-  const selectionTitle: Record<string, string> = {
-    "template-select": "Usar modelo",
-    "procedure-select": "Procedimento",
-    "patient-select": "Paciente",
-    "doctor-select": "Médico",
-    "healthplan-select": "Convênio",
-    "hospital-select": "Hospital",
-  };
+  const { panel, openPanel, loading } = wizard;
+  const isSelectionOpen = panel !== "none";
 
   return (
     <>
-
-      <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
+      <Modal
+        isOpen
+        onClose={wizard.close}
+        title="Nova solicitação"
+        size="lg"
+        disableClose={loading || emTour}
+        footer={
+          <div className={isSelectionOpen ? "hidden sm:block" : undefined}>
+            <ModalFooter className="flex-col sm:flex-row">
+              <div
+                role="radiogroup"
+                aria-label="Prioridade"
+                className="flex items-center gap-2 flex-wrap w-full sm:w-auto"
+              >
+                {PRIORITIES.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    role="radio"
+                    aria-checked={wizard.priority === p}
+                    onClick={() => wizard.setPriority(p)}
+                    className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${wizard.priority === p ? "shadow-sm" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}
+                    style={
+                      wizard.priority === p
+                        ? {
+                            backgroundColor: priorityColors[p].bg,
+                            color: priorityColors[p].text,
+                          }
+                        : undefined
+                    }
+                  >
+                    {PRIORITY_LABELS[p]}
+                  </button>
+                ))}
+              </div>
+              <SpinnerButton
+                onClick={wizard.submit}
+                disabled={emTour || !wizard.canSubmit}
+                isLoading={loading}
+                loadingText="Criando..."
+                className="w-full sm:w-auto"
+              >
+                Nova solicitação
+              </SpinnerButton>
+            </ModalFooter>
+          </div>
+        }
+      >
         <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
-          onClick={handleClose}
-        />
-
-        {loading && (
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-            <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-4 shadow-2xl">
-              <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+          className="relative flex flex-col sm:flex-row min-h-full sm:h-[60vh] sm:max-h-[560px]"
+          aria-busy={loading}
+        >
+          {loading && (
+            <div
+              role="status"
+              className="absolute inset-0 z-10 bg-white/80 flex flex-col items-center justify-center gap-4"
+            >
+              <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
               <p className="text-lg font-semibold text-gray-900">
                 Criando solicitação...
               </p>
@@ -417,599 +135,174 @@ export function CreateSurgeryRequestWizard({
                 Por favor, aguarde
               </p>
             </div>
-          </div>
-        )}
+          )}
 
-        <div
-          className="relative bg-white w-full rounded-t-3xl sm:rounded-2xl shadow-xl max-w-4xl overflow-hidden flex flex-col max-h-[85vh] sm:h-[80vh] sm:max-h-[700px] animate-slide-up sm:animate-scale-in mobile-sheet-offset"
-          style={
-            dragY > 0
-              ? { transform: `translateY(${dragY}px)`, transition: "none" }
-              : undefined
-          }
-        >
           <div
-            className="flex sm:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
+            className={`w-full sm:w-3/5 flex-col bg-white sm:border-r border-gray-200 sm:overflow-y-auto ${isSelectionOpen ? "hidden sm:flex" : "flex"}`}
           >
-            <div className="w-10 h-1 bg-neutral-200 rounded-full" />
-          </div>
-          <div className="flex flex-col sm:flex-row flex-1 overflow-hidden min-h-0">
-            <div
-              className={`w-full sm:w-3/5 flex flex-col bg-white sm:border-r border-gray-200 ${isSelectionOpen ? "hidden sm:flex" : "flex"}`}
-            >
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-                <h2 className="text-lg font-bold text-gray-900">
-                  Nova solicitação
-                </h2>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setModalState("template-select")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors border ${
-                      modalState === "template-select"
-                        ? "bg-teal-50 text-teal-700 border-teal-300"
-                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                    }`}
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414A1 1 0 0120 8.414V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
-                      />
-                    </svg>
-                    Usar modelo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    className="sm:hidden text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
-                    aria-label="Fechar"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                <button
-                  onClick={() => setModalState("procedure-select")}
-                  className={`w-full min-h-[60px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${modalState === "procedure-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[13px] font-semibold text-gray-900">
-                      Procedimento
-                    </span>
-                    {selectedProcedure && (
-                      <span className="text-xs text-teal-600 font-medium truncate max-w-[200px]">
-                        {selectedProcedure.name}
-                      </span>
-                    )}
-                  </div>
-                  <span className="flex items-center gap-1.5 ml-3">
-                    {!selectedProcedure && (
-                      <span className="text-xs text-gray-400">Selecionar</span>
-                    )}
-                    {selectedProcedure ? (
-                      <svg
-                        className="w-5 h-5 text-teal-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="w-4 h-4 text-gray-400 flex-shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    )}
-                  </span>
-                </button>
-
-                <button
-                  disabled={!selectedProcedure}
-                  onClick={() =>
-                    selectedProcedure && setModalState("patient-select")
-                  }
-                  className={`w-full min-h-[60px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedProcedure ? "opacity-40 cursor-not-allowed" : modalState === "patient-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[13px] font-semibold text-gray-900">
-                      Paciente
-                    </span>
-                    {selectedPatient && (
-                      <span className="text-xs text-teal-600 font-medium truncate max-w-[200px]">
-                        {selectedPatient.name}
-                      </span>
-                    )}
-                  </div>
-                  <span className="flex items-center gap-1.5 ml-3">
-                    {!selectedPatient && (
-                      <span className="text-xs text-gray-400">Selecionar</span>
-                    )}
-                    {selectedPatient ? (
-                      <svg
-                        className="w-5 h-5 text-teal-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    )}
-                  </span>
-                </button>
-
-                <button
-                  disabled={!selectedPatient}
-                  onClick={() =>
-                    selectedPatient && setModalState("doctor-select")
-                  }
-                  className={`w-full min-h-[60px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedPatient ? "opacity-40 cursor-not-allowed" : modalState === "doctor-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[13px] font-semibold text-gray-900">
-                      Médico
-                    </span>
-                    {selectedDoctor && (
-                      <span className="text-xs text-teal-600 font-medium truncate max-w-[200px]">
-                        {selectedDoctor.name}
-                      </span>
-                    )}
-                  </div>
-                  <span className="flex items-center gap-1.5 ml-3">
-                    {!selectedDoctor && (
-                      <span className="text-xs text-gray-400">Selecionar</span>
-                    )}
-                    {selectedDoctor ? (
-                      <svg
-                        className="w-5 h-5 text-teal-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    )}
-                  </span>
-                </button>
-
-                <button
-                  disabled={!selectedDoctor}
-                  onClick={() =>
-                    selectedDoctor && setModalState("healthplan-select")
-                  }
-                  className={`w-full min-h-[60px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedDoctor ? "opacity-40 cursor-not-allowed" : modalState === "healthplan-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[13px] font-semibold text-gray-900">
-                      Convênio{" "}
-                      <span className="text-gray-400 text-[11px] font-normal">
-                        (opcional)
-                      </span>
-                    </span>
-                    {selectedHealthPlan && (
-                      <span className="text-xs text-teal-600 font-medium truncate max-w-[200px]">
-                        {selectedHealthPlan.name}
-                      </span>
-                    )}
-                  </div>
-                  <span className="flex items-center gap-1.5 ml-3">
-                    {selectedHealthPlan ? (
-                      <>
-                        <span
-                          role="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedHealthPlan(null);
-                          }}
-                          className="p-0.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </span>
-                        <svg
-                          className="w-5 h-5 text-teal-500"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-xs text-gray-400">
-                          Selecionar
-                        </span>
-                        <svg
-                          className="w-4 h-4 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </>
-                    )}
-                  </span>
-                </button>
-
-                <button
-                  disabled={!selectedDoctor}
-                  onClick={() =>
-                    selectedDoctor && setModalState("hospital-select")
-                  }
-                  className={`w-full min-h-[60px] px-5 flex items-center justify-between text-left transition-colors border-b border-gray-100 ${!selectedDoctor ? "opacity-40 cursor-not-allowed" : modalState === "hospital-select" ? "bg-gray-50" : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"}`}
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[13px] font-semibold text-gray-900">
-                      Hospital{" "}
-                      <span className="text-gray-400 text-[11px] font-normal">
-                        (opcional)
-                      </span>
-                    </span>
-                    {selectedHospital && (
-                      <span className="text-xs text-teal-600 font-medium truncate max-w-[200px]">
-                        {selectedHospital.name}
-                      </span>
-                    )}
-                  </div>
-                  <span className="flex items-center gap-1.5 ml-3">
-                    {selectedHospital ? (
-                      <>
-                        <span
-                          role="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedHospital(null);
-                          }}
-                          className="p-0.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </span>
-                        <svg
-                          className="w-5 h-5 text-teal-500"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-xs text-gray-400">
-                          Selecionar
-                        </span>
-                        <svg
-                          className="w-4 h-4 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </>
-                    )}
-                  </span>
-                </button>
-              </div>
-
-              <div className="px-5 py-4 border-t border-gray-100 bg-white flex-shrink-0">
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {(
-                      [
-                        PRIORITY.LOW,
-                        PRIORITY.MEDIUM,
-                        PRIORITY.HIGH,
-                        PRIORITY.URGENT,
-                      ] as PriorityLevel[]
-                    ).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setPriority(p)}
-                        className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${priority === p ? "shadow-sm" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"}`}
-                        style={
-                          priority === p
-                            ? {
-                                backgroundColor: priorityColors[p].bg,
-                                color: priorityColors[p].text,
-                              }
-                            : {}
-                        }
-                      >
-                        {PRIORITY_LABELS[p]}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={
-                      loading ||
-                      isClosing ||
-                      emTour ||
-                      !selectedDoctor ||
-                      !selectedPatient ||
-                      !selectedProcedure
-                    }
-                    className="w-full px-6 py-3.5 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold shadow-sm"
-                  >
-                    {loading
-                      ? "Criando..."
-                      : isClosing
-                        ? "Salvando..."
-                        : "Nova solicitação"}
-                  </button>
-                </div>
-              </div>
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-end flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => openPanel("template-select")}
+                aria-pressed={panel === "template-select"}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors border ${
+                  panel === "template-select"
+                    ? "bg-teal-50 text-teal-700 border-teal-300"
+                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                <Copy className="w-3.5 h-3.5" aria-hidden />
+                Usar modelo
+              </button>
             </div>
 
-            <div
-              className={`w-full sm:w-2/5 bg-white flex flex-col min-h-0 flex-1 ${isSelectionOpen ? "flex" : "hidden sm:flex"}`}
-            >
-              <div className="px-4 py-3 md:px-5 md:py-4 border-b border-gray-200 flex items-center gap-3 flex-shrink-0 min-h-[57px]">
-                <button
-                  onClick={() => setModalState("none")}
-                  className="sm:hidden w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors flex-shrink-0"
-                >
-                  <svg
-                    className="w-5 h-5 text-gray-700"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                </button>
-                <h3 className="text-sm md:text-base font-semibold text-gray-900 flex-1">
-                  {selectionTitle[modalState] ?? ""}
-                </h3>
-                <button
-                  onClick={handleClose}
-                  className="hidden sm:flex p-1 hover:bg-gray-100 rounded transition-colors"
-                >
-                  <svg
-                    className="w-5 h-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
+            <WizardStepRow
+              label="Procedimento"
+              value={wizard.selectedProcedure?.name}
+              active={panel === "procedure-select"}
+              onOpen={() => openPanel("procedure-select")}
+            />
+            <WizardStepRow
+              label="Paciente"
+              value={wizard.selectedPatient?.name}
+              disabled={!wizard.selectedProcedure}
+              active={panel === "patient-select"}
+              onOpen={() => openPanel("patient-select")}
+            />
+            <WizardStepRow
+              label="Médico"
+              value={wizard.selectedDoctor?.name}
+              disabled={!wizard.selectedPatient}
+              active={panel === "doctor-select"}
+              onOpen={() => openPanel("doctor-select")}
+            />
+            <WizardStepRow
+              label="Convênio"
+              optional
+              value={wizard.selectedHealthPlan?.name}
+              disabled={!wizard.selectedDoctor}
+              active={panel === "healthplan-select"}
+              onOpen={() => openPanel("healthplan-select")}
+              onClear={wizard.clearHealthPlan}
+            />
+            <WizardStepRow
+              label="Hospital"
+              optional
+              value={wizard.selectedHospital?.name}
+              disabled={!wizard.selectedDoctor}
+              active={panel === "hospital-select"}
+              onOpen={() => openPanel("hospital-select")}
+              onClear={wizard.clearHospital}
+            />
+          </div>
 
-              <div className="flex-1 overflow-y-auto min-h-0">
-                {modalState === "none" && (
-                  <div className="flex items-center justify-center h-full text-gray-300">
-                    <p className="text-sm">Selecione um campo ao lado</p>
-                  </div>
-                )}
-                {modalState === "template-select" && (
-                  <TemplateSelectionContent
-                    onSelect={handleTemplateSelected}
-                    isActive={modalState === "template-select"}
-                  />
-                )}
-                {modalState === "procedure-select" && (
-                  <ProcedureSelectionContent
-                    onSelect={handleProcedureSelected}
-                    onCreateNew={() => setModalState("procedure-create")}
-                    onDeleteSelected={handleProcedureDeleted}
-                    onNewItemCreated={(callback: (item: Procedure) => void) => {
-                      setAddProcedureToList(() => callback);
-                    }}
-                    selectedItemId={selectedProcedure?.id}
-                    isActive={modalState === "procedure-select"}
-                    canCreate={podeCriarCadastroTransversal}
-                    canDelete={podeAdministrarCadastros}
-                  />
-                )}
-                {modalState === "patient-select" && (
-                  <PatientSelectionContent
-                    onSelect={handlePatientSelected}
-                    onCreateNew={() => setModalState("patient-create")}
-                    onNewItemCreated={(callback: (item: PatientListItem) => void) => {
-                      setAddPatientToList(() => callback);
-                    }}
-                    selectedItemId={selectedPatient?.id}
-                    isActive={modalState === "patient-select"}
-                  />
-                )}
-                {modalState === "hospital-select" && (
-                  <HospitalSelectionContent
-                    onSelect={handleHospitalSelected}
-                    onDeselect={() => setSelectedHospital(null)}
-                    onCreateNew={() => setModalState("hospital-create")}
-                    onNewItemCreated={(callback: (item: Hospital) => void) => {
-                      setAddHospitalToList(() => callback);
-                    }}
-                    selectedItemId={selectedHospital?.id}
-                    isActive={modalState === "hospital-select"}
-                    canCreate={podeCriarCadastroTransversal}
-                  />
-                )}
-                {modalState === "healthplan-select" && (
-                  <HealthPlanSelectionContent
-                    onSelect={handleHealthPlanSelected}
-                    onDeselect={() => setSelectedHealthPlan(null)}
-                    onCreateNew={() => setModalState("healthplan-create")}
-                    onNewItemCreated={(
-                      callback: (item: HealthPlan) => void,
-                    ) => {
-                      setAddHealthPlanToList(() => callback);
-                    }}
-                    selectedItemId={selectedHealthPlan?.id}
-                    isActive={modalState === "healthplan-select"}
-                    canCreate={podeCriarCadastroTransversal}
-                  />
-                )}
-                {modalState === "doctor-select" && (
-                  <DoctorSelectionContent
-                    onSelect={handleDoctorSelected}
-                    availableDoctors={availableDoctors}
-                    loadingDoctors={loadingDoctors}
-                    selectedItemId={selectedDoctor?.id}
-                  />
-                )}
-              </div>
+          <div
+            className={`w-full sm:w-2/5 bg-white flex-col min-h-0 flex-1 ${isSelectionOpen ? "flex" : "hidden sm:flex"}`}
+          >
+            <div className="px-4 py-3 md:px-5 md:py-4 border-b border-gray-200 flex items-center gap-3 flex-shrink-0 min-h-[57px]">
+              <button
+                type="button"
+                onClick={() => openPanel("none")}
+                aria-label="Voltar"
+                className="sm:hidden w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-xl transition-colors flex-shrink-0"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-700" aria-hidden />
+              </button>
+              <h3 className="text-sm md:text-base font-semibold text-gray-900 flex-1">
+                {WIZARD_PANEL_TITLES[panel] ?? ""}
+              </h3>
+            </div>
+
+            <div className="flex-1 sm:overflow-y-auto min-h-0">
+              {panel === "none" && (
+                <div className="flex items-center justify-center h-full min-h-[120px] text-gray-300">
+                  <p className="text-sm">Selecione um campo ao lado</p>
+                </div>
+              )}
+              {panel === "template-select" && (
+                <TemplateSelectionContent
+                  onSelect={wizard.selectTemplate}
+                  isActive
+                />
+              )}
+              {panel === "procedure-select" && (
+                <ProcedureSelectionContent
+                  onSelect={wizard.selectProcedure}
+                  onCreateNew={() => openPanel("procedure-create")}
+                  onDeleteSelected={wizard.procedureDeleted}
+                  onNewItemCreated={wizard.registerProcedureAdder}
+                  selectedItemId={wizard.selectedProcedure?.id}
+                  isActive
+                  canCreate={podeCriarCadastroTransversal}
+                  canDelete={podeAdministrarCadastros}
+                />
+              )}
+              {panel === "patient-select" && (
+                <PatientSelectionContent
+                  onSelect={wizard.selectPatient}
+                  onCreateNew={() => openPanel("patient-create")}
+                  onNewItemCreated={wizard.registerPatientAdder}
+                  selectedItemId={wizard.selectedPatient?.id}
+                  isActive
+                />
+              )}
+              {panel === "hospital-select" && (
+                <HospitalSelectionContent
+                  onSelect={wizard.selectHospital}
+                  onDeselect={wizard.clearHospital}
+                  onCreateNew={() => openPanel("hospital-create")}
+                  onNewItemCreated={wizard.registerHospitalAdder}
+                  selectedItemId={wizard.selectedHospital?.id}
+                  isActive
+                  canCreate={podeCriarCadastroTransversal}
+                />
+              )}
+              {panel === "healthplan-select" && (
+                <HealthPlanSelectionContent
+                  onSelect={wizard.selectHealthPlan}
+                  onDeselect={wizard.clearHealthPlan}
+                  onCreateNew={() => openPanel("healthplan-create")}
+                  onNewItemCreated={wizard.registerHealthPlanAdder}
+                  selectedItemId={wizard.selectedHealthPlan?.id}
+                  isActive
+                  canCreate={podeCriarCadastroTransversal}
+                />
+              )}
+              {panel === "doctor-select" && (
+                <DoctorSelectionContent
+                  onSelect={wizard.selectDoctor}
+                  availableDoctors={wizard.availableDoctors}
+                  loadingDoctors={wizard.loadingDoctors}
+                  selectedItemId={wizard.selectedDoctor?.id}
+                />
+              )}
             </div>
           </div>
         </div>
-      </div>
+      </Modal>
 
       <CreateProcedureModal
-        isOpen={modalState === "procedure-create"}
-        onClose={() => setModalState("procedure-select")}
-        onSuccess={handleProcedureCreated}
+        isOpen={panel === "procedure-create"}
+        onClose={() => openPanel("procedure-select")}
+        onSuccess={wizard.procedureCreated}
       />
 
       <CreatePatientModal
-        isOpen={modalState === "patient-create"}
-        onClose={() => setModalState("patient-select")}
-        onSuccess={handlePatientCreated}
+        isOpen={panel === "patient-create"}
+        onClose={() => openPanel("patient-select")}
+        onSuccess={wizard.patientCreated}
       />
 
       <CreateHospitalModal
-        isOpen={modalState === "hospital-create"}
-        onClose={() => setModalState("hospital-select")}
-        onSuccess={handleHospitalCreated}
+        isOpen={panel === "hospital-create"}
+        onClose={() => openPanel("hospital-select")}
+        onSuccess={wizard.hospitalCreated}
       />
 
       <CreateHealthPlanModal
-        isOpen={modalState === "healthplan-create"}
-        onClose={() => setModalState("healthplan-select")}
-        onSuccess={handleHealthPlanCreated}
+        isOpen={panel === "healthplan-create"}
+        onClose={() => openPanel("healthplan-select")}
+        onSuccess={wizard.healthPlanCreated}
       />
     </>
   );

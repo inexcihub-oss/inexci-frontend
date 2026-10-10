@@ -76,3 +76,41 @@ describe("InvoiceModal", () => {
     expect(onSuccess).toHaveBeenCalled();
   });
 });
+
+describe("InvoiceModal — casca do modal", () => {
+  it("renderiza em portal como dialog e fecha com Esc", async () => {
+    const onClose = vi.fn();
+    const { container } = renderWithProviders(
+      <InvoiceModal
+        isOpen
+        onClose={onClose}
+        solicitacao={solicitacao}
+        onSuccess={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: /Faturamento/ });
+    expect(container.contains(dialog)).toBe(false);
+    expect(
+      screen.getByText("Solicitação cirúrgica · Paciente"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Nº do protocolo")).toBeInTheDocument();
+    expect(screen.getByLabelText("Valor faturado")).toBeInTheDocument();
+
+    const userEsc = userEvent.setup();
+    await userEsc.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("não renderiza nada fechado", () => {
+    renderWithProviders(
+      <InvoiceModal
+        isOpen={false}
+        onClose={vi.fn()}
+        solicitacao={solicitacao}
+        onSuccess={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});

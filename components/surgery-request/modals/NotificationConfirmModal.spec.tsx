@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { NotificationConfirmModal } from "./NotificationConfirmModal";
 
@@ -82,19 +82,35 @@ describe("NotificationConfirmModal", () => {
 
   it("deve fechar ao clicar no backdrop quando não está carregando", () => {
     render(<NotificationConfirmModal {...defaultProps} />);
-    const backdrop = document.querySelector(".bg-black\\/30.backdrop-blur-sm");
-    if (backdrop) {
-      fireEvent.click(backdrop);
-      expect(defaultProps.onClose).toHaveBeenCalled();
-    }
+    const backdrop = document.querySelector(".bg-black\\/50");
+    expect(backdrop).not.toBeNull();
+    fireEvent.click(backdrop!);
+    expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
   it("não deve fechar ao clicar no backdrop durante loading", () => {
     render(<NotificationConfirmModal {...defaultProps} isLoading={true} />);
-    const backdrop = document.querySelector(".bg-black\\/30.backdrop-blur-sm");
-    if (backdrop) {
-      fireEvent.click(backdrop);
-      expect(defaultProps.onClose).not.toHaveBeenCalled();
-    }
+    const backdrop = document.querySelector(".bg-black\\/50");
+    expect(backdrop).not.toBeNull();
+    fireEvent.click(backdrop!);
+    expect(defaultProps.onClose).not.toHaveBeenCalled();
+  });
+
+  it("renderiza em portal como dialog nomeado pelo título", () => {
+    const { container } = render(
+      <NotificationConfirmModal {...defaultProps} />,
+    );
+    const dialog = screen.getByRole("dialog", { name: /Notificar paciente/ });
+    expect(container.contains(dialog)).toBe(false);
+  });
+
+  it("fecha com Esc e ignora Esc durante loading", () => {
+    const { rerender } = render(<NotificationConfirmModal {...defaultProps} />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
+
+    rerender(<NotificationConfirmModal {...defaultProps} isLoading={true} />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
 });

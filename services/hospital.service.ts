@@ -1,3 +1,4 @@
+import type { ApiSchema } from "@/types/api";
 import { createCrudService } from "@/services/crud-service";
 
 export interface Hospital {
@@ -19,10 +20,7 @@ export interface Hospital {
   updatedAt: string;
 }
 
-export type CreateHospitalPayload = Omit<
-  Hospital,
-  "id" | "createdAt" | "updatedAt"
->;
+export type CreateHospitalPayload = ApiSchema<"CreateHospitalDto">;
 
 export const hospitalService = createCrudService<
   Hospital,

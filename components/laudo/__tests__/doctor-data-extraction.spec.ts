@@ -1,6 +1,20 @@
 import { describe, it, expect } from "vitest";
 
-function extractDoctorDataForDocument(solicitacao: any) {
+type SolicitacaoComMedico = {
+  doctor?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    doctorProfile?: {
+      specialty?: string;
+      crm?: string;
+      crmState?: string;
+      signatureUrl?: string | null;
+    } | null;
+  } & Record<string, unknown> | null;
+} & Record<string, unknown> | null | undefined;
+
+function extractDoctorDataForDocument(solicitacao: SolicitacaoComMedico) {
   const doctorUser = solicitacao?.doctor ?? null;
   const doctorProfile = doctorUser?.doctorProfile ?? null;
 
@@ -25,7 +39,7 @@ function extractDoctorDataForDocument(solicitacao: any) {
   };
 }
 
-function extractDoctorDataForReport(solicitacao: any) {
+function extractDoctorDataForReport(solicitacao: SolicitacaoComMedico) {
   const doctor = solicitacao?.doctor;
   const dp = doctor?.doctorProfile;
 

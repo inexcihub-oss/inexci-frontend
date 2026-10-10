@@ -1,3 +1,4 @@
+import type { ApiSchema } from "@/types/api";
 import api from "@/lib/api";
 import { createCrudService, createGetById } from "@/services/crud-service";
 import {
@@ -23,8 +24,8 @@ export interface Clinic {
 }
 
 export type CreateClinicPayload = Omit<
-  Clinic,
-  "id" | "createdAt" | "updatedAt" | "businessHours"
+  ApiSchema<"CreateClinicDto">,
+  "businessHours"
 > & { businessHours?: BusinessHours };
 
 export interface ClinicRoom {
