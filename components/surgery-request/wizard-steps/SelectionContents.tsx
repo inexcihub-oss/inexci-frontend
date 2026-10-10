@@ -13,7 +13,6 @@ import { HealthPlan } from "@/services/health-plan.service";
 import { AvailableDoctor } from "@/types";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { useProcedures, PROCEDURES_QUERY_KEY } from "@/hooks/useProcedures";
 import { useHospitals, HOSPITALS_QUERY_KEY } from "@/hooks/useHospitals";
@@ -53,7 +52,7 @@ export const ProcedureSelectionContent = memo(
     const [procedureToDelete, setProcedureToDelete] =
       useState<Procedure | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const { toast, showToast, hideToast } = useToast();
+    const { showToast } = useToast();
     const queryClient = useQueryClient();
     const { data: procedures = [], isLoading: loading } = useProcedures({
       enabled: isActive,
@@ -209,13 +208,6 @@ export const ProcedureSelectionContent = memo(
           loading={isDeleting}
         />
 
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={hideToast}
-          />
-        )}
       </>
     );
   },

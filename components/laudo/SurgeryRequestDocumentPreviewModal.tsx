@@ -18,6 +18,8 @@ import {
 } from "./SurgeryRequestLaudoDocument";
 import { useAuth } from "@/contexts/AuthContext";
 import { safeExternalUrl } from "@/lib/safe-url";
+import { useToast } from "@/hooks/useToast";
+import { getApiErrorMessage } from "@/lib/http-error";
 
 interface SurgeryRequestDocumentPreviewModalProps {
   isOpen: boolean;
@@ -32,6 +34,7 @@ export function SurgeryRequestDocumentPreviewModal({
 }: SurgeryRequestDocumentPreviewModalProps) {
   const [isExporting, setIsExporting] = useState(false);
   const { user: currentUser } = useAuth();
+  const { showToast } = useToast();
   const [signatureUrl, setSignatureUrl] = useState<string>("");
   const [sections, setSections] = useState<ReportSection[]>([]);
   const [latestSolicitacao, setLatestSolicitacao] =
@@ -164,16 +167,12 @@ export function SurgeryRequestDocumentPreviewModal({
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      const { default: api } = await import("@/lib/api");
-      const response = await api.get(
-        `/surgery-requests/${request.id}/export-pdf`,
-        { responseType: "arraybuffer" },
-      );
-      const blob = new Blob([response.data], { type: "application/pdf" });
+      const blob = await surgeryRequestService.exportPdf(request.id);
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    } catch {
+    } catch (e) {
+      showToast(getApiErrorMessage(e, "Erro ao exportar PDF"), "error");
     } finally {
       setIsExporting(false);
     }

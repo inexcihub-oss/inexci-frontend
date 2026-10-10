@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
 import Input from "@/components/ui/Input";
@@ -17,10 +17,9 @@ import { maskCep, maskCnpj, maskPhone, unmask } from "@/lib/masks";
 import { STATE_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
 import { useCepLookup } from "@/hooks/useCepLookup";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
+import { useEntityDetailForm } from "@/hooks/useEntityDetailForm";
+import { registryKeys } from "@/lib/query-keys";
 import { ChevronRight } from "lucide-react";
-import { logger } from "@/lib/logger";
 
 const CATEGORY_OPTIONS = [
   { value: "", label: "Selecione" },
@@ -67,41 +66,116 @@ function QuotationStatusBadge({ selected }: { selected: boolean }) {
   );
 }
 
+const EMPTY_FORM = {
+  name: "",
+  cnpj: "",
+  email: "",
+  phone: "",
+  website: "",
+  category: "",
+  address: "",
+  addressNumber: "",
+  addressComplement: "",
+  neighborhood: "",
+  city: "",
+  state: "",
+  zipCode: "",
+  contactName: "",
+  contactPhone: "",
+  contactEmail: "",
+  paymentTerms: "",
+  deliveryTime: "",
+  notes: "",
+};
+type SupplierForm = typeof EMPTY_FORM;
+
+function toForm(s: Supplier): SupplierForm {
+  return {
+    name: s.name || "",
+    cnpj: maskCnpj(s.cnpj || ""),
+    email: s.email || "",
+    phone: maskPhone(s.phone || ""),
+    website: s.website || "",
+    category: s.category || "",
+    address: s.address || "",
+    addressNumber: s.addressNumber || "",
+    addressComplement: s.addressComplement || "",
+    neighborhood: s.neighborhood || "",
+    city: s.city || "",
+    state: s.state || "",
+    zipCode: maskCep(s.zipCode || ""),
+    contactName: s.contactName || "",
+    contactPhone: maskPhone(s.contactPhone || ""),
+    contactEmail: s.contactEmail || "",
+    paymentTerms: s.paymentTerms || "",
+    deliveryTime: s.deliveryTime || "",
+    notes: s.notes || "",
+  };
+}
+
 export default function FornecedorDetalhePage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [supplier, setSupplier] = useState<Supplier | null>(null);
-  const { toast, showToast, hideToast } = useToast();
-
-  const [formData, setFormData] = useState({
-    name: "",
-    cnpj: "",
-    email: "",
-    phone: "",
-    website: "",
-    category: "",
-    address: "",
-    addressNumber: "",
-    addressComplement: "",
-    neighborhood: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    contactName: "",
-    contactPhone: "",
-    contactEmail: "",
-    paymentTerms: "",
-    deliveryTime: "",
-    notes: "",
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const { data: supplier = null, isLoading: loading } = useQuery({
+    queryKey: registryKeys.supplier(params.id),
+    queryFn: () => supplierService.getById(params.id),
   });
-  const [originalData, setOriginalData] = useState<typeof formData | null>(
-    null,
-  );
-  const isDirty =
-    originalData !== null &&
-    JSON.stringify(formData) !== JSON.stringify(originalData);
+
+  const {
+    formData,
+    setFormData,
+    setField,
+    isDirty,
+    saving,
+    handleSave,
+    handleCancel,
+  } = useEntityDetailForm({
+    entity: supplier,
+    emptyForm: EMPTY_FORM,
+    toForm,
+    validate: (form) =>
+      form.name.trim() ? null : "Nome do fornecedor é obrigatório.",
+    normalize: (form) => ({
+      ...form,
+      name: form.name.trim(),
+      cnpj: maskCnpj(form.cnpj),
+      phone: maskPhone(form.phone),
+      zipCode: maskCep(form.zipCode),
+      contactPhone: maskPhone(form.contactPhone),
+    }),
+    save: async (entity, form) => {
+      await supplierService.update(entity.id, {
+        name: form.name,
+        cnpj: unmask(form.cnpj) || undefined,
+        email: form.email || undefined,
+        phone: unmask(form.phone) || undefined,
+        website: form.website || undefined,
+        category: form.category || undefined,
+        address: form.address || undefined,
+        addressNumber: form.addressNumber || undefined,
+        addressComplement: form.addressComplement || undefined,
+        neighborhood: form.neighborhood || undefined,
+        city: form.city || undefined,
+        state: form.state || undefined,
+        zipCode: unmask(form.zipCode) || undefined,
+        contactName: form.contactName || undefined,
+        contactPhone: unmask(form.contactPhone) || undefined,
+        contactEmail: form.contactEmail || undefined,
+        paymentTerms: form.paymentTerms || undefined,
+        deliveryTime: form.deliveryTime || undefined,
+        notes: form.notes || undefined,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: registryKeys.suppliers(),
+      });
+    },
+    showToast,
+    successMessage: "Fornecedor atualizado com sucesso!",
+    backHref: "/fornecedores",
+  });
+  const handleInputChange = (field: keyof SupplierForm, value: string) =>
+    setField(field, value);
 
   const { loading: cepLoading } = useCepLookup({
     cep: formData.zipCode,
@@ -127,116 +201,6 @@ export default function FornecedorDetalhePage() {
       showToast("Não foi possível consultar o CEP.", "error");
     },
   });
-
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
-
-  const buildFormData = (s: Supplier) => ({
-    name: s.name || "",
-    cnpj: maskCnpj(s.cnpj || ""),
-    email: s.email || "",
-    phone: maskPhone(s.phone || ""),
-    website: s.website || "",
-    category: s.category || "",
-    address: s.address || "",
-    addressNumber: s.addressNumber || "",
-    addressComplement: s.addressComplement || "",
-    neighborhood: s.neighborhood || "",
-    city: s.city || "",
-    state: s.state || "",
-    zipCode: maskCep(s.zipCode || ""),
-    contactName: s.contactName || "",
-    contactPhone: maskPhone(s.contactPhone || ""),
-    contactEmail: s.contactEmail || "",
-    paymentTerms: s.paymentTerms || "",
-    deliveryTime: s.deliveryTime || "",
-    notes: s.notes || "",
-  });
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const supplierData = await supplierService.getById(params.id);
-      if (!supplierData) {
-        setLoading(false);
-        return;
-      }
-      setSupplier(supplierData);
-      const fd = buildFormData(supplierData);
-      setFormData(fd);
-      setOriginalData(fd);
-    } catch (error) {
-      logger.error("Erro ao carregar fornecedor:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = async () => {
-    if (!supplier) return;
-
-    const name = formData.name.trim();
-    if (!name) {
-      showToast("Nome do fornecedor é obrigatório.", "error");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const normalizedFormData = {
-        ...formData,
-        name,
-        cnpj: maskCnpj(formData.cnpj),
-        phone: maskPhone(formData.phone),
-        zipCode: maskCep(formData.zipCode),
-        contactPhone: maskPhone(formData.contactPhone),
-      };
-
-      await supplierService.update(supplier.id, {
-        name,
-        cnpj: unmask(formData.cnpj) || undefined,
-        email: formData.email || undefined,
-        phone: unmask(formData.phone) || undefined,
-        website: formData.website || undefined,
-        category: formData.category || undefined,
-        address: formData.address || undefined,
-        addressNumber: formData.addressNumber || undefined,
-        addressComplement: formData.addressComplement || undefined,
-        neighborhood: formData.neighborhood || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
-        zipCode: unmask(formData.zipCode) || undefined,
-        contactName: formData.contactName || undefined,
-        contactPhone: unmask(formData.contactPhone) || undefined,
-        contactEmail: formData.contactEmail || undefined,
-        paymentTerms: formData.paymentTerms || undefined,
-        deliveryTime: formData.deliveryTime || undefined,
-        notes: formData.notes || undefined,
-      });
-      setFormData(normalizedFormData);
-      setOriginalData(normalizedFormData);
-      showToast("Fornecedor atualizado com sucesso!", "success");
-    } catch (error) {
-      logger.error("Erro ao salvar:", error);
-      showToast("Erro ao salvar as alterações.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (isDirty && originalData) {
-      setFormData(originalData);
-    } else {
-      router.push("/fornecedores");
-    }
-  };
 
   if (loading) {
     return (
@@ -535,13 +499,6 @@ export default function FornecedorDetalhePage() {
           </Button>
         </div>
       </DetailPageLayout>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </PageContainer>
   );
 }

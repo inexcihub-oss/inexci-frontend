@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useToast } from "./useToast";
+import { getStatusLabel } from "@/lib/surgery-request-status";
 
 interface StatusChangeNotificationOptions {
   currentStatus: number;
@@ -7,18 +8,7 @@ interface StatusChangeNotificationOptions {
   onStatusChange?: (newStatus: number) => void;
 }
 
-const STATUS_LABELS: Record<number, string> = {
-  1: "Pendente",
-  2: "Enviada",
-  3: "Em Análise",
-  4: "Em Reanálise",
-  5: "Autorizada",
-  6: "Agendada",
-  7: "A Faturar",
-  8: "Faturada",
-  9: "Finalizada",
-  10: "Cancelada",
-};
+const label = (status: number) => getStatusLabel(status) ?? "Desconhecido";
 
 export function useStatusChangeNotification({
   currentStatus,
@@ -40,8 +30,8 @@ export function useStatusChangeNotification({
       previousStatus.current !== currentStatus &&
       previousStatus.current !== 0
     ) {
-      const prevLabel = STATUS_LABELS[previousStatus.current] || "Desconhecido";
-      const newLabel = STATUS_LABELS[currentStatus] || "Desconhecido";
+      const prevLabel = label(previousStatus.current);
+      const newLabel = label(currentStatus);
 
       showSuccess(`Status atualizado: "${prevLabel}" → "${newLabel}"`);
       onStatusChange?.(currentStatus);
@@ -53,10 +43,6 @@ export function useStatusChangeNotification({
   return {
     previousStatus: previousStatus.current,
     currentStatus,
-    statusLabel: STATUS_LABELS[currentStatus],
+    statusLabel: getStatusLabel(currentStatus),
   };
-}
-
-export function getStatusLabel(status: number): string {
-  return STATUS_LABELS[status] || "Desconhecido";
 }

@@ -10,7 +10,6 @@ import {
 import { useRouter } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
 import Loading from "@/components/ui/Loading";
-import { Toast } from "@/components/ui/Toast";
 import {
   surgeryRequestService,
   SurgeryRequestListItem,
@@ -58,6 +57,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
+import { appointmentKeys, surgeryRequestKeys } from "@/lib/query-keys";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 import { criarConsultaDemo } from "@/lib/onboarding/demo-data";
 import {
@@ -82,7 +82,7 @@ type SurgeryItem = SurgeryRequestListItem & { surgeryDate: string };
 export default function AgendaPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { toast, showSuccess, showError, hideToast } = useToast();
+  const { showSuccess, showError } = useToast();
   const { can, user } = useAuth();
   const podeVerCirurgias = can(Permission.SOLICITACOES);
   const podeAgenda = can(Permission.AGENDA);
@@ -172,13 +172,13 @@ export default function AgendaPage() {
   const toISO = rangeTo.toISOString();
 
   const surgeriesQuery = useQuery({
-    queryKey: ["surgery-requests", "agenda", fromISO, toISO],
+    queryKey: surgeryRequestKeys.agendaRange(fromISO, toISO),
     queryFn: () => surgeryRequestService.getAgenda(fromISO, toISO),
     placeholderData: keepPreviousData,
     enabled: podeVerCirurgias,
   });
   const appointmentsQuery = useQuery({
-    queryKey: ["appointments", "agenda", fromISO, toISO],
+    queryKey: appointmentKeys.agenda(fromISO, toISO),
     queryFn: () =>
       appointmentService.getAgendaCompleta({ from: fromISO, to: toISO }),
     placeholderData: keepPreviousData,
@@ -210,7 +210,7 @@ export default function AgendaPage() {
   }, [podeVerCirurgias, surgeriesQuery, appointmentsQuery]);
 
   const invalidateAppointments = () =>
-    queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
 
   const allEvents = useMemo<CalEvent[]>(() => {
     const appts = (appointmentsQuery.data?.records ?? []).map((a) =>
@@ -710,9 +710,6 @@ export default function AgendaPage() {
         canExportSurgeries={podeVerCirurgias}
       />
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </PageContainer>
   );
 }

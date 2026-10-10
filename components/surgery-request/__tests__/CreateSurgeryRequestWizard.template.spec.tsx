@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import { renderWithProviders } from "@/test-utils/render-with-providers";
 import userEvent from "@testing-library/user-event";
 import { Permission } from "@/lib/permissions";
 import type { SurgeryRequestTemplateSummary } from "@/services/surgery-request.service";
@@ -82,7 +83,7 @@ const modelo: SurgeryRequestTemplateSummary = {
 };
 
 function renderizar() {
-  return render(
+  return renderWithProviders(
     <CreateSurgeryRequestWizard
       isOpen
       onClose={vi.fn()}

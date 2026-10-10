@@ -1,8 +1,9 @@
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { availableDoctorsService } from "@/services/available-doctors.service";
+import { registryKeys } from "@/lib/query-keys/registry";
 
-export const AVAILABLE_DOCTORS_QUERY_KEY = ["available-doctors"] as const;
+export const AVAILABLE_DOCTORS_QUERY_KEY = registryKeys.availableDoctors();
 
 export function useAvailableDoctors({ fresh = false } = {}) {
   return useQuery({

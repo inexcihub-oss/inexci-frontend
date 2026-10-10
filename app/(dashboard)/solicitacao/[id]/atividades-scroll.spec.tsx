@@ -172,7 +172,8 @@ describe("Detalhe da Solicitação — rolagem da aba Atividades", () => {
     window.history.replaceState({}, "", "/solicitacao/sc-1?sidebar=atividades");
 
     scrollIntoViewSpy = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoViewSpy;
+    Element.prototype.scrollIntoView =
+      scrollIntoViewSpy as unknown as Element["scrollIntoView"];
 
     alvosDeScrollTo = [];
     Element.prototype.scrollTo = function (this: Element) {

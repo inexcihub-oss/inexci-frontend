@@ -7,8 +7,6 @@ import Input from "@/components/ui/Input";
 import { collaboratorService } from "@/services/collaborator.service";
 import { useToast } from "@/hooks/useToast";
 import { useInvalidateAvailableDoctors } from "@/hooks/useAvailableDoctors";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
 import {
   ShieldCheck,
   ShieldOff,
@@ -37,7 +35,7 @@ export function CollaboratorActionsSection({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
   const isActive = currentStatus === "active";
@@ -250,13 +248,6 @@ export function CollaboratorActionsSection({
         )}
       </FormSection>
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </>
   );
 }

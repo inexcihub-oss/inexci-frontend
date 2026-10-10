@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const { getById, updateProfile, update, updateDoctorProfile } = vi.hoisted(
   () => ({
@@ -87,7 +88,9 @@ let queryClient: QueryClient;
 function renderPage() {
   return render(
     <QueryClientProvider client={queryClient}>
-      <AssistenteDetalhePage />
+      <ToastProvider>
+        <AssistenteDetalhePage />
+      </ToastProvider>
     </QueryClientProvider>,
   );
 }

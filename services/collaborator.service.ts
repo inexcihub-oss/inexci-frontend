@@ -108,7 +108,7 @@ function toCollaborator(user: BackendUserRecord): Collaborator {
 
 export const collaboratorService = {
   async getAll(): Promise<Collaborator[]> {
-    const response = await api.get("/users/collaborators");
+    const response = await api.get<unknown>("/users/collaborators");
     const data = getApiRecords<BackendUserRecord>(response.data);
     return data.map(toCollaborator);
   },
@@ -121,7 +121,10 @@ export const collaboratorService = {
   },
 
   async create(payload: CreateCollaboratorPayload): Promise<Collaborator> {
-    const response = await api.post("/users/collaborators", payload);
+    const response = await api.post<Collaborator>(
+      "/users/collaborators",
+      payload,
+    );
     return response.data;
   },
 
@@ -129,7 +132,7 @@ export const collaboratorService = {
     collaboratorId: string,
     payload: Partial<CreateCollaboratorPayload>,
   ): Promise<Collaborator> {
-    const response = await api.patch(
+    const response = await api.patch<Collaborator>(
       `/users/collaborators/${collaboratorId}`,
       payload,
     );
@@ -153,12 +156,15 @@ export const collaboratorService = {
       state?: string;
     },
   ): Promise<Collaborator> {
-    const response = await api.patch(`/users/${userId}`, payload);
+    const response = await api.patch<Collaborator>(
+      `/users/${userId}`,
+      payload,
+    );
     return response.data;
   },
 
   async toggleStatus(collaboratorId: string): Promise<{ status: string }> {
-    const response = await api.patch(
+    const response = await api.patch<{ status: string }>(
       `/users/collaborators/${collaboratorId}/status`,
     );
     return response.data;
@@ -168,7 +174,7 @@ export const collaboratorService = {
     collaboratorId: string,
     password: string,
   ): Promise<{ message: string }> {
-    const response = await api.patch(
+    const response = await api.patch<{ message: string }>(
       `/users/collaborators/${collaboratorId}/reset-password`,
       { password },
     );
@@ -178,7 +184,7 @@ export const collaboratorService = {
   async resendInvite(
     collaboratorId: string,
   ): Promise<{ message: string; email: string }> {
-    const response = await api.post(
+    const response = await api.post<{ message: string; email: string }>(
       `/users/collaborators/${collaboratorId}/resend-invite`,
     );
     return response.data;

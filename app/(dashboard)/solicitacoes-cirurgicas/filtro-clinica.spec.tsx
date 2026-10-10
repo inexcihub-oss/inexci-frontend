@@ -112,7 +112,7 @@ async function filtrarPorClinica(
   await user.click(
     within(modal).getByPlaceholderText(/Pesquisar clínica/i),
   );
-  await user.click(await within(modal).findByRole("button", { name: nome }));
+  await user.click(await screen.findByRole("button", { name: nome }));
   await user.click(
     within(modal).getByRole("button", { name: /Mostrar resultados/ }),
   );
@@ -157,10 +157,10 @@ describe("Kanban — filtro de clínicas", () => {
     );
 
     expect(
-      await within(modal).findByRole("button", { name: "Unidade Centro" }),
+      await screen.findByRole("button", { name: "Unidade Centro" }),
     ).toBeInTheDocument();
     expect(
-      within(modal).getByRole("button", { name: "Unidade Sul" }),
+      screen.getByRole("button", { name: "Unidade Sul" }),
     ).toBeInTheDocument();
   });
 });

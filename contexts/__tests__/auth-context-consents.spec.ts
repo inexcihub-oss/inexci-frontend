@@ -76,7 +76,9 @@ describe("AuthContext — consents do /auth/me", () => {
       pendingRequired: ["privacy_policy", "terms_of_use"],
     });
 
-    const userWithoutConsents = { id: "u-2" };
+    const userWithoutConsents: { id: string; consents?: unknown } = {
+      id: "u-2",
+    };
     const applyConsentsFromUser = (currentUser: { consents?: unknown }) =>
       Boolean(currentUser.consents);
 

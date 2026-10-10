@@ -207,18 +207,23 @@ export const appointmentService = {
     if (query.take) params.take = String(query.take);
     if (query.withDoctorCounts) params.withDoctorCounts = "true";
 
-    const response = await api.get("/appointments", { params });
+    const response = await api.get<
+      | BackendAppointment[]
+      | {
+          records?: BackendAppointment[];
+          total?: number;
+          countByDoctorId?: Record<string, number>;
+        }
+    >("/appointments", { params });
     const records = getApiRecords<BackendAppointment>(response.data).map(
       mapAppointment,
     );
-    const total = (response.data as { total?: number } | undefined)?.total;
+    const body = Array.isArray(response.data) ? undefined : response.data;
 
     return {
       records,
-      total: typeof total === "number" ? total : records.length,
-      countByDoctorId: (
-        response.data as { countByDoctorId?: Record<string, number> } | undefined
-      )?.countByDoctorId,
+      total: typeof body?.total === "number" ? body.total : records.length,
+      countByDoctorId: body?.countByDoctorId,
     };
   },
 
@@ -247,7 +252,9 @@ export const appointmentService = {
   },
 
   async getByPatient(patientId: string): Promise<Appointment[]> {
-    const response = await api.get(`/appointments/patient/${patientId}`);
+    const response = await api.get<unknown>(
+      `/appointments/patient/${patientId}`,
+    );
     return getApiRecords<BackendAppointment>(response.data).map(mapAppointment);
   },
 

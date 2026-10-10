@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
 import Input from "@/components/ui/Input";
@@ -10,59 +10,112 @@ import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import {
-  surgeryRequestService,
-  SurgeryRequestListItem,
-  STATUS_NUMBER_TO_STRING,
-  STATUS_COLORS,
-} from "@/services/surgery-request.service";
-import { logger } from "@/lib/logger";
+  LinkedSurgeryRequestsList,
+  linkedProcedureName,
+  useLinkedSurgeryRequests,
+} from "@/components/colaboradores/LinkedSurgeryRequestsList";
 import { maskCep, maskCnpj, maskPhone, unmask } from "@/lib/masks";
 import { STATE_OPTIONS } from "@/lib/options";
+import { registryKeys } from "@/lib/query-keys";
 import { useToast } from "@/hooks/useToast";
 import { useCepLookup } from "@/hooks/useCepLookup";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
+import { useHealthPlan } from "@/hooks/useHealthPlans";
+import { useEntityDetailForm } from "@/hooks/useEntityDetailForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
-import { ChevronRight } from "lucide-react";
+
+const EMPTY_FORM = {
+  name: "",
+  cnpj: "",
+  email: "",
+  phone: "",
+  website: "",
+  ansRegistry: "",
+  address: "",
+  addressNumber: "",
+  addressComplement: "",
+  city: "",
+  state: "",
+  zipCode: "",
+  contact: "",
+  contactPhone: "",
+  contactEmail: "",
+};
+type HealthPlanForm = typeof EMPTY_FORM;
+
+function toForm(hp: HealthPlan): HealthPlanForm {
+  return {
+    name: hp.name || "",
+    cnpj: maskCnpj(hp.cnpj || ""),
+    email: hp.email || "",
+    phone: maskPhone(hp.phone || ""),
+    website: hp.website || "",
+    ansRegistry: hp.ansCode || "",
+    address: hp.address || "",
+    addressNumber: hp.addressNumber || "",
+    addressComplement: hp.addressComplement || "",
+    city: hp.city || "",
+    state: hp.state || "",
+    zipCode: maskCep(hp.zipCode || ""),
+    contact: hp.authorizationContact || "",
+    contactPhone: maskPhone(hp.authorizationPhone || ""),
+    contactEmail: hp.authorizationEmail || "",
+  };
+}
 
 export default function ConvenioDetalhePage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const { can } = useAuth();
   const podeVerSolicitacoes = can(Permission.SOLICITACOES);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [healthPlan, setHealthPlan] = useState<HealthPlan | null>(null);
-  const [surgeryRequests, setSurgeryRequests] = useState<
-    SurgeryRequestListItem[]
-  >([]);
-  const [loadingSurgeries, setLoadingSurgeries] = useState(true);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
+  const { healthPlan, isLoading: loading } = useHealthPlan(params.id);
+  const { requests: surgeryRequests, loading: loadingSurgeries } =
+    useLinkedSurgeryRequests({ healthPlanId: params.id }, podeVerSolicitacoes);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    cnpj: "",
-    email: "",
-    phone: "",
-    website: "",
-    ansRegistry: "",
-    address: "",
-    addressNumber: "",
-    addressComplement: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    contact: "",
-    contactPhone: "",
-    contactEmail: "",
+  const {
+    formData,
+    setFormData,
+    setField,
+    isDirty,
+    saving,
+    handleSave,
+    handleCancel,
+  } = useEntityDetailForm({
+    entity: healthPlan,
+    emptyForm: EMPTY_FORM,
+    toForm,
+    validate: (form) =>
+      form.name.trim() ? null : "Nome do convênio é obrigatório.",
+    normalize: (form) => ({ ...form, name: form.name.trim() }),
+    save: async (entity, form) => {
+      await healthPlanService.update(entity.id, {
+        name: form.name,
+        cnpj: unmask(form.cnpj) || undefined,
+        email: form.email || undefined,
+        phone: unmask(form.phone) || undefined,
+        ansCode: form.ansRegistry || undefined,
+        website: form.website || undefined,
+        address: form.address || undefined,
+        addressNumber: form.addressNumber || undefined,
+        addressComplement: form.addressComplement || undefined,
+        city: form.city || undefined,
+        state: form.state || undefined,
+        zipCode: unmask(form.zipCode) || undefined,
+        authorizationContact: form.contact || undefined,
+        authorizationPhone: unmask(form.contactPhone) || undefined,
+        authorizationEmail: form.contactEmail || undefined,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: registryKeys.healthPlans(),
+      });
+    },
+    showToast,
+    successMessage: "Convênio atualizado com sucesso!",
+    backHref: "/colaboradores",
   });
-  const [originalData, setOriginalData] = useState<typeof formData | null>(
-    null,
-  );
-  const isDirty =
-    originalData !== null &&
-    JSON.stringify(formData) !== JSON.stringify(originalData);
+  const handleInputChange = (field: keyof HealthPlanForm, value: string) =>
+    setField(field, value);
 
   const { loading: cepLoading } = useCepLookup({
     cep: formData.zipCode,
@@ -88,135 +141,6 @@ export default function ConvenioDetalhePage() {
     },
   });
 
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
-
-  const loadData = async () => {
-    setLoading(true);
-    const surgeryPromise = podeVerSolicitacoes
-      ? surgeryRequestService.getAll({ healthPlanId: params.id })
-      : null;
-    surgeryPromise?.catch(() => {});
-    try {
-      const healthPlanData = await healthPlanService.getById(params.id);
-
-      if (!healthPlanData) {
-        logger.error("Convênio não encontrado");
-        setLoading(false);
-        setLoadingSurgeries(false);
-        return;
-      }
-
-      setHealthPlan(healthPlanData);
-
-      setFormData({
-        name: healthPlanData.name || "",
-        cnpj: maskCnpj(healthPlanData.cnpj || ""),
-        email: healthPlanData.email || "",
-        phone: maskPhone(healthPlanData.phone || ""),
-        website: healthPlanData.website || "",
-        ansRegistry: healthPlanData.ansCode || "",
-        address: healthPlanData.address || "",
-        addressNumber: healthPlanData.addressNumber || "",
-        addressComplement: healthPlanData.addressComplement || "",
-        city: healthPlanData.city || "",
-        state: healthPlanData.state || "",
-        zipCode: maskCep(healthPlanData.zipCode || ""),
-        contact: healthPlanData.authorizationContact || "",
-        contactPhone: maskPhone(healthPlanData.authorizationPhone || ""),
-        contactEmail: healthPlanData.authorizationEmail || "",
-      });
-      setOriginalData({
-        name: healthPlanData.name || "",
-        cnpj: maskCnpj(healthPlanData.cnpj || ""),
-        email: healthPlanData.email || "",
-        phone: maskPhone(healthPlanData.phone || ""),
-        website: healthPlanData.website || "",
-        ansRegistry: healthPlanData.ansCode || "",
-        address: healthPlanData.address || "",
-        addressNumber: healthPlanData.addressNumber || "",
-        addressComplement: healthPlanData.addressComplement || "",
-        city: healthPlanData.city || "",
-        state: healthPlanData.state || "",
-        zipCode: maskCep(healthPlanData.zipCode || ""),
-        contact: healthPlanData.authorizationContact || "",
-        contactPhone: maskPhone(healthPlanData.authorizationPhone || ""),
-        contactEmail: healthPlanData.authorizationEmail || "",
-      });
-      if (surgeryPromise) {
-        setLoadingSurgeries(true);
-        try {
-          const surgeryData = await surgeryPromise;
-          setSurgeryRequests(surgeryData.records ?? []);
-        } catch {
-          setSurgeryRequests([]);
-        } finally {
-          setLoadingSurgeries(false);
-        }
-      } else {
-        setLoadingSurgeries(false);
-      }
-    } catch (error) {
-      logger.error("Erro ao carregar convênio:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = async () => {
-    if (!healthPlan) return;
-
-    const name = formData.name.trim();
-    if (!name) {
-      showToast("Nome do convênio é obrigatório.", "error");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const normalizedFormData = { ...formData, name };
-      await healthPlanService.update(healthPlan.id, {
-        name,
-        cnpj: unmask(formData.cnpj) || undefined,
-        email: formData.email || undefined,
-        phone: unmask(formData.phone) || undefined,
-        ansCode: formData.ansRegistry || undefined,
-        website: formData.website || undefined,
-        address: formData.address || undefined,
-        addressNumber: formData.addressNumber || undefined,
-        addressComplement: formData.addressComplement || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
-        zipCode: unmask(formData.zipCode) || undefined,
-        authorizationContact: formData.contact || undefined,
-        authorizationPhone: unmask(formData.contactPhone) || undefined,
-        authorizationEmail: formData.contactEmail || undefined,
-      });
-      setFormData(normalizedFormData);
-      setOriginalData(normalizedFormData);
-      showToast("Convênio atualizado com sucesso!", "success");
-    } catch (error) {
-      logger.error("Erro ao salvar:", error);
-      showToast("Erro ao salvar as alterações.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (isDirty && originalData) {
-      setFormData(originalData);
-    } else {
-      router.push("/colaboradores");
-    }
-  };
-
   if (loading) {
     return (
       <PageContainer>
@@ -238,72 +162,16 @@ export default function ConvenioDetalhePage() {
   }
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Solicitações recentes
-        </h3>
-        {!loadingSurgeries && (
-          <span className="text-xs text-gray-400">
-            {surgeryRequests.length}
-          </span>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        {loadingSurgeries ? (
-          <div className="flex items-center justify-center py-8">
-            <Spinner size="sm" />
-          </div>
-        ) : surgeryRequests.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-xs text-gray-400">
-              Nenhuma solicitação encontrada.
-            </p>
-          </div>
-        ) : (
-          surgeryRequests.map((surgery) => {
-            const statusLabel =
-              STATUS_NUMBER_TO_STRING[surgery.status] ?? "Pendente";
-            const colors = STATUS_COLORS[statusLabel] ?? {
-              bg: "bg-gray-50",
-              text: "text-gray-600",
-            };
-            const patientName =
-              surgery.patient?.name || "Paciente não informado";
-            const procedureName =
-              (surgery as any).procedureName ||
-              surgery.procedure?.name ||
-              surgery.tussProcedure?.description ||
-              "Procedimento não especificado";
-            return (
-              <div
-                key={surgery.id}
-                onClick={() => router.push(`/solicitacao/${surgery.id}`)}
-                className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
-              >
-                <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
-                  <span className="text-xs font-semibold text-gray-900 truncate">
-                    {patientName}
-                  </span>
-                  <span className="text-xs text-gray-500 truncate">
-                    {procedureName}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`text-xs px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}
-                  >
-                    {statusLabel}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
+    <LinkedSurgeryRequestsList
+      title="Solicitações recentes"
+      loading={loadingSurgeries}
+      requests={surgeryRequests}
+      emptyMessage="Nenhuma solicitação encontrada."
+      getLines={(surgery) => ({
+        primary: surgery.patient?.name || "Paciente não informado",
+        secondary: linkedProcedureName(surgery, "Procedimento não especificado"),
+      })}
+    />
   );
 
   return (
@@ -447,13 +315,6 @@ export default function ConvenioDetalhePage() {
           </Button>
         </div>
       </DetailPageLayout>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </PageContainer>
   );
 }

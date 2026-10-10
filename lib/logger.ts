@@ -22,10 +22,6 @@ export function setRequestId(value: string | null | undefined): void {
   currentRequestId = value ? String(value) : null;
 }
 
-export function getRequestId(): string | null {
-  return currentRequestId;
-}
-
 function shouldLog(level: LogLevel): boolean {
   return RANK[level] <= RANK[minLevel];
 }

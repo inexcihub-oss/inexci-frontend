@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { emailOptionalSchema, phoneOptionalSchema } from "./shared";
+import {
+  cnpjOptionalSchema,
+  emailOptionalSchema,
+  phoneOptionalSchema,
+} from "./shared";
 
 export const createHealthPlanSchema = z.object({
   name: z
@@ -12,3 +16,9 @@ export const createHealthPlanSchema = z.object({
 });
 
 export type CreateHealthPlanInput = z.infer<typeof createHealthPlanSchema>;
+
+export const newHealthPlanSchema = createHealthPlanSchema.extend({
+  cnpj: cnpjOptionalSchema,
+});
+
+export type NewHealthPlanInput = z.infer<typeof newHealthPlanSchema>;

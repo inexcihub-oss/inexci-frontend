@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   surgeryRequestService,
   AcceptAuthorizationPayload,
@@ -9,7 +9,8 @@ import {
 } from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
-import { getTransitionBlockError } from "@/lib/http-error";
+import { getApiErrorMessage, getTransitionBlockError } from "@/lib/http-error";
+import { SurgeryRequestStatusCode } from "@/lib/surgery-request-status";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
 import {
   NotificationConfirmModal,
@@ -21,69 +22,26 @@ import {
   buildSupplierOptions,
   describeSelectedSupplier,
 } from "./fornecedor-vencedor";
+import { ModalFooter } from "@/components/shared/ModalFooter";
+import { ContestFlow, ContestMethod, ContestStep } from "./ContestFlow";
 import {
-  MAX_DOCUMENT_FILE_SIZE_BYTES,
-  MAX_DOCUMENT_FILE_SIZE_MB,
-} from "@/lib/file-upload";
+  AuthorizationEntry,
+  AuthorizationTable,
+  SummaryTable,
+} from "./AuthorizationTables";
 
 type Step = 1 | 2 | 3 | 4;
-type ContestStep = 1 | 2 | 3;
-type ContestMethod = "email" | "document";
-
-interface AuthorizationEntry {
-  id: string | number;
-  quantity: number;
-  authorizedQuantity: string;
-}
 
 interface UpdateAuthorizationsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onClose2: () => void;
   solicitacao: SurgeryRequestDetail;
   onSuccess: () => void;
-}
-
-interface SupplierSelectOption {
-  value: string;
-  label: string;
-}
-
-function getSummaryRowStyles(
-  authorized: number | null,
-  requested: number,
-): { row: string; authorizedBox: string } {
-  if (authorized === null) {
-    return {
-      row: "",
-      authorizedBox: "bg-white border-gray-200 text-gray-500",
-    };
-  }
-
-  if (authorized === 0) {
-    return {
-      row: "bg-rose-100/90 border-l-4 border-l-rose-500",
-      authorizedBox: "bg-rose-50 border-rose-300 text-rose-700",
-    };
-  }
-
-  if (authorized < requested) {
-    return {
-      row: "bg-amber-100/90 border-l-4 border-l-amber-500",
-      authorizedBox: "bg-amber-50 border-amber-300 text-amber-700",
-    };
-  }
-
-  return {
-    row: "bg-emerald-100/90 border-l-4 border-l-emerald-500",
-    authorizedBox: "bg-emerald-50 border-emerald-300 text-emerald-700",
-  };
 }
 
 export function UpdateAuthorizationsModal({
   isOpen,
   onClose,
-  onClose2: _onClose2,
   solicitacao,
   onSuccess,
 }: UpdateAuthorizationsModalProps) {
@@ -233,18 +191,27 @@ export function UpdateAuthorizationsModal({
       };
       await surgeryRequestService.acceptAuthorization(solicitacao.id, payload);
 
+      let notifyError: string | null = null;
       if (channels?.email && solicitacao?.patient?.email) {
         try {
           await surgeryRequestService.notify(solicitacao.id, {
             template: "status-change-patient",
             channels: { email: true, whatsapp: false },
-            oldStatus: 3,
+            oldStatus: SurgeryRequestStatusCode.IN_ANALYSIS,
           });
-        } catch {
+        } catch (e) {
+          notifyError = getApiErrorMessage(e, "falha no envio do e-mail");
         }
       }
 
-      showToast("Autorização aceita! Status: Em Agendamento", "success");
+      if (notifyError) {
+        showToast(
+          `Autorização aceita, mas o paciente não foi notificado: ${notifyError}`,
+          "warning",
+        );
+      } else {
+        showToast("Autorização aceita! Status: Em Agendamento", "success");
+      }
       reset();
       onSuccess();
     } catch (err) {
@@ -332,6 +299,7 @@ export function UpdateAuthorizationsModal({
       };
       await surgeryRequestService.contestAuthorization(solicitacao.id, payload);
 
+      let pdfFailed = false;
       if (contestMethod === "document") {
         try {
           const blob =
@@ -347,18 +315,25 @@ export function UpdateAuthorizationsModal({
           document.body.removeChild(a);
           setTimeout(() => URL.revokeObjectURL(url), 10_000);
         } catch {
-          showToast(
-            "Contestação registrada, mas houve um erro ao gerar o PDF.",
-            "error",
-          );
+          pdfFailed = true;
         }
       }
 
-      showToast("Contestação enviada com sucesso", "success");
+      if (pdfFailed) {
+        showToast(
+          "Contestação registrada, mas houve um erro ao gerar o PDF.",
+          "warning",
+        );
+      } else {
+        showToast("Contestação enviada com sucesso", "success");
+      }
       reset();
       onSuccess();
-    } catch {
-      showToast("Erro ao enviar contestação. Tente novamente.", "error");
+    } catch (e) {
+      showToast(
+        getApiErrorMessage(e, "Erro ao enviar contestação. Tente novamente."),
+        "error",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -469,7 +444,7 @@ export function UpdateAuthorizationsModal({
                 }
               />
             </div>
-            <ModalFooter className="justify-end">
+            <ModalFooter align="end">
               <button onClick={handleClose} className="ds-btn-outline">
                 Cancelar
               </button>
@@ -524,7 +499,7 @@ export function UpdateAuthorizationsModal({
                 </p>
               )}
             </div>
-            <ModalFooter className="justify-end">
+            <ModalFooter align="end">
               <button onClick={() => setStep(1)} className="ds-btn-outline">
                 Voltar
               </button>
@@ -835,888 +810,6 @@ export function UpdateAuthorizationsModal({
       patientEmail={solicitacao?.patient?.email}
       patientPhone={solicitacao?.patient?.phone}
     />
-    </>
-  );
-}
-
-function ModalFooter({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`flex items-center gap-2 px-4 py-3 md:px-6 md:py-4 border-t-2 border-gray-200 shrink-0 ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-interface AuthorizationTableProps {
-  items: AuthorizationEntry[];
-  labelHeader: string;
-  renderLabel: (item: AuthorizationEntry) => string;
-  onChange: (id: string | number, value: string) => void;
-  getSupplierOptions?: (item: AuthorizationEntry) => SupplierSelectOption[];
-  getSelectedSupplier?: (id: string | number) => string;
-  onSupplierChange?: (id: string | number, value: string) => void;
-}
-
-function AuthorizationTable({
-  items,
-  labelHeader,
-  renderLabel,
-  onChange,
-  getSupplierOptions,
-  getSelectedSupplier,
-  onSupplierChange,
-}: AuthorizationTableProps) {
-  const showSupplierSelect =
-    !!getSupplierOptions && !!getSelectedSupplier && !!onSupplierChange;
-
-  return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <div className="md:hidden">
-        <div className="px-4 py-2 border-b border-gray-200">
-          <span className="text-xs text-gray-900 opacity-50">
-            {labelHeader}
-          </span>
-        </div>
-        {items.map((item) => {
-          const supplierOptions = getSupplierOptions?.(item) ?? [];
-          const selectedSupplier = getSelectedSupplier?.(item.id) ?? "";
-
-          return (
-            <div
-              key={item.id}
-              className="px-4 py-3 border-b border-gray-200 last:border-b-0 space-y-2.5"
-            >
-              <p className="text-sm text-gray-900 leading-snug break-words">
-                {renderLabel(item)}
-              </p>
-
-              {showSupplierSelect && (
-                <div className="space-y-1">
-                  <label className="text-[11px] text-gray-500">
-                    Fornecedor
-                  </label>
-                  {supplierOptions.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {supplierOptions.map((supplier) => {
-                        const isSelected = selectedSupplier === supplier.value;
-                        return (
-                          <button
-                            key={supplier.value}
-                            type="button"
-                            onClick={() =>
-                              onSupplierChange?.(item.id, supplier.value)
-                            }
-                            className={`px-2.5 py-1.5 rounded-lg border text-xs leading-tight transition-colors ${
-                              isSelected
-                                ? "border-primary-500 bg-primary-50 text-primary-700"
-                                : "border-gray-200 bg-white text-gray-700"
-                            }`}
-                          >
-                            {supplier.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="ds-field-readonly text-xs text-gray-400">
-                      Sem fornecedores disponíveis
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[11px] text-gray-500">
-                    Qnt. Solicitada
-                  </label>
-                  <div className="h-10 flex items-center justify-center border border-gray-200 rounded-xl text-sm font-semibold text-gray-500 bg-white">
-                    {item.quantity}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] text-gray-500">
-                    Qnt. Autorizada
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={item.quantity}
-                    value={item.authorizedQuantity}
-                    onChange={(e) => {
-                      const rawValue = e.target.value;
-
-                      if (rawValue === "") {
-                        onChange(item.id, "");
-                        return;
-                      }
-
-                      const parsed = Number(rawValue);
-                      if (!Number.isFinite(parsed)) return;
-
-                      const clamped = Math.min(
-                        item.quantity,
-                        Math.max(0, parsed),
-                      );
-                      onChange(item.id, String(clamped));
-                    }}
-                    className="ds-input h-10 w-full !px-0 text-center font-semibold appearance-none"
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="hidden md:block">
-        <div className="flex items-center gap-2 px-4 py-1 border-b border-gray-200">
-          <span className="flex-1 text-xs text-gray-900 opacity-50">
-            {labelHeader}
-          </span>
-          {showSupplierSelect && (
-            <div className="w-44 flex justify-center">
-              <span className="text-xs text-gray-900 opacity-50 text-center">
-                Fornecedor
-              </span>
-            </div>
-          )}
-          <div className="w-24 flex justify-center">
-            <span className="text-xs text-gray-900 opacity-50 text-center">
-              Qnt. Solicitada
-            </span>
-          </div>
-          <div className="w-24 flex justify-center">
-            <span className="text-xs text-gray-900 opacity-50 text-center">
-              Qnt. Autorizada
-            </span>
-          </div>
-        </div>
-        {items.map((item) => {
-          const supplierOptions = getSupplierOptions?.(item) ?? [];
-          const selectedSupplier = getSelectedSupplier?.(item.id) ?? "";
-
-          return (
-            <div
-              key={item.id}
-              className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 last:border-b-0"
-            >
-              <span className="flex-1 min-w-0 text-xs md:text-sm text-gray-900 leading-snug break-words">
-                {renderLabel(item)}
-              </span>
-              {showSupplierSelect && (
-                <div className="w-44 flex justify-center">
-                  <div className="relative w-full">
-                    <select
-                      value={selectedSupplier}
-                      onChange={(e) =>
-                        onSupplierChange?.(item.id, e.target.value)
-                      }
-                      disabled={supplierOptions.length === 0}
-                      className="ds-input h-10 w-full text-xs md:text-sm disabled:bg-gray-100 disabled:text-gray-400"
-                    >
-                      <option value="">Selecionar</option>
-                      {supplierOptions.map((supplier) => (
-                        <option key={supplier.value} value={supplier.value}>
-                          {supplier.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-              <div className="w-24 flex justify-center">
-                <div className="w-14 h-10 flex items-center justify-center border border-gray-200 rounded-xl text-xs md:text-sm font-semibold text-gray-500">
-                  {item.quantity}
-                </div>
-              </div>
-              <div className="w-24 flex justify-center">
-                <input
-                  type="number"
-                  min="0"
-                  max={item.quantity}
-                  value={item.authorizedQuantity}
-                  onChange={(e) => {
-                    const rawValue = e.target.value;
-
-                    if (rawValue === "") {
-                      onChange(item.id, "");
-                      return;
-                    }
-
-                    const parsed = Number(rawValue);
-                    if (!Number.isFinite(parsed)) return;
-
-                    const clamped = Math.min(
-                      item.quantity,
-                      Math.max(0, parsed),
-                    );
-                    onChange(item.id, String(clamped));
-                  }}
-                  className="ds-input w-14 h-10 !px-0 text-center font-semibold appearance-none"
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-interface SummaryTableProps {
-  labelHeader: string;
-  items: { label: string; requested: number; authorized: number | null }[];
-}
-
-function SummaryTable({ labelHeader, items }: SummaryTableProps) {
-  return (
-    <div className="border border-gray-200 rounded-xl overflow-hidden">
-      <div className="md:hidden">
-        <div className="px-4 py-2 border-b border-gray-200">
-          <span className="text-xs text-gray-900 opacity-50">
-            {labelHeader}
-          </span>
-        </div>
-        {items.map((item, index) => {
-          const styles = getSummaryRowStyles(item.authorized, item.requested);
-
-          return (
-            <div
-              key={index}
-              className={`px-4 py-3 border-b border-gray-200 last:border-b-0 space-y-2 ${styles.row}`}
-            >
-              <p className="text-sm text-gray-900 leading-snug break-words">
-                {item.label}
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[11px] text-gray-500">
-                    Qnt. Solicitada
-                  </label>
-                  <div className="h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-500">
-                    {item.requested}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] text-gray-500">
-                    Qnt. Autorizada
-                  </label>
-                  <div
-                    className={`h-10 flex items-center justify-center border rounded-xl text-sm font-semibold ${styles.authorizedBox}`}
-                  >
-                    {item.authorized ?? "—"}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="hidden md:block">
-        <div className="flex items-center gap-2 px-4 py-1 border-b border-gray-200">
-          <span className="flex-1 text-xs text-gray-900 opacity-50">
-            {labelHeader}
-          </span>
-          <div className="w-24 flex justify-center">
-            <span className="text-xs text-gray-900 opacity-50 text-center">
-              Qnt. Solicitada
-            </span>
-          </div>
-          <div className="w-24 flex justify-center">
-            <span className="text-xs text-gray-900 opacity-50 text-center">
-              Qnt. Autorizada
-            </span>
-          </div>
-        </div>
-        {items.map((item, index) => {
-          const styles = getSummaryRowStyles(item.authorized, item.requested);
-
-          return (
-            <div
-              key={index}
-              className={`flex items-center gap-2 px-4 py-3 border-b border-gray-200 last:border-b-0 ${styles.row}`}
-            >
-              <span className="flex-1 text-xs md:text-sm text-gray-900 leading-snug">
-                {item.label}
-              </span>
-              <div className="w-24 flex justify-center">
-                <div className="w-14 h-10 flex items-center justify-center bg-white border border-gray-200 rounded-xl text-xs md:text-sm font-semibold text-gray-500">
-                  {item.requested}
-                </div>
-              </div>
-              <div className="w-24 flex justify-center">
-                <div
-                  className={`w-14 h-10 flex items-center justify-center border rounded-xl text-xs md:text-sm font-semibold ${styles.authorizedBox}`}
-                >
-                  {item.authorized ?? "—"}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-interface ContestFlowProps {
-  step: ContestStep;
-  reason: string;
-  method: ContestMethod;
-  emailForm: { to: string; subject: string; message: string; cc: string };
-  attachments: File[];
-  isSaving: boolean;
-  surgeryRequestId: string | number;
-  onReasonChange: (v: string) => void;
-  onMethodChange: (v: ContestMethod) => void;
-  onEmailChange: (field: "to" | "subject" | "message" | "cc", v: string) => void;
-  onAttachmentsChange: (files: File[]) => void;
-  onNext: () => void;
-  onBack: () => void;
-  onSubmit: () => void;
-}
-
-function ContestFlow({
-  step,
-  reason,
-  method,
-  emailForm,
-  attachments,
-  isSaving,
-  surgeryRequestId,
-  onReasonChange,
-  onMethodChange,
-  onEmailChange,
-  onAttachmentsChange,
-  onNext,
-  onBack,
-  onSubmit,
-}: ContestFlowProps) {
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const { showToast } = useToast();
-
-  const [toTags, setToTags] = React.useState<string[]>([]);
-  const [toInput, setToInput] = React.useState("");
-  const [formTouched, setFormTouched] = React.useState(false);
-
-  const [ccTags, setCcTags] = React.useState<string[]>([]);
-  const [ccInput, setCcInput] = React.useState("");
-
-  useEffect(() => {
-    if (step === 3 && method === "email") {
-      surgeryRequestService
-        .getCcRecipients(surgeryRequestId)
-        .then((opts) => {
-          const emails = opts.map((o) => o.email);
-          setCcTags(emails);
-          onEmailChange("cc", emails.join(";"));
-        })
-        .catch(() => {});
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onEmailChange é inline no pai
-  }, [step, method, surgeryRequestId]);
-
-  const addToTag = (email: string) => {
-    const trimmed = email.trim().replace(/[;,]$/, "");
-    if (trimmed && !toTags.includes(trimmed)) {
-      const newTags = [...toTags, trimmed];
-      setToTags(newTags);
-      onEmailChange("to", newTags.join(";"));
-    }
-    setToInput("");
-  };
-
-  const removeToTag = (tag: string) => {
-    const newTags = toTags.filter((t) => t !== tag);
-    setToTags(newTags);
-    onEmailChange("to", newTags.join(";"));
-  };
-
-  const handleToKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ";" || e.key === ",") {
-      e.preventDefault();
-      if (toInput.trim()) addToTag(toInput);
-    } else if (e.key === "Backspace" && !toInput && toTags.length > 0) {
-      const newTags = toTags.slice(0, -1);
-      setToTags(newTags);
-      onEmailChange("to", newTags.join(";"));
-    }
-  };
-
-  const addCcTag = (email: string) => {
-    const trimmed = email.trim().replace(/[;,]$/, "");
-    if (trimmed && !ccTags.includes(trimmed)) {
-      const newTags = [...ccTags, trimmed];
-      setCcTags(newTags);
-      onEmailChange("cc", newTags.join(";"));
-    }
-    setCcInput("");
-  };
-
-  const removeCcTag = (tag: string) => {
-    const newTags = ccTags.filter((t) => t !== tag);
-    setCcTags(newTags);
-    onEmailChange("cc", newTags.join(";"));
-  };
-
-  const handleCcKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ";" || e.key === ",") {
-      e.preventDefault();
-      if (ccInput.trim()) addCcTag(ccInput);
-    } else if (e.key === "Backspace" && !ccInput && ccTags.length > 0) {
-      const newTags = ccTags.slice(0, -1);
-      setCcTags(newTags);
-      onEmailChange("cc", newTags.join(";"));
-    }
-  };
-
-  const canProceedStep1 = reason.trim().length > 0;
-  const canSubmit =
-    method === "email"
-      ? toTags.length > 0 && emailForm.subject.trim() !== ""
-      : true;
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.length) return;
-    const incoming = Array.from(e.target.files);
-    const valid = incoming.filter(
-      (f) => f.size <= MAX_DOCUMENT_FILE_SIZE_BYTES,
-    );
-    const oversized = incoming.filter(
-      (f) => f.size > MAX_DOCUMENT_FILE_SIZE_BYTES,
-    );
-    if (oversized.length > 0) {
-      showToast(
-        `${oversized.length} arquivo(s) ignorado(s): cada arquivo deve ter no máximo ${MAX_DOCUMENT_FILE_SIZE_MB}MB`,
-        "error",
-      );
-    }
-    if (valid.length > 0) {
-      onAttachmentsChange([...attachments, ...valid]);
-    }
-    e.target.value = "";
-  };
-
-  const removeAttachmentAt = (index: number) => {
-    onAttachmentsChange(attachments.filter((_, i) => i !== index));
-  };
-
-  return (
-    <>
-      <div className="flex flex-col gap-3 md:gap-4 p-4 md:p-6 overflow-y-auto">
-        {step === 1 && (
-          <div className="flex flex-col gap-1.5">
-            <label className="ds-label mb-0">Motivo da contestação</label>
-            <textarea
-              value={reason}
-              onChange={(e) => onReasonChange(e.target.value)}
-              placeholder="Descreva detalhadamente o motivo da contestação..."
-              rows={6}
-              className="ds-textarea"
-            />
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="flex flex-col gap-3 md:gap-4">
-            <p className="ds-body text-gray-600">
-              Como deseja enviar a solicitação?
-            </p>
-            <div className="flex flex-col gap-3 md:gap-4">
-              <button
-                onClick={() => onMethodChange("document")}
-                className={`flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${
-                  method === "document"
-                    ? "border-teal-500 bg-teal-50"
-                    : "border-neutral-100 bg-white hover:border-neutral-200"
-                }`}
-              >
-                <div className="shrink-0">
-                  <svg
-                    className="w-6 h-6 text-gray-700"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <path
-                      d="M12 3v13M12 16l-4-4M12 16l4-4M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="ds-section-title">Criar documento</span>
-                  <span className="ds-caption mt-0.5">
-                    Crie um arquivo PDF com contestação + anexos
-                  </span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => onMethodChange("email")}
-                className={`flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${
-                  method === "email"
-                    ? "border-teal-500 bg-teal-50"
-                    : "border-neutral-100 bg-white hover:border-neutral-200"
-                }`}
-              >
-                <div className="shrink-0">
-                  <svg
-                    className="w-6 h-6 text-gray-700"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <path
-                      d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-                <div className="flex flex-col">
-                  <span className="ds-section-title">Enviar por e-mail</span>
-                  <span className="ds-caption mt-0.5">
-                    Envie a contestação diretamente por e-mail
-                  </span>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && method === "email" && (
-          <div className="flex flex-col gap-3 md:gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">De:</label>
-              <input
-                type="text"
-                value={
-                  process.env.NEXT_PUBLIC_MAIL_FROM_ADDRESS ||
-                  "no-reply@mg.inexci.com.br"
-                }
-                disabled
-                readOnly
-                className="ds-input disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-100 cursor-not-allowed"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Para:</label>
-              <p className="text-xs text-gray-400">
-                Digite um e-mail e pressione Enter para adicionar
-              </p>
-              <div
-                className={`flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border bg-white min-h-10 cursor-text ${
-                  formTouched && toTags.length === 0
-                    ? "border-red-400"
-                    : "border-neutral-100"
-                }`}
-                onClick={() =>
-                  document.getElementById("contest-email-input-update")?.focus()
-                }
-              >
-                {toTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => removeToTag(tag)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <svg
-                        className="w-3 h-3"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </span>
-                ))}
-                <input
-                  id="contest-email-input-update"
-                  type="text"
-                  value={toInput}
-                  onChange={(e) => setToInput(e.target.value)}
-                  onKeyDown={handleToKeyDown}
-                  onBlur={() => {
-                    if (toInput.trim()) addToTag(toInput);
-                  }}
-                  placeholder={
-                    toTags.length === 0 ? "exemplo@mail.com" : undefined
-                  }
-                  className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
-                />
-              </div>
-              {formTouched && toTags.length === 0 && (
-                <p className="text-xs text-red-500">
-                  Informe pelo menos um destinatário
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Cópia (CC):</label>
-              <p className="text-xs text-gray-400">
-                Digite um e-mail e pressione Enter para adicionar
-              </p>
-              <div
-                className="flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border border-neutral-100 bg-white min-h-10 cursor-text"
-                onClick={() =>
-                  document.getElementById("contest-cc-input-update")?.focus()
-                }
-              >
-                {ccTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => removeCcTag(tag)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <svg
-                        className="w-3 h-3"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </span>
-                ))}
-                <input
-                  id="contest-cc-input-update"
-                  type="text"
-                  value={ccInput}
-                  onChange={(e) => setCcInput(e.target.value)}
-                  onKeyDown={handleCcKeyDown}
-                  onBlur={() => {
-                    if (ccInput.trim()) addCcTag(ccInput);
-                  }}
-                  placeholder={
-                    ccTags.length === 0 ? "exemplo@mail.com" : undefined
-                  }
-                  className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Assunto:</label>
-              <input
-                type="text"
-                value={emailForm.subject}
-                onChange={(e) => onEmailChange("subject", e.target.value)}
-                placeholder="Contestação de autorizações - Maria Silva Santos"
-                className={`ds-input ${formTouched && !emailForm.subject.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
-              />
-              {formTouched && !emailForm.subject.trim() && (
-                <p className="text-xs text-red-500">Preencha o assunto</p>
-              )}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">
-                Mensagem do corpo do e-mail:
-              </label>
-              <textarea
-                value={emailForm.message}
-                onChange={(e) => onEmailChange("message", e.target.value)}
-                placeholder="Digite a mensagem do corpo do e-mail..."
-                rows={4}
-                className="ds-textarea"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">Documento de contestação</label>
-              <div className="flex items-center gap-3 px-4 py-4 bg-neutral-50 border border-dashed border-neutral-100 rounded-xl">
-                <div className="flex items-center justify-center w-10 h-10 bg-white border border-neutral-100 rounded-full shrink-0">
-                  <svg
-                    className="w-5 h-5 text-neutral-900"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <path
-                      d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-                <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900 truncate">
-                  {attachments.length > 0
-                    ? `${attachments.length} anexo(s) selecionado(s)`
-                    : "Anexos"}
-                </span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="ds-btn-outline"
-                >
-                  Selecionar arquivo
-                </button>
-              </div>
-              {attachments.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {attachments.map((file, index) => (
-                    <div
-                      key={`${file.name}-${file.size}-${index}`}
-                      className="flex items-center justify-between text-xs text-neutral-600"
-                    >
-                      <span className="truncate pr-2">{file.name}</span>
-                      <button
-                        type="button"
-                        className="text-neutral-500 hover:text-neutral-700"
-                        onClick={() => removeAttachmentAt(index)}
-                      >
-                        Remover
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {step === 3 && method === "document" && (
-          <div className="flex flex-col gap-3 md:gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="ds-label mb-0">
-                Documento de contestação (opcional)
-              </label>
-              <p className="text-xs text-gray-500">
-                Você pode gerar o PDF sem anexar documentos.
-              </p>
-              <div className="flex items-center gap-3 px-4 py-4 bg-neutral-50 border border-dashed border-neutral-100 rounded-xl">
-                <div className="flex items-center justify-center w-10 h-10 bg-white border border-neutral-100 rounded-full shrink-0">
-                  <svg
-                    className="w-5 h-5 text-neutral-900"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <path
-                      d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-                <span className="flex-1 text-xs md:text-sm font-semibold text-neutral-900 truncate">
-                  {attachments.length > 0
-                    ? `${attachments.length} anexo(s) selecionado(s)`
-                    : "Anexos"}
-                </span>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="ds-btn-outline"
-                >
-                  Selecionar arquivo
-                </button>
-              </div>
-              {attachments.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {attachments.map((file, index) => (
-                    <div
-                      key={`${file.name}-${file.size}-${index}`}
-                      className="flex items-center justify-between text-xs text-neutral-600"
-                    >
-                      <span className="truncate pr-2">{file.name}</span>
-                      <button
-                        type="button"
-                        className="text-neutral-500 hover:text-neutral-700"
-                        onClick={() => removeAttachmentAt(index)}
-                      >
-                        Remover
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <ModalFooter className="justify-end">
-        <button onClick={onBack} className="ds-btn-outline">
-          {step < 3 ? "Cancelar" : "Voltar"}
-        </button>
-        {step < 3 ? (
-          <button
-            onClick={onNext}
-            disabled={step === 1 && !canProceedStep1}
-            className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Próximo
-          </button>
-        ) : (
-          <button
-            onClick={() => {
-              if (!canSubmit) {
-                setFormTouched(true);
-                return;
-              }
-              onSubmit();
-            }}
-            disabled={isSaving}
-            className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {isSaving
-              ? "Enviando..."
-              : method === "email"
-                ? "Enviar e-mail"
-                : "Exportar PDF"}
-          </button>
-        )}
-      </ModalFooter>
     </>
   );
 }

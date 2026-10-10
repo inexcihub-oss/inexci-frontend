@@ -28,7 +28,7 @@ export const availableDoctorsService = {
   },
 
   async getDoctorsForAccount(): Promise<AvailableDoctor[]> {
-    const { data } = await api.get("/users/doctors");
+    const { data } = await api.get<unknown>("/users/doctors");
     const records = getApiRecords<BackendDoctorRecord>(data);
 
     return records.map((user) => ({

@@ -6,7 +6,6 @@ import {
   DOCUMENT_FOLDERS,
   Document,
 } from "@/services/document.service";
-import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 import { EditableProcedureData } from "@/components/surgery-request/EditableProcedureData";
 import {
   DocumentUploadModal,
@@ -19,6 +18,13 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { Checkbox } from "@/components/ui";
 import { useToast } from "@/hooks/useToast";
 import { safeExternalUrl } from "@/lib/safe-url";
+import { useSolicitacao } from "@/contexts/SolicitacaoContext";
+import {
+  SCHEDULING_STATUSES,
+  SurgeryRequestStatusCode,
+  isStatusIn,
+  reachedStatus,
+} from "@/lib/surgery-request-status";
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   personal_document: "RG/CNH",
@@ -52,14 +58,9 @@ function formatDocumentDate(value?: string | null): string {
 }
 
 interface InformacoesGeraisTabProps {
-  solicitacao: SurgeryRequestDetail;
   selectedDocuments: Set<string>;
   handleSelectDocument: (docId: string) => void;
   handleSelectAllDocuments: () => void;
-  onUpdateProcedure: () => void;
-  surgeryRequestId: string | number;
-  onDocumentsUploaded: () => void;
-  statusNum: number;
   pendingDateIndex: number | null;
   onSelectDate: (index: number) => void;
   onEditDateOptions: () => void;
@@ -67,19 +68,18 @@ interface InformacoesGeraisTabProps {
 }
 
 export function InformacoesGeraisTab({
-  solicitacao,
   selectedDocuments,
   handleSelectDocument,
   handleSelectAllDocuments,
-  onUpdateProcedure,
-  surgeryRequestId,
-  onDocumentsUploaded,
-  statusNum,
   pendingDateIndex,
   onSelectDate,
   onEditDateOptions,
   onReschedule,
 }: InformacoesGeraisTabProps) {
+  const { solicitacao, statusNum, onUpdate } = useSolicitacao();
+  const onUpdateProcedure = onUpdate;
+  const onDocumentsUploaded = onUpdate;
+  const surgeryRequestId = solicitacao.id;
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(
@@ -88,7 +88,7 @@ export function InformacoesGeraisTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const { showToast } = useToast();
 
-  const isReadOnly = statusNum >= 2;
+  const isReadOnly = statusNum !== SurgeryRequestStatusCode.PENDING;
 
   const preSurgeryDocs = React.useMemo(
     () =>
@@ -231,7 +231,8 @@ export function InformacoesGeraisTab({
 
   return (
     <div className="space-y-3 md:space-y-4">
-      {statusNum === 9 && solicitacao.closedReason && (
+      {statusNum === SurgeryRequestStatusCode.CLOSED &&
+        solicitacao.closedReason && (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3.5 md:px-6 md:py-4">
           <div className="flex items-center gap-2 mb-1.5">
             <svg
@@ -260,7 +261,7 @@ export function InformacoesGeraisTab({
         </div>
       )}
 
-      {(statusNum === 4 || statusNum === 5) && (
+      {isStatusIn(statusNum, SCHEDULING_STATUSES) && (
         <SchedulingSection
           solicitacao={solicitacao}
           statusNum={statusNum}
@@ -271,7 +272,7 @@ export function InformacoesGeraisTab({
         />
       )}
 
-      {statusNum === 3 &&
+      {statusNum === SurgeryRequestStatusCode.IN_ANALYSIS &&
         solicitacao.contestations?.some(
           (c) => c.type === "authorization" && !c.resolved_at,
         ) && (
@@ -402,7 +403,8 @@ export function InformacoesGeraisTab({
         </div>
       </SectionCard>
 
-      {statusNum >= 3 && solicitacao.analysis && (
+      {reachedStatus(solicitacao, SurgeryRequestStatusCode.IN_ANALYSIS) &&
+        solicitacao.analysis && (
         <AnalysisDataSection analysis={solicitacao.analysis} />
       )}
 

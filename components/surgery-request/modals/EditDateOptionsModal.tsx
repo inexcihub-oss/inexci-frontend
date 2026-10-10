@@ -6,6 +6,8 @@ import {
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
+import { getApiErrorMessage } from "@/lib/http-error";
+import { SurgeryRequestStatusCode } from "@/lib/surgery-request-status";
 import {
   NotificationConfirmModal,
   type NotificationChannels,
@@ -76,22 +78,34 @@ export function EditDateOptionsModal({
         ...(shouldNotifySchedulingOptions ? { notifyPatient: true } : {}),
       });
 
+      let notifyError: string | null = null;
       if (channels?.email && solicitacao?.patient?.email) {
         try {
           await surgeryRequestService.notify(solicitacao.id, {
             template: "status-change-patient",
             channels: { email: true, whatsapp: false },
-            oldStatus: 4,
+            oldStatus: SurgeryRequestStatusCode.IN_SCHEDULING,
           });
-        } catch {
+        } catch (e) {
+          notifyError = getApiErrorMessage(e, "falha no envio do e-mail");
         }
       }
 
-      showToast("Datas atualizadas com sucesso.", "success");
+      if (notifyError) {
+        showToast(
+          `Datas atualizadas, mas o paciente não foi notificado: ${notifyError}`,
+          "warning",
+        );
+      } else {
+        showToast("Datas atualizadas com sucesso.", "success");
+      }
       setIsNotificationModalOpen(false);
       onSuccess();
-    } catch {
-      showToast("Erro ao atualizar datas. Tente novamente.", "error");
+    } catch (e) {
+      showToast(
+        getApiErrorMessage(e, "Erro ao atualizar datas. Tente novamente."),
+        "error",
+      );
     } finally {
       setIsSaving(false);
     }

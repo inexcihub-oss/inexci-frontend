@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   ColumnDef,
@@ -35,6 +36,8 @@ import {
   SurgeryRequestTemplateSummary,
 } from "@/services/surgery-request.service";
 import { availableDoctorsService } from "@/services/available-doctors.service";
+import { Procedure } from "@/services/procedure.service";
+import { registryKeys } from "@/lib/query-keys";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
@@ -42,6 +45,8 @@ import {
   createSelectColumn,
   createDeleteActionColumn,
 } from "@/components/shared/cadastro-table-columns";
+
+const TEMPLATES_QUERY_KEY = registryKeys.procedureTemplates();
 
 function templateToModel(t: SurgeryRequestTemplateSummary): ProcedureModel {
   return {
@@ -61,8 +66,6 @@ export default function ProcedimentosPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const [procedures, setProcedures] = useState<ProcedureModel[]>([]);
-  const [isLoadingList, setIsLoadingList] = useState(true);
   const [selectedProcedure, setSelectedProcedure] =
     useState<ProcedureModel | null>(null);
   const [isSideSheetOpen, setIsSideSheetOpen] = useState(false);
@@ -117,27 +120,40 @@ export default function ProcedimentosPage() {
     loading: boolean;
   }>({ open: false, loading: false });
 
-  const loadTemplates = useCallback(async () => {
-    setIsLoadingList(true);
-    try {
+  const queryClient = useQueryClient();
+  const templatesQuery = useQuery({
+    queryKey: TEMPLATES_QUERY_KEY,
+    queryFn: async () => {
       const data = await surgeryRequestService.getTemplates();
-      const models = Array.isArray(data) ? data.map(templateToModel) : [];
-      setProcedures(models);
-      setSelectedProcedure((prev) => {
-        if (!prev) return prev;
-        const updated = models.find((m) => m.id === prev.id);
-        return updated || prev;
-      });
-    } catch {
-      showToast("Erro ao carregar modelos", "error");
-    } finally {
-      setIsLoadingList(false);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+      return Array.isArray(data) ? data.map(templateToModel) : [];
+    },
+  });
+  const isLoadingList = templatesQuery.isPending;
+  const procedures = useMemo(
+    () => templatesQuery.data ?? [],
+    [templatesQuery.data],
+  );
+  const setProcedures = (
+    change: (prev: ProcedureModel[]) => ProcedureModel[],
+  ) =>
+    queryClient.setQueryData<ProcedureModel[]>(TEMPLATES_QUERY_KEY, (prev) =>
+      change(prev ?? []),
+    );
+  const loadTemplates = () =>
+    queryClient.invalidateQueries({ queryKey: TEMPLATES_QUERY_KEY });
 
   useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
+    if (templatesQuery.isError) showToast("Erro ao carregar modelos", "error");
+  }, [templatesQuery.isError, showToast]);
+
+  useEffect(() => {
+    const models = templatesQuery.data;
+    if (!models) return;
+    setSelectedProcedure((prev) => {
+      if (!prev) return prev;
+      return models.find((m) => m.id === prev.id) || prev;
+    });
+  }, [templatesQuery.data]);
 
   const filteredProcedures = useMemo(() => {
     if (!debouncedSearchTerm) return procedures;
@@ -313,7 +329,7 @@ export default function ProcedimentosPage() {
   const handleNewModelSubmit = async (data: {
     modelName: string;
     procedureName: string;
-    procedure?: any;
+    procedure?: Procedure;
   }) => {
     try {
       await surgeryRequestService.createTemplate({

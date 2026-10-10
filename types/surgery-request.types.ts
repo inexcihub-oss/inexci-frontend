@@ -14,13 +14,6 @@ export const PRIORITY_LABELS: Record<PriorityLevel, string> = {
   4: "Urgente",
 };
 
-export const PRIORITY_VALUES: Record<string, PriorityLevel> = {
-  Baixa: 1,
-  Média: 2,
-  Alta: 3,
-  Urgente: 4,
-};
-
 export type SurgeryRequestStatus =
   | "Pendente"
   | "Enviada"

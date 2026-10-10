@@ -1,7 +1,6 @@
 import api from "@/lib/api";
 import type { ProfessionalCouncil } from "@/lib/professional-council";
 import { DoctorProfile } from "@/types";
-import { uploadService } from "@/services/upload.service";
 
 export interface UserProfileResponse {
   id: string;
@@ -112,11 +111,5 @@ export const userService = {
       data,
     );
     return response.data;
-  },
-
-  async uploadAvatar(file: File): Promise<UserProfileResponse> {
-    const uploadResponse = await uploadService.uploadSingle(file, "avatars");
-    const avatarUrl = uploadResponse.data.url;
-    return this.updateProfile({ avatarUrl });
   },
 };

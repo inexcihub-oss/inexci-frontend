@@ -58,7 +58,7 @@ export function PatientPhotoViewer({
         className="flex max-h-full max-w-full flex-col items-center gap-3"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- URL assinada do R2: o otimizador do Next só encheria o cache com versões da mesma foto */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={`Foto de ${nome}`}

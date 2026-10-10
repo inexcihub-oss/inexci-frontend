@@ -9,6 +9,8 @@ import { STATUS_NUMBER_TO_STRING } from "@/services/surgery-request.service";
 import { TourOverlay } from "./TourOverlay";
 import { TIMEOUT_AGUARDA_ACAO_MS } from "./useTargetRect";
 
+const trilhaDeTeste = (id: string) => id as TrackId;
+
 const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
@@ -16,7 +18,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const TRILHA: Track = {
-  id: "trilha-generica",
+  id: trilhaDeTeste("trilha-generica"),
   label: "Criar e enviar uma solicitação",
   descricao: "…",
   stepKey: "criar-solicitacao",
@@ -44,7 +46,7 @@ const TRILHA_OBRIGATORIA: Track = {
 };
 
 const TRILHA_REQUISITOS: Track = {
-  id: "solicitacoes-requisitos",
+  id: trilhaDeTeste("solicitacoes-requisitos"),
   label: "Criar e enviar uma solicitação",
   descricao: "…",
   stepKey: "criar-solicitacao",
@@ -60,7 +62,7 @@ const TRILHA_REQUISITOS: Track = {
 };
 
 const TRILHA_COM_ROTA: Track = {
-  id: "com-rota",
+  id: trilhaDeTeste("com-rota"),
   label: "Trilha com rota",
   descricao: "…",
   stepKey: "assinatura-do-medico",
@@ -76,7 +78,7 @@ const TRILHA_COM_ROTA: Track = {
 };
 
 const TRILHA_AGUARDA_ACAO: Track = {
-  id: "aguarda-acao",
+  id: trilhaDeTeste("aguarda-acao"),
   label: "Trilha com passo aguardaAcao",
   descricao: "…",
   stepKey: "marcar-consulta",
@@ -93,7 +95,7 @@ const TRILHA_AGUARDA_ACAO: Track = {
 };
 
 const TRILHA_COM_ACAO: Track = {
-  id: "com-acao",
+  id: trilhaDeTeste("com-acao"),
   label: "Trilha com passo acao",
   descricao: "…",
   stepKey: "marcar-consulta",
@@ -109,7 +111,7 @@ const TRILHA_COM_ACAO: Track = {
 };
 
 const TRILHA_ACAO_AO_AVANCAR: Track = {
-  id: "acao-ao-avancar",
+  id: trilhaDeTeste("acao-ao-avancar"),
   label: "Trilha com ação ao avançar",
   descricao: "…",
   stepKey: "marcar-consulta",
@@ -131,7 +133,7 @@ const TRILHA_ACAO_AO_AVANCAR: Track = {
 };
 
 const TRILHA_PASSO_COMUM: Track = {
-  id: "passo-comum-sem-alvo",
+  id: trilhaDeTeste("passo-comum-sem-alvo"),
   label: "Trilha com passo comum sem aguardaAcao",
   descricao: "…",
   stepKey: "marcar-consulta",
@@ -146,7 +148,7 @@ const TRILHA_PASSO_COMUM: Track = {
 };
 
 const TRILHA_SEM_ALVO_DEPOIS_COM_ALVO: Track = {
-  id: "sem-alvo-depois-com-alvo",
+  id: trilhaDeTeste("sem-alvo-depois-com-alvo"),
   label: "Trilha sem alvo seguida de alvo já presente",
   descricao: "…",
   stepKey: "criar-solicitacao",
@@ -213,7 +215,8 @@ function montarAlvos(nomes: string[]) {
   }
 }
 
-async function renderOverlayNoPasso(trackId: TrackId, key: string) {
+async function renderOverlayNoPasso(id: string, key: string) {
+  const trackId = trilhaDeTeste(id);
   const track = trackById(trackId)!;
   const passos = visibleSteps(track, {
     permissions: [],
@@ -254,14 +257,14 @@ describe("TourOverlay", () => {
 
   it("mostra o primeiro passo", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     expect(await screen.findByText("Passo um")).toBeInTheDocument();
   });
 
   it("é um diálogo com rótulo acessível", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     expect(dialogo).toHaveAttribute("aria-modal", "true");
@@ -271,7 +274,7 @@ describe("TourOverlay", () => {
   it("pula em silêncio o passo cujo alvo não existe", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     const user = userEvent.setup();
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     await screen.findByText("Passo um");
     await user.click(screen.getByRole("button", { name: /próximo/i }));
@@ -289,7 +292,7 @@ describe("TourOverlay", () => {
     const user = userEvent.setup();
     render(
       <TourOverlay
-        trackId="sem-alvo-depois-com-alvo"
+        trackId={trilhaDeTeste("sem-alvo-depois-com-alvo")}
         onClose={onClose}
       />,
     );
@@ -305,7 +308,7 @@ describe("TourOverlay", () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     const onClose = vi.fn();
     const user = userEvent.setup();
-    render(<TourOverlay trackId="trilha-generica" onClose={onClose} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={onClose} />);
 
     await screen.findByText("Passo um");
     await user.keyboard("{Escape}");
@@ -317,7 +320,7 @@ describe("TourOverlay", () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     const onClose = vi.fn();
     const user = userEvent.setup();
-    render(<TourOverlay trackId="trilha-generica" onClose={onClose} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={onClose} />);
 
     await user.click(screen.getByRole("button", { name: "Sair do tour" }));
 
@@ -326,7 +329,7 @@ describe("TourOverlay", () => {
 
   it("permite arrastar a explicação para não cobrir a área de interesse", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     const alca = dialogo.querySelector("[data-tour-drag-handle]");
@@ -355,7 +358,7 @@ describe("TourOverlay", () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     const onClose = vi.fn();
     const user = userEvent.setup();
-    render(<TourOverlay trackId="trilha-generica" onClose={onClose} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={onClose} />);
 
     await screen.findByText("Passo um");
     await user.click(screen.getByRole("button", { name: /próximo/i }));
@@ -367,14 +370,14 @@ describe("TourOverlay", () => {
 
   it("mostra o progresso do passo atual", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     expect(await screen.findByText(/1 de 3/)).toBeInTheDocument();
   });
 
   it("anuncia a troca de passo para leitor de tela (aria-live no bloco de texto)", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     const blocoDeTexto = dialogo.querySelector('[aria-live="polite"]');
@@ -384,7 +387,7 @@ describe("TourOverlay", () => {
 
   it("rotula o contador de passos com um aria-label descritivo", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     const contador = await screen.findByText("1 de 3");
     expect(contador).toHaveAttribute("aria-label", "Passo 1 de 3");
@@ -392,7 +395,7 @@ describe("TourOverlay", () => {
 
   it("usa contraste AA no contador do passo e no botão 'Sair do tour'", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     const contador = await screen.findByText("1 de 3");
     expect(contador).toHaveClass("text-neutral-500");
@@ -428,7 +431,7 @@ describe("TourOverlay", () => {
 
   it("o foco inicial cai no diálogo, não no botão 'Sair do tour'", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     expect(document.activeElement).toBe(dialogo);
@@ -437,7 +440,7 @@ describe("TourOverlay", () => {
   it("prende o foco dentro do balão nos dois sentidos", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
     const user = userEvent.setup();
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     expect(dialogo.contains(document.activeElement)).toBe(true);
@@ -459,7 +462,7 @@ describe("TourOverlay", () => {
 
   it("libera cliques na página: só o balão captura ponteiro, o container não", async () => {
     montarAlvos(["alvo-um", "alvo-tres"]);
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     const container = dialogo.parentElement;
@@ -470,7 +473,7 @@ describe("TourOverlay", () => {
 
   it("passo com `route` navega para a rota declarada", async () => {
     montarAlvos(["alvo-com-rota"]);
-    render(<TourOverlay trackId="com-rota" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("com-rota")} onClose={vi.fn()} />);
 
     await screen.findByText("Passo com rota");
 
@@ -478,7 +481,7 @@ describe("TourOverlay", () => {
   });
 
   it("mostra o balão com a instrução enquanto espera o alvo de um passo aguardaAcao", () => {
-    render(<TourOverlay trackId="aguarda-acao" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("aguarda-acao")} onClose={vi.fn()} />);
 
     expect(screen.getByText("Clique em Nova consulta")).toBeInTheDocument();
   });
@@ -486,7 +489,7 @@ describe("TourOverlay", () => {
   it("não avança sozinho quando o alvo de uma etapa intencionalmente some", () => {
     vi.useFakeTimers();
     const onClose = vi.fn();
-    render(<TourOverlay trackId="aguarda-acao" onClose={onClose} />);
+    render(<TourOverlay trackId={trilhaDeTeste("aguarda-acao")} onClose={onClose} />);
 
     act(() => {
       vi.advanceTimersByTime(TIMEOUT_AGUARDA_ACAO_MS + 100);
@@ -498,14 +501,14 @@ describe("TourOverlay", () => {
   });
 
   it("não mostra o balão enquanto procura o alvo de um passo comum", () => {
-    render(<TourOverlay trackId="passo-comum-sem-alvo" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("passo-comum-sem-alvo")} onClose={vi.fn()} />);
 
     expect(screen.queryByText("Passo comum")).not.toBeInTheDocument();
   });
 
   it("executa a ação do passo ao entrar nele", async () => {
     montarAlvos(["alvo-acionado"]);
-    render(<TourOverlay trackId="com-acao" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("com-acao")} onClose={vi.fn()} />);
 
     await waitFor(() =>
       expect(executarAcaoMock).toHaveBeenCalledWith("abrir-algo"),
@@ -515,7 +518,7 @@ describe("TourOverlay", () => {
   it("executa a ação de confirmação somente ao clicar em Próximo", async () => {
     montarAlvos(["alvo-confirmar", "alvo-revisar"]);
     const user = userEvent.setup();
-    render(<TourOverlay trackId="acao-ao-avancar" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("acao-ao-avancar")} onClose={vi.fn()} />);
 
     await screen.findByText("Confirme a etapa");
     expect(executarAcaoMock).not.toHaveBeenCalledWith("concluir-algo");
@@ -533,7 +536,7 @@ describe("TourOverlay", () => {
       .mockReturnValueOnce(false)
       .mockReturnValue(true);
     montarAlvos(["alvo-acionado"]);
-    render(<TourOverlay trackId="com-acao" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("com-acao")} onClose={vi.fn()} />);
 
     expect(executarAcaoMock).toHaveBeenCalledTimes(1);
     await act(async () => {
@@ -573,7 +576,7 @@ describe("TourOverlay — passo 'requisitos' busca os rótulos reais", () => {
     montarAlvos(["alvo-antes", "alvo-requisitos"]);
     const user = userEvent.setup();
     render(
-      <TourOverlay trackId="solicitacoes-requisitos" onClose={vi.fn()} />,
+      <TourOverlay trackId={trilhaDeTeste("solicitacoes-requisitos")} onClose={vi.fn()} />,
     );
 
     await screen.findByText("Passo antes");
@@ -594,7 +597,7 @@ describe("TourOverlay — passo 'requisitos' busca os rótulos reais", () => {
     montarAlvos(["alvo-antes", "alvo-requisitos"]);
     const user = userEvent.setup();
     render(
-      <TourOverlay trackId="solicitacoes-requisitos" onClose={vi.fn()} />,
+      <TourOverlay trackId={trilhaDeTeste("solicitacoes-requisitos")} onClose={vi.fn()} />,
     );
 
     await screen.findByText("Passo antes");
@@ -612,7 +615,7 @@ describe("TourOverlay — passo 'requisitos' busca os rótulos reais", () => {
     montarAlvos(["alvo-antes", "alvo-requisitos"]);
     const user = userEvent.setup();
     render(
-      <TourOverlay trackId="solicitacoes-requisitos" onClose={vi.fn()} />,
+      <TourOverlay trackId={trilhaDeTeste("solicitacoes-requisitos")} onClose={vi.fn()} />,
     );
 
     await screen.findByText("Passo antes");
@@ -685,7 +688,7 @@ describe("TourOverlay — balão não fica atrás da BottomNavBar no mobile", ()
     document.body.appendChild(alvo);
     montarAlvos(["alvo-tres"]);
 
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     const top = parseFloat((dialogo as HTMLElement).style.top);
@@ -752,7 +755,7 @@ describe("TourOverlay — balão não cobre o próprio alvo", () => {
     document.body.appendChild(alvo);
     montarAlvos(["alvo-tres"]);
 
-    render(<TourOverlay trackId="trilha-generica" onClose={vi.fn()} />);
+    render(<TourOverlay trackId={trilhaDeTeste("trilha-generica")} onClose={vi.fn()} />);
 
     const dialogo = await screen.findByRole("dialog");
     const top = parseFloat((dialogo as HTMLElement).style.top);

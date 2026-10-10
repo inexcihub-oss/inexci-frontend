@@ -50,7 +50,9 @@ vi.mock("@/services/available-doctors.service", () => ({
   },
 }));
 
-let authState = { can: (p: Permission) => p === Permission.AGENDA };
+let authState: { can: (p: Permission) => boolean } = {
+  can: (p) => p === Permission.AGENDA,
+};
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));

@@ -2,8 +2,11 @@
 
 import React, { useState } from "react";
 import { surgeryRequestService } from "@/services/surgery-request.service";
-
+import { Modal } from "@/components/ui/Modal";
+import { ModalFooter } from "@/components/shared/ModalFooter";
 import { useToast } from "@/hooks/useToast";
+import { useSurgeryRequestMutation } from "@/hooks/useSurgeryRequestMutation";
+import { getApiErrorMessage } from "@/lib/http-error";
 
 interface CloseRequestModalProps {
   isOpen: boolean;
@@ -18,9 +21,30 @@ export function CloseRequestModal({
   surgeryRequestId,
   onSuccess,
 }: CloseRequestModalProps) {
-  const [isClosing, setIsClosing] = useState(false);
   const [reason, setReason] = useState("");
   const { showToast } = useToast();
+
+  const closeMutation = useSurgeryRequestMutation(
+    surgeryRequestId,
+    (motivo: string) =>
+      surgeryRequestService.close(surgeryRequestId, {
+        reason: motivo || undefined,
+      }),
+    {
+      onSuccess: () => {
+        showToast("Solicitação encerrada com sucesso", "success");
+        setReason("");
+        onSuccess();
+      },
+      onError: (error) => {
+        showToast(
+          getApiErrorMessage(error, "Erro ao encerrar solicitação"),
+          "error",
+        );
+      },
+    },
+  );
+  const isClosing = closeMutation.isPending;
 
   const handleClose = () => {
     if (isClosing) return;
@@ -28,63 +52,33 @@ export function CloseRequestModal({
     onClose();
   };
 
-  const handleConfirm = async () => {
+  const handleConfirm = () => {
     if (isClosing) return;
-    setIsClosing(true);
-    try {
-      const trimmedReason = reason.trim();
-      await surgeryRequestService.close(surgeryRequestId, {
-        reason: trimmedReason || undefined,
-      });
-      showToast("Solicitação encerrada com sucesso", "success");
-      setReason("");
-      onSuccess();
-    } catch {
-      showToast("Erro ao encerrar solicitação", "error");
-    } finally {
-      setIsClosing(false);
-    }
+    closeMutation.mutate(reason.trim());
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between gap-2.5 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100">
-          <h2 className="flex-1 text-2xl font-light tracking-tight text-neutral-900">
-            Deseja encerrar a solicitação?
-          </h2>
-          <button
-            onClick={handleClose}
-            disabled={isClosing}
-            className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M18 6L6 18M6 6L18 18"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
-
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title="Deseja encerrar a solicitação?"
+        disableClose={isClosing}
+      >
         <div className="px-4 py-4 md:px-6 md:py-6 space-y-4">
           <p className="text-sm md:text-base text-neutral-900 leading-relaxed">
             Essa solicitação será encerrada e movida para o status
             &ldquo;Encerrada&rdquo; como incompleta.
           </p>
           <div>
-            <label className="ds-label block mb-1.5">
+            <label
+              htmlFor="close-request-reason"
+              className="ds-label block mb-1.5"
+            >
               Motivo do encerramento (opcional)
             </label>
             <textarea
+              id="close-request-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Descreva o motivo do encerramento para consulta futura..."
@@ -95,8 +89,9 @@ export function CloseRequestModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100">
+        <ModalFooter align="end">
           <button
+            type="button"
             onClick={handleClose}
             disabled={isClosing}
             className="ds-btn-outline disabled:opacity-50"
@@ -104,14 +99,15 @@ export function CloseRequestModal({
             Cancelar
           </button>
           <button
+            type="button"
             onClick={handleConfirm}
             disabled={isClosing}
             className="ds-btn-danger disabled:opacity-50"
           >
             {isClosing ? "Encerrando..." : "Encerrar"}
           </button>
-        </div>
-      </div>
-    </div>
+        </ModalFooter>
+      </Modal>
+    </>
   );
 }

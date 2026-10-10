@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from "vitest";
 import { StrictMode } from "react";
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -46,7 +46,7 @@ function AbreTour() {
 }
 
 describe("composição provider + overlay", () => {
-  let erroSpy: ReturnType<typeof vi.spyOn>;
+  let erroSpy: MockInstance<typeof console.error>;
 
   beforeEach(() => {
     vi.stubGlobal(

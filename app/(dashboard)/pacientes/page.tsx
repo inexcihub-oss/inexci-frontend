@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PatientPhotoViewer } from "@/components/patients/PatientPhotoViewer";
 import { useRouter } from "next/navigation";
 import {
@@ -25,11 +26,12 @@ import {
   getCoreRowModel,
   ColumnDef,
   flexRender,
-  ColumnResizeMode,
   getSortedRowModel,
   SortingState,
 } from "@tanstack/react-table";
 import { logger } from "@/lib/logger";
+import { registryKeys } from "@/lib/query-keys";
+import { getAvatarColor, getInitials } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -50,13 +52,10 @@ export default function PacientesPage() {
     src: string;
     nome: string;
   } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [patients, setPatients] = useState<PatientListItem[]>([]);
-  const [total, setTotal] = useState(0);
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
 
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
@@ -80,26 +79,24 @@ export default function PacientesPage() {
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const loadPatients = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { records, total: totalCount } = await patientService.list({
+  const search = debouncedSearchTerm.trim() || undefined;
+  const patientsQuery = useQuery({
+    queryKey: [...registryKeys.patients(), "list", page, search ?? ""],
+    queryFn: () =>
+      patientService.list({
         skip: page * PAGE_SIZE,
         take: PAGE_SIZE,
-        search: debouncedSearchTerm.trim() || undefined,
-      });
-      setPatients(records);
-      setTotal(totalCount);
-    } catch (error) {
-      logger.error("Erro ao carregar pacientes:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, debouncedSearchTerm]);
-
-  useEffect(() => {
-    loadPatients();
-  }, [loadPatients]);
+        search,
+      }),
+  });
+  const loading = patientsQuery.isPending;
+  const patients = useMemo<PatientListItem[]>(
+    () => patientsQuery.data?.records ?? [],
+    [patientsQuery.data],
+  );
+  const total = patientsQuery.data?.total ?? 0;
+  const loadPatients = () =>
+    queryClient.invalidateQueries({ queryKey: registryKeys.patients() });
 
   useEffect(() => {
     setPage(0);
@@ -116,28 +113,6 @@ export default function PacientesPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const rangeStart = total === 0 ? 0 : page * PAGE_SIZE + 1;
   const rangeEnd = Math.min(total, (page + 1) * PAGE_SIZE);
-
-  const getInitials = (name: string) => {
-    const parts = name.split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
-
-  const getRandomColor = (id: string) => {
-    const colors = [
-      "bg-blue-200",
-      "bg-green-200",
-      "bg-yellow-200",
-      "bg-purple-200",
-      "bg-pink-200",
-      "bg-indigo-200",
-    ];
-    const idString = String(id);
-    const index = idString.charCodeAt(0) % colors.length;
-    return colors[index];
-  };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "-";
@@ -253,8 +228,8 @@ export default function PacientesPage() {
             </button>
           ) : (
             <div
-              className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
-                row.original.id,
+              className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getAvatarColor(
+                String(row.original.id),
               )}`}
             >
               {getInitials(row.original.name)}
@@ -345,7 +320,7 @@ export default function PacientesPage() {
     },
     enableRowSelection: true,
     enableSorting: true,
-    columnResizeMode,
+    columnResizeMode: "onChange",
     enableColumnResizing: true,
   });
 

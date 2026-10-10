@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
-import ReactDOM from "react-dom";
-import { X, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
+import { ModalFooter } from "@/components/shared/ModalFooter";
 
 interface DeleteDocumentModalProps {
   isOpen: boolean;
@@ -19,34 +20,20 @@ export function DeleteDocumentModal({
   documentName,
   isDeleting,
 }: DeleteDocumentModalProps) {
-  if (!isOpen) return null;
-  if (typeof window === "undefined") return null;
-
   const handleConfirm = () => {
     onConfirm();
   };
 
-  return ReactDOM.createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={!isDeleting ? onClose : undefined}
-      />
-
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Deletar Documento
-          </h2>
-          <button
-            onClick={!isDeleting ? onClose : undefined}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            disabled={isDeleting}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={() => {
+        if (!isDeleting) onClose();
+      }}
+      title="Deletar Documento"
+      size="sm"
+      disableClose={isDeleting}
+    >
         <div className="flex-1 p-6">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
@@ -67,8 +54,9 @@ export function DeleteDocumentModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
+        <ModalFooter align="end">
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 text-xs md:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
             disabled={isDeleting}
@@ -76,6 +64,7 @@ export function DeleteDocumentModal({
             Cancelar
           </button>
           <button
+            type="button"
             onClick={handleConfirm}
             disabled={isDeleting}
             className="px-4 py-2 text-xs md:text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -108,9 +97,7 @@ export function DeleteDocumentModal({
               "Deletar Documento"
             )}
           </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        </ModalFooter>
+    </Modal>
   );
 }

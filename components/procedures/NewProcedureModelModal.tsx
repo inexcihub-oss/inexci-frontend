@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Button from "@/components/ui/Button";
-import { X, Search, Plus, Check, Loader2 } from "lucide-react";
+import Input from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
+import { ModalFooter } from "@/components/shared/ModalFooter";
+import { Search, Plus, Check, Loader2 } from "lucide-react";
 import { procedureService, Procedure } from "@/services/procedure.service";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { useAnchoredDropdown } from "@/hooks/useAnchoredDropdown";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 
 interface NewProcedureModelModalProps {
@@ -36,10 +40,15 @@ export function NewProcedureModelModal({
   const [isCreatingProcedure, setIsCreatingProcedure] = useState(false);
   const [procedureError, setProcedureError] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const modelNameInputRef = useRef<HTMLInputElement>(null);
-  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
-    useSwipeToClose(onClose);
+  const {
+    anchorRef,
+    dropdownRef,
+    position: dropdownPosition,
+  } = useAnchoredDropdown(showDropdown, () => setShowDropdown(false), {
+    placement: "auto",
+    maxHeight: 192,
+  });
 
   const debouncedSearch = useDebounce(procedureSearch, 300);
 
@@ -58,30 +67,18 @@ export function NewProcedureModelModal({
   }, [isLoading, handleReset, onClose]);
 
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      setTimeout(() => modelNameInputRef.current?.focus(), 100);
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    if (!isOpen) return;
+    const timer = setTimeout(() => modelNameInputRef.current?.focus(), 100);
+    return () => clearTimeout(timer);
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        if (showDropdown) {
-          setShowDropdown(false);
-        } else {
-          handleClose();
-        }
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, showDropdown, handleClose]);
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape" && showDropdown) {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowDropdown(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -105,19 +102,6 @@ export function NewProcedureModelModal({
   const exactMatch = procedures.some(
     (p) => p.name.toLowerCase() === procedureSearch.trim().toLowerCase(),
   );
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   const handleSelectProcedure = useCallback((proc: Procedure) => {
     setSelectedProcedure(proc);
@@ -160,153 +144,82 @@ export function NewProcedureModelModal({
     }
   };
 
-  if (!isOpen) return null;
+  const dropdown = showDropdown && (
+    <div
+      ref={dropdownRef}
+      style={{
+        position: "fixed",
+        left: dropdownPosition.left,
+        width: dropdownPosition.width,
+        zIndex: 9999,
+        ...(dropdownPosition.placement === "top"
+          ? { bottom: dropdownPosition.bottom + 4 }
+          : { top: dropdownPosition.top + 4 }),
+      }}
+      className="bg-white border border-neutral-200 rounded-xl shadow-lg max-h-48 overflow-y-auto scrollbar-mobile-visible"
+    >
+      {isLoadingProcedures ? (
+        <div className="flex items-center justify-center py-4 text-sm text-gray-400">
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          Carregando...
+        </div>
+      ) : (
+        <>
+          {filteredProcedures.map((proc) => (
+            <button
+              key={proc.id}
+              type="button"
+              onClick={() => handleSelectProcedure(proc)}
+              className={`w-full text-left px-3 py-2.5 text-sm hover:bg-teal-50 transition-colors flex items-center justify-between ${
+                selectedProcedure?.id === proc.id
+                  ? "bg-teal-50 text-teal-700 font-medium"
+                  : "text-gray-700"
+              }`}
+            >
+              <span className="truncate">{proc.name}</span>
+              {selectedProcedure?.id === proc.id && (
+                <Check className="h-4 w-4 text-teal-600 shrink-0" />
+              )}
+            </button>
+          ))}
+
+          {filteredProcedures.length === 0 && !exactMatch && (
+            <div className="px-3 py-2 text-sm text-gray-400">
+              Nenhum procedimento encontrado.
+            </div>
+          )}
+
+          {procedureSearch.trim() && !exactMatch && (
+            <button
+              type="button"
+              onClick={handleCreateProcedure}
+              disabled={isCreatingProcedure}
+              className="w-full text-left px-3 py-2.5 text-sm text-teal-700 hover:bg-teal-50 transition-colors flex items-center gap-2 border-t border-neutral-100 font-medium"
+            >
+              {isCreatingProcedure ? (
+                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+              ) : (
+                <Plus className="h-4 w-4 shrink-0" />
+              )}
+              <span className="truncate">
+                Criar &ldquo;{procedureSearch.trim()}&rdquo;
+              </span>
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
-        onClick={handleClose}
-      />
-
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="relative bg-white w-full md:max-w-md flex flex-col rounded-t-3xl md:rounded-2xl max-h-[92vh] md:max-h-[85vh] animate-slide-up md:animate-scale-in md:mx-4 shadow-xl mobile-sheet-offset"
-        style={
-          dragY > 0
-            ? { transform: `translateY(${dragY}px)`, transition: "none" }
-            : undefined
-        }
-      >
-        <div
-          className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
-        </div>
-
-        <div className="flex items-center justify-between px-5 py-3 md:p-6 border-b border-neutral-100">
-          <h2 className="ds-modal-title">Novo modelo</h2>
-          <button
-            type="button"
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label="Fechar"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-5 p-5 md:p-6 overflow-visible">
-          <div className="flex flex-col gap-1.5" data-tour="procedimentos-modelo-nome">
-            <label className="ds-label mb-0">
-              Nome do modelo <span className="text-red-500">*</span>
-            </label>
-            <input
-              ref={modelNameInputRef}
-              type="text"
-              value={modelName}
-              onChange={(e) => setModelName(e.target.value)}
-              placeholder="Ex: Artroplastia padrão Bradesco"
-              className="ds-input"
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="ds-label mb-0">Procedimento</label>
-            <div className="relative" ref={dropdownRef}>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                <input
-                  type="text"
-                  value={procedureSearch}
-                  onChange={(e) => {
-                    setProcedureSearch(e.target.value);
-                    setSelectedProcedure(null);
-                    setShowDropdown(true);
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  placeholder="Buscar ou criar procedimento..."
-                  className="ds-input pl-9"
-                  disabled={isLoading}
-                />
-                {selectedProcedure && (
-                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-teal-600" />
-                )}
-              </div>
-
-              {showDropdown && (
-                <div className="absolute z-[60] bottom-full mb-1 w-full bg-white border border-neutral-200 rounded-xl shadow-lg max-h-[36vh] overflow-y-auto scrollbar-mobile-visible md:top-full md:bottom-auto md:mt-1 md:mb-0 md:max-h-48">
-                  {isLoadingProcedures ? (
-                    <div className="flex items-center justify-center py-4 text-sm text-gray-400">
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Carregando...
-                    </div>
-                  ) : (
-                    <>
-                      {filteredProcedures.map((proc) => (
-                        <button
-                          key={proc.id}
-                          type="button"
-                          onClick={() => handleSelectProcedure(proc)}
-                          className={`w-full text-left px-3 py-2.5 text-sm hover:bg-teal-50 transition-colors flex items-center justify-between ${
-                            selectedProcedure?.id === proc.id
-                              ? "bg-teal-50 text-teal-700 font-medium"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          <span className="truncate">{proc.name}</span>
-                          {selectedProcedure?.id === proc.id && (
-                            <Check className="h-4 w-4 text-teal-600 shrink-0" />
-                          )}
-                        </button>
-                      ))}
-
-                      {filteredProcedures.length === 0 && !exactMatch && (
-                        <div className="px-3 py-2 text-sm text-gray-400">
-                          Nenhum procedimento encontrado.
-                        </div>
-                      )}
-
-                      {procedureSearch.trim() && !exactMatch && (
-                        <button
-                          type="button"
-                          onClick={handleCreateProcedure}
-                          disabled={isCreatingProcedure}
-                          className="w-full text-left px-3 py-2.5 text-sm text-teal-700 hover:bg-teal-50 transition-colors flex items-center gap-2 border-t border-neutral-100 font-medium"
-                        >
-                          {isCreatingProcedure ? (
-                            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-                          ) : (
-                            <Plus className="h-4 w-4 shrink-0" />
-                          )}
-                          <span className="truncate">
-                            Criar &ldquo;{procedureSearch.trim()}&rdquo;
-                          </span>
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-            {procedureError && (
-              <p role="alert" className="text-xs text-red-600">
-                {procedureError}
-              </p>
-            )}
-            <span className="text-xs text-gray-400">
-              Você poderá adicionar códigos TUSS, OPME e documentos após criar o
-              modelo.
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between px-5 py-4 md:px-6 border-t border-neutral-100">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Novo modelo"
+      size="sm"
+      disableClose={isLoading}
+      footer={
+        <ModalFooter>
           <Button variant="outline" onClick={handleReset} disabled={isLoading}>
             Limpar
           </Button>
@@ -324,8 +237,67 @@ export function NewProcedureModelModal({
               "Criar modelo"
             )}
           </Button>
+        </ModalFooter>
+      }
+    >
+      <div className="flex flex-col gap-5 p-5 md:p-6">
+        <div
+          className="flex flex-col gap-1.5"
+          data-tour="procedimentos-modelo-nome"
+        >
+          <label htmlFor="novo-modelo-nome" className="ds-label mb-0">
+            Nome do modelo <span className="text-red-500">*</span>
+          </label>
+          <Input
+            id="novo-modelo-nome"
+            ref={modelNameInputRef}
+            type="text"
+            value={modelName}
+            onChange={(e) => setModelName(e.target.value)}
+            placeholder="Ex: Artroplastia padrão Bradesco"
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="novo-modelo-procedimento" className="ds-label mb-0">
+            Procedimento
+          </label>
+          <div className="relative" ref={anchorRef}>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none z-10" />
+            <Input
+              id="novo-modelo-procedimento"
+              type="text"
+              value={procedureSearch}
+              onChange={(e) => {
+                setProcedureSearch(e.target.value);
+                setSelectedProcedure(null);
+                setShowDropdown(true);
+              }}
+              onFocus={() => setShowDropdown(true)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Buscar ou criar procedimento..."
+              className="pl-9"
+              disabled={isLoading}
+            />
+            {selectedProcedure && (
+              <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-teal-600" />
+            )}
+          </div>
+          {dropdown &&
+            typeof document !== "undefined" &&
+            createPortal(dropdown, document.body)}
+          {procedureError && (
+            <p role="alert" className="text-xs text-red-600">
+              {procedureError}
+            </p>
+          )}
+          <span className="text-xs text-gray-400">
+            Você poderá adicionar códigos TUSS, OPME e documentos após criar o
+            modelo.
+          </span>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

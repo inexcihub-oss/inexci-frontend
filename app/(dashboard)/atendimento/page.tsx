@@ -12,7 +12,6 @@ import { CalendarDays, Stethoscope } from "lucide-react";
 import PageContainer from "@/components/PageContainer";
 import Loading from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Toast } from "@/components/ui/Toast";
 import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
 import { AppointmentDetailModal } from "@/components/agenda/AppointmentDetailModal";
 import { AgendaDoctorFilter } from "@/components/agenda/AgendaDoctorFilter";
@@ -30,6 +29,7 @@ import { Permission } from "@/lib/permissions";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
+import { appointmentKeys } from "@/lib/query-keys";
 import { formatDoctorName } from "@/lib/formatters";
 import { MONTHS, WEEKDAYS_SHORT, dateKey, hhmm, isToday } from "@/lib/calendar";
 import {
@@ -55,7 +55,7 @@ const STATUS_BADGE: Record<AppointmentStatus, string> = {
 export default function AtendimentoHubPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { toast, showSuccess, showError, hideToast } = useToast();
+  const { showSuccess, showError } = useToast();
   const { can, user } = useAuth();
   const podeAgenda = can(Permission.AGENDA);
 
@@ -91,15 +91,13 @@ export default function AtendimentoHubPage() {
   const { from, to, status, order } = tabQuery;
 
   const query = useInfiniteQuery({
-    queryKey: [
-      "appointments",
-      "hub",
-      from ?? null,
-      to ?? null,
-      status.join(","),
+    queryKey: appointmentKeys.hub({
+      from,
+      to,
+      status,
       order,
-      selectedDoctorIds.join(","),
-    ],
+      doctorIds: selectedDoctorIds,
+    }),
     queryFn: ({ pageParam }) =>
       appointmentService.getAgendaPage({
         ...tabQuery,
@@ -124,7 +122,7 @@ export default function AtendimentoHubPage() {
   const faltam = Math.max(0, totalNoServidor - (records?.length ?? 0));
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
 
   const groups = useMemo(() => {
     const list = [...(records ?? [])]
@@ -402,9 +400,6 @@ export default function AtendimentoHubPage() {
         />
       )}
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </PageContainer>
   );
 }

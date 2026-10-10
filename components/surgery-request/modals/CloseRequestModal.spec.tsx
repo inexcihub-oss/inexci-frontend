@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithProviders as render } from "@/test-utils/render-with-providers";
 import { CloseRequestModal } from "./CloseRequestModal";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 
@@ -23,10 +24,8 @@ describe("CloseRequestModal", () => {
   });
 
   it("não deve renderizar quando isOpen=false", () => {
-    const { container } = render(
-      <CloseRequestModal {...defaultProps} isOpen={false} />,
-    );
-    expect(container.innerHTML).toBe("");
+    render(<CloseRequestModal {...defaultProps} isOpen={false} />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("deve exibir o campo de motivo do encerramento", () => {
@@ -65,5 +64,25 @@ describe("CloseRequestModal", () => {
         reason: undefined,
       });
     });
+  });
+
+  it("é um diálogo acessível e fecha com Esc", () => {
+    render(<CloseRequestModal {...defaultProps} />);
+    const dialog = screen.getByRole("dialog", {
+      name: "Deseja encerrar a solicitação?",
+    });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
+  it("mostra o erro da API quando o encerramento falha", async () => {
+    vi.mocked(surgeryRequestService.close).mockRejectedValue(
+      new Error("SC já encerrada"),
+    );
+    render(<CloseRequestModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Encerrar" }));
+    expect(await screen.findByText("SC já encerrada")).toBeInTheDocument();
+    expect(defaultProps.onSuccess).not.toHaveBeenCalled();
   });
 });

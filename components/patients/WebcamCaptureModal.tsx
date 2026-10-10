@@ -194,7 +194,7 @@ export function WebcamCaptureModal({
             className={`h-full w-full -scale-x-100 object-cover ${estado === "ao-vivo" ? "" : "invisible"}`}
           />
           {estado === "capturada" && captura && (
-            // eslint-disable-next-line @next/next/no-img-element -- prévia local (blob:), não passa pelo otimizador
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={captura.url}
               alt="Foto capturada"

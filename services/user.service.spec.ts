@@ -9,12 +9,6 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-vi.mock("@/services/upload.service", () => ({
-  uploadService: {
-    uploadSingle: vi.fn(),
-  },
-}));
-
 import api from "@/lib/api";
 import { userService } from "./user.service";
 
@@ -128,39 +122,6 @@ describe("userService", () => {
 
       expect(apiMod.get).toHaveBeenCalledWith("/users/profile");
       expect(perfil.isDoctor).toBe(true);
-    });
-  });
-
-  describe("uploadAvatar", () => {
-    it("deve fazer upload e atualizar perfil com avatar_url", async () => {
-      const { uploadService } = await import("@/services/upload.service");
-      (
-        uploadService.uploadSingle as ReturnType<typeof vi.fn>
-      ).mockResolvedValue({
-        message: "ok",
-        data: {
-          url: "https://storage.example.com/avatars/photo.jpg",
-          path: "avatars/photo.jpg",
-        },
-      });
-      (api.put as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: {
-          id: "u-1",
-          name: "Test",
-          avatarUrl: "https://storage.example.com/avatars/photo.jpg",
-        },
-      });
-
-      const file = new File(["test"], "photo.jpg", { type: "image/jpeg" });
-      const result = await userService.uploadAvatar(file);
-
-      expect(uploadService.uploadSingle).toHaveBeenCalledWith(file, "avatars");
-      expect(api.put).toHaveBeenCalledWith("/users/profile", {
-        avatarUrl: "https://storage.example.com/avatars/photo.jpg",
-      });
-      expect(result.avatarUrl).toBe(
-        "https://storage.example.com/avatars/photo.jpg",
-      );
     });
   });
 });

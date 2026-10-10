@@ -6,6 +6,12 @@ import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { useToast } from "@/hooks/useToast";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
+import {
+  SurgeryRequestStatusCode,
+  TUSS_OPME_EDITABLE_STATUSES,
+  isStatusIn,
+  reachedStatus,
+} from "@/lib/surgery-request-status";
 
 interface EditingState {
   id: string;
@@ -14,8 +20,15 @@ interface EditingState {
 
 export function CodigoTussTab() {
   const { solicitacao, statusNum, onUpdate } = useSolicitacao();
-  const showAuthorizationColumn = statusNum >= 3;
-  const showColorCoding = statusNum >= 4;
+  const showAuthorizationColumn = reachedStatus(
+    solicitacao,
+    SurgeryRequestStatusCode.IN_ANALYSIS,
+  );
+  const showColorCoding = reachedStatus(
+    solicitacao,
+    SurgeryRequestStatusCode.IN_SCHEDULING,
+  );
+  const isReadOnly = !isStatusIn(statusNum, TUSS_OPME_EDITABLE_STATUSES);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -91,9 +104,9 @@ export function CodigoTussTab() {
 
         <button
           onClick={() => setIsModalOpen(true)}
-          disabled={statusNum >= 3}
+          disabled={isReadOnly}
           className={`ds-btn-inline ${
-            statusNum >= 3 ? "text-gray-400 cursor-not-allowed opacity-60" : ""
+            isReadOnly ? "text-gray-400 cursor-not-allowed opacity-60" : ""
           }`}
         >
           Novo Procedimento

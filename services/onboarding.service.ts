@@ -5,11 +5,6 @@ import type {
 } from "@/lib/onboarding/state";
 
 export const onboardingService = {
-  async getState(): Promise<OnboardingState> {
-    const response = await api.get<OnboardingState>("/onboarding/state");
-    return response.data;
-  },
-
   async patch(patch: OnboardingWritablePatch): Promise<OnboardingState> {
     const response = await api.patch<OnboardingState>(
       "/onboarding/state",

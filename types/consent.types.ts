@@ -37,9 +37,3 @@ export const CONSENT_SLUG_BY_TYPE: Record<ConsentType, string> = {
   terms_of_use: "terms-of-use",
   ai: "ai-disclosure",
 };
-
-export const CONSENT_TYPE_BY_SLUG: Record<string, ConsentType> = {
-  "privacy-policy": "privacy_policy",
-  "terms-of-use": "terms_of_use",
-  "ai-disclosure": "ai",
-};

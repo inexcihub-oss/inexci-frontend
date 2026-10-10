@@ -112,7 +112,7 @@ async function filtrarPorFornecedor(
   await user.click(
     within(modal).getByPlaceholderText(/Pesquisar fornecedor/i),
   );
-  await user.click(await within(modal).findByRole("button", { name: nome }));
+  await user.click(await screen.findByRole("button", { name: nome }));
   await user.click(
     within(modal).getByRole("button", { name: /Mostrar resultados/ }),
   );
@@ -157,10 +157,10 @@ describe("Kanban — filtro de fornecedores", () => {
     );
 
     expect(
-      await within(modal).findByRole("button", { name: "Sintex" }),
+      await screen.findByRole("button", { name: "Sintex" }),
     ).toBeInTheDocument();
     expect(
-      within(modal).getByRole("button", { name: "Baumer" }),
+      screen.getByRole("button", { name: "Baumer" }),
     ).toBeInTheDocument();
   });
 });

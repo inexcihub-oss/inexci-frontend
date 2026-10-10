@@ -12,8 +12,6 @@ import {
 import Button from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
-import type { ToastType } from "@/types/toast.types";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
 import { consentService } from "@/services/consent.service";
@@ -28,7 +26,7 @@ export function ConsentOnboardingModal({
   consents,
   onCompleted,
 }: ConsentOnboardingModalProps) {
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedAi, setAcceptedAi] = useState(false);
@@ -239,13 +237,6 @@ export function ConsentOnboardingModal({
         </footer>
       </div>
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </div>
   );
 }

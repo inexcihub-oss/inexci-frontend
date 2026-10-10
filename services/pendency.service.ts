@@ -23,47 +23,10 @@ export interface ValidationResult {
   totalCount: number;
 }
 
-export interface PendencySummaryFull {
-  total: number;
-  pending: number;
-  completed: number;
-  optional: number;
-  canAdvance: boolean;
-}
-
-export interface BatchPendencySummary {
-  pending: number;
-  total: number;
-  canAdvance: boolean;
-}
-
 export const pendencyService = {
   async validate(surgeryRequestId: string | number): Promise<ValidationResult> {
     const response = await api.get(
       `/surgery-requests/pendencies/validate/${surgeryRequestId}`,
-    );
-    return response.data;
-  },
-
-  async getBatchSummary(
-    surgeryRequestIds: string[],
-  ): Promise<Record<string, BatchPendencySummary>> {
-    if (surgeryRequestIds.length === 0) return {};
-
-    const response = await api.get(
-      "/surgery-requests/pendencies/batch-summary",
-      {
-        params: { ids: surgeryRequestIds.join(",") },
-      },
-    );
-    return response.data;
-  },
-
-  async getSummary(
-    surgeryRequestId: string | number,
-  ): Promise<PendencySummaryFull> {
-    const response = await api.get(
-      `/surgery-requests/pendencies/summary/${surgeryRequestId}`,
     );
     return response.data;
   },

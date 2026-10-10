@@ -221,3 +221,38 @@ describe("presetFor", () => {
     expect(presetFor([])).toBe("personalizado");
   });
 });
+
+describe("NAV_ITEMS — fonte única do menu", () => {
+  it("a permissão de cada item é a mesma que o guard aplica à rota", async () => {
+    const { NAV_ITEMS, navItemPermission, permissionForRoute } = await import(
+      "./permissions"
+    );
+    for (const item of NAV_ITEMS) {
+      expect(navItemPermission(item)).toBe(permissionForRoute(item.href));
+    }
+  });
+
+  it("barra inferior: 4 fixos na ordem do mobile e o resto no 'Mais'", async () => {
+    const { mobileNavItems, NAV_ITEMS } = await import("./permissions");
+    expect(mobileNavItems("primary").map((i) => i.href)).toEqual([
+      "/atendimento",
+      "/agenda",
+      "/solicitacoes-cirurgicas",
+      "/pacientes",
+    ]);
+    expect(
+      mobileNavItems("primary").length + mobileNavItems("overflow").length,
+    ).toBe(NAV_ITEMS.length);
+  });
+
+  it("o grupo Cadastros reúne as cinco telas de cadastro", async () => {
+    const { CADASTROS_HREFS } = await import("./permissions");
+    expect(CADASTROS_HREFS).toEqual([
+      "/clinicas",
+      "/hospitais",
+      "/convenios",
+      "/fornecedores",
+      "/fabricantes",
+    ]);
+  });
+});

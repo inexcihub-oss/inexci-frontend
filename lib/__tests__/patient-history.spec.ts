@@ -38,6 +38,8 @@ const ficha = (over: Partial<ClinicalRecord>): ClinicalRecord => ({
   conduct: null,
   surgicalIndication: false,
   surgeryRequestId: null,
+  procedureId: null,
+  procedure: null,
   finalizedAt: "2026-09-18T14:00:00.000Z",
   createdAt: "2026-09-18T14:36:00.000Z",
   updatedAt: "2026-09-18T14:36:00.000Z",

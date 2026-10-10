@@ -22,19 +22,4 @@ export const userDoctorAccessService = {
       ? data
       : ((data as { records: UserDoctorAccess[] }).records ?? []);
   },
-
-  async addAccess(
-    userId: string,
-    doctorUserId: string,
-  ): Promise<UserDoctorAccess> {
-    const { data } = await api.post<UserDoctorAccess>("/user-doctor-access", {
-      user_id: userId,
-      doctor_user_id: doctorUserId,
-    });
-    return data;
-  },
-
-  async deactivateAccess(userId: string, doctorUserId: string): Promise<void> {
-    await api.patch(`/user-doctor-access/${userId}/${doctorUserId}/deactivate`);
-  },
 };

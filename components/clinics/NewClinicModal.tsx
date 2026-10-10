@@ -1,8 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
-import { clinicService, CreateClinicPayload } from "@/services/clinic.service";
+import { clinicService } from "@/services/clinic.service";
+import { Modal } from "@/components/ui/Modal";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
+import { ModalFooter } from "@/components/shared/ModalFooter";
+import { useZodForm } from "@/hooks/useZodForm";
+import { createClinicSchema } from "@/lib/schemas/clinic.schema";
+import { STATE_UF_OPTIONS } from "@/lib/options";
+import { unmask } from "@/lib/masks";
+import { getApiErrorMessage } from "@/lib/http-error";
 
 interface NewClinicModalProps {
   isOpen: boolean;
@@ -10,67 +18,9 @@ interface NewClinicModalProps {
   onSuccess: () => void;
 }
 
-const EMPTY_FORM = {
-  name: "",
-  cnpj: "",
-  phone: "",
-  email: "",
-  city: "",
-  state: "",
-};
-
-function applyPhoneMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10)
-    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
-
-function applyCnpjMask(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 14);
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-  if (digits.length <= 8)
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
-  if (digits.length <= 12)
-    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
-  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
-}
-
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-const STATES = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
+const UF_OPTIONS = [
+  { value: "", label: "Selecione" },
+  ...STATE_UF_OPTIONS.slice(1),
 ];
 
 export function NewClinicModal({
@@ -79,211 +29,112 @@ export function NewClinicModal({
   onSuccess,
 }: NewClinicModalProps) {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState(EMPTY_FORM);
-  const [emailError, setEmailError] = useState("");
   const [error, setError] = useState("");
+
+  const form = useZodForm({
+    schema: createClinicSchema,
+    initialValues: {
+      name: "",
+      cnpj: "",
+      phone: "",
+      email: "",
+      city: "",
+      state: "",
+    },
+  });
 
   const handleClose = () => {
     if (loading) return;
-    setFormData(EMPTY_FORM);
-    setEmailError("");
+    form.reset();
     setError("");
     onClose();
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, phone: applyPhoneMask(e.target.value) });
-  };
-
-  const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, cnpj: applyCnpjMask(e.target.value) });
-  };
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, email: e.target.value });
-    if (emailError) setEmailError("");
-  };
-
-  const handleEmailBlur = () => {
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-    } else {
-      setEmailError("");
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.email && !isValidEmail(formData.email)) {
-      setEmailError("E-mail inválido");
-      return;
-    }
-
+  const onSubmit = form.handleSubmit(async (data) => {
     setLoading(true);
     setError("");
-
     try {
-      const payload: CreateClinicPayload = {
-        name: formData.name.trim(),
-        cnpj: formData.cnpj ? formData.cnpj.replace(/\D/g, "") : undefined,
-        phone: formData.phone || undefined,
-        email: formData.email || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
-      };
-
-      await clinicService.create(payload);
+      await clinicService.create({
+        name: data.name,
+        cnpj: unmask(data.cnpj) || undefined,
+        phone: unmask(data.phone) || undefined,
+        email: data.email || undefined,
+        city: data.city || undefined,
+        state: data.state || undefined,
+      });
       onSuccess();
-      setFormData(EMPTY_FORM);
-      setEmailError("");
-      setError("");
+      form.reset();
       onClose();
     } catch (err) {
-      const apiError = err as {
-        response?: { data?: { message?: string | string[] } };
-      };
-      const msg = apiError?.response?.data?.message;
       setError(
-        Array.isArray(msg)
-          ? msg.join(", ")
-          : msg || "Erro ao criar clínica. Tente novamente.",
+        getApiErrorMessage(err, "Erro ao criar clínica. Tente novamente."),
       );
     } finally {
       setLoading(false);
     }
-  };
-
-  if (!isOpen) return null;
-
-  const inputClass = "ds-input";
-  const labelClass = "ds-label mb-0";
+  });
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset">
-        <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 flex-shrink-0">
-          <h2 className="ds-modal-title">Nova clínica</h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Fechar"
-          >
-            <X className="w-6 h-6" />
-          </button>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Nova clínica"
+      disableClose={loading}
+    >
+      <form onSubmit={onSubmit} noValidate>
+        <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Nome"
+              placeholder="Nome da clínica"
+              {...form.getFieldProps("name")}
+            />
+            <Input
+              label="CNPJ (opcional)"
+              mask="cnpj"
+              placeholder="12.345.678/0001-90"
+              {...form.getFieldProps("cnpj")}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Telefone (opcional)"
+              type="tel"
+              mask="phone"
+              placeholder="(21) 98765-4321"
+              {...form.getFieldProps("phone")}
+            />
+            <Input
+              label="E-mail (opcional)"
+              type="email"
+              placeholder="clinica@mail.com"
+              {...form.getFieldProps("email")}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Cidade (opcional)"
+              placeholder="Cidade"
+              {...form.getFieldProps("city")}
+            />
+            <Select
+              label="Estado (opcional)"
+              options={UF_OPTIONS}
+              {...form.getFieldProps("state")}
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
         </div>
-        <div className="h-px bg-gray-200 flex-shrink-0" />
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col flex-1 overflow-hidden"
-        >
-          <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Nome</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="Nome da clínica"
-                  className={inputClass}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>CNPJ (opcional)</label>
-                <input
-                  type="text"
-                  value={formData.cnpj}
-                  onChange={handleCnpjChange}
-                  placeholder="12.345.678/0001-90"
-                  className={inputClass}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Telefone (opcional)</label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handlePhoneChange}
-                  placeholder="(21) 98765-4321"
-                  className={inputClass}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>E-mail (opcional)</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={handleEmailChange}
-                  onBlur={handleEmailBlur}
-                  placeholder="clinica@mail.com"
-                  className={`${inputClass} ${emailError ? "border-red-400 focus:ring-red-400" : ""}`}
-                />
-                {emailError && (
-                  <span className="text-xs text-red-500">{emailError}</span>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Cidade (opcional)</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) =>
-                    setFormData({ ...formData, city: e.target.value })
-                  }
-                  placeholder="Cidade"
-                  className={inputClass}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Estado (opcional)</label>
-                <select
-                  value={formData.state}
-                  onChange={(e) =>
-                    setFormData({ ...formData, state: e.target.value })
-                  }
-                  className={inputClass}
-                >
-                  <option value="">Selecione</option>
-                  {STATES.map((uf) => (
-                    <option key={uf} value={uf}>
-                      {uf}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-500 text-center">{error}</p>
-            )}
-          </div>
-
-          <div className="h-px bg-gray-200 flex-shrink-0" />
-          <div className="ds-modal-footer">
-            <button
-              type="submit"
-              disabled={loading || !!emailError}
-              className="ds-btn-primary"
-            >
-              {loading ? "Adicionando..." : "Adicionar clínica"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <ModalFooter align="end">
+          <button type="submit" disabled={loading} className="ds-btn-primary">
+            {loading ? "Adicionando..." : "Adicionar clínica"}
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }

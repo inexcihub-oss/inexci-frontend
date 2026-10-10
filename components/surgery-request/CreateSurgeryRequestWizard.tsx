@@ -8,8 +8,7 @@ import { CreateProcedureModal } from "./CreateProcedureModal";
 import { CreatePatientModal } from "./CreatePatientModal";
 import { CreateHospitalModal } from "./CreateHospitalModal";
 import { CreateHealthPlanModal } from "./CreateHealthPlanModal";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
+import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import {
   surgeryRequestService,
@@ -84,10 +83,7 @@ export function CreateSurgeryRequestWizard({
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(onClose);
 
-  const [toast, setToast] = useState<{
-    message: string;
-    type: ToastType;
-  } | null>(null);
+  const { showToast } = useToast();
 
   const [selectedProcedure, setSelectedProcedure] = useState<Procedure | null>(
     null,
@@ -241,11 +237,10 @@ export function CreateSurgeryRequestWizard({
 
   const handleSubmit = async () => {
     if (!selectedDoctor || !selectedPatient || !selectedProcedure) {
-      setToast({
-        message:
-          "Por favor, preencha todos os campos obrigatórios: Médico, Paciente e Procedimento.",
-        type: "error",
-      });
+      showToast(
+        "Por favor, preencha todos os campos obrigatórios: Médico, Paciente e Procedimento.",
+        "error",
+      );
       return;
     }
 
@@ -365,20 +360,17 @@ export function CreateSurgeryRequestWizard({
       handleClose();
       onSuccess();
 
-      setTimeout(() => {
-        setToast({
-          message:
-            avisos.length > 0
-              ? `Solicitação criada, mas ${avisos.join("; ")} — complete na solicitação.`
-              : "Solicitação cirúrgica criada com sucesso!",
-          type: avisos.length > 0 ? "warning" : "success",
-        });
-      }, 100);
+      showToast(
+        avisos.length > 0
+          ? `Solicitação criada, mas ${avisos.join("; ")} — complete na solicitação.`
+          : "Solicitação cirúrgica criada com sucesso!",
+        avisos.length > 0 ? "warning" : "success",
+      );
     } catch (error: unknown) {
-      setToast({
-        message: `Erro ao criar solicitação: ${getApiErrorMessage(error, "Erro desconhecido ao criar solicitação cirúrgica")}`,
-        type: "error",
-      });
+      showToast(
+        `Erro ao criar solicitação: ${getApiErrorMessage(error, "Erro desconhecido ao criar solicitação cirúrgica")}`,
+        "error",
+      );
       setLoading(false);
     }
   };
@@ -407,13 +399,6 @@ export function CreateSurgeryRequestWizard({
 
   return (
     <>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
 
       <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
         <div

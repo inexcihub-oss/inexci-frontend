@@ -42,7 +42,7 @@ export function PatientPhotoInput({
     <div className="flex items-center gap-4">
       <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-neutral-100 text-neutral-400">
         {previa ? (
-          // eslint-disable-next-line @next/next/no-img-element -- prévia local (blob:)
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={previa}
             alt="Prévia da foto do paciente"

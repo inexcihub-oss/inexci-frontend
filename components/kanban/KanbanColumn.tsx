@@ -11,30 +11,18 @@ import {
 } from "@/types/surgery-request.types";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { getStatusMetaByLabel } from "@/lib/surgery-request-status";
 
 interface KanbanColumnProps {
-  columnId: string;
   title: string;
   status: SurgeryRequestStatus;
   count: number;
   cards: SurgeryRequest[];
 }
 
-const statusIconMap: Record<SurgeryRequestStatus, string> = {
-  Pendente: "/icons/kanban/clock-watch.svg",
-  Enviada: "/icons/kanban/email-send-fast-circle.svg",
-  "Em Análise": "/icons/kanban/loading-waiting.svg",
-  "Em Agendamento": "/icons/kanban/calendar-chedule-clock.svg",
-  Agendada: "/icons/kanban/calendar-schedule-checkmark.svg",
-  Realizada: "/icons/kanban/hospital-board-square.svg",
-  Faturada: "/icons/kanban/coins.svg",
-  Finalizada: "/icons/kanban/checkmark-circle-1.svg",
-  Encerrada: "/icons/kanban/Delete, Disabled.svg",
-};
-
 export const KanbanColumn = memo<KanbanColumnProps>(
-  ({ columnId: _columnId, title, status, count, cards }) => {
-    const statusIcon = statusIconMap[status];
+  ({ title, status, count, cards }) => {
+    const statusIcon = getStatusMetaByLabel(status)?.icon ?? "";
 
     return (
       <div className="flex flex-col flex-shrink-0 w-[82vw] sm:w-80 h-full snap-start">

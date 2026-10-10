@@ -5,8 +5,11 @@ import {
   surgeryRequestService,
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
+import { Modal } from "@/components/ui/Modal";
+import { ModalFooter } from "@/components/shared/ModalFooter";
 import { useToast } from "@/hooks/useToast";
-import { getTransitionBlockError } from "@/lib/http-error";
+import { useSurgeryRequestMutation } from "@/hooks/useSurgeryRequestMutation";
+import { getApiErrorMessage, getTransitionBlockError } from "@/lib/http-error";
 
 interface DefineSurgeryDateModalProps {
   isOpen: boolean;
@@ -22,9 +25,35 @@ export function DefineSurgeryDateModal({
   onSuccess,
 }: DefineSurgeryDateModalProps) {
   const [date, setDate] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const { showToast } = useToast();
+
+  const defineMutation = useSurgeryRequestMutation(
+    solicitacao.id,
+    async (isoDate: string) => {
+      await surgeryRequestService.updateDateOptions(solicitacao.id, {
+        dateOptions: [isoDate],
+      });
+      await surgeryRequestService.confirmDate(solicitacao.id, {
+        selectedDateIndex: 0,
+      });
+    },
+    {
+      onSuccess: () => {
+        showToast("Data confirmada! Status alterado para Agendada.", "success");
+        setDate("");
+        onSuccess();
+      },
+      onError: (error) => {
+        showToast(
+          getTransitionBlockError(error) ??
+            getApiErrorMessage(error, "Erro ao confirmar data. Tente novamente."),
+          "error",
+        );
+      },
+    },
+  );
+  const isSaving = defineMutation.isPending;
 
   const handleClose = () => {
     if (isSaving) return;
@@ -33,86 +62,48 @@ export function DefineSurgeryDateModal({
     onClose();
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!date.trim()) {
       setAttempted(true);
       showToast("Informe a data e hora da cirurgia.", "error");
       return;
     }
-    setIsSaving(true);
-    try {
-      const iso = new Date(date).toISOString();
-      await surgeryRequestService.updateDateOptions(solicitacao.id, {
-        dateOptions: [iso],
-      });
-      await surgeryRequestService.confirmDate(solicitacao.id, {
-        selectedDateIndex: 0,
-      });
-      showToast("Data confirmada! Status alterado para Agendada.", "success");
-      setDate("");
-      onSuccess();
-    } catch (err) {
-      showToast(
-        getTransitionBlockError(err) ??
-          "Erro ao confirmar data. Tente novamente.",
-        "error",
-      );
-    } finally {
-      setIsSaving(false);
-    }
+    defineMutation.mutate(new Date(date).toISOString());
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Definir Data da Cirurgia
-          </h2>
-          <button
-            onClick={handleClose}
-            disabled={isSaving}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M18 6L6 18M6 6L18 18"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
-
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title="Definir Data da Cirurgia"
+        size="sm"
+        disableClose={isSaving}
+      >
         <div className="p-4 md:p-6 space-y-3 md:space-y-4">
           <p className="text-xs md:text-sm text-gray-500">
             Nenhuma data foi proposta. Informe a data e hora da cirurgia para
             confirmar o agendamento.
           </p>
           <div className="space-y-1.5">
-            <label className="block ds-label mb-0">
+            <label htmlFor="define-surgery-date" className="block ds-label mb-0">
               Data e Hora <span className="text-red-500">*</span>
             </label>
             <input
+              id="define-surgery-date"
               type="datetime-local"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               disabled={isSaving}
+              aria-invalid={attempted && !date.trim() ? true : undefined}
               className={`ds-input disabled:opacity-50 ${attempted && !date.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
+        <ModalFooter align="end">
           <button
+            type="button"
             onClick={handleClose}
             disabled={isSaving}
             className="ds-btn-outline disabled:opacity-50"
@@ -120,14 +111,15 @@ export function DefineSurgeryDateModal({
             Cancelar
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={isSaving}
             className="ds-btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSaving ? "Confirmando..." : "Confirmar Data"}
           </button>
-        </div>
-      </div>
-    </div>
+        </ModalFooter>
+      </Modal>
+    </>
   );
 }

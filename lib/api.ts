@@ -2,6 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { logger, setRequestId } from "./logger";
 import { clearAccessToken, getAccessToken, setAccessToken } from "./auth-token";
 import { clearSessionFlag } from "./session-flag";
+import { clearStoredUser } from "./session-storage";
 
 function resolveApiBaseUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -81,7 +82,7 @@ function forceLogout() {
   if (typeof window !== "undefined") {
     clearAccessToken();
     clearSessionFlag();
-    localStorage.removeItem("user");
+    clearStoredUser();
     const isPublicPath = PUBLIC_AUTH_PATHS.some((p) =>
       window.location.pathname.startsWith(p),
     );

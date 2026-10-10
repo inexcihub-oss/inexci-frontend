@@ -1,52 +1,55 @@
-import { useState, useCallback } from "react";
+import { createContext, useCallback, useContext } from "react";
 import { ToastType } from "@/types/toast.types";
+import { logger } from "@/lib/logger";
 
-interface ToastState {
+export interface ToastState {
   message: string;
   type: ToastType;
 }
 
-export function useToast() {
-  const [toast, setToast] = useState<ToastState | null>(null);
+export interface ToastContextValue {
+  showToast: (message: string, type?: ToastType) => void;
+  hideToast: () => void;
+}
 
-  const showToast = useCallback((message: string, type: ToastType = "info") => {
-    setToast({ message, type });
-  }, []);
+export const ToastContext = createContext<ToastContextValue | null>(null);
+
+let avisouSemProvider = false;
+
+const noopToast: ToastContextValue = {
+  showToast: (message) => {
+    if (process.env.NODE_ENV === "development" && !avisouSemProvider) {
+      avisouSemProvider = true;
+      logger.warn(
+        "[useToast] chamado fora do <ToastProvider>; toast descartado",
+        message,
+      );
+    }
+  },
+  hideToast: () => {},
+};
+
+export function useToast() {
+  const { showToast, hideToast } = useContext(ToastContext) ?? noopToast;
 
   const showSuccess = useCallback(
-    (message: string) => {
-      showToast(message, "success");
-    },
+    (message: string) => showToast(message, "success"),
     [showToast],
   );
-
   const showError = useCallback(
-    (message: string) => {
-      showToast(message, "error");
-    },
+    (message: string) => showToast(message, "error"),
     [showToast],
   );
-
   const showInfo = useCallback(
-    (message: string) => {
-      showToast(message, "info");
-    },
+    (message: string) => showToast(message, "info"),
     [showToast],
   );
-
   const showWarning = useCallback(
-    (message: string) => {
-      showToast(message, "warning");
-    },
+    (message: string) => showToast(message, "warning"),
     [showToast],
   );
-
-  const hideToast = useCallback(() => {
-    setToast(null);
-  }, []);
 
   return {
-    toast,
     showToast,
     showSuccess,
     showError,

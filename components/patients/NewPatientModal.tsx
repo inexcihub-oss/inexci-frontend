@@ -11,6 +11,7 @@ import { healthPlanService, HealthPlan } from "@/services/health-plan.service";
 import { GENDER_OPTIONS } from "@/lib/options";
 import { DateInput } from "@/components/ui/DateInput";
 import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 import { HealthPlanComboboxField } from "@/components/patients/HealthPlanComboboxField";
 import { useZodForm } from "@/hooks/useZodForm";
 import {
@@ -22,7 +23,6 @@ import { phoneOptionalSchema } from "@/lib/schemas/shared";
 import { unmask } from "@/lib/masks";
 import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasAnyArea } from "@/lib/permissions";
 import { uploadService } from "@/services/upload.service";
@@ -49,7 +49,6 @@ const FIELD_LABELS: Record<string, string> = {
   healthPlanId: "Convênio",
 };
 
-const labelClass = "ds-label mb-0";
 const inputClass = "ds-input";
 
 export function NewPatientModal({
@@ -64,7 +63,7 @@ export function NewPatientModal({
   const [healthPlans, setHealthPlans] = useState<HealthPlan[]>([]);
   const [foto, setFoto] = useState<File | null>(null);
   const fotoEnviadaRef = useRef<{ file: File; path: string } | null>(null);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
   const form = useZodForm({
     schema: novoPacienteSchema,
@@ -291,23 +290,13 @@ export function NewPatientModal({
                 onChange={(v) => form.setField("birthDate", v)}
                 className={inputClass}
               />
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="novo-paciente-genero" className={labelClass}>
-                  Gênero (opcional)
-                </label>
-                <select
-                  id="novo-paciente-genero"
-                  value={form.values.gender ?? ""}
-                  onChange={(e) => form.setField("gender", e.target.value)}
-                  className={inputClass}
-                >
-                  {GENDER_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                id="novo-paciente-genero"
+                label="Gênero (opcional)"
+                options={GENDER_OPTIONS}
+                value={form.values.gender ?? ""}
+                onChange={(e) => form.setField("gender", e.target.value)}
+              />
             </div>
 
             <HealthPlanComboboxField
@@ -340,9 +329,6 @@ export function NewPatientModal({
         </form>
       </div>
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </div>
   );
 }

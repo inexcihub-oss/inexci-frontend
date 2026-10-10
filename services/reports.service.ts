@@ -86,49 +86,4 @@ export const reportsService = {
     );
     return response.data;
   },
-
-  async getDashboard(filters?: ReportFilters): Promise<DashboardData> {
-    const response = await api.get<DashboardData>(
-      `/reports/dashboard${buildParams({}, filters)}`,
-    );
-    return response.data;
-  },
-
-  async getTemporalEvolution(
-    days: number = 30,
-    filters?: ReportFilters,
-  ): Promise<TemporalEvolutionData[]> {
-    const response = await api.get<TemporalEvolutionData[]>(
-      `/reports/temporal-evolution${buildParams({ days }, filters)}`,
-    );
-    return response.data;
-  },
-
-  async getAverageCompletionTime(
-    filters?: ReportFilters,
-  ): Promise<AverageCompletionTimeData> {
-    const response = await api.get<AverageCompletionTimeData>(
-      `/reports/average-completion-time${buildParams({}, filters)}`,
-    );
-    return response.data;
-  },
-
-  async getPendingNotifications(
-    filters?: ReportFilters,
-  ): Promise<PendingNotificationsData> {
-    const response = await api.get<PendingNotificationsData>(
-      `/reports/pending-notifications${buildParams({}, filters)}`,
-    );
-    return response.data;
-  },
-
-  async getMonthlyEvolution(
-    months: number = 6,
-    filters?: ReportFilters,
-  ): Promise<MonthlyEvolutionData[]> {
-    const response = await api.get<MonthlyEvolutionData[]>(
-      `/reports/monthly-evolution${buildParams({ months }, filters)}`,
-    );
-    return response.data;
-  },
 };

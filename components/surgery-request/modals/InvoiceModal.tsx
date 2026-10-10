@@ -15,7 +15,15 @@ import {
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { useToast } from "@/hooks/useToast";
-import { getTransitionBlockError } from "@/lib/http-error";
+import { getApiErrorMessage, getTransitionBlockError } from "@/lib/http-error";
+import { applyBRLMask } from "@/lib/currency";
+import { useZodForm } from "@/hooks/useZodForm";
+import {
+  buildInvoicePayload,
+  invoiceFormSchema,
+  summarizeWorkflowFormErrors,
+} from "@/lib/surgery-request-forms";
+import { todayISODate } from "@/lib/calendar-date";
 
 interface InvoiceModalProps {
   isOpen: boolean;
@@ -24,41 +32,34 @@ interface InvoiceModalProps {
   onSuccess: () => void;
 }
 
-function parseBRLValue(str: string): number {
-  const cleaned = str
-    .replace(/R\$\s?/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
-  return parseFloat(cleaned);
-}
-
-function applyBRLMask(input: string): string {
-  const digits = input.replace(/\D/g, "");
-  if (digits === "") return "";
-  const padded = digits.padStart(3, "0");
-  const cents = padded.slice(-2);
-  const intRaw = padded.slice(0, -2).replace(/^0+/, "") || "0";
-  const intFormatted = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return `R$ ${intFormatted},${cents}`;
-}
-
 export function InvoiceModal({
   isOpen,
   onClose,
   solicitacao,
   onSuccess,
 }: InvoiceModalProps) {
-  const _td = new Date();
-  const todayStr = `${_td.getFullYear()}-${String(_td.getMonth() + 1).padStart(2, "0")}-${String(_td.getDate()).padStart(2, "0")}`;
+  const todayStr = todayISODate();
 
-  const [protocol, setProtocol] = useState("");
-  const [sentAt, setSentAt] = useState(todayStr);
-  const [value, setValue] = useState("");
-  const [notes, setNotes] = useState("");
-  const [paymentDeadline, setPaymentDeadline] = useState("");
-  const [setAsDefault, setSetAsDefault] = useState(false);
+  const form = useZodForm({
+    schema: invoiceFormSchema,
+    initialValues: {
+      protocol: "",
+      sentAt: todayStr,
+      value: "",
+      notes: "",
+      paymentDeadline: "",
+      setAsDefault: false,
+    },
+  });
+  const { protocol, sentAt, value, notes, paymentDeadline, setAsDefault } =
+    form.values;
+  const setProtocol = (v: string) => form.setField("protocol", v);
+  const setSentAt = (v: string) => form.setField("sentAt", v);
+  const setValue = (v: string) => form.setField("value", v);
+  const setNotes = (v: string) => form.setField("notes", v);
+  const setPaymentDeadline = (v: string) => form.setField("paymentDeadline", v);
+  const setSetAsDefault = (v: boolean) => form.setField("setAsDefault", v);
   const [isSaving, setIsSaving] = useState(false);
-  const [attempted, setAttempted] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -76,72 +77,43 @@ export function InvoiceModal({
 
   const handleClose = () => {
     if (isSaving) return;
-    setProtocol("");
-    setSentAt(todayStr);
-    setValue("");
-    setNotes("");
-    setPaymentDeadline("");
-    setSetAsDefault(false);
-    setAttempted(false);
+    form.reset({ sentAt: todayISODate() });
     onClose();
   };
 
   const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
     useSwipeToClose(handleClose);
 
-  const handleSubmit = async () => {
-    const missing: string[] = [];
-    if (!protocol.trim()) missing.push("Nº do protocolo");
-    if (!sentAt) missing.push("Data de envio");
-    if (!value.trim()) missing.push("Valor faturado");
-    if (missing.length > 0) {
-      setAttempted(true);
-      showToast(`Preencha: ${missing.join(", ")}`, "error");
-      return;
-    }
-    const numericValue = parseBRLValue(value);
-    if (isNaN(numericValue) || numericValue <= 0) {
-      setAttempted(true);
-      showToast("Informe um valor válido.", "error");
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const [sy, sm, sd] = sentAt.split("-").map(Number);
-      const sentAtDate = new Date(sy, sm - 1, sd);
-
-      let paymentDeadlineISO: string | undefined;
-      if (paymentDeadline && sentAt) {
-        const deadlineDate = new Date(sy, sm - 1, sd);
-        deadlineDate.setDate(
-          deadlineDate.getDate() + parseInt(paymentDeadline, 10),
+  const handleSubmit = form.handleSubmit(
+    async (data) => {
+      setIsSaving(true);
+      try {
+        await surgeryRequestService.invoice(
+          solicitacao.id,
+          buildInvoicePayload(data),
         );
-        paymentDeadlineISO = deadlineDate.toISOString();
+        showToast(
+          "Faturamento registrado! Status alterado para Faturada.",
+          "success",
+        );
+        setIsSaving(false);
+        handleClose();
+        onSuccess();
+      } catch (err) {
+        showToast(
+          getTransitionBlockError(err) ??
+            getApiErrorMessage(
+              err,
+              "Erro ao registrar faturamento. Tente novamente.",
+            ),
+          "error",
+        );
+      } finally {
+        setIsSaving(false);
       }
-
-      await surgeryRequestService.invoice(solicitacao.id, {
-        invoiceProtocol: protocol.trim(),
-        invoiceValue: numericValue,
-        invoiceSentAt: sentAtDate.toISOString(),
-        invoiceNotes: notes.trim() || undefined,
-        paymentDeadline: paymentDeadlineISO,
-        setAsDefaultForHealthPlan: setAsDefault || undefined,
-      });
-      showToast(
-        "Faturamento registrado! Status alterado para Faturada.",
-        "success",
-      );
-      handleClose();
-      onSuccess();
-    } catch (err) {
-      showToast(
-        getTransitionBlockError(err) ?? "Erro ao registrar faturamento. Tente novamente.",
-        "error",
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    },
+    (errors) => showToast(summarizeWorkflowFormErrors(errors), "error"),
+  );
 
   if (!isOpen) return null;
 
@@ -238,7 +210,7 @@ export function InvoiceModal({
                   onChange={(e) => setProtocol(e.target.value)}
                   placeholder="Ex: 2024000123"
                   disabled={isSaving}
-                  className={`ds-input text-xs md:text-sm disabled:opacity-50 ${attempted && !protocol.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
+                  className={`ds-input text-xs md:text-sm disabled:opacity-50 ${form.errors.protocol ? "border-red-400 focus:ring-red-400" : ""}`}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -266,7 +238,7 @@ export function InvoiceModal({
                   onChange={(e) => setValue(applyBRLMask(e.target.value))}
                   placeholder="R$ 0,00"
                   disabled={isSaving}
-                  className={`ds-input text-xs md:text-sm disabled:opacity-50 ${attempted && !value.trim() ? "border-red-400 focus:ring-red-400" : ""}`}
+                  className={`ds-input text-xs md:text-sm disabled:opacity-50 ${form.errors.value ? "border-red-400 focus:ring-red-400" : ""}`}
                 />
               </div>
               <div className="flex flex-col gap-1.5">

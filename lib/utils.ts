@@ -12,31 +12,9 @@ export function parseLocalDate(dateStr: string | Date): Date {
   return new Date(dateStr as string);
 }
 
-export function localDateToISO(dateStr: string): string {
-  const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return new Date(dateStr).toISOString();
-  return new Date(+m[1], +m[2] - 1, +m[3]).toISOString();
-}
-
-export function getTodayString(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export function formatDate(date: string | Date): string {
   const d = parseLocalDate(date);
   return new Intl.DateTimeFormat("pt-BR").format(d);
-}
-
-export function formatDateWithMonth(dateString: string): string {
-  const date = parseLocalDate(dateString);
-  return date
-    .toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
-    .replace(".", "");
 }
 
 export function formatDateTime(date: string | Date): string {
@@ -54,16 +32,12 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export function removeMask(value: string): string {
-  return value.replace(/\D/g, "");
-}
-
 export function getInitials(name: string): string {
-  const parts = name.split(" ");
+  const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
     return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
   }
-  return name.substring(0, 2).toUpperCase();
+  return name.trim().substring(0, 2).toUpperCase();
 }
 
 export function getDisplayName(name: string): string {
@@ -80,7 +54,7 @@ export function getAvatarColor(name: string): string {
     "bg-pink-200",
     "bg-indigo-200",
   ];
-  const index = name.charCodeAt(0) % colors.length;
+  const index = (String(name).charCodeAt(0) || 0) % colors.length;
   return colors[index];
 }
 

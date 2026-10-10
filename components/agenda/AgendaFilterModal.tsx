@@ -8,6 +8,8 @@ import {
   AppointmentType,
 } from "@/services/appointment.service";
 import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/Modal";
+import { ModalFooter } from "@/components/shared/ModalFooter";
 
 export type AgendaEventKind = "all" | "appointment" | "surgery";
 
@@ -63,30 +65,18 @@ export function AgendaFilterModal({ isOpen, onClose, onApply, onClear, currentFi
     if (isOpen) setDraft(currentFilters);
   }, [isOpen, currentFilters]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const closeOnEscape = (event: KeyboardEvent) => event.key === "Escape" && onClose();
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
   const showAppointmentFilters = draft.kind !== "surgery";
 
+  const footer = (
+    <ModalFooter>
+      <button type="button" onClick={() => { setDraft(DEFAULT_AGENDA_FILTERS); onClear(); }} className="px-3 py-2 text-sm font-semibold text-teal-700 hover:underline">Limpar filtros</button>
+      <button type="button" onClick={() => { onApply(draft); onClose(); }} className="px-4 py-2 rounded-lg bg-teal-700 text-white text-sm font-semibold hover:bg-teal-800">Aplicar filtros</button>
+    </ModalFooter>
+  );
+
   return (
-    <div
-      className="fixed inset-0 z-60 flex flex-col justify-end sm:flex-row sm:justify-end"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="agenda-filter-title"
-    >
-      <button type="button" aria-label="Fechar filtros" className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <section className="relative w-full max-h-[92dvh] sm:max-h-full sm:w-[420px] sm:max-w-full sm:h-full bg-white shadow-2xl flex flex-col rounded-t-2xl sm:rounded-none animate-slide-up sm:animate-slide-in-right mobile-sheet-offset">
-        <header className="flex items-center justify-between px-5 py-4 border-b border-neutral-100">
-          <h2 id="agenda-filter-title" className="ds-modal-title">Filtros da agenda</h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="w-8 h-8 rounded-full text-neutral-500 hover:bg-neutral-100">×</button>
-        </header>
-        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-6">
+    <Modal isOpen={isOpen} onClose={onClose} title="Filtros da agenda" variant="drawer" footer={footer}>
+        <div className="px-5 py-5 space-y-6">
           <div>
             <p className="text-sm font-semibold text-neutral-900 mb-3">Exibir</p>
             <div className="flex flex-wrap gap-2">
@@ -111,11 +101,6 @@ export function AgendaFilterModal({ isOpen, onClose, onApply, onClear, currentFi
           {doctors.length > 0 && <div className="border-t border-neutral-100 pt-5"><p className="text-sm font-semibold text-neutral-900 mb-3">Médicos</p><div className="flex flex-wrap gap-2">{doctors.map((doctor) => <Pill key={doctor.id} label={doctor.name} selected={draft.doctorIds.includes(doctor.id)} onClick={() => setDraft((state) => ({ ...state, doctorIds: toggle(state.doctorIds, doctor.id) }))} />)}</div></div>}
           {showAppointmentFilters && clinics.length > 0 && <div className="border-t border-neutral-100 pt-5"><p className="text-sm font-semibold text-neutral-900 mb-1">Clínicas</p><p className="text-xs text-neutral-500 mb-3">Filtra consultas pelo local de atendimento.</p><div className="flex flex-wrap gap-2">{clinics.map((clinic) => <Pill key={clinic.id} label={clinic.name} selected={draft.clinicIds.includes(clinic.id)} onClick={() => setDraft((state) => ({ ...state, clinicIds: toggle(state.clinicIds, clinic.id) }))} />)}</div></div>}
         </div>
-        <footer className="flex items-center justify-between gap-3 p-4 border-t border-neutral-100">
-          <button type="button" onClick={() => { setDraft(DEFAULT_AGENDA_FILTERS); onClear(); }} className="px-3 py-2 text-sm font-semibold text-teal-700 hover:underline">Limpar filtros</button>
-          <button type="button" onClick={() => { onApply(draft); onClose(); }} className="px-4 py-2 rounded-lg bg-teal-700 text-white text-sm font-semibold hover:bg-teal-800">Aplicar filtros</button>
-        </footer>
-      </section>
-    </div>
+    </Modal>
   );
 }

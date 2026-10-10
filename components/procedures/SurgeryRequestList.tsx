@@ -20,30 +20,10 @@ import {
 import { Tooltip } from "@/components/ui/Tooltip";
 
 import { cn } from "@/lib/utils";
-
-const STATUS_ICON_MAP: Record<SurgeryRequestStatus, string> = {
-  Pendente: "/icons/kanban/clock-watch.svg",
-  Enviada: "/icons/kanban/email-send-fast-circle.svg",
-  "Em Análise": "/icons/kanban/loading-waiting.svg",
-  "Em Agendamento": "/icons/kanban/calendar-chedule-clock.svg",
-  Agendada: "/icons/kanban/calendar-schedule-checkmark.svg",
-  Realizada: "/icons/kanban/hospital-board-square.svg",
-  Faturada: "/icons/kanban/coins.svg",
-  Finalizada: "/icons/kanban/checkmark-circle-1.svg",
-  Encerrada: "/icons/kanban/Delete, Disabled.svg",
-};
-
-const STATUS_ORDER: SurgeryRequestStatus[] = [
-  "Pendente",
-  "Enviada",
-  "Em Análise",
-  "Em Agendamento",
-  "Agendada",
-  "Realizada",
-  "Faturada",
-  "Finalizada",
-  "Encerrada",
-];
+import {
+  ALL_STATUS_LABELS,
+  getStatusMetaByLabel,
+} from "@/lib/surgery-request-status";
 
 const PRIORITY_STYLES: Record<PriorityLevel, { bg: string; text: string }> = {
   1: { bg: "bg-priority-baixa-bg", text: "text-priority-baixa-text" },
@@ -103,7 +83,7 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
 
         <div className="flex items-center gap-1 px-2 min-w-0 flex-1">
           <Image
-            src={STATUS_ICON_MAP[request.status]}
+            src={getStatusMetaByLabel(request.status)?.icon ?? ""}
             alt={request.status}
             width={20}
             height={20}
@@ -188,7 +168,7 @@ interface StatusGroupProps {
 const StatusGroup = memo<StatusGroupProps>(
   ({ status, requests, defaultExpanded = true, onRequestClick }) => {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-    const statusIcon = STATUS_ICON_MAP[status];
+    const statusIcon = getStatusMetaByLabel(status)?.icon ?? "";
 
     return (
       <div className="flex flex-col">
@@ -272,17 +252,9 @@ export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
   onClearFilters,
 }) => {
   const groupedRequests = useMemo(() => {
-    const groups: Record<SurgeryRequestStatus, SurgeryRequest[]> = {
-      Pendente: [],
-      Enviada: [],
-      "Em Análise": [],
-      "Em Agendamento": [],
-      Agendada: [],
-      Realizada: [],
-      Faturada: [],
-      Finalizada: [],
-      Encerrada: [],
-    };
+    const groups = Object.fromEntries(
+      ALL_STATUS_LABELS.map((label) => [label, [] as SurgeryRequest[]]),
+    ) as Record<SurgeryRequestStatus, SurgeryRequest[]>;
 
     requests.forEach((request) => {
       if (groups[request.status]) {
@@ -301,7 +273,7 @@ export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
         msOverflowStyle: "none",
       }}
     >
-      {STATUS_ORDER.filter((status) => groupedRequests[status].length > 0).map(
+      {ALL_STATUS_LABELS.filter((status) => groupedRequests[status].length > 0).map(
         (status) => (
           <StatusGroup
             key={status}

@@ -6,81 +6,31 @@ import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
-import { Permission } from "@/lib/permissions";
+import {
+  mobileNavItems,
+  navItemPermission,
+  NavItem,
+  Permission,
+} from "@/lib/permissions";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 import { ACAO_CADASTROS_ABRIR_MENU_MOBILE } from "@/lib/onboarding/tour-registry";
 
-interface NavItem {
+interface BottomNavItem {
   iconSrc: string;
   label: string;
   href: string;
-  permission?: Permission;
+  permission: Permission | null;
 }
 
-const PRIMARY_ITEMS: NavItem[] = [
-  {
-    iconSrc: "/icons/stethoscope.svg",
-    label: "Atendimento",
-    href: "/atendimento",
-    permission: Permission.ATENDIMENTO,
-  },
-  {
-    iconSrc: "/icons/calendar-schedule.svg",
-    label: "Agenda",
-    href: "/agenda",
-    permission: Permission.AGENDA,
-  },
-  {
-    iconSrc: "/icons/grid-layout.svg",
-    label: "Solicitações",
-    href: "/solicitacoes-cirurgicas",
-    permission: Permission.SOLICITACOES,
-  },
-  { iconSrc: "/icons/user-add.svg", label: "Pacientes", href: "/pacientes" },
-];
+const toBottomItem = (item: NavItem): BottomNavItem => ({
+  iconSrc: item.iconSrc,
+  label: item.shortLabel ?? item.label,
+  href: item.href,
+  permission: navItemPermission(item),
+});
 
-const OVERFLOW_ITEMS: NavItem[] = [
-  {
-    iconSrc: "/icons/dashboard.svg",
-    label: "Dashboard",
-    href: "/dashboard",
-    permission: Permission.SOLICITACOES,
-  },
-  {
-    iconSrc: "/icons/status-surgeries.svg",
-    label: "Procedimentos",
-    href: "/procedimentos",
-    permission: Permission.SOLICITACOES,
-  },
-  {
-    iconSrc: "/icons/clinic-building.svg",
-    label: "Clínicas",
-    href: "/clinicas",
-    permission: Permission.ADMINISTRACAO,
-  },
-  { iconSrc: "/icons/users.svg", label: "Hospitais", href: "/hospitais" },
-  {
-    iconSrc: "/icons/document.svg",
-    label: "Convênios",
-    href: "/convenios",
-  },
-  {
-    iconSrc: "/icons/dollar-cash-circle.svg",
-    label: "Fornecedores",
-    href: "/fornecedores",
-  },
-  {
-    iconSrc: "/icons/user.svg",
-    label: "Fabricantes",
-    href: "/fabricantes",
-  },
-  {
-    iconSrc: "/icons/user-profile.svg",
-    label: "Colaboradores",
-    href: "/colaboradores",
-    permission: Permission.ADMINISTRACAO,
-  },
-];
+const PRIMARY_ITEMS = mobileNavItems("primary").map(toBottomItem);
+const OVERFLOW_ITEMS = mobileNavItems("overflow").map(toBottomItem);
 
 export default function BottomNavBar() {
   const pathname = usePathname();
@@ -117,11 +67,7 @@ export default function BottomNavBar() {
     return pathname.startsWith(href);
   };
 
-  const overflowActive = useMemo(
-    () => overflowItems.some((item) => isActive(item.href)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pathname, overflowItems],
-  );
+  const overflowActive = overflowItems.some((item) => isActive(item.href));
 
   const isDragging = dragY > 0;
 

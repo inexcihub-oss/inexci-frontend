@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const replace = vi.fn();
 const back = vi.fn();
@@ -62,7 +63,7 @@ vi.mock("@/services/clinical-record.service", () => ({
 }));
 
 vi.mock("@/services/health-plan.service", () => ({
-  healthPlanService: { getById: vi.fn() },
+  healthPlanService: { getAll: vi.fn() },
 }));
 
 const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
@@ -173,7 +174,9 @@ function renderWithQuery(ui: React.ReactElement) {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>{ui}</ToastProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -203,8 +206,8 @@ describe("AtendimentoTabs", () => {
       permissions: [Permission.ATENDIMENTO],
     };
     onboardingMockState.emTour = false;
-    (healthPlanService.getById as ReturnType<typeof vi.fn>).mockResolvedValue(
-      null,
+    (healthPlanService.getAll as ReturnType<typeof vi.fn>).mockResolvedValue(
+      [],
     );
     (
       clinicalRecordService.previewDocument as ReturnType<typeof vi.fn>
@@ -769,28 +772,28 @@ describe("AtendimentoTabs", () => {
 
   describe("card de convênio", () => {
     it("mostra o nome do convênio, não a acomodação", async () => {
-      (healthPlanService.getById as ReturnType<typeof vi.fn>).mockResolvedValue(
+      (healthPlanService.getAll as ReturnType<typeof vi.fn>).mockResolvedValue([
         {
           id: "hp-1",
           name: "Unimed Paulistana",
           createdAt: "2026-01-01",
           updatedAt: "2026-01-01",
         },
-      );
+      ]);
       renderTabs(null, {
         healthPlanId: "hp-1",
         healthPlanType: "Apartamento",
       });
 
       expect(await screen.findByText("Unimed Paulistana")).toBeInTheDocument();
-      expect(healthPlanService.getById).toHaveBeenCalledWith("hp-1");
+      expect(healthPlanService.getAll).toHaveBeenCalledTimes(1);
       expect(screen.getByText(/· Apartamento/)).toBeInTheDocument();
     });
 
     it("mostra um traço quando o paciente não tem convênio", () => {
       renderTabs(null, { healthPlanType: "Apartamento" });
 
-      expect(healthPlanService.getById).not.toHaveBeenCalled();
+      expect(healthPlanService.getAll).not.toHaveBeenCalled();
       expect(screen.queryByText("Apartamento")).not.toBeInTheDocument();
     });
   });

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   Check,
@@ -23,8 +24,10 @@ import { logger } from "@/lib/logger";
 import {
   notificationService,
   Notification,
+  NotificationsResponse,
 } from "@/services/notification.service";
 import { cn } from "@/lib/utils";
+import { registryKeys } from "@/lib/query-keys";
 import { parseApiDateForRelative } from "@/lib/formatters";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -147,39 +150,38 @@ const getActorMetadata = (notification: Notification) => {
 };
 
 export default function NotificacoesPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [_total, setTotal] = useState(0);
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [filterType, setFilterType] = useState("");
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
 
-  const loadNotifications = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await notificationService.getNotifications({
+  const queryKey = [
+    ...registryKeys.notifications(),
+    "page",
+    page,
+    filterUnreadOnly,
+  ] as const;
+  const { data, isPending: loading } = useQuery({
+    queryKey,
+    queryFn: () =>
+      notificationService.getNotifications({
         skip: page * PAGE_SIZE,
         take: PAGE_SIZE,
         unreadOnly: filterUnreadOnly || undefined,
-      });
-      let filtered = response.notifications;
-      if (filterType) {
-        filtered = filtered.filter((n) => n.type === filterType);
-      }
-      setNotifications(filtered);
-      setUnreadCount(response.unreadCount);
-      setTotal(response.total);
-    } catch (error) {
-      logger.error("Erro ao carregar notificações:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, filterType, filterUnreadOnly]);
+      }),
+  });
+  const unreadCount = data?.unreadCount ?? 0;
+  const notifications = useMemo(() => {
+    const all = data?.notifications ?? [];
+    return filterType ? all.filter((n) => n.type === filterType) : all;
+  }, [data, filterType]);
 
-  useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+  const updatePage = (
+    change: (prev: NotificationsResponse) => NotificationsResponse,
+  ) =>
+    queryClient.setQueryData<NotificationsResponse>(queryKey, (prev) =>
+      prev ? change(prev) : prev,
+    );
 
   const clearDocumentExtractionCacheIfNeeded = (notification: Notification) => {
     if (isDocumentExtractionNotification(notification)) {
@@ -191,10 +193,13 @@ export default function NotificacoesPage() {
     try {
       await notificationService.markAsRead(notification.id);
       clearDocumentExtractionCacheIfNeeded(notification);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      updatePage((prev) => ({
+        ...prev,
+        notifications: prev.notifications.map((n) =>
+          n.id === notification.id ? { ...n, read: true } : n,
+        ),
+        unreadCount: Math.max(0, prev.unreadCount - 1),
+      }));
     } catch (error) {
       logger.error("Erro ao marcar como lida:", error);
     }
@@ -206,8 +211,11 @@ export default function NotificacoesPage() {
       if (notifications.some(isDocumentExtractionNotification)) {
         clearScFromDocumentStorage();
       }
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
+      updatePage((prev) => ({
+        ...prev,
+        notifications: prev.notifications.map((n) => ({ ...n, read: true })),
+        unreadCount: 0,
+      }));
     } catch (error) {
       logger.error("Erro ao marcar todas como lidas:", error);
     }
@@ -220,8 +228,15 @@ export default function NotificacoesPage() {
       const wasUnread = notifications.find(
         (n) => n.id === notification.id && !n.read,
       );
-      setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-      if (wasUnread) setUnreadCount((prev) => Math.max(0, prev - 1));
+      updatePage((prev) => ({
+        ...prev,
+        notifications: prev.notifications.filter(
+          (n) => n.id !== notification.id,
+        ),
+        unreadCount: wasUnread
+          ? Math.max(0, prev.unreadCount - 1)
+          : prev.unreadCount,
+      }));
     } catch (error) {
       logger.error("Erro ao remover notificação:", error);
     }

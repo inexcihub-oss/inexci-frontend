@@ -14,9 +14,8 @@ import {
 } from "lucide-react";
 import { tussService, TussCode } from "@/services/tuss.service";
 import { logger } from "@/lib/logger";
-import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 
 interface TussProcedureModalProps {
   isOpen: boolean;
@@ -48,7 +47,7 @@ interface DropdownPosition {
   maxHeight: number;
 }
 
-function debounce<T extends (...args: any[]) => any>(
+function debounce<T extends (...args: never[]) => unknown>(
   func: T,
   wait: number,
 ): ((...args: Parameters<T>) => void) & { cancel: () => void } {
@@ -94,7 +93,7 @@ export function TussProcedureModal({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
   const handleClose = useCallback(() => {
     if (isLoading) return;
@@ -104,9 +103,6 @@ export function TussProcedureModal({
     setIsDropdownOpen(false);
     onClose();
   }, [isLoading, onClose]);
-
-  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
-    useSwipeToClose(handleClose);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -129,23 +125,6 @@ export function TussProcedureModal({
     setSearchResults([]);
     setIsDropdownOpen(false);
   }, [isOpen, initialItems]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, handleClose]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
 
   useEffect(() => {
     if (!isDropdownOpen) return;
@@ -207,7 +186,11 @@ export function TussProcedureModal({
   const addedTussCodes = new Set([
     ...procedures.map((p) => p.procedure.tussCode),
     ...existingProcedures
-      .map((p: any) => p.tussCode ?? p.procedure?.tussCode)
+      .map(
+        (p) =>
+          (p.tussCode as string | undefined) ??
+          (p.procedure as { tussCode?: string } | undefined)?.tussCode,
+      )
       .filter(Boolean),
   ]);
 
@@ -343,132 +326,34 @@ export function TussProcedureModal({
 
   if (!isOpen) return null;
 
-  const isDragging = dragY > 0;
-  const overlayOpacity = isDragging ? Math.max(0.2, 1 - dragY / 300) : 1;
-
   const showDropdown =
     isDropdownOpen &&
     (isSearching || filteredResults.length > 0 || searchTerm.trim().length > 0);
 
+  const modalTitle = (
+    <span className="flex items-center gap-3">
+      <span className="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl bg-primary-50 text-primary-700 shrink-0">
+        <ClipboardList className="w-5 h-5" strokeWidth={1.75} />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block">Procedimentos TUSS</span>
+        <span className="hidden sm:block ds-caption mt-0.5 font-normal">
+          Busque e adicione os procedimentos para esta cirurgia
+        </span>
+      </span>
+    </span>
+  );
+
   return (
     <>
-      <div
-        className="fixed inset-0 z-60 flex items-end md:items-center justify-center"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Adicionar procedimentos TUSS"
-      >
-        <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
-          style={{ opacity: overlayOpacity }}
-          onClick={handleClose}
-        />
-
-        <div
-          className="relative bg-white w-full md:max-w-2xl flex flex-col rounded-t-3xl md:rounded-2xl max-h-[92dvh] md:max-h-[85vh] animate-slide-up md:animate-scale-in md:mx-4 shadow-xl mobile-sheet-offset"
-          style={
-            isDragging
-              ? { transform: `translateY(${dragY}px)`, transition: "none" }
-              : undefined
-          }
-        >
-          <div
-            className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-          >
-            <div className="w-10 h-1 bg-neutral-200 rounded-full" />
-          </div>
-
-          <div className="flex items-center gap-3 px-4 py-3 md:px-6 md:py-4 border-b border-neutral-100 shrink-0">
-            <div className="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl bg-primary-50 text-primary-700 shrink-0">
-              <ClipboardList className="w-5 h-5" strokeWidth={1.75} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="ds-modal-title">Procedimentos TUSS</h2>
-              <p className="hidden sm:block ds-caption mt-0.5">
-                Busque e adicione os procedimentos para esta cirurgia
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={isLoading}
-              aria-label="Fechar"
-              className="text-gray-400 hover:text-gray-600 transition-colors p-2 -m-2 rounded-xl min-h-11 min-w-11 flex items-center justify-center disabled:opacity-50"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 md:px-6 md:py-5">
-            <div className="flex flex-col gap-3 md:gap-4">
-              <div ref={searchContainerRef} className="relative">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onFocus={handleFocus}
-                    placeholder="Buscar por código TUSS ou nome do procedimento..."
-                    aria-label="Buscar procedimento TUSS"
-                    className="ds-input pl-9 pr-9"
-                  />
-                  {isSearching && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-600 animate-spin" />
-                  )}
-                  {!isSearching && searchTerm && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchTerm("");
-                        searchInputRef.current?.focus();
-                      }}
-                      aria-label="Limpar busca"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {procedures.length === 0 ? (
-                <EmptyState />
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="ds-section-title">
-                      Procedimentos selecionados
-                    </span>
-                    <span className="ds-badge-sm bg-primary-50 text-primary-700">
-                      {procedures.length}{" "}
-                      {procedures.length === 1 ? "item" : "itens"}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {procedures.map((item, index) => (
-                      <ProcedureCard
-                        key={`${item.procedure.tussCode}-${index}`}
-                        item={item}
-                        onIncrement={() => handleQuantityDelta(index, 1)}
-                        onDecrement={() => handleQuantityDelta(index, -1)}
-                        onQuantityChange={(value) =>
-                          handleQuantitySet(index, value)
-                        }
-                        onRemove={() => handleRemoveProcedure(index)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="ds-modal-footer shrink-0 rounded-b-3xl md:rounded-b-2xl">
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        disableClose={isLoading}
+        title={modalTitle}
+        size="md"
+        footer={
+          <div className="ds-modal-footer shrink-0">
             <button
               type="button"
               onClick={handleClose}
@@ -497,8 +382,74 @@ export function TussProcedureModal({
               )}
             </button>
           </div>
+        }
+      >
+        <div className="px-4 py-4 md:px-6 md:py-5">
+          <div className="flex flex-col gap-3 md:gap-4">
+            <div ref={searchContainerRef} className="relative">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={handleFocus}
+                  placeholder="Buscar por código TUSS ou nome do procedimento..."
+                  aria-label="Buscar procedimento TUSS"
+                  className="ds-input pl-9 pr-9"
+                />
+                {isSearching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-600 animate-spin" />
+                )}
+                {!isSearching && searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm("");
+                      searchInputRef.current?.focus();
+                    }}
+                    aria-label="Limpar busca"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {procedures.length === 0 ? (
+              <EmptyState />
+            ) : (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="ds-section-title">
+                    Procedimentos selecionados
+                  </span>
+                  <span className="ds-badge-sm bg-primary-50 text-primary-700">
+                    {procedures.length}{" "}
+                    {procedures.length === 1 ? "item" : "itens"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {procedures.map((item, index) => (
+                    <ProcedureCard
+                      key={`${item.procedure.tussCode}-${index}`}
+                      item={item}
+                      onIncrement={() => handleQuantityDelta(index, 1)}
+                      onDecrement={() => handleQuantityDelta(index, -1)}
+                      onQuantityChange={(value) =>
+                        handleQuantitySet(index, value)
+                      }
+                      onRemove={() => handleRemoveProcedure(index)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </Modal>
 
       {showDropdown &&
         dropdownPosition &&
@@ -546,9 +497,6 @@ export function TussProcedureModal({
           document.body,
         )}
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </>
   );
 }

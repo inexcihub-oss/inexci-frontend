@@ -124,7 +124,7 @@ export function Combobox({
     setSearchQuery("");
   };
 
-  const handleClear = (e: React.MouseEvent) => {
+  const handleClear = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
     onValueChange?.("");
   };
@@ -163,7 +163,7 @@ export function Combobox({
                 onClick={handleClear}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
-                    handleClear(e as any);
+                    handleClear(e);
                   }
                 }}
                 className="hover:bg-neutral-100 rounded-lg p-1.5 transition-colors cursor-pointer"

@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
+import type { CommandProps } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
@@ -41,7 +42,7 @@ const FontSize = TextStyle.extend({
       fontSize: {
         default: null,
         parseHTML: (element: HTMLElement) => element.style.fontSize || null,
-        renderHTML: (attributes: Record<string, any>) => {
+        renderHTML: (attributes: { fontSize?: string | null }) => {
           if (!attributes.fontSize) return {};
           return { style: `font-size: ${attributes.fontSize}` };
         },
@@ -54,12 +55,12 @@ const FontSize = TextStyle.extend({
       ...this.parent?.(),
       setFontSize:
         (size: string) =>
-        ({ chain }: any) => {
+        ({ chain }: CommandProps) => {
           return chain().setMark("textStyle", { fontSize: size }).run();
         },
       unsetFontSize:
         () =>
-        ({ chain }: any) => {
+        ({ chain }: CommandProps) => {
           return chain()
             .setMark("textStyle", { fontSize: null })
             .removeEmptyTextStyle()
@@ -68,6 +69,10 @@ const FontSize = TextStyle.extend({
     };
   },
 });
+
+interface MenuItemProps {
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void;
+}
 
 interface RichTextEditorProps {
   value: string;
@@ -259,12 +264,15 @@ function ToolbarDropdown({
           >
             {React.Children.map(children, (child) =>
               React.isValidElement(child)
-                ? React.cloneElement(child as React.ReactElement<any>, {
-                    onClick: (...args: any[]) => {
-                      (child as any).props.onClick?.(...args);
-                      setOpen(false);
+                ? React.cloneElement(
+                    child as React.ReactElement<MenuItemProps>,
+                    {
+                      onClick: (event: React.MouseEvent<HTMLElement>) => {
+                        (child.props as MenuItemProps).onClick?.(event);
+                        setOpen(false);
+                      },
                     },
-                  })
+                  )
                 : child,
             )}
           </div>,
@@ -498,7 +506,7 @@ export function RichTextEditor({
                 e.preventDefault();
                 const idx = FONT_SIZES.indexOf(currentSize);
                 if (idx > 0) {
-                  (editor.commands as any).setFontSize(FONT_SIZES[idx - 1]);
+                  editor.commands.setFontSize(FONT_SIZES[idx - 1]);
                 }
               }}
               title="Diminuir fonte"
@@ -513,7 +521,7 @@ export function RichTextEditor({
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
-                    (editor.commands as any).setFontSize(size);
+                    editor.commands.setFontSize(size);
                   }}
                   className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors ${
                     currentSize === size
@@ -531,7 +539,7 @@ export function RichTextEditor({
                 e.preventDefault();
                 const idx = FONT_SIZES.indexOf(currentSize);
                 if (idx < FONT_SIZES.length - 1) {
-                  (editor.commands as any).setFontSize(FONT_SIZES[idx + 1]);
+                  editor.commands.setFontSize(FONT_SIZES[idx + 1]);
                 }
               }}
               title="Aumentar fonte"

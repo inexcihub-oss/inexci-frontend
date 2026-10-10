@@ -17,6 +17,7 @@ import {
   CreateFromDocumentPayload,
   CreateFromDocumentResponse,
 } from "@/types/surgery-request.types";
+import { ALL_STATUS_CODES, STATUS_META } from "@/lib/surgery-request-status";
 
 export interface ApplyDocumentExtractionPayload {
   procedure?: boolean; hospital?: boolean; healthPlan?: boolean; report?: boolean; tuss?: boolean; opme?: boolean;
@@ -77,80 +78,17 @@ export interface ReportSection {
   updatedAt: string;
 }
 
-export const STATUS_MAP: Record<SurgeryRequestStatus, number> = {
-  Pendente: 1,
-  Enviada: 2,
-  "Em Análise": 3,
-  "Em Agendamento": 4,
-  Agendada: 5,
-  Realizada: 6,
-  Faturada: 7,
-  Finalizada: 8,
-  Encerrada: 9,
-};
-
-export const STATUS_NUMBER_TO_STRING: Record<number, SurgeryRequestStatus> = {
-  1: "Pendente",
-  2: "Enviada",
-  3: "Em Análise",
-  4: "Em Agendamento",
-  5: "Agendada",
-  6: "Realizada",
-  7: "Faturada",
-  8: "Finalizada",
-  9: "Encerrada",
-};
+export const STATUS_NUMBER_TO_STRING: Record<number, SurgeryRequestStatus> =
+  Object.fromEntries(
+    ALL_STATUS_CODES.map((code) => [code, STATUS_META[code].label]),
+  );
 
 export const STATUS_COLORS: Record<
   SurgeryRequestStatus,
   { bg: string; text: string; border: string }
-> = {
-  Pendente: {
-    bg: "bg-orange-50",
-    text: "text-orange-700",
-    border: "border-orange-200",
-  },
-  Enviada: {
-    bg: "bg-blue-50",
-    text: "text-blue-700",
-    border: "border-blue-200",
-  },
-  "Em Análise": {
-    bg: "bg-yellow-50",
-    text: "text-yellow-700",
-    border: "border-yellow-200",
-  },
-  "Em Agendamento": {
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    border: "border-amber-200",
-  },
-  Agendada: {
-    bg: "bg-teal-50",
-    text: "text-teal-700",
-    border: "border-teal-200",
-  },
-  Realizada: {
-    bg: "bg-green-50",
-    text: "text-green-700",
-    border: "border-green-200",
-  },
-  Faturada: {
-    bg: "bg-indigo-50",
-    text: "text-indigo-700",
-    border: "border-indigo-200",
-  },
-  Finalizada: {
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-    border: "border-emerald-200",
-  },
-  Encerrada: {
-    bg: "bg-red-50",
-    text: "text-red-700",
-    border: "border-red-200",
-  },
-};
+> = Object.fromEntries(
+  ALL_STATUS_CODES.map((code) => [STATUS_META[code].label, STATUS_META[code].badge]),
+) as Record<SurgeryRequestStatus, { bg: string; text: string; border: string }>;
 
 export interface CreateSurgeryRequestPayload {
   procedureId: string;
@@ -287,23 +225,23 @@ export interface SurgeryRequestListItem {
   priority: number;
   createdAt: string;
   lastStatusChangedAt?: string | null;
-  last_status_changed_at?: string | null;
   updatedAt?: string;
   surgeryDate: string | null;
+  isIndication?: boolean;
+  indicationName?: string | null;
   patient: { id: string; name: string } | null;
   doctor: { id: string; name: string } | null;
   healthPlan: { id: string; name: string } | null;
   healthPlanId?: string | null;
-  hospital: { id: string; name: string } | null;
+  hospital?: { id: string; name: string } | null;
   hospitalId?: string | null;
   procedure: { id: string; name: string } | null;
-  tussProcedure: { id: string; description: string } | null;
-  procedureName?: string;
   suppliers?: Array<{ id: string; name: string }>;
   clinic?: { id: string; name: string } | null;
   pendenciesCount?: number;
+  totalPendencies?: number;
+  canAdvance?: boolean;
   hasIncompletePayment?: boolean;
-  [key: string]: unknown;
 }
 
 export interface SurgeryRequestListResponse {
@@ -531,6 +469,14 @@ export const surgeryRequestService = {
   async exportPdf(requestId: string | number): Promise<Blob> {
     const response = await api.get(
       `/surgery-requests/${requestId}/export-pdf`,
+      { responseType: "arraybuffer" },
+    );
+    return new Blob([response.data], { type: "application/pdf" });
+  },
+
+  async medicalReportPdf(requestId: string | number): Promise<Blob> {
+    const response = await api.get(
+      `/surgery-requests/${requestId}/medical-report-pdf`,
       { responseType: "arraybuffer" },
     );
     return new Blob([response.data], { type: "application/pdf" });

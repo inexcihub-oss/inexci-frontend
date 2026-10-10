@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useId } from "react";
 import ReactDOM from "react-dom";
 import { Search, ChevronDown, X, Loader2 } from "lucide-react";
 import { useAnchoredDropdown } from "@/hooks/useAnchoredDropdown";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface SelectSearchOption {
   value: string;
@@ -22,31 +23,6 @@ interface SelectSearchProps {
   clearable?: boolean;
   initialLabel?: string;
   ariaLabel?: string;
-}
-
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number,
-): T & { cancel: () => void } {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  const debouncedFn = ((...args: Parameters<T>) => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    timeoutId = setTimeout(() => {
-      func(...args);
-    }, wait);
-  }) as T & { cancel: () => void };
-
-  debouncedFn.cancel = () => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
-  };
-
-  return debouncedFn;
 }
 
 export function SelectSearch({
@@ -80,26 +56,27 @@ export function SelectSearch({
     onSearchRef.current = onSearch;
   }, [onSearch]);
 
-  const debouncedSearchRef = useRef(
-    debounce(async (term: string) => {
-      setIsLoading(true);
-      try {
-        const results = await onSearchRef.current(term);
-        setOptions(results);
-      } catch {
-        setOptions([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 300),
-  );
+  const debouncedTerm = useDebounce(searchTerm, 300);
 
   useEffect(() => {
     if (!isOpen) return;
-    const fn = debouncedSearchRef.current;
-    fn(searchTerm);
-    return () => fn.cancel();
-  }, [searchTerm, isOpen]);
+    let active = true;
+    setIsLoading(true);
+    onSearchRef
+      .current(debouncedTerm)
+      .then((results) => {
+        if (active) setOptions(results);
+      })
+      .catch(() => {
+        if (active) setOptions([]);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [debouncedTerm, isOpen]);
 
   useEffect(() => {
     if (value && options.length > 0) {

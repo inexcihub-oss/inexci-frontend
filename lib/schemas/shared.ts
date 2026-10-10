@@ -64,11 +64,6 @@ export const cpfOptionalSchema = z
   .refine((v) => !v || unmask(v).length === 11, "CPF deve ter 11 dígitos.")
   .refine((v) => !v || isValidCpf(v), "CPF inválido.");
 
-export const cnpjSchema = z
-  .string({ required_error: "O CNPJ é obrigatório." })
-  .refine((v) => unmask(v).length === 14, "CNPJ deve ter 14 dígitos.")
-  .refine(isValidCnpj, "CNPJ inválido.");
-
 export const cnpjOptionalSchema = z
   .string()
   .optional()
@@ -79,12 +74,6 @@ export const cnpjOptionalSchema = z
 export const cepSchema = z
   .string({ required_error: "O CEP é obrigatório." })
   .refine((v) => unmask(v).length === 8, "CEP deve ter 8 dígitos.");
-
-export const cepOptionalSchema = z
-  .string()
-  .optional()
-  .or(z.literal(""))
-  .refine((v) => !v || unmask(v).length === 8, "CEP deve ter 8 dígitos.");
 
 export const strongPasswordSchema = z
   .string({ required_error: "A senha é obrigatória." })

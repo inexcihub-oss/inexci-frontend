@@ -162,7 +162,9 @@ export interface PatientListResult {
 
 export const patientService = {
   async list(params: PatientListParams = {}): Promise<PatientListResult> {
-    const response = await api.get("/patients", {
+    const response = await api.get<
+      BackendPatient[] | { records?: BackendPatient[]; total?: number }
+    >("/patients", {
       params: {
         skip: params.skip,
         take: params.take,
@@ -172,15 +174,13 @@ export const patientService = {
     const records = getApiRecords<BackendPatient>(response.data).map(
       mapPatientListItem,
     );
-    const total =
-      typeof (response.data as { total?: number })?.total === "number"
-        ? (response.data as { total: number }).total
-        : records.length;
+    const body = Array.isArray(response.data) ? undefined : response.data;
+    const total = typeof body?.total === "number" ? body.total : records.length;
     return { records, total };
   },
 
   async getAll(): Promise<PatientListItem[]> {
-    const response = await api.get("/patients", {
+    const response = await api.get<unknown>("/patients", {
       params: { take: FETCH_ALL_TAKE },
     });
     const data = getApiRecords<BackendPatient>(response.data);

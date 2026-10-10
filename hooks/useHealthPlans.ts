@@ -1,15 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
 import { healthPlanService } from "@/services/health-plan.service";
+import { registryKeys } from "@/lib/query-keys/registry";
+import { createRegistryQuery, findRegistryItem } from "./createRegistryQuery";
 
-export const HEALTH_PLANS_QUERY_KEY = ["health-plans"] as const;
-const REGISTRY_STALE_TIME_MS = 1000 * 60 * 20;
+export const HEALTH_PLANS_QUERY_KEY = registryKeys.healthPlans();
 
-export function useHealthPlans(options?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: HEALTH_PLANS_QUERY_KEY,
-    queryFn: () => healthPlanService.getAll(),
-    staleTime: REGISTRY_STALE_TIME_MS,
-    gcTime: 1000 * 60 * 30,
-    enabled: options?.enabled,
-  });
+export const useHealthPlans = createRegistryQuery(HEALTH_PLANS_QUERY_KEY, () =>
+  healthPlanService.getAll(),
+);
+
+export function useHealthPlan(id: string | null | undefined) {
+  const query = useHealthPlans({ enabled: !!id });
+  return { ...query, healthPlan: findRegistryItem(query.data, id) };
 }

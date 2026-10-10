@@ -30,7 +30,6 @@ function abrirModal() {
     <UpdateAuthorizationsModal
       isOpen
       onClose={vi.fn()}
-      onClose2={vi.fn()}
       solicitacao={solicitacao}
       onSuccess={vi.fn()}
     />,

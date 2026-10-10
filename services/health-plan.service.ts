@@ -1,5 +1,4 @@
-import api, { FETCH_ALL_TAKE } from "@/lib/api";
-import { getApiRecords } from "@/lib/api-response";
+import { createCrudService } from "@/services/crud-service";
 
 export interface HealthPlan {
   id: string;
@@ -22,101 +21,12 @@ export interface HealthPlan {
   updatedAt: string;
 }
 
-export interface CreateHealthPlanPayload {
-  name: string;
-  phone?: string;
-  email?: string;
-  cnpj?: string;
-  ansCode?: string;
-  zipCode?: string;
-  address?: string;
-  addressNumber?: string;
-  addressComplement?: string;
-  city?: string;
-  state?: string;
-  authorizationContact?: string;
-  authorizationPhone?: string;
-  authorizationEmail?: string;
-  website?: string;
-}
+export type CreateHealthPlanPayload = Omit<
+  HealthPlan,
+  "id" | "createdAt" | "updatedAt"
+>;
 
-interface BackendHealthPlan {
-  id: string;
-  name: string;
-  cnpj?: string;
-  phone?: string;
-  email?: string;
-  ansCode?: string;
-  zipCode?: string;
-  address?: string;
-  addressNumber?: string;
-  addressComplement?: string;
-  city?: string;
-  state?: string;
-  authorizationContact?: string;
-  authorizationPhone?: string;
-  authorizationEmail?: string;
-  website?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export const healthPlanService = {
-  async getAll(): Promise<HealthPlan[]> {
-    const response = await api.get("/health_plans", {
-      params: { take: FETCH_ALL_TAKE },
-    });
-    const data = getApiRecords<BackendHealthPlan>(response.data);
-
-    return data.map((h) => ({
-      id: h.id,
-      name: h.name,
-      cnpj: h.cnpj,
-      phone: h.phone,
-      email: h.email,
-      ansCode: h.ansCode,
-      zipCode: h.zipCode,
-      address: h.address,
-      addressNumber: h.addressNumber,
-      addressComplement: h.addressComplement,
-      city: h.city,
-      state: h.state,
-      authorizationContact: h.authorizationContact,
-      authorizationPhone: h.authorizationPhone,
-      authorizationEmail: h.authorizationEmail,
-      website: h.website,
-      createdAt: h.createdAt,
-      updatedAt: h.updatedAt,
-    }));
-  },
-
-  async getById(healthPlanId: string): Promise<HealthPlan | null> {
-    const allHealthPlans = await this.getAll();
-    return (
-      allHealthPlans.find((hp) => String(hp.id) === String(healthPlanId)) ||
-      null
-    );
-  },
-
-  async create(payload: CreateHealthPlanPayload): Promise<HealthPlan> {
-    const response = await api.post("/health_plans", payload);
-    return response.data;
-  },
-
-  async update(
-    healthPlanId: string,
-    payload: Partial<CreateHealthPlanPayload>,
-  ): Promise<HealthPlan> {
-    const response = await api.patch(`/health_plans/${healthPlanId}`, payload);
-    return response.data;
-  },
-
-  async delete(healthPlanId: string): Promise<void> {
-    await api.delete(`/health_plans/${healthPlanId}`);
-  },
-
-  async deleteMany(healthPlanIds: string[]): Promise<void> {
-    if (!healthPlanIds.length) return;
-    await api.post("/health_plans/bulk-delete", { ids: healthPlanIds });
-  },
-};
+export const healthPlanService = createCrudService<
+  HealthPlan,
+  CreateHealthPlanPayload
+>("/health_plans");

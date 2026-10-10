@@ -2,6 +2,7 @@
 
 import React from "react";
 import { SurgeryRequestDetail } from "@/services/surgery-request.service";
+import { SurgeryRequestStatusCode } from "@/lib/surgery-request-status";
 
 interface SchedulingSectionProps {
   solicitacao: SurgeryRequestDetail;
@@ -78,7 +79,7 @@ export function SchedulingSection({
   const activeSelectedIndex =
     pendingSelectedIndex !== null ? pendingSelectedIndex : backendSelectedIndex;
 
-  if (statusNum === 4) {
+  if (statusNum === SurgeryRequestStatusCode.IN_SCHEDULING) {
     return (
       <div className="border border-neutral-100 rounded-xl overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between sm:pr-4 border-b border-neutral-100">
@@ -203,7 +204,7 @@ export function SchedulingSection({
     );
   }
 
-  if (statusNum === 5) {
+  if (statusNum === SurgeryRequestStatusCode.SCHEDULED) {
     return (
       <div className="border border-neutral-100 rounded-xl overflow-hidden">
         <div className="flex items-center justify-between pr-4 border-b border-neutral-100">

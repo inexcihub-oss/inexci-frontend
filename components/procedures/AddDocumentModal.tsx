@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { X, Check, ChevronDown } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Check, ChevronDown } from "lucide-react";
+import Input from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
+import { ModalFooter } from "@/components/shared/ModalFooter";
+import { useAnchoredDropdown } from "@/hooks/useAnchoredDropdown";
 
 interface AddDocumentModalProps {
   isOpen: boolean;
@@ -27,36 +32,17 @@ export function AddDocumentModal({
   const [documentType, setDocumentType] = useState("");
   const [documentName, setDocumentName] = useState("");
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const { anchorRef, dropdownRef, position } = useAnchoredDropdown(
+    isTypeDropdownOpen,
+    () => setIsTypeDropdownOpen(false),
+  );
 
   useEffect(() => {
-    if (!isTypeDropdownOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
-        setIsTypeDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isTypeDropdownOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      setTimeout(() => nameInputRef.current?.focus(), 50);
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    if (!isOpen) return;
+    const timer = setTimeout(() => nameInputRef.current?.focus(), 50);
+    return () => clearTimeout(timer);
   }, [isOpen]);
-
-  if (!isOpen) return null;
 
   const selectedTypeLabel =
     DOCUMENT_TYPES.find((t) => t.key === documentType)?.label || "";
@@ -79,105 +65,52 @@ export function AddDocumentModal({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") handleCancel();
     if (e.key === "Enter" && isValid) handleAdd();
   };
 
-  return (
+  const dropdown = isTypeDropdownOpen && (
     <div
-      className="fixed inset-0 z-[60] flex items-end md:items-center justify-center"
-      onKeyDown={handleKeyDown}
+      ref={dropdownRef}
+      style={{
+        position: "fixed",
+        top: position.top + 4,
+        left: position.left,
+        width: position.width,
+        zIndex: 9999,
+      }}
+      className="bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-auto"
     >
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
-        onClick={handleCancel}
-      />
+      {DOCUMENT_TYPES.map((type) => (
+        <button
+          key={type.key}
+          type="button"
+          onClick={() => {
+            setDocumentType(type.key);
+            setIsTypeDropdownOpen(false);
+          }}
+          className={`flex items-center justify-between w-full px-3 py-2.5 text-xs md:text-sm text-left transition-colors ${
+            documentType === type.key
+              ? "bg-teal-50 text-teal-700 font-medium"
+              : "text-neutral-700 hover:bg-neutral-50"
+          }`}
+        >
+          {type.label}
+          {documentType === type.key && (
+            <Check className="w-4 h-4 text-teal-600 shrink-0" />
+          )}
+        </button>
+      ))}
+    </div>
+  );
 
-      <div className="relative bg-white w-full md:max-w-md flex flex-col rounded-t-3xl md:rounded-2xl max-h-[92vh] md:max-h-[85vh] animate-slide-up md:animate-scale-in md:mx-4 shadow-xl mobile-sheet-offset">
-        <div className="flex md:hidden justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
-        </div>
-
-        <div className="flex items-center justify-between px-5 py-3 md:p-5 border-b border-neutral-100">
-          <h2 className="ds-modal-title">Adicionar documento ou exame</h2>
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="text-neutral-400 hover:text-neutral-600 transition-colors p-2 -m-2 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label="Fechar"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="ds-modal-body overflow-visible">
-          <div className="flex flex-col gap-1.5">
-            <label className="ds-label mb-0">
-              Tipo do documento <span className="text-red-500">*</span>
-            </label>
-            <div className="relative" ref={dropdownRef}>
-              <button
-                type="button"
-                onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-                className="flex items-center justify-between w-full ds-input text-left"
-              >
-                <span
-                  className={
-                    selectedTypeLabel ? "text-neutral-900" : "text-neutral-400"
-                  }
-                >
-                  {selectedTypeLabel || "Selecione o tipo"}
-                </span>
-                <ChevronDown
-                  className={`w-4 h-4 text-neutral-500 transition-transform duration-200 ${
-                    isTypeDropdownOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-
-              {isTypeDropdownOpen && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-auto">
-                  {DOCUMENT_TYPES.map((type) => (
-                    <button
-                      key={type.key}
-                      type="button"
-                      onClick={() => {
-                        setDocumentType(type.key);
-                        setIsTypeDropdownOpen(false);
-                      }}
-                      className={`flex items-center justify-between w-full px-3 py-2.5 text-xs md:text-sm text-left transition-colors ${
-                        documentType === type.key
-                          ? "bg-teal-50 text-teal-700 font-medium"
-                          : "text-neutral-700 hover:bg-neutral-50"
-                      }`}
-                    >
-                      {type.label}
-                      {documentType === type.key && (
-                        <Check className="w-4 h-4 text-teal-600 shrink-0" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="ds-label mb-0">
-              Nome <span className="text-red-500">*</span>
-            </label>
-            <input
-              ref={nameInputRef}
-              type="text"
-              value={documentName}
-              onChange={(e) => setDocumentName(e.target.value)}
-              placeholder="Ex: Ressonância do Joelho"
-              className="ds-input"
-            />
-          </div>
-        </div>
-
-        <div className="ds-modal-footer">
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={handleCancel}
+      title="Adicionar documento ou exame"
+      size="sm"
+      footer={
+        <ModalFooter align="end">
           <button
             type="button"
             onClick={handleCancel}
@@ -193,8 +126,55 @@ export function AddDocumentModal({
           >
             Adicionar
           </button>
+        </ModalFooter>
+      }
+    >
+      <div className="ds-modal-body" onKeyDown={handleKeyDown}>
+        <div className="flex flex-col gap-1.5">
+          <label className="ds-label mb-0">
+            Tipo do documento <span className="text-red-500">*</span>
+          </label>
+          <div className="relative" ref={anchorRef}>
+            <button
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={isTypeDropdownOpen}
+              onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+              className="flex items-center justify-between w-full ds-input text-left"
+            >
+              <span
+                className={
+                  selectedTypeLabel ? "text-neutral-900" : "text-neutral-400"
+                }
+              >
+                {selectedTypeLabel || "Selecione o tipo"}
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 text-neutral-500 transition-transform duration-200 ${
+                  isTypeDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          </div>
+          {dropdown &&
+            typeof document !== "undefined" &&
+            createPortal(dropdown, document.body)}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="adicionar-documento-nome" className="ds-label mb-0">
+            Nome <span className="text-red-500">*</span>
+          </label>
+          <Input
+            id="adicionar-documento-nome"
+            ref={nameInputRef}
+            type="text"
+            value={documentName}
+            onChange={(e) => setDocumentName(e.target.value)}
+            placeholder="Ex: Ressonância do Joelho"
+          />
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

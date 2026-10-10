@@ -94,6 +94,7 @@ describe("surgery-request.types", () => {
         priority: 2,
         pendenciesCount: 3,
         createdAt: "2024-01-01",
+        lastActivityAt: "2024-01-01",
         status: "Pendente",
       };
 
@@ -114,6 +115,7 @@ describe("surgery-request.types", () => {
         priority: 1,
         pendenciesCount: 0,
         createdAt: "2024-01-01",
+        lastActivityAt: "2024-01-01",
         status: "Enviada",
       };
 

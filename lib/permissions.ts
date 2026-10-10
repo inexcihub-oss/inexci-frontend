@@ -112,3 +112,111 @@ export function presetFor(permissions: Permission[]): string {
   );
   return achado?.[0] ?? "personalizado";
 }
+
+export type NavGroup = "cadastros";
+
+export interface NavItem {
+  label: string;
+  shortLabel?: string;
+  href: string;
+  iconSrc: string;
+  group?: NavGroup;
+  mobile: { slot: "primary" | "overflow"; order: number };
+}
+
+export const NAV_ITEMS: NavItem[] = [
+  {
+    label: "Atendimento",
+    href: "/atendimento",
+    iconSrc: "/icons/stethoscope.svg",
+    mobile: { slot: "primary", order: 0 },
+  },
+  {
+    label: "Agenda",
+    href: "/agenda",
+    iconSrc: "/icons/calendar-schedule.svg",
+    mobile: { slot: "primary", order: 1 },
+  },
+  {
+    label: "Solicitações Cirúrgicas",
+    shortLabel: "Solicitações",
+    href: "/solicitacoes-cirurgicas",
+    iconSrc: "/icons/grid-layout.svg",
+    mobile: { slot: "primary", order: 2 },
+  },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    iconSrc: "/icons/dashboard.svg",
+    mobile: { slot: "overflow", order: 0 },
+  },
+  {
+    label: "Pacientes",
+    href: "/pacientes",
+    iconSrc: "/icons/user-add.svg",
+    mobile: { slot: "primary", order: 3 },
+  },
+  {
+    label: "Colaboradores",
+    href: "/colaboradores",
+    iconSrc: "/icons/user-profile.svg",
+    mobile: { slot: "overflow", order: 7 },
+  },
+  {
+    label: "Clínicas",
+    href: "/clinicas",
+    iconSrc: "/icons/clinic-building.svg",
+    group: "cadastros",
+    mobile: { slot: "overflow", order: 2 },
+  },
+  {
+    label: "Hospitais",
+    href: "/hospitais",
+    iconSrc: "/icons/users.svg",
+    group: "cadastros",
+    mobile: { slot: "overflow", order: 3 },
+  },
+  {
+    label: "Convênios",
+    href: "/convenios",
+    iconSrc: "/icons/document.svg",
+    group: "cadastros",
+    mobile: { slot: "overflow", order: 4 },
+  },
+  {
+    label: "Fornecedores",
+    href: "/fornecedores",
+    iconSrc: "/icons/dollar-cash-circle.svg",
+    group: "cadastros",
+    mobile: { slot: "overflow", order: 5 },
+  },
+  {
+    label: "Fabricantes",
+    href: "/fabricantes",
+    iconSrc: "/icons/user.svg",
+    group: "cadastros",
+    mobile: { slot: "overflow", order: 6 },
+  },
+  {
+    label: "Procedimentos",
+    href: "/procedimentos",
+    iconSrc: "/icons/status-surgeries.svg",
+    mobile: { slot: "overflow", order: 1 },
+  },
+];
+
+export function navItemPermission(
+  item: Pick<NavItem, "href">,
+): Permission | null {
+  return permissionForRoute(item.href);
+}
+
+export function mobileNavItems(slot: NavItem["mobile"]["slot"]): NavItem[] {
+  return NAV_ITEMS.filter((item) => item.mobile.slot === slot).sort(
+    (a, b) => a.mobile.order - b.mobile.order,
+  );
+}
+
+export const CADASTROS_HREFS = NAV_ITEMS.filter(
+  (item) => item.group === "cadastros",
+).map((item) => item.href);

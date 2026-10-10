@@ -1,4 +1,4 @@
-import type { BillingPeriod, SubscriptionStatus } from "@/types";
+import type { SubscriptionStatus } from "@/types";
 
 export function formatPriceCents(
   amountCents: number,
@@ -8,10 +8,6 @@ export function formatPriceCents(
     style: "currency",
     currency,
   });
-}
-
-export function billingPeriodLabel(period: BillingPeriod): string {
-  return period === "MONTHLY" ? "/mês" : "/ano";
 }
 
 export function solicitacoesLabel(n: number): string {

@@ -21,6 +21,7 @@ import { EntityComboboxDeferredCreate } from "@/components/surgery-request/Entit
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { useZodForm } from "@/hooks/useZodForm";
+import { surgeryRequestKeys } from "@/lib/query-keys";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { canOwnSurgeryRequest } from "@/lib/professional-council";
 import { useCepLookup } from "@/hooks/useCepLookup";
@@ -503,7 +504,7 @@ export default function NovaViaDocumentoPage() {
 
       removeScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_KEY);
       await queryClient.invalidateQueries({
-        queryKey: ["surgery-requests", "kanban"],
+        queryKey: surgeryRequestKeys.kanban(),
       });
 
       if (result.warnings.length > 0) {

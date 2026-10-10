@@ -4,13 +4,8 @@ import React, { useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { ConfirmReceiptModal } from "@/components/surgery-request/modals/ConfirmReceiptModal";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
-}
+import { formatCurrency } from "@/lib/utils";
+import { computeReceiptTotals } from "@/lib/receipt-totals";
 
 function parseDate(s: string): Date {
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -66,32 +61,14 @@ export function FaturamentoTab() {
 
   const expectedDateStr = safeDate(billing.paymentDeadline);
 
-  const isContestPending =
-    receipt?.isContested &&
-    receipt.contestedReceivedValue === receipt.receivedValue;
-
-  const isContestResolved =
-    receipt?.isContested &&
-    receipt.contestedReceivedValue !== receipt.receivedValue;
-
-  const invoiceValue = Number(billing.invoiceValue ?? 0);
-  const totalReceived = (() => {
-    if (!receipt) return 0;
-
-    if (isContestResolved) {
-      return (
-        Number(receipt.contestedReceivedValue ?? 0) +
-        Number(receipt.receivedValue ?? 0)
-      );
-    }
-
-    return Number(receipt.receivedValue ?? 0);
-  })();
-
-  const hasPartialReceipt =
-    invoiceValue > 0 && totalReceived > 0 && totalReceived < invoiceValue;
-
-  const missingValue = Math.max(0, invoiceValue - totalReceived);
+  const {
+    invoiceValue,
+    totalReceived,
+    missingValue,
+    isContestPending,
+    isContestResolved,
+    hasPartialReceipt,
+  } = computeReceiptTotals(billing, receipt);
 
   return (
     <div className="flex flex-col gap-3">

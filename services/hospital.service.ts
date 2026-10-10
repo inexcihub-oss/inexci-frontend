@@ -1,5 +1,4 @@
-import api, { FETCH_ALL_TAKE } from "@/lib/api";
-import { getApiRecords } from "@/lib/api-response";
+import { createCrudService } from "@/services/crud-service";
 
 export interface Hospital {
   id: string;
@@ -20,94 +19,12 @@ export interface Hospital {
   updatedAt: string;
 }
 
-export interface CreateHospitalPayload {
-  name: string;
-  cnpj?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  addressNumber?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  contactName?: string;
-  contactPhone?: string;
-  contactEmail?: string;
-}
+export type CreateHospitalPayload = Omit<
+  Hospital,
+  "id" | "createdAt" | "updatedAt"
+>;
 
-interface BackendHospital {
-  id: string;
-  name: string;
-  cnpj?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  addressNumber?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  contactName?: string;
-  contactPhone?: string;
-  contactEmail?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export const hospitalService = {
-  async getAll(): Promise<Hospital[]> {
-    const response = await api.get("/hospitals", {
-      params: { take: FETCH_ALL_TAKE },
-    });
-    const data = getApiRecords<BackendHospital>(response.data);
-
-    return data.map((h) => ({
-      id: h.id,
-      name: h.name,
-      cnpj: h.cnpj,
-      phone: h.phone,
-      email: h.email,
-      address: h.address,
-      addressNumber: h.addressNumber,
-      neighborhood: h.neighborhood,
-      city: h.city,
-      state: h.state,
-      zipCode: h.zipCode,
-      contactName: h.contactName,
-      contactPhone: h.contactPhone,
-      contactEmail: h.contactEmail,
-      createdAt: h.createdAt,
-      updatedAt: h.updatedAt,
-    }));
-  },
-
-  async getById(hospitalId: string): Promise<Hospital | null> {
-    const allHospitals = await this.getAll();
-    return (
-      allHospitals.find((h) => String(h.id) === String(hospitalId)) || null
-    );
-  },
-
-  async create(payload: CreateHospitalPayload): Promise<Hospital> {
-    const response = await api.post("/hospitals", payload);
-    return response.data;
-  },
-
-  async update(
-    hospitalId: string,
-    payload: Partial<CreateHospitalPayload>,
-  ): Promise<Hospital> {
-    const response = await api.patch(`/hospitals/${hospitalId}`, payload);
-    return response.data;
-  },
-
-  async delete(hospitalId: string): Promise<void> {
-    await api.delete(`/hospitals/${hospitalId}`);
-  },
-
-  async deleteMany(hospitalIds: string[]): Promise<void> {
-    if (!hospitalIds.length) return;
-    await api.post("/hospitals/bulk-delete", { ids: hospitalIds });
-  },
-};
+export const hospitalService = createCrudService<
+  Hospital,
+  CreateHospitalPayload
+>("/hospitals");

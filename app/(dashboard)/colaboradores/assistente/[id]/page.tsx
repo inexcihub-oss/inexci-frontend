@@ -19,22 +19,22 @@ import { logger } from "@/lib/logger";
 import { userService } from "@/services/user.service";
 import { uploadService } from "@/services/upload.service";
 import { patientService, PatientListItem } from "@/services/patient.service";
-import { surgeryRequestService } from "@/services/surgery-request.service";
 import {
+  surgeryRequestService,
   SurgeryRequestListItem,
-  STATUS_NUMBER_TO_STRING,
-  STATUS_COLORS,
 } from "@/services/surgery-request.service";
 import { formatTimeAgo } from "@/lib/formatters";
 import { removeBackground, cn } from "@/lib/utils";
 import { GENDER_OPTIONS, STATE_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
 import { ChevronRight, Upload, X, Loader2, Settings2 } from "lucide-react";
 import { useInvalidateAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 import { CollaboratorActionsSection } from "@/components/colaboradores/CollaboratorActionsSection";
+import {
+  LinkedSurgeryRequestsList,
+  linkedProcedureName,
+} from "@/components/colaboradores/LinkedSurgeryRequestsList";
 import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
 import { DoctorHeaderEditor } from "@/components/shared/DoctorHeaderEditor";
 import { useDoctorHeaderEditor } from "@/hooks/useDoctorHeaderEditor";
@@ -83,7 +83,7 @@ export default function AssistenteDetalhePage() {
   const [isProcessingSignature, setIsProcessingSignature] = useState(false);
   const [isScConfigModalOpen, setIsScConfigModalOpen] = useState(false);
   const signatureInputRef = useRef<HTMLInputElement>(null);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
   const isDoctor = collaborator?.isDoctor === true;
@@ -540,69 +540,16 @@ export default function AssistenteDetalhePage() {
   };
 
   const sidebarContent = isDoctor ? (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Últimas solicitações
-        </h3>
-        {!loadingRequests && (
-          <span className="text-xs text-gray-400">{recentRequests.length}</span>
-        )}
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        {loadingRequests ? (
-          <div className="flex items-center justify-center py-8">
-            <Spinner size="sm" />
-          </div>
-        ) : recentRequests.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <span className="text-xs text-gray-400">
-              Nenhuma solicitação encontrada
-            </span>
-          </div>
-        ) : (
-          recentRequests.map((req) => {
-            const statusLabel =
-              STATUS_NUMBER_TO_STRING[req.status] ?? "Pendente";
-            const colors = STATUS_COLORS[statusLabel] ?? {
-              bg: "bg-gray-50",
-              text: "text-gray-600",
-            };
-            const patientName = req.patient?.name || "Paciente";
-            const procedureName =
-              (req as any).procedureName ||
-              (req as any).indicationName ||
-              req.procedure?.name ||
-              req.tussProcedure?.description ||
-              "Procedimento";
-            return (
-              <div
-                key={req.id}
-                onClick={() => router.push(`/solicitacao/${req.id}`)}
-                className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
-              >
-                <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
-                  <span className="text-xs font-semibold text-gray-900 truncate">
-                    {patientName}
-                  </span>
-                  <span className="text-xs text-gray-500 truncate">
-                    {procedureName}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`text-xs px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}
-                  >
-                    {statusLabel}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
+    <LinkedSurgeryRequestsList
+      title="Últimas solicitações"
+      loading={loadingRequests}
+      requests={recentRequests}
+      emptyMessage="Nenhuma solicitação encontrada"
+      getLines={(req) => ({
+        primary: req.patient?.name || "Paciente",
+        secondary: linkedProcedureName(req, "Procedimento"),
+      })}
+    />
   ) : (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
@@ -1124,13 +1071,6 @@ export default function AssistenteDetalhePage() {
         </Modal>
       )}
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </PageContainer>
   );
 }

@@ -7,14 +7,12 @@ import Image from "next/image";
 import { AlertTriangle, Upload } from "lucide-react";
 import {
   surgeryRequestService,
-  STATUS_NUMBER_TO_STRING,
   Activity,
 } from "@/services/surgery-request.service";
 import {
   pendencyService,
   CalculatedPendency,
 } from "@/services/pendency.service";
-import { DynamicPendencyList } from "@/components/pendencies";
 import {
   EditablePriority,
   EditableDoctor,
@@ -58,14 +56,34 @@ import {
 } from "@/types/surgery-request.types";
 import { SolicitacaoProvider } from "@/contexts/SolicitacaoContext";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
-import { ActivityComposer } from "@/components/surgery-request/ActivityComposer";
-import { ActivityContent } from "@/components/surgery-request/ActivityContent";
 import { resolveSidebarTabFromQuery } from "@/lib/sidebar-tab";
-import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
-import { uploadService } from "@/services/upload.service";
+import {
+  SidebarTab,
+  SolicitacaoSidebar,
+} from "@/components/surgery-request/sidebar/SolicitacaoSidebar";
+import {
+  EXPORTABLE_STATUSES,
+  PRE_SCHEDULED_STATUSES,
+  STATUS_META,
+  SurgeryRequestStatusCode,
+  getStatusLabel,
+  isStatusIn,
+  reachedStatus,
+} from "@/lib/surgery-request-status";
+import {
+  SolicitacaoAction,
+  parseSolicitacaoAction,
+} from "@/lib/solicitacao-actions";
+import { computeReceiptTotals } from "@/lib/receipt-totals";
+import { getApiErrorMessage } from "@/lib/http-error";
+import { surgeryRequestKeys } from "@/lib/query-keys";
+import { useDocExtractionJob } from "@/hooks/useDocExtractionJob";
+import {
+  SolicitacaoModalKind,
+  useSolicitacaoModals,
+} from "@/hooks/useSolicitacaoModals";
 import FacebookSkeleton from "@/components/ui/FacebookSkeleton";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 
 type TabType =
   | "informacoes-gerais"
@@ -75,391 +93,49 @@ type TabType =
   | "pos-cirurgico"
   | "faturamento";
 
-function getInitialsFromName(name: string): string {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
-}
+const PENDENCY_KEY_TO_TAB: Partial<Record<string, TabType>> = {
+  patient_data: "laudo",
+  hospital_data: "informacoes-gerais",
+  health_plan_data: "informacoes-gerais",
+  diagnosis_data: "informacoes-gerais",
+  tuss_procedures: "codigo-tuss",
+  insert_tuss: "codigo-tuss",
+  opme_items: "opme",
+  insert_opme: "opme",
+  medical_report: "laudo",
+  confirm_receipt: "faturamento",
+};
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const TAB_PENDENCY_KEYS: Record<TabType, string[]> = {
+  "informacoes-gerais": ["hospital_data"],
+  "codigo-tuss": ["tuss_procedures"],
+  opme: ["opme_items"],
+  laudo: ["medical_report", "patient_data"],
+  "pos-cirurgico": [],
+  faturamento: ["confirm_receipt"],
+};
 
-function getApiFileUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return `${API_BASE_URL}/${path.replace(/^\//, "")}`;
-}
+type NotifiableAction = "send" | "startAnalysis" | "confirmDate";
+const ACTION_NEXT_STATUS: Record<NotifiableAction, SurgeryRequestStatusCode> = {
+  send: SurgeryRequestStatusCode.SENT,
+  startAnalysis: SurgeryRequestStatusCode.IN_ANALYSIS,
+  confirmDate: SurgeryRequestStatusCode.SCHEDULED,
+};
 
-function formatActivityDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffH = Math.floor(diffMin / 60);
-  const diffD = Math.floor(diffH / 24);
-
-  if (diffMin < 1) return "agora";
-  if (diffMin < 60) return `há ${diffMin} min`;
-  if (diffH < 24) return `há ${diffH}h`;
-  if (diffD === 1) return "ontem";
-  return date.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
-}
-
-function AvatarOrInitials({
-  user,
-  size = 28,
-}: {
-  user: { id?: string; name: string; avatarUrl?: string | null };
-  size?: number;
-}) {
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
-  const [imgError, setImgError] = useState(false);
-
-  useEffect(() => {
-    if (!user.avatarUrl) return;
-    if (
-      user.avatarUrl.startsWith("http://") ||
-      user.avatarUrl.startsWith("https://")
-    ) {
-      setResolvedUrl(user.avatarUrl);
-      return;
-    }
-    if (user.id) {
-      const cached = getAvatarCache(user.id, user.avatarUrl);
-      if (cached) {
-        setResolvedUrl(cached);
-        return;
-      }
-    }
-    uploadService
-      .getSignedUrl(user.avatarUrl)
-      .then((url) => {
-        if (user.id) setAvatarCache(user.id, user.avatarUrl!, url);
-        setResolvedUrl(url);
-      })
-      .catch(() => setImgError(true));
-  }, [user.avatarUrl, user.id]);
-
-  if (resolvedUrl && !imgError) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={resolvedUrl}
-        alt={user.name}
-        width={size}
-        height={size}
-        className="rounded-full object-cover"
-        style={{ width: size, height: size }}
-        onError={() => setImgError(true)}
-      />
-    );
-  }
-
-  return (
-    <div
-      className="rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-semibold"
-      style={{ width: size, height: size, fontSize: size * 0.4 }}
-    >
-      {getInitialsFromName(user.name)}
-    </div>
-  );
-}
-
-function ActivityItem({ activity }: { activity: Activity }) {
-  const isPdfGenerated = activity.type === "pdf_generated";
-  const hasActor = Boolean(activity.user);
-
-  return (
-    <div className="flex items-start gap-3 px-4 py-3 border-b border-neutral-100 last:border-b-0">
-      <div className="flex-shrink-0 mt-0.5">
-        {hasActor && activity.user ? (
-          <AvatarOrInitials user={activity.user} size={28} />
-        ) : (
-          <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-100">
-            <Image
-              src="/brand/icon.png"
-              alt="Inexci"
-              width={16}
-              height={16}
-              className="rounded-sm"
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-0.5">
-          <span className="text-xs font-medium text-gray-800 truncate">
-            {activity.user?.name ?? "Sistema"}
-          </span>
-          <span className="text-[11px] text-gray-400 flex-shrink-0">
-            {formatActivityDate(activity.createdAt)}
-          </span>
-        </div>
-        {isPdfGenerated && activity.pdfUrl ? (
-          <div className="flex items-center gap-1.5">
-            <p className="text-xs text-gray-600 leading-snug">
-              {activity.content}
-            </p>
-            <a
-              href={getApiFileUrl(activity.pdfUrl) ?? "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-medium underline underline-offset-2 flex-shrink-0"
-            >
-              Ver PDF
-            </a>
-          </div>
-        ) : (
-          <ActivityContent
-            content={activity.content}
-            mentions={activity.mentions}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-const ALL_STATUSES: { num: number; label: string }[] = [
-  { num: 1, label: "Pendente" },
-  { num: 2, label: "Enviada" },
-  { num: 3, label: "Em Análise" },
-  { num: 4, label: "Em Agendamento" },
-  { num: 5, label: "Agendada" },
-  { num: 6, label: "Realizada" },
-  { num: 7, label: "Faturada" },
-  { num: 8, label: "Finalizada" },
-  { num: 9, label: "Encerrada" },
-];
-
-function StatusTimeline({
-  currentStatus,
-  createdAt,
-  activities,
-}: {
-  currentStatus: number;
-  createdAt: string;
-  activities: Activity[];
-}) {
-  const statusDates = new Map<number, string>();
-  statusDates.set(1, createdAt);
-
-  activities
-    .filter((a) => a.type === "status_change")
-    .sort(
-      (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-    )
-    .forEach((a) => {
-      const match = a.content.match(/para\s+"?([^"]+)"?\s*$/i);
-      if (match) {
-        const label = match[1].trim();
-        const found = ALL_STATUSES.find((s) => s.label === label);
-        if (found && !statusDates.has(found.num)) {
-          statusDates.set(found.num, a.createdAt);
-        }
-      }
-    });
-
-  const now = new Date();
-  const createdDate = new Date(createdAt);
-  const totalDays = Math.max(
-    1,
-    Math.ceil((now.getTime() - createdDate.getTime()) / 86400000),
-  );
-
-  const isEncerrada = currentStatus === 9;
-  const isFinalizada = currentStatus === 8;
-
-  const visibleStatuses = isEncerrada
-    ? ALL_STATUSES.filter((s) => statusDates.has(s.num) || s.num === 9)
-    : ALL_STATUSES.filter((s) => s.num !== 9);
-
-  function getDaysInStage(statusNum: number): number | null {
-    const enteredAt = statusDates.get(statusNum);
-    if (!enteredAt) return null;
-    const nextStatus = ALL_STATUSES.find(
-      (s) => s.num > statusNum && statusDates.has(s.num),
-    );
-    const exitDate = nextStatus
-      ? new Date(statusDates.get(nextStatus.num)!)
-      : statusNum === currentStatus
-        ? now
+function getSavedDateIndex(
+  solicitacao: {
+    selectedDateIndex?: number | null;
+    scheduling?: { selectedDateIndex?: number | null } | null;
+  } | null,
+): number | null {
+  if (!solicitacao) return null;
+  const index =
+    typeof solicitacao.selectedDateIndex === "number"
+      ? solicitacao.selectedDateIndex
+      : typeof solicitacao.scheduling?.selectedDateIndex === "number"
+        ? solicitacao.scheduling.selectedDateIndex
         : null;
-    if (!exitDate) return null;
-    return Math.max(
-      0,
-      Math.floor(
-        (exitDate.getTime() - new Date(enteredAt).getTime()) / 86400000,
-      ),
-    );
-  }
-
-  return (
-    <div className="p-4">
-      <div
-        className={`mb-5 rounded-xl px-4 py-3 flex items-center gap-3 ${
-          isEncerrada ? "bg-red-50" : "bg-teal-50"
-        }`}
-      >
-        <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-            isEncerrada ? "bg-red-100" : "bg-teal-100"
-          }`}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <circle
-              cx="12"
-              cy="12"
-              r="9"
-              stroke={isEncerrada ? "#dc2626" : "#0d9488"}
-              strokeWidth="1.5"
-            />
-            <path
-              d="M12 7V12L15 15"
-              stroke={isEncerrada ? "#dc2626" : "#0d9488"}
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-        <div>
-          <p
-            className={`text-xs font-semibold ${isEncerrada ? "text-red-700" : "text-teal-700"}`}
-          >
-            Tempo total
-          </p>
-          <p
-            className={`text-sm font-bold ${isEncerrada ? "text-red-900" : "text-teal-900"}`}
-          >
-            {totalDays === 1 ? "1 dia" : `${totalDays} dias`}
-          </p>
-        </div>
-      </div>
-
-      <div className="relative">
-        {visibleStatuses.map((s, idx) => {
-          const isThisEncerrada = s.num === 9;
-          const isCompleted =
-            !isThisEncerrada && statusDates.has(s.num) && s.num < currentStatus;
-          const isCurrent =
-            !isEncerrada && !isFinalizada && s.num === currentStatus;
-          const isFinalizedLast = isFinalizada && s.num === 8;
-          const isFuture =
-            !isEncerrada && !statusDates.has(s.num) && s.num > currentStatus;
-          const isLast = idx === visibleStatuses.length - 1;
-          const daysInStage = getDaysInStage(s.num);
-          const enteredAt = statusDates.get(s.num);
-
-          return (
-            <div key={s.num} className="flex items-start gap-3 relative">
-              {!isLast && (
-                <div
-                  className={`absolute left-[13px] top-[26px] w-0.5 h-[calc(100%-2px)] ${
-                    isCompleted || isFinalizedLast
-                      ? "bg-teal-500"
-                      : isThisEncerrada
-                        ? "bg-gray-200"
-                        : "bg-gray-200"
-                  }`}
-                />
-              )}
-
-              <div className="flex-shrink-0 z-10 mt-0.5">
-                {isThisEncerrada ? (
-                  <div className="w-[26px] h-[26px] rounded-full bg-red-500 flex items-center justify-center">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M18 6L6 18M6 6L18 18"
-                        stroke="white"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </div>
-                ) : isCompleted || isFinalizedLast ? (
-                  <div className="w-[26px] h-[26px] rounded-full bg-teal-500 flex items-center justify-center">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M5 13L9 17L19 7"
-                        stroke="white"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                ) : isCurrent ? (
-                  <div className="w-[26px] h-[26px] rounded-full bg-white border-[3px] border-teal-500 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-teal-500" />
-                  </div>
-                ) : (
-                  <div className="w-[26px] h-[26px] rounded-full bg-white border-2 border-gray-200" />
-                )}
-              </div>
-
-              <div
-                className={`pb-6 flex-1 min-w-0 ${isFuture ? "opacity-40" : ""}`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={`text-sm font-medium ${
-                      isThisEncerrada
-                        ? "text-red-600"
-                        : isCurrent
-                          ? "text-teal-700"
-                          : isCompleted || isFinalizedLast
-                            ? "text-gray-900"
-                            : "text-gray-400"
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                  {isCurrent && (
-                    <span className="text-[10px] font-semibold text-teal-700 bg-teal-100 px-2 py-0.5 rounded-full">
-                      Atual
-                    </span>
-                  )}
-                  {isFinalizedLast && (
-                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      ✓ Concluída
-                    </span>
-                  )}
-                  {isThisEncerrada && (
-                    <span className="text-[10px] font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
-                      Encerrada
-                    </span>
-                  )}
-                </div>
-                {enteredAt && (
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    {new Date(enteredAt).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                    {daysInStage !== null && (
-                      <span className="ml-1.5 text-gray-500">
-                        ·{" "}
-                        {daysInStage === 0
-                          ? "< 1 dia"
-                          : daysInStage === 1
-                            ? "1 dia"
-                            : `${daysInStage} dias`}
-                      </span>
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  return index !== null && index >= 0 && index <= 2 ? index : null;
 }
 
 const CONSENT_TERM_DOCUMENT_TYPES: readonly DocumentTypeEntry[] = [
@@ -503,9 +179,7 @@ export default function SolicitacaoDetalhePage() {
     onTouchEnd: sidebarTouchEnd,
   } = useSwipeToClose(closeSidebar);
 
-  const [sidebarTab, setSidebarTab] = useState<
-    "pendencias" | "atividades" | "timeline"
-  >("pendencias");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("pendencias");
 
   useEffect(() => {
     const aba = resolveSidebarTabFromQuery(searchParams.get("sidebar"));
@@ -519,7 +193,7 @@ export default function SolicitacaoDetalhePage() {
     isLoading: loading,
     isFetching,
   } = useQuery({
-    queryKey: ["surgery-request", id],
+    queryKey: surgeryRequestKeys.detail(id),
     queryFn: () => surgeryRequestService.getById(id),
     enabled: !!id,
   });
@@ -529,35 +203,20 @@ export default function SolicitacaoDetalhePage() {
   );
 
   const { data: validation = null, isFetching: loadingPendencies } = useQuery({
-    queryKey: ["surgery-request", id, "pendencies"],
+    queryKey: surgeryRequestKeys.pendencies(id),
     queryFn: () => pendencyService.validate(id),
     enabled: !!id,
   });
 
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
-  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
-  const [isDocumentReviewOpen, setIsDocumentReviewOpen] = useState(false);
+  const modals = useSolicitacaoModals();
+  const closeModal = (kind: SolicitacaoModalKind) => () => modals.close(kind);
+
   const [documentExtractionInitialResult, setDocumentExtractionInitialResult] =
     useState<ExtractFromDocumentResponse | null>(null);
-  const [isStartAnalysisModalOpen, setIsStartAnalysisModalOpen] =
-    useState(false);
-  const [isUpdateAuthorizationsModalOpen, setIsUpdateAuthorizationsModalOpen] =
-    useState(false);
   const [pendingDateIndex, setPendingDateIndex] = useState<number | null>(null);
-  const [_isSavingDate, setIsSavingDate] = useState(false);
-  const [showConsentWarning, setShowConsentWarning] = useState(false);
-  const [showConsentUpload, setShowConsentUpload] = useState(false);
-  const [isEditDateOptionsModalOpen, setIsEditDateOptionsModalOpen] =
-    useState(false);
-  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
-  const [isDefineDateModalOpen, setIsDefineDateModalOpen] = useState(false);
-  const [isSurgeryStatusModalOpen, setIsSurgeryStatusModalOpen] =
-    useState(false);
-  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-  const [isConfirmReceiptModalOpen, setIsConfirmReceiptModalOpen] =
-    useState(false);
-  const [isCloseRequestModalOpen, setIsCloseRequestModalOpen] = useState(false);
+  const [isSavingDate, setIsSavingDate] = useState(false);
 
   const { data: availableDoctors = [] } = useAvailableDoctors();
 
@@ -571,13 +230,16 @@ export default function SolicitacaoDetalhePage() {
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    } catch {
+    } catch (e) {
+      showToast(
+        getApiErrorMessage(e, "Não foi possível gerar o PDF. Tente novamente."),
+        "error",
+      );
     } finally {
       setIsExportingPdf(false);
     }
   };
 
-  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [completedActionStatus, setCompletedActionStatus] = useState<{
     previous: string;
     next: string;
@@ -585,7 +247,7 @@ export default function SolicitacaoDetalhePage() {
   } | null>(null);
 
   const { data: activities = [], isFetching: loadingActivities } = useQuery({
-    queryKey: ["surgery-request", id, "activities"],
+    queryKey: surgeryRequestKeys.activities(id),
     queryFn: () => surgeryRequestService.getActivities(id),
     enabled: !!id,
   });
@@ -622,24 +284,20 @@ export default function SolicitacaoDetalhePage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!solicitacao) return;
-    const index =
-      typeof solicitacao.selectedDateIndex === "number"
-        ? solicitacao.selectedDateIndex
-        : typeof solicitacao.scheduling?.selectedDateIndex === "number"
-          ? solicitacao.scheduling.selectedDateIndex
-          : null;
+  const savedDateIndex = getSavedDateIndex(solicitacao);
 
-    if (index !== null && index >= 0 && index <= 2) {
-      setPendingDateIndex(index);
+  useEffect(() => {
+    if (savedDateIndex !== null) {
+      setPendingDateIndex(savedDateIndex);
     }
-  }, [solicitacao]);
+  }, [savedDateIndex]);
 
   const handleUpdateProcedure = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ["surgery-request", id] });
-    queryClient.invalidateQueries({ queryKey: ["surgery-requests", "kanban"] });
-    queryClient.invalidateQueries({ queryKey: ["surgery-requests", "agenda"] });
+    await queryClient.invalidateQueries({
+      queryKey: surgeryRequestKeys.detail(id),
+    });
+    queryClient.invalidateQueries({ queryKey: surgeryRequestKeys.kanban() });
+    queryClient.invalidateQueries({ queryKey: surgeryRequestKeys.agenda() });
   }, [queryClient, id]);
 
   useEffect(() => {
@@ -674,21 +332,15 @@ export default function SolicitacaoDetalhePage() {
     };
   }, [updateMobileCardsScrollHints, solicitacao?.id]);
 
-  const pendencyKeyToTab: Partial<Record<string, TabType>> = {
-    patient_data: "laudo",
-    hospital_data: "informacoes-gerais",
-    health_plan_data: "informacoes-gerais",
-    diagnosis_data: "informacoes-gerais",
-    tuss_procedures: "codigo-tuss",
-    insert_tuss: "codigo-tuss",
-    opme_items: "opme",
-    insert_opme: "opme",
-    medical_report: "laudo",
-    confirm_receipt: "faturamento",
+  const selectTab = (tab: TabType) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("tab", tab);
+    router.replace(`?${next.toString()}`, { scroll: false });
   };
 
   const handlePendencyClick = (key: string) => {
-    const targetTab = pendencyKeyToTab[key];
+    const targetTab = PENDENCY_KEY_TO_TAB[key];
     if (!targetTab) return;
 
     setActiveTab(targetTab);
@@ -720,46 +372,32 @@ export default function SolicitacaoDetalhePage() {
     }
   };
 
-  const isPreRealizadaStatus = (status: number) => status < 5;
   const hasPatientContact =
     !!solicitacao?.patient?.phone || !!solicitacao?.patient?.email;
 
-  const ACTION_NEXT_STATUS_MAP: Record<string, string> = {
-    send: "Enviada",
-    startAnalysis: "Em Análise",
-    updateAuthorizations: "Em Agendamento",
-    confirmDate: "Agendada",
-    surgeryStatus: "Realizada",
-  };
-
   const showPostTransitionNotification = (
-    action: string,
+    action: NotifiableAction,
     previousStatusNum: number,
   ) => {
     if (!hasPatientContact) {
       return;
     }
 
-    if (
-      isPreRealizadaStatus(previousStatusNum) &&
-      action !== "surgeryStatus" &&
-      action !== "updateAuthorizations"
-    ) {
+    if (isStatusIn(previousStatusNum, PRE_SCHEDULED_STATUSES)) {
       setCompletedActionStatus({
         previous:
-          STATUS_NUMBER_TO_STRING[previousStatusNum] ??
-          String(previousStatusNum),
-        next: ACTION_NEXT_STATUS_MAP[action] ?? "",
+          getStatusLabel(previousStatusNum) ?? String(previousStatusNum),
+        next: STATUS_META[ACTION_NEXT_STATUS[action]].label,
         previousNumber: previousStatusNum,
       });
-      setIsNotificationModalOpen(true);
+      modals.open("notification");
     }
   };
 
   const handleNotificationConfirm = async (
     channels: NotificationChannels | null,
   ) => {
-    setIsNotificationModalOpen(false);
+    modals.close("notification");
     if (channels) {
       try {
         await surgeryRequestService.notify(solicitacao!.id, {
@@ -767,127 +405,96 @@ export default function SolicitacaoDetalhePage() {
           channels,
           oldStatus: completedActionStatus?.previousNumber,
         });
-      } catch {
+      } catch (e) {
+        showToast(
+          getApiErrorMessage(e, "Não foi possível notificar o paciente."),
+          "error",
+        );
       }
     }
     setCompletedActionStatus(null);
   };
 
-  const handleConfirmDate = async (skipConsentCheck = false) => {
+  const handleConfirmDate = async (
+    skipConsentCheck = false,
+    dateIndex: number | null = pendingDateIndex,
+  ) => {
     const dateOptions =
       solicitacao?.scheduling?.dateOptions ?? solicitacao?.dateOptions ?? [];
-    if (dateOptions.length > 0 && pendingDateIndex === null) {
+    if (dateOptions.length > 0 && dateIndex === null) {
+      selectTab("informacoes-gerais");
+      showToast(
+        "Selecione uma das datas sugeridas para confirmar o agendamento.",
+        "warning",
+      );
       return;
     }
     const hasConsentTerm = solicitacao?.documents?.some(
       (d) => d.key === "consent_term",
     );
     if (!skipConsentCheck && !hasConsentTerm) {
-      setShowConsentWarning(true);
+      modals.open("consentWarning");
       return;
     }
-    setShowConsentWarning(false);
+    modals.close("consentWarning");
     if (dateOptions.length === 0) {
-      setIsDefineDateModalOpen(true);
+      modals.open("defineDate");
       return;
     }
     setIsSavingDate(true);
     const previousStatusNum = solicitacao?.status ?? 0;
     try {
       await surgeryRequestService.confirmDate(solicitacao!.id, {
-        selectedDateIndex: pendingDateIndex as 0 | 1 | 2,
+        selectedDateIndex: dateIndex as 0 | 1 | 2,
       });
       setPendingDateIndex(null);
       handleUpdateProcedure();
       showPostTransitionNotification("confirmDate", previousStatusNum);
-    } catch {
+    } catch (e) {
+      showToast(
+        getApiErrorMessage(e, "Não foi possível confirmar a data."),
+        "error",
+      );
     } finally {
       setIsSavingDate(false);
     }
   };
 
-  useEffect(() => {
-    if (!solicitacao) return;
+  const urlActionHandlers: Record<SolicitacaoAction, () => void> = {
+    send: () => modals.open("send"),
+    "start-analysis": () => modals.open("startAnalysis"),
+    "update-authorizations": () => modals.open("updateAuthorizations"),
+    "confirm-date": () => handleConfirmDate(false, savedDateIndex),
+    "surgery-status": () => modals.open("surgeryStatus"),
+    invoice: () => modals.open("invoice"),
+    "confirm-receipt": () => modals.open("confirmReceipt"),
+    close: () => modals.open("close"),
+  };
+  const urlActionHandlersRef = useRef(urlActionHandlers);
+  urlActionHandlersRef.current = urlActionHandlers;
 
-    const action = searchParams.get("action");
-    if (!action) return;
+  const hasSolicitacao = solicitacao !== null;
+  const rawAction = searchParams.get("action");
+
+  useEffect(() => {
+    if (!hasSolicitacao || !rawAction) return;
 
     router.replace(`/solicitacao/${params.id}`, { scroll: false });
 
-    switch (action) {
-      case "send":
-        setIsSendModalOpen(true);
-        break;
-      case "start-analysis":
-        setIsStartAnalysisModalOpen(true);
-        break;
-      case "update-authorizations":
-        setIsUpdateAuthorizationsModalOpen(true);
-        break;
-      case "surgery-status":
-        setIsSurgeryStatusModalOpen(true);
-        break;
-      case "invoice":
-        setIsInvoiceModalOpen(true);
-        break;
-      case "confirm-receipt":
-        setIsConfirmReceiptModalOpen(true);
-        break;
-      case "close":
-        setIsCloseRequestModalOpen(true);
-        break;
-      default:
-        break;
-    }
-  }, [solicitacao, searchParams, router, params.id]);
+    const action = parseSolicitacaoAction(rawAction);
+    if (action) urlActionHandlersRef.current[action]();
+  }, [hasSolicitacao, rawAction, router, params.id]);
 
-  useEffect(() => {
-    if (!solicitacao) return;
-
-    const jobId = searchParams.get("applyDocExtractionJobId");
-    if (!jobId) return;
-
-    router.replace(`/solicitacao/${params.id}`, { scroll: false });
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        const status =
-          await surgeryRequestService.getExtractFromDocumentStatus(jobId);
-        if (cancelled) return;
-
-        if (status.status === "done") {
-          setDocumentExtractionInitialResult(status.result);
-          setIsDocumentReviewOpen(true);
-          return;
-        }
-
-        if (status.status === "error") {
-          showToast(
-            status.message ||
-              "Não foi possível concluir a análise do documento. Tente novamente.",
-            "error",
-          );
-          return;
-        }
-
-        showToast(
-          "A análise do documento ainda está em andamento. Você receberá uma notificação quando concluir.",
-          "info",
-        );
-      } catch {
-        if (cancelled) return;
-        showToast(
-          "Não foi possível recuperar a análise do documento agora. Tente novamente.",
-          "error",
-        );
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [solicitacao, searchParams, router, params.id, showToast]);
+  useDocExtractionJob(searchParams.get("applyDocExtractionJobId"), {
+    enabled: hasSolicitacao,
+    notify: showToast,
+    onStart: () =>
+      router.replace(`/solicitacao/${params.id}`, { scroll: false }),
+    onDone: (result) => {
+      setDocumentExtractionInitialResult(result);
+      modals.open("documentReview");
+    },
+  });
 
   const handleSelectDocument = (docId: string) => {
     const newSelected = new Set(selectedDocuments);
@@ -923,38 +530,15 @@ export default function SolicitacaoDetalhePage() {
     );
   }
 
-  const hasPartialBillingPending = (() => {
-    const invoiceValue = Number(solicitacao?.billing?.invoiceValue ?? 0);
-    const receipt = solicitacao?.receipt;
-
-    if (invoiceValue <= 0 || !receipt) return false;
-
-    const isContestResolved =
-      receipt.isContested &&
-      receipt.contestedReceivedValue != null &&
-      receipt.contestedReceivedValue !== receipt.receivedValue;
-
-    const totalReceived = isContestResolved
-      ? Number(receipt.receivedValue ?? 0) +
-        Number(receipt.contestedReceivedValue ?? 0)
-      : Number(receipt.receivedValue ?? 0);
-
-    return totalReceived > 0 && totalReceived < invoiceValue;
-  })();
+  const { hasPartialReceipt: hasPartialBillingPending } = computeReceiptTotals(
+    solicitacao.billing,
+    solicitacao.receipt,
+  );
 
   const getTabWarning = (tabId: TabType): boolean => {
     if (!validation || !validation.pendencies) return false;
 
-    const tabPendencyMap: Record<TabType, string[]> = {
-      "informacoes-gerais": ["hospital_data"],
-      "codigo-tuss": ["tuss_procedures"],
-      opme: ["opme_items"],
-      laudo: ["medical_report", "patient_data"],
-      "pos-cirurgico": [],
-      faturamento: ["confirm_receipt"],
-    };
-
-    const pendencyKeys = tabPendencyMap[tabId] || [];
+    const pendencyKeys = TAB_PENDENCY_KEYS[tabId];
 
     const hasValidationWarning = validation.pendencies.some(
       (pendency) =>
@@ -970,7 +554,7 @@ export default function SolicitacaoDetalhePage() {
     return hasValidationWarning;
   };
 
-  const statusNum: number = solicitacao?.status ?? 0;
+  const statusNum: number = solicitacao.status;
 
   const tabs = [
     {
@@ -993,7 +577,7 @@ export default function SolicitacaoDetalhePage() {
       label: "Laudo",
       hasWarning: getTabWarning("laudo"),
     },
-    ...(statusNum >= 6
+    ...(reachedStatus(solicitacao, SurgeryRequestStatusCode.PERFORMED)
       ? [
           {
             id: "pos-cirurgico" as TabType,
@@ -1002,7 +586,7 @@ export default function SolicitacaoDetalhePage() {
           },
         ]
       : []),
-    ...(statusNum >= 7
+    ...(reachedStatus(solicitacao, SurgeryRequestStatusCode.INVOICED)
       ? [
           {
             id: "faturamento" as TabType,
@@ -1020,6 +604,8 @@ export default function SolicitacaoDetalhePage() {
           <header className="flex items-center justify-between px-4 lg:px-6 py-0 border-b border-neutral-100 h-13">
             <div className="flex items-center gap-2">
               <button
+                type="button"
+                aria-label="Voltar para o kanban"
                 onClick={() => router.push("/solicitacoes-cirurgicas")}
                 className="w-10 h-10 md:w-8 md:h-8 flex items-center justify-center border border-[#DCDFE3] rounded-xl md:rounded-lg shadow-sm hover:bg-gray-50 active:scale-[0.95] transition-all p-1"
               >
@@ -1139,7 +725,7 @@ export default function SolicitacaoDetalhePage() {
                 </div>
 
                 <div className="w-full sm:w-auto flex-shrink-0 flex items-center gap-2 min-w-0">
-                  {statusNum >= 2 && statusNum !== 9 && (
+                  {isStatusIn(statusNum, EXPORTABLE_STATUSES) && (
                     <button
                       type="button"
                       onClick={handleExportPdf}
@@ -1180,10 +766,10 @@ export default function SolicitacaoDetalhePage() {
                       {isExportingPdf ? "Gerando…" : "Exportar PDF"}
                     </button>
                   )}
-                  {statusNum === 1 && (
+                  {statusNum === SurgeryRequestStatusCode.PENDING && (
                     <button
                       type="button"
-                      onClick={() => setIsDocumentReviewOpen(true)}
+                      onClick={() => modals.open("documentReview")}
                       className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[36px] md:min-h-[44px] rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 active:scale-[0.98] transition-all text-xs md:text-sm font-semibold text-teal-800 whitespace-nowrap"
                     >
                       <Upload className="h-4 w-4" />
@@ -1193,15 +779,15 @@ export default function SolicitacaoDetalhePage() {
                   )}
                   <PrimaryActionButton
                     status={statusNum}
-                    onSendRequest={() => setIsSendModalOpen(true)}
-                    onStartAnalysis={() => setIsStartAnalysisModalOpen(true)}
+                    onSendRequest={() => modals.open("send")}
+                    onStartAnalysis={() => modals.open("startAnalysis")}
                     onUpdateAuthorizations={() =>
-                      setIsUpdateAuthorizationsModalOpen(true)
+                      modals.open("updateAuthorizations")
                     }
                     onConfirmDate={() => handleConfirmDate()}
-                    onSurgeryStatus={() => setIsSurgeryStatusModalOpen(true)}
-                    onInvoice={() => setIsInvoiceModalOpen(true)}
-                    onConfirmReceipt={() => setIsConfirmReceiptModalOpen(true)}
+                    onSurgeryStatus={() => modals.open("surgeryStatus")}
+                    onInvoice={() => modals.open("invoice")}
+                    onConfirmReceipt={() => modals.open("confirmReceipt")}
                   />
                 </div>
               </div>
@@ -1247,7 +833,6 @@ export default function SolicitacaoDetalhePage() {
                         initialValue={solicitacao.priority as PriorityLevel}
                         surgeryRequestId={solicitacao.id}
                         onUpdate={handleUpdateProcedure}
-                        openUpOnMobile
                       />
                     </div>
                   </div>
@@ -1276,7 +861,10 @@ export default function SolicitacaoDetalhePage() {
                           surgeryRequestId={solicitacao.id}
                           availableDoctors={availableDoctors}
                           onUpdate={handleUpdateProcedure}
-                          disabled={solicitacao.status !== 1}
+                          disabled={
+                            solicitacao.status !==
+                            SurgeryRequestStatusCode.PENDING
+                          }
                         />
                       ) : (
                         <span className="text-xs text-gray-400">—</span>
@@ -1300,16 +888,7 @@ export default function SolicitacaoDetalhePage() {
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => {
-                      setActiveTab(tab.id);
-                      const params = new URLSearchParams(
-                        searchParams.toString(),
-                      );
-                      params.set("tab", tab.id);
-                      router.replace(`?${params.toString()}`, {
-                        scroll: false,
-                      });
-                    }}
+                    onClick={() => selectTab(tab.id)}
                     className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-all whitespace-nowrap min-h-[44px] -mb-px ${
                       activeTab === tab.id
                         ? "text-black border-b-[3px] border-teal-700"
@@ -1366,6 +945,8 @@ export default function SolicitacaoDetalhePage() {
                       )}
                     </div>
                     <button
+                      type="button"
+                      aria-label="Fechar aviso de pendência"
                       onClick={() => setHighlightedPendency(null)}
                       className="text-amber-400 hover:text-amber-600 flex-shrink-0 transition-colors"
                     >
@@ -1389,20 +970,13 @@ export default function SolicitacaoDetalhePage() {
                 >
                   {activeTab === "informacoes-gerais" && (
                     <InformacoesGeraisTab
-                      solicitacao={solicitacao}
                       selectedDocuments={selectedDocuments}
                       handleSelectDocument={handleSelectDocument}
                       handleSelectAllDocuments={handleSelectAllDocuments}
-                      onUpdateProcedure={handleUpdateProcedure}
-                      surgeryRequestId={solicitacao.id}
-                      onDocumentsUploaded={handleUpdateProcedure}
-                      statusNum={statusNum}
                       pendingDateIndex={pendingDateIndex}
                       onSelectDate={setPendingDateIndex}
-                      onEditDateOptions={() =>
-                        setIsEditDateOptionsModalOpen(true)
-                      }
-                      onReschedule={() => setIsRescheduleModalOpen(true)}
+                      onEditDateOptions={() => modals.open("editDateOptions")}
+                      onReschedule={() => modals.open("reschedule")}
                     />
                   )}
                   {activeTab === "codigo-tuss" && <CodigoTussTab />}
@@ -1417,184 +991,35 @@ export default function SolicitacaoDetalhePage() {
         </div>
 
         {isSidebarOpen && (
-          <>
-            <div
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[55] lg:hidden animate-fade-in"
-              onClick={() => setIsSidebarOpen(false)}
-            />
-            <div
-              data-testid="painel-lateral-sc"
-              className="fixed inset-x-0 bottom-16 z-[60] h-[calc(92dvh-64px)] bg-white rounded-t-3xl flex flex-col lg:relative lg:inset-auto lg:bottom-auto lg:z-auto lg:rounded-none lg:h-auto lg:w-88 lg:border-l lg:border-neutral-100 animate-slide-up lg:animate-none"
-              style={
-                sidebarDragY > 0
-                  ? {
-                      transform: `translateY(${sidebarDragY}px)`,
-                      transition: "none",
-                    }
-                  : undefined
-              }
-            >
-              <div
-                className="flex justify-center pt-3 pb-1 lg:hidden cursor-grab active:cursor-grabbing touch-none"
-                onTouchStart={sidebarTouchStart}
-                onTouchMove={sidebarTouchMove}
-                onTouchEnd={sidebarTouchEnd}
-              >
-                <div className="w-10 h-1 bg-gray-300 rounded-full" />
-              </div>
-              <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-100 lg:hidden">
-                <span className="text-sm font-semibold text-gray-900">
-                  Pendências
-                </span>
-                <button
-                  onClick={() => setIsSidebarOpen(false)}
-                  className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-xl active:scale-[0.95] transition-all"
-                  aria-label="Fechar painel"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M18 6L6 18M6 6L18 18"
-                      stroke="#111111"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex items-center border-b border-neutral-100 h-13">
-                <button
-                  onClick={() => setSidebarTab("pendencias")}
-                  className={`flex-1 h-full text-sm font-semibold transition-colors relative ${
-                    sidebarTab === "pendencias"
-                      ? "text-teal-700"
-                      : "text-gray-400 hover:text-gray-600"
-                  }`}
-                >
-                  Pendências
-                  {sidebarTab === "pendencias" && (
-                    <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-teal-600 rounded-full" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setSidebarTab("atividades")}
-                  className={`flex-1 h-full text-sm font-semibold transition-colors relative ${
-                    sidebarTab === "atividades"
-                      ? "text-teal-700"
-                      : "text-gray-400 hover:text-gray-600"
-                  }`}
-                >
-                  Atividades
-                  {sidebarTab === "atividades" && (
-                    <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-teal-600 rounded-full" />
-                  )}
-                </button>
-                <button
-                  onClick={() => setSidebarTab("timeline")}
-                  className={`flex-1 h-full text-sm font-semibold transition-colors relative ${
-                    sidebarTab === "timeline"
-                      ? "text-teal-700"
-                      : "text-gray-400 hover:text-gray-600"
-                  }`}
-                >
-                  Timeline
-                  {sidebarTab === "timeline" && (
-                    <div className="absolute bottom-0 left-1/4 right-1/4 h-0.5 bg-teal-600 rounded-full" />
-                  )}
-                </button>
-              </div>
-
-              {sidebarTab === "timeline" ? (
-                <div
-                  className="flex-1 overflow-auto pb-16 lg:pb-0"
-                  style={{
-                    paddingBottom:
-                      "calc(64px + env(safe-area-inset-bottom, 0px))",
-                  }}
-                >
-                  <StatusTimeline
-                    currentStatus={solicitacao.status}
-                    createdAt={solicitacao.createdAt}
-                    activities={activities}
-                  />
-                </div>
-              ) : sidebarTab === "atividades" ? (
-                <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
-                  <div
-                    ref={listaAtividadesRef}
-                    data-testid="lista-atividades"
-                    className="flex-1 overflow-y-auto min-h-0"
-                  >
-                    {loadingActivities ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-700" />
-                      </div>
-                    ) : activities.length === 0 ? (
-                      <div className="px-4 py-8 text-center text-xs text-gray-400">
-                        Nenhuma atividade registrada.
-                        <br />
-                        Adicione um comentário abaixo.
-                      </div>
-                    ) : (
-                      <div className="flex flex-col">
-                        {activities.map((activity) => (
-                          <ActivityItem key={activity.id} activity={activity} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <ActivityComposer
-                    surgeryRequestId={String(params.id)}
-                    onSent={(criada) => {
-                      queryClient.setQueryData<Activity[]>(
-                        ["surgery-request", id, "activities"],
-                        (prev) => [...(prev ?? []), criada],
-                      );
-                    }}
-                  />
-                </div>
-              ) : (
-                <>
-                  <div
-                    data-tour="sc-requisitos"
-                    className="flex-1 flex flex-col bg-white overflow-hidden relative"
-                  >
-                    <div className="flex-1 overflow-auto p-3">
-                      {loadingPendencies ? (
-                        <div className="flex items-center justify-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-700"></div>
-                        </div>
-                      ) : validation ? (
-                        <DynamicPendencyList
-                          pendencies={validation.pendencies}
-                          statusLabel={validation.statusLabel}
-                          canAdvance={validation.canAdvance}
-                          completedCount={validation.completedCount}
-                          pendingCount={validation.pendingCount}
-                          totalCount={validation.totalCount}
-                          currentStatus={validation.currentStatus}
-                          compact
-                          onPendencyClick={handlePendencyClick}
-                        />
-                      ) : (
-                        <div className="text-center py-8 text-gray-500">
-                          Nenhuma pendência encontrada
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </>
+          <SolicitacaoSidebar
+            solicitacao={solicitacao}
+            tab={sidebarTab}
+            onTabChange={setSidebarTab}
+            onClose={closeSidebar}
+            dragY={sidebarDragY}
+            onTouchStart={sidebarTouchStart}
+            onTouchMove={sidebarTouchMove}
+            onTouchEnd={sidebarTouchEnd}
+            activities={activities}
+            loadingActivities={loadingActivities}
+            activitiesListRef={listaAtividadesRef}
+            onActivitySent={(criada) => {
+              queryClient.setQueryData<Activity[]>(
+                surgeryRequestKeys.activities(id),
+                (prev) => [...(prev ?? []), criada],
+              );
+            }}
+            validation={validation}
+            loadingPendencies={loadingPendencies}
+            onPendencyClick={handlePendencyClick}
+          />
         )}
       </div>
 
       <NotificationConfirmModal
-        isOpen={isNotificationModalOpen && hasPatientContact}
+        isOpen={modals.isOpen("notification") && hasPatientContact}
         onClose={() => {
-          setIsNotificationModalOpen(false);
+          modals.close("notification");
           setCompletedActionStatus(null);
         }}
         currentStatus={completedActionStatus?.previous ?? ""}
@@ -1605,22 +1030,22 @@ export default function SolicitacaoDetalhePage() {
       />
 
       <SendRequestModal
-        isOpen={isSendModalOpen}
-        onClose={() => setIsSendModalOpen(false)}
+        isOpen={modals.isOpen("send")}
+        onClose={closeModal("send")}
         solicitacao={solicitacao}
         initialValidation={validation ?? undefined}
         onSuccess={() => {
           const prevStatus = solicitacao.status;
           handleUpdateProcedure();
-          setIsSendModalOpen(false);
+          modals.close("send");
           showPostTransitionNotification("send", prevStatus);
         }}
       />
 
       <ApplyDocumentExtractionModal
-        isOpen={isDocumentReviewOpen}
+        isOpen={modals.isOpen("documentReview")}
         onClose={() => {
-          setIsDocumentReviewOpen(false);
+          modals.close("documentReview");
           setDocumentExtractionInitialResult(null);
         }}
         solicitation={solicitacao}
@@ -1629,126 +1054,119 @@ export default function SolicitacaoDetalhePage() {
       />
 
       <StartAnalysisModal
-        isOpen={isStartAnalysisModalOpen}
-        onClose={() => setIsStartAnalysisModalOpen(false)}
+        isOpen={modals.isOpen("startAnalysis")}
+        onClose={closeModal("startAnalysis")}
         surgeryRequestId={solicitacao.id}
         onSuccess={() => {
           const prevStatus = solicitacao.status;
           handleUpdateProcedure();
-          setIsStartAnalysisModalOpen(false);
+          modals.close("startAnalysis");
           showPostTransitionNotification("startAnalysis", prevStatus);
         }}
       />
 
       <UpdateAuthorizationsModal
-        isOpen={isUpdateAuthorizationsModalOpen}
-        onClose={() => setIsUpdateAuthorizationsModalOpen(false)}
+        isOpen={modals.isOpen("updateAuthorizations")}
+        onClose={closeModal("updateAuthorizations")}
         solicitacao={solicitacao}
         onSuccess={() => {
           handleUpdateProcedure();
-          setIsUpdateAuthorizationsModalOpen(false);
+          modals.close("updateAuthorizations");
         }}
-        onClose2={() => setIsUpdateAuthorizationsModalOpen(false)}
       />
 
       <EditDateOptionsModal
-        isOpen={isEditDateOptionsModalOpen}
-        onClose={() => setIsEditDateOptionsModalOpen(false)}
+        isOpen={modals.isOpen("editDateOptions")}
+        onClose={closeModal("editDateOptions")}
         solicitacao={solicitacao}
         onSuccess={() => {
           handleUpdateProcedure();
-          setIsEditDateOptionsModalOpen(false);
+          modals.close("editDateOptions");
         }}
       />
 
       <DefineSurgeryDateModal
-        isOpen={isDefineDateModalOpen}
-        onClose={() => setIsDefineDateModalOpen(false)}
+        isOpen={modals.isOpen("defineDate")}
+        onClose={closeModal("defineDate")}
         solicitacao={solicitacao}
         onSuccess={() => {
           const prevStatus = solicitacao.status;
           handleUpdateProcedure();
-          setIsDefineDateModalOpen(false);
+          modals.close("defineDate");
           showPostTransitionNotification("confirmDate", prevStatus);
         }}
       />
 
       <RescheduleModal
-        isOpen={isRescheduleModalOpen}
-        onClose={() => setIsRescheduleModalOpen(false)}
+        isOpen={modals.isOpen("reschedule")}
+        onClose={closeModal("reschedule")}
         solicitacao={solicitacao}
         onSuccess={() => {
           handleUpdateProcedure();
-          setIsRescheduleModalOpen(false);
+          modals.close("reschedule");
         }}
       />
 
       <SurgeryStatusModal
-        isOpen={isSurgeryStatusModalOpen}
-        onClose={() => setIsSurgeryStatusModalOpen(false)}
+        isOpen={modals.isOpen("surgeryStatus")}
+        onClose={closeModal("surgeryStatus")}
         solicitacao={solicitacao}
         onSuccess={() => {
           handleUpdateProcedure();
-          setIsSurgeryStatusModalOpen(false);
+          modals.close("surgeryStatus");
         }}
       />
 
       <InvoiceModal
-        isOpen={isInvoiceModalOpen}
-        onClose={() => setIsInvoiceModalOpen(false)}
+        isOpen={modals.isOpen("invoice")}
+        onClose={closeModal("invoice")}
         solicitacao={solicitacao}
         onSuccess={() => {
           handleUpdateProcedure();
-          setIsInvoiceModalOpen(false);
+          modals.close("invoice");
         }}
       />
 
       <ConfirmReceiptModal
-        isOpen={isConfirmReceiptModalOpen}
-        onClose={() => setIsConfirmReceiptModalOpen(false)}
+        isOpen={modals.isOpen("confirmReceipt")}
+        onClose={closeModal("confirmReceipt")}
         solicitacao={solicitacao}
         onSuccess={() => {
           handleUpdateProcedure();
-          setIsConfirmReceiptModalOpen(false);
+          modals.close("confirmReceipt");
         }}
       />
 
       <CloseRequestModal
-        isOpen={isCloseRequestModalOpen}
-        onClose={() => setIsCloseRequestModalOpen(false)}
+        isOpen={modals.isOpen("close")}
+        onClose={closeModal("close")}
         surgeryRequestId={solicitacao.id}
         onSuccess={() => {
           handleUpdateProcedure();
-          setIsCloseRequestModalOpen(false);
+          modals.close("close");
         }}
       />
 
       <ConsentTermWarningModal
-        isOpen={showConsentWarning}
-        isLoading={_isSavingDate}
-        onClose={() => setShowConsentWarning(false)}
+        isOpen={modals.isOpen("consentWarning")}
+        isLoading={isSavingDate}
+        onClose={closeModal("consentWarning")}
         onConfirm={() => handleConfirmDate(true)}
-        onAttach={() => {
-          setShowConsentWarning(false);
-          setShowConsentUpload(true);
-        }}
+        onAttach={() => modals.open("consentUpload")}
       />
 
       <DocumentUploadModal
-        isOpen={showConsentUpload}
-        onClose={() => setShowConsentUpload(false)}
+        isOpen={modals.isOpen("consentUpload")}
+        onClose={closeModal("consentUpload")}
         surgeryRequestId={solicitacao.id}
         documentTypes={CONSENT_TERM_DOCUMENT_TYPES}
         folder={DOCUMENT_FOLDERS.PRE_SURGERY}
         onSuccess={() => {
-          setShowConsentUpload(false);
+          modals.close("consentUpload");
           handleUpdateProcedure();
         }}
       />
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </PageContainer>
   );
 }

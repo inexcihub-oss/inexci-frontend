@@ -2,19 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { hasStoredSession } from "@/lib/session-storage";
 
 export function BackToAppLink({ className }: { className?: string }) {
   const [href, setHref] = useState("/login");
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("user");
-      if (raw && raw !== "undefined" && raw !== "null") {
-        const user = JSON.parse(raw);
-        if (user?.id) setHref("/dashboard");
-      }
-    } catch {
-    }
+    if (hasStoredSession()) setHref("/dashboard");
   }, []);
 
   return (

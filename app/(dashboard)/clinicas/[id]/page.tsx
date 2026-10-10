@@ -20,8 +20,6 @@ import { maskCep, maskCnpj, maskPhone, unmask } from "@/lib/masks";
 import { STATE_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
 import { useCepLookup } from "@/hooks/useCepLookup";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
 
 export default function ClinicaDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -29,7 +27,7 @@ export default function ClinicaDetalhePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clinic, setClinic] = useState<Clinic | null>(null);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -300,13 +298,6 @@ export default function ClinicaDetalhePage() {
           </Button>
         </div>
       </DetailPageLayout>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </PageContainer>
   );
 }

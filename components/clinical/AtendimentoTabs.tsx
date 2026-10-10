@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
-import { Toast } from "@/components/ui/Toast";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { Permission } from "@/lib/permissions";
 import {
@@ -31,7 +30,7 @@ import {
   clinicalRecordService,
   ClinicalRecord,
 } from "@/services/clinical-record.service";
-import { healthPlanService } from "@/services/health-plan.service";
+import { useHealthPlan } from "@/hooks/useHealthPlans";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { emiteDocumentosClinicos } from "@/lib/professional-council";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,7 +38,7 @@ import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/http-error";
-import { logger } from "@/lib/logger";
+import { appointmentKeys } from "@/lib/query-keys";
 import { capitalizeFirst, formatCPF, formatPhone } from "@/lib/formatters";
 import {
   ArrowLeft,
@@ -108,7 +107,7 @@ export function AtendimentoTabs({
   const searchParams = useSearchParams();
   const { user, isDoctor, isPhysician, canIssueClinicalDocuments, can } =
     useAuth();
-  const { toast, showSuccess, showError, hideToast } = useToast();
+  const { showSuccess, showError } = useToast();
   const { emTour } = useOnboarding();
   const dadosFabricados = appointment.id === TOUR_DEMO_APPOINTMENT_ID;
   const bloqueado = emTour || dadosFabricados;
@@ -156,28 +155,8 @@ export function AtendimentoTabs({
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [documentsVersion, setDocumentsVersion] = useState(0);
-  const [healthPlanName, setHealthPlanName] = useState<string | null>(null);
-
-  useEffect(() => {
-    const id = patient.healthPlanId;
-    if (!id) {
-      setHealthPlanName(null);
-      return;
-    }
-    let active = true;
-    healthPlanService
-      .getById(id)
-      .then((plan) => {
-        if (active) setHealthPlanName(plan?.name ?? null);
-      })
-      .catch((err) => {
-        logger.error("Erro ao carregar o convênio do paciente:", err);
-        if (active) setHealthPlanName(null);
-      });
-    return () => {
-      active = false;
-    };
-  }, [patient.healthPlanId]);
+  const { healthPlan } = useHealthPlan(patient.healthPlanId);
+  const healthPlanName = healthPlan?.name ?? null;
 
   const finalized = !!record?.finalizedAt;
   const readOnly = finalized || !isDoctor;
@@ -287,7 +266,7 @@ export function AtendimentoTabs({
     setExcluindo(true);
     try {
       await clinicalRecordService.delete(record.id);
-      void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      void queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
       setConfirmarExclusao(false);
       setBaseline(fields);
       router.push(can(Permission.AGENDA) ? "/agenda" : "/atendimento");
@@ -608,9 +587,6 @@ export function AtendimentoTabs({
         onConfirm={handleDeleteDraft}
       />
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </div>
   );
 }

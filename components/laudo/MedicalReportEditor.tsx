@@ -12,19 +12,21 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
+import { SurgeryRequestStatusCode } from "@/lib/surgery-request-status";
 import {
   surgeryRequestService,
   ReportSection,
+  SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { doctorHeaderService } from "@/services/doctor-header.service";
 import { userService } from "@/services/user.service";
 import { uploadService } from "@/services/upload.service";
 import { useToast } from "@/hooks/useToast";
+import { getApiErrorMessage } from "@/lib/http-error";
 import { MedicalReportPreviewModal } from "@/components/laudo/MedicalReportPreviewModal";
 import { buildLaudoPatientDisplayFields } from "@/components/laudo/SurgeryRequestLaudoDocument";
 import dynamic from "next/dynamic";
-import api from "@/lib/api";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { removeBackground } from "@/lib/utils";
 import {
@@ -67,7 +69,12 @@ function formatDateBR(dateStr: string | undefined | null): string {
   }
 }
 
-function buildPatientData(sol: any): PatientFormData {
+function buildPatientData(
+  sol: Pick<
+    SurgeryRequestDetail,
+    "patient" | "healthPlan" | "healthPlanName"
+  > | null,
+): PatientFormData {
   const p = sol?.patient;
   return {
     name: p?.name ?? "",
@@ -130,7 +137,7 @@ export function MedicalReportEditor() {
   const { solicitacao, statusNum, onUpdate } = useSolicitacao();
   const { user: currentUser } = useAuth();
 
-  const isReadOnly = statusNum > 1;
+  const isReadOnly = statusNum !== SurgeryRequestStatusCode.PENDING;
   const router = useRouter();
 
   const [patientData, setPatientData] = useState<PatientFormData>({
@@ -219,7 +226,7 @@ export function MedicalReportEditor() {
   }
 
   const examImages =
-    solicitacao?.documents?.filter((d: any) => d.key === "report_images") ?? [];
+    solicitacao?.documents?.filter((d) => d.key === "report_images") ?? [];
 
   useEffect(() => {
     if (!solicitacao) return;
@@ -564,19 +571,15 @@ export function MedicalReportEditor() {
   const handleExportPdf = useCallback(async () => {
     setIsExportingPdf(true);
     try {
-      const response = await api.get(
-        `/surgery-requests/${solicitacao.id}/medical-report-pdf`,
-        { responseType: "arraybuffer" },
-      );
-      const blob = new Blob([response.data], { type: "application/pdf" });
+      const blob = await surgeryRequestService.medicalReportPdf(solicitacao.id);
       const url = URL.createObjectURL(blob);
       const opened = window.open(url, "_blank", "noopener,noreferrer");
       if (!opened) {
         showToast("Não foi possível abrir o PDF em uma nova aba", "error");
       }
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    } catch {
-      showToast("Erro ao exportar PDF", "error");
+    } catch (e) {
+      showToast(getApiErrorMessage(e, "Erro ao exportar PDF"), "error");
     } finally {
       setIsExportingPdf(false);
     }
@@ -936,7 +939,7 @@ export function MedicalReportEditor() {
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div
                             className="font-semibold text-gray-900 break-words prose prose-sm max-w-none min-w-0"
-                            // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
+                            // eslint-disable-next-line react/no-danger
                             dangerouslySetInnerHTML={{
                               __html: sanitizeHtml(section.title),
                             }}
@@ -982,7 +985,7 @@ export function MedicalReportEditor() {
                         {section.description ? (
                           <div
                             className="text-xs text-gray-600 leading-relaxed prose prose-sm max-w-none"
-                            // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
+                            // eslint-disable-next-line react/no-danger
                             dangerouslySetInnerHTML={{
                               __html: sanitizeHtml(section.description),
                             }}
@@ -1207,7 +1210,7 @@ export function MedicalReportEditor() {
                     <div className="w-6 h-6 flex-shrink-0" />
                   </div>
                 ))}
-                {examImages.map((doc: any) => (
+                {examImages.map((doc) => (
                   <div
                     key={doc.id}
                     className="flex items-center gap-2 w-full px-4 py-2 bg-white border border-gray-200 rounded-xl"

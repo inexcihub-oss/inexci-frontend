@@ -5,10 +5,8 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout } from "@/components/details";
 import { Spinner } from "@/components/ui";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
 import { patientService, Patient } from "@/services/patient.service";
-import { healthPlanService } from "@/services/health-plan.service";
+import { useHealthPlan } from "@/hooks/useHealthPlans";
 import { PatientRegistrationForm } from "@/components/patients/PatientRegistrationForm";
 import { PatientPhotoField } from "@/components/patients/PatientPhotoField";
 import {
@@ -74,7 +72,6 @@ export default function PacienteDetalhePage() {
   })();
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [convenio, setConvenio] = useState<string | null>(null);
   const [isNewAppointmentOpen, setIsNewAppointmentOpen] = useState(false);
   const [consultaAberta, setConsultaAberta] = useState<Appointment | null>(
     null,
@@ -83,7 +80,7 @@ export default function PacienteDetalhePage() {
     null,
   );
   const [busy, setBusy] = useState(false);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const { can } = useAuth();
   const podeAgenda = can(Permission.AGENDA);
   const podeAtendimento = can(Permission.ATENDIMENTO);
@@ -141,21 +138,8 @@ export default function PacienteDetalhePage() {
     };
   }, [params.id]);
 
-  const healthPlanId = patient?.healthPlanId;
-  useEffect(() => {
-    if (!healthPlanId) {
-      setConvenio(null);
-      return;
-    }
-    let active = true;
-    healthPlanService
-      .getById(healthPlanId)
-      .then((plan) => active && setConvenio(plan?.name ?? null))
-      .catch(() => active && setConvenio(null));
-    return () => {
-      active = false;
-    };
-  }, [healthPlanId]);
+  const { healthPlan } = useHealthPlan(patient?.healthPlanId);
+  const convenio = healthPlan?.name ?? null;
 
   const handleChangeStatus = async (status: AppointmentStatus) => {
     if (!consultaAberta) return;
@@ -424,13 +408,6 @@ export default function PacienteDetalhePage() {
         />
       )}
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </PageContainer>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
 import Input from "@/components/ui/Input";
@@ -10,56 +10,103 @@ import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui";
 import { hospitalService, Hospital } from "@/services/hospital.service";
 import {
-  surgeryRequestService,
-  SurgeryRequestListItem,
-  STATUS_NUMBER_TO_STRING,
-  STATUS_COLORS,
-} from "@/services/surgery-request.service";
-import { logger } from "@/lib/logger";
+  LinkedSurgeryRequestsList,
+  linkedProcedureName,
+  useLinkedSurgeryRequests,
+} from "@/components/colaboradores/LinkedSurgeryRequestsList";
 import { maskCep, maskCnpj, maskPhone, unmask } from "@/lib/masks";
 import { STATE_OPTIONS } from "@/lib/options";
+import { registryKeys } from "@/lib/query-keys";
 import { useToast } from "@/hooks/useToast";
 import { useCepLookup } from "@/hooks/useCepLookup";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
+import { useHospital } from "@/hooks/useHospitals";
+import { useEntityDetailForm } from "@/hooks/useEntityDetailForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
-import { ChevronRight } from "lucide-react";
+
+const EMPTY_FORM = {
+  name: "",
+  cnpj: "",
+  email: "",
+  phone: "",
+  address: "",
+  addressNumber: "",
+  city: "",
+  state: "",
+  zipCode: "",
+  neighborhood: "",
+  contact: "",
+  contactPhone: "",
+};
+type HospitalForm = typeof EMPTY_FORM;
+
+function toForm(h: Hospital): HospitalForm {
+  return {
+    name: h.name || "",
+    cnpj: maskCnpj(h.cnpj || ""),
+    email: h.email || "",
+    phone: maskPhone(h.phone || ""),
+    address: h.address || "",
+    addressNumber: h.addressNumber || "",
+    city: h.city || "",
+    state: h.state || "",
+    zipCode: maskCep(h.zipCode || ""),
+    neighborhood: h.neighborhood || "",
+    contact: h.contactName || "",
+    contactPhone: maskPhone(h.contactPhone || ""),
+  };
+}
 
 export default function HospitalDetalhePage() {
   const params = useParams<{ id: string }>();
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const { can } = useAuth();
   const podeVerSolicitacoes = can(Permission.SOLICITACOES);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [hospital, setHospital] = useState<Hospital | null>(null);
-  const [surgeryRequests, setSurgeryRequests] = useState<
-    SurgeryRequestListItem[]
-  >([]);
-  const [loadingSurgeries, setLoadingSurgeries] = useState(true);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
+  const { hospital, isLoading: loading } = useHospital(params.id);
+  const { requests: surgeryRequests, loading: loadingSurgeries } =
+    useLinkedSurgeryRequests({ hospitalId: params.id }, podeVerSolicitacoes);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    cnpj: "",
-    email: "",
-    phone: "",
-    address: "",
-    addressNumber: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    neighborhood: "",
-    contact: "",
-    contactPhone: "",
-  });
-  const [originalData, setOriginalData] = useState<typeof formData | null>(
-    null,
-  );
-  const isDirty =
-    originalData !== null &&
-    JSON.stringify(formData) !== JSON.stringify(originalData);
+  const {
+    formData,
+    setFormData,
+    setField,
+    isDirty,
+    saving,
+    handleSave,
+    handleCancel,
+  } = useEntityDetailForm({
+      entity: hospital,
+      emptyForm: EMPTY_FORM,
+      toForm,
+      validate: (form) =>
+        form.name.trim() ? null : "Nome do hospital é obrigatório.",
+      normalize: (form) => ({ ...form, name: form.name.trim() }),
+      save: async (entity, form) => {
+        await hospitalService.update(entity.id, {
+          name: form.name,
+          cnpj: unmask(form.cnpj) || undefined,
+          email: form.email || undefined,
+          phone: unmask(form.phone) || undefined,
+          address: form.address || undefined,
+          addressNumber: form.addressNumber || undefined,
+          neighborhood: form.neighborhood || undefined,
+          city: form.city || undefined,
+          state: form.state || undefined,
+          zipCode: unmask(form.zipCode) || undefined,
+          contactName: form.contact || undefined,
+          contactPhone: unmask(form.contactPhone) || undefined,
+        });
+        await queryClient.invalidateQueries({
+          queryKey: registryKeys.hospitals(),
+        });
+      },
+      showToast,
+      successMessage: "Hospital atualizado com sucesso!",
+      backHref: "/colaboradores",
+    });
+  const handleInputChange = (field: keyof HospitalForm, value: string) =>
+    setField(field, value);
 
   const { loading: cepLoading } = useCepLookup({
     cep: formData.zipCode,
@@ -86,124 +133,6 @@ export default function HospitalDetalhePage() {
     },
   });
 
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
-
-  const loadData = async () => {
-    setLoading(true);
-    const surgeryPromise = podeVerSolicitacoes
-      ? surgeryRequestService.getAll({ hospitalId: params.id })
-      : null;
-    surgeryPromise?.catch(() => {});
-    try {
-      const hospitalData = await hospitalService.getById(params.id);
-
-      if (!hospitalData) {
-        logger.error("Hospital não encontrado");
-        setLoading(false);
-        setLoadingSurgeries(false);
-        return;
-      }
-
-      setHospital(hospitalData);
-
-      setFormData({
-        name: hospitalData.name || "",
-        cnpj: maskCnpj(hospitalData.cnpj || ""),
-        email: hospitalData.email || "",
-        phone: maskPhone(hospitalData.phone || ""),
-        address: hospitalData.address || "",
-        addressNumber: hospitalData.addressNumber || "",
-        city: hospitalData.city || "",
-        state: hospitalData.state || "",
-        zipCode: maskCep(hospitalData.zipCode || ""),
-        neighborhood: hospitalData.neighborhood || "",
-        contact: hospitalData.contactName || "",
-        contactPhone: maskPhone(hospitalData.contactPhone || ""),
-      });
-      setOriginalData({
-        name: hospitalData.name || "",
-        cnpj: maskCnpj(hospitalData.cnpj || ""),
-        email: hospitalData.email || "",
-        phone: maskPhone(hospitalData.phone || ""),
-        address: hospitalData.address || "",
-        addressNumber: hospitalData.addressNumber || "",
-        city: hospitalData.city || "",
-        state: hospitalData.state || "",
-        zipCode: maskCep(hospitalData.zipCode || ""),
-        neighborhood: hospitalData.neighborhood || "",
-        contact: hospitalData.contactName || "",
-        contactPhone: maskPhone(hospitalData.contactPhone || ""),
-      });
-      if (surgeryPromise) {
-        setLoadingSurgeries(true);
-        try {
-          const surgeryData = await surgeryPromise;
-          setSurgeryRequests(surgeryData.records ?? []);
-        } catch {
-          setSurgeryRequests([]);
-        } finally {
-          setLoadingSurgeries(false);
-        }
-      } else {
-        setLoadingSurgeries(false);
-      }
-    } catch (error) {
-      logger.error("Erro ao carregar hospital:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = async () => {
-    if (!hospital) return;
-
-    const name = formData.name.trim();
-    if (!name) {
-      showToast("Nome do hospital é obrigatório.", "error");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const normalizedFormData = { ...formData, name };
-      await hospitalService.update(hospital.id, {
-        name,
-        cnpj: unmask(formData.cnpj) || undefined,
-        email: formData.email || undefined,
-        phone: unmask(formData.phone) || undefined,
-        address: formData.address || undefined,
-        addressNumber: formData.addressNumber || undefined,
-        neighborhood: formData.neighborhood || undefined,
-        city: formData.city || undefined,
-        state: formData.state || undefined,
-        zipCode: unmask(formData.zipCode) || undefined,
-      });
-      setFormData(normalizedFormData);
-      setOriginalData(normalizedFormData);
-      showToast("Hospital atualizado com sucesso!", "success");
-    } catch (error) {
-      logger.error("Erro ao salvar:", error);
-      showToast("Erro ao salvar as alterações.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (isDirty && originalData) {
-      setFormData(originalData);
-    } else {
-      router.push("/colaboradores");
-    }
-  };
-
   if (loading) {
     return (
       <PageContainer>
@@ -225,71 +154,16 @@ export default function HospitalDetalhePage() {
   }
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Cirurgias recentes
-        </h3>
-        {!loadingSurgeries && (
-          <span className="text-xs text-gray-400">
-            {surgeryRequests.length}
-          </span>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        {loadingSurgeries ? (
-          <div className="flex items-center justify-center py-8">
-            <Spinner size="sm" />
-          </div>
-        ) : surgeryRequests.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-xs text-gray-400">
-              Nenhuma solicitação encontrada.
-            </p>
-          </div>
-        ) : (
-          surgeryRequests.map((surgery) => {
-            const statusLabel =
-              STATUS_NUMBER_TO_STRING[surgery.status] ?? "Pendente";
-            const colors = STATUS_COLORS[statusLabel] ?? {
-              bg: "bg-gray-50",
-              text: "text-gray-600",
-            };
-            const procedureName =
-              (surgery as any).procedureName ||
-              surgery.procedure?.name ||
-              surgery.tussProcedure?.description ||
-              "Procedimento não especificado";
-            const doctorName = surgery.doctor?.name || "Médico não informado";
-            return (
-              <div
-                key={surgery.id}
-                onClick={() => router.push(`/solicitacao/${surgery.id}`)}
-                className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
-              >
-                <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
-                  <span className="text-xs font-semibold text-gray-900 truncate">
-                    {procedureName}
-                  </span>
-                  <span className="text-xs text-gray-500 truncate">
-                    {doctorName}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`text-xs px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}
-                  >
-                    {statusLabel}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
+    <LinkedSurgeryRequestsList
+      title="Cirurgias recentes"
+      loading={loadingSurgeries}
+      requests={surgeryRequests}
+      emptyMessage="Nenhuma solicitação encontrada."
+      getLines={(surgery) => ({
+        primary: linkedProcedureName(surgery, "Procedimento não especificado"),
+        secondary: surgery.doctor?.name || "Médico não informado",
+      })}
+    />
   );
 
   return (
@@ -411,13 +285,6 @@ export default function HospitalDetalhePage() {
           </Button>
         </div>
       </DetailPageLayout>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </PageContainer>
   );
 }

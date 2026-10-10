@@ -15,6 +15,7 @@ import { authService } from "@/services/auth.service";
 import { clearAccessToken, getAccessToken } from "@/lib/auth-token";
 import { isSessaoExpirada, refreshSession } from "@/lib/api";
 import { clearSessionFlag, hasSessionHint } from "@/lib/session-flag";
+import { clearStoredUser } from "@/lib/session-storage";
 import { consentService } from "@/services/consent.service";
 import { billingService } from "@/services/billing.service";
 import type { ConsentStatus, ConsentType } from "@/types/consent.types";
@@ -168,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (isSessaoExpirada(erro)) {
               clearAccessToken();
               clearSessionFlag();
-              localStorage.removeItem("user");
+              clearStoredUser();
               setUser(null);
               setConsents(null);
               setSubscription(null);
@@ -195,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "[auth] Mismatch de sessão detectado — limpando sessão local e redirecionando para login",
           );
           clearAccessToken();
-          localStorage.removeItem("user");
+          clearStoredUser();
           setUser(null);
           setConsents(null);
           setSubscription(null);
@@ -227,34 +228,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      try {
-        const response = await authService.login({ email, password });
-        setUser(response.user);
-        const consentsFromLogin = applyConsentsFromUser(response.user);
-        const consentsPromise = consentsFromLogin
-          ? Promise.resolve()
-          : refreshConsents(response.user);
-        if (response.user?.role === "admin") {
-          void refreshSubscription(response.user);
-        }
-        await consentsPromise;
-
-        router.push(resolveHome(response.user?.permissions ?? []));
-      } catch (error) {
-        throw error;
+      const response = await authService.login({ email, password });
+      setUser(response.user);
+      const consentsFromLogin = applyConsentsFromUser(response.user);
+      const consentsPromise = consentsFromLogin
+        ? Promise.resolve()
+        : refreshConsents(response.user);
+      if (response.user?.role === "admin") {
+        void refreshSubscription(response.user);
       }
+      await consentsPromise;
+
+      router.push(resolveHome(response.user?.permissions ?? []));
     },
     [router, refreshConsents, refreshSubscription, applyConsentsFromUser],
   );
 
   const register = useCallback(
     async (userData: import("@/types").RegisterData) => {
-      try {
-        await authService.register(userData);
-        router.push("/login?registered=true");
-      } catch (error) {
-        throw error;
-      }
+      await authService.register(userData);
+      router.push("/login?registered=true");
     },
     [router],
   );

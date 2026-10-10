@@ -1,18 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
 import {
   manufacturerService,
   CreateManufacturerPayload,
 } from "@/services/manufacturer.service";
 import Input from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
+import { ModalFooter } from "@/components/shared/ModalFooter";
 import { useZodForm } from "@/hooks/useZodForm";
 import { createManufacturerSchema } from "@/lib/schemas/manufacturer.schema";
 import { unmask } from "@/lib/masks";
 import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 
 interface NewManufacturerModalProps {
   isOpen: boolean;
@@ -38,7 +38,7 @@ export function NewManufacturerModal({
 }: NewManufacturerModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
   const form = useZodForm({
     schema: createManufacturerSchema,
@@ -97,33 +97,16 @@ export function NewManufacturerModal({
     (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
   );
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset">
-        <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 flex-shrink-0">
-          <h2 className="ds-modal-title">Novo fabricante</h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Fechar"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        <div className="h-px bg-gray-200 flex-shrink-0" />
-
-        <form
-          onSubmit={onSubmit}
-          noValidate
-          className="flex flex-col flex-1 overflow-hidden"
-        >
-          <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title="Novo fabricante"
+        disableClose={loading}
+      >
+        <form onSubmit={onSubmit} noValidate>
+          <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Nome"
@@ -193,18 +176,14 @@ export function NewManufacturerModal({
             )}
           </div>
 
-          <div className="h-px bg-gray-200 flex-shrink-0" />
-          <div className="ds-modal-footer">
+          <ModalFooter align="end">
             <button type="submit" disabled={loading} className="ds-btn-primary">
               {loading ? "Adicionando..." : "Adicionar fabricante"}
             </button>
-          </div>
+          </ModalFooter>
         </form>
-      </div>
+      </Modal>
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
-    </div>
+    </>
   );
 }

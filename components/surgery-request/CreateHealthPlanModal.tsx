@@ -1,8 +1,7 @@
 "use client";
 
+import { Modal } from "@/components/ui/Modal";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { X } from "lucide-react";
 import {
   healthPlanService,
   CreateHealthPlanPayload,
@@ -15,7 +14,6 @@ import { createHealthPlanSchema } from "@/lib/schemas/healthPlan.schema";
 import { unmask } from "@/lib/masks";
 import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 
 interface CreateHealthPlanModalProps {
@@ -40,7 +38,7 @@ export function CreateHealthPlanModal({
   const [loading, setLoading] = useState(false);
   const { emTour } = useOnboarding();
   const [error, setError] = useState("");
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
   const form = useZodForm({
     schema: createHealthPlanSchema,
@@ -89,77 +87,57 @@ export function CreateHealthPlanModal({
     (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
   );
 
-  if (!isOpen) return null;
-  if (typeof document === "undefined") return null;
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      disableClose={loading}
+      title="Novo convênio"
+      size="sm"
+    >
+      <form
+        onSubmit={(e) => {
+          e.stopPropagation();
+          void onSubmit(e);
+        }}
+        noValidate
+      >
+        <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
+          <Input
+            label="Convênio"
+            placeholder="Nome do convênio"
+            {...form.getFieldProps("name")}
+          />
 
-  return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+          <Input
+            label="Telefone (opcional)"
+            type="tel"
+            mask="phone"
+            placeholder="(21) 98765-4321"
+            {...form.getFieldProps("phone")}
+          />
 
-      <div className="relative bg-white rounded-xl shadow-xl w-[480px] mx-4 flex flex-col">
-        <div className="flex items-center justify-between px-6 pt-6 pb-5">
-          <h2 className="ds-modal-title">Novo convênio</h2>
+          <Input
+            label="E-mail (opcional)"
+            type="email"
+            placeholder="convenio@mail.com"
+            {...form.getFieldProps("email")}
+          />
+
+          {error && (
+            <p className="text-sm text-red-500 text-center">{error}</p>
+          )}
+        </div>
+        <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
           <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Fechar"
+            type="submit"
+            disabled={loading || emTour}
+            className="ds-btn-primary"
           >
-            <X className="w-6 h-6" />
+            {loading ? "Adicionando..." : "Adicionar convênio"}
           </button>
         </div>
-        <div className="h-px bg-gray-200" />
-
-        <form
-          onSubmit={(e) => {
-            e.stopPropagation();
-            void onSubmit(e);
-          }}
-          noValidate
-        >
-          <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
-            <Input
-              label="Convênio"
-              placeholder="Nome do convênio"
-              {...form.getFieldProps("name")}
-            />
-
-            <Input
-              label="Telefone (opcional)"
-              type="tel"
-              mask="phone"
-              placeholder="(21) 98765-4321"
-              {...form.getFieldProps("phone")}
-            />
-
-            <Input
-              label="E-mail (opcional)"
-              type="email"
-              placeholder="convenio@mail.com"
-              {...form.getFieldProps("email")}
-            />
-
-            {error && (
-              <p className="text-sm text-red-500 text-center">{error}</p>
-            )}
-          </div>
-
-          <div className="h-px bg-gray-200" />
-          <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4">
-            <button
-              type="submit"
-              disabled={loading || emTour}
-              className="ds-btn-primary"
-            >
-              {loading ? "Adicionando..." : "Adicionar convênio"}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
-    </div>,
-    document.body,
+      </form>
+    </Modal>
   );
 }

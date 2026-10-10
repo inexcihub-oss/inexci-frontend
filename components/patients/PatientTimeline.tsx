@@ -17,9 +17,13 @@ import {
 import { ClinicalRecord } from "@/services/clinical-record.service";
 import {
   SurgeryRequestListItem,
-  STATUS_NUMBER_TO_STRING,
-  STATUS_COLORS,
 } from "@/services/surgery-request.service";
+import { surgeryRequestListName } from "@/lib/surgery-request-list";
+import {
+  STATUS_META,
+  SurgeryRequestStatusCode,
+  getStatusMeta,
+} from "@/lib/surgery-request-status";
 import { PatientDocument } from "@/services/document.service";
 import { AgendaDoctorFilter } from "@/components/agenda/AgendaDoctorFilter";
 import { AppointmentHistory } from "@/components/agenda/AppointmentHistory";
@@ -91,12 +95,7 @@ function diaDaSemana(value: string): string {
 }
 
 function nomeDaCirurgia(surgery: SurgeryRequestListItem): string {
-  return (
-    surgery.procedureName ||
-    surgery.procedure?.name ||
-    surgery.tussProcedure?.description ||
-    "Procedimento não especificado"
-  );
+  return surgeryRequestListName(surgery);
 }
 
 function profissionalDo(item: HistoricoItem): string | null {
@@ -395,11 +394,9 @@ function ItemDoHistorico({
 }) {
   if (item.kind === "cirurgia") {
     const { surgery } = item;
-    const statusLabel = STATUS_NUMBER_TO_STRING[surgery.status] ?? "Pendente";
-    const colors = STATUS_COLORS[statusLabel] ?? {
-      bg: "bg-gray-50",
-      text: "text-gray-600",
-    };
+    const meta = getStatusMeta(surgery.status);
+    const statusLabel = meta?.label ?? "Pendente";
+    const colors = meta?.badge ?? STATUS_META[SurgeryRequestStatusCode.PENDING].badge;
     const quando = surgery.surgeryDate ?? surgery.createdAt;
     return (
       <Cartao
@@ -746,7 +743,7 @@ function BlocoDaFicha({
       </p>
       <div
         className="prose prose-sm max-w-none text-sm text-neutral-800"
-        // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
+        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
       />
     </div>

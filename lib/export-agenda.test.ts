@@ -7,7 +7,6 @@ import {
   formatAgendaTime,
   formatPeriodLabel,
   getAgendaStatusLabel,
-  groupAgendaByDate,
   normalizeAgendaItems,
   getAgendaExportRows,
   sanitizeCsv,
@@ -30,7 +29,6 @@ function makeItem(
     healthPlan: { id: "h1", name: "Unimed" },
     hospital: { id: "ho1", name: "Hospital São Lucas" },
     procedure: { id: "pr1", name: "Artroplastia total do joelho" },
-    tussProcedure: null,
     ...overrides,
   };
 }
@@ -129,24 +127,12 @@ describe("export-agenda", () => {
     expect(filtered[0].id).toBe(2);
   });
 
-  it("agrupa cirurgias por data local", () => {
-    const items = normalizeAgendaItems([
-      makeItem({ id: 1, surgeryDate: "2026-07-15T10:00:00.000Z" }),
-      makeItem({ id: 2, surgeryDate: "2026-07-15T18:00:00.000Z" }),
-      makeItem({ id: 3, surgeryDate: "2026-07-16T08:00:00.000Z" }),
-    ]);
-
-    const grouped = groupAgendaByDate(items);
-    expect(grouped).toHaveLength(2);
-    expect(grouped[0][0]).toBe("2026-07-15");
-    expect(grouped[0][1]).toHaveLength(2);
-    expect(grouped[1][0]).toBe("2026-07-16");
-  });
-
   it("formata status, data, hora e período", () => {
     expect(displayAgendaStatus(7)).toBe(6);
     expect(getAgendaStatusLabel(5)).toBe("Agendada");
     expect(getAgendaStatusLabel(8)).toBe("Realizada");
+    expect(displayAgendaStatus(9)).toBe(9);
+    expect(getAgendaStatusLabel(9)).toBe("Encerrada");
     expect(toLocalDateKey("2026-07-15T23:35:00.000Z")).toMatch(/2026-07-1[45]/);
     expect(formatAgendaDateBR("2026-07-15T10:00:00.000Z")).toBe("15/07/2026");
     expect(formatAgendaTime("2026-07-15T23:35:00.000Z")).toMatch(/^\d{2}:\d{2}$/);

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { TestProviders } from "@/test-utils/render-with-providers";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import ProcedimentosCirurgicos from "./page";
 
 let gerarPdf: () => Promise<void> = async () => {};
@@ -64,9 +65,9 @@ function renderPagina() {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
+    <TestProviders queryClient={queryClient}>
       <ProcedimentosCirurgicos />
-    </QueryClientProvider>,
+    </TestProviders>,
   );
 }
 

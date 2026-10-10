@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { X, Download, Mail, ExternalLink, CheckCircle, FileText } from "lucide-react";
-import api from "@/lib/api";
 import {
   surgeryRequestService,
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 import { pendencyService } from "@/services/pendency.service";
 import { useToast } from "@/hooks/useToast";
+import { useEmailTags } from "@/hooks/useEmailTags";
+import { todayISODate } from "@/lib/calendar-date";
+import { EmailTagsInput } from "@/components/surgery-request/EmailTagsInput";
 import {
   getApiErrorMessage,
   getBillingBlockError,
@@ -23,14 +25,6 @@ import {
   MAX_DOCUMENT_FILE_SIZE_BYTES,
   MAX_DOCUMENT_FILE_SIZE_MB,
 } from "@/lib/file-upload";
-
-function todayCalendarDate(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
 
 function parseLocalCalendarDate(iso: string): Date | null {
   const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -80,13 +74,13 @@ export function SendRequestModal({
 
   const [emailSubject, setEmailSubject] = useState("");
   const [emailMessage, setEmailMessage] = useState("");
-  const [emailTags, setEmailTags] = useState<string[]>([]);
-  const [emailInput, setEmailInput] = useState("");
+  const emailTagsState = useEmailTags();
+  const emailTags = emailTagsState.tags;
   const [emailFormTouched, setEmailFormTouched] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
 
-  const [ccTags, setCcTags] = useState<string[]>([]);
-  const [ccInput, setCcInput] = useState("");
+  const ccTagsState = useEmailTags();
+  const ccTags = ccTagsState.tags;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [sentAt, setSentAt] = useState("");
@@ -125,13 +119,11 @@ export function SendRequestModal({
         `Solicitação Cirúrgica - ${solicitacao.patient?.name || "Paciente"}`,
       );
       setEmailMessage("");
-      setEmailTags([]);
-      setEmailInput("");
+      emailTagsState.reset();
       setEmailFormTouched(false);
       setAttachments([]);
-      setCcTags([]);
-      setCcInput("");
-      setSentAt(todayCalendarDate());
+      ccTagsState.reset();
+      setSentAt(todayISODate());
       setSentAtError(null);
       setBillingBlock(
         blockReasonCode
@@ -259,7 +251,7 @@ export function SendRequestModal({
         setCurrentStep(3);
         surgeryRequestService
           .getCcRecipients(solicitacao.id)
-          .then((opts) => setCcTags(opts.map((o) => o.email)))
+          .then((opts) => ccTagsState.setTags(opts.map((o) => o.email)))
           .catch(() => {});
       }
     } else if (currentStep === 3) {
@@ -290,11 +282,7 @@ export function SendRequestModal({
       await surgeryRequestService.send(solicitacao.id, { method: "download" });
       await refreshSubscription();
 
-      const response = await api.get(
-        `/surgery-requests/${solicitacao.id}/export-pdf`,
-        { responseType: "arraybuffer" },
-      );
-      const blob = new Blob([response.data], { type: "application/pdf" });
+      const blob = await surgeryRequestService.exportPdf(solicitacao.id);
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -392,48 +380,6 @@ export function SendRequestModal({
     if (!isSending) {
       if (currentStep === 4) onSuccess();
       onClose();
-    }
-  };
-
-  const addEmailTag = (email: string) => {
-    const trimmed = email.trim().replace(/[;,]$/, "");
-    if (trimmed && !emailTags.includes(trimmed)) {
-      setEmailTags((prev) => [...prev, trimmed]);
-    }
-    setEmailInput("");
-  };
-
-  const removeEmailTag = (tag: string) => {
-    setEmailTags((prev) => prev.filter((t) => t !== tag));
-  };
-
-  const handleEmailKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ";" || e.key === ",") {
-      e.preventDefault();
-      if (emailInput.trim()) addEmailTag(emailInput);
-    } else if (e.key === "Backspace" && !emailInput && emailTags.length > 0) {
-      setEmailTags((prev) => prev.slice(0, -1));
-    }
-  };
-
-  const addCcTag = (email: string) => {
-    const trimmed = email.trim().replace(/[;,]$/, "");
-    if (trimmed && !ccTags.includes(trimmed)) {
-      setCcTags((prev) => [...prev, trimmed]);
-    }
-    setCcInput("");
-  };
-
-  const removeCcTag = (tag: string) => {
-    setCcTags((prev) => prev.filter((t) => t !== tag));
-  };
-
-  const handleCcKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ";" || e.key === ",") {
-      e.preventDefault();
-      if (ccInput.trim()) addCcTag(ccInput);
-    } else if (e.key === "Backspace" && !ccInput && ccTags.length > 0) {
-      setCcTags((prev) => prev.slice(0, -1));
     }
   };
 
@@ -724,44 +670,11 @@ export function SendRequestModal({
           <p className="text-xs text-gray-400">
             Digite um e-mail e pressione Enter para adicionar
           </p>
-          <div
-            className={`flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border bg-white min-h-10 cursor-text ${
-              emailFormTouched && emailTags.length === 0
-                ? "border-red-400"
-                : "border-gray-200"
-            }`}
-            onClick={() => document.getElementById("send-email-input")?.focus()}
-          >
-            {emailTags.map((tag) => (
-              <span
-                key={tag}
-                className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => removeEmailTag(tag)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-            <input
-              id="send-email-input"
-              type="text"
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              onKeyDown={handleEmailKeyDown}
-              onBlur={() => {
-                if (emailInput.trim()) addEmailTag(emailInput);
-              }}
-              placeholder={
-                emailTags.length === 0 ? "exemplo@mail.com" : undefined
-              }
-              className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
-            />
-          </div>
+          <EmailTagsInput
+            id="send-email-input"
+            state={emailTagsState}
+            invalid={emailFormTouched && emailTags.length === 0}
+          />
           {emailFormTouched && emailTags.length === 0 && (
             <p className="text-xs text-red-500">
               Informe pelo menos um destinatário
@@ -774,38 +687,11 @@ export function SendRequestModal({
           <p className="text-xs text-gray-400">
             Digite um e-mail e pressione Enter para adicionar
           </p>
-          <div
-            className="flex flex-wrap items-center gap-1 px-3 py-2 rounded-xl border border-gray-200 bg-white min-h-10 cursor-text"
-            onClick={() => document.getElementById("send-cc-input")?.focus()}
-          >
-            {ccTags.map((tag) => (
-              <span
-                key={tag}
-                className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-xs md:text-sm text-gray-900"
-              >
-                {tag}
-                <button
-                  type="button"
-                  onClick={() => removeCcTag(tag)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-            <input
-              id="send-cc-input"
-              type="text"
-              value={ccInput}
-              onChange={(e) => setCcInput(e.target.value)}
-              onKeyDown={handleCcKeyDown}
-              onBlur={() => {
-                if (ccInput.trim()) addCcTag(ccInput);
-              }}
-              placeholder={ccTags.length === 0 ? "exemplo@mail.com" : undefined}
-              className="flex-1 min-w-24 text-xs md:text-sm text-gray-900 outline-none bg-transparent placeholder-gray-400"
-            />
-          </div>
+          <EmailTagsInput
+            id="send-cc-input"
+            state={ccTagsState}
+            invalid={false}
+          />
         </div>
 
         <div className="flex flex-col gap-1">

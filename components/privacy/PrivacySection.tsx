@@ -14,9 +14,7 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
-import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
-import { ToastType } from "@/types/toast.types";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
 import { MarkdownContent } from "@/components/privacy/MarkdownContent";
@@ -93,7 +91,7 @@ function ConsentBadge({ row }: { row: ConsentRow }) {
 }
 
 export function PrivacySection() {
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const {
     consents,
     consentsLoading,
@@ -332,13 +330,6 @@ export function PrivacySection() {
         loading={aiToggleLoading}
       />
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </div>
   );
 }

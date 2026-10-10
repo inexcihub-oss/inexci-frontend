@@ -7,7 +7,6 @@ import {
 } from "@/services/surgery-request.service";
 import { documentService, DOCUMENT_FOLDERS } from "@/services/document.service";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 import { getTransitionBlockError } from "@/lib/http-error";
 import {
   MAX_DOCUMENT_FILE_SIZE_BYTES,
@@ -182,7 +181,7 @@ export function SurgeryStatusModal({
   const [newTime, setNewTime] = useState("10:00");
   const [sections, setSections] = useState<DocSection[]>(mkSections);
   const [isSaving, setIsSaving] = useState(false);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -717,9 +716,6 @@ export function SurgeryStatusModal({
         )}
       </div>
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </div>
   );
 }

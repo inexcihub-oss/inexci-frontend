@@ -8,10 +8,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
 import { getInitials, getDisplayName, getAvatarColor } from "@/lib/utils";
-import { uploadService } from "@/services/upload.service";
-import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
+import { useUserAvatarUrl } from "@/hooks/useUserAvatarUrl";
 import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
-import { Permission } from "@/lib/permissions";
+import {
+  CADASTROS_HREFS,
+  NAV_ITEMS,
+  navItemPermission,
+  Permission,
+} from "@/lib/permissions";
 
 interface MenuItem {
   type: "item";
@@ -53,94 +57,41 @@ export function filterMenuItems(
   }, []);
 }
 
-const allMenuItems: NavigationEntry[] = [
-  {
-    type: "item",
-    iconSrc: "/icons/stethoscope.svg",
-    label: "Atendimento",
-    href: "/atendimento",
-    permission: Permission.ATENDIMENTO,
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/calendar-schedule.svg",
-    label: "Agenda",
-    href: "/agenda",
-    permission: Permission.AGENDA,
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/grid-layout.svg",
-    label: "Solicitações Cirúrgicas",
-    href: "/solicitacoes-cirurgicas",
-    permission: Permission.SOLICITACOES,
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/dashboard.svg",
-    label: "Dashboard",
-    href: "/dashboard",
-    permission: Permission.SOLICITACOES,
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/user-add.svg",
-    label: "Pacientes",
-    href: "/pacientes",
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/user-profile.svg",
-    label: "Colaboradores",
-    href: "/colaboradores",
-    permission: Permission.ADMINISTRACAO,
-  },
-  {
-    type: "group",
-    iconSrc: "/icons/list.svg",
-    label: "Cadastros",
-    children: [
-      {
-        type: "item",
-        iconSrc: "/icons/clinic-building.svg",
-        label: "Clínicas",
-        href: "/clinicas",
-        permission: Permission.ADMINISTRACAO,
-      },
-      {
-        type: "item",
-        iconSrc: "/icons/users.svg",
-        label: "Hospitais",
-        href: "/hospitais",
-      },
-      {
-        type: "item",
-        iconSrc: "/icons/document.svg",
-        label: "Convênios",
-        href: "/convenios",
-      },
-      {
-        type: "item",
-        iconSrc: "/icons/dollar-cash-circle.svg",
-        label: "Fornecedores",
-        href: "/fornecedores",
-      },
-      {
-        type: "item",
-        iconSrc: "/icons/user.svg",
-        label: "Fabricantes",
-        href: "/fabricantes",
-      },
-    ],
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/status-surgeries.svg",
-    label: "Procedimentos",
-    href: "/procedimentos",
-    permission: Permission.SOLICITACOES,
-  },
-];
+function buildMenuEntries(): NavigationEntry[] {
+  const entries: NavigationEntry[] = [];
+  let cadastros: MenuGroup | null = null;
+  for (const item of NAV_ITEMS) {
+    const entry: MenuItem = {
+      type: "item",
+      iconSrc: item.iconSrc,
+      label: item.label,
+      href: item.href,
+      permission: navItemPermission(item) ?? undefined,
+    };
+    if (item.group !== "cadastros") {
+      entries.push(entry);
+      continue;
+    }
+    if (!cadastros) {
+      cadastros = {
+        type: "group",
+        iconSrc: "/icons/list.svg",
+        label: "Cadastros",
+        children: [],
+      };
+      entries.push(cadastros);
+    }
+    cadastros.children.push(entry);
+  }
+  return entries;
+}
+
+const allMenuItems = buildMenuEntries();
+
+const isCadastrosPath = (pathname: string) =>
+  CADASTROS_HREFS.some(
+    (basePath) => pathname === basePath || pathname.startsWith(`${basePath}/`),
+  );
 
 interface SidebarProps {
   isMobileOpen?: boolean;
@@ -154,65 +105,15 @@ export default function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, can } = useAuth();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const avatarUrl = useUserAvatarUrl();
   const [isCadastrosOpen, setIsCadastrosOpen] = useState(() =>
-    [
-      "/clinicas",
-      "/hospitais",
-      "/convenios",
-      "/fornecedores",
-      "/fabricantes",
-    ].some(
-      (basePath) =>
-        pathname === basePath || pathname.startsWith(`${basePath}/`),
-    ),
+    isCadastrosPath(pathname),
   );
-
-  useEffect(() => {
-    const raw = user?.avatarUrl;
-    const userId = user?.id;
-
-    if (!raw || !userId) {
-      setAvatarUrl(null);
-      return;
-    }
-
-    if (raw.startsWith("http://") || raw.startsWith("https://")) {
-      setAvatarUrl(raw);
-      setAvatarCache(userId, raw, raw);
-      return;
-    }
-
-    const cached = getAvatarCache(userId, raw);
-    if (cached) {
-      setAvatarUrl(cached);
-      return;
-    }
-
-    uploadService
-      .getSignedUrl(raw)
-      .then((url) => {
-        setAvatarUrl(url);
-        setAvatarCache(userId, raw, url);
-      })
-      .catch(() => setAvatarUrl(null));
-  }, [user?.avatarUrl, user?.id]);
 
   const menuItems = filterMenuItems(allMenuItems, can);
 
   useEffect(() => {
-    const isCadastrosPath = [
-      "/clinicas",
-      "/hospitais",
-      "/convenios",
-      "/fornecedores",
-      "/fabricantes",
-    ].some(
-      (basePath) =>
-        pathname === basePath || pathname.startsWith(`${basePath}/`),
-    );
-
-    if (isCadastrosPath) {
+    if (isCadastrosPath(pathname)) {
       setIsCadastrosOpen(true);
     }
   }, [pathname]);

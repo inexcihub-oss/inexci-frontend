@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { TestProviders } from "@/test-utils/render-with-providers";
+import { QueryClient } from "@tanstack/react-query";
 import SolicitacaoDetalhePage from "./page";
 
 const { replaceMock, searchParamsState } = vi.hoisted(() => ({
@@ -137,9 +138,9 @@ function renderPagina() {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
+    <TestProviders queryClient={queryClient}>
       <SolicitacaoDetalhePage />
-    </QueryClientProvider>,
+    </TestProviders>,
   );
 }
 

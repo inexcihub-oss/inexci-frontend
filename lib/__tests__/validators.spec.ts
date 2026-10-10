@@ -4,8 +4,6 @@ import {
   isValidCnpj,
   isValidEmail,
   isValidFullName,
-  isValidPhone,
-  isValidCep,
   passwordChecks,
   passwordStrength,
 } from "@/lib/validators";
@@ -148,17 +146,3 @@ describe("passwordStrength", () => {
   });
 });
 
-describe("isValidPhone / isValidCep", () => {
-  it("phone aceita 10 ou 11 dígitos", () => {
-    expect(isValidPhone("(11) 3333-4444")).toBe(true);
-    expect(isValidPhone("(11) 98765-4321")).toBe(true);
-    expect(isValidPhone("123")).toBe(false);
-    expect(isValidPhone("")).toBe(false);
-  });
-
-  it("cep aceita 8 dígitos", () => {
-    expect(isValidCep("01310-100")).toBe(true);
-    expect(isValidCep("01310100")).toBe(true);
-    expect(isValidCep("12345")).toBe(false);
-  });
-});

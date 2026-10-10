@@ -16,13 +16,18 @@ export interface FieldProps<V = string> {
   error?: string;
 }
 
+export type FieldValue<T> =
+  NonNullable<T> extends string ? string : NonNullable<T> | "";
+
 export interface UseZodFormReturn<TSchema extends z.ZodTypeAny> {
   values: z.input<TSchema>;
   errors: Record<string, string>;
   isSubmitting: boolean;
   setField: <K extends keyof z.input<TSchema>>(key: K, value: z.input<TSchema>[K]) => void;
   setValues: (patch: Partial<z.input<TSchema>>) => void;
-  getFieldProps: <K extends keyof z.input<TSchema>>(key: K) => FieldProps<z.input<TSchema>[K] extends string ? string : any>;
+  getFieldProps: <K extends keyof z.input<TSchema>>(
+    key: K,
+  ) => FieldProps<FieldValue<z.input<TSchema>[K]>>;
   validate: () => { success: true; data: z.output<TSchema> } | { success: false; errors: Record<string, string> };
   handleSubmit: (
     onValid: (data: z.output<TSchema>) => void | Promise<void>,
@@ -131,15 +136,18 @@ export function useZodForm<TSchema extends z.ZodTypeAny>(
   const clearErrors = useCallback(() => setErrors({}), []);
 
   const getFieldProps = useCallback(
-    <K extends keyof z.input<TSchema>>(key: K) => {
+    <K extends keyof z.input<TSchema>>(
+      key: K,
+    ): FieldProps<FieldValue<z.input<TSchema>[K]>> => {
       const k = String(key);
+      const current = (values as Record<string, unknown>)[k];
       return {
         name: k,
-        value: ((values as any)[k] ?? "") as any,
+        value: (current ?? "") as FieldValue<z.input<TSchema>[K]>,
         onChange: (
           e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
         ) => {
-          setField(key, e.target.value as any);
+          setField(key, e.target.value as z.input<TSchema>[K]);
         },
         error: errors[k],
       };

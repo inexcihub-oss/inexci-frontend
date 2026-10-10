@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { opmeService } from "@/services/opme.service";
 import { OpmeItem } from "@/services/opme.service";
+import type { OpmeItemRef } from "@/types/surgery-request.types";
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -15,6 +16,12 @@ import {
   Package,
 } from "lucide-react";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
+import {
+  SurgeryRequestStatusCode,
+  TUSS_OPME_EDITABLE_STATUSES,
+  isStatusIn,
+  reachedStatus,
+} from "@/lib/surgery-request-status";
 import { padWithGenericOption } from "@/lib/generic-option";
 
 function getManufacturerNames(item: {
@@ -32,10 +39,42 @@ function padOpmeDisplayNames(names: string[]): string[] {
   return padWithGenericOption(names.map((name) => name.trim()).filter(Boolean));
 }
 
+function toOpmeItem(
+  ref: OpmeItemRef,
+  surgeryRequestId: string | number,
+): OpmeItem {
+  return {
+    id: String(ref.id),
+    surgeryRequestId,
+    name: ref.name ?? "",
+    suppliers: (ref.suppliers ?? []).map((s) => ({
+      id: String(s.id ?? ""),
+      name: s.name ?? "",
+    })),
+    manufacturers: (
+      (ref.manufacturers ?? []) as Array<{ id?: string | number; name?: string } | string>
+    ).map((m) =>
+      typeof m === "string"
+        ? { id: "", name: m }
+        : { id: String(m.id ?? ""), name: m.name ?? "" },
+    ),
+    quantity: ref.quantity ?? 1,
+    authorizedQuantity: ref.authorizedQuantity ?? undefined,
+    createdAt: typeof ref.createdAt === "string" ? ref.createdAt : "",
+  };
+}
+
 export function OpmeTab() {
   const { solicitacao, statusNum, onUpdate } = useSolicitacao();
-  const showAuthorizationColumn = statusNum >= 3;
-  const showColorCoding = statusNum >= 4;
+  const showAuthorizationColumn = reachedStatus(
+    solicitacao,
+    SurgeryRequestStatusCode.IN_ANALYSIS,
+  );
+  const showColorCoding = reachedStatus(
+    solicitacao,
+    SurgeryRequestStatusCode.IN_SCHEDULING,
+  );
+  const isReadOnly = !isStatusIn(statusNum, TUSS_OPME_EDITABLE_STATUSES);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
     {},
   );
@@ -47,7 +86,6 @@ export function OpmeTab() {
   const { showToast } = useToast();
 
   const hasOpme: boolean | null = solicitacao.hasOpme ?? null;
-  const isReadOnly = statusNum >= 3;
 
   const handleEdit = (opme: OpmeItem) => {
     setEditingOpme(opme);
@@ -79,7 +117,7 @@ export function OpmeTab() {
     if (!searchTerm.trim()) return solicitacao.opmeItems;
     const term = searchTerm.toLowerCase();
     return solicitacao.opmeItems.filter(
-      (item: any) =>
+      (item) =>
         item.name?.toLowerCase().includes(term) ||
         getManufacturerNames(item).some((name) =>
           name.toLowerCase().includes(term),
@@ -217,7 +255,7 @@ export function OpmeTab() {
       {(hasOpme === true || hasOpme === null) && (
         <div className="flex-1 overflow-auto">
           {filteredOpmeItems.length > 0 ? (
-            filteredOpmeItems.map((material: any) => {
+            filteredOpmeItems.map((material) => {
               const manufacturers = padOpmeDisplayNames(
                 getManufacturerNames(material),
               );
@@ -226,7 +264,7 @@ export function OpmeTab() {
                   (s: { name?: string }) => s.name ?? "",
                 ),
               );
-              const expanded = isExpanded(material.id);
+              const expanded = isExpanded(String(material.id));
               const isFullyAuthorized =
                 showColorCoding &&
                 material.authorizedQuantity != null &&
@@ -243,7 +281,7 @@ export function OpmeTab() {
                     className={`flex items-center w-full gap-3 px-4 py-3 border-b border-neutral-100 ${headerBg}`}
                   >
                     <button
-                      onClick={() => toggleItem(material.id)}
+                      onClick={() => toggleItem(String(material.id))}
                       className={`w-6 h-6 flex items-center justify-center transition-transform flex-shrink-0 ${
                         expanded ? "rotate-90" : "rotate-0"
                       }`}
@@ -281,7 +319,7 @@ export function OpmeTab() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEdit(material);
+                            handleEdit(toOpmeItem(material, solicitacao.id));
                           }}
                           className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
                           aria-label="Editar material"
@@ -294,9 +332,9 @@ export function OpmeTab() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(material.id);
+                            handleDelete(String(material.id));
                           }}
-                          disabled={isDeleting === material.id}
+                          disabled={isDeleting === String(material.id)}
                           className="w-8 h-8 flex items-center justify-center rounded hover:bg-red-50 transition-colors disabled:opacity-50"
                           aria-label="Remover material"
                         >

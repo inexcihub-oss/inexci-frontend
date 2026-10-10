@@ -4,19 +4,9 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { resolveHome } from "@/lib/permissions";
+import { hasStoredSession } from "@/lib/session-storage";
 
 const ALLOWED_WHILE_AUTHENTICATED = ["/confirmar-email"];
-
-function hasLocalSessionHint(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    const raw = localStorage.getItem("user");
-    if (!raw || raw === "undefined" || raw === "null") return false;
-    return !!JSON.parse(raw)?.id;
-  } catch {
-    return false;
-  }
-}
 
 export function RedirectIfAuthenticated({
   children,
@@ -32,7 +22,7 @@ export function RedirectIfAuthenticated({
   );
 
   useEffect(() => {
-    setHasSessionHint(hasLocalSessionHint());
+    setHasSessionHint(hasStoredSession());
   }, []);
 
   useEffect(() => {

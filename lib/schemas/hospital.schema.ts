@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { emailOptionalSchema, phoneOptionalSchema } from "./shared";
+import {
+  cnpjOptionalSchema,
+  emailOptionalSchema,
+  phoneOptionalSchema,
+} from "./shared";
 
 export const createHospitalSchema = z.object({
   name: z
@@ -12,3 +16,11 @@ export const createHospitalSchema = z.object({
 });
 
 export type CreateHospitalInput = z.infer<typeof createHospitalSchema>;
+
+export const newHospitalSchema = createHospitalSchema.extend({
+  cnpj: cnpjOptionalSchema,
+  city: z.string().trim().optional(),
+  state: z.string().optional(),
+});
+
+export type NewHospitalInput = z.infer<typeof newHospitalSchema>;

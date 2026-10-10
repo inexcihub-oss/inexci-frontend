@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
+
+function render(ui: ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return rtlRender(
+    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+  );
+}
 import { Permission } from "@/lib/permissions";
 import { ProcedureModel } from "./types";
 
@@ -32,7 +43,9 @@ vi.mock("@/services/surgery-request.service", () => ({
   },
 }));
 
-let authState = { can: (p: Permission) => p === Permission.SOLICITACOES };
+let authState: { can: (p: Permission) => boolean } = {
+  can: (p) => p === Permission.SOLICITACOES,
+};
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));

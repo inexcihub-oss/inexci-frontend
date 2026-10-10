@@ -11,7 +11,7 @@ import {
 } from "@/services/notification.service";
 import { logger } from "@/lib/logger";
 import { useNotifications, useClickOutside } from "@/hooks";
-import { uploadService } from "@/services/upload.service";
+import { useUserAvatarUrl } from "@/hooks/useUserAvatarUrl";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn, getInitials, getAvatarColor } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -28,7 +28,7 @@ export default function MobileHeaderActions() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const { unreadCount, setUnreadCount } = useNotifications();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const avatarUrl = useUserAvatarUrl();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -38,22 +38,6 @@ export default function MobileHeaderActions() {
     isNotificationsOpen,
   );
   useClickOutside(userMenuRef, () => setIsUserMenuOpen(false), isUserMenuOpen);
-
-  useEffect(() => {
-    const raw = user?.avatarUrl;
-    if (!raw) {
-      setAvatarUrl(null);
-      return;
-    }
-    if (raw.startsWith("http://") || raw.startsWith("https://")) {
-      setAvatarUrl(raw);
-    } else {
-      uploadService
-        .getSignedUrl(raw)
-        .then(setAvatarUrl)
-        .catch(() => setAvatarUrl(null));
-    }
-  }, [user?.avatarUrl]);
 
   useEffect(() => {
     setIsNotificationsOpen(false);

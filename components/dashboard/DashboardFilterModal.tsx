@@ -11,7 +11,7 @@ import Image from "next/image";
 import { hospitalService } from "@/services/hospital.service";
 import { healthPlanService } from "@/services/health-plan.service";
 import type { ReportFilters } from "@/services/reports.service";
-import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { Modal } from "@/components/ui/Modal";
 
 type PeriodKey = "all" | "7d" | "30d" | "90d" | "12m" | "custom";
 
@@ -520,9 +520,6 @@ export function DashboardFilterModal({
   const [healthPlans, setHealthPlans] = useState<
     { id: string; name: string }[]
   >([]);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
-    useSwipeToClose(onClose);
 
   useEffect(() => {
     if (isOpen) setDraft(currentFilters);
@@ -543,14 +540,6 @@ export function DashboardFilterModal({
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [isOpen, onClose]);
-
   const handleClear = () => {
     setDraft(DEFAULT_DASHBOARD_FILTERS);
     onClear();
@@ -561,147 +550,108 @@ export function DashboardFilterModal({
     onClose();
   };
 
-  if (!isOpen) return null;
-
-  const isDragging = dragY > 0;
+  const footer = (
+    <div className="flex-none bg-white px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 flex items-center justify-between">
+      <button
+        type="button"
+        onClick={handleClear}
+        className="text-xs md:text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
+      >
+        Limpar filtros
+      </button>
+      <button
+        type="button"
+        onClick={handleApply}
+        className="ds-btn-primary"
+      >
+        Mostrar resultados
+      </button>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 z-60 flex flex-col justify-end sm:flex-row sm:justify-end">
-      <div
-        className="absolute inset-0 bg-black/30"
-        style={{ opacity: isDragging ? Math.max(0.2, 1 - dragY / 300) : 1 }}
-        onClick={onClose}
-      />
-
-      <div
-        ref={panelRef}
-        className="relative z-10 w-full max-h-[92dvh] sm:max-h-full sm:w-[420px] sm:max-w-full sm:h-full bg-white flex flex-col shadow-2xl rounded-t-2xl sm:rounded-none animate-slide-up sm:animate-slide-in-right mobile-sheet-offset"
-        style={
-          isDragging
-            ? { transform: `translateY(${dragY}px)`, transition: "none" }
-            : undefined
-        }
-      >
-        <div
-          className="flex-none flex justify-center pt-3 sm:hidden cursor-grab active:cursor-grabbing touch-none"
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
-        </div>
-
-        <div className="flex-none flex items-center justify-between px-4 py-3 md:px-6 md:py-5 border-b border-neutral-100">
-          <h2 className="ds-modal-title">Filtros</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors text-neutral-500"
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path
-                d="M14 4L4 14M4 4l10 10"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6 md:py-4 space-y-3 md:space-y-5">
-          <div>
-            <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
-              Período
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {PERIOD_OPTIONS.map((opt) => (
-                <PillToggle
-                  key={opt.key}
-                  label={opt.label}
-                  selected={draft.period === opt.key}
-                  onClick={() =>
-                    setDraft((d) => ({
-                      ...d,
-                      period: opt.key,
-                      customFrom: null,
-                      customTo: null,
-                    }))
-                  }
-                />
-              ))}
-            </div>
-          </div>
-
-          {draft.period === "custom" && (
-            <CollapsibleSection title="Data de criação">
-              <Calendar
-                from={draft.customFrom}
-                to={draft.customTo}
-                onChange={(from, to) =>
-                  setDraft((d) => ({ ...d, customFrom: from, customTo: to }))
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Filtros"
+      variant="drawer"
+      footer={footer}
+    >
+      <div className="px-4 py-3 md:px-6 md:py-4 space-y-3 md:space-y-5">
+        <div>
+          <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
+            Período
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {PERIOD_OPTIONS.map((opt) => (
+              <PillToggle
+                key={opt.key}
+                label={opt.label}
+                selected={draft.period === opt.key}
+                onClick={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    period: opt.key,
+                    customFrom: null,
+                    customTo: null,
+                  }))
                 }
               />
-              {(draft.customFrom || draft.customTo) && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDraft((d) => ({
-                      ...d,
-                      customFrom: null,
-                      customTo: null,
-                    }))
-                  }
-                  className="mt-3 text-xs text-neutral-500 hover:text-neutral-800 underline"
-                >
-                  Limpar datas
-                </button>
-              )}
-            </CollapsibleSection>
-          )}
-
-          {hospitals.length > 0 && (
-            <CollapsibleSection title="Hospital">
-              <SearchableSingleSelect
-                options={hospitals}
-                selected={draft.hospitalId}
-                onSelect={(id) => setDraft((d) => ({ ...d, hospitalId: id }))}
-                placeholder="Pesquisar hospital..."
-              />
-            </CollapsibleSection>
-          )}
-
-          {healthPlans.length > 0 && (
-            <CollapsibleSection title="Convênio">
-              <SearchableSingleSelect
-                options={healthPlans}
-                selected={draft.healthPlanId}
-                onSelect={(id) => setDraft((d) => ({ ...d, healthPlanId: id }))}
-                placeholder="Pesquisar convênio..."
-              />
-            </CollapsibleSection>
-          )}
-
-          <div className="h-4" />
+            ))}
+          </div>
         </div>
 
-        <div className="flex-none px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={handleClear}
-            className="text-xs md:text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
-          >
-            Limpar filtros
-          </button>
-          <button
-            type="button"
-            onClick={handleApply}
-            className="ds-btn-primary"
-          >
-            Mostrar resultados
-          </button>
-        </div>
+        {draft.period === "custom" && (
+          <CollapsibleSection title="Data de criação">
+            <Calendar
+              from={draft.customFrom}
+              to={draft.customTo}
+              onChange={(from, to) =>
+                setDraft((d) => ({ ...d, customFrom: from, customTo: to }))
+              }
+            />
+            {(draft.customFrom || draft.customTo) && (
+              <button
+                type="button"
+                onClick={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    customFrom: null,
+                    customTo: null,
+                  }))
+                }
+                className="mt-3 text-xs text-neutral-500 hover:text-neutral-800 underline"
+              >
+                Limpar datas
+              </button>
+            )}
+          </CollapsibleSection>
+        )}
+
+        {hospitals.length > 0 && (
+          <CollapsibleSection title="Hospital">
+            <SearchableSingleSelect
+              options={hospitals}
+              selected={draft.hospitalId}
+              onSelect={(id) => setDraft((d) => ({ ...d, hospitalId: id }))}
+              placeholder="Pesquisar hospital..."
+            />
+          </CollapsibleSection>
+        )}
+
+        {healthPlans.length > 0 && (
+          <CollapsibleSection title="Convênio">
+            <SearchableSingleSelect
+              options={healthPlans}
+              selected={draft.healthPlanId}
+              onSelect={(id) => setDraft((d) => ({ ...d, healthPlanId: id }))}
+              placeholder="Pesquisar convênio..."
+            />
+          </CollapsibleSection>
+        )}
+
+        <div className="h-4" />
       </div>
-    </div>
+    </Modal>
   );
 }

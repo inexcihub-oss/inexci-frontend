@@ -1,15 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { supplierService } from "@/services/supplier.service";
+import { registryKeys } from "@/lib/query-keys/registry";
+import { createRegistryQuery } from "./createRegistryQuery";
 
-export const SUPPLIERS_QUERY_KEY = ["suppliers"] as const;
-const REGISTRY_STALE_TIME_MS = 1000 * 60 * 20;
+export const SUPPLIERS_QUERY_KEY = registryKeys.suppliers();
 
-export function useSuppliers(options?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: SUPPLIERS_QUERY_KEY,
-    queryFn: () => supplierService.getAll(),
-    staleTime: REGISTRY_STALE_TIME_MS,
-    gcTime: 1000 * 60 * 30,
-    enabled: options?.enabled,
-  });
-}
+export const useSuppliers = createRegistryQuery(SUPPLIERS_QUERY_KEY, () =>
+  supplierService.getAll(),
+);

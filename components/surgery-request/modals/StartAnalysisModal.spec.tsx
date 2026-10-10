@@ -163,3 +163,55 @@ describe("StartAnalysisModal — documento opcional", () => {
     );
   });
 });
+
+describe("StartAnalysisModal — formulário (Zod)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    startAnalysisMock.mockResolvedValue({});
+  });
+
+  function renderModal() {
+    render(
+      <StartAnalysisModal
+        isOpen
+        onClose={vi.fn()}
+        surgeryRequestId="sc-1"
+        onSuccess={vi.fn()}
+      />,
+    );
+  }
+
+  it("não chama a API sem o nº da solicitação e marca o campo", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.click(screen.getByRole("button", { name: "Atualizar status" }));
+
+    expect(startAnalysisMock).not.toHaveBeenCalled();
+    expect(showToastMock).toHaveBeenCalledWith(
+      "Preencha: Nº da solicitação",
+      "error",
+    );
+    expect(screen.getByLabelText(/Nº da solicitação/)).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+  });
+
+  it("envia as cotações preenchidas na posição certa", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.type(screen.getByLabelText(/Nº da solicitação/), " 123 ");
+    const propostas = screen.getAllByLabelText("Nº da proposta");
+    await user.type(propostas[1], "P-2");
+    await user.click(screen.getByRole("button", { name: "Atualizar status" }));
+
+    await waitFor(() => expect(startAnalysisMock).toHaveBeenCalled());
+    const payload = startAnalysisMock.mock.calls[0][1];
+    expect(payload.requestNumber).toBe("123");
+    expect(payload.quotation2Number).toBe("P-2");
+    expect(payload).not.toHaveProperty("quotation1Number");
+    expect(payload).not.toHaveProperty("quotation2ReceivedAt");
+  });
+});

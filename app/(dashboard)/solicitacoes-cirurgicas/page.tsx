@@ -24,6 +24,7 @@ import {
   STATUS_NUMBER_TO_STRING,
   SurgeryRequestListItem,
 } from "@/services/surgery-request.service";
+import { surgeryRequestListName } from "@/lib/surgery-request-list";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useDebounce } from "@/hooks";
 import { SearchInput } from "@/components/ui";
@@ -40,7 +41,9 @@ import { NoActiveDoctorModal } from "@/components/surgery-request/NoActiveDoctor
 import { UploadDocumentModal } from "@/components/surgery-request/UploadDocumentModal";
 import { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
+import { useDocExtractionJob } from "@/hooks/useDocExtractionJob";
+import { surgeryRequestKeys } from "@/lib/query-keys";
+import { ALL_STATUS_LABELS } from "@/lib/surgery-request-status";
 import {
   SC_FROM_DOCUMENT_EXTRACTION_KEY,
   setScFromDocumentStorage,
@@ -48,24 +51,18 @@ import {
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 
-const INITIAL_COLUMNS: KanbanColumn[] = [
-  { id: "pendente", title: "Pendente", status: "Pendente", cards: [] },
-  { id: "enviada", title: "Enviada", status: "Enviada", cards: [] },
-  { id: "em-analise", title: "Em Análise", status: "Em Análise", cards: [] },
-  {
-    id: "em-agendamento",
-    title: "Em Agendamento",
-    status: "Em Agendamento",
-    cards: [],
-  },
-  { id: "agendada", title: "Agendada", status: "Agendada", cards: [] },
-  { id: "realizada", title: "Realizada", status: "Realizada", cards: [] },
-  { id: "faturada", title: "Faturada", status: "Faturada", cards: [] },
-  { id: "finalizada", title: "Finalizada", status: "Finalizada", cards: [] },
-  { id: "encerrada", title: "Encerrada", status: "Encerrada", cards: [] },
-];
+const INITIAL_COLUMNS: KanbanColumn[] = ALL_STATUS_LABELS.map((label) => ({
+  id: label
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-"),
+  title: label,
+  status: label,
+  cards: [],
+}));
 
-const KANBAN_QUERY_KEY = ["surgery-requests", "kanban"] as const;
+const KANBAN_QUERY_KEY = surgeryRequestKeys.kanban();
 
 export default function ProcedimentosCirurgicos() {
   const router = useRouter();
@@ -88,7 +85,7 @@ export default function ProcedimentosCirurgicos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isUploadDocumentOpen, setIsUploadDocumentOpen] = useState(false);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
@@ -165,58 +162,14 @@ export default function ProcedimentosCirurgicos() {
     [router],
   );
 
-  useEffect(() => {
-    if (!docExtractionJobId) return;
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const status =
-          await surgeryRequestService.getExtractFromDocumentStatus(
-            docExtractionJobId,
-          );
-
-        if (cancelled) return;
-
-        if (status.status === "done") {
-          setScFromDocumentStorage(
-            SC_FROM_DOCUMENT_EXTRACTION_KEY,
-            status.result,
-          );
-          router.replace("/solicitacoes-cirurgicas/nova-via-documento");
-          return;
-        }
-
-        if (status.status === "error") {
-          showToast(
-            status.message ||
-              "Não foi possível concluir a análise do documento. Tente novamente.",
-            "error",
-          );
-          router.replace("/solicitacoes-cirurgicas");
-          return;
-        }
-
-        showToast(
-          "A análise do documento ainda está em andamento. Você receberá uma notificação quando concluir.",
-          "info",
-        );
-        router.replace("/solicitacoes-cirurgicas");
-      } catch {
-        if (cancelled) return;
-        showToast(
-          "Não foi possível recuperar a análise do documento agora. Tente novamente.",
-          "error",
-        );
-        router.replace("/solicitacoes-cirurgicas");
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [docExtractionJobId, router, showToast]);
+  useDocExtractionJob(docExtractionJobId, {
+    notify: showToast,
+    onDone: (result) => {
+      setScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_KEY, result);
+      router.replace("/solicitacoes-cirurgicas/nova-via-documento");
+    },
+    onNotDone: () => router.replace("/solicitacoes-cirurgicas"),
+  });
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -258,18 +211,6 @@ export default function ProcedimentosCirurgicos() {
     const mappedRequests = records.map((record: SurgeryRequestListItem) => {
       const status = STATUS_NUMBER_TO_STRING[record.status] || "Pendente";
 
-      const getProcedureName = () => {
-        const isIndication = record["is_indication"] as boolean | undefined;
-        const indicationName = record["indication_name"] as string | undefined;
-        if (isIndication && indicationName) {
-          return indicationName;
-        }
-        if (record.procedure?.name) {
-          return record.procedure.name;
-        }
-        return "Procedimento não especificado";
-      };
-
       const getDoctor = () => {
         if (record.doctor) {
           return {
@@ -281,10 +222,7 @@ export default function ProcedimentosCirurgicos() {
       };
 
       const createdAtIso = record.createdAt;
-      const lastStatusChangedAt =
-        record.lastStatusChangedAt ??
-        record.last_status_changed_at ??
-        undefined;
+      const lastStatusChangedAt = record.lastStatusChangedAt ?? undefined;
       const updatedAt =
         record.updatedAt && !Number.isNaN(Date.parse(record.updatedAt))
           ? record.updatedAt
@@ -303,7 +241,7 @@ export default function ProcedimentosCirurgicos() {
           name: record.patient?.name ?? "Não informado",
           initials: getInitials(record.patient?.name ?? ""),
         },
-        procedureName: getProcedureName(),
+        procedureName: surgeryRequestListName(record),
         doctor: getDoctor(),
         priority: (record.priority as PriorityLevel) || PRIORITY.MEDIUM,
         pendenciesCount: record.pendenciesCount || 0,
@@ -855,9 +793,6 @@ export default function ProcedimentosCirurgicos() {
         onSuccess={handleUploadDocumentSuccess}
       />
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </PageContainer>
   );
 }

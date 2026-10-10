@@ -1,10 +1,11 @@
 "use client";
 
+import { Modal } from "@/components/ui/Modal";
 import { useState } from "react";
-import { X } from "lucide-react";
 import {
   patientService,
   CreatePatientPayload,
+  Patient,
 } from "@/services/patient.service";
 import { getApiErrorMessage } from "@/lib/http-error";
 import Input from "@/components/ui/Input";
@@ -13,13 +14,12 @@ import { createPatientQuickSchema } from "@/lib/schemas/patient.schema";
 import { unmask } from "@/lib/masks";
 import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 
 interface CreatePatientModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (patient: any) => void;
+  onSuccess: (patient: Patient) => void;
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -37,7 +37,7 @@ export function CreatePatientModal({
   const [loading, setLoading] = useState(false);
   const { emTour } = useOnboarding();
   const [error, setError] = useState("");
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
   const form = useZodForm({
     schema: createPatientQuickSchema,
@@ -77,81 +77,63 @@ export function CreatePatientModal({
     (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
   );
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      disableClose={loading}
+      title="Novo paciente"
+      size="sm"
+    >
+      <form onSubmit={onSubmit} noValidate>
+        <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
+          <Input
+            label="Nome completo"
+            placeholder="Nome do paciente"
+            {...form.getFieldProps("name")}
+          />
 
-      <div className="relative bg-white rounded-xl shadow-xl w-[480px] mx-4 flex flex-col">
-        <div className="flex items-center justify-between px-6 pt-6 pb-5">
-          <h2 className="ds-modal-title">Novo paciente</h2>
+          <Input
+            label="CPF"
+            mask="cpf"
+            placeholder="123.456.789-00"
+            {...form.getFieldProps("cpf")}
+          />
+
+          <Input
+            label="Telefone (opcional)"
+            type="tel"
+            mask="phone"
+            placeholder="(21) 98765-4321"
+            {...form.getFieldProps("phone")}
+          />
+
+          <Input
+            label="E-mail (opcional)"
+            type="email"
+            placeholder="paciente@mail.com"
+            {...form.getFieldProps("email")}
+          />
+
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Obs.: Não será possível notificar o paciente sem os dados de
+            telefone e e-mail.
+          </p>
+
+          {error && (
+            <p className="text-sm text-red-500 text-center">{error}</p>
+          )}
+        </div>
+        <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4 border-t border-gray-200">
           <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Fechar"
+            type="submit"
+            disabled={loading || emTour}
+            className="ds-btn-primary"
           >
-            <X className="w-6 h-6" />
+            {loading ? "Adicionando..." : "Adicionar paciente"}
           </button>
         </div>
-        <div className="h-px bg-gray-200" />
-
-        <form onSubmit={onSubmit} noValidate>
-          <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
-            <Input
-              label="Nome completo"
-              placeholder="Nome do paciente"
-              {...form.getFieldProps("name")}
-            />
-
-            <Input
-              label="CPF"
-              mask="cpf"
-              placeholder="123.456.789-00"
-              {...form.getFieldProps("cpf")}
-            />
-
-            <Input
-              label="Telefone (opcional)"
-              type="tel"
-              mask="phone"
-              placeholder="(21) 98765-4321"
-              {...form.getFieldProps("phone")}
-            />
-
-            <Input
-              label="E-mail (opcional)"
-              type="email"
-              placeholder="paciente@mail.com"
-              {...form.getFieldProps("email")}
-            />
-
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Obs.: Não será possível notificar o paciente sem os dados de
-              telefone e e-mail.
-            </p>
-
-            {error && (
-              <p className="text-sm text-red-500 text-center">{error}</p>
-            )}
-          </div>
-
-          <div className="h-px bg-gray-200" />
-          <div className="flex items-center justify-end px-4 py-3 md:px-6 md:py-4">
-            <button
-              type="submit"
-              disabled={loading || emTour}
-              className="ds-btn-primary"
-            >
-              {loading ? "Adicionando..." : "Adicionar paciente"}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
-    </div>
+      </form>
+    </Modal>
   );
 }

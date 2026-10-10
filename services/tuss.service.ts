@@ -17,8 +17,6 @@ export interface SurgeryRequestTussItem {
   authorizedQuantity?: number;
 }
 
-export interface SurgeryRequestProcedure extends SurgeryRequestTussItem {}
-
 export interface CreateSurgeryRequestProcedureData {
   surgeryRequestId: string | number;
   procedures: {
@@ -40,17 +38,6 @@ export const tussService = {
       }
       const response = await api.get("/tuss", { params });
       return response.data || [];
-    } catch (error: unknown) {
-      logger.error("Erro ao buscar códigos TUSS", error);
-      throw error;
-    }
-  },
-
-  async searchTussCodes(search?: string): Promise<TussCode[]> {
-    try {
-      const params = search ? { search } : {};
-      const response = await api.get("/procedures", { params });
-      return response.data.records || response.data || [];
     } catch (error: unknown) {
       logger.error("Erro ao buscar códigos TUSS", error);
       throw error;

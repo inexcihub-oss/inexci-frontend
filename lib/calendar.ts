@@ -1,5 +1,6 @@
 import { Appointment, AppointmentStatus } from "@/services/appointment.service";
 import { SurgeryRequestListItem } from "@/services/surgery-request.service";
+import { surgeryRequestListName } from "@/lib/surgery-request-list";
 
 export const MONTHS = [
   "Janeiro",
@@ -137,10 +138,7 @@ export function surgeryToEvent(
     end: new Date(start.getTime() + DEFAULT_SURGERY_MINUTES * 60_000),
     allDay,
     title: s.patient?.name ?? "Cirurgia",
-    subtitle:
-      s.procedure?.name ??
-      (s.tussProcedure?.description || s.procedureName) ??
-      "Cirurgia",
+    subtitle: surgeryRequestListName(s, "Cirurgia"),
     doctorId: s.doctor?.id,
     surgery: s,
   };

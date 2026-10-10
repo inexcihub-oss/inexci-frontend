@@ -1,15 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
 import { hospitalService } from "@/services/hospital.service";
+import { registryKeys } from "@/lib/query-keys/registry";
+import { createRegistryQuery, findRegistryItem } from "./createRegistryQuery";
 
-export const HOSPITALS_QUERY_KEY = ["hospitals"] as const;
-const REGISTRY_STALE_TIME_MS = 1000 * 60 * 20;
+export const HOSPITALS_QUERY_KEY = registryKeys.hospitals();
 
-export function useHospitals(options?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: HOSPITALS_QUERY_KEY,
-    queryFn: () => hospitalService.getAll(),
-    staleTime: REGISTRY_STALE_TIME_MS,
-    gcTime: 1000 * 60 * 30,
-    enabled: options?.enabled,
-  });
+export const useHospitals = createRegistryQuery(HOSPITALS_QUERY_KEY, () =>
+  hospitalService.getAll(),
+);
+
+export function useHospital(id: string | null | undefined) {
+  const query = useHospitals({ enabled: !!id });
+  return { ...query, hospital: findRegistryItem(query.data, id) };
 }

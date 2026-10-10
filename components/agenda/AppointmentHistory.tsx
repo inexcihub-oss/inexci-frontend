@@ -17,9 +17,9 @@ import {
   APPOINTMENT_STATUS_LABELS,
 } from "@/services/appointment.service";
 import { getApiErrorMessage } from "@/lib/http-error";
+import { appointmentKeys } from "@/lib/query-keys";
 
-export const appointmentActivitiesKey = (id: string) =>
-  ["appointments", id, "activities"] as const;
+export const appointmentActivitiesKey = appointmentKeys.activities;
 
 const ICONE: Record<AppointmentActivityType, React.ReactNode> = {
   created: <CalendarPlus className="w-3.5 h-3.5" />,

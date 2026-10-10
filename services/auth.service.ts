@@ -3,10 +3,22 @@ import { AuthResponse, LoginCredentials, RegisterData, User } from "@/types";
 import { clearAvatarCache } from "@/lib/avatar-cache";
 import {
   clearAccessToken,
-  getAccessToken,
   setAccessToken,
 } from "@/lib/auth-token";
 import { clearSessionFlag, markSession } from "@/lib/session-flag";
+import {
+  clearStoredUser,
+  parseStoredUser,
+  writeStoredUser,
+} from "@/lib/session-storage";
+
+function storeUserSnapshot(user: User): void {
+  const { cpf, ...userWithoutSensitiveData } = user;
+  writeStoredUser({
+    ...userWithoutSensitiveData,
+    cpfMask: cpf ? `***.***.***-${cpf.slice(-2)}` : undefined,
+  });
+}
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
@@ -16,17 +28,7 @@ export const authService = {
       setAccessToken(data.access_token);
       markSession();
 
-      localStorage.removeItem("token");
-      localStorage.removeItem("token_timestamp");
-
-      const { cpf, ...userWithoutSensitiveData } = data.user;
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          ...userWithoutSensitiveData,
-          cpfMask: cpf ? `***.***.***-${cpf.slice(-2)}` : undefined,
-        }),
-      );
+      storeUserSnapshot(data.user);
     }
 
     return data;
@@ -59,14 +61,7 @@ export const authService = {
     const { data } = await api.get<User>("/auth/me");
 
     if (typeof window !== "undefined") {
-      const { cpf, ...userWithoutSensitiveData } = data;
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          ...userWithoutSensitiveData,
-          cpfMask: cpf ? `***.***.***-${cpf.slice(-2)}` : undefined,
-        }),
-      );
+      storeUserSnapshot(data);
     }
 
     return data;
@@ -84,39 +79,20 @@ export const authService = {
       }
       clearAccessToken();
       clearSessionFlag();
-      localStorage.removeItem("user");
+      clearStoredUser();
     }
-  },
-
-  isAuthenticated(): boolean {
-    if (typeof window === "undefined") return false;
-    return !!getAccessToken();
   },
 
   getCurrentUser(): User | null {
     if (typeof window === "undefined") return null;
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("token_timestamp");
-
-    try {
-      const userStr = localStorage.getItem("user");
-      if (!userStr || userStr === "undefined" || userStr === "null") {
-        return null;
-      }
-
-      const user = JSON.parse(userStr);
-
-      if (!user.id || !user.email) {
-        throw new Error("Invalid user data structure");
-      }
-
-      return user;
-    } catch (_error) {
-      localStorage.removeItem("user");
+    const stored = parseStoredUser<User>();
+    if (stored.kind === "ok" && stored.user.email) return stored.user;
+    if (stored.kind !== "empty") {
+      clearStoredUser();
       clearAccessToken();
-      return null;
     }
+    return null;
   },
 
   async requestPasswordReset(email: string): Promise<void> {
@@ -141,6 +117,13 @@ export const authService = {
       resetToken: resetToken.trim(),
       password: newPassword,
     });
+  },
+
+  async updatePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    await api.put("/auth/changePassword", { currentPassword, newPassword });
   },
 
   async verifyEmail(

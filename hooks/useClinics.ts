@@ -1,15 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { clinicService } from "@/services/clinic.service";
+import { registryKeys } from "@/lib/query-keys/registry";
+import { createRegistryQuery } from "./createRegistryQuery";
 
-export const CLINICS_QUERY_KEY = ["clinics"] as const;
-const REGISTRY_STALE_TIME_MS = 1000 * 60 * 20;
+export const CLINICS_QUERY_KEY = registryKeys.clinics();
 
-export function useClinics(options?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: CLINICS_QUERY_KEY,
-    queryFn: () => clinicService.getAll(),
-    staleTime: REGISTRY_STALE_TIME_MS,
-    gcTime: 1000 * 60 * 30,
-    enabled: options?.enabled,
-  });
-}
+export const useClinics = createRegistryQuery(CLINICS_QUERY_KEY, () =>
+  clinicService.getAll(),
+);

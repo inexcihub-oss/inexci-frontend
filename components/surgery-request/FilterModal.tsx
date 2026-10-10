@@ -4,15 +4,17 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useRef,
   useMemo,
 } from "react";
 import Image from "next/image";
+import { createPortal } from "react-dom";
+import { useAnchoredDropdown } from "@/hooks/useAnchoredDropdown";
 import {
   SurgeryRequestStatus,
   PriorityLevel,
 } from "@/types/surgery-request.types";
-import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { Modal } from "@/components/ui/Modal";
+import { ALL_STATUS_LABELS } from "@/lib/surgery-request-status";
 
 export interface FilterState {
   statuses: SurgeryRequestStatus[];
@@ -66,18 +68,6 @@ interface FilterModalProps {
   availableSuppliers?: { id: string; name: string }[];
   availableClinics?: { id: string; name: string }[];
 }
-
-const ALL_STATUSES: SurgeryRequestStatus[] = [
-  "Pendente",
-  "Enviada",
-  "Em Análise",
-  "Em Agendamento",
-  "Agendada",
-  "Realizada",
-  "Faturada",
-  "Finalizada",
-  "Encerrada",
-];
 
 const PRIORITY_OPTIONS: { value: PriorityLevel; label: string }[] = [
   { value: 1, label: "Baixa" },
@@ -224,20 +214,9 @@ function SearchableMultiSelect({
 }: SearchableMultiSelectProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const { anchorRef, dropdownRef, position } = useAnchoredDropdown(open, () =>
+    setOpen(false),
+  );
 
   const filtered = useMemo(
     () =>
@@ -251,8 +230,9 @@ function SearchableMultiSelect({
   );
 
   return (
-    <div ref={containerRef} className="relative">
+    <div className="relative">
       <div
+        ref={anchorRef}
         className={`flex items-center gap-2 min-h-10 px-3 py-2 border rounded-xl cursor-text transition-colors ${
           open
             ? "border-teal-600 ring-1 ring-teal-600/20"
@@ -321,8 +301,20 @@ function SearchableMultiSelect({
         </div>
       )}
 
-      {open && (
-        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+      {open &&
+        typeof window !== "undefined" &&
+        createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: "fixed",
+            top: position.top,
+            left: position.left,
+            width: position.width,
+            zIndex: 9999,
+          }}
+          className="mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-y-auto"
+        >
           {filtered.length === 0 ? (
             <p className="text-xs md:text-sm text-neutral-400 text-center py-4">
               Nenhum resultado
@@ -363,7 +355,8 @@ function SearchableMultiSelect({
               );
             })
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -531,25 +524,12 @@ export function FilterModal({
   availableClinics = [],
 }: FilterModalProps) {
   const [draft, setDraft] = useState<FilterState>(currentFilters);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
-    useSwipeToClose(onClose);
 
   useEffect(() => {
     if (isOpen) {
       setDraft(currentFilters);
     }
   }, [isOpen, currentFilters]);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) {
-      document.addEventListener("keydown", handleKey);
-    }
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [isOpen, onClose]);
 
   function toggleStatus(status: SurgeryRequestStatus) {
     setDraft((d) => ({
@@ -633,194 +613,155 @@ export function FilterModal({
     onClose();
   };
 
-  if (!isOpen) return null;
-
-  const isDragging = dragY > 0;
+  const footer = (
+    <div className="flex-none bg-white px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 flex items-center justify-between">
+      <button
+        type="button"
+        onClick={handleClear}
+        className="text-xs md:text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
+      >
+        Limpar filtros
+      </button>
+      <button
+        type="button"
+        onClick={handleApply}
+        className="ds-btn-primary"
+      >
+        Mostrar resultados
+      </button>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 z-60 flex flex-col justify-end sm:flex-row sm:justify-end">
-      <div
-        className="absolute inset-0 bg-black/30"
-        style={{ opacity: isDragging ? Math.max(0.2, 1 - dragY / 300) : 1 }}
-        onClick={onClose}
-      />
-
-      <div
-        ref={panelRef}
-        className="relative z-10 w-full max-h-[92dvh] sm:max-h-full sm:w-[420px] sm:max-w-full sm:h-full bg-white flex flex-col shadow-2xl rounded-t-2xl sm:rounded-none animate-slide-up sm:animate-slide-in-right mobile-sheet-offset"
-        style={
-          isDragging
-            ? { transform: `translateY(${dragY}px)`, transition: "none" }
-            : undefined
-        }
-      >
-        <div
-          className="flex-none flex justify-center pt-3 sm:hidden cursor-grab active:cursor-grabbing touch-none"
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Filtros"
+      variant="drawer"
+      footer={footer}
+    >
+      <div className="px-4 py-3 md:px-6 md:py-4 space-y-3 md:space-y-5">
+        <div>
+          <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
+            Status da solicitação
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {ALL_STATUS_LABELS.map((s) => (
+              <PillToggle
+                key={s}
+                label={s}
+                selected={draft.statuses.includes(s)}
+                onClick={() => toggleStatus(s)}
+              />
+            ))}
+          </div>
         </div>
 
-        <div className="flex-none flex items-center justify-between px-4 py-3 md:px-6 md:py-5 border-b border-neutral-100">
-          <h2 className="ds-modal-title">Filtros</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors text-neutral-500"
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path
-                d="M14 4L4 14M4 4l10 10"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
+        <div>
+          <div className="h-px bg-neutral-100 mb-4" />
+          <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
+            Prioridade
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {PRIORITY_OPTIONS.map((p) => (
+              <PillToggle
+                key={p.value}
+                label={p.label}
+                selected={draft.priorities.includes(p.value)}
+                onClick={() => togglePriority(p.value)}
               />
-            </svg>
-          </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6 md:py-4 space-y-3 md:space-y-5">
-          <div>
-            <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
-              Status da solicitação
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {ALL_STATUSES.map((s) => (
-                <PillToggle
-                  key={s}
-                  label={s}
-                  selected={draft.statuses.includes(s)}
-                  onClick={() => toggleStatus(s)}
-                />
-              ))}
-            </div>
+        <div>
+          <div className="h-px bg-neutral-100 mb-4" />
+          <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
+            Pendências
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {PENDENCY_OPTIONS.map((p) => (
+              <PillToggle
+                key={p.value}
+                label={p.label}
+                selected={draft.pendencies.includes(p.value)}
+                onClick={() => togglePendency(p.value)}
+              />
+            ))}
           </div>
+        </div>
 
-          <div>
-            <div className="h-px bg-neutral-100 mb-4" />
-            <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
-              Prioridade
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {PRIORITY_OPTIONS.map((p) => (
-                <PillToggle
-                  key={p.value}
-                  label={p.label}
-                  selected={draft.priorities.includes(p.value)}
-                  onClick={() => togglePriority(p.value)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="h-px bg-neutral-100 mb-4" />
-            <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
-              Pendências
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {PENDENCY_OPTIONS.map((p) => (
-                <PillToggle
-                  key={p.value}
-                  label={p.label}
-                  selected={draft.pendencies.includes(p.value)}
-                  onClick={() => togglePendency(p.value)}
-                />
-              ))}
-            </div>
-          </div>
-
-          {availableDoctors.length > 0 && (
-            <CollapsibleSection title="Médico">
-              <SearchableMultiSelect
-                options={availableDoctors}
-                selected={draft.doctorIds}
-                onToggle={toggleDoctor}
-                placeholder="Pesquisar médico..."
-              />
-            </CollapsibleSection>
-          )}
-
-          {availableHealthPlans.length > 0 && (
-            <CollapsibleSection title="Convênios">
-              <SearchableMultiSelect
-                options={availableHealthPlans}
-                selected={draft.healthPlanIds}
-                onToggle={toggleHealthPlan}
-                placeholder="Pesquisar convênio..."
-              />
-            </CollapsibleSection>
-          )}
-
-          {availableProcedures.length > 0 && (
-            <CollapsibleSection title="Procedimentos">
-              <SearchableMultiSelect
-                options={availableProcedures}
-                selected={draft.procedureNames}
-                onToggle={toggleProcedure}
-                placeholder="Pesquisar procedimento..."
-              />
-            </CollapsibleSection>
-          )}
-
-          {availableSuppliers.length > 0 && (
-            <CollapsibleSection title="Fornecedores">
-              <SearchableMultiSelect
-                options={availableSuppliers}
-                selected={draft.supplierIds}
-                onToggle={toggleSupplier}
-                placeholder="Pesquisar fornecedor..."
-              />
-            </CollapsibleSection>
-          )}
-
-          {availableClinics.length > 0 && (
-            <CollapsibleSection title="Clínicas">
-              <SearchableMultiSelect
-                options={availableClinics}
-                selected={draft.clinicIds}
-                onToggle={toggleClinic}
-                placeholder="Pesquisar clínica..."
-              />
-            </CollapsibleSection>
-          )}
-
-          <CollapsibleSection title="Data de criação">
-            <Calendar
-              from={draft.createdAtFrom}
-              to={draft.createdAtTo}
-              onChange={(from, to) =>
-                setDraft((d) => ({
-                  ...d,
-                  createdAtFrom: from,
-                  createdAtTo: to,
-                }))
-              }
+        {availableDoctors.length > 0 && (
+          <CollapsibleSection title="Médico">
+            <SearchableMultiSelect
+              options={availableDoctors}
+              selected={draft.doctorIds}
+              onToggle={toggleDoctor}
+              placeholder="Pesquisar médico..."
             />
           </CollapsibleSection>
+        )}
 
-          <div className="h-4" />
-        </div>
+        {availableHealthPlans.length > 0 && (
+          <CollapsibleSection title="Convênios">
+            <SearchableMultiSelect
+              options={availableHealthPlans}
+              selected={draft.healthPlanIds}
+              onToggle={toggleHealthPlan}
+              placeholder="Pesquisar convênio..."
+            />
+          </CollapsibleSection>
+        )}
 
-        <div className="flex-none px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={handleClear}
-            className="text-xs md:text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
-          >
-            Limpar filtros
-          </button>
-          <button
-            type="button"
-            onClick={handleApply}
-            className="ds-btn-primary"
-          >
-            Mostrar resultados
-          </button>
-        </div>
+        {availableProcedures.length > 0 && (
+          <CollapsibleSection title="Procedimentos">
+            <SearchableMultiSelect
+              options={availableProcedures}
+              selected={draft.procedureNames}
+              onToggle={toggleProcedure}
+              placeholder="Pesquisar procedimento..."
+            />
+          </CollapsibleSection>
+        )}
+
+        {availableSuppliers.length > 0 && (
+          <CollapsibleSection title="Fornecedores">
+            <SearchableMultiSelect
+              options={availableSuppliers}
+              selected={draft.supplierIds}
+              onToggle={toggleSupplier}
+              placeholder="Pesquisar fornecedor..."
+            />
+          </CollapsibleSection>
+        )}
+
+        {availableClinics.length > 0 && (
+          <CollapsibleSection title="Clínicas">
+            <SearchableMultiSelect
+              options={availableClinics}
+              selected={draft.clinicIds}
+              onToggle={toggleClinic}
+              placeholder="Pesquisar clínica..."
+            />
+          </CollapsibleSection>
+        )}
+
+        <CollapsibleSection title="Data de criação">
+          <Calendar
+            from={draft.createdAtFrom}
+            to={draft.createdAtTo}
+            onChange={(from, to) =>
+              setDraft((d) => ({
+                ...d,
+                createdAtFrom: from,
+                createdAtTo: to,
+              }))
+            }
+          />
+        </CollapsibleSection>
+
+        <div className="h-4" />
       </div>
-    </div>
+    </Modal>
   );
 }

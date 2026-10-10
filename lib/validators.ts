@@ -97,12 +97,3 @@ export function passwordStrength(password: string | undefined | null): number {
     Boolean,
   ).length;
 }
-
-export function isValidPhone(input: string | undefined | null): boolean {
-  const d = unmask(input);
-  return d.length === 10 || d.length === 11;
-}
-
-export function isValidCep(input: string | undefined | null): boolean {
-  return unmask(input).length === 8;
-}

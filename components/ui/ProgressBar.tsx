@@ -1,4 +1,11 @@
 import { cn } from "@/lib/utils";
+import {
+  AUTHORIZED_STATUSES,
+  FLOW_STATUSES,
+  STATUS_META,
+  SurgeryRequestStatusCode,
+  isStatusIn,
+} from "@/lib/surgery-request-status";
 
 interface ProgressBarProps {
   value: number;
@@ -70,48 +77,21 @@ export function ProgressBar({
 
 interface StatusProgressBarProps {
   currentStatus: number;
-  totalStatuses?: number;
   showSteps?: boolean;
-  statusLabels?: string[];
   className?: string;
 }
 
-const defaultStatusLabels = [
-  "Pendente",
-  "Enviada",
-  "Em Análise",
-  "Em Reanálise",
-  "Autorizada",
-  "Agendada",
-  "A Faturar",
-  "Faturada",
-  "Finalizada",
-  "Cancelada",
-];
-
 export function StatusProgressBar({
   currentStatus,
-  totalStatuses: _totalStatuses = 9,
   showSteps = false,
-  statusLabels = defaultStatusLabels,
   className,
 }: StatusProgressBarProps) {
-  const isCancelled = currentStatus === 10;
-
-  const statusToProgress: Record<number, number> = {
-    1: 12.5,
-    2: 25,
-    3: 37.5,
-    4: 37.5,
-    5: 50,
-    6: 62.5,
-    7: 75,
-    8: 87.5,
-    9: 100,
-    10: 0,
-  };
-
-  const progress = statusToProgress[currentStatus] || 0;
+  const isClosed = currentStatus === SurgeryRequestStatusCode.CLOSED;
+  const position = FLOW_STATUSES.indexOf(
+    currentStatus as SurgeryRequestStatusCode,
+  );
+  const progress =
+    position < 0 ? 0 : ((position + 1) / FLOW_STATUSES.length) * 100;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -119,18 +99,23 @@ export function StatusProgressBar({
         value={progress}
         size="md"
         variant={
-          isCancelled ? "danger" : currentStatus >= 5 ? "success" : "primary"
+          isClosed
+            ? "danger"
+            : isStatusIn(currentStatus, AUTHORIZED_STATUSES)
+              ? "success"
+              : "primary"
         }
         showLabel
         labelPosition="right"
       />
       {showSteps && (
         <div className="flex justify-between text-xs text-gray-500">
-          {statusLabels.slice(0, -1).map((label, index) => (
+          {FLOW_STATUSES.map((code, index) => (
             <span
-              key={label}
+              key={code}
+              title={STATUS_META[code].label}
               className={cn(
-                index + 1 <= currentStatus && "text-primary-600 font-medium",
+                index <= position && "text-primary-600 font-medium",
               )}
             >
               {index + 1}

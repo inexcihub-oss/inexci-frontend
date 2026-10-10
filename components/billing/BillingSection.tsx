@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { billingService } from "@/services/billing.service";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,7 +20,7 @@ import { ACAO_PLANO_ABRIR_SELECAO } from "@/lib/onboarding/tour-registry";
 export function BillingSection() {
   const { subscription, subscriptionLoading, refreshSubscription } = useAuth();
   const { emTour } = useOnboarding();
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
@@ -194,9 +193,6 @@ export function BillingSection() {
         </div>
       </Modal>
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </>
   );
 }

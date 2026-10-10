@@ -11,8 +11,6 @@ import { userDoctorAccessService } from "@/services/user-doctor-access.service";
 import { availableDoctorsService } from "@/services/available-doctors.service";
 import { AvailableDoctor, UserDoctorAccess } from "@/types";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
 import { Stethoscope } from "lucide-react";
 import { logger } from "@/lib/logger";
 import { TOUR_DEMO_COLLABORATOR_ID } from "@/lib/onboarding/demo-data";
@@ -267,7 +265,7 @@ export function DoctorAccessSection({
   const [_currentAccess, setCurrentAccess] = useState<UserDoctorAccess[]>([]);
   const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
   const [originalSelectedIds, setOriginalSelectedIds] = useState<string[]>([]);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
   const mandatoryDoctorIds = useMemo(
     () => (collaboratorIsDoctor ? [collaboratorId] : []),
@@ -426,13 +424,6 @@ export function DoctorAccessSection({
         </div>
       </FormSection>
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </>
   );
 }

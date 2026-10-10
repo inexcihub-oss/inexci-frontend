@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
+import { getApiErrorMessage } from "@/lib/http-error";
 import {
   surgeryRequestService,
   ReportSection,
@@ -212,26 +212,22 @@ export function MedicalReportPreviewModal({
   });
 
   const examImages: Array<{ id: string; name: string; uri: string }> =
-    request?.documents?.filter((d: any) => d.key === "report_images") ?? [];
+    request?.documents?.filter((d) => d.key === "report_images") ?? [];
 
   const today = new Date().toLocaleDateString("pt-BR");
 
   const handleExportPdf = async () => {
     setIsExporting(true);
     try {
-      const response = await api.get(
-        `/surgery-requests/${request.id}/medical-report-pdf`,
-        { responseType: "arraybuffer" },
-      );
-      const blob = new Blob([response.data], { type: "application/pdf" });
+      const blob = await surgeryRequestService.medicalReportPdf(request.id);
       const url = URL.createObjectURL(blob);
       const opened = window.open(url, "_blank", "noopener,noreferrer");
       if (!opened) {
         showToast("Não foi possível abrir o PDF em uma nova aba", "error");
       }
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    } catch {
-      showToast("Erro ao exportar PDF", "error");
+    } catch (e) {
+      showToast(getApiErrorMessage(e, "Erro ao exportar PDF"), "error");
     } finally {
       setIsExporting(false);
     }

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Permission } from "@/lib/permissions";
 
-const { hospitalGetById, healthPlanGetById, surgeryGetAll } = vi.hoisted(() => ({
-  hospitalGetById: vi.fn(),
-  healthPlanGetById: vi.fn(),
+const { hospitalGetAll, healthPlanGetAll, surgeryGetAll } = vi.hoisted(() => ({
+  hospitalGetAll: vi.fn(),
+  healthPlanGetAll: vi.fn(),
   surgeryGetAll: vi.fn(),
 }));
 
@@ -23,11 +24,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/services/hospital.service", () => ({
-  hospitalService: { getById: hospitalGetById },
+  hospitalService: { getAll: hospitalGetAll },
 }));
 
 vi.mock("@/services/health-plan.service", () => ({
-  healthPlanService: { getById: healthPlanGetById },
+  healthPlanService: { getAll: healthPlanGetAll },
 }));
 
 vi.mock("@/services/surgery-request.service", () => ({
@@ -58,7 +59,7 @@ const CENARIOS = [
   {
     nome: "hospital",
     Page: HospitalDetalhePage,
-    getById: hospitalGetById,
+    getAll: hospitalGetAll,
     registro: { id: "reg-1", name: "Hospital Albert Einstein" },
     tituloPainel: "Cirurgias recentes",
     filtro: { hospitalId: "reg-1" },
@@ -66,12 +67,21 @@ const CENARIOS = [
   {
     nome: "convênio",
     Page: ConvenioDetalhePage,
-    getById: healthPlanGetById,
+    getAll: healthPlanGetAll,
     registro: { id: "reg-1", name: "Unimed Paulistana" },
     tituloPainel: "Solicitações recentes",
     filtro: { healthPlanId: "reg-1" },
   },
 ] as const;
+
+function renderWithQuery(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -80,12 +90,12 @@ beforeEach(() => {
 
 describe.each(CENARIOS)(
   "$nome — painel de solicitações por permissão",
-  ({ Page, getById, registro, tituloPainel, filtro }) => {
+  ({ Page, getAll, registro, tituloPainel, filtro }) => {
     it("mostra o painel e busca as solicitações de quem tem a área", async () => {
       permissions = [Permission.SOLICITACOES];
-      getById.mockResolvedValue(registro);
+      getAll.mockResolvedValue([registro]);
 
-      render(<Page />);
+      renderWithQuery(<Page />);
 
       expect(await screen.findByText(tituloPainel)).toBeInTheDocument();
       expect(surgeryGetAll).toHaveBeenCalledWith(filtro);
@@ -96,12 +106,12 @@ describe.each(CENARIOS)(
 
     it("esconde o painel e não chama o endpoint de quem só tem agenda", async () => {
       permissions = [Permission.AGENDA];
-      getById.mockResolvedValue(registro);
+      getAll.mockResolvedValue([registro]);
 
-      render(<Page />);
+      renderWithQuery(<Page />);
 
       expect(await screen.findByDisplayValue(registro.name)).toBeInTheDocument();
-      await waitFor(() => expect(getById).toHaveBeenCalled());
+      await waitFor(() => expect(getAll).toHaveBeenCalled());
 
       expect(surgeryGetAll).not.toHaveBeenCalled();
       expect(screen.queryByText(tituloPainel)).not.toBeInTheDocument();
