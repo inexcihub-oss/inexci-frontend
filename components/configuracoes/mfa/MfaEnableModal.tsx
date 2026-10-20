@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { Modal } from "@/components/ui/Modal";
 import { ModalFooter, SpinnerButton } from "@/components/shared/ModalFooter";
 import { OtpInput } from "@/components/ui/OtpInput";
@@ -122,35 +123,48 @@ export function MfaEnableModal({
           }}
         >
           <div className="space-y-5 px-4 py-4 md:px-6 md:py-6">
-            <ol className="list-decimal space-y-2 pl-5 text-sm text-gray-700">
-              <li>
-                Abra um aplicativo autenticador (Google Authenticator,
-                Microsoft Authenticator, 1Password, Authy...).
-              </li>
-              <li>
-                Adicione uma conta digitando a chave abaixo (tipo &quot;baseada
-                em tempo&quot;).
-              </li>
-              <li>Digite o código de 6 dígitos que o aplicativo mostrar.</li>
-            </ol>
+            <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+              <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-2.5">
+                <QRCodeSVG
+                  value={setup.otpauthUri}
+                  size={144}
+                  level="M"
+                  role="img"
+                  aria-label="QR code para configurar o aplicativo autenticador"
+                  data-testid="mfa-qrcode"
+                />
+              </div>
+              <ol className="list-decimal space-y-2 pl-5 text-sm text-gray-700">
+                <li>
+                  Abra um aplicativo autenticador (Google Authenticator,
+                  Microsoft Authenticator, 1Password, Authy...).
+                </li>
+                <li>Escaneie o QR code com o aplicativo.</li>
+                <li>Digite abaixo o código de 6 dígitos que ele mostrar.</li>
+              </ol>
+            </div>
 
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Chave de configuração
+            <details className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+              <summary className="cursor-pointer select-none font-semibold text-teal-600 hover:text-teal-700">
+                Não consegue ler o QR code?
+              </summary>
+              <p className="mt-2 text-gray-600">
+                Adicione uma conta manualmente com a chave abaixo (tipo
+                &quot;baseada em tempo&quot;).
               </p>
               <p
                 data-testid="mfa-secret"
-                className="mt-1 break-all font-mono text-base tracking-wider text-gray-900"
+                className="mt-2 break-all font-mono text-base tracking-wider text-gray-900"
               >
                 {setup.formattedSecret}
               </p>
               <a
                 href={setup.otpauthUri}
-                className="mt-3 inline-block text-sm font-semibold text-teal-600 hover:text-teal-700"
+                className="mt-2 inline-block font-semibold text-teal-600 hover:text-teal-700"
               >
                 Abrir no aplicativo autenticador
               </a>
-            </div>
+            </details>
 
             <OtpInput
               label="Código do aplicativo"

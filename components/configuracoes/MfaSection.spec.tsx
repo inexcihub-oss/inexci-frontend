@@ -99,9 +99,13 @@ describe("MfaSection", () => {
       screen.getByRole("button", { name: /ativar verificação em duas etapas/i }),
     );
 
-    expect(await screen.findByTestId("mfa-secret")).toHaveTextContent(
-      "JBSW Y3DP EHPK 3PXP",
-    );
+    const segredo = await screen.findByTestId("mfa-secret");
+    const alternativa = segredo.closest("details");
+    expect(alternativa).not.toHaveAttribute("open");
+    await user.click(screen.getByText(/não consegue ler o qr code\?/i));
+    expect(alternativa).toHaveAttribute("open");
+
+    expect(segredo).toHaveTextContent("JBSW Y3DP EHPK 3PXP");
     expect(
       screen.getByRole("link", { name: /abrir no aplicativo autenticador/i }),
     ).toHaveAttribute("href", expect.stringMatching(/^otpauth:\/\/totp\//));
@@ -128,6 +132,25 @@ describe("MfaSection", () => {
       }),
     );
     expect(concluir).not.toBeDisabled();
+  });
+
+  it("ativação mostra o QR code gerado no navegador, sem enviar o segredo a terceiros", async () => {
+    const user = userEvent.setup();
+    render(<MfaSection showToast={vi.fn()} />);
+
+    await user.click(
+      screen.getByRole("button", { name: /ativar verificação em duas etapas/i }),
+    );
+
+    const qr = await screen.findByTestId("mfa-qrcode");
+    expect(qr.tagName.toLowerCase()).toBe("svg");
+    expect(
+      screen.getByRole("img", {
+        name: /qr code para configurar o aplicativo autenticador/i,
+      }),
+    ).toBe(qr);
+    expect(qr.querySelectorAll("path").length).toBeGreaterThan(0);
+    expect(document.querySelector('img[src^="http"]')).toBeNull();
   });
 
   it("ativação com código errado mostra o erro e não exibe códigos", async () => {
