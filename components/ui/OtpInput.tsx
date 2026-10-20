@@ -56,45 +56,40 @@ export function OtpInput({
       const digit = raw.replace(/\D/g, "").slice(-1);
       if (!digit) return;
 
-      setDigits((prev) => {
-        const next = [...prev];
-        next[index] = digit;
-        emitChange(next);
-        return next;
-      });
+      const next = [...digits];
+      next[index] = digit;
+      setDigits(next);
+      emitChange(next);
 
       if (index < length - 1) {
         inputRefs.current[index + 1]?.focus();
       }
     },
-    [emitChange, length],
+    [digits, emitChange, length],
   );
 
   const handleKeyDown = useCallback(
     (index: number, e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Backspace") {
         e.preventDefault();
-        setDigits((prev) => {
-          const next = [...prev];
-          if (prev[index]) {
-            next[index] = "";
-            emitChange(next);
-            return next;
-          }
-          if (index > 0) {
-            next[index - 1] = "";
-            emitChange(next);
-            inputRefs.current[index - 1]?.focus();
-          }
-          return next;
-        });
+        const next = [...digits];
+        if (digits[index]) {
+          next[index] = "";
+        } else if (index > 0) {
+          next[index - 1] = "";
+          inputRefs.current[index - 1]?.focus();
+        } else {
+          return;
+        }
+        setDigits(next);
+        emitChange(next);
       } else if (e.key === "ArrowLeft" && index > 0) {
         inputRefs.current[index - 1]?.focus();
       } else if (e.key === "ArrowRight" && index < length - 1) {
         inputRefs.current[index + 1]?.focus();
       }
     },
-    [emitChange, length],
+    [digits, emitChange, length],
   );
 
   const handlePaste = useCallback(
@@ -103,14 +98,9 @@ export function OtpInput({
       const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, length);
       if (!pasted) return;
 
-      setDigits((prev) => {
-        const next = [...prev];
-        for (let i = 0; i < length; i++) {
-          next[i] = pasted[i] ?? "";
-        }
-        emitChange(next);
-        return next;
-      });
+      const next = Array.from({ length }, (_, i) => pasted[i] ?? "");
+      setDigits(next);
+      emitChange(next);
 
       const focusIndex = Math.min(pasted.length, length - 1);
       inputRefs.current[focusIndex]?.focus();
