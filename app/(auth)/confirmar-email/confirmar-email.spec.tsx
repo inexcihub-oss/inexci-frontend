@@ -49,4 +49,17 @@ describe("ConfirmarEmailPage", () => {
       screen.queryByRole("button", { name: "Ir para o painel" }),
     ).not.toBeInTheDocument();
   });
+
+  it("lê o token do fragmento e o tira da barra de endereço", async () => {
+    window.history.replaceState({}, "", "/confirmar-email#token=token-no-hash");
+    verifyEmailMock.mockResolvedValue({ message: "ok", email: "novo@a.com" });
+
+    render(<ConfirmarEmailPage />);
+
+    await waitFor(() => {
+      expect(verifyEmailMock).toHaveBeenCalledWith("token-no-hash");
+    });
+    expect(window.location.hash).toBe("");
+    expect(window.location.search).toBe("");
+  });
 });

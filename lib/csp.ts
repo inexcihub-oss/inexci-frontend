@@ -4,6 +4,7 @@ const LANDING_CONNECT_SRC = [
   "https://stats.g.doubleclick.net",
 ];
 const LANDING_IMG_SRC = ["https://www.facebook.com"];
+const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
 
 export function montarCsp(
   nonce: string,
@@ -19,8 +20,8 @@ export function montarCsp(
     imgSrc.push(...LANDING_IMG_SRC);
   }
   const scriptSrc = isDev
-    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
-    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' ${TURNSTILE_ORIGIN}`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${TURNSTILE_ORIGIN}`;
   return [
     "default-src 'self'",
     scriptSrc,
@@ -28,6 +29,7 @@ export function montarCsp(
     `img-src ${imgSrc.join(" ")}`,
     "font-src 'self' data:",
     `connect-src ${connectSrc.join(" ")}`,
+    `frame-src ${TURNSTILE_ORIGIN}`,
     "frame-ancestors 'none'",
     "form-action 'self'",
     "base-uri 'self'",

@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui";
 import { authService } from "@/services/auth.service";
 import { useAuth } from "@/contexts/AuthContext";
+import { clearLinkParams, readLinkParams } from "@/lib/link-params";
 
 type PageState = "loading" | "success" | "error";
 
@@ -31,8 +32,8 @@ function ConfirmarEmailContent() {
       return;
     }
 
-    const searchParams = new URLSearchParams(window.location.search);
-    const token = searchParams.get("token");
+    const token = readLinkParams().get("token");
+    clearLinkParams(["token"]);
 
     if (!token) {
       setState("error");

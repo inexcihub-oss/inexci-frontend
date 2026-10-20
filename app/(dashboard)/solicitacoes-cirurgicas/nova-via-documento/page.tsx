@@ -45,9 +45,11 @@ import FacebookSkeleton from "@/components/ui/FacebookSkeleton";
 import { readScFromDocumentCatalogPrefetch } from "@/lib/sc-from-document-prefetch";
 import {
   SC_FROM_DOCUMENT_EXTRACTION_KEY,
-  getScFromDocumentStorage,
+  readScFromDocumentHandoff,
   removeScFromDocumentStorage,
 } from "@/lib/sc-from-document-background";
+import { useAuth } from "@/contexts/AuthContext";
+import { useDocExtractionJob } from "@/hooks/useDocExtractionJob";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { TOUR_DEMO_EXTRACTION_MARKER } from "@/lib/onboarding/demo-data";
 import { padWithGenericOption } from "@/lib/generic-option";
@@ -187,9 +189,12 @@ export default function NovaViaDocumentoPage() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { emTour } = useOnboarding();
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
 
   const [extraction, setExtraction] =
     useState<ExtractFromDocumentResponse | null>(null);
+  const [jobIdToRecover, setJobIdToRecover] = useState<string | null>(null);
   const [procedures, setProcedures] = useState<Procedure[]>([]);
   const [allHospitals, setAllHospitals] = useState<DocumentEntityCandidate[]>(
     [],
@@ -255,31 +260,32 @@ export default function NovaViaDocumentoPage() {
   });
 
   useEffect(() => {
-    if (extraction) return;
+    if (extraction || jobIdToRecover || authLoading) return;
 
-    const parsed =
-      getScFromDocumentStorage<ExtractFromDocumentResponse>(
-        SC_FROM_DOCUMENT_EXTRACTION_KEY,
-      ) ??
-      (() => {
-        const legacyRaw = sessionStorage.getItem(
-          SC_FROM_DOCUMENT_EXTRACTION_KEY,
-        );
-        if (!legacyRaw) return null;
-        try {
-          return JSON.parse(legacyRaw) as ExtractFromDocumentResponse;
-        } catch {
-          return null;
-        }
-      })();
+    const handoff = userId ? readScFromDocumentHandoff(userId) : null;
 
-    if (!parsed) {
-      router.replace("/solicitacoes-cirurgicas");
+    if (handoff?.result) {
+      setExtraction(handoff.result);
       return;
     }
 
-    setExtraction(parsed);
-  }, [router, extraction]);
+    if (handoff?.jobId) {
+      setJobIdToRecover(handoff.jobId);
+      return;
+    }
+
+    router.replace("/solicitacoes-cirurgicas");
+  }, [router, extraction, jobIdToRecover, authLoading, userId]);
+
+  useDocExtractionJob(jobIdToRecover, {
+    enabled: !extraction,
+    notify: showToast,
+    onDone: (result) => setExtraction(result),
+    onNotDone: () => {
+      removeScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_KEY);
+      router.replace("/solicitacoes-cirurgicas");
+    },
+  });
 
   useEffect(() => {
     const prefetched = readScFromDocumentCatalogPrefetch();

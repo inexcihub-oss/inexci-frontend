@@ -376,6 +376,7 @@ export default function Sidebar({
               {avatarUrl ? (
                 <Image
                   src={avatarUrl}
+                  unoptimized
                   alt={user?.name || "Avatar"}
                   width={40}
                   height={40}

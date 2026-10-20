@@ -22,10 +22,6 @@ const nextConfig = {
             { protocol: "http", hostname: "localhost" },
             { protocol: "https", hostname: "localhost" },
           ]),
-      {
-        protocol: "https",
-        hostname: "**.r2.cloudflarestorage.com",
-      },
     ],
   },
   output: "standalone",

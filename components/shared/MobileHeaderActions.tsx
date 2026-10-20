@@ -318,6 +318,7 @@ export default function MobileHeaderActions() {
           {avatarUrl ? (
             <Image
               src={avatarUrl}
+              unoptimized
               alt={user?.name || "Avatar"}
               width={36}
               height={36}

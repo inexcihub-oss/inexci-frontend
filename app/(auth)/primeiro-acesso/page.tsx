@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ShieldCheck, CheckCircle2, Lock, UserPlus, Bell } from "lucide-react";
 import { useZodForm } from "@/hooks/useZodForm";
 import { newPasswordSchema } from "@/lib/schemas/auth.schema";
+import { clearLinkParams, readLinkParams } from "@/lib/link-params";
 
 function PrimeiroAcessoForm() {
   const router = useRouter();
@@ -22,9 +23,14 @@ function PrimeiroAcessoForm() {
     ready: false,
   });
 
+  const linkLidoRef = useRef(false);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
+    if (linkLidoRef.current) return;
+    linkLidoRef.current = true;
+    const params = readLinkParams();
+    clearLinkParams(["email", "token"]);
     setQuery({
       email: params.get("email") ?? "",
       token: params.get("token") ?? "",
@@ -67,7 +73,10 @@ function PrimeiroAcessoForm() {
 
       setSuccess(true);
       try {
-        await login(email, data.password);
+        const outcome = await login(email, data.password);
+        if (outcome.mfaRequired) {
+          setTimeout(() => router.push("/login"), 2000);
+        }
       } catch {
         setTimeout(() => router.push("/login"), 2000);
       }

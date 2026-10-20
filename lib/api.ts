@@ -3,6 +3,8 @@ import { logger, setRequestId } from "./logger";
 import { clearAccessToken, getAccessToken, setAccessToken } from "./auth-token";
 import { clearSessionFlag } from "./session-flag";
 import { clearStoredUser } from "./session-storage";
+import { clearScFromDocumentStorage } from "./sc-from-document-background";
+import { broadcastAuthEvent } from "./auth-sync";
 
 function resolveApiBaseUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -42,21 +44,38 @@ function generateRequestId(): string {
 
 let refreshPromise: Promise<string> | null = null;
 
+export const REFRESH_CORRIDA_ESPERA_MS = 300;
+
+function postRefresh(): Promise<string> {
+  return axios
+    .post(
+      `${api.defaults.baseURL}/auth/refresh`,
+      {},
+      {
+        withCredentials: true,
+        headers: { "ngrok-skip-browser-warning": "true" },
+      },
+    )
+    .then(({ data }) => {
+      const token = data.access_token as string;
+      setAccessToken(token);
+      return token;
+    });
+}
+
+function esperar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function refreshSession(): Promise<string> {
   if (!refreshPromise) {
-    refreshPromise = axios
-      .post(
-        `${api.defaults.baseURL}/auth/refresh`,
-        {},
-        {
-          withCredentials: true,
-          headers: { "ngrok-skip-browser-warning": "true" },
-        },
-      )
-      .then(({ data }) => {
-        const token = data.access_token as string;
-        setAccessToken(token);
-        return token;
+    refreshPromise = postRefresh()
+      .catch(async (erro: unknown) => {
+        if ((erro as AxiosError | undefined)?.response?.status !== 409) {
+          throw erro;
+        }
+        await esperar(REFRESH_CORRIDA_ESPERA_MS);
+        return postRefresh();
       })
       .finally(() => {
         refreshPromise = null;
@@ -83,6 +102,8 @@ function forceLogout() {
     clearAccessToken();
     clearSessionFlag();
     clearStoredUser();
+    clearScFromDocumentStorage();
+    broadcastAuthEvent({ type: "logout" });
     const isPublicPath = PUBLIC_AUTH_PATHS.some((p) =>
       window.location.pathname.startsWith(p),
     );

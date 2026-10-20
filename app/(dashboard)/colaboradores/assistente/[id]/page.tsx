@@ -993,6 +993,7 @@ export default function AssistenteDetalhePage() {
                   <div className="relative">
                     <Image
                       src={signaturePreview}
+                      unoptimized
                       alt="Assinatura"
                       width={300}
                       height={100}

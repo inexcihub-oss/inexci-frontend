@@ -10,7 +10,12 @@ import React, {
   useRef,
 } from "react";
 import { logger } from "@/lib/logger";
-import { User, SubscriptionDetail } from "@/types";
+import {
+  AuthResponse,
+  User,
+  SubscriptionDetail,
+  isMfaChallenge,
+} from "@/types";
 import { authService } from "@/services/auth.service";
 import { clearAccessToken, getAccessToken } from "@/lib/auth-token";
 import { isSessaoExpirada, refreshSession } from "@/lib/api";
@@ -25,6 +30,27 @@ import { emiteDocumentosClinicos } from "@/lib/professional-council";
 import { QUOTA_QUERY_KEY } from "@/lib/query-keys";
 import { useQueryClient } from "@tanstack/react-query";
 import type { BillingBlockReason } from "@/lib/http-error";
+import { clearScFromDocumentStorage } from "@/lib/sc-from-document-background";
+import {
+  broadcastAuthEvent,
+  hardNavigate,
+  hardReload,
+  subscribeAuthEvents,
+} from "@/lib/auth-sync";
+
+const PUBLIC_AUTH_PATHS = [
+  "/login",
+  "/cadastro",
+  "/forgot-password",
+  "/confirmar-email",
+  "/primeiro-acesso",
+];
+
+function isOnPublicAuthPath(): boolean {
+  if (typeof window === "undefined") return false;
+  const path = window.location.pathname;
+  return PUBLIC_AUTH_PATHS.some((p) => path.startsWith(p));
+}
 
 interface AuthContextData {
   user: User | null;
@@ -49,12 +75,17 @@ interface AuthContextData {
   isSuspended: boolean;
   blockReason: string | null;
   blockReasonCode: BillingBlockReason | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginOutcome>;
+  completeMfaLogin: (mfaToken: string, code: string) => Promise<void>;
   register: (userData: import("@/types").RegisterData) => Promise<void>;
   logout: () => void;
   updateUser: () => Promise<void>;
   refreshConsents: (forUser?: User | null) => Promise<void>;
 }
+
+export type LoginOutcome =
+  | { mfaRequired: true; mfaToken: string }
+  | { mfaRequired: false };
 
 const AuthContext = createContext<AuthContextData | undefined>(undefined);
 
@@ -72,6 +103,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const consentsRequestRef = useRef<Promise<void> | null>(null);
   const subscriptionRequestRef = useRef<Promise<void> | null>(null);
   const initialLoadRef = useRef(false);
+  const userRef = useRef<User | null>(null);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  const resetSessionState = useCallback(() => {
+    void queryClient.cancelQueries();
+    queryClient.clear();
+    clearScFromDocumentStorage();
+    setUser(null);
+    setConsents(null);
+    setSubscription(null);
+  }, [queryClient]);
 
   const applyConsentsFromUser = useCallback((currentUser: User) => {
     if (currentUser.consents) {
@@ -170,9 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               clearAccessToken();
               clearSessionFlag();
               clearStoredUser();
-              setUser(null);
-              setConsents(null);
-              setSubscription(null);
+              resetSessionState();
               setLoading(false);
               return;
             }
@@ -197,10 +240,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           );
           clearAccessToken();
           clearStoredUser();
-          setUser(null);
-          setConsents(null);
-          setSubscription(null);
-          router.push("/login");
+          resetSessionState();
+          hardNavigate("/login");
           return;
         }
 
@@ -215,21 +256,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await consentsPromise;
       } catch (error) {
         logger.warn("Sessão inválida detectada na inicialização:", error);
-        setUser(null);
-        setConsents(null);
-        setSubscription(null);
+        resetSessionState();
       } finally {
         setLoading(false);
       }
     };
 
     loadUser();
-  }, [refreshConsents, refreshSubscription, router, applyConsentsFromUser]);
+  }, [
+    refreshConsents,
+    refreshSubscription,
+    applyConsentsFromUser,
+    resetSessionState,
+  ]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const response = await authService.login({ email, password });
+  useEffect(() => {
+    return subscribeAuthEvents((event) => {
+      if (event.type === "logout") {
+        const hadUser = !!userRef.current;
+        clearAccessToken();
+        resetSessionState();
+        if (hadUser && !isOnPublicAuthPath()) hardNavigate("/login");
+        return;
+      }
+      if (userRef.current?.id === event.userId) return;
+      clearAccessToken();
+      queryClient.clear();
+      hardReload();
+    });
+  }, [resetSessionState, queryClient]);
+
+  const concludeLogin = useCallback(
+    async (response: AuthResponse) => {
+      queryClient.clear();
+      clearScFromDocumentStorage();
       setUser(response.user);
+      if (response.user?.id) {
+        broadcastAuthEvent({ type: "login", userId: response.user.id });
+      }
       const consentsFromLogin = applyConsentsFromUser(response.user);
       const consentsPromise = consentsFromLogin
         ? Promise.resolve()
@@ -241,7 +305,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       router.push(resolveHome(response.user?.permissions ?? []));
     },
-    [router, refreshConsents, refreshSubscription, applyConsentsFromUser],
+    [
+      router,
+      queryClient,
+      refreshConsents,
+      refreshSubscription,
+      applyConsentsFromUser,
+    ],
+  );
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<LoginOutcome> => {
+      const response = await authService.login({ email, password });
+      if (isMfaChallenge(response)) {
+        return { mfaRequired: true, mfaToken: response.mfaToken };
+      }
+      await concludeLogin(response);
+      return { mfaRequired: false };
+    },
+    [concludeLogin],
+  );
+
+  const completeMfaLogin = useCallback(
+    async (mfaToken: string, code: string) => {
+      const response = await authService.loginMfa(mfaToken, code);
+      await concludeLogin(response);
+    },
+    [concludeLogin],
   );
 
   const register = useCallback(
@@ -254,11 +344,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await authService.logout();
-    setUser(null);
-    setConsents(null);
-    setSubscription(null);
-    router.push("/login");
-  }, [router]);
+    broadcastAuthEvent({ type: "logout" });
+    resetSessionState();
+    hardNavigate("/login");
+  }, [resetSessionState]);
 
   const updateUser = useCallback(async () => {
     try {
@@ -373,6 +462,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       blockReason,
       blockReasonCode,
       login,
+      completeMfaLogin,
       register,
       logout,
       updateUser,
@@ -402,6 +492,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       blockReason,
       blockReasonCode,
       login,
+      completeMfaLogin,
       register,
       logout,
       updateUser,

@@ -1,8 +1,8 @@
 export const CSV_SEPARATOR = ";";
 
 export function sanitizeCsvValue(value: string): string {
-  const safeValue = /^[=+\-@]/.test(value) ? `\'${value}` : value;
-  return /[";\n]/.test(safeValue)
+  const safeValue = /^[=+\-@\t\r]/.test(value) ? `\'${value}` : value;
+  return /[";\n\r]/.test(safeValue)
     ? `"${safeValue.replace(/"/g, '""')}"`
     : safeValue;
 }

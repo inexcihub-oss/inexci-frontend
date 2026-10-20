@@ -40,6 +40,15 @@ describe("sanitizeCsvValue", () => {
     expect(sanitizeCsvValue("-1+1")).toBe("\'-1+1");
     expect(sanitizeCsvValue("@SUM(A1:A2)")).toBe("\'@SUM(A1:A2)");
   });
+
+  it("neutraliza tabulação e retorno de carro iniciais", () => {
+    expect(sanitizeCsvValue("\t=1+1")).toBe("'\t=1+1");
+    expect(sanitizeCsvValue("\r=1+1")).toBe('"\'\r=1+1"');
+  });
+
+  it("põe entre aspas o valor com retorno de carro", () => {
+    expect(sanitizeCsvValue("linha 1\rlinha 2")).toBe('"linha 1\rlinha 2"');
+  });
 });
 
 describe("pdfText", () => {

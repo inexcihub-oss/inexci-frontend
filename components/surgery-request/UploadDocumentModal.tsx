@@ -50,7 +50,7 @@ function formatBytes(bytes: number): string {
 interface UploadDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (response: ExtractFromDocumentResponse) => void;
+  onSuccess: (response: ExtractFromDocumentResponse, jobId?: string) => void;
   onBackgroundProcessingStart?: (
     data: BackgroundDocumentExtractionActive,
   ) => void;
@@ -199,7 +199,7 @@ export function UploadDocumentModal({
       }
 
       resetState();
-      onSuccess({ ...response, originalFileName: file.name });
+      onSuccess({ ...response, originalFileName: file.name }, queued.jobId);
     } catch (err: unknown) {
       if (err instanceof Error && err.message === USER_CANCELLED_SIGNAL) {
         return;

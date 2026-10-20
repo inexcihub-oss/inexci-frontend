@@ -63,6 +63,7 @@ export function ProfileTab({ settings, isAccountOwner }: ProfileTabProps) {
                 {avatarPreview ? (
                   <Image
                     src={avatarPreview}
+                    unoptimized
                     alt="Avatar"
                     width={96}
                     height={96}
@@ -277,6 +278,7 @@ export function ProfileTab({ settings, isAccountOwner }: ProfileTabProps) {
                   <div className="relative">
                     <Image
                       src={signaturePreview}
+                      unoptimized
                       alt="Assinatura"
                       width={300}
                       height={100}

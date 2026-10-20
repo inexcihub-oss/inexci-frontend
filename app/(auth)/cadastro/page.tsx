@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,11 @@ import {
   type Step1Data,
   type Step2Data,
 } from "@/components/cadastro/CadastroSteps";
+import {
+  CAPTCHA_PENDENTE_MENSAGEM,
+  TurnstileWidget,
+  getTurnstileSiteKey,
+} from "@/components/cadastro/TurnstileWidget";
 import { Button } from "@/components/ui";
 import { step1Schema, step2Schema } from "@/lib/schemas/cadastro.schema";
 import { unmask } from "@/lib/masks";
@@ -102,6 +107,10 @@ export default function CadastroPage() {
 
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const turnstileSiteKey = getTurnstileSiteKey();
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
 
   const handleBillingPeriodChange = (period: "MONTHLY" | "YEARLY") => {
     setBillingPeriod(period);
@@ -243,6 +252,10 @@ export default function CadastroPage() {
 
   const handleSubmit = async () => {
     setError("");
+    if (turnstileSiteKey && !captchaToken) {
+      setError(CAPTCHA_PENDENTE_MENSAGEM);
+      return;
+    }
     setIsLoading(true);
     try {
       const phoneDigits = unmask(step1.phone);
@@ -259,8 +272,10 @@ export default function CadastroPage() {
           specialty: step2.specialty || undefined,
         }),
         planSlug: selectedSlug || undefined,
+        ...(captchaToken && { captchaToken }),
       });
     } catch (err: unknown) {
+      if (turnstileSiteKey) setCaptchaResetSignal((n) => n + 1);
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const message =
         axiosErr.response?.data?.message ||
@@ -298,6 +313,16 @@ export default function CadastroPage() {
         onSubmit={handleSubmit}
         isLoading={isLoading}
         error={error}
+        captcha={
+          turnstileSiteKey ? (
+            <TurnstileWidget
+              siteKey={turnstileSiteKey}
+              onTokenChange={setCaptchaToken}
+              resetSignal={captchaResetSignal}
+            />
+          ) : null
+        }
+        captchaPending={Boolean(turnstileSiteKey) && !captchaToken}
       />
     );
   }
@@ -444,6 +469,8 @@ interface PlanStepLayoutProps {
   onSubmit: () => void;
   isLoading: boolean;
   error: string;
+  captcha: ReactNode;
+  captchaPending: boolean;
 }
 
 function PlanStepLayout({
@@ -458,6 +485,8 @@ function PlanStepLayout({
   onSubmit,
   isLoading,
   error,
+  captcha,
+  captchaPending,
 }: PlanStepLayoutProps) {
   const selectedPlan = plans.find((p) => p.slug === selectedSlug);
   const ctaLabel = "Começar 15 dias grátis";
@@ -516,6 +545,8 @@ function PlanStepLayout({
 
         />
 
+        {captcha && <div className="mt-5 max-w-2xl mx-auto">{captcha}</div>}
+
         {error && (
           <div className="mt-5 max-w-2xl mx-auto rounded-2xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
             <p>{error}</p>
@@ -552,7 +583,7 @@ function PlanStepLayout({
             <button
               type="button"
               onClick={onSubmit}
-              disabled={isLoading || !selectedSlug}
+              disabled={isLoading || !selectedSlug || captchaPending}
               className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white text-xs sm:text-sm font-semibold shadow-md shadow-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (

@@ -42,6 +42,8 @@ export interface User {
   updatedAt: string;
   consents?: ConsentStatus;
   onboardingState?: OnboardingState;
+  mfaEnabled?: boolean;
+  mfaRecommended?: boolean;
 }
 
 export interface UserDoctorAccess {
@@ -89,6 +91,7 @@ export interface RegisterData {
   crmState?: string;
   specialty?: string;
   planSlug?: string;
+  captchaToken?: string;
 }
 
 export type BillingPeriod = "MONTHLY" | "YEARLY";
@@ -158,4 +161,31 @@ export interface AuthResponse {
   access_token: string;
   refresh_token: string;
   user: User;
+}
+
+export interface MfaChallengeResponse {
+  mfaRequired: true;
+  mfaToken: string;
+}
+
+export type LoginResponse = AuthResponse | MfaChallengeResponse;
+
+export function isMfaChallenge(
+  response: LoginResponse | null | undefined,
+): response is MfaChallengeResponse {
+  return (
+    !!response &&
+    "mfaRequired" in response &&
+    response.mfaRequired === true
+  );
+}
+
+export interface MfaSetupResponse {
+  secret: string;
+  formattedSecret: string;
+  otpauthUri: string;
+}
+
+export interface MfaRecoveryCodesResponse {
+  recoveryCodes: string[];
 }

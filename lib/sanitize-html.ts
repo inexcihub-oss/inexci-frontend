@@ -1,6 +1,6 @@
 import DOMPurify from "isomorphic-dompurify";
 
-const TAGS_PROIBIDAS = [
+export const TAGS_PROIBIDAS = [
   "style",
   "form",
   "input",

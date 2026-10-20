@@ -6,10 +6,13 @@ import Button from "@/components/ui/Button";
 import PasswordInput from "@/components/ui/PasswordInput";
 import type { ToastType } from "@/types/toast.types";
 import { authService } from "@/services/auth.service";
+import { useAuth } from "@/contexts/AuthContext";
 import { changePasswordSchema } from "@/lib/schemas/configuracoes.schema";
 import { summarizeErrors } from "@/lib/form-errors";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { issuesToFieldErrors } from "./SettingsControls";
+import { isMfaChallenge } from "@/types";
+import { MfaSection } from "./MfaSection";
 
 const PASSWORD_FIELD_LABELS: Record<string, string> = {
   currentPassword: "Senha atual",
@@ -23,11 +26,25 @@ const EMPTY_PASSWORD = {
   confirmPassword: "",
 };
 
+async function renovarSessao(
+  email: string | undefined,
+  password: string,
+): Promise<boolean> {
+  if (!email) return false;
+  try {
+    const response = await authService.login({ email, password });
+    return !isMfaChallenge(response);
+  } catch {
+    return false;
+  }
+}
+
 export function SecurityTab({
   showToast,
 }: {
   showToast: (message: string, type?: ToastType) => void;
 }) {
+  const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [passwordData, setPasswordData] = useState(EMPTY_PASSWORD);
   const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>(
@@ -62,7 +79,16 @@ export function SecurityTab({
         passwordData.currentPassword,
         passwordData.newPassword,
       );
-      showToast("Senha alterada com sucesso!", "success");
+      const sessaoRenovada = await renovarSessao(
+        user?.email,
+        passwordData.newPassword,
+      );
+      showToast(
+        sessaoRenovada
+          ? "Senha alterada com sucesso! As outras sessões foram encerradas."
+          : "Senha alterada com sucesso! Faça login novamente.",
+        "success",
+      );
       setPasswordData(EMPTY_PASSWORD);
     } catch (error: unknown) {
       showToast(getApiErrorMessage(error, "Erro ao alterar senha"), "error");
@@ -122,6 +148,8 @@ export function SecurityTab({
           </div>
         </CardContent>
       </Card>
+
+      <MfaSection showToast={showToast} />
     </div>
   );
 }

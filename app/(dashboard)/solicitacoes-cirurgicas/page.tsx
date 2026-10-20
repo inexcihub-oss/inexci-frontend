@@ -44,10 +44,7 @@ import { useToast } from "@/hooks/useToast";
 import { useDocExtractionJob } from "@/hooks/useDocExtractionJob";
 import { surgeryRequestKeys } from "@/lib/query-keys";
 import { ALL_STATUS_LABELS } from "@/lib/surgery-request-status";
-import {
-  SC_FROM_DOCUMENT_EXTRACTION_KEY,
-  setScFromDocumentStorage,
-} from "@/lib/sc-from-document-background";
+import { saveScFromDocumentHandoff } from "@/lib/sc-from-document-background";
 import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 
@@ -154,18 +151,25 @@ export default function ProcedimentosCirurgicos() {
   });
 
   const handleUploadDocumentSuccess = useCallback(
-    (response: ExtractFromDocumentResponse) => {
+    (response: ExtractFromDocumentResponse, jobId?: string) => {
       setIsUploadDocumentOpen(false);
-      setScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_KEY, response);
+      if (!userId) return;
+      saveScFromDocumentHandoff({ result: response, userId, jobId });
       router.push("/solicitacoes-cirurgicas/nova-via-documento");
     },
-    [router],
+    [router, userId],
   );
 
   useDocExtractionJob(docExtractionJobId, {
+    enabled: !!userId,
     notify: showToast,
     onDone: (result) => {
-      setScFromDocumentStorage(SC_FROM_DOCUMENT_EXTRACTION_KEY, result);
+      if (!userId || !docExtractionJobId) return;
+      saveScFromDocumentHandoff({
+        result,
+        userId,
+        jobId: docExtractionJobId,
+      });
       router.replace("/solicitacoes-cirurgicas/nova-via-documento");
     },
     onNotDone: () => router.replace("/solicitacoes-cirurgicas"),

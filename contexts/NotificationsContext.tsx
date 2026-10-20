@@ -16,7 +16,7 @@ import {
 } from "@/services/notification.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAccessToken } from "@/lib/auth-token";
-import { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
+import { refreshSession } from "@/lib/api";
 import {
   BackgroundDocumentExtractionActive,
   BackgroundDocumentExtractionForeground,
@@ -57,6 +57,8 @@ interface NotificationsContextValue {
 const NotificationsContext = createContext<NotificationsContextValue | null>(
   null,
 );
+
+const MAX_RECONEXOES_PELO_SERVIDOR = 3;
 
 export function NotificationsProvider({
   children,
@@ -228,11 +230,26 @@ export function NotificationsProvider({
     if (!apiUrl) return;
 
     const socket: Socket = io(`${apiUrl}/notifications`, {
-      auth: { token },
+      auth: (cb) => cb({ token: getAccessToken() ?? token }),
       transports: ["websocket"],
     });
 
+    let reconexoesPeloServidor = 0;
+    let encerrado = false;
+
+    socket.on("disconnect", (reason: string) => {
+      if (encerrado || reason !== "io server disconnect") return;
+      if (reconexoesPeloServidor >= MAX_RECONEXOES_PELO_SERVIDOR) return;
+      reconexoesPeloServidor += 1;
+      refreshSession()
+        .then(() => {
+          if (!encerrado) socket.connect();
+        })
+        .catch(() => {});
+    });
+
     socket.on("notification:unread-count", (payload: { count: number }) => {
+      reconexoesPeloServidor = 0;
       const nextCount = Math.max(0, payload?.count ?? 0);
       const foreground =
         getScFromDocumentStorage<BackgroundDocumentExtractionForeground>(
@@ -310,15 +327,10 @@ export function NotificationsProvider({
           if (active) {
             try {
               if (active.jobId === payload.jobId) {
-                if (payload.status === "done" && payload.result) {
-                  const result = payload.result as ExtractFromDocumentResponse;
+                if (payload.status === "done") {
                   setScFromDocumentStorage(
                     SC_FROM_DOCUMENT_EXTRACTION_PENDING_KEY,
-                    {
-                      ...result,
-                      originalFileName:
-                        result.originalFileName || active.fileName,
-                    },
+                    { jobId: active.jobId },
                   );
                   removeScFromDocumentStorage(
                     SC_FROM_DOCUMENT_EXTRACTION_PENDING_ERROR_KEY,
@@ -354,6 +366,7 @@ export function NotificationsProvider({
     );
 
     return () => {
+      encerrado = true;
       socket.disconnect();
     };
   }, [playNotificationSound, userId]);

@@ -269,6 +269,7 @@ export function DetailPageLayout({
             ) : profileImage ? (
               <Image
                 src={profileImage}
+                unoptimized
                 alt={itemName}
                 width={80}
                 height={80}

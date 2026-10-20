@@ -1,5 +1,12 @@
 import api from "@/lib/api";
-import { AuthResponse, LoginCredentials, RegisterData, User } from "@/types";
+import {
+  AuthResponse,
+  LoginCredentials,
+  LoginResponse,
+  RegisterData,
+  User,
+  isMfaChallenge,
+} from "@/types";
 import { clearAvatarCache } from "@/lib/avatar-cache";
 import {
   clearAccessToken,
@@ -12,25 +19,49 @@ import {
   writeStoredUser,
 } from "@/lib/session-storage";
 
+export function buildUserSnapshot(user: User): Partial<User> {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    accountId: user.accountId,
+    status: user.status,
+    isDoctor: user.isDoctor,
+    isPhysician: user.isPhysician,
+    canIssueClinicalDocuments: user.canIssueClinicalDocuments,
+    permissions: user.permissions,
+    emailVerified: user.emailVerified,
+    consents: user.consents,
+    onboardingState: user.onboardingState,
+  };
+}
+
 function storeUserSnapshot(user: User): void {
-  const { cpf, ...userWithoutSensitiveData } = user;
-  writeStoredUser({
-    ...userWithoutSensitiveData,
-    cpfMask: cpf ? `***.***.***-${cpf.slice(-2)}` : undefined,
-  });
+  writeStoredUser(buildUserSnapshot(user));
+}
+
+function persistSession(data: AuthResponse): void {
+  if (typeof window !== "undefined" && data.access_token && data.user) {
+    setAccessToken(data.access_token);
+    markSession();
+    storeUserSnapshot(data.user);
+  }
 }
 
 export const authService = {
-  async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const { data } = await api.post<AuthResponse>("/auth/login", credentials);
+  async login(credentials: LoginCredentials): Promise<LoginResponse> {
+    const { data } = await api.post<LoginResponse>("/auth/login", credentials);
+    if (!isMfaChallenge(data)) persistSession(data);
+    return data;
+  },
 
-    if (typeof window !== "undefined" && data.access_token && data.user) {
-      setAccessToken(data.access_token);
-      markSession();
-
-      storeUserSnapshot(data.user);
-    }
-
+  async loginMfa(mfaToken: string, code: string): Promise<AuthResponse> {
+    const { data } = await api.post<AuthResponse>("/auth/login/mfa", {
+      mfaToken,
+      code: code.trim(),
+    });
+    persistSession(data);
     return data;
   },
 

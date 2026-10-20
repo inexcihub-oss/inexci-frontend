@@ -1,4 +1,4 @@
-const SESSION_FLAG_KEY = "had_session";
+export const SESSION_FLAG_KEY = "had_session";
 
 export function markSession(): void {
   if (typeof window === "undefined") return;

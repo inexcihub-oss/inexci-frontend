@@ -86,3 +86,36 @@ describe("next.config.mjs — HSTS em produção (validação estática)", () =>
     expect(configSource).toMatch(/isProd[\s\S]*Strict-Transport-Security/);
   });
 });
+
+describe("next.config.mjs — otimizador de imagem", () => {
+  type RemotePattern = { protocol?: string; hostname: string };
+
+  function remotePatterns(): RemotePattern[] {
+    const cfg = nextConfig as { images?: { remotePatterns?: RemotePattern[] } };
+    return cfg.images?.remotePatterns ?? [];
+  }
+
+  it("não libera nenhum host do R2 no /_next/image", () => {
+    const hosts = remotePatterns().map((p) => p.hostname);
+    expect(hosts.some((h) => h.includes("r2.cloudflarestorage.com"))).toBe(false);
+  });
+
+  it("não usa curinga de hostname", () => {
+    expect(remotePatterns().some((p) => p.hostname.includes("*"))).toBe(false);
+  });
+
+  it("só libera localhost fora de produção", () => {
+    for (const p of remotePatterns()) {
+      expect(p.hostname).toBe("localhost");
+    }
+  });
+
+  it("não declara padrão remoto em produção (validação estática)", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../next.config.mjs"),
+      "utf-8",
+    );
+    expect(source).not.toContain("r2.cloudflarestorage.com");
+    expect(source).toMatch(/isProd\s*\?\s*\[\]/);
+  });
+});

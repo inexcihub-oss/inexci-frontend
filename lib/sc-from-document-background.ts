@@ -1,3 +1,5 @@
+import type { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
+
 export const SC_FROM_DOCUMENT_EXTRACTION_KEY = "sc_from_document_extraction";
 export const SC_FROM_DOCUMENT_EXTRACTION_PENDING_KEY =
   "sc_from_document_extraction_pending";
@@ -34,6 +36,25 @@ export interface BackgroundDocumentExtractionActive {
 export interface BackgroundDocumentExtractionForeground {
   jobId: string;
 }
+
+export interface ScFromDocumentHandoffRecord {
+  jobId: string;
+  userId: string;
+  savedAt: number;
+}
+
+export interface ScFromDocumentHandoff {
+  result?: ExtractFromDocumentResponse;
+  jobId?: string;
+}
+
+interface MemoryHandoff {
+  userId: string;
+  jobId: string | null;
+  result: ExtractFromDocumentResponse;
+}
+
+let memoryHandoff: MemoryHandoff | null = null;
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -88,15 +109,82 @@ export function getScFromDocumentStorage<T>(key: string): T | null {
 }
 
 export function removeScFromDocumentStorage(key: string): void {
+  if (key === SC_FROM_DOCUMENT_EXTRACTION_KEY) memoryHandoff = null;
   if (!isBrowser()) return;
   localStorage.removeItem(key);
   sessionStorage.removeItem(key);
 }
 
 export function clearScFromDocumentStorage(): void {
+  memoryHandoff = null;
   if (!isBrowser()) return;
   SC_FROM_DOCUMENT_KEYS.forEach((key) => {
     localStorage.removeItem(key);
     sessionStorage.removeItem(key);
   });
+}
+
+function isHandoffRecord(value: unknown): value is ScFromDocumentHandoffRecord {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return (
+    Object.keys(record).length === 3 &&
+    typeof record.jobId === "string" &&
+    record.jobId.length > 0 &&
+    typeof record.userId === "string" &&
+    record.userId.length > 0 &&
+    typeof record.savedAt === "number"
+  );
+}
+
+export function saveScFromDocumentHandoff({
+  result,
+  userId,
+  jobId,
+}: {
+  result: ExtractFromDocumentResponse;
+  userId: string;
+  jobId?: string | null;
+}): void {
+  memoryHandoff = { userId, jobId: jobId ?? null, result };
+  if (!isBrowser()) return;
+  sessionStorage.removeItem(SC_FROM_DOCUMENT_EXTRACTION_KEY);
+  if (!jobId) {
+    localStorage.removeItem(SC_FROM_DOCUMENT_EXTRACTION_KEY);
+    return;
+  }
+  setScFromDocumentStorage<ScFromDocumentHandoffRecord>(
+    SC_FROM_DOCUMENT_EXTRACTION_KEY,
+    { jobId, userId, savedAt: Date.now() },
+  );
+}
+
+export function readScFromDocumentHandoff(
+  userId: string,
+): ScFromDocumentHandoff | null {
+  if (isBrowser()) sessionStorage.removeItem(SC_FROM_DOCUMENT_EXTRACTION_KEY);
+
+  if (memoryHandoff && memoryHandoff.userId !== userId) {
+    memoryHandoff = null;
+  }
+
+  const stored = getScFromDocumentStorage<unknown>(
+    SC_FROM_DOCUMENT_EXTRACTION_KEY,
+  );
+  let storedJobId: string | undefined;
+  if (stored !== null) {
+    if (isHandoffRecord(stored) && stored.userId === userId) {
+      storedJobId = stored.jobId;
+    } else if (isBrowser()) {
+      localStorage.removeItem(SC_FROM_DOCUMENT_EXTRACTION_KEY);
+    }
+  }
+
+  if (memoryHandoff) {
+    return {
+      result: memoryHandoff.result,
+      jobId: memoryHandoff.jobId ?? storedJobId,
+    };
+  }
+  return storedJobId ? { jobId: storedJobId } : null;
 }

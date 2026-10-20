@@ -7,13 +7,15 @@ import Image from "next/image";
 import { Button, Input } from "@/components/ui";
 import { useZodForm } from "@/hooks/useZodForm";
 import { loginSchema } from "@/lib/schemas/auth.schema";
+import { MfaLoginStep } from "@/components/auth/MfaLoginStep";
 
 function LoginForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const { login } = useAuth();
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const { login, completeMfaLogin } = useAuth();
 
   const form = useZodForm({
     schema: loginSchema,
@@ -41,7 +43,11 @@ function LoginForm() {
     setSuccess("");
     setIsLoading(true);
     try {
-      await login(data.email, data.password);
+      const outcome = await login(data.email, data.password);
+      if (outcome?.mfaRequired) {
+        form.setField("password", "");
+        setMfaToken(outcome.mfaToken);
+      }
     } catch (err: unknown) {
       const errorMessage =
         typeof err === "object" &&
@@ -94,79 +100,87 @@ function LoginForm() {
             </p>
           </div>
 
-          <form
-            onSubmit={handleFormSubmit}
-            noValidate
-            method="post"
-            className="mt-8 space-y-6"
-          >
-            <div className="space-y-4">
-              <Input
-                id="email"
-                label="E-mail"
-                type="email"
-                autoComplete="email"
-                required
-                {...emailInputProps}
-                disabled={isLoading || !isReady}
-                placeholder="seu@email.com"
-                className="min-h-[48px]"
-              />
-
-              <Input
-                id="password"
-                label="Senha"
-                type="password"
-                autoComplete="current-password"
-                required
-                {...passwordInputProps}
-                disabled={isLoading || !isReady}
-                placeholder="••••••••"
-                className="min-h-[48px]"
-              />
-            </div>
-
-            {success && (
-              <div className="rounded-xl bg-green-50 border border-green-200 p-3.5 text-sm text-green-700">
-                {success}
-              </div>
-            )}
-
-            {error && (
-              <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              isLoading={isLoading}
-              disabled={!isReady}
-              className="w-full text-sm font-semibold min-h-[48px]"
+          {mfaToken ? (
+            <MfaLoginStep
+              mfaToken={mfaToken}
+              onSubmitCode={completeMfaLogin}
+              onBack={() => setMfaToken(null)}
+            />
+          ) : (
+            <form
+              onSubmit={handleFormSubmit}
+              noValidate
+              method="post"
+              className="mt-8 space-y-6"
             >
-              Entrar
-            </Button>
+              <div className="space-y-4">
+                <Input
+                  id="email"
+                  label="E-mail"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  {...emailInputProps}
+                  disabled={isLoading || !isReady}
+                  placeholder="seu@email.com"
+                  className="min-h-[48px]"
+                />
 
-            <div className="flex flex-col gap-3 text-center text-sm">
-              <div className="text-gray-600">
-                Não tem uma conta?{" "}
-                <Link
-                  href="/cadastro"
-                  className="font-semibold text-teal-500 hover:text-teal-600"
-                >
-                  Criar conta
-                </Link>
+                <Input
+                  id="password"
+                  label="Senha"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  {...passwordInputProps}
+                  disabled={isLoading || !isReady}
+                  placeholder="••••••••"
+                  className="min-h-[48px]"
+                />
               </div>
-              <div className="text-gray-600">
-                <Link
-                  href="/forgot-password"
-                  className="font-semibold text-teal-500 hover:text-teal-600"
-                >
-                  Esqueceu sua senha?
-                </Link>
+
+              {success && (
+                <div className="rounded-xl bg-green-50 border border-green-200 p-3.5 text-sm text-green-700">
+                  {success}
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                isLoading={isLoading}
+                disabled={!isReady}
+                className="w-full text-sm font-semibold min-h-[48px]"
+              >
+                Entrar
+              </Button>
+
+              <div className="flex flex-col gap-3 text-center text-sm">
+                <div className="text-gray-600">
+                  Não tem uma conta?{" "}
+                  <Link
+                    href="/cadastro"
+                    className="font-semibold text-teal-500 hover:text-teal-600"
+                  >
+                    Criar conta
+                  </Link>
+                </div>
+                <div className="text-gray-600">
+                  <Link
+                    href="/forgot-password"
+                    className="font-semibold text-teal-500 hover:text-teal-600"
+                  >
+                    Esqueceu sua senha?
+                  </Link>
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
       </div>
 
