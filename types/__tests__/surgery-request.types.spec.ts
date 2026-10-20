@@ -94,10 +94,10 @@ describe("surgery-request.types", () => {
         priority: 2,
         pendenciesCount: 3,
         createdAt: "2024-01-01",
+        lastActivityAt: "2024-01-01",
         status: "Pendente",
       };
 
-      // Nova estrutura: doctor é User, doctor_profile é aninhado
       expect(request.doctor.name).toBe("Dr. João");
       expect(request.doctor.doctorProfile?.crm).toBe("123456");
       expect(request.doctor.doctorProfile?.specialty).toBe("Ortopedia");
@@ -115,6 +115,7 @@ describe("surgery-request.types", () => {
         priority: 1,
         pendenciesCount: 0,
         createdAt: "2024-01-01",
+        lastActivityAt: "2024-01-01",
         status: "Enviada",
       };
 

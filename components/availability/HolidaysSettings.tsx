@@ -34,12 +34,6 @@ interface Rascunho {
 
 const dataBR = (d: string) => d.split("-").reverse().join("/");
 
-/**
- * Feriados da conta (MIG-05). Feriado que bloqueia a agenda impede agendar no
- * dia; "repete todo ano" vale para os de data fixa. Os nacionais fixos podem
- * ser importados de uma vez; Carnaval, Sexta-feira Santa e Corpus Christi
- * mudam de data e são cadastrados por ano.
- */
 export function HolidaysSettings() {
   const [ano, setAno] = useState(() => new Date().getFullYear());
   const [feriados, setFeriados] = useState<Holiday[]>([]);
@@ -52,8 +46,6 @@ export function HolidaysSettings() {
   const [deleting, setDeleting] = useState(false);
 
   const queryClient = useQueryClient();
-  // Só a resposta da última busca vale: trocar de ano rápido dispara várias,
-  // e uma mais lenta de um ano anterior não pode sobrescrever a lista.
   const ultimaBusca = useRef(0);
 
   const carregar = useCallback(async () => {
@@ -74,19 +66,15 @@ export function HolidaysSettings() {
   useEffect(() => {
     setLoading(true);
     carregar();
-    // Contador (não nó do DOM): a cleanup quer mesmo o valor atual.
     const buscas = ultimaBusca;
     return () => {
-      // Descarta a busca em voo ao trocar de ano ou desmontar.
       buscas.current++;
     };
   }, [carregar]);
 
-  /** A Agenda guarda os feriados em cache: avisa que mudaram. */
   const avisarAgenda = () =>
     queryClient.invalidateQueries({ queryKey: AVAILABILITY_QUERY_KEYS.holidays });
 
-  /** Ordena pelo dia/mês: os recorrentes de outros anos ficam no lugar certo. */
   const ordenados = [...feriados].sort((a, b) =>
     a.date.slice(5).localeCompare(b.date.slice(5)),
   );
@@ -121,7 +109,6 @@ export function HolidaysSettings() {
     }
   };
 
-  /** Cria os nacionais fixos que ainda não existem (mesmo dia/mês). */
   const importarNacionais = async () => {
     setError(null);
     setImportando(true);
@@ -140,7 +127,6 @@ export function HolidaysSettings() {
     } catch (err) {
       setError(getApiErrorMessage(err, "Não foi possível importar os feriados."));
     } finally {
-      // Mesmo com falha no meio, os que já foram criados valem na Agenda.
       avisarAgenda();
       setImportando(false);
     }

@@ -1,14 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-/**
- * Após a re-arquitetura do sistema de planos (Billing v2 → Stripe Checkout + Portal):
- * - Planos vêm de billingService.listPlans()
- * - O plano atual é determinado por subscription.planId
- * - Checkout é iniciado via billingService.startCheckout(planId) → { url }
- * - Gerenciamento (upgrade/cancelamento/cartão) é via billingService.openPortal() → { url }
- * - Não há mais changePlan/cancel/resume/payment-methods/invoices no service
- */
-
 import type { SubscriptionPlan, SubscriptionDetail } from "@/types";
 
 const mockListPlans = vi.fn<() => Promise<SubscriptionPlan[]>>();

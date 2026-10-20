@@ -1,5 +1,3 @@
-/** @type {import('next').NextConfig} */
-
 import bundleAnalyzer from "@next/bundle-analyzer";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,19 +22,9 @@ const nextConfig = {
             { protocol: "http", hostname: "localhost" },
             { protocol: "https", hostname: "localhost" },
           ]),
-      {
-        protocol: "https",
-        hostname: "nuxgxpsofrcaumfvhqbh.supabase.co",
-      },
-      {
-        protocol: "https",
-        hostname: "**.r2.cloudflarestorage.com",
-      },
     ],
   },
-  // Necessário para builds standalone do Docker
   output: "standalone",
-  // Evita inferência incorreta do root quando há múltiplos lockfiles no workspace
   outputFileTracingRoot: path.resolve(__dirname),
   async redirects() {
     return [
@@ -67,9 +55,6 @@ const nextConfig = {
           },
           {
             key: "Permissions-Policy",
-            // Câmera só para a própria origem: a foto do paciente pode ser
-            // tirada pela webcam (WebcamCaptureModal). Iframes de terceiros
-            // continuam sem acesso.
             value: "camera=(self), microphone=(), geolocation=()",
           },
           {
@@ -84,8 +69,6 @@ const nextConfig = {
             key: "Origin-Agent-Cluster",
             value: "?1",
           },
-          // HSTS: ativado apenas em produção para não interferir no dev local (HTTP)
-          // max-age=63072000 = 2 anos; includeSubDomains protege subdomínios
           ...(isProd
             ? [
                 {

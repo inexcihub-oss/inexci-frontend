@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PatientPhotoViewer } from "@/components/patients/PatientPhotoViewer";
 import { useRouter } from "next/navigation";
 import {
@@ -25,11 +26,12 @@ import {
   getCoreRowModel,
   ColumnDef,
   flexRender,
-  ColumnResizeMode,
   getSortedRowModel,
   SortingState,
 } from "@tanstack/react-table";
 import { logger } from "@/lib/logger";
+import { registryKeys } from "@/lib/query-keys";
+import { getAvatarColor, getInitials } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -50,15 +52,11 @@ export default function PacientesPage() {
     src: string;
     nome: string;
   } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [patients, setPatients] = useState<PatientListItem[]>([]);
-  const [total, setTotal] = useState(0);
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [rowSelection, setRowSelection] = useState({});
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnResizeMode] = useState<ColumnResizeMode>("onChange");
 
-  // Estados do modal de exclusão
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
     patient: PatientListItem | null;
@@ -69,7 +67,6 @@ export default function PacientesPage() {
     loading: false,
   });
 
-  // Estado do modal de exclusão em lote
   const [bulkDeleteModal, setBulkDeleteModal] = useState<{
     open: boolean;
     loading: boolean;
@@ -78,35 +75,29 @@ export default function PacientesPage() {
     loading: false,
   });
 
-  // Estado do modal de novo paciente
   const [newPatientModalOpen, setNewPatientModalOpen] = useState(false);
 
-  // Debounce do termo de pesquisa para evitar requisições excessivas
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const loadPatients = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { records, total: totalCount } = await patientService.list({
+  const search = debouncedSearchTerm.trim() || undefined;
+  const patientsQuery = useQuery({
+    queryKey: [...registryKeys.patients(), "list", page, search ?? ""],
+    queryFn: () =>
+      patientService.list({
         skip: page * PAGE_SIZE,
         take: PAGE_SIZE,
-        search: debouncedSearchTerm.trim() || undefined,
-      });
-      setPatients(records);
-      setTotal(totalCount);
-    } catch (error) {
-      logger.error("Erro ao carregar pacientes:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, debouncedSearchTerm]);
+        search,
+      }),
+  });
+  const loading = patientsQuery.isPending;
+  const patients = useMemo<PatientListItem[]>(
+    () => patientsQuery.data?.records ?? [],
+    [patientsQuery.data],
+  );
+  const total = patientsQuery.data?.total ?? 0;
+  const loadPatients = () =>
+    queryClient.invalidateQueries({ queryKey: registryKeys.patients() });
 
-  // Recarrega quando a página ou a busca (debounced) mudam.
-  useEffect(() => {
-    loadPatients();
-  }, [loadPatients]);
-
-  // Volta para a primeira página sempre que o termo de busca muda.
   useEffect(() => {
     setPage(0);
     setRowSelection({});
@@ -123,32 +114,9 @@ export default function PacientesPage() {
   const rangeStart = total === 0 ? 0 : page * PAGE_SIZE + 1;
   const rangeEnd = Math.min(total, (page + 1) * PAGE_SIZE);
 
-  const getInitials = (name: string) => {
-    const parts = name.split(" ");
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
-
-  const getRandomColor = (id: string) => {
-    const colors = [
-      "bg-blue-200",
-      "bg-green-200",
-      "bg-yellow-200",
-      "bg-purple-200",
-      "bg-pink-200",
-      "bg-indigo-200",
-    ];
-    const idString = String(id);
-    const index = idString.charCodeAt(0) % colors.length;
-    return colors[index];
-  };
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return "-";
     try {
-      // Parseia a string diretamente (YYYY-MM-DD) para evitar conversão de fuso
       const [year, month, day] = dateString.substring(0, 10).split("-");
       return `${day}/${month}/${year}`;
     } catch {
@@ -223,7 +191,6 @@ export default function PacientesPage() {
     }
   };
 
-  // Definição das colunas
   const columns: ColumnDef<PatientListItem>[] = [
     ...(podeAdministrar
       ? [createSelectColumn<PatientListItem>({ allRows: true })]
@@ -242,7 +209,6 @@ export default function PacientesPage() {
               type="button"
               aria-label={`Ver foto de ${row.original.name}`}
               onClick={(e) => {
-                // A foto amplia; o resto da célula continua abrindo o cadastro.
                 e.stopPropagation();
                 setFotoAmpliada({
                   src: row.original.photoUrl!,
@@ -262,8 +228,8 @@ export default function PacientesPage() {
             </button>
           ) : (
             <div
-              className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getRandomColor(
-                row.original.id,
+              className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getAvatarColor(
+                String(row.original.id),
               )}`}
             >
               {getInitials(row.original.name)}
@@ -354,18 +320,16 @@ export default function PacientesPage() {
     },
     enableRowSelection: true,
     enableSorting: true,
-    columnResizeMode,
+    columnResizeMode: "onChange",
     enableColumnResizing: true,
   });
 
   return (
     <PageContainer className="border-gray-200">
-      {/* Header */}
       <div className="flex-none flex items-center gap-2 px-4 lg:px-8 py-3.5 border-b border-gray-200">
         <h1 className="ds-page-title">Pacientes</h1>
       </div>
 
-      {/* Search and Actions */}
       <div className="flex-none flex flex-wrap items-center gap-2.5 px-4 py-3 border-b border-gray-200">
         <SearchInput
           value={searchTerm}
@@ -411,7 +375,6 @@ export default function PacientesPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center h-full">
@@ -505,7 +468,6 @@ export default function PacientesPage() {
           </div>
         )}
 
-        {/* Paginação server-side */}
         {!loading && total > 0 && (
           <div className="flex-none flex items-center justify-between gap-2 px-4 py-3 border-t border-gray-200">
             <span className="text-xs text-gray-500">

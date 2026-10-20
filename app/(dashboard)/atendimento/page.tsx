@@ -12,7 +12,6 @@ import { CalendarDays, Stethoscope } from "lucide-react";
 import PageContainer from "@/components/PageContainer";
 import Loading from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Toast } from "@/components/ui/Toast";
 import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
 import { AppointmentDetailModal } from "@/components/agenda/AppointmentDetailModal";
 import { AgendaDoctorFilter } from "@/components/agenda/AgendaDoctorFilter";
@@ -30,6 +29,7 @@ import { Permission } from "@/lib/permissions";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
+import { appointmentKeys } from "@/lib/query-keys";
 import { formatDoctorName } from "@/lib/formatters";
 import { MONTHS, WEEKDAYS_SHORT, dateKey, hhmm, isToday } from "@/lib/calendar";
 import {
@@ -55,7 +55,7 @@ const STATUS_BADGE: Record<AppointmentStatus, string> = {
 export default function AtendimentoHubPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { toast, showSuccess, showError, hideToast } = useToast();
+  const { showSuccess, showError } = useToast();
   const { can, user } = useAuth();
   const podeAgenda = can(Permission.AGENDA);
 
@@ -68,8 +68,6 @@ export default function AtendimentoHubPage() {
   const [detail, setDetail] = useState<Appointment | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Passo "iniciar" da trilha Atendimento: abre o modal de detalhe com uma
-  // consulta fabricada, só para mostrar onde fica "Iniciar atendimento".
   useOnboardingAction("atendimento-abrir-detalhe-demo", () =>
     setDetail(criarConsultaDemo(user?.doctorProfile?.id ?? "")),
   );
@@ -85,11 +83,6 @@ export default function AtendimentoHubPage() {
     [doctors],
   );
 
-  // O recorte de cada aba (janela de datas + status + ordem) é resolvido no
-  // servidor; aqui só agrupamos por dia.
-  // `hoje` entra no memo: com a tela aberta na virada da meia-noite, a aba
-  // "Hoje" (e "Próximas", que começa hoje) passa para o dia novo — a janela
-  // muda, a query key muda e a lista é buscada de novo.
   const hoje = useDiaAtual();
   const tabQuery = useMemo(
     () => hubTabQuery(tab, diaParaData(hoje)),
@@ -97,26 +90,20 @@ export default function AtendimentoHubPage() {
   );
   const { from, to, status, order } = tabQuery;
 
-  // Lista paginada: 20 por vez, com "carregar mais". O filtro de
-  // profissionais vai para o servidor — filtrar só o que já foi carregado
-  // mostraria uma página vazia com consultas do profissional ainda por vir.
   const query = useInfiniteQuery({
-    queryKey: [
-      "appointments",
-      "hub",
-      from ?? null,
-      to ?? null,
-      status.join(","),
+    queryKey: appointmentKeys.hub({
+      from,
+      to,
+      status,
       order,
-      selectedDoctorIds.join(","),
-    ],
+      doctorIds: selectedDoctorIds,
+    }),
     queryFn: ({ pageParam }) =>
       appointmentService.getAgendaPage({
         ...tabQuery,
         doctorIds: selectedDoctorIds,
         skip: pageParam,
         take: HUB_PAGE_SIZE,
-        // As contagens do filtro valem para a aba inteira; basta a 1ª página.
         withDoctorCounts: pageParam === 0,
       }),
     initialPageParam: 0,
@@ -135,9 +122,8 @@ export default function AtendimentoHubPage() {
   const faltam = Math.max(0, totalNoServidor - (records?.length ?? 0));
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
 
-  // Filtra por médico, ordena e agrupa por dia.
   const groups = useMemo(() => {
     const list = [...(records ?? [])]
       .sort((a, b) => {
@@ -160,7 +146,6 @@ export default function AtendimentoHubPage() {
 
   const countByDoctorId = query.data?.pages[0]?.countByDoctorId;
 
-  // ── Mutations (usadas pelo modal de detalhe) ────────────────────────────────
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: AppointmentStatus }) =>
       appointmentService.updateStatus(id, status),
@@ -196,7 +181,6 @@ export default function AtendimentoHubPage() {
   return (
     <PageContainer>
       <div className="flex flex-col h-full overflow-hidden">
-        {/* ── Header ─────────────────────────────────────────────── */}
         <div className="flex flex-col gap-3 px-3 lg:px-6 py-3 border-b border-neutral-100 shrink-0">
           <div className="flex items-center gap-2">
             <div>
@@ -231,7 +215,6 @@ export default function AtendimentoHubPage() {
             )}
           </div>
 
-          {/* Abas + filtro de médico */}
           <div className="flex items-center gap-2 flex-wrap">
             <div
               data-tour="atendimento-abas"
@@ -276,10 +259,7 @@ export default function AtendimentoHubPage() {
           </div>
         </div>
 
-        {/* ── Corpo ──────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-4">
-          {/* Erro só da página seguinte ("Carregar mais") não apaga o que já
-              foi carregado: ele aparece no rodapé, com o tentar de novo. */}
           {query.isError && !query.isFetchNextPageError ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16">
               <p className="text-sm text-red-500">
@@ -341,8 +321,6 @@ export default function AtendimentoHubPage() {
                 );
               })}
 
-              {/* Rodapé da lista: quanto falta, carregar mais e a agenda para
-                  quem procura um período específico. */}
               {totalNoServidor > HUB_PAGE_SIZE && (
                 <div className="flex flex-col items-center gap-2 pt-2 pb-4">
                   <p className="text-xs text-neutral-500" role="status">
@@ -387,7 +365,6 @@ export default function AtendimentoHubPage() {
         </div>
       </div>
 
-      {/* ── Modais ─────────────────────────────────────────────── */}
       {newModal && (
         <NewAppointmentModal
           isOpen
@@ -423,14 +400,10 @@ export default function AtendimentoHubPage() {
         />
       )}
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </PageContainer>
   );
 }
 
-// ── Linha de consulta ─────────────────────────────────────────────────────────
 function AppointmentRow({
   appointment: a,
   doctorName,
@@ -452,7 +425,6 @@ function AppointmentRow({
       onClick={onOpen}
       className="w-full text-left flex items-center gap-3 rounded-xl border border-neutral-100 bg-white px-3 py-3 hover:border-neutral-200 hover:bg-neutral-50 transition-colors"
     >
-      {/* Horário */}
       <div className="flex flex-col items-center justify-center w-14 shrink-0">
         <span className="text-sm font-bold text-neutral-900 tabular-nums">
           {hhmm(start)}
@@ -464,7 +436,6 @@ function AppointmentRow({
 
       <div className="w-px self-stretch bg-neutral-100" />
 
-      {/* Paciente + tipo */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-neutral-900 truncate">
           {a.patient?.name ?? "Paciente"}
@@ -475,7 +446,6 @@ function AppointmentRow({
         </p>
       </div>
 
-      {/* Status */}
       <span
         className={cn(
           "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border shrink-0",

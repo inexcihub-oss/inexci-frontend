@@ -1,19 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
 import {
   collaboratorService,
   CreateCollaboratorPayload,
 } from "@/services/collaborator.service";
 import Input from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
+import { ModalFooter } from "@/components/shared/ModalFooter";
 import { useZodForm } from "@/hooks/useZodForm";
 import { createCollaboratorSchema } from "@/lib/schemas/collaborator.schema";
 import { unmask } from "@/lib/masks";
 import { isValidEmail } from "@/lib/validators";
 import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
 import { PROFILE_PRESETS } from "@/lib/permissions";
 import {
@@ -27,7 +27,6 @@ interface NewCollaboratorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  /** Quando true, o toggle "É médico" é pré-ativado e o título/botão mudam para "Novo médico" */
   defaultIsDoctor?: boolean;
 }
 
@@ -82,7 +81,7 @@ export function NewCollaboratorModal({
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [error, setError] = useState("");
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const { emTour } = useOnboarding();
   const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
@@ -97,14 +96,11 @@ export function NewCollaboratorModal({
       crm: "",
       crmState: "",
       specialty: "",
-      // Nasce com o perfil completo: é o comportamento de hoje (sem o
-      // bloco de permissões, todo colaborador tinha acesso a tudo).
       permissions: PROFILE_PRESETS.completo,
     },
   });
   const isCrm = (form.values.council ?? "CRM") === "CRM";
 
-  // Mantém is_doctor sincronizado quando defaultIsDoctor mudar
   useEffect(() => {
     form.setField("isDoctor", defaultIsDoctor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,8 +148,6 @@ export function NewCollaboratorModal({
           email: data.email.trim(),
           phone: unmask(data.phone),
           permissions: data.permissions,
-          // Médico (CRM) sem número não chega aqui (o schema barra). Para os
-          // demais conselhos, número e UF vão só se preenchidos.
           ...(data.isDoctor && {
             isDoctor: true,
             council: data.council,
@@ -163,7 +157,6 @@ export function NewCollaboratorModal({
           }),
         };
         await collaboratorService.create(payload);
-        // Profissional novo entra na lista de médicos do wizard e da agenda.
         void invalidateAvailableDoctors();
         onSuccess();
         form.reset({
@@ -200,48 +193,25 @@ export function NewCollaboratorModal({
     (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
   );
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-      <div className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-xl flex flex-col sm:mx-4 w-full sm:max-w-2xl max-h-[90vh] mobile-sheet-offset">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-4 flex-shrink-0">
-          <h2 className="ds-modal-title">
-            {defaultIsDoctor ? "Novo médico" : "Novo colaborador"}
-          </h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Fechar"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        <div className="h-px bg-gray-200 flex-shrink-0" />
-
-        {/* Body */}
-        <form
-          onSubmit={onSubmit}
-          noValidate
-          className="flex flex-col flex-1 overflow-hidden"
-        >
-          <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5 overflow-y-auto">
-            {/* Row 1: Nome + Telefone */}
+    <>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title={defaultIsDoctor ? "Novo médico" : "Novo colaborador"}
+        disableClose={loading}
+      >
+        <form onSubmit={onSubmit} noValidate>
+          <div className="px-4 py-4 md:px-6 md:py-6 flex flex-col gap-3 md:gap-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className={labelClass}>Nome completo</label>
-                <input
+                <Input
                   type="text"
                   required
                   value={form.values.name}
                   onChange={(e) => form.setField("name", e.target.value)}
                   placeholder="Nome completo"
-                  className={inputClass}
                 />
                 {form.errors.name && (
                   <span className="text-xs text-red-500">
@@ -262,17 +232,20 @@ export function NewCollaboratorModal({
               </div>
             </div>
 
-            {/* Row 2: E-mail */}
             <div className="flex flex-col gap-1.5">
               <label className={labelClass}>E-mail</label>
-              <input
+              <Input
                 type="email"
                 required
                 value={form.values.email}
                 onChange={handleEmailChange}
                 onBlur={handleEmailBlur}
                 placeholder="colaborador@mail.com"
-                className={`${inputClass} ${emailError || form.errors.email ? "border-red-400 focus:ring-red-400" : ""}`}
+                className={
+                  emailError || form.errors.email
+                    ? "border-red-400 focus:ring-red-400"
+                    : undefined
+                }
               />
               {(emailError || form.errors.email) && (
                 <span className="text-xs text-red-500">
@@ -281,7 +254,6 @@ export function NewCollaboratorModal({
               )}
             </div>
 
-            {/* Is Doctor Toggle */}
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -303,7 +275,6 @@ export function NewCollaboratorModal({
               </span>
             </div>
 
-            {/* Doctor Fields (conditional) */}
             {form.values.isDoctor && (
               <div className="space-y-3 p-4 bg-teal-50 rounded-xl border border-teal-100">
                 <div className="flex flex-col gap-1.5">
@@ -345,14 +316,13 @@ export function NewCollaboratorModal({
                         </span>
                       )}
                     </label>
-                    <input
+                    <Input
                       type="text"
                       aria-label="Número no conselho"
                       required={form.values.isDoctor && isCrm}
                       value={form.values.crm}
                       onChange={(e) => form.setField("crm", e.target.value)}
                       placeholder="123456"
-                      className={inputClass}
                     />
                     {form.errors.crm && (
                       <span className="text-xs text-red-500">
@@ -400,18 +370,16 @@ export function NewCollaboratorModal({
                       (opcional)
                     </span>
                   </label>
-                  <input
+                  <Input
                     type="text"
                     value={form.values.specialty}
                     onChange={(e) => form.setField("specialty", e.target.value)}
                     placeholder="Ex: Ortopedia, Cardiologia..."
-                    className={inputClass}
                   />
                 </div>
               </div>
             )}
 
-            {/* Permissões */}
             <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 md:pt-5">
               <h3 className="ds-section-title">Permissões de acesso</h3>
               <PermissionsSection
@@ -427,9 +395,7 @@ export function NewCollaboratorModal({
             )}
           </div>
 
-          {/* Footer */}
-          <div className="h-px bg-gray-200 flex-shrink-0" />
-          <div className="ds-modal-footer">
+          <ModalFooter align="end">
             <button
               type="submit"
               disabled={loading || !!emailError || emTour}
@@ -441,13 +407,10 @@ export function NewCollaboratorModal({
                   ? "Adicionar médico"
                   : "Adicionar colaborador"}
             </button>
-          </div>
+          </ModalFooter>
         </form>
-      </div>
+      </Modal>
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
-    </div>
+    </>
   );
 }

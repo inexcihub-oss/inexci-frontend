@@ -24,10 +24,6 @@ function formatDate(dateStr: string | null | undefined): string {
   return d.toLocaleDateString("pt-BR");
 }
 
-/**
- * Seção de dados da análise exibida em Informações Gerais a partir do status 3.
- * Referência: telas-inexci/status/em-analise/tela-detalhes-status-em-analise.png
- */
 export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
   const quotations = [
     {
@@ -48,7 +44,6 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
 
   return (
     <div className="space-y-2.5">
-      {/* Dados da Solicitação */}
       <SectionCard title="Dados da solicitação">
         <SectionCardBody>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -68,7 +63,6 @@ export function AnalysisDataSection({ analysis }: AnalysisDataSectionProps) {
         </SectionCardBody>
       </SectionCard>
 
-      {/* Dados da cotação (apenas se houver cotações ou observações preenchidas) */}
       {hasQuotationData && (
         <SectionCard title="Dados da cotação">
           <SectionCardBody>

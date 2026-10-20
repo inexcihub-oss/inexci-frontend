@@ -15,7 +15,6 @@ import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { logger } from "@/lib/logger";
 
-/** Campos clínicos que viajam entre a ficha e o modelo. */
 export interface TemplateFields {
   anamnesis: string;
   physicalExam: string;
@@ -33,12 +32,6 @@ const hasContent = (fields: TemplateFields): boolean =>
       fields.cidCodes.length,
   );
 
-/**
- * Modelos de anamnese na tela de atendimento: aplicar um modelo escreve o
- * texto-base nos campos da ficha; salvar cria um modelo novo a partir do que
- * está digitado. Nada é gravado no atendimento aqui — quem escreve na ficha é
- * a casca, e o médico ainda precisa salvar.
- */
 export function ClinicalTemplateActions({
   doctorId,
   fields,
@@ -55,8 +48,6 @@ export function ClinicalTemplateActions({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [applyingId, setApplyingId] = useState<string | null>(null);
-  // Aplicar incrementa o contador de uso do modelo e salvar cria um registro
-  // real e persistente: nenhum dos dois pode acontecer durante o tour.
   const { emTour } = useOnboarding();
 
   const load = useCallback(() => {
@@ -74,8 +65,6 @@ export function ClinicalTemplateActions({
   }, [load]);
 
   const handleApply = async (template: ClinicalRecordTemplate) => {
-    // Aplicar substitui o texto dos campos — com a ficha já preenchida, o
-    // médico perderia o que escreveu sem perceber.
     if (
       hasContent(fields) &&
       !window.confirm(
@@ -91,7 +80,6 @@ export function ClinicalTemplateActions({
       onApply(applied);
     } catch (err) {
       logger.error("Erro ao aplicar modelo:", err);
-      // Sem o contador de uso o modelo ainda serve; aplica o que já temos.
       onApply(template);
     } finally {
       setApplyingId(null);
@@ -139,8 +127,6 @@ export function ClinicalTemplateActions({
             <p className="text-sm font-semibold text-neutral-900">
               Modelos de anamnese
             </p>
-            {/* Sem modelo salvo, a barra explica para que serve em vez de
-                ficar só com um link solto. */}
             <p className="text-xs text-neutral-500">
               {templates.length > 0
                 ? "Escolha um modelo para preencher a ficha."

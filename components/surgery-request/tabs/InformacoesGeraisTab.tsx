@@ -6,7 +6,6 @@ import {
   DOCUMENT_FOLDERS,
   Document,
 } from "@/services/document.service";
-import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 import { EditableProcedureData } from "@/components/surgery-request/EditableProcedureData";
 import {
   DocumentUploadModal,
@@ -19,8 +18,13 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { Checkbox } from "@/components/ui";
 import { useToast } from "@/hooks/useToast";
 import { safeExternalUrl } from "@/lib/safe-url";
-
-// ─── Tipos de documento exibidos em Informações Gerais ───────────────────────
+import { useSolicitacao } from "@/contexts/SolicitacaoContext";
+import {
+  SCHEDULING_STATUSES,
+  SurgeryRequestStatusCode,
+  isStatusIn,
+  reachedStatus,
+} from "@/lib/surgery-request-status";
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   personal_document: "RG/CNH",
@@ -35,7 +39,6 @@ const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   additional_document: "Outro Documento",
   sc_creation_source: "Documento de origem",
   consent_term: "Termo de Consentimento",
-  // Copiado do prontuário quando a SC nasce de uma indicação no atendimento.
   exam_referral: "Solicitação de Exames",
 };
 
@@ -54,46 +57,29 @@ function formatDocumentDate(value?: string | null): string {
   });
 }
 
-// ─── Interface de props ───────────────────────────────────────────────────────
-
 interface InformacoesGeraisTabProps {
-  solicitacao: SurgeryRequestDetail;
   selectedDocuments: Set<string>;
   handleSelectDocument: (docId: string) => void;
   handleSelectAllDocuments: () => void;
-  onUpdateProcedure: () => void;
-  surgeryRequestId: string | number;
-  onDocumentsUploaded: () => void;
-  statusNum: number;
   pendingDateIndex: number | null;
   onSelectDate: (index: number) => void;
   onEditDateOptions: () => void;
   onReschedule: () => void;
 }
 
-/**
- * Aba "Informações Gerais" na tela de detalhes da solicitação cirúrgica.
- *
- * Seções exibidas (condicionalmente, por status):
- * - Dados do procedimento (sempre)
- * - Dados da análise (status ≥ 3)
- * - Agendamento (status 4 e 5)
- * - Documentos (sempre)
- */
 export function InformacoesGeraisTab({
-  solicitacao,
   selectedDocuments,
   handleSelectDocument,
   handleSelectAllDocuments,
-  onUpdateProcedure,
-  surgeryRequestId,
-  onDocumentsUploaded,
-  statusNum,
   pendingDateIndex,
   onSelectDate,
   onEditDateOptions,
   onReschedule,
 }: InformacoesGeraisTabProps) {
+  const { solicitacao, statusNum, onUpdate } = useSolicitacao();
+  const onUpdateProcedure = onUpdate;
+  const onDocumentsUploaded = onUpdate;
+  const surgeryRequestId = solicitacao.id;
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(
@@ -102,9 +88,8 @@ export function InformacoesGeraisTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const { showToast } = useToast();
 
-  const isReadOnly = statusNum >= 2;
+  const isReadOnly = statusNum !== SurgeryRequestStatusCode.PENDING;
 
-  // Documentos pré-cirúrgicos: excluir pastas post-surgical e report, e imagens do laudo
   const preSurgeryDocs = React.useMemo(
     () =>
       (solicitacao.documents ?? []).filter(
@@ -145,7 +130,6 @@ export function InformacoesGeraisTab({
     </button>
   );
 
-  // ── Tooltip de info sobre a seção Documentos ────────────────────────────────
   const [showDocTooltip, setShowDocTooltip] = useState(false);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number }>({
     top: 0,
@@ -154,7 +138,6 @@ export function InformacoesGeraisTab({
   const tooltipRef = useRef<HTMLDivElement>(null);
   const infoButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Fecha ao clicar fora
   useEffect(() => {
     if (!showDocTooltip) return;
     function handleClickOutside(e: MouseEvent) {
@@ -171,7 +154,6 @@ export function InformacoesGeraisTab({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDocTooltip]);
 
-  // Fecha ao rolar a página
   useEffect(() => {
     if (!showDocTooltip) return;
     const close = () => setShowDocTooltip(false);
@@ -249,8 +231,8 @@ export function InformacoesGeraisTab({
 
   return (
     <div className="space-y-3 md:space-y-4">
-      {/* Motivo do encerramento (status 9 - Encerrada) */}
-      {statusNum === 9 && solicitacao.closedReason && (
+      {statusNum === SurgeryRequestStatusCode.CLOSED &&
+        solicitacao.closedReason && (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3.5 md:px-6 md:py-4">
           <div className="flex items-center gap-2 mb-1.5">
             <svg
@@ -279,8 +261,7 @@ export function InformacoesGeraisTab({
         </div>
       )}
 
-      {/* Agendamento (status 4 ou 5) — aparece antes dos dados do procedimento */}
-      {(statusNum === 4 || statusNum === 5) && (
+      {isStatusIn(statusNum, SCHEDULING_STATUSES) && (
         <SchedulingSection
           solicitacao={solicitacao}
           statusNum={statusNum}
@@ -291,8 +272,7 @@ export function InformacoesGeraisTab({
         />
       )}
 
-      {/* Banner de contestação ativa (status 3 - Em Análise) */}
-      {statusNum === 3 &&
+      {statusNum === SurgeryRequestStatusCode.IN_ANALYSIS &&
         solicitacao.contestations?.some(
           (c) => c.type === "authorization" && !c.resolved_at,
         ) && (
@@ -303,17 +283,14 @@ export function InformacoesGeraisTab({
           </div>
         )}
 
-      {/* Dados do procedimento */}
       <EditableProcedureData
         solicitacao={solicitacao}
         onUpdate={onUpdateProcedure}
         readOnly={isReadOnly}
       />
 
-      {/* Documentos */}
       <SectionCard title={documentTitle} headerAction={documentHeaderAction}>
         <div className="space-y-0">
-          {/* Cabeçalho da tabela */}
           <div
             className={`flex items-center gap-4 px-4 py-1.5 border-b border-neutral-100${isReadOnly ? " bg-gray-50" : ""}`}
           >
@@ -341,7 +318,6 @@ export function InformacoesGeraisTab({
             </div>
           </div>
 
-          {/* Linhas de documentos */}
           {preSurgeryDocs.length > 0 ? (
             preSurgeryDocs.map((doc, index: number) => (
               <div
@@ -427,9 +403,8 @@ export function InformacoesGeraisTab({
         </div>
       </SectionCard>
 
-      {/* Modais */}
-      {/* Dados da solicitação/análise (status ≥ 3) — última seção */}
-      {statusNum >= 3 && solicitacao.analysis && (
+      {reachedStatus(solicitacao, SurgeryRequestStatusCode.IN_ANALYSIS) &&
+        solicitacao.analysis && (
         <AnalysisDataSection analysis={solicitacao.analysis} />
       )}
 

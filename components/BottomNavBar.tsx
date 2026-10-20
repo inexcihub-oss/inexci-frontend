@@ -6,93 +6,37 @@ import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
-import { Permission } from "@/lib/permissions";
+import {
+  mobileNavItems,
+  navItemPermission,
+  NavItem,
+  Permission,
+} from "@/lib/permissions";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 import { ACAO_CADASTROS_ABRIR_MENU_MOBILE } from "@/lib/onboarding/tour-registry";
 
-interface NavItem {
+interface BottomNavItem {
   iconSrc: string;
   label: string;
   href: string;
-  permission?: Permission;
+  permission: Permission | null;
 }
 
-// Itens sempre visíveis na barra inferior (Pacientes fica sem `permission`:
-// leitura é transversal a toda a conta)
-const PRIMARY_ITEMS: NavItem[] = [
-  {
-    iconSrc: "/icons/stethoscope.svg",
-    label: "Atendimento",
-    href: "/atendimento",
-    permission: Permission.ATENDIMENTO,
-  },
-  {
-    iconSrc: "/icons/calendar-schedule.svg",
-    label: "Agenda",
-    href: "/agenda",
-    permission: Permission.AGENDA,
-  },
-  {
-    iconSrc: "/icons/grid-layout.svg",
-    label: "Solicitações",
-    href: "/solicitacoes-cirurgicas",
-    permission: Permission.SOLICITACOES,
-  },
-  { iconSrc: "/icons/user-add.svg", label: "Pacientes", href: "/pacientes" },
-];
+const toBottomItem = (item: NavItem): BottomNavItem => ({
+  iconSrc: item.iconSrc,
+  label: item.shortLabel ?? item.label,
+  href: item.href,
+  permission: navItemPermission(item),
+});
 
-// Itens do overflow sheet — os sem `permission` são transversais a toda a conta
-const OVERFLOW_ITEMS: NavItem[] = [
-  {
-    iconSrc: "/icons/dashboard.svg",
-    label: "Dashboard",
-    href: "/dashboard",
-    permission: Permission.SOLICITACOES,
-  },
-  {
-    iconSrc: "/icons/status-surgeries.svg",
-    label: "Procedimentos",
-    href: "/procedimentos",
-    permission: Permission.SOLICITACOES,
-  },
-  {
-    iconSrc: "/icons/clinic-building.svg",
-    label: "Clínicas",
-    href: "/clinicas",
-    permission: Permission.ADMINISTRACAO,
-  },
-  { iconSrc: "/icons/users.svg", label: "Hospitais", href: "/hospitais" },
-  {
-    iconSrc: "/icons/document.svg",
-    label: "Convênios",
-    href: "/convenios",
-  },
-  {
-    iconSrc: "/icons/dollar-cash-circle.svg",
-    label: "Fornecedores",
-    href: "/fornecedores",
-  },
-  {
-    iconSrc: "/icons/user.svg",
-    label: "Fabricantes",
-    href: "/fabricantes",
-  },
-  {
-    iconSrc: "/icons/user-profile.svg",
-    label: "Colaboradores",
-    href: "/colaboradores",
-    permission: Permission.ADMINISTRACAO,
-  },
-];
+const PRIMARY_ITEMS = mobileNavItems("primary").map(toBottomItem);
+const OVERFLOW_ITEMS = mobileNavItems("overflow").map(toBottomItem);
 
 export default function BottomNavBar() {
   const pathname = usePathname();
   const { can } = useAuth();
   const [overflowOpen, setOverflowOpen] = useState(false);
 
-  // O passo "Hospitais, convênios e fornecedores" precisa revelar o
-  // overflow no mobile; sem isso, a explicação virava um card solto e não
-  // mostrava onde os cadastros realmente ficam.
   useOnboardingAction(ACAO_CADASTROS_ABRIR_MENU_MOBILE, () =>
     setOverflowOpen(true),
   );
@@ -111,15 +55,9 @@ export default function BottomNavBar() {
     [can],
   );
 
-  // Com a lista cheia (4 itens + "Mais"), a barra ocupa a largura toda —
-  // igual ao comportamento original, sem limite de largura por item. Só
-  // agrupa ao centro (com limite por item) quando sobram poucos itens
-  // (ex.: colaborador com permissão só de Agenda), senão os ícones esticam
-  // até preencher telas largas (a barra some só a partir do breakpoint lg).
   const totalSlots = primaryItems.length + (overflowItems.length > 0 ? 1 : 0);
   const isSparse = totalSlots > 0 && totalSlots <= 3;
 
-  // Fecha o overflow ao navegar
   useEffect(() => {
     setOverflowOpen(false);
   }, [pathname]);
@@ -129,18 +67,12 @@ export default function BottomNavBar() {
     return pathname.startsWith(href);
   };
 
-  // Verifica se a página atual está em um dos itens de overflow
-  const overflowActive = useMemo(
-    () => overflowItems.some((item) => isActive(item.href)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pathname, overflowItems],
-  );
+  const overflowActive = overflowItems.some((item) => isActive(item.href));
 
   const isDragging = dragY > 0;
 
   return (
     <>
-      {/* Barra principal */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-[70] lg:hidden bg-white/95 backdrop-blur-lg border-t border-neutral-100"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
@@ -193,7 +125,6 @@ export default function BottomNavBar() {
             );
           })}
 
-          {/* Botão "Mais" */}
           {overflowItems.length > 0 && (
             <button
               onClick={() => setOverflowOpen((v) => !v)}
@@ -208,7 +139,6 @@ export default function BottomNavBar() {
               {(overflowActive || overflowOpen) && (
                 <div className="absolute -top-0.5 w-5 h-0.5 bg-primary-600 rounded-full" />
               )}
-              {/* Ícone de três pontos */}
               <svg
                 width="24"
                 height="24"
@@ -234,17 +164,14 @@ export default function BottomNavBar() {
         </div>
       </nav>
 
-      {/* Overflow sheet */}
       {overflowOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-50 lg:hidden bg-black/30 animate-fade-in"
             style={{ opacity: isDragging ? Math.max(0.2, 1 - dragY / 200) : 1 }}
             onClick={closeOverflow}
           />
 
-          {/* Sheet */}
           <div
             data-tour="cadastros-menu-mobile"
             className="fixed inset-x-0 bottom-0 z-[60] lg:hidden bg-white rounded-t-3xl shadow-xl animate-slide-up"
@@ -254,7 +181,6 @@ export default function BottomNavBar() {
                 : undefined
             }
           >
-            {/* Drag handle */}
             <div
               className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none"
               onTouchStart={onTouchStart}
@@ -264,7 +190,6 @@ export default function BottomNavBar() {
               <div className="w-10 h-1 bg-neutral-200 rounded-full" />
             </div>
 
-            {/* Itens */}
             <div
               className="grid grid-cols-4 gap-1 px-4"
               style={{

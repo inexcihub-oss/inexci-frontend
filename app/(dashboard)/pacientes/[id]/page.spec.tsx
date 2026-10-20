@@ -21,8 +21,10 @@ vi.mock("@/contexts/AuthContext", () => ({
 vi.mock("@/services/patient.service", () => ({
   patientService: { getById: vi.fn() },
 }));
-vi.mock("@/services/health-plan.service", () => ({
-  healthPlanService: { getById: vi.fn() },
+vi.mock("@/hooks/useHealthPlans", () => ({
+  useHealthPlan: (id?: string | null) => ({
+    healthPlan: id === "hp-1" ? { id: "hp-1", name: "UNIMED" } : null,
+  }),
 }));
 vi.mock("@/services/appointment.service", async () => {
   const actual = await vi.importActual<
@@ -53,8 +55,6 @@ vi.mock("@/services/available-doctors.service", () => ({
   availableDoctorsService: { getAvailableDoctors: vi.fn() },
 }));
 
-// Componentes com vida própria (formulário, foto, modais) ficam fora do teste
-// da página: aqui interessa a composição — abas, resumo e linha do tempo.
 vi.mock("@/components/patients/PatientRegistrationForm", () => ({
   PatientRegistrationForm: () => <div>formulario-de-cadastro</div>,
 }));
@@ -82,7 +82,6 @@ vi.mock("@/components/agenda/AppointmentDetailModal", () => ({
 }));
 
 import { patientService } from "@/services/patient.service";
-import { healthPlanService } from "@/services/health-plan.service";
 import { appointmentService } from "@/services/appointment.service";
 import { clinicalRecordService } from "@/services/clinical-record.service";
 import { surgeryRequestService } from "@/services/surgery-request.service";
@@ -129,10 +128,6 @@ describe("página do paciente", () => {
       healthPlanId: "hp-1",
       createdAt: "2020-01-01T00:00:00.000Z",
       updatedAt: "2020-01-01T00:00:00.000Z",
-    });
-    mocked(healthPlanService.getById).mockResolvedValue({
-      id: "hp-1",
-      name: "UNIMED",
     });
     mocked(appointmentService.getByPatient).mockResolvedValue([
       proxima,
@@ -241,7 +236,6 @@ describe("página do paciente", () => {
 
   it("?tab= é respeitado quando as permissões chegam depois do primeiro render", async () => {
     search = new URLSearchParams({ tab: "documentos" });
-    // Sessão ainda sem permissões: a aba pedida não existe, cai no Cadastro.
     authState = { can: () => false };
     const { rerender } = render(<PacienteDetalhePage />);
 

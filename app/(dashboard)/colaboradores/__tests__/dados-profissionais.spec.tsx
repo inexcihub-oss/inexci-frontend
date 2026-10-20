@@ -1,17 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-/**
- * Tela do colaborador (`assistente/[id]`) — dados profissionais de quem já é
- * profissional de saúde:
- * - apagar número/UF de um não médico precisa apagar no servidor (antes ia
- *   `undefined`, que o backend lê como "não mexer");
- * - trocar o conselho recarrega o colaborador (o subtítulo e o resto da tela
- *   leem o `doctorProfile` salvo);
- * - o subtítulo não chama de "Médico" quem não é CRM;
- * - salvar invalida a lista de médicos em cache (wizard de SC, agenda).
- */
+import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const { getById, updateProfile, update, updateDoctorProfile } = vi.hoisted(
   () => ({
@@ -22,7 +12,6 @@ const { getById, updateProfile, update, updateDoctorProfile } = vi.hoisted(
   }),
 );
 
-// Quem está logado: por padrão o dono da conta, que não é o colaborador.
 const authState = vi.hoisted(() => ({
   user: { id: "dono-1" } as { id: string } | null,
   isAccountOwner: true,
@@ -99,7 +88,9 @@ let queryClient: QueryClient;
 function renderPage() {
   return render(
     <QueryClientProvider client={queryClient}>
-      <AssistenteDetalhePage />
+      <ToastProvider>
+        <AssistenteDetalhePage />
+      </ToastProvider>
     </QueryClientProvider>,
   );
 }
@@ -203,9 +194,6 @@ describe("Colaborador — dados profissionais", () => {
     expect(updateDoctorProfile).not.toHaveBeenCalled();
   });
 
-  // O backend recusa (403) que o admin delegado troque o próprio conselho ou
-  // vínculo. Antes o select ficava livre e o save gravava o perfil básico e
-  // parava no meio.
   describe("admin delegado editando a si mesmo", () => {
     beforeEach(() => {
       authState.user = { id: "colab-1" };
@@ -258,8 +246,6 @@ describe("Colaborador — dados profissionais", () => {
     ).toBeEnabled();
   });
 
-  // Perfil profissional primeiro: se o backend recusar, nada foi gravado
-  // pela metade.
   it("grava o perfil profissional antes do perfil básico e do colaborador", async () => {
     getById.mockResolvedValue(
       colaborador({ council: "CRN", crm: "4567", crmState: "RJ" }),

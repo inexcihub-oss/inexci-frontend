@@ -1,21 +1,3 @@
-/**
- * Logger central do frontend.
- *
- * Em desenvolvimento, espelha `console.*` para que o DX permaneça igual.
- * Em produção:
- *   - `log` e `debug` são silenciados (evita poluir o devtools dos clientes
- *     e vazar informações de debug).
- *   - `warn` e `error` continuam ativos e ganham metadados (`requestId`,
- *     `userAgent`, `url`) para correlação com o backend.
- *
- * Caminhos opcionais:
- *   - `setRequestId` / `getRequestId` permitem que o axios interceptor
- *     anote o último `X-Request-Id` recebido — útil para mostrar em
- *     páginas de erro ("Reporte este ID ao suporte").
- *   - `NEXT_PUBLIC_LOG_LEVEL` (em `.env.local`) sobrescreve o nível mínimo
- *     mesmo em produção (útil para diagnóstico pontual em staging).
- */
-
 type LogLevel = "error" | "warn" | "log" | "debug";
 
 const RANK: Record<LogLevel, number> = {
@@ -40,10 +22,6 @@ export function setRequestId(value: string | null | undefined): void {
   currentRequestId = value ? String(value) : null;
 }
 
-export function getRequestId(): string | null {
-  return currentRequestId;
-}
-
 function shouldLog(level: LogLevel): boolean {
   return RANK[level] <= RANK[minLevel];
 }
@@ -60,38 +38,96 @@ export const logger = {
   error: (msg: string, err?: unknown) => {
     if (!shouldLog("error")) return;
     const meta = buildMeta();
+    const error = serializeError(err);
     if (meta) {
-      console.error(msg, { error: serializeError(err), ...meta });
+      console.error(msg, { error, ...meta });
     } else {
-      console.error(msg, err);
+      console.error(msg, error);
     }
   },
   warn: (msg: string, data?: unknown) => {
     if (!shouldLog("warn")) return;
     const meta = buildMeta();
+    const safe = serializeError(data);
     if (meta) {
-      console.warn(msg, { data, ...meta });
+      console.warn(msg, { data: safe, ...meta });
     } else {
-      console.warn(msg, data);
+      console.warn(msg, safe);
     }
   },
   log: (msg: string, data?: unknown) => {
     if (!shouldLog("log")) return;
-    console.log(msg, data);
+    console.log(msg, serializeError(data));
   },
   debug: (msg: string, data?: unknown) => {
     if (!shouldLog("debug")) return;
-    console.debug(msg, data);
+    console.debug(msg, serializeError(data));
   },
 };
 
-function serializeError(err: unknown): unknown {
-  if (err instanceof Error) {
+const DROPPED_KEYS = new Set([
+  "headers",
+  "config",
+  "request",
+  "authorization",
+  "cookie",
+  "set-cookie",
+  "password",
+  "access_token",
+  "refresh_token",
+  "accesstoken",
+  "refreshtoken",
+  "token",
+]);
+
+const MAX_DEPTH = 4;
+
+interface HttpErrorLike {
+  code?: unknown;
+  config?: { method?: unknown; url?: unknown };
+  response?: { status?: unknown };
+}
+
+function describeHttpError(err: HttpErrorLike): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (typeof err.code === "string") out.code = err.code;
+  const status = err.response?.status;
+  if (typeof status === "number") out.status = status;
+  const method = err.config?.method;
+  if (typeof method === "string") out.method = method.toUpperCase();
+  const url = err.config?.url;
+  if (typeof url === "string") out.url = url.split("?")[0];
+  return out;
+}
+
+function sanitizeValue(value: unknown, depth: number): unknown {
+  if (value instanceof Error) {
     return {
-      name: err.name,
-      message: err.message,
-      stack: isDev ? err.stack : undefined,
+      name: value.name,
+      message: value.message,
+      ...describeHttpError(value as HttpErrorLike),
+      stack: isDev ? value.stack : undefined,
     };
   }
-  return err;
+  if (value === null || typeof value !== "object") return value;
+  if (depth >= MAX_DEPTH) return "[truncated]";
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeValue(item, depth + 1));
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    const lower = key.toLowerCase();
+    if (DROPPED_KEYS.has(lower)) continue;
+    if (lower === "response" && entry && typeof entry === "object") {
+      const status = (entry as { status?: unknown }).status;
+      out.response = typeof status === "number" ? { status } : {};
+      continue;
+    }
+    out[key] = sanitizeValue(entry, depth + 1);
+  }
+  return out;
+}
+
+export function serializeError(err: unknown): unknown {
+  return sanitizeValue(err, 0);
 }

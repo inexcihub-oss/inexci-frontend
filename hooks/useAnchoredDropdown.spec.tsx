@@ -56,7 +56,6 @@ describe("useAnchoredDropdown", () => {
 
     const anchor = screen.getByTestId("anchor");
     expect(anchor.dataset.placement).toBe("top");
-    // distância do fundo da janela até o topo do campo: 700 - 640
     expect(anchor.dataset.bottom).toBe("60");
   });
 

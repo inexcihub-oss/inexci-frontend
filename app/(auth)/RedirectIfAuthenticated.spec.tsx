@@ -23,7 +23,6 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
 
-// Navegação dura é feita via window.location.replace — espionada aqui.
 const locationReplaceMock = vi.fn();
 const originalLocation = window.location;
 
@@ -72,7 +71,6 @@ describe("RedirectIfAuthenticated", () => {
       </RedirectIfAuthenticated>,
     );
     expect(locationReplaceMock).toHaveBeenCalledWith("/dashboard");
-    // Não renderiza o formulário enquanto redireciona (evita flash).
     expect(screen.queryByText("formulário de login")).not.toBeInTheDocument();
   });
 
@@ -171,9 +169,6 @@ describe("RedirectIfAuthenticated", () => {
   });
 
   it("manda cada usuário para a casa da SUA área, não para uma rota fixa", () => {
-    // Regressão do destino fixo `/solicitacoes-cirurgicas`: quem não tem a
-    // área caía numa rota proibida e era devolvido pelo PermissionRouteGuard.
-    // Como aqui a navegação é dura, cada ida e volta custava um reload inteiro.
     const casos: [Permission[], string][] = [
       [[Permission.ATENDIMENTO], "/atendimento"],
       [[Permission.AGENDA], "/agenda"],

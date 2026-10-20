@@ -31,12 +31,6 @@ vi.mock("@/components/onboarding/OnboardingProvider", () => ({
 import { procedureService } from "@/services/procedure.service";
 import { ProcedureQuickPickerModal } from "./ProcedureQuickPickerModal";
 
-/**
- * Reaproveita, fora do wizard de criação de SC, a mesma combinação
- * "buscar procedimento na lista + botão Novo que cria um" que o primeiro
- * passo do wizard já usa (`ProcedureSelectionContent` + `CreateProcedureModal`)
- * — sem arrastar paciente/hospital/convênio junto.
- */
 describe("ProcedureQuickPickerModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -79,8 +73,6 @@ describe("ProcedureQuickPickerModal", () => {
     renderModal();
 
     const dialog = await screen.findByRole("dialog", { name: "Procedimento" });
-    // `.mobile-sheet-offset` é o que evita o modal ficar escondido atrás da
-    // BottomNavBar (fixed, z-[70]) no mobile — ver app/globals.css.
     expect(dialog).toHaveClass("mobile-sheet-offset");
   });
 

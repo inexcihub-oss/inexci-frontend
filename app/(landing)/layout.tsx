@@ -109,9 +109,6 @@ export default async function LandingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // next/script com strategy="afterInteractive" injeta o script via JS, então
-  // strict-dynamic o cobre — mas passar o nonce explícito remove qualquer
-  // ambiguidade e é a forma documentada pelo Next para esse caso.
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <>
@@ -130,7 +127,7 @@ export default async function LandingLayout({
               fbq('track', 'PageView');`}
           </Script>
           <noscript
-            // eslint-disable-next-line react/no-danger -- markup estático (pixel de analytics), não deriva de input do usuário
+            // eslint-disable-next-line react/no-danger
             dangerouslySetInnerHTML={{
               __html: `<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1356643639391905&ev=PageView&noscript=1" />`,
             }}

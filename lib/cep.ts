@@ -1,9 +1,3 @@
-/**
- * Lookup de CEP via ViaCEP (https://viacep.com.br/).
- * Não exige autenticação. Resposta JSON pública.
- *
- * Mantém um cache em memória para evitar requisições duplicadas durante a sessão.
- */
 import { unmask } from "./masks";
 
 export interface CepLookupResult {
@@ -42,10 +36,6 @@ export function isCompleteCep(value: string | undefined | null): boolean {
   return unmask(value).length === 8;
 }
 
-/**
- * Busca o endereço de um CEP. Aceita string com ou sem máscara.
- * Lança {@link CepLookupError} em caso de CEP inválido, não encontrado ou erro de rede.
- */
 export async function lookupCep(
   rawCep: string,
   signal?: AbortSignal,
@@ -93,9 +83,6 @@ export async function lookupCep(
   return result;
 }
 
-/**
- * Limpa o cache em memória. Útil para testes.
- */
 export function _clearCepCache(): void {
   CACHE.clear();
 }

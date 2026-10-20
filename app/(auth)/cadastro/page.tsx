@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,11 @@ import {
   type Step1Data,
   type Step2Data,
 } from "@/components/cadastro/CadastroSteps";
+import {
+  CAPTCHA_PENDENTE_MENSAGEM,
+  TurnstileWidget,
+  getTurnstileSiteKey,
+} from "@/components/cadastro/TurnstileWidget";
 import { Button } from "@/components/ui";
 import { step1Schema, step2Schema } from "@/lib/schemas/cadastro.schema";
 import { unmask } from "@/lib/masks";
@@ -66,12 +71,10 @@ const STEP_BENEFITS: Record<number, { icon: string; text: string }[]> = {
 };
 
 const DEFAULT_PLAN_SLUG = "starter";
+const CAPTCHA_VALIDADE_MS = 4.5 * 60 * 1000;
 
 export default function CadastroPage() {
   const { register } = useAuth();
-
-  // Usuários já logados são expulsos do `/cadastro` pelo guard reverso
-  // (`RedirectIfAuthenticated`), então não há sessão para limpar aqui.
 
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -98,7 +101,6 @@ export default function CadastroPage() {
     Partial<Record<keyof Step2Data, string>>
   >({});
 
-  // ─── Etapa 3 — planos ────────────────────────────────────────────────────
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState<string>(DEFAULT_PLAN_SLUG);
@@ -107,10 +109,25 @@ export default function CadastroPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  const turnstileSiteKey = getTurnstileSiteKey();
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaObtidoEm, setCaptchaObtidoEm] = useState<number | null>(null);
+  const [captchaNoPlano, setCaptchaNoPlano] = useState(false);
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+
+  const handleCaptchaToken = useCallback((token: string | null) => {
+    setCaptchaToken(token);
+    setCaptchaObtidoEm(token ? Date.now() : null);
+  }, []);
+
+  const pedirNovoCaptcha = () => {
+    handleCaptchaToken(null);
+    setCaptchaNoPlano(true);
+    setCaptchaResetSignal((n) => n + 1);
+  };
+
   const handleBillingPeriodChange = (period: "MONTHLY" | "YEARLY") => {
     setBillingPeriod(period);
-    // Mapeia o slug selecionado para o equivalente no outro período
-    // Convenção: slug anual = slug mensal + "-anual"
     if (period === "YEARLY") {
       const annualSlug = selectedSlug.endsWith("-anual")
         ? selectedSlug
@@ -126,7 +143,6 @@ export default function CadastroPage() {
     }
   };
 
-  // Carrega planos quando entrar na etapa 3
   useEffect(() => {
     if (currentStep !== 3 || plans.length > 0) return;
     setPlansLoading(true);
@@ -140,7 +156,6 @@ export default function CadastroPage() {
         }
       })
       .catch(() => {
-        // Silencioso — sem planos, o backend usa o plano default (starter)
       })
       .finally(() => setPlansLoading(false));
   }, [currentStep, plans.length]);
@@ -206,13 +221,11 @@ export default function CadastroPage() {
         return;
       }
 
-      // Detecção antecipada: barra aqui e-mail com conta ativa/convite pendente
-      // e telefone já usado por outra conta, evitando que o usuário percorra a
-      // etapa de perfil e a de seleção de plano para só então tomar o erro.
-      //
-      // As duas checagens vão em paralelo e cada uma falha por conta própria:
-      // se só uma cair, a outra ainda aponta seu campo (ver
-      // `resolveStep1Availability`).
+      if (turnstileSiteKey && !captchaToken) {
+        setError(CAPTCHA_PENDENTE_MENSAGEM);
+        return;
+      }
+
       setIsLoading(true);
       try {
         const [email, phone] = await Promise.all([
@@ -258,6 +271,15 @@ export default function CadastroPage() {
 
   const handleSubmit = async () => {
     setError("");
+    const captchaExpirou =
+      captchaObtidoEm !== null &&
+      Date.now() - captchaObtidoEm > CAPTCHA_VALIDADE_MS;
+    if (turnstileSiteKey && (!captchaToken || captchaExpirou)) {
+      if (captchaExpirou) pedirNovoCaptcha();
+      else setCaptchaNoPlano(true);
+      setError(CAPTCHA_PENDENTE_MENSAGEM);
+      return;
+    }
     setIsLoading(true);
     try {
       const phoneDigits = unmask(step1.phone);
@@ -274,18 +296,16 @@ export default function CadastroPage() {
           specialty: step2.specialty || undefined,
         }),
         planSlug: selectedSlug || undefined,
+        ...(captchaToken && { captchaToken }),
       });
     } catch (err: unknown) {
+      if (turnstileSiteKey) pedirNovoCaptcha();
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const message =
         axiosErr.response?.data?.message ||
         "Erro ao criar conta. Tente novamente.";
       const tipo = classifyRegisterError(message);
 
-      // Chegar aqui com erro de e-mail/telefone significa que a etapa 1 deixou
-      // passar: corrida com outro cadastro, ou o usuário voltou e editou o
-      // campo. O dado a corrigir está na etapa 1, então é para lá que ele volta,
-      // com a mensagem no campo — em vez de ficar preso na tela de planos.
       if (tipo === "email_active" || tipo === "email_pending") {
         setStep1FieldErrors({ email: message });
         setCurrentStep(1);
@@ -303,7 +323,6 @@ export default function CadastroPage() {
     }
   };
 
-  // A etapa 3 usa um layout dedicado em tela cheia (sem painel direito)
   if (currentStep === 3) {
     return (
       <PlanStepLayout
@@ -318,6 +337,16 @@ export default function CadastroPage() {
         onSubmit={handleSubmit}
         isLoading={isLoading}
         error={error}
+        captcha={
+          turnstileSiteKey && captchaNoPlano ? (
+            <TurnstileWidget
+              siteKey={turnstileSiteKey}
+              onTokenChange={handleCaptchaToken}
+              resetSignal={captchaResetSignal}
+            />
+          ) : null
+        }
+        captchaPending={Boolean(turnstileSiteKey) && !captchaToken}
       />
     );
   }
@@ -359,6 +388,16 @@ export default function CadastroPage() {
               onChange={handleStep1Change}
               fieldErrors={step1FieldErrors}
             />
+          )}
+
+          {currentStep === 1 && turnstileSiteKey && (
+            <div className="mt-5">
+              <TurnstileWidget
+                siteKey={turnstileSiteKey}
+                onTokenChange={handleCaptchaToken}
+                resetSignal={captchaResetSignal}
+              />
+            </div>
           )}
 
           {currentStep === 2 && (
@@ -452,8 +491,6 @@ export default function CadastroPage() {
   );
 }
 
-// ─── Layout dedicado da etapa 3 (full width, sem painel direito) ────────────
-
 interface PlanStepLayoutProps {
   plans: SubscriptionPlan[];
   plansLoading: boolean;
@@ -466,6 +503,8 @@ interface PlanStepLayoutProps {
   onSubmit: () => void;
   isLoading: boolean;
   error: string;
+  captcha: ReactNode;
+  captchaPending: boolean;
 }
 
 function PlanStepLayout({
@@ -480,27 +519,21 @@ function PlanStepLayout({
   onSubmit,
   isLoading,
   error,
+  captcha,
+  captchaPending,
 }: PlanStepLayoutProps) {
   const selectedPlan = plans.find((p) => p.slug === selectedSlug);
   const ctaLabel = "Começar 15 dias grátis";
 
   return (
-    /*
-     * Layout: a página não rola inteira — só a área de conteúdo (flex-1 min-h-0
-     * overflow-y-auto). O rodapé com o CTA fica fora do scroll, sempre visível,
-     * inclusive em telas baixas (notebooks, mobile).
-     */
     <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
-      {/* Decorações de fundo */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden -z-0">
         <div className="absolute -top-40 -right-32 w-[360px] sm:w-[520px] h-[360px] sm:h-[520px] bg-purple-200 rounded-full filter blur-3xl opacity-40" />
         <div className="absolute top-1/3 -left-40 w-[280px] sm:w-[420px] h-[280px] sm:h-[420px] bg-teal-200 rounded-full filter blur-3xl opacity-30" />
         <div className="absolute -bottom-40 left-1/3 w-[400px] sm:w-[600px] h-[200px] sm:h-[300px] bg-blue-200 rounded-full filter blur-3xl opacity-30" />
       </div>
 
-      {/* Área de conteúdo — única parte que rola (barra de rolagem escondida) */}
       <div className="relative z-10 flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 lg:pt-8 pb-6 sm:pb-8">
-        {/* Topbar */}
         <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6">
           <Image
             src="/brand/logo.png"
@@ -518,7 +551,6 @@ function PlanStepLayout({
           </Link>
         </div>
 
-        {/* Cabeçalho */}
         <div className="text-center max-w-2xl mx-auto mb-5 sm:mb-6">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-gray-200 shadow-sm text-[11px] text-gray-700 font-semibold">
             <span className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse" />
@@ -533,12 +565,10 @@ function PlanStepLayout({
           </p>
         </div>
 
-        {/* Indicador de progresso */}
         <div className="hidden sm:block max-w-md mx-auto mb-6 lg:mb-7">
           <PlanStepProgress current={3} total={TOTAL_STEPS} />
         </div>
 
-        {/* Cards de plano + formulário de cartão */}
         <Step3Plan
           plans={plans}
           plansLoading={plansLoading}
@@ -549,7 +579,8 @@ function PlanStepLayout({
 
         />
 
-        {/* Erro */}
+        {captcha && <div className="mt-5 max-w-2xl mx-auto">{captcha}</div>}
+
         {error && (
           <div className="mt-5 max-w-2xl mx-auto rounded-2xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
             <p>{error}</p>
@@ -557,7 +588,6 @@ function PlanStepLayout({
         )}
       </div>
 
-      {/* Footer — fixo fora da área de scroll */}
       <div className="relative z-10 shrink-0 w-full bg-gray-50/90 backdrop-blur-sm border-t border-gray-200/60 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
         <div className="max-w-7xl mx-auto flex items-center gap-3">
           <div className="hidden sm:flex w-9 h-9 rounded-xl bg-teal-50 items-center justify-center shrink-0">
@@ -587,7 +617,7 @@ function PlanStepLayout({
             <button
               type="button"
               onClick={onSubmit}
-              disabled={isLoading || !selectedSlug}
+              disabled={isLoading || !selectedSlug || captchaPending}
               className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white text-xs sm:text-sm font-semibold shadow-md shadow-teal-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
@@ -625,7 +655,6 @@ function PlanStepLayout({
   );
 }
 
-/** Indicador de progresso fino para o cabeçalho da etapa 3. */
 function PlanStepProgress({
   current,
   total,

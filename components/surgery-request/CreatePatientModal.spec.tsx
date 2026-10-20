@@ -14,11 +14,6 @@ vi.mock("@/components/onboarding/OnboardingProvider", () => ({
 import { patientService } from "@/services/patient.service";
 import { CreatePatientModal } from "./CreatePatientModal";
 
-/**
- * Este modal é alcançado pelo botão "Novo" (`data-tour="sc-wizard-novo-cadastro"`),
- * que o passo `cadastro-no-modal` da trilha de Solicitações destaca — o tour
- * chega até aqui sozinho, então o submit precisa ficar inerte durante ele.
- */
 describe("CreatePatientModal — tour de onboarding", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,7 +30,6 @@ describe("CreatePatientModal — tour de onboarding", () => {
   const botao = () =>
     screen.getByRole("button", { name: /adicionar paciente/i });
 
-  /** Nome + CPF válido são os dois campos exigidos por `createPatientQuickSchema`. */
   const preencher = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.type(
       screen.getByPlaceholderText("Nome do paciente"),

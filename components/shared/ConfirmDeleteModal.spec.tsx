@@ -2,10 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ConfirmDeleteModal } from "./ConfirmDeleteModal";
 
-/**
- * Confirmação destrutiva = `alertdialog` (WAI-ARIA): modal, com título e
- * descrição ligados por id, foco inicial na saída segura e Esc cancelando.
- */
 describe("ConfirmDeleteModal — acessibilidade", () => {
   function abrir(over: Partial<Parameters<typeof ConfirmDeleteModal>[0]> = {}) {
     const onCancel = vi.fn();

@@ -15,14 +15,6 @@ import {
   selecionarPaciente,
 } from "../helpers/ui";
 
-/**
- * AU-09 — fluxo "agendar → atender → finalizar" pela interface.
- *
- * É o caminho principal do módulo e o único que atravessa agenda, prontuário e
- * finalização numa tacada só. Roda contra o ambiente local com o seed aplicado
- * (usuário `medico@inexci.com`).
- */
-
 test.describe.configure({ mode: "serial" });
 
 let session: ApiSession;
@@ -31,21 +23,12 @@ let page: Page;
 let patientId: string;
 let patientName: string;
 
-/** Data de hoje em `YYYY-MM-DD`, no fuso do navegador (America/Sao_Paulo). */
 function hojeIso(): string {
   const agora = new Date();
   const local = new Date(agora.getTime() - agora.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 10);
 }
 
-/**
- * Horário livre para a execução corrente.
- *
- * A limpeza do `afterAll` devolve os slots à agenda, mas uma execução
- * interrompida no meio deixa resíduo — daí a janela girar a cada minuto, em
- * passos de 40 min (maior que a duração padrão de 30, para que duas rodadas
- * seguidas não se sobreponham).
- */
 const BASE_MINUTOS = 6 * 60 + (Math.floor(Date.now() / 60_000) % 20) * 40;
 
 function horarioLivre(indice: number): string {
@@ -82,7 +65,6 @@ test.describe("Agenda → Atendimento", () => {
     await page.goto("/agenda");
     await expect(page.getByRole("button", { name: "Hoje" })).toBeVisible();
 
-    // ── Agendar ────────────────────────────────────────────────────────────
     await botaoNovaConsulta(page).click();
     await expect(
       page.getByRole("dialog", { name: "Nova consulta" }),
@@ -92,11 +74,9 @@ test.describe("Agenda → Atendimento", () => {
     await preencherDataHora(page, hojeIso(), horario);
     await page.getByRole("button", { name: "Agendar consulta" }).click();
 
-    // O card aparece na grade da semana corrente.
     const card = page.getByTitle(new RegExp(patientName)).first();
     await expect(card).toBeVisible({ timeout: 15_000 });
 
-    // ── Abrir o atendimento ────────────────────────────────────────────────
     await card.click();
     const detalhe = page.getByRole("dialog", { name: "Consulta" });
     await expect(detalhe).toBeVisible();
@@ -105,7 +85,6 @@ test.describe("Agenda → Atendimento", () => {
     await page.waitForURL(/\/atendimento\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await expect(page.getByRole("heading", { name: patientName })).toBeVisible();
 
-    // ── Preencher a ficha ──────────────────────────────────────────────────
     const editor = page.locator(".ProseMirror").first();
     await expect(editor).toBeVisible();
     await editor.click();
@@ -116,18 +95,15 @@ test.describe("Agenda → Atendimento", () => {
       timeout: 15_000,
     });
 
-    // ── Finalizar ──────────────────────────────────────────────────────────
     await page.getByRole("button", { name: "Finalizar", exact: true }).click();
     await expect(page.getByText("Finalizado", { exact: true })).toBeVisible({
       timeout: 20_000,
     });
 
-    // Ficha finalizada é imutável: os botões de escrita somem.
     await expect(
       page.getByRole("button", { name: "Salvar rascunho" }),
     ).toHaveCount(0);
 
-    // E a consulta sai da agenda como realizada.
     const consultas = await session.ctx.get(
       `/appointments/patient/${patientId}`,
       { headers: { Authorization: `Bearer ${session.token}` } },

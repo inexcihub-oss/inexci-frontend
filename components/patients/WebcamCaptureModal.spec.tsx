@@ -162,7 +162,6 @@ describe("WebcamCaptureModal", () => {
     );
     await waitFor(() => expect(entregas).toHaveLength(2));
 
-    // O pedido do primeiro efeito (já desmontado) resolve depois do segundo.
     entregas[1]({ getTracks: () => [{ stop: stops[1] }] } as unknown as MediaStream);
     await waitFor(() => expect(screen.getByRole("button", { name: /Capturar/ })).toBeEnabled());
     entregas[0]({ getTracks: () => [{ stop: stops[0] }] } as unknown as MediaStream);
@@ -197,15 +196,12 @@ describe("WebcamCaptureModal", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(MENSAGEM_PRAZO_CAMERA);
       expect(screen.queryByText(/Abrindo a câmera/)).toBeNull();
 
-      // O navegador entrega a câmera depois do prazo: o stream é parado na
-      // hora (sem prévia, a luz da webcam não pode ficar acesa).
       await act(async () => {
         entregarTarde(cameraFalsa());
       });
       expect(stop).toHaveBeenCalledTimes(1);
       expect(screen.getByRole("alert")).toHaveTextContent(MENSAGEM_PRAZO_CAMERA);
 
-      // Tentar de novo faz um pedido novo, que agora abre.
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: "Tentar de novo" }));
       });

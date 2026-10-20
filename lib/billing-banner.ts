@@ -12,17 +12,6 @@ export interface BillingBannerVariant {
   action: string;
 }
 
-/**
- * Decide o aviso de **estado da assinatura** (suspensa, cancelada, pagamento
- * em atraso, trial acabando, cancelamento agendado).
- *
- * Consumo de cota não entra aqui — é do `resolveQuotaBanner`. Os dois nunca
- * aparecem juntos: `GlobalBanners` dá precedência a este, porque uma
- * assinatura com problema de pagamento torna a conversa sobre cota irrelevante.
- *
- * Função pura, sem React, para que a escadinha de precedência seja testável
- * isoladamente.
- */
 export function resolveBillingBanner(
   subscription: SubscriptionDetail | null | undefined,
 ): BillingBannerVariant | null {

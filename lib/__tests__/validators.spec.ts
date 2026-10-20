@@ -4,15 +4,12 @@ import {
   isValidCnpj,
   isValidEmail,
   isValidFullName,
-  isValidPhone,
-  isValidCep,
   passwordChecks,
   passwordStrength,
 } from "@/lib/validators";
 
 describe("isValidCpf", () => {
   it("aceita CPFs válidos (com e sem máscara)", () => {
-    // CPFs válidos conhecidos
     expect(isValidCpf("529.982.247-25")).toBe(true);
     expect(isValidCpf("52998224725")).toBe(true);
     expect(isValidCpf("111.444.777-35")).toBe(true);
@@ -130,11 +127,11 @@ describe("passwordChecks", () => {
   });
 
   it("allValid false faltando qualquer requisito", () => {
-    expect(passwordChecks("Senha123").allValid).toBe(false); // falta especial
-    expect(passwordChecks("senha@123").allValid).toBe(false); // falta maiúscula
-    expect(passwordChecks("SENHA@123").allValid).toBe(false); // falta minúscula
-    expect(passwordChecks("Senha@abc").allValid).toBe(false); // falta número
-    expect(passwordChecks("Sen@1").allValid).toBe(false); // falta tamanho
+    expect(passwordChecks("Senha123").allValid).toBe(false);
+    expect(passwordChecks("senha@123").allValid).toBe(false);
+    expect(passwordChecks("SENHA@123").allValid).toBe(false);
+    expect(passwordChecks("Senha@abc").allValid).toBe(false);
+    expect(passwordChecks("Sen@1").allValid).toBe(false);
   });
 });
 
@@ -142,24 +139,10 @@ describe("passwordStrength", () => {
   it("conta requisitos atendidos (0-5)", () => {
     expect(passwordStrength("")).toBe(0);
     expect(passwordStrength("abc")).toBe(1);
-    expect(passwordStrength("abcdefgh")).toBe(2); // min + lower
-    expect(passwordStrength("Abcdefgh")).toBe(3); // min + lower + upper
-    expect(passwordStrength("Abcdef12")).toBe(4); // + number
+    expect(passwordStrength("abcdefgh")).toBe(2);
+    expect(passwordStrength("Abcdefgh")).toBe(3);
+    expect(passwordStrength("Abcdef12")).toBe(4);
     expect(passwordStrength("Abcdef1@")).toBe(5);
   });
 });
 
-describe("isValidPhone / isValidCep", () => {
-  it("phone aceita 10 ou 11 dígitos", () => {
-    expect(isValidPhone("(11) 3333-4444")).toBe(true);
-    expect(isValidPhone("(11) 98765-4321")).toBe(true);
-    expect(isValidPhone("123")).toBe(false);
-    expect(isValidPhone("")).toBe(false);
-  });
-
-  it("cep aceita 8 dígitos", () => {
-    expect(isValidCep("01310-100")).toBe(true);
-    expect(isValidCep("01310100")).toBe(true);
-    expect(isValidCep("12345")).toBe(false);
-  });
-});

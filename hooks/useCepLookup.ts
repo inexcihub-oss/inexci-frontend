@@ -10,39 +10,18 @@ import {
 import { unmask } from "@/lib/masks";
 
 export interface UseCepLookupOptions {
-  /**
-   * CEP atual do formulário (com ou sem máscara). O hook só dispara quando o
-   * valor atinge 8 dígitos numéricos.
-   */
   cep: string | undefined | null;
-  /**
-   * Callback executado quando o ViaCEP responde com sucesso. Use para preencher
-   * os campos de endereço do formulário.
-   */
   onResolved: (data: CepLookupResult) => void;
-  /**
-   * Disparado em caso de CEP inválido ou não encontrado. Útil para mostrar
-   * mensagem amigável (toast).
-   */
   onError?: (error: CepLookupError) => void;
-  /**
-   * Quando false, o hook fica desligado. Útil para pausar a busca em modais
-   * fechados ou enquanto o form é resetado.
-   */
   enabled?: boolean;
 }
 
 export interface UseCepLookupReturn {
   loading: boolean;
   error: CepLookupError | null;
-  /** Refaz a busca manualmente (ignora o cache do React, mas usa o cache do lib). */
   refresh: () => void;
 }
 
-/**
- * Dispara automaticamente uma busca no ViaCEP quando o CEP informado tiver 8
- * dígitos. Aborta a requisição anterior caso o usuário continue digitando.
- */
 export function useCepLookup({
   cep,
   onResolved,

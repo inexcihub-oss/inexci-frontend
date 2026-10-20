@@ -10,11 +10,17 @@ import React, {
   useRef,
 } from "react";
 import { logger } from "@/lib/logger";
-import { User, SubscriptionDetail } from "@/types";
+import {
+  AuthResponse,
+  User,
+  SubscriptionDetail,
+  isMfaChallenge,
+} from "@/types";
 import { authService } from "@/services/auth.service";
 import { clearAccessToken, getAccessToken } from "@/lib/auth-token";
 import { isSessaoExpirada, refreshSession } from "@/lib/api";
 import { clearSessionFlag, hasSessionHint } from "@/lib/session-flag";
+import { clearStoredUser } from "@/lib/session-storage";
 import { consentService } from "@/services/consent.service";
 import { billingService } from "@/services/billing.service";
 import type { ConsentStatus, ConsentType } from "@/types/consent.types";
@@ -24,31 +30,36 @@ import { emiteDocumentosClinicos } from "@/lib/professional-council";
 import { QUOTA_QUERY_KEY } from "@/lib/query-keys";
 import { useQueryClient } from "@tanstack/react-query";
 import type { BillingBlockReason } from "@/lib/http-error";
+import { clearScFromDocumentStorage } from "@/lib/sc-from-document-background";
+import {
+  broadcastAuthEvent,
+  hardNavigate,
+  hardReload,
+  subscribeAuthEvents,
+} from "@/lib/auth-sync";
+
+const PUBLIC_AUTH_PATHS = [
+  "/login",
+  "/cadastro",
+  "/forgot-password",
+  "/confirmar-email",
+  "/primeiro-acesso",
+];
+
+function isOnPublicAuthPath(): boolean {
+  if (typeof window === "undefined") return false;
+  const path = window.location.pathname;
+  return PUBLIC_AUTH_PATHS.some((p) => path.startsWith(p));
+}
 
 interface AuthContextData {
   user: User | null;
   loading: boolean;
-  /** True quando há uma sessão resolvida em memória (usuário carregado). */
   isAuthenticated: boolean;
-  /** Tem perfil profissional (qualquer conselho): atende e tem agenda. */
   isDoctor: boolean;
-  /**
-   * Médico (CRM): emite receita, atestado e pedido de exame e indica
-   * cirurgia. Use este, não `isDoctor`, para esses gates.
-   */
   isPhysician: boolean;
-  /**
-   * Emite receita, atestado e pedido de exame e mantém modelos de documento:
-   * médico (CRM) ou dentista (CRO). Use este, não `isPhysician`, para esses
-   * gates — indicação cirúrgica e Solicitações continuam em `isPhysician`.
-   */
   canIssueClinicalDocuments: boolean;
   isAdmin: boolean;
-  /**
-   * True apenas para o **dono** da conta (`user.id === user.accountId`).
-   * Um admin delegado tem `isAdmin`, mas não gerencia assinatura, plano nem
-   * pagamento — só ele vê a aba de plano e os CTAs de upgrade.
-   */
   isAccountOwner: boolean;
   accountId: string | null;
   permissions: Permission[];
@@ -56,29 +67,25 @@ interface AuthContextData {
   consents: ConsentStatus | null;
   pendingConsents: ConsentType[];
   consentsLoading: boolean;
-  // Billing
   subscription: SubscriptionDetail | null;
   subscriptionLoading: boolean;
   refreshSubscription: (forUser?: User | null) => Promise<void>;
-  /** True quando a assinatura permite criar/enviar novas solicita\u00e7\u00f5es. */
   canCreateSurgeryRequest: boolean;
   isInTrial: boolean;
   isSuspended: boolean;
-  /** Motivo do bloqueio (para tooltip). null se n\u00e3o estiver bloqueado. */
   blockReason: string | null;
-  /**
-   * Mesmo bloqueio em forma de c\u00f3digo, alinhado ao `reason` do HTTP 402 do
-   * backend \u2014 permite avisar antes da chamada com a mesma c\u00f3pia do aviso
-   * p\u00f3s-erro. null se n\u00e3o estiver bloqueado.
-   */
   blockReasonCode: BillingBlockReason | null;
-  // Auth
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginOutcome>;
+  completeMfaLogin: (mfaToken: string, code: string) => Promise<void>;
   register: (userData: import("@/types").RegisterData) => Promise<void>;
   logout: () => void;
   updateUser: () => Promise<void>;
   refreshConsents: (forUser?: User | null) => Promise<void>;
 }
+
+export type LoginOutcome =
+  | { mfaRequired: true; mfaToken: string }
+  | { mfaRequired: false };
 
 const AuthContext = createContext<AuthContextData | undefined>(undefined);
 
@@ -96,6 +103,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const consentsRequestRef = useRef<Promise<void> | null>(null);
   const subscriptionRequestRef = useRef<Promise<void> | null>(null);
   const initialLoadRef = useRef(false);
+  const userRef = useRef<User | null>(null);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  const resetSessionState = useCallback(() => {
+    void queryClient.cancelQueries();
+    queryClient.clear();
+    clearScFromDocumentStorage();
+    setUser(null);
+    setConsents(null);
+    setSubscription(null);
+  }, [queryClient]);
 
   const applyConsentsFromUser = useCallback((currentUser: User) => {
     if (currentUser.consents) {
@@ -144,10 +165,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // A cota do banner tem fonte própria (`GET /billing/quota`, aberta a
-      // quem tem Solicitações). Invalidar aqui faz com que todo ponto que já
-      // sincroniza a cobrança — cada envio de solicitação no `SendRequestModal`
-      // — atualize o banner junto, sem precisar lembrar de chamar as duas.
       void queryClient.invalidateQueries({ queryKey: QUOTA_QUERY_KEY });
 
       if (subscriptionRequestRef.current) {
@@ -159,7 +176,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const detail = await billingService.getMySubscription();
           setSubscription(detail);
         } catch (error) {
-          // Colaboradores podem n\u00e3o ter acesso a essa rota \u2014 silencioso.
           logger.warn("N\u00e3o foi poss\u00edvel carregar assinatura:", error);
           setSubscription(null);
         } finally {
@@ -184,18 +200,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // Se não há token em memória (reload de página), faz refresh proativo para
-        // evitar o ciclo 401 → refresh → retry no /me. Isso resolve a sessão real
-        // (válida ou não) em qualquer rota — inclusive nas públicas, onde o guard
-        // reverso depende de `isAuthenticated` para expulsar usuários já logados.
-        //
-        // Só dispara o refresh quando há pista de sessão prévia (`hasSessionHint`):
-        // um visitante anônimo não tem cookie de refresh e o POST garantiria um
-        // 400 ("Refresh token ausente") — puro ruído. `refreshSession` é o mesmo
-        // single-flight do interceptor, evitando corrida de rotação.
         if (!getAccessToken()) {
           if (!hasSessionHint()) {
-            // Anônimo: nada a restaurar.
             setUser(null);
             setConsents(null);
             setSubscription(null);
@@ -206,22 +212,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await refreshSession();
           } catch (erro) {
             if (isSessaoExpirada(erro)) {
-              // Cookie de refresh ausente ou expirado — sessão inválida.
               clearAccessToken();
               clearSessionFlag();
-              localStorage.removeItem("user");
-              setUser(null);
-              setConsents(null);
-              setSubscription(null);
+              clearStoredUser();
+              resetSessionState();
               setLoading(false);
               return;
             }
-            // Falha transitória (429 do throttler, 5xx, rede): o cookie de
-            // refresh continua valendo, então a sessão não acabou. Seguir para
-            // o `/auth/me` sem access token só produziria outro 401 → outro
-            // refresh throttled → tela de login. Renderiza com o usuário em
-            // cache e deixa a próxima chamada renovar o token; se a sessão
-            // estiver mesmo morta, o 401 seguinte cai no `forceLogout`.
             logger.warn("Refresh transitório falhou; mantendo a sessão:", erro);
             const cache = authService.getCurrentUser();
             if (cache) {
@@ -233,27 +230,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // Captura o ID armazenado ANTES de chamar me(), pois me() sobrescreve o localStorage
         const storedUserId = authService.getCurrentUser()?.id ?? null;
 
         const currentUser = await authService.me();
 
-        // Detecta contaminação de sessão: o cookie de refresh pertence a outro usuário
         if (storedUserId && storedUserId !== currentUser.id) {
           logger.warn(
             "[auth] Mismatch de sessão detectado — limpando sessão local e redirecionando para login",
           );
           clearAccessToken();
-          localStorage.removeItem("user");
-          setUser(null);
-          setConsents(null);
-          setSubscription(null);
-          router.push("/login");
+          clearStoredUser();
+          resetSessionState();
+          hardNavigate("/login");
           return;
         }
 
         setUser(currentUser);
-        // P12 / 4.4b: consents embutidos no `/auth/me` — sem round-trip extra.
         const consentsFromMe = applyConsentsFromUser(currentUser);
         const consentsPromise = consentsFromMe
           ? Promise.resolve()
@@ -263,66 +255,99 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         await consentsPromise;
       } catch (error) {
-        // Para erros de autenticação (401/403), o interceptor do axios já chamou
-        // forceLogout() que limpou o token e o localStorage. Apenas sincroniza o estado React.
-        // Não chama authService.logout() para evitar um ciclo de requests desnecessários.
         logger.warn("Sessão inválida detectada na inicialização:", error);
-        setUser(null);
-        setConsents(null);
-        setSubscription(null);
+        resetSessionState();
       } finally {
         setLoading(false);
       }
     };
 
     loadUser();
-  }, [refreshConsents, refreshSubscription, router, applyConsentsFromUser]);
+  }, [
+    refreshConsents,
+    refreshSubscription,
+    applyConsentsFromUser,
+    resetSessionState,
+  ]);
+
+  useEffect(() => {
+    return subscribeAuthEvents((event) => {
+      if (event.type === "logout") {
+        const hadUser = !!userRef.current;
+        clearAccessToken();
+        resetSessionState();
+        if (hadUser && !isOnPublicAuthPath()) hardNavigate("/login");
+        return;
+      }
+      if (userRef.current?.id === event.userId) return;
+      clearAccessToken();
+      queryClient.clear();
+      hardReload();
+    });
+  }, [resetSessionState, queryClient]);
+
+  const concludeLogin = useCallback(
+    async (response: AuthResponse) => {
+      queryClient.clear();
+      clearScFromDocumentStorage();
+      setUser(response.user);
+      if (response.user?.id) {
+        broadcastAuthEvent({ type: "login", userId: response.user.id });
+      }
+      const consentsFromLogin = applyConsentsFromUser(response.user);
+      const consentsPromise = consentsFromLogin
+        ? Promise.resolve()
+        : refreshConsents(response.user);
+      if (response.user?.role === "admin") {
+        void refreshSubscription(response.user);
+      }
+      await consentsPromise;
+
+      router.push(resolveHome(response.user?.permissions ?? []));
+    },
+    [
+      router,
+      queryClient,
+      refreshConsents,
+      refreshSubscription,
+      applyConsentsFromUser,
+    ],
+  );
 
   const login = useCallback(
-    async (email: string, password: string) => {
-      try {
-        const response = await authService.login({ email, password });
-        setUser(response.user);
-        // P12 / 4.4b: usa consents do payload quando disponíveis; senão fallback de rede.
-        const consentsFromLogin = applyConsentsFromUser(response.user);
-        const consentsPromise = consentsFromLogin
-          ? Promise.resolve()
-          : refreshConsents(response.user);
-        if (response.user?.role === "admin") {
-          void refreshSubscription(response.user);
-        }
-        await consentsPromise;
-
-        // A casa depende das áreas liberadas: mandar todo mundo para
-        // /solicitacoes-cirurgicas fazia quem não tem `solicitacoes` entrar
-        // numa rota proibida e ser devolvido pelo `PermissionRouteGuard`.
-        router.push(resolveHome(response.user?.permissions ?? []));
-      } catch (error) {
-        throw error;
+    async (email: string, password: string): Promise<LoginOutcome> => {
+      const response = await authService.login({ email, password });
+      if (isMfaChallenge(response)) {
+        return { mfaRequired: true, mfaToken: response.mfaToken };
       }
+      await concludeLogin(response);
+      return { mfaRequired: false };
     },
-    [router, refreshConsents, refreshSubscription, applyConsentsFromUser],
+    [concludeLogin],
+  );
+
+  const completeMfaLogin = useCallback(
+    async (mfaToken: string, code: string) => {
+      const response = await authService.loginMfa(mfaToken, code);
+      await concludeLogin(response);
+    },
+    [concludeLogin],
   );
 
   const register = useCallback(
     async (userData: import("@/types").RegisterData) => {
-      try {
-        await authService.register(userData);
-        router.push("/login?registered=true");
-      } catch (error) {
-        throw error;
-      }
+      await authService.register(userData);
+      router.push("/login?registered=true");
     },
     [router],
   );
 
   const logout = useCallback(async () => {
     await authService.logout();
-    setUser(null);
-    setConsents(null);
-    setSubscription(null);
-    router.push("/login");
-  }, [router]);
+    broadcastAuthEvent({ type: "logout" });
+    resetSessionState();
+    hardNavigate("/login");
+  }, [resetSessionState]);
 
   const updateUser = useCallback(async () => {
     try {
@@ -336,7 +361,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useMemo(() => !!user, [user]);
   const isDoctor = useMemo(() => user?.isDoctor ?? false, [user]);
   const isPhysician = useMemo(() => user?.isPhysician ?? false, [user]);
-  // Resposta anterior ao campo: deduz do conselho do perfil.
   const canIssueClinicalDocuments = useMemo(
     () =>
       user?.canIssueClinicalDocuments ??
@@ -373,12 +397,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [subscription],
   );
 
-  /**
-   * Regras consolidadas de bloqueio:
-   * 1. Sem assinatura carregada (colaborador): n\u00e3o bloqueia (servidor decide)
-   * 2. Suspensa/cancelada: bloqueia
-   * 3. Cota saturada: bloqueia
-   */
   const { canCreateSurgeryRequest, blockReason, blockReasonCode } = useMemo<{
     canCreateSurgeryRequest: boolean;
     blockReason: string | null;
@@ -444,6 +462,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       blockReason,
       blockReasonCode,
       login,
+      completeMfaLogin,
       register,
       logout,
       updateUser,
@@ -473,6 +492,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       blockReason,
       blockReasonCode,
       login,
+      completeMfaLogin,
       register,
       logout,
       updateUser,

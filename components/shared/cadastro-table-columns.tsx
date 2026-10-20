@@ -2,21 +2,8 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui";
+import { getAvatarColor, getInitials } from "@/lib/utils";
 
-/**
- * Colunas padrão (seleção + excluir) das tabelas de cadastro básico
- * (hospitais, convênios, fornecedores, fabricantes...). Só existem para
- * alimentar ações que exigem permissão — quem não tem a permissão da tela
- * não deve receber essas colunas, então o próprio caller decide se inclui
- * `createSelectColumn`/`createDeleteActionColumn` no array de `columns`.
- */
-
-/**
- * Coluna de checkbox de seleção. Por padrão usa a paginação da tabela
- * (`getIsAllPageRowsSelected`); passe `allRows: true` para tabelas sem
- * paginação de página (ex.: a lista de modelos de procedimento usa
- * `getIsAllRowsSelected`).
- */
 export function createSelectColumn<T>({
   allRows = false,
 }: { allRows?: boolean } = {}): ColumnDef<T> {
@@ -53,7 +40,6 @@ export function createSelectColumn<T>({
   };
 }
 
-/** Ícone de lixeira usado nas colunas de ação das tabelas de cadastro. */
 function TrashIcon() {
   return (
     <svg
@@ -73,7 +59,6 @@ function TrashIcon() {
   );
 }
 
-/** Coluna com o botão de excluir por linha (abre o modal de confirmação). */
 export function createDeleteActionColumn<T>(
   onDelete: (item: T, e: React.MouseEvent) => void,
   title: string,
@@ -94,4 +79,100 @@ export function createDeleteActionColumn<T>(
       </button>
     ),
   };
+}
+
+export function createNameColumn<T extends { id: string; name: string }>({
+  onOpen,
+  size = 250,
+  getAvatarUrl,
+}: {
+  onOpen: (item: T) => void;
+  size?: number;
+  getAvatarUrl?: (item: T) => string | null | undefined;
+}): ColumnDef<T> {
+  return {
+    accessorKey: "name",
+    header: "Nome",
+    size,
+    cell: ({ row }) => {
+      const avatarUrl = getAvatarUrl?.(row.original);
+      return (
+        <div
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+          onClick={() => onOpen(row.original)}
+        >
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={row.original.name}
+              className="w-8 h-8 flex-shrink-0 rounded-lg object-cover"
+            />
+          ) : (
+            <div
+              className={`w-8 h-8 flex-shrink-0 rounded-lg flex items-center justify-center text-xs font-semibold ${getAvatarColor(String(row.original.id))}`}
+            >
+              {getInitials(row.original.name)}
+            </div>
+          )}
+          <span
+            className="text-xs font-semibold text-black hover:text-primary-600"
+            title={row.original.name}
+          >
+            {row.original.name}
+          </span>
+        </div>
+      );
+    },
+  };
+}
+
+const HIDDEN_BELOW = {
+  md: "hidden md:table-cell",
+  lg: "hidden lg:table-cell",
+} as const;
+
+export function createTextColumn<T>({
+  key,
+  header,
+  size,
+  format,
+  hiddenBelow = "md",
+}: {
+  key: Extract<keyof T, string>;
+  header: string;
+  size: number;
+  format?: (item: T) => string;
+  hiddenBelow?: keyof typeof HIDDEN_BELOW;
+}): ColumnDef<T> {
+  return {
+    accessorKey: key,
+    header,
+    size,
+    meta: { className: HIDDEN_BELOW[hiddenBelow] },
+    cell: ({ row }) => {
+      const raw = row.original[key];
+      const display = format
+        ? format(row.original)
+        : (typeof raw === "string" && raw) || "-";
+      return (
+        <span className="text-xs text-black" title={display}>
+          {display}
+        </span>
+      );
+    },
+  };
+}
+
+export function formatCadastroAddress(item: {
+  address?: string;
+  city?: string;
+  state?: string;
+}): string {
+  const parts = [
+    item.address,
+    item.city && item.state
+      ? `${item.city}/${item.state}`
+      : item.city || item.state,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(" — ") : "-";
 }

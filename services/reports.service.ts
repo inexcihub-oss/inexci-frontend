@@ -49,11 +49,10 @@ export interface MonthlyEvolutionData {
 export interface ReportFilters {
   hospitalId?: string;
   healthPlanId?: string;
-  startDate?: string; // ISO date string
-  endDate?: string; // ISO date string
+  startDate?: string;
+  endDate?: string;
 }
 
-/** Resposta do endpoint consolidado `/reports/dashboard-full` (P13). */
 export interface DashboardFullData extends DashboardData {
   temporalEvolution: TemporalEvolutionData[];
   monthlyEvolution: MonthlyEvolutionData[];
@@ -77,10 +76,6 @@ function buildParams(
 }
 
 export const reportsService = {
-  /**
-   * Dashboard consolidado (P13): 1 round-trip com todos os blocos (KPIs,
-   * evoluções, tempo médio e alertas).
-   */
   async getDashboardFull(
     filters?: ReportFilters,
     days: number = 30,
@@ -88,66 +83,6 @@ export const reportsService = {
   ): Promise<DashboardFullData> {
     const response = await api.get<DashboardFullData>(
       `/reports/dashboard-full${buildParams({ days, months }, filters)}`,
-    );
-    return response.data;
-  },
-
-  /**
-   * Busca os dados do dashboard
-   */
-  async getDashboard(filters?: ReportFilters): Promise<DashboardData> {
-    const response = await api.get<DashboardData>(
-      `/reports/dashboard${buildParams({}, filters)}`,
-    );
-    return response.data;
-  },
-
-  /**
-   * Busca a evolução temporal (últimos X dias)
-   */
-  async getTemporalEvolution(
-    days: number = 30,
-    filters?: ReportFilters,
-  ): Promise<TemporalEvolutionData[]> {
-    const response = await api.get<TemporalEvolutionData[]>(
-      `/reports/temporal-evolution${buildParams({ days }, filters)}`,
-    );
-    return response.data;
-  },
-
-  /**
-   * Busca o tempo médio de conclusão
-   */
-  async getAverageCompletionTime(
-    filters?: ReportFilters,
-  ): Promise<AverageCompletionTimeData> {
-    const response = await api.get<AverageCompletionTimeData>(
-      `/reports/average-completion-time${buildParams({}, filters)}`,
-    );
-    return response.data;
-  },
-
-  /**
-   * Busca as notificações pendentes
-   */
-  async getPendingNotifications(
-    filters?: ReportFilters,
-  ): Promise<PendingNotificationsData> {
-    const response = await api.get<PendingNotificationsData>(
-      `/reports/pending-notifications${buildParams({}, filters)}`,
-    );
-    return response.data;
-  },
-
-  /**
-   * Busca a evolução mensal de procedimentos
-   */
-  async getMonthlyEvolution(
-    months: number = 6,
-    filters?: ReportFilters,
-  ): Promise<MonthlyEvolutionData[]> {
-    const response = await api.get<MonthlyEvolutionData[]>(
-      `/reports/monthly-evolution${buildParams({ months }, filters)}`,
     );
     return response.data;
   },

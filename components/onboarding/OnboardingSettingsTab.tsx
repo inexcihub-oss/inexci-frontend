@@ -27,13 +27,8 @@ export function OnboardingSettingsTab() {
     setErro(false);
     try {
       await restart();
-      // A home é sempre calculada pelas permissões efetivas. Para médicos,
-      // ela é Atendimento; nunca uma rota fixa que possa estar bloqueada.
       router.push(resolveHome(permissions ?? []));
     } catch (e) {
-      // Reiniciar é a ÚNICA ação que torna "pular" reversível. Falhar em
-      // silêncio faz o usuário clicar, não ver nada acontecer e concluir que a
-      // funcionalidade está quebrada — pior do que não ter o botão.
       logger.error("Falha ao reiniciar o onboarding:", e);
       setErro(true);
     } finally {

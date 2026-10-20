@@ -10,7 +10,6 @@ import { Appointment } from "@/services/appointment.service";
 import { ClinicalRecord } from "@/services/clinical-record.service";
 import { SurgeryRequestListItem } from "@/services/surgery-request.service";
 
-// 07/10/2026 12:00 em São Paulo.
 const AGORA = new Date("2026-10-07T15:00:00.000Z");
 
 const consulta = (over: Partial<Appointment>): Appointment => ({
@@ -39,6 +38,8 @@ const ficha = (over: Partial<ClinicalRecord>): ClinicalRecord => ({
   conduct: null,
   surgicalIndication: false,
   surgeryRequestId: null,
+  procedureId: null,
+  procedure: null,
   finalizedAt: "2026-09-18T14:00:00.000Z",
   createdAt: "2026-09-18T14:36:00.000Z",
   updatedAt: "2026-09-18T14:36:00.000Z",
@@ -117,8 +118,6 @@ describe("montarHistorico", () => {
   });
 
   it("ficha vinculada a consulta que não veio na lista aparece sozinha, sem casar por dia", () => {
-    // A consulta "a-sumida" (do mesmo profissional, mesmo dia) não está na
-    // lista; "a-1" é outra consulta do mesmo dia e não pode herdar a ficha.
     const { itens } = montarHistorico({
       appointments: [consulta({ id: "a-1", status: "completed" })],
       records: [ficha({ id: "r-1", appointmentId: "a-sumida" })],

@@ -32,8 +32,6 @@ interface ProcedureSideSheetProps {
   onTemplateUpdated?: () => void;
 }
 
-// ─── Ícones SVG ───────────────────────────────────────────────────────────────
-
 const _IconClose = ({ className = "" }: { className?: string }) => (
   <svg
     className={className}
@@ -127,8 +125,6 @@ const IconTrash = ({ className = "" }: { className?: string }) => (
   </svg>
 );
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
 export function ProcedureSideSheet({
   isOpen,
   onClose,
@@ -137,15 +133,10 @@ export function ProcedureSideSheet({
   onTemplateUpdated,
 }: ProcedureSideSheetProps) {
   const { can } = useAuth();
-  // Editar um modelo é `PATCH /surgery-requests/templates/:id`, que herda a
-  // permissão de classe do controller de solicitações (Solicitações), não
-  // Administração — por isso o eixo aqui é diferente do das outras telas de
-  // cadastro básico.
   const podeEditarModelo = can(Permission.SOLICITACOES);
   const [documents, setDocuments] = useState<ProcedureDocument[]>([]);
   const [opmeItems, setOpmeItems] = useState<ProcedureOpmeItem[]>([]);
   const [tussItems, setTussItems] = useState<ProcedureTussItem[]>([]);
-  /** Conteúdo do modelo carregado sob demanda; base das gravações parciais. */
   const [templateData, setTemplateData] = useState<SurgeryRequestTemplateData>(
     {},
   );
@@ -167,11 +158,6 @@ export function ProcedureSideSheet({
     useState<Procedure | null>(null);
   const procedureDropdownRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * O conteúdo do modelo (documentos, OPME, TUSS) não vem na listagem — é
-   * buscado aqui, quando o modelo é aberto. Enquanto carrega, as seções ficam
-   * vazias com o indicador de carregamento.
-   */
   useEffect(() => {
     if (!procedure) return;
 
@@ -230,7 +216,6 @@ export function ProcedureSideSheet({
     };
   }, [procedure]);
 
-  // Carrega procedimentos cadastrados para edição do tipo
   useEffect(() => {
     if (!isOpen) return;
     const loadProcedureOptions = async () => {
@@ -248,7 +233,6 @@ export function ProcedureSideSheet({
     loadProcedureOptions();
   }, [isOpen]);
 
-  // Fecha dropdown de procedimento ao clicar fora
   useEffect(() => {
     if (!isEditingProcedure) return;
 
@@ -266,7 +250,6 @@ export function ProcedureSideSheet({
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, [isEditingProcedure, procedureName]);
 
-  // Focus input when editing name
   useEffect(() => {
     if (isEditingName && nameInputRef.current) {
       nameInputRef.current.focus();
@@ -276,8 +259,6 @@ export function ProcedureSideSheet({
 
   if (!isOpen || !procedure) return null;
 
-  // Enquanto o conteúdo do modelo carrega, as seções mostram o indicador em vez
-  // do estado vazio — senão o modelo parece não ter documento, OPME nem TUSS.
   const hasDocuments = documents.length > 0;
   const hasOpme = opmeItems.length > 0;
   const hasTuss = tussItems.length > 0;
@@ -289,10 +270,6 @@ export function ProcedureSideSheet({
     </div>
   );
 
-  /**
-   * Grava uma alteração parcial sobre o conteúdo já carregado. A base é o
-   * `templateData` do estado, não a listagem — que não o traz mais.
-   */
   const persistTemplateData = async (updates: {
     name?: string;
     procedure?: { id: string; name: string } | null;
@@ -388,20 +365,17 @@ export function ProcedureSideSheet({
       quantity: number;
     }[],
   ) => {
-    // Coleta todos os nomes de fabricantes únicos informados
     const allManufacturerNames = [
       ...new Set(items.flatMap((item) => item.manufacturers).filter(Boolean)),
     ];
 
     if (allManufacturerNames.length > 0) {
       try {
-        // Busca fabricantes já existentes para evitar duplicatas
         const existingManufacturers = await manufacturerService.getAll();
         const existingNames = new Set(
           existingManufacturers.map((m) => m.name.toLowerCase().trim()),
         );
 
-        // Cria apenas os fabricantes que ainda não existem
         const toCreate = allManufacturerNames.filter(
           (name) => !existingNames.has(name.toLowerCase().trim()),
         );
@@ -414,20 +388,17 @@ export function ProcedureSideSheet({
       }
     }
 
-    // Coleta todos os nomes de fornecedores únicos informados
     const allSupplierNames = [
       ...new Set(items.flatMap((item) => item.suppliers).filter(Boolean)),
     ];
 
     if (allSupplierNames.length > 0) {
       try {
-        // Busca fornecedores já existentes para evitar duplicatas
         const existingSuppliers = await supplierService.getAll();
         const existingNames = new Set(
           existingSuppliers.map((s) => s.name.toLowerCase().trim()),
         );
 
-        // Cria apenas os fornecedores que ainda não existem
         const toCreate = allSupplierNames.filter(
           (name) => !existingNames.has(name.toLowerCase().trim()),
         );
@@ -467,12 +438,9 @@ export function ProcedureSideSheet({
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
-        {/* Backdrop */}
         <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
-        {/* Modal */}
         <div className="relative bg-white rounded-t-3xl md:rounded-2xl shadow-xl w-full md:max-w-2xl flex flex-col max-h-[92vh] md:max-h-[90vh] md:mx-4 mobile-sheet-offset">
-          {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-gray-200">
             {isEditingName && podeEditarModelo ? (
               <div className="flex items-center gap-2 flex-1 mr-4">
@@ -520,9 +488,7 @@ export function ProcedureSideSheet({
             </button>
           </div>
 
-          {/* Body - Scrollable */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 md:space-y-4 modal-content-mobile">
-            {/* ─── Informações Gerais ─── */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2.5 py-2">
                 <h3 className="text-sm md:text-base font-semibold text-black">
@@ -530,7 +496,6 @@ export function ProcedureSideSheet({
                 </h3>
               </div>
 
-              {/* Procedimento */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-2">
                 <span className="text-xs text-gray-500">Procedimento</span>
                 <div
@@ -612,10 +577,8 @@ export function ProcedureSideSheet({
                 </div>
               </div>
 
-              {/* Divider */}
               <div className="border-b border-gray-200" />
 
-              {/* Details row */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-8 py-2">
                 <div className="flex flex-col gap-1 min-w-0">
                   <span className="text-xs text-gray-500">Criado em</span>
@@ -638,7 +601,6 @@ export function ProcedureSideSheet({
               </div>
             </div>
 
-            {/* ─── Documentos e exames ─── */}
             <div className="border border-gray-200 rounded-xl">
               <div className="flex items-center justify-between px-4 py-0 border-b border-gray-200">
                 <div className="flex items-center gap-2.5 py-4 px-3">
@@ -660,12 +622,10 @@ export function ProcedureSideSheet({
                 secaoCarregando
               ) : hasDocuments ? (
                 <div>
-                  {/* Header row */}
                   <div className="flex items-center gap-2 px-6 py-2 border-b border-gray-200">
                     <span className="text-xs text-gray-500">Tipo</span>
                   </div>
 
-                  {/* Document rows */}
                   {documents.map((doc, index) => (
                     <div
                       key={doc.id}
@@ -715,7 +675,6 @@ export function ProcedureSideSheet({
               )}
             </div>
 
-            {/* ─── OPME ─── */}
             <div className="border border-gray-200 rounded-xl">
               <div className="flex items-center justify-between px-4 py-0 border-b border-gray-200">
                 <div className="flex items-center gap-2.5 py-4 px-3">
@@ -737,17 +696,14 @@ export function ProcedureSideSheet({
                 secaoCarregando
               ) : hasOpme ? (
                 <div>
-                  {/* Header */}
                   <div className="flex items-center gap-3 px-4 py-1 border-b border-gray-200">
                     <span className="text-xs text-gray-500">Descrição</span>
                   </div>
 
-                  {/* OPME Items */}
                   {opmeItems.map((item) => {
                     const isExpanded = expandedOpme[item.id] ?? true;
                     return (
                       <div key={item.id}>
-                        {/* Item Header */}
                         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-white">
                           <button
                             onClick={() => toggleOpmeExpand(item.id)}
@@ -772,10 +728,8 @@ export function ProcedureSideSheet({
                           </div>
                         </div>
 
-                        {/* Expanded content */}
                         {isExpanded && item.manufacturers.length > 0 && (
                           <div className="flex border-b border-gray-200">
-                            {/* Fabricantes */}
                             <div className="flex-1 border-r border-gray-200">
                               <div className="px-4 py-3 border-b border-gray-200 bg-white">
                                 <span className="text-xs font-semibold text-gray-500">
@@ -798,7 +752,6 @@ export function ProcedureSideSheet({
                               ))}
                             </div>
 
-                            {/* Fornecedores */}
                             <div className="flex-1">
                               <div className="px-4 py-3 border-b border-gray-200 bg-white">
                                 <span className="text-xs font-semibold text-gray-500">
@@ -849,7 +802,6 @@ export function ProcedureSideSheet({
               )}
             </div>
 
-            {/* ─── Procedimentos e Códigos TUSS ─── */}
             <div className="border border-gray-200 rounded-xl">
               <div className="flex items-center justify-between px-4 py-0 border-b border-gray-200">
                 <div className="flex items-center gap-2.5 py-4 px-3">
@@ -871,7 +823,6 @@ export function ProcedureSideSheet({
                 secaoCarregando
               ) : hasTuss ? (
                 <div>
-                  {/* Header */}
                   <div className="flex items-center gap-6 px-4 py-1 border-b border-gray-200">
                     <span className="flex-1 text-xs text-gray-500">
                       Procedimento
@@ -879,7 +830,6 @@ export function ProcedureSideSheet({
                     <span className="text-xs text-gray-500">Quantidade</span>
                   </div>
 
-                  {/* TUSS Items */}
                   {tussItems.map((item, index) => (
                     <div
                       key={item.id}
@@ -927,7 +877,6 @@ export function ProcedureSideSheet({
             </div>
           </div>
 
-          {/* Footer */}
           <div className="sticky bottom-0 flex items-center justify-end gap-3 px-4 py-3 md:px-6 md:py-4 border-t border-gray-200 bg-white rounded-b-2xl">
             <button onClick={onClose} className="ds-btn-outline">
               Fechar
@@ -945,7 +894,6 @@ export function ProcedureSideSheet({
         </div>
       </div>
 
-      {/* Modais */}
       <AddDocumentModal
         isOpen={isAddDocModalOpen}
         onClose={() => setIsAddDocModalOpen(false)}

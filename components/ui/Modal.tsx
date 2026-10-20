@@ -2,15 +2,24 @@
 
 import { X } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+
+const openModals: string[] = [];
+
+function isTopModal(id: string): boolean {
+  return openModals[openModals.length - 1] === id;
+}
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
   disableClose?: boolean;
+  variant?: "dialog" | "drawer";
+  footer?: React.ReactNode;
 }
 
 export function Modal({
@@ -20,28 +29,32 @@ export function Modal({
   children,
   size = "md",
   disableClose = false,
+  variant = "dialog",
+  footer,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
-    useSwipeToClose(onClose);
-
-  // O foco inicial e o trap não podem depender da identidade do `onClose`:
-  // quem consome o modal costuma passar uma arrow function nova a cada render,
-  // o que fazia o efeito rodar a cada tecla digitada e devolver o foco ao
-  // primeiro elemento (o botão de fechar) — digitar um espaço acabava
-  // "clicando" nele e fechando o modal no meio do preenchimento.
+  const stackId = useId();
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  const requestClose = () => {
+    if (!disableClose) onCloseRef.current();
+  };
+
+  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
+    useSwipeToClose(requestClose);
+
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    }
+    if (!isOpen) return;
+    openModals.push(stackId);
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "";
+      const index = openModals.lastIndexOf(stackId);
+      if (index !== -1) openModals.splice(index, 1);
+      if (openModals.length === 0) document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, [isOpen, stackId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -59,6 +72,7 @@ export function Modal({
     focusableElements[0]?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isTopModal(stackId)) return;
       if (event.key === "Escape") {
         if (disableClose) return;
         event.preventDefault();
@@ -88,9 +102,9 @@ export function Modal({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, disableClose]);
+  }, [isOpen, disableClose, stackId]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   const sizeClasses = {
     sm: "md:max-w-md",
@@ -99,37 +113,49 @@ export function Modal({
     xl: "md:max-w-6xl",
   };
 
+  const isDrawer = variant === "drawer";
   const isDragging = dragY > 0;
   const opacity = isDragging ? Math.max(0.2, 1 - dragY / 300) : 1;
 
-  return (
-    <div className="fixed inset-0 z-60 flex items-end md:items-center justify-center">
-      {/* Backdrop */}
+  const content = (
+    <div
+      className={
+        isDrawer
+          ? "fixed inset-0 z-60 flex flex-col justify-end sm:flex-row sm:justify-end"
+          : "fixed inset-0 z-60 flex items-end md:items-center justify-center"
+      }
+    >
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         style={{ opacity }}
-        onClick={onClose}
+        onClick={requestClose}
       />
 
-      {/* Modal - Bottom sheet no mobile, centered no desktop */}
       <div
         ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`relative bg-white w-full ${sizeClasses[size]} flex flex-col
+        className={
+          isDrawer
+            ? `relative bg-white w-full flex flex-col overflow-hidden
+          rounded-t-2xl sm:rounded-none
+          max-h-[92dvh] sm:max-h-full sm:h-full sm:w-[420px] sm:max-w-full
+          animate-slide-up sm:animate-slide-in-right
+          shadow-2xl mobile-sheet-offset`
+            : `relative bg-white w-full ${sizeClasses[size]} flex flex-col
           rounded-t-3xl md:rounded-2xl overflow-hidden
           max-h-[92vh] md:max-h-[85vh]
           animate-slide-up md:animate-scale-in
           md:mx-4
-          shadow-xl mobile-sheet-offset`}
+          shadow-xl mobile-sheet-offset`
+        }
         style={
           isDragging
             ? { transform: `translateY(${dragY}px)`, transition: "none" }
             : undefined
         }
       >
-        {/* Drag handle — apenas mobile, captura eventos de swipe */}
         <div
           className="flex md:hidden justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
           onTouchStart={onTouchStart}
@@ -139,7 +165,6 @@ export function Modal({
           <div className="w-10 h-1 bg-neutral-200 rounded-full" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 md:p-6 border-b border-neutral-100">
           <h2 id={titleId} className="ds-modal-title">
             {title}
@@ -154,11 +179,14 @@ export function Modal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {children}
         </div>
+
+        {footer}
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

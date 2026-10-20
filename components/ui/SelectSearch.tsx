@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useId } from "react";
 import ReactDOM from "react-dom";
 import { Search, ChevronDown, X, Loader2 } from "lucide-react";
 import { useAnchoredDropdown } from "@/hooks/useAnchoredDropdown";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface SelectSearchOption {
   value: string;
@@ -21,34 +22,7 @@ interface SelectSearchProps {
   error?: string;
   clearable?: boolean;
   initialLabel?: string;
-  /** Nome acessível do campo quando o rótulo visível fica fora do componente. */
   ariaLabel?: string;
-}
-
-// Custom debounce function
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number,
-): T & { cancel: () => void } {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-  const debouncedFn = ((...args: Parameters<T>) => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    timeoutId = setTimeout(() => {
-      func(...args);
-    }, wait);
-  }) as T & { cancel: () => void };
-
-  debouncedFn.cancel = () => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
-  };
-
-  return debouncedFn;
 }
 
 export function SelectSearch({
@@ -71,44 +45,39 @@ export function SelectSearch({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState(initialLabel || "");
   const inputRef = useRef<HTMLInputElement>(null);
-  // Lista em portal ancorada ao campo: acompanha a rolagem do corpo do modal
-  // (sem isso ela ficava parada onde o campo estava quando abriu) e fecha no
-  // clique fora considerando campo e lista.
   const {
     anchorRef,
     dropdownRef,
     position: dropdownPosition,
   } = useAnchoredDropdown(isOpen, () => setIsOpen(false));
 
-  // Mantém referência estável para onSearch para não recriar a fn debounced a cada render
   const onSearchRef = useRef(onSearch);
   useEffect(() => {
     onSearchRef.current = onSearch;
   }, [onSearch]);
 
-  const debouncedSearchRef = useRef(
-    debounce(async (term: string) => {
-      setIsLoading(true);
-      try {
-        const results = await onSearchRef.current(term);
-        setOptions(results);
-      } catch {
-        setOptions([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 300),
-  );
+  const debouncedTerm = useDebounce(searchTerm, 300);
 
-  // Dispara busca ao alterar searchTerm ou ao abrir o dropdown
   useEffect(() => {
     if (!isOpen) return;
-    const fn = debouncedSearchRef.current;
-    fn(searchTerm);
-    return () => fn.cancel();
-  }, [searchTerm, isOpen]);
+    let active = true;
+    setIsLoading(true);
+    onSearchRef
+      .current(debouncedTerm)
+      .then((results) => {
+        if (active) setOptions(results);
+      })
+      .catch(() => {
+        if (active) setOptions([]);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [debouncedTerm, isOpen]);
 
-  // Effect to set selected label when value changes
   useEffect(() => {
     if (value && options.length > 0) {
       const found = options.find((opt) => opt.value === value);
@@ -120,7 +89,6 @@ export function SelectSearch({
     }
   }, [value, options]);
 
-  // Sync initialLabel when value is set but options haven't loaded yet
   useEffect(() => {
     if (value && initialLabel && !selectedLabel) {
       setSelectedLabel(initialLabel);
@@ -233,7 +201,6 @@ export function SelectSearch({
         </div>
       </div>
 
-      {/* Dropdown via portal */}
       {isOpen &&
         typeof window !== "undefined" &&
         ReactDOM.createPortal(

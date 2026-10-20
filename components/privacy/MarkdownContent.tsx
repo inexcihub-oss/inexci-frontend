@@ -2,22 +2,6 @@
 
 import { useMemo } from "react";
 
-/**
- * Renderizador minimalista de markdown.
- *
- * Suporta apenas o subconjunto necessário para os documentos legais
- * publicados em `/inexci-api/src/shared/legal/`:
- *  - cabeçalhos `#`, `##`, `###`
- *  - listas `-` e `*`
- *  - listas numeradas `1.`, `2.`...
- *  - ênfase `**negrito**`
- *  - links `[texto](url)`
- *  - parágrafos
- *  - blocos de código `\`\`\``
- *
- * Foi escrito sem dependências externas porque o projeto não tem
- * `react-markdown` instalado e estes termos são de baixa complexidade.
- */
 export function MarkdownContent({ source }: { source: string }) {
   const blocks = useMemo(() => parseBlocks(source), [source]);
 

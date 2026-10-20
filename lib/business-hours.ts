@@ -1,10 +1,3 @@
-/**
- * Grade de funcionamento da clínica e a regra que decide se um horário de
- * consulta cai dentro dela. Espelha `src/shared/business-hours` do backend,
- * mas a decisão vive aqui: o backend não bloqueia agendamento fora do
- * expediente, porque o usuário pode confirmar mesmo assim.
- */
-
 export const WEEKDAY_KEYS = [
   "sun",
   "mon",
@@ -63,15 +56,10 @@ function pad(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
-/** Minutos desde a meia-noite → "HH:mm" (passa de 24h quando transborda o dia). */
 export function fromMinutes(total: number): string {
   return `${pad(Math.floor(total / 60) % 24)}:${pad(total % 60)}`;
 }
 
-/**
- * Completa os dias ausentes. Toda leitura passa por aqui — clínica gravada
- * sem grade chega como `{}` e quebraria o acesso direto por dia.
- */
 export function normalizeBusinessHours(
   raw?: Partial<BusinessHours> | null,
 ): BusinessHours {
@@ -97,13 +85,6 @@ export function weekdayKeyOf(date: Date): WeekdayKey {
   return WEEKDAY_KEYS[date.getDay()];
 }
 
-/**
- * A consulta cabe no funcionamento da unidade?
- *
- * `overflows_closing` é o caso que passa despercebido: começa dentro do
- * expediente e termina depois do fechamento. Checar só o início deixaria
- * passar uma consulta de 1h marcada às 11:45 numa clínica que fecha ao meio-dia.
- */
 export function isWithinBusinessHours(
   hours: BusinessHours,
   start: Date,
@@ -126,16 +107,12 @@ export function isWithinBusinessHours(
   return { open: true };
 }
 
-/** Grade do dia em texto: "08:00–12:00, 14:00–18:00". */
 export function descreveDia(hours: BusinessHours, date: Date): string {
   const blocos = normalizeBusinessHours(hours)[weekdayKeyOf(date)];
   if (blocos.length === 0) return "fechado";
   return blocos.map((b) => `${b.start}–${b.end}`).join(", ");
 }
 
-/**
- * Mensagem do aviso, ou `null` quando o horário está dentro do funcionamento.
- */
 export function mensagemForaDoHorario(
   nomeClinica: string,
   hours: BusinessHours,

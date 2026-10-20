@@ -1,6 +1,3 @@
-/**
- * AuthContext — consents embutidos no `/auth/me` (item 4.4b).
- */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const consentGetStatus = vi.fn();
@@ -79,7 +76,9 @@ describe("AuthContext — consents do /auth/me", () => {
       pendingRequired: ["privacy_policy", "terms_of_use"],
     });
 
-    const userWithoutConsents = { id: "u-2" };
+    const userWithoutConsents: { id: string; consents?: unknown } = {
+      id: "u-2",
+    };
     const applyConsentsFromUser = (currentUser: { consents?: unknown }) =>
       Boolean(currentUser.consents);
 

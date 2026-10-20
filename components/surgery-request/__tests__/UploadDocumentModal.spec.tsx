@@ -73,8 +73,8 @@ describe("UploadDocumentModal", () => {
     process.env.NEXT_PUBLIC_API_URL = originalApiUrl;
   });
 
-  function selectFile(container: HTMLElement) {
-    const input = container.querySelector(
+  function selectFile() {
+    const input = document.querySelector(
       'input[type="file"]',
     ) as HTMLInputElement;
     const file = new File(["pdf-content"], "laudo.pdf", {
@@ -105,11 +105,11 @@ describe("UploadDocumentModal", () => {
       },
     });
 
-    const { container } = render(
+    render(
       <UploadDocumentModal isOpen onClose={onClose} onSuccess={onSuccess} />,
     );
 
-    selectFile(container);
+    selectFile();
     fireEvent.click(screen.getByRole("button", { name: "Analisar documento" }));
 
     await waitFor(
@@ -128,11 +128,11 @@ describe("UploadDocumentModal", () => {
       message: "Falha no OCR",
     });
 
-    const { container } = render(
+    render(
       <UploadDocumentModal isOpen onClose={onClose} onSuccess={onSuccess} />,
     );
 
-    selectFile(container);
+    selectFile();
     fireEvent.click(screen.getByRole("button", { name: "Analisar documento" }));
 
     await waitFor(() => {
@@ -148,7 +148,7 @@ describe("UploadDocumentModal", () => {
       .mockResolvedValueOnce({ status: "processing" })
       .mockResolvedValueOnce({ status: "processing" });
 
-    const { container } = render(
+    render(
       <UploadDocumentModal
         isOpen
         onClose={onClose}
@@ -157,7 +157,7 @@ describe("UploadDocumentModal", () => {
       />,
     );
 
-    selectFile(container);
+    selectFile();
     fireEvent.click(screen.getByRole("button", { name: "Analisar documento" }));
 
     await waitFor(() => {
@@ -201,12 +201,6 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
     expect(surgeryRequestService.extractFromDocument).not.toHaveBeenCalled();
   });
 
-  // Usa `onboardingMockState` (mutable `vi.hoisted`), não `vi.doMock` +
-  // `vi.resetModules` + import dinâmico como no rascunho original da tarefa:
-  // o `vi.mock` estático deste arquivo já hoisteia `useOnboarding` para o
-  // módulo real, e sobrescrever via `doMock`/`resetModules` no meio do
-  // arquivo é frágil (mesma solução já usada em
-  // `NewProcedureModelModal.spec.tsx` — "guard emTour").
   it("mantém a análise simulada aberta até o avanço explícito do tour", async () => {
     onboardingMockState.emTour = true;
 
@@ -248,10 +242,6 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
 
     expect(onClose).toHaveBeenCalledTimes(1);
 
-    // Regressão: `handleClose` deve resetar o estado da simulação
-    // imediatamente (não existe job real em background para continuar
-    // rastreando), senão reabrir o modal mostra "Análise em andamento" para
-    // sempre.
     expect(
       screen.queryByText("Análise em andamento"),
     ).not.toBeInTheDocument();
@@ -264,11 +254,11 @@ describe("UploadDocumentModal — simulação do tour (sc-simular-analise-docume
   it("handleSubmit não chama extractFromDocument real quando emTour é true", () => {
     onboardingMockState.emTour = true;
 
-    const { container } = render(
+    render(
       <UploadDocumentModal isOpen onClose={onClose} onSuccess={onSuccess} />,
     );
 
-    const input = container.querySelector(
+    const input = document.querySelector(
       'input[type="file"]',
     ) as HTMLInputElement;
     const file = new File(["pdf-content"], "laudo.pdf", {

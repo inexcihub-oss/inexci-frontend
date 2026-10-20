@@ -36,11 +36,6 @@ function renderWithClient(ui: React.ReactElement) {
   );
 }
 
-/**
- * `canCreate` é resolvido pelo `CreateSurgeryRequestWizard` (hoje, `hasAnyArea`
- * — hospital é cadastro transversal). Este teste cobre o mecanismo de
- * desabilitar-com-dica em si, isolado de qual regra o wizard usa para decidir.
- */
 describe("HospitalSelectionContent — gating de criação (canCreate)", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -79,12 +74,6 @@ describe("HospitalSelectionContent — gating de criação (canCreate)", () => {
   });
 });
 
-/**
- * Criar e excluir procedimento deixaram de andar juntos: `POST /procedures`
- * herda o `@RequireAnyArea()` da classe, `DELETE /procedures/:id` continua em
- * Administração. Enquanto uma prop só governava os dois, liberar a criação
- * teria trazido a lixeira junto — modal de confirmação e 403 ao confirmar.
- */
 describe("ProcedureSelectionContent — criar e excluir são props separadas", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -139,13 +128,6 @@ describe("ProcedureSelectionContent — criar e excluir são props separadas", (
     expect(screen.getByRole("button", lixeira)).toBeInTheDocument();
   });
 
-  /**
-   * `sc-wizard-novo-cadastro` é a âncora que o tour de onboarding usa para
-   * destacar o botão "Novo" dentro do wizard (`tour-registry.ts`, passo
-   * "cadastro-no-modal"). Sem este teste, trocar ou remover o atributo aqui
-   * não quebra nada visivelmente — o tour só passa a pular o passo em
-   * silêncio (`useTargetRect` reporta "ausente").
-   */
   it("expõe a âncora do tour no botão 'Novo'", () => {
     renderWithClient(
       <ProcedureSelectionContent

@@ -5,11 +5,6 @@ import { Camera, ImagePlus, Trash2, User } from "lucide-react";
 import { PATIENT_PHOTO_TYPES, prepararFotoPaciente } from "./foto-paciente";
 import { WebcamCaptureModal } from "./WebcamCaptureModal";
 
-/**
- * Foto no formulário de NOVO paciente: o arquivo fica só no formulário até o
- * cadastro ser salvo (quem envia é o modal, junto com os dados). Pode vir de
- * um arquivo ou da câmera.
- */
 export function PatientPhotoInput({
   value,
   onChange,
@@ -35,7 +30,6 @@ export function PatientPhotoInput({
   const escolher = async (file: File | undefined) => {
     if (inputRef.current) inputRef.current.value = "";
     if (!file) return;
-    // Acima de 2 MB, reduz no navegador antes de recusar.
     const { foto, erro: problema } = await prepararFotoPaciente(file);
     setErro(problema ?? null);
     if (foto) onChange(foto);
@@ -48,7 +42,7 @@ export function PatientPhotoInput({
     <div className="flex items-center gap-4">
       <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-neutral-100 text-neutral-400">
         {previa ? (
-          // eslint-disable-next-line @next/next/no-img-element -- prévia local (blob:)
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={previa}
             alt="Prévia da foto do paciente"

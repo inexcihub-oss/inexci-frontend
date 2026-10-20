@@ -57,7 +57,6 @@ describe("PatientPhotoField", () => {
       "src",
       "https://r2/foto.png",
     );
-    // Fechada, nada de remover à vista: as ações ficam na foto ampliada.
     expect(screen.queryByRole("button", { name: /remover/i })).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Ver foto" }));
@@ -79,8 +78,6 @@ describe("PatientPhotoField", () => {
     await user.click(screen.getByRole("button", { name: "Ver foto" }));
     await user.click(screen.getByRole("button", { name: /tirar foto/i }));
 
-    // Uma camada só: o Esc da câmera não tem uma foto ampliada embaixo para
-    // fechar junto.
     expect(
       screen.queryByRole("dialog", { name: "Foto de Ana Souza" }),
     ).toBeNull();
@@ -181,7 +178,6 @@ describe("PatientPhotoField", () => {
     render(<PatientPhotoField patient={comFoto} onChange={onChange} />);
     await user.click(screen.getByRole("button", { name: "Ver foto" }));
     await user.click(screen.getByRole("button", { name: /remover/i }));
-    // Pede confirmação antes de apagar.
     expect(patientService.update).not.toHaveBeenCalled();
     expect(
       screen.getByRole("group", { name: /confirmar remoção da foto/i }),

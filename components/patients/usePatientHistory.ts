@@ -24,9 +24,7 @@ export interface PatientHistoryData {
   records: ClinicalRecord[];
   surgeries: SurgeryRequestListItem[];
   documents: PatientDocument[];
-  /** Nome de cada profissional da conta, pelo id. */
   profissionais: Map<string, string>;
-  /** Quem é médico (CRM); ausente na lista = médico, como em `AvailableDoctor`. */
   medicos: Map<string, boolean | undefined>;
 }
 
@@ -39,19 +37,10 @@ const VAZIO: PatientHistoryData = {
   medicos: new Map(),
 };
 
-/**
- * Tudo que a linha do tempo do paciente precisa, buscado de uma vez.
- *
- * Cada chamada só sai se a permissão que o backend exige estiver presente —
- * senão volta 403 garantido. Consultas e fichas são o núcleo: se falharem, o
- * histórico mostra erro (vazio mentiria). Cirurgias, documentos e nomes dos
- * profissionais são complemento: se falharem, a linha do tempo sai sem eles.
- */
 export function usePatientHistory(patientId: string) {
   const { can } = useAuth();
   const podeConsultas = can(Permission.AGENDA) || can(Permission.ATENDIMENTO);
   const podeProntuario = can(Permission.ATENDIMENTO);
-  // `GET /surgery-requests` exige SOLICITACOES ou ATENDIMENTO no backend.
   const podeCirurgias =
     can(Permission.SOLICITACOES) || can(Permission.ATENDIMENTO);
   const [data, setData] = useState<PatientHistoryData>(VAZIO);

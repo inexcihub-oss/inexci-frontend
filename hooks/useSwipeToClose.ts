@@ -1,10 +1,5 @@
 import { useRef, useState, useCallback } from "react";
 
-/**
- * Detecta swipe para baixo em bottom sheets e aciona onClose quando
- * o usuário arrasta além do threshold (padrão: 80px).
- * Retorna o deslocamento atual (dragY) para animar o painel durante o arraste.
- */
 export function useSwipeToClose(onClose: () => void, threshold = 80) {
   const startY = useRef<number | null>(null);
   const [dragY, setDragY] = useState(0);

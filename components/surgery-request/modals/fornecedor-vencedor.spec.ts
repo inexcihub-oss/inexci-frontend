@@ -8,13 +8,6 @@ import {
 } from "./fornecedor-vencedor";
 import { SurgeryRequestDetail } from "@/services/surgery-request.service";
 
-/**
- * O vencedor é o fornecedor que o convênio aprovou. Duas respostas são
- * válidas: um dos cotados no item, ou "Outro" — o convênio aprovou alguém de
- * fora da lista. "Outro" é o fornecedor genérico da conta, e é assim que ele
- * aparece no dashboard e no filtro do kanban.
- */
-
 const opmeCom = (over: Record<string, unknown> = {}) =>
   ({
     id: "opme-1",
@@ -39,8 +32,6 @@ describe("opções de fornecedor vencedor", () => {
   });
 
   it("não duplica 'Outro' quando ele já está entre os cotados", () => {
-    // O preenchimento automático dos slots coloca o genérico na lista quando o
-    // item não tem os 3 fornecedores que a plataforma exige.
     const opcoes = buildSupplierOptions(
       opmeCom({
         suppliers: [
@@ -86,12 +77,6 @@ describe("pré-seleção do vencedor", () => {
     expect(inicial["opme-1"]).toBe(GENERIC_SUPPLIER_VALUE);
   });
 
-  /**
-   * A pré-seleção pega o primeiro da lista. Se o genérico entrasse nessa
-   * conta, todo rascunho — que é justamente quem tem slots preenchidos com
-   * ele — entraria no dashboard como "Outro" sem ninguém ter escolhido,
-   * inflando o número que o relatório existe para medir.
-   */
   it("prefere um fornecedor real ao genérico", () => {
     const inicial = buildInitialSelectedOpmeSuppliers(
       solicitacaoCom([

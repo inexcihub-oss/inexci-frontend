@@ -10,16 +10,13 @@ import Benefits from "@/components/landing/benefits";
 import { SITE_URL } from "@/lib/landing/seo";
 
 export default async function LandingPage() {
-  // script estático no HTML inicial: strict-dynamic não cobre isso (só
-  // scripts inseridos via JS por um script já confiável) — precisa de nonce
-  // explícito, senão a CSP bloqueia o JSON-LD de SEO.
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <>
       <script
         type="application/ld+json"
         nonce={nonce}
-        // eslint-disable-next-line react/no-danger -- JSON-LD via JSON.stringify de dados estáticos, não deriva de input do usuário
+        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
@@ -34,7 +31,7 @@ export default async function LandingPage() {
       <script
         type="application/ld+json"
         nonce={nonce}
-        // eslint-disable-next-line react/no-danger -- JSON-LD via JSON.stringify de dados estáticos, não deriva de input do usuário
+        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
@@ -54,7 +51,7 @@ export default async function LandingPage() {
       <script
         type="application/ld+json"
         nonce={nonce}
-        // eslint-disable-next-line react/no-danger -- JSON-LD via JSON.stringify de dados estáticos, não deriva de input do usuário
+        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",

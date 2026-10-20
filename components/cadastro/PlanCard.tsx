@@ -65,7 +65,6 @@ export function PlanCard({
           .filter(Boolean)
           .join(" ")}
       >
-        {/* Gradient header */}
         <div
           className={`px-4 pt-4 pb-4 bg-gradient-to-br ${theme.headerGradient}`}
         >
@@ -95,7 +94,6 @@ export function PlanCard({
           </p>
         </div>
 
-        {/* Price */}
         <div className="px-4 py-3.5 border-b border-gray-50">
           {isEnterprise ? (
             <>
@@ -145,7 +143,6 @@ export function PlanCard({
           )}
         </div>
 
-        {/* Quota — main differentiator */}
         <div className="px-4 py-3.5 flex-1 flex items-center">
           <div className="flex items-center gap-2">
             <div
@@ -157,7 +154,6 @@ export function PlanCard({
           </div>
         </div>
 
-        {/* CTA */}
         <div className="px-4 pb-4">
           {isEnterprise ? (
             <a

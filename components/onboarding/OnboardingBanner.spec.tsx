@@ -70,11 +70,6 @@ describe("OnboardingBanner", () => {
     expect(startTour).toHaveBeenCalledWith("solicitacoes");
   });
 
-  /**
-   * O CTA precisa apontar para a trilha incompleta que vem DEPOIS de outras
-   * já feitas, não para a primeira do array — senão "Continuar" reabriria um
-   * tour já concluído enquanto ainda sobra trabalho de verdade.
-   */
   it("o CTA aponta para a próxima trilha incompleta, não para a primeira da lista", async () => {
     contexto.tracks = [TRILHA, TRILHA_2];
     contexto.state = {
@@ -111,7 +106,6 @@ describe("OnboardingBanner", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  /** Um usuário sem área nenhuma não pode ver um banner vazio. */
   it("não renderiza sem trilhas visíveis", () => {
     contexto.tracks = [];
     const { container } = render(<OnboardingBanner />);
@@ -126,12 +120,6 @@ describe("OnboardingBanner", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  /**
-   * Sem trilha incompleta (todas concluídas), o CTA some — mas o progresso
-   * continua visível. Só o `promoteIfComplete` do provider decide quando o
-   * status vira "completed"; a banner não deve fingir um CTA para uma trilha
-   * que já não precisa de ação.
-   */
   it("sem próxima trilha incompleta, esconde o CTA mas mantém o progresso", () => {
     contexto.state = {
       ...emptyOnboardingState(),
@@ -145,10 +133,6 @@ describe("OnboardingBanner", () => {
     ).not.toBeInTheDocument();
   });
 
-  /**
-   * Task 9, passo 4: o banner é conteúdo persistente no topo de toda tela —
-   * precisa se anunciar como região nomeada, não só como texto solto.
-   */
   it("é uma região nomeada para leitor de tela", () => {
     render(<OnboardingBanner />);
 
@@ -158,9 +142,6 @@ describe("OnboardingBanner", () => {
   });
 
   it("expõe o progresso também para leitor de tela", () => {
-    // Duas trilhas, uma concluída: `valuenow=1` e `valuemax=2` são valores
-    // distintos, então um swap entre os dois atributos falha aqui. Com uma
-    // trilha só, `1` e `1` esconderiam a troca.
     contexto.tracks = [TRILHA, TRILHA_2];
     contexto.state = {
       ...emptyOnboardingState(),

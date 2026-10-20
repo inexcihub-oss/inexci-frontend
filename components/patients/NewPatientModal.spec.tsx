@@ -21,7 +21,6 @@ vi.mock("@/services/health-plan.service", () => ({
 }));
 
 const permissions: Permission[] = [Permission.ATENDIMENTO];
-// CreateHealthPlanModal (aberto pelo atalho de convênio) lê o estado do tour.
 vi.mock("@/components/onboarding/OnboardingProvider", () => ({
   useOnboarding: () => ({ emTour: false }),
 }));
@@ -43,7 +42,6 @@ function renderModal() {
   );
 }
 
-/** Abre o combobox de convênio e escolhe "Cadastrar novo convênio". */
 async function abrirModalDeConvenio(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("button", { name: /convênio/i }));
   await user.click(
@@ -63,10 +61,6 @@ describe("NewPatientModal + cadastro de convênio", () => {
     renderModal();
     await abrirModalDeConvenio(user);
 
-    // `<form>` dentro de `<form>` é HTML inválido: o Chrome não propaga o
-    // submit do form interno para além do externo, então o `onSubmit` do
-    // React (delegado no root) nunca roda — sem `preventDefault`, o browser
-    // faz o submit nativo e a página recarrega.
     expect(document.querySelectorAll("form form")).toHaveLength(0);
   });
 
@@ -94,8 +88,6 @@ describe("NewPatientModal + cadastro de convênio", () => {
       ),
     );
     expect(patientService.create).not.toHaveBeenCalled();
-    // O submit do convênio não pode escapar para o form do paciente: se
-    // escapasse, a validação do paciente rodaria e reclamaria dos campos.
     expect(screen.queryByText(/Corrija os campos/i)).not.toBeInTheDocument();
   });
 });
@@ -135,7 +127,6 @@ describe("NewPatientModal — CPF opcional", () => {
       screen.getByRole("button", { name: /adicionar paciente/i }),
     );
 
-    // A mensagem aparece no campo e no resumo do toast.
     expect(
       (await screen.findAllByText(/CPF deve ter 11 dígitos/i)).length,
     ).toBeGreaterThan(0);
@@ -312,7 +303,7 @@ describe("NewPatientModal — foto no cadastro", () => {
     expect(uploadSingle).toHaveBeenCalledTimes(1);
     expect(vi.mocked(patientService.create).mock.calls[1][0]).toEqual(
       expect.objectContaining({ photoPath: "patient-photos/o/ana.webp" }),
-    );    // Foto reaproveitada e gravada no paciente: nada a descartar.
+    );
     expect(patientService.discardPhoto).not.toHaveBeenCalled();
   });
 
@@ -337,7 +328,7 @@ describe("NewPatientModal — foto no cadastro", () => {
     expect(uploadSingle).toHaveBeenCalledTimes(2);
     expect(vi.mocked(patientService.create).mock.calls[1][0]).toEqual(
       expect.objectContaining({ photoPath: "patient-photos/o/2.webp" }),
-    );    // A primeira foto não vai mais ser usada: sai do storage.
+    );
     expect(patientService.discardPhoto).toHaveBeenCalledTimes(1);
     expect(patientService.discardPhoto).toHaveBeenCalledWith("patient-photos/o/1.webp");
   });

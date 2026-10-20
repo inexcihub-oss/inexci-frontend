@@ -4,13 +4,6 @@ import type { ReactNode } from "react";
 
 import type { SubscriptionDetail } from "@/types";
 
-/**
- * Um banner por vez. Banners empilhados comeriam metade da tela no mobile, e
- * a precedência é assinatura → cota → onboarding: oferecer upgrade de plano a
- * quem está inadimplente é conversa fora de hora, e convidar para um tour
- * quem está estourando a cota, também.
- */
-
 let authState: {
   isAccountOwner: boolean;
   accountId: string | null;
@@ -18,11 +11,6 @@ let authState: {
   subscriptionLoading: boolean;
 };
 
-/**
- * Espelha o contrato real do `QuotaBanner`: quando tem aviso de cota a
- * mostrar, ignora o `fallback` recebido; quando não tem, cede a vez a ele. É
- * assim que o onboarding aparece só quando a cota está silenciosa.
- */
 let mostrarAvisoDeCota = true;
 
 vi.mock("@/contexts/AuthContext", () => ({
@@ -128,12 +116,6 @@ describe("GlobalBanners", () => {
     expect(screen.getByTestId("quota-banner")).toBeInTheDocument();
   });
 
-  /**
-   * Onboarding é a menor precedência das três: só aparece quando a cota não
-   * tem nada a dizer. Sem este teste, o `fallback` do `QuotaBanner` poderia
-   * parar de ser passado e o onboarding nunca mais apareceria em lugar
-   * nenhum, silenciosamente.
-   */
   it("mostra o de onboarding quando não há aviso de cota nem problema de assinatura", () => {
     mostrarAvisoDeCota = false;
     render(<GlobalBanners />);

@@ -60,7 +60,6 @@ export const KanbanBoard = memo<KanbanBoardProps>(({ initialColumns }) => {
         {initialColumns.map((column) => (
           <KanbanColumn
             key={column.id}
-            columnId={column.id}
             title={column.title}
             status={column.status}
             count={column.cards.length}

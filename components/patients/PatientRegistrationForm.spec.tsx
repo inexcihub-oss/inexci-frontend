@@ -11,11 +11,7 @@ vi.mock("@/services/health-plan.service", () => ({
   healthPlanService: { getAll: vi.fn().mockResolvedValue([]) },
 }));
 
-// O mock deriva `can` de `permissions` em vez de trazer os dois soltos: com
-// duas fontes, um teste passa a afirmar uma combinação que o AuthContext real
-// nunca produz (ex.: `can(ADMINISTRACAO)` verdadeiro com `permissions` vazio).
 let permissions: Permission[] = [Permission.ADMINISTRACAO];
-// CreateHealthPlanModal (aberto pelo atalho de convênio) lê o estado do tour.
 vi.mock("@/components/onboarding/OnboardingProvider", () => ({
   useOnboarding: () => ({ emTour: false }),
 }));
@@ -53,14 +49,6 @@ const patient = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
-/**
- * `Input`/`Select` não associam o `label` ao campo via `htmlFor`/`id`
- * (mesmo comportamento do formulário original em
- * `app/(dashboard)/pacientes/[id]/page.tsx`), então `getByLabelText` e
- * `getByRole(..., { name })` não enxergam o rótulo. Localiza o input pelo
- * texto do label (irmão dentro do mesmo wrapper) sem alterar o componente
- * `Input`.
- */
 function fieldByLabel(text: RegExp): HTMLInputElement {
   const label = screen.getByText(text);
   const input = label.parentElement?.querySelector("input");
@@ -70,8 +58,6 @@ function fieldByLabel(text: RegExp): HTMLInputElement {
   return input;
 }
 
-/** Renderiza o formulário e aguarda o efeito de `healthPlanService.getAll()`
- * resolver, evitando o warning de "not wrapped in act" nos testes. */
 async function renderForm(
   props: Partial<
     Parameters<typeof PatientRegistrationForm>[0]
@@ -157,8 +143,6 @@ describe("PatientRegistrationForm", () => {
     });
   });
 
-  // CPF passou a ser opcional (MIG-01). Apagar tem que chegar ao backend como
-  // `""` — `undefined` seria "não mexer" e o CPF antigo continuaria lá.
   it("apagar o CPF salva o paciente sem CPF", async () => {
     const user = userEvent.setup();
     (patientService.update as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -253,12 +237,6 @@ describe("PatientRegistrationForm", () => {
     );
   });
 
-  /**
-   * Convênio é cadastro transversal (`@RequireAnyArea()`): qualquer área cria
-   * na hora. Só o colaborador sem área nenhuma fica de fora — e aí o
-   * formulário não pode travá-lo sem saída: a opção some do combobox e uma
-   * dica explica o motivo, em vez de deixar o clique terminar em 403.
-   */
   it("orienta a pedir a um administrador quando não há área nenhuma", async () => {
     permissions = [];
     await renderForm({ onSaved: vi.fn() });

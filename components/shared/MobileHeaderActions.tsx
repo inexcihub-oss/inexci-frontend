@@ -11,7 +11,7 @@ import {
 } from "@/services/notification.service";
 import { logger } from "@/lib/logger";
 import { useNotifications, useClickOutside } from "@/hooks";
-import { uploadService } from "@/services/upload.service";
+import { useUserAvatarUrl } from "@/hooks/useUserAvatarUrl";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn, getInitials, getAvatarColor } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -28,7 +28,7 @@ export default function MobileHeaderActions() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const { unreadCount, setUnreadCount } = useNotifications();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const avatarUrl = useUserAvatarUrl();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -39,24 +39,6 @@ export default function MobileHeaderActions() {
   );
   useClickOutside(userMenuRef, () => setIsUserMenuOpen(false), isUserMenuOpen);
 
-  // Resolve avatar URL
-  useEffect(() => {
-    const raw = user?.avatarUrl;
-    if (!raw) {
-      setAvatarUrl(null);
-      return;
-    }
-    if (raw.startsWith("http://") || raw.startsWith("https://")) {
-      setAvatarUrl(raw);
-    } else {
-      uploadService
-        .getSignedUrl(raw)
-        .then(setAvatarUrl)
-        .catch(() => setAvatarUrl(null));
-    }
-  }, [user?.avatarUrl]);
-
-  // Close on navigation
   useEffect(() => {
     setIsNotificationsOpen(false);
     setIsUserMenuOpen(false);
@@ -183,7 +165,6 @@ export default function MobileHeaderActions() {
 
   return (
     <div className="flex items-center gap-1">
-      {/* Notifications Button */}
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={handleOpenNotifications}
@@ -203,18 +184,14 @@ export default function MobileHeaderActions() {
           )}
         </button>
 
-        {/* Notifications Dropdown - Compact popover */}
         {isNotificationsOpen && (
           <>
-            {/* Invisible backdrop to close */}
             <div
               className="fixed inset-0 z-[80]"
               onClick={() => setIsNotificationsOpen(false)}
             />
 
-            {/* Dropdown card */}
             <div className="fixed top-14 right-4 left-4 max-w-sm ml-auto z-[90] bg-white rounded-2xl shadow-2xl border border-neutral-100 overflow-hidden animate-scale-in origin-top-right">
-              {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
                 <h2 className="text-sm font-semibold text-neutral-900">
                   Notificações
@@ -229,7 +206,6 @@ export default function MobileHeaderActions() {
                 )}
               </div>
 
-              {/* Content */}
               <div className="max-h-[60vh] overflow-y-auto overscroll-contain">
                 {loading ? (
                   <div className="flex items-center justify-center py-10">
@@ -304,7 +280,6 @@ export default function MobileHeaderActions() {
                 )}
               </div>
 
-              {/* Footer */}
               {notifications.length > 0 && (
                 <div className="border-t border-neutral-100 px-4 py-2.5">
                   <Link
@@ -321,7 +296,6 @@ export default function MobileHeaderActions() {
         )}
       </div>
 
-      {/* Settings Button */}
       <Link
         href="/configuracoes"
         className={cn(
@@ -335,7 +309,6 @@ export default function MobileHeaderActions() {
         <Settings className="w-5 h-5" strokeWidth={1.8} />
       </Link>
 
-      {/* User Avatar */}
       <div className="relative" ref={userMenuRef}>
         <button
           onClick={() => setIsUserMenuOpen((v) => !v)}
@@ -345,6 +318,7 @@ export default function MobileHeaderActions() {
           {avatarUrl ? (
             <Image
               src={avatarUrl}
+              unoptimized
               alt={user?.name || "Avatar"}
               width={36}
               height={36}
@@ -362,7 +336,6 @@ export default function MobileHeaderActions() {
           )}
         </button>
 
-        {/* User Menu Popover */}
         {isUserMenuOpen && (
           <>
             <div
@@ -370,7 +343,6 @@ export default function MobileHeaderActions() {
               onClick={() => setIsUserMenuOpen(false)}
             />
             <div className="fixed top-14 right-4 w-48 z-[90] bg-white rounded-2xl shadow-2xl border border-neutral-100 overflow-hidden animate-scale-in origin-top-right">
-              {/* User info */}
               <div className="px-4 py-3 border-b border-neutral-100">
                 <p className="text-sm font-semibold text-neutral-900 truncate">
                   {user?.name || "Usuário"}
@@ -392,7 +364,6 @@ export default function MobileHeaderActions() {
                   </span>
                 )}
               </div>
-              {/* Logout */}
               <button
                 onClick={() => {
                   setIsUserMenuOpen(false);

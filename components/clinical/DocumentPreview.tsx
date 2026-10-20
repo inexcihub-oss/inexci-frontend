@@ -2,16 +2,50 @@
 
 import { useEffect, useRef } from "react";
 import DOMPurify from "isomorphic-dompurify";
+import { TAGS_PROIBIDAS } from "@/lib/sanitize-html";
 
-/**
- * Exibe o HTML do documento (receita, atestado, solicitação de exames) do jeito
- * que ele será impresso.
- *
- * O conteúdo vai para um **shadow root**, não para a página: o template traz
- * `<style>` com regras para `body`, `*` e classes genéricas, que injetadas
- * direto reestilizariam o app inteiro. O shadow root também evita o `iframe`
- * com `blob:`, que a CSP do app bloqueia (`default-src 'self'`).
- */
+const PREVIEW_FORBID_TAGS = [
+  ...TAGS_PROIBIDAS.filter((tag) => tag !== "style"),
+  "script",
+  "iframe",
+  "frame",
+  "frameset",
+  "object",
+  "embed",
+  "link",
+  "meta",
+  "base",
+  "noscript",
+  "template",
+];
+
+const PREVIEW_FORBID_ATTR = [
+  "onerror",
+  "onload",
+  "onclick",
+  "onmouseover",
+  "onmouseenter",
+  "onfocus",
+  "onblur",
+  "onanimationstart",
+  "onanimationend",
+  "ontransitionend",
+  "onbegin",
+  "srcdoc",
+  "formaction",
+  "action",
+  "ping",
+];
+
+export function sanitizeDocumentPreviewHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    WHOLE_DOCUMENT: true,
+    ADD_TAGS: ["style"],
+    FORBID_TAGS: PREVIEW_FORBID_TAGS,
+    FORBID_ATTR: PREVIEW_FORBID_ATTR,
+  });
+}
+
 export function DocumentPreview({
   html,
   className = "",
@@ -30,14 +64,7 @@ export function DocumentPreview({
       shadowRef.current = host.shadowRoot ?? host.attachShadow({ mode: "open" });
     }
 
-    // O HTML é do nosso template, mas carrega texto livre digitado pelo médico:
-    // sanitizar mantém a barreira mesmo se algo escapar do escape do Handlebars.
-    // `style` é mantido de propósito — é o CSS do documento.
-    shadowRef.current.innerHTML = DOMPurify.sanitize(html, {
-      WHOLE_DOCUMENT: true,
-      ADD_TAGS: ["style"],
-      FORBID_TAGS: ["script", "iframe", "object", "embed"],
-    });
+    shadowRef.current.innerHTML = sanitizeDocumentPreviewHtml(html);
   }, [html]);
 
   return (

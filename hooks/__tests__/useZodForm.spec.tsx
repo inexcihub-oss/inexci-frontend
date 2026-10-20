@@ -48,7 +48,7 @@ describe("useZodForm", () => {
     const { result } = renderHook(() =>
       useZodForm({
         schema,
-        initialValues: { name: "João Silva", email: "a@b.co", age: "30" as any },
+        initialValues: { name: "João Silva", email: "a@b.co", age: "30" as unknown as number },
       }),
     );
 
@@ -67,7 +67,7 @@ describe("useZodForm", () => {
     const { result } = renderHook(() =>
       useZodForm({
         schema,
-        initialValues: { name: "João Silva", email: "a@b.co", age: "30" as any },
+        initialValues: { name: "João Silva", email: "a@b.co", age: "30" as unknown as number },
       }),
     );
 
@@ -91,7 +91,7 @@ describe("useZodForm", () => {
     const { result } = renderHook(() =>
       useZodForm({
         schema,
-        initialValues: { name: "Jo", email: "x", age: 10 as any },
+        initialValues: { name: "Jo", email: "x", age: 10 },
       }),
     );
 
@@ -121,7 +121,7 @@ describe("useZodForm", () => {
     act(() => {
       props.onChange({
         target: { value: "Maria Silva" },
-      } as any);
+      } as React.ChangeEvent<HTMLInputElement>);
     });
     expect(result.current.values.name).toBe("Maria Silva");
   });

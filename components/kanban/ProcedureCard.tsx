@@ -22,8 +22,17 @@ import {
 import { useToggle, useClickOutside } from "@/hooks";
 import { priorityColors, getPriorityLabel } from "@/lib/design-system";
 import { differenceInDays, parse } from "date-fns";
+import {
+  STALE_EXEMPT_STATUSES,
+  getStatusMetaByLabel,
+  isStatusIn,
+  statusCodeFromLabel,
+} from "@/lib/surgery-request-status";
+import {
+  CardMenuAction,
+  buildSolicitacaoActionHref,
+} from "@/lib/solicitacao-actions";
 
-// Stale tier configuration
 type StaleTier = {
   minDays: number;
   bg: string;
@@ -51,18 +60,12 @@ const STALE_TIERS: StaleTier[] = [
   },
 ];
 
-const TERMINAL_STATUSES: SurgeryRequestStatus[] = [
-  "Realizada",
-  "Faturada",
-  "Finalizada",
-  "Encerrada",
-];
-
 function getStaleTier(
   referenceDate: string,
   status: SurgeryRequestStatus,
 ): (StaleTier & { days: number }) | null {
-  if (TERMINAL_STATUSES.includes(status)) return null;
+  const code = statusCodeFromLabel(status);
+  if (code !== undefined && isStatusIn(code, STALE_EXEMPT_STATUSES)) return null;
   try {
     const date = referenceDate.includes("/")
       ? parse(referenceDate, "dd/MM/yyyy", new Date())
@@ -77,31 +80,15 @@ function getStaleTier(
 
 interface ProcedureCardProps {
   procedure: SurgeryRequest;
-  isDragging?: boolean;
 }
 
-// Tipo de ação contextual
 interface ContextualAction {
   icon: React.ElementType;
   label: string;
-  action: string;
+  action: CardMenuAction;
   color: string;
 }
 
-// Mapeamento de status para ícone SVG
-const statusIconMap: Record<SurgeryRequestStatus, string> = {
-  Pendente: "/icons/kanban/clock-watch.svg",
-  Enviada: "/icons/kanban/email-send-fast-circle.svg",
-  "Em Análise": "/icons/kanban/loading-waiting.svg",
-  "Em Agendamento": "/icons/kanban/calendar-chedule-clock.svg",
-  Agendada: "/icons/kanban/calendar-schedule-checkmark.svg",
-  Realizada: "/icons/kanban/hospital-board-square.svg",
-  Faturada: "/icons/kanban/coins.svg",
-  Finalizada: "/icons/kanban/checkmark-circle-1.svg",
-  Encerrada: "/icons/kanban/Delete, Disabled.svg",
-};
-
-// Ações contextuais atualizadas por status (conforme Fase 6.2 do TODO)
 const getContextualActions = (
   status: SurgeryRequestStatus,
 ): ContextualAction[] => {
@@ -241,7 +228,7 @@ const getContextualActions = (
 };
 
 export const ProcedureCard = memo<ProcedureCardProps>(
-  ({ procedure, isDragging = false }) => {
+  ({ procedure }) => {
     const router = useRouter();
     const {
       value: showActions,
@@ -250,20 +237,14 @@ export const ProcedureCard = memo<ProcedureCardProps>(
     } = useToggle();
     const dropdownRef = useRef<HTMLDivElement>(null);
     const contextualActions = getContextualActions(procedure.status);
-    const statusIcon = statusIconMap[procedure.status];
+    const statusIcon = getStatusMetaByLabel(procedure.status)?.icon ?? "";
 
     useClickOutside(dropdownRef, closeActions, showActions);
 
     const handleActionClick = useCallback(
-      (action: string) => {
+      (action: CardMenuAction) => {
         closeActions();
-        // Para ações de "view" ou "edit", navegar sem query param
-        if (action === "view" || action === "edit") {
-          router.push(`/solicitacao/${procedure.id}`);
-          return;
-        }
-        // Para ações que abrem modais, navegar com query param "action"
-        router.push(`/solicitacao/${procedure.id}?action=${action}`);
+        router.push(buildSolicitacaoActionHref(procedure.id, action));
       },
       [closeActions, router, procedure.id],
     );
@@ -278,6 +259,17 @@ export const ProcedureCard = memo<ProcedureCardProps>(
       [router, procedure.id],
     );
 
+    const handleCardKeyDown = useCallback(
+      (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          router.push(`/solicitacao/${procedure.id}`);
+        }
+      },
+      [router, procedure.id],
+    );
+
     const handleMenuClick = useCallback(
       (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -286,33 +278,41 @@ export const ProcedureCard = memo<ProcedureCardProps>(
       [toggleActions],
     );
 
-    // Formatar protocolo para SC-XXXXXX
     const formattedId = procedure.protocol
       ? `SC-${procedure.protocol}`
       : "SC-000000";
 
     return (
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={`Abrir solicitação ${formattedId} de ${procedure.patient.name}`}
         onClick={handleCardClick}
-        className={`relative bg-white border border-gray-200 rounded-2xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.99] ${
-          isDragging ? "opacity-50" : ""
-        }`}
+        onKeyDown={handleCardKeyDown}
+        className="relative bg-white border border-gray-200 rounded-2xl p-4 cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
       >
-        {/* Botão Menu - 3 pontos horizontais */}
         <div className="absolute top-3 right-3" ref={dropdownRef}>
           <button
+            type="button"
             onClick={handleMenuClick}
+            aria-label="Ações da solicitação"
+            aria-haspopup="menu"
+            aria-expanded={showActions}
             className="p-2 hover:bg-gray-100 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center -m-1"
           >
             <MoreHorizontal className="w-5 h-5 text-gray-400" />
           </button>
 
-          {/* Dropdown de ações contextuais */}
           {showActions && contextualActions.length > 0 && (
-            <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-44">
-              {contextualActions.map((action, index) => (
+            <div
+              role="menu"
+              className="absolute right-0 top-full mt-1 z-10 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-44"
+            >
+              {contextualActions.map((action) => (
                 <button
-                  key={index}
+                  key={action.action}
+                  type="button"
+                  role="menuitem"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleActionClick(action.action);
@@ -327,12 +327,10 @@ export const ProcedureCard = memo<ProcedureCardProps>(
           )}
         </div>
 
-        {/* ID da Solicitação */}
         <span className="text-xs text-gray-500 leading-tight block mb-2">
           {formattedId}
         </span>
 
-        {/* Ícone de Status + Nome do Paciente */}
         <div className="flex items-center gap-2 mb-1 pr-8">
           <div className="w-5 h-5 flex items-center justify-center">
             <Image
@@ -352,12 +350,10 @@ export const ProcedureCard = memo<ProcedureCardProps>(
           </h3>
         </div>
 
-        {/* Procedimento */}
         <p className="text-sm md:text-base text-gray-900 leading-normal line-clamp-2 mb-6">
           {procedure.procedureName}
         </p>
 
-        {/* Nome do Médico */}
         <div
           className={`flex items-center gap-1.5 ${procedure.healthPlan ? "mb-1" : "mb-3"}`}
         >
@@ -367,7 +363,6 @@ export const ProcedureCard = memo<ProcedureCardProps>(
           </p>
         </div>
 
-        {/* Convênio - sempre abaixo do médico se existir */}
         {procedure.healthPlan && (
           <div className="flex items-center gap-1.5 mb-3">
             <ShieldCheck className="flex-shrink-0 text-gray-400" size={14} />
@@ -377,7 +372,6 @@ export const ProcedureCard = memo<ProcedureCardProps>(
           </div>
         )}
 
-        {/* Alerta de faturamento parcial */}
         {procedure.hasIncompletePayment && (
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 mb-3 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
             <AlertTriangle className="w-3.5 h-3.5" />
@@ -385,9 +379,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
           </div>
         )}
 
-        {/* Tags: Prioridade + Pendências */}
         <div className="flex items-center gap-2 flex-wrap mb-2">
-          {/* Tag Prioridade */}
           <span
             className="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg"
             style={{
@@ -398,7 +390,6 @@ export const ProcedureCard = memo<ProcedureCardProps>(
             {getPriorityLabel(procedure.priority)}
           </span>
 
-          {/* Badge Pendências ao lado da prioridade */}
           {procedure.pendenciesCount && procedure.pendenciesCount > 0 ? (
             <span
               className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg"
@@ -462,7 +453,6 @@ export const ProcedureCard = memo<ProcedureCardProps>(
           )}
         </div>
 
-        {/* Stale Badge */}
         {(() => {
           const staleReferenceAt =
             procedure.lastStatusChangedAt ??
@@ -481,9 +471,7 @@ export const ProcedureCard = memo<ProcedureCardProps>(
           );
         })()}
 
-        {/* Rodapé - Data, Chat e Anexos */}
         <div className="flex items-center justify-between">
-          {/* Data de Criação - Esquerda */}
           <div className="flex items-center gap-1">
             <div className="w-5 h-5 flex items-center justify-center">
               <Image

@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock do axios: `create` devolve um client mínimo (defaults + interceptors) e
-// `post` é controlável para inspecionar o single-flight do refresh.
-// `vi.hoisted` garante que `postMock` exista quando a factory (hoisted) roda.
 const { postMock } = vi.hoisted(() => ({ postMock: vi.fn() }));
 
 vi.mock("axios", () => {
@@ -39,7 +36,6 @@ describe("refreshSession (single-flight)", () => {
     const p1 = refreshSession();
     const p2 = refreshSession();
 
-    // Ambas aguardam a mesma requisição em voo.
     expect(postMock).toHaveBeenCalledTimes(1);
 
     resolvePost({ data: { access_token: "new-token" } });
@@ -64,7 +60,6 @@ describe("refreshSession (single-flight)", () => {
     postMock.mockRejectedValueOnce(new Error("falhou"));
     await expect(refreshSession()).rejects.toThrow("falhou");
 
-    // O lock foi liberado: nova tentativa dispara outro POST.
     postMock.mockResolvedValueOnce({ data: { access_token: "token-ok" } });
     expect(await refreshSession()).toBe("token-ok");
   });

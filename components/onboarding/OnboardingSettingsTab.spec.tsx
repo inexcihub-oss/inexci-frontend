@@ -76,7 +76,6 @@ describe("OnboardingSettingsTab", () => {
     expect(pushMock).toHaveBeenCalledWith("/atendimento");
   });
 
-  /** A aba existe justamente para quem dispensou tudo. */
   it("aparece mesmo com o onboarding dispensado", () => {
     contexto.state = {
       ...emptyOnboardingState(),
@@ -91,8 +90,6 @@ describe("OnboardingSettingsTab", () => {
   });
 
   it("aparece e permite refazer mesmo sem trilha visível", async () => {
-    // Colaborador sem área nenhuma: não vê card em home alguma, e esta aba é o
-    // único caminho de volta que ele tem.
     contexto.tracks = [];
     const user = userEvent.setup();
     render(<OnboardingSettingsTab />);

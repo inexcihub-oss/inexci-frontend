@@ -30,7 +30,6 @@ export function EditableProcedureData({
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
 
-  // Opções dos selects (cadastros estáveis — cacheados via TanStack Query)
   const { data: hospitalsData, isError: hospitalsError } = useHospitals({
     enabled: isEditing,
   });
@@ -50,7 +49,6 @@ export function EditableProcedureData({
     [healthPlansData],
   );
 
-  // Estados para os valores do formulário
   const [formData, setFormData] = useState({
     hospitalId: solicitacao.hospital?.id?.toString() || "",
     cidCode: solicitacao.cid?.code || "",
@@ -64,7 +62,6 @@ export function EditableProcedureData({
   );
   const [procedurePickerOpen, setProcedurePickerOpen] = useState(false);
 
-  // Label de exibição do CID (inclui a descrição buscada da API quando necessário)
   const buildCidDisplayLabel = (
     code: string | null | undefined,
     description: string | null | undefined,
@@ -81,7 +78,6 @@ export function EditableProcedureData({
     ),
   );
 
-  // Sincroniza o label do CID quando a solicitação é atualizada
   useEffect(() => {
     const code = solicitacao.cid?.code;
     const description = solicitacao.cid?.description;
@@ -96,7 +92,6 @@ export function EditableProcedureData({
       return;
     }
 
-    // Fallback: busca a descrição na API pelo código
     cidService
       .search(code, 10)
       .then((res) => {
@@ -114,7 +109,6 @@ export function EditableProcedureData({
       });
   }, [solicitacao.cid]);
 
-  // Função para buscar CIDs
   const searchCid = useCallback(async (search: string) => {
     const response = await cidService.search(search, 50);
     return response.records.map((item: CidItem) => ({
@@ -123,7 +117,6 @@ export function EditableProcedureData({
     }));
   }, []);
 
-  // Erro ao carregar opções dos selects (dados em si vêm do cache via hooks acima)
   useEffect(() => {
     if (isEditing && (hospitalsError || healthPlansError)) {
       showToast("Erro ao carregar opções de seleção", "error");
@@ -136,7 +129,6 @@ export function EditableProcedureData({
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Resetar valores do formulário
     setFormData({
       hospitalId: solicitacao.hospital?.id?.toString() || "",
       cidCode: solicitacao.cid?.code || "",
@@ -152,7 +144,6 @@ export function EditableProcedureData({
     setLoading(true);
 
     try {
-      // Buscar dados completos dos itens selecionados (se preenchidos)
       const hospital = formData.hospitalId
         ? hospitals.find((h) => h.value === formData.hospitalId)
         : null;
@@ -161,24 +152,20 @@ export function EditableProcedureData({
         ? healthPlans.find((hp) => hp.value === formData.healthPlanId)
         : null;
 
-      // Se selecionou hospital mas não encontrou na lista
       if (formData.hospitalId && !hospital) {
         showToast("Erro ao buscar hospital selecionado", "error");
         return;
       }
 
-      // Se selecionou convênio mas não encontrou na lista
       if (formData.healthPlanId && !healthPlan) {
         showToast("Erro ao buscar convênio selecionado", "error");
         return;
       }
 
-      // Preparar dados para envio conforme DTO do backend
       const updateData: Record<string, unknown> = {
         id: solicitacao.id,
       };
 
-      // Adicionar hospital se preenchido, ou null se foi limpo
       if (hospital) {
         updateData.hospital = {
           name: hospital.label,
@@ -188,7 +175,6 @@ export function EditableProcedureData({
         updateData.hospital = null;
       }
 
-      // Adicionar convênio se preenchido, ou null se foi limpo
       if (healthPlan) {
         updateData.healthPlan = {
           id: formData.healthPlanId,
@@ -199,18 +185,15 @@ export function EditableProcedureData({
       } else if (!formData.healthPlanId) {
         updateData.healthPlan = null;
       }
-      // Sempre envia matrícula e plano (permite limpar os campos)
       updateData.healthPlanRegistration = formData.healthPlanRegistry || null;
       updateData.healthPlanType = formData.healthPlanType || null;
 
-      // Adicionar CID se preenchido, ou null se foi limpo
       if (formData.cidCode) {
         updateData.cid = { code: formData.cidCode };
       } else {
         updateData.cid = null;
       }
 
-      // Procedimento: sempre envia (id escolhido ou null se foi limpo).
       updateData.procedureId = formData.procedureId || null;
 
       await surgeryRequestService.update(solicitacao.id.toString(), updateData);
@@ -261,7 +244,6 @@ export function EditableProcedureData({
         )}
       </div>
       <div className="p-3 md:p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 md:gap-y-4">
-        {/* Procedimento */}
         <div className="space-y-1">
           <label className="ds-label mb-0">Procedimento</label>
           {isEditing ? (
@@ -305,7 +287,6 @@ export function EditableProcedureData({
           )}
         </div>
 
-        {/* Hospital */}
         <div className="space-y-1">
           {isEditing ? (
             <Combobox
@@ -337,7 +318,6 @@ export function EditableProcedureData({
           )}
         </div>
 
-        {/* CID */}
         <div className="space-y-1 min-w-0">
           {isEditing ? (
             <SelectSearch
@@ -374,7 +354,6 @@ export function EditableProcedureData({
           )}
         </div>
 
-        {/* Convênio */}
         <div className="space-y-1">
           {isEditing ? (
             <Combobox
@@ -406,7 +385,6 @@ export function EditableProcedureData({
           )}
         </div>
 
-        {/* Matrícula do convênio */}
         <div className="space-y-1">
           {isEditing ? (
             <>
@@ -443,7 +421,6 @@ export function EditableProcedureData({
           )}
         </div>
 
-        {/* Plano do convênio */}
         <div className="space-y-1">
           {isEditing ? (
             <>

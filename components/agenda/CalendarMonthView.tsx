@@ -16,11 +16,6 @@ import {
 
 const MAX_PER_DAY = 3;
 
-/**
- * Marca de dia na visão mensal: feriado que trava a agenda ou bloqueio que
- * toca o dia. Na grade de horas viram faixa hachurada; aqui, um selo no topo
- * da célula — sem ele o mês parecia livre num dia em que nada pode ser marcado.
- */
 export interface AgendaDayMark {
   id: string;
   kind: "holiday" | "block";
@@ -29,11 +24,10 @@ export interface AgendaDayMark {
 }
 
 interface Props {
-  anchor: Date; // qualquer dia do mês exibido
+  anchor: Date;
   events: CalEvent[];
   onEventClick: (ev: CalEvent) => void;
   onSelectDay: (day: Date) => void;
-  /** Marcas por dia (`dateKey`). */
   dayMarks?: Record<string, AgendaDayMark[]>;
 }
 
@@ -56,7 +50,6 @@ export function CalendarMonthView({
 
   return (
     <div className="flex-1 overflow-auto flex flex-col">
-      {/* Cabeçalho de dias da semana */}
       <div className="grid grid-cols-7 border-b border-neutral-100 shrink-0">
         {WEEKDAYS_SHORT.map((w) => (
           <div
@@ -68,7 +61,6 @@ export function CalendarMonthView({
         ))}
       </div>
 
-      {/* Grade 6x7 */}
       <div className="grid grid-cols-7 grid-rows-6 flex-1 min-h-[520px]">
         {cells.map((day) => {
           const inMonth = day.getMonth() === month;

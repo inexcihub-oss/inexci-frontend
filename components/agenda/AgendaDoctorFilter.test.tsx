@@ -35,7 +35,6 @@ describe("AgendaDoctorFilter", () => {
     expect(
       screen.getByRole("button", { name: "Profissionais: Todos os profissionais" }),
     ).toHaveAttribute("aria-expanded", "false");
-    // Fechado, o texto curto mantém o botão do tamanho do "Ver agenda".
     expect(screen.getByRole("button", { name: /Profissionais:/ })).toHaveTextContent(
       /^Profissionais$/,
     );
@@ -161,8 +160,6 @@ describe("AgendaDoctorFilter", () => {
     "align=%s posiciona a lista pela borda certa do botão",
     async (align, left) => {
       const user = userEvent.setup();
-      // Botão em x=800..920 numa janela de 1440: a lista (300px) cabe dos
-      // dois jeitos, então só o alinhamento decide.
       const rect = vi
         .spyOn(HTMLElement.prototype, "getBoundingClientRect")
         .mockReturnValue({

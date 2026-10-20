@@ -36,20 +36,6 @@ const BUTTON_STYLES: Record<BannerTone, string> = {
   danger: "bg-rose-600 hover:bg-rose-700 focus-visible:ring-rose-500",
 };
 
-/**
- * Banner de **estado da assinatura** (trial expirando, inadimplência,
- * suspensão, cancelamento agendado).
- *
- * Apresentação pura: a decisão de qual variante mostrar mora em
- * `resolveBillingBanner`, e quem monta o componente é `GlobalBanners`. Cota
- * não passa por aqui — é do `QuotaBanner`.
- *
- * Apenas o **dono da conta** vê este banner: todo CTA daqui aponta para a aba
- * de plano, que só existe para ele — um admin delegado era mandado para uma
- * aba que o redireciona de volta para "profile". Quem não é dono descobre o
- * bloqueio no ponto da ação, pelo `BillingLimitModal`, que orienta a procurar
- * o administrador da conta.
- */
 export function BillingStatusBanner({
   variant,
 }: {

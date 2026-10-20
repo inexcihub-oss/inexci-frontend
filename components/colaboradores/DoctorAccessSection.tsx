@@ -11,8 +11,6 @@ import { userDoctorAccessService } from "@/services/user-doctor-access.service";
 import { availableDoctorsService } from "@/services/available-doctors.service";
 import { AvailableDoctor, UserDoctorAccess } from "@/types";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
 import { Stethoscope } from "lucide-react";
 import { logger } from "@/lib/logger";
 import { TOUR_DEMO_COLLABORATOR_ID } from "@/lib/onboarding/demo-data";
@@ -23,7 +21,6 @@ interface DoctorAccessSectionProps {
   collaboratorName?: string;
 }
 
-// ── SearchableMultiSelect ────────────────────────────────────────────────────
 interface SearchableMultiSelectProps {
   options: AvailableDoctor[];
   selected: string[];
@@ -62,7 +59,6 @@ function SearchableMultiSelect({
     setOpen(true);
   };
 
-  // Atualiza posição do dropdown ao rolar a tela
   useEffect(() => {
     if (!open) return;
     function updatePosition() {
@@ -113,7 +109,6 @@ function SearchableMultiSelect({
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Input trigger */}
       <div
         ref={inputWrapperRef}
         className={`flex items-center gap-2 min-h-10 px-3 py-2 border rounded-xl cursor-text transition-colors ${
@@ -154,7 +149,6 @@ function SearchableMultiSelect({
         )}
       </div>
 
-      {/* Tags dos selecionados */}
       {selectedOptions.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-2">
           {selectedOptions.map((opt) => (
@@ -187,7 +181,6 @@ function SearchableMultiSelect({
         </div>
       )}
 
-      {/* Dropdown via portal para escapar de overflow:hidden */}
       {open &&
         dropdownStyle &&
         typeof document !== "undefined" &&
@@ -261,7 +254,6 @@ function SearchableMultiSelect({
   );
 }
 
-// ── DoctorAccessSection ──────────────────────────────────────────────────────
 export function DoctorAccessSection({
   collaboratorId,
   collaboratorIsDoctor = false,
@@ -273,19 +265,13 @@ export function DoctorAccessSection({
   const [_currentAccess, setCurrentAccess] = useState<UserDoctorAccess[]>([]);
   const [selectedDoctorIds, setSelectedDoctorIds] = useState<string[]>([]);
   const [originalSelectedIds, setOriginalSelectedIds] = useState<string[]>([]);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
 
   const mandatoryDoctorIds = useMemo(
     () => (collaboratorIsDoctor ? [collaboratorId] : []),
     [collaboratorId, collaboratorIsDoctor],
   );
 
-  /**
-   * Proveniência do dado, não `emTour`: o colaborador fabricado nunca existe
-   * de verdade, então salvar acessos ou consultar `getAccessForUser` para
-   * ele sempre seria uma chamada de rede sem sentido — mesmo que o usuário
-   * já tenha saído do tour olhando para esta ficha.
-   */
   const isFabricado = collaboratorId === TOUR_DEMO_COLLABORATOR_ID;
 
   const ensureMandatoryDoctorsSelected = useCallback(
@@ -362,8 +348,6 @@ export function DoctorAccessSection({
   };
 
   const handleSave = async () => {
-    // Defesa em profundidade: o botão já fica desabilitado (`isFabricado`),
-    // mas o handler não pode depender só disso.
     if (isFabricado) return;
     setSaving(true);
     try {
@@ -440,13 +424,6 @@ export function DoctorAccessSection({
         </div>
       </FormSection>
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </>
   );
 }

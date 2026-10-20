@@ -4,12 +4,6 @@ import type {
   ScheduleBlock,
 } from "@/services/availability.service";
 
-/**
- * Chaves do TanStack Query da disponibilidade. A Agenda lê feriados e
- * bloqueios por elas (com cache); quem altera esses dados em outra tela
- * precisa invalidar a mesma chave, senão a Agenda segue desenhando o dado
- * velho até o `staleTime` vencer.
- */
 export const AVAILABILITY_QUERY_KEYS = {
   holidays: ["availability", "holidays"] as const,
   blocks: ["availability", "blocks"] as const,
@@ -25,7 +19,6 @@ export const WEEKDAY_LABELS = [
   "Sábado",
 ];
 
-/** Ordem de exibição: segunda primeiro, domingo por último. */
 export const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 export const SLOT_REASON_LABELS: Record<
@@ -37,12 +30,6 @@ export const SLOT_REASON_LABELS: Record<
   holiday: "feriado",
 };
 
-/**
- * O intervalo `[inicio, inicio + duração)` cabe na grade do dia? A grade é a
- * união dos horários devolvidos pela API (livres ou não), já que a consulta
- * pode ocupar vários horários seguidos. Sem nenhum horário (profissional sem
- * grade no dia) a resposta é `null`: não há grade contra a qual comparar.
- */
 export function dentroDaGrade(
   slots: AvailabilitySlot[],
   inicio: Date,
@@ -61,7 +48,6 @@ export function dentroDaGrade(
   return faixas.some(([a, b]) => inicio.getTime() >= a && fim <= b);
 }
 
-/** Feriados nacionais de data fixa (os móveis o usuário cadastra por ano). */
 export const NATIONAL_FIXED_HOLIDAYS: { md: string; name: string }[] = [
   { md: "01-01", name: "Confraternização Universal" },
   { md: "04-21", name: "Tiradentes" },
@@ -74,7 +60,6 @@ export const NATIONAL_FIXED_HOLIDAYS: { md: string; name: string }[] = [
   { md: "12-25", name: "Natal" },
 ];
 
-/** Feriado que cai na data (`YYYY-MM-DD`), exato ou recorrente. */
 export function holidayOn(
   holidays: Holiday[],
   date: string,
@@ -84,19 +69,10 @@ export function holidayOn(
   );
 }
 
-/** Bloqueio vale para o profissional (ou é da clínica toda). */
 export function blockAppliesTo(b: ScheduleBlock, doctorIds: string[]): boolean {
   return !b.doctorId || doctorIds.length === 0 || doctorIds.includes(b.doctorId);
 }
 
-/**
- * O bloqueio atinge uma consulta deste profissional nesta clínica? Espelho de
- * `bloqueioAtinge` do backend (`availability.service.ts`) — se divergirem, a
- * tela avisa uma coisa e a API recusa outra.
- *
- * Conta toda e médico sem clínica atingem tudo do médico; bloqueio só de uma
- * clínica não alcança consulta sem clínica, a menos que também seja do médico.
- */
 export function bloqueioAtinge(
   b: Pick<ScheduleBlock, "doctorId" | "clinicId">,
   doctorId: string,
@@ -108,7 +84,6 @@ export function bloqueioAtinge(
   return !!b.doctorId;
 }
 
-/** Primeiro bloqueio que cobre `[inicio, inicio + duração)` da consulta. */
 export function bloqueioNoHorario(
   bloqueios: ScheduleBlock[],
   doctorId: string,
@@ -126,10 +101,6 @@ export function bloqueioNoHorario(
   );
 }
 
-/**
- * O bloqueio toca o dia local `dia` (qualquer parte de `[00:00, 24:00)`)? Usado
- * pela visão mensal, que marca o dia em vez de desenhar a faixa de horário.
- */
 export function bloqueioNoDia(
   b: Pick<ScheduleBlock, "startsAt" | "endsAt">,
   dia: Date,

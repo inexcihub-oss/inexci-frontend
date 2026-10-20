@@ -35,10 +35,6 @@ describe("formatDateBR", () => {
   });
 });
 
-/**
- * D-07: o modal da consulta e a lista de atendimentos prefixavam "Dr(a)." em
- * um nome que já vinha com o tratamento ("Dr(a). Dr. Carlos Mendonça").
- */
 describe("formatDoctorName", () => {
   it("prefixa o tratamento em nome sem título", () => {
     expect(formatDoctorName("Carlos Mendonça")).toBe("Dr(a). Carlos Mendonça");
@@ -72,10 +68,6 @@ describe("formatDoctorName", () => {
   });
 });
 
-/**
- * D-10: o header do atendimento usava `capitalize` de CSS na frase inteira, o
- * que capitalizava também as preposições da data.
- */
 describe("capitalizeFirst", () => {
   it("capitaliza apenas a inicial da frase", () => {
     expect(capitalizeFirst("quarta-feira, 05 de agosto às 14:00")).toBe(

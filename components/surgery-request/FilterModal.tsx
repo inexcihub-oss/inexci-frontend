@@ -4,22 +4,22 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useRef,
   useMemo,
 } from "react";
 import Image from "next/image";
+import { createPortal } from "react-dom";
+import { useAnchoredDropdown } from "@/hooks/useAnchoredDropdown";
 import {
   SurgeryRequestStatus,
   PriorityLevel,
 } from "@/types/surgery-request.types";
-import { useSwipeToClose } from "@/hooks/useSwipeToClose";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { Modal } from "@/components/ui/Modal";
+import { ALL_STATUS_LABELS } from "@/lib/surgery-request-status";
 
 export interface FilterState {
   statuses: SurgeryRequestStatus[];
   priorities: PriorityLevel[];
-  pendencies: string[]; // "none" | "1" | "2" | "3+"
+  pendencies: string[];
   healthPlanIds: string[];
   procedureNames: string[];
   doctorIds: string[];
@@ -69,20 +69,6 @@ interface FilterModalProps {
   availableClinics?: { id: string; name: string }[];
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const ALL_STATUSES: SurgeryRequestStatus[] = [
-  "Pendente",
-  "Enviada",
-  "Em Análise",
-  "Em Agendamento",
-  "Agendada",
-  "Realizada",
-  "Faturada",
-  "Finalizada",
-  "Encerrada",
-];
-
 const PRIORITY_OPTIONS: { value: PriorityLevel; label: string }[] = [
   { value: 1, label: "Baixa" },
   { value: 2, label: "Média" },
@@ -113,8 +99,6 @@ const MONTH_NAMES = [
 ];
 
 const DAY_LABELS = ["S", "T", "Q", "Q", "S", "S", "D"];
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function isSameDay(a: Date, b: Date) {
   return (
@@ -155,8 +139,6 @@ function getDaysInMonth(year: number, month: number): Date[] {
   }
   return days;
 }
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
 
 interface PillToggleProps {
   label: string;
@@ -217,8 +199,6 @@ function CollapsibleSection({
   );
 }
 
-// ─── Searchable Multi-Select ──────────────────────────────────────────────────
-
 interface SearchableMultiSelectProps {
   options: { id: string; name: string }[];
   selected: string[];
@@ -234,21 +214,9 @@ function SearchableMultiSelect({
 }: SearchableMultiSelectProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Fechar ao clicar fora
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const { anchorRef, dropdownRef, position } = useAnchoredDropdown(open, () =>
+    setOpen(false),
+  );
 
   const filtered = useMemo(
     () =>
@@ -262,9 +230,9 @@ function SearchableMultiSelect({
   );
 
   return (
-    <div ref={containerRef} className="relative">
-      {/* Input trigger */}
+    <div className="relative">
       <div
+        ref={anchorRef}
         className={`flex items-center gap-2 min-h-10 px-3 py-2 border rounded-xl cursor-text transition-colors ${
           open
             ? "border-teal-600 ring-1 ring-teal-600/20"
@@ -303,7 +271,6 @@ function SearchableMultiSelect({
         )}
       </div>
 
-      {/* Tags de itens selecionados */}
       {selectedOptions.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-2">
           {selectedOptions.map((opt) => (
@@ -334,9 +301,20 @@ function SearchableMultiSelect({
         </div>
       )}
 
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+      {open &&
+        typeof window !== "undefined" &&
+        createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: "fixed",
+            top: position.top,
+            left: position.left,
+            width: position.width,
+            zIndex: 9999,
+          }}
+          className="mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg max-h-52 overflow-y-auto"
+        >
           {filtered.length === 0 ? (
             <p className="text-xs md:text-sm text-neutral-400 text-center py-4">
               Nenhum resultado
@@ -377,13 +355,12 @@ function SearchableMultiSelect({
               );
             })
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
 }
-
-// ─── Calendar Component ───────────────────────────────────────────────────────
 
 interface CalendarProps {
   from: Date | null;
@@ -401,20 +378,15 @@ function Calendar({ from, to, onChange }: CalendarProps) {
   );
 
   const days = getDaysInMonth(calYear, calMonth);
-  const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+  const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
 
-  // Reorder: week starts on Sunday (0) → index 0
-  // PT-BR: S T Q Q S S D → Sun Mon Tue Wed Thu Fri Sat
-  // day.getDay(): 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
-  const paddingCells = firstDayOfWeek; // Sunday = 0 → no padding, Mon = 1 → 1 padding, etc.
+  const paddingCells = firstDayOfWeek;
 
   const handleDayClick = useCallback(
     (day: Date) => {
       if (!from || (from && to)) {
-        // Start new selection
         onChange(day, null);
       } else {
-        // Second click: set end (order doesn't matter)
         if (isSameDay(day, from)) {
           onChange(null, null);
         } else {
@@ -445,7 +417,6 @@ function Calendar({ from, to, onChange }: CalendarProps) {
 
   return (
     <div className="select-none">
-      {/* Month Navigation */}
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
@@ -476,7 +447,6 @@ function Calendar({ from, to, onChange }: CalendarProps) {
         </button>
       </div>
 
-      {/* Day labels */}
       <div className="grid grid-cols-7 mb-1">
         {DAY_LABELS.map((label, idx) => (
           <div
@@ -488,9 +458,7 @@ function Calendar({ from, to, onChange }: CalendarProps) {
         ))}
       </div>
 
-      {/* Days grid */}
       <div className="grid grid-cols-7">
-        {/* Padding cells */}
         {Array.from({ length: paddingCells }).map((_, i) => (
           <div key={`pad-${i}`} />
         ))}
@@ -509,15 +477,12 @@ function Calendar({ from, to, onChange }: CalendarProps) {
               key={day.getDate()}
               className="relative flex items-center justify-center h-9"
             >
-              {/* Range background */}
               {inRange && (
                 <div className="absolute inset-y-1 inset-x-0 bg-teal-50" />
               )}
-              {/* Left half background for end edge */}
               {isEnd && !isStart && (
                 <div className="absolute inset-y-1 left-0 right-1/2 bg-teal-50" />
               )}
-              {/* Right half background for start edge */}
               {isStart && !isEnd && (
                 <div className="absolute inset-y-1 left-1/2 right-0 bg-teal-50" />
               )}
@@ -546,8 +511,6 @@ function Calendar({ from, to, onChange }: CalendarProps) {
   );
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
-
 export function FilterModal({
   isOpen,
   onClose,
@@ -561,29 +524,13 @@ export function FilterModal({
   availableClinics = [],
 }: FilterModalProps) {
   const [draft, setDraft] = useState<FilterState>(currentFilters);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const { dragY, onTouchStart, onTouchMove, onTouchEnd } =
-    useSwipeToClose(onClose);
 
-  // Sync draft when modal opens
   useEffect(() => {
     if (isOpen) {
       setDraft(currentFilters);
     }
   }, [isOpen, currentFilters]);
 
-  // Close on Escape
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) {
-      document.addEventListener("keydown", handleKey);
-    }
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [isOpen, onClose]);
-
-  // Pill toggle helpers
   function toggleStatus(status: SurgeryRequestStatus) {
     setDraft((d) => ({
       ...d,
@@ -666,210 +613,155 @@ export function FilterModal({
     onClose();
   };
 
-  if (!isOpen) return null;
-
-  const isDragging = dragY > 0;
+  const footer = (
+    <div className="flex-none bg-white px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 flex items-center justify-between">
+      <button
+        type="button"
+        onClick={handleClear}
+        className="text-xs md:text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
+      >
+        Limpar filtros
+      </button>
+      <button
+        type="button"
+        onClick={handleApply}
+        className="ds-btn-primary"
+      >
+        Mostrar resultados
+      </button>
+    </div>
+  );
 
   return (
-    <div className="fixed inset-0 z-60 flex flex-col justify-end sm:flex-row sm:justify-end">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/30"
-        style={{ opacity: isDragging ? Math.max(0.2, 1 - dragY / 300) : 1 }}
-        onClick={onClose}
-      />
-
-      {/* Panel */}
-      <div
-        ref={panelRef}
-        className="relative z-10 w-full max-h-[92dvh] sm:max-h-full sm:w-[420px] sm:max-w-full sm:h-full bg-white flex flex-col shadow-2xl rounded-t-2xl sm:rounded-none animate-slide-up sm:animate-slide-in-right mobile-sheet-offset"
-        style={
-          isDragging
-            ? { transform: `translateY(${dragY}px)`, transition: "none" }
-            : undefined
-        }
-      >
-        {/* Drag handle (mobile only) — captura swipe para baixo */}
-        <div
-          className="flex-none flex justify-center pt-3 sm:hidden cursor-grab active:cursor-grabbing touch-none"
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Filtros"
+      variant="drawer"
+      footer={footer}
+    >
+      <div className="px-4 py-3 md:px-6 md:py-4 space-y-3 md:space-y-5">
+        <div>
+          <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
+            Status da solicitação
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {ALL_STATUS_LABELS.map((s) => (
+              <PillToggle
+                key={s}
+                label={s}
+                selected={draft.statuses.includes(s)}
+                onClick={() => toggleStatus(s)}
+              />
+            ))}
+          </div>
         </div>
 
-        {/* Header */}
-        <div className="flex-none flex items-center justify-between px-4 py-3 md:px-6 md:py-5 border-b border-neutral-100">
-          <h2 className="ds-modal-title">Filtros</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors text-neutral-500"
-          >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path
-                d="M14 4L4 14M4 4l10 10"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
+        <div>
+          <div className="h-px bg-neutral-100 mb-4" />
+          <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
+            Prioridade
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {PRIORITY_OPTIONS.map((p) => (
+              <PillToggle
+                key={p.value}
+                label={p.label}
+                selected={draft.priorities.includes(p.value)}
+                onClick={() => togglePriority(p.value)}
               />
-            </svg>
-          </button>
+            ))}
+          </div>
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6 md:py-4 space-y-3 md:space-y-5">
-          {/* Status da Solicitação */}
-          <div>
-            <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
-              Status da solicitação
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {ALL_STATUSES.map((s) => (
-                <PillToggle
-                  key={s}
-                  label={s}
-                  selected={draft.statuses.includes(s)}
-                  onClick={() => toggleStatus(s)}
-                />
-              ))}
-            </div>
+        <div>
+          <div className="h-px bg-neutral-100 mb-4" />
+          <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
+            Pendências
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {PENDENCY_OPTIONS.map((p) => (
+              <PillToggle
+                key={p.value}
+                label={p.label}
+                selected={draft.pendencies.includes(p.value)}
+                onClick={() => togglePendency(p.value)}
+              />
+            ))}
           </div>
+        </div>
 
-          {/* Prioridade */}
-          <div>
-            <div className="h-px bg-neutral-100 mb-4" />
-            <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
-              Prioridade
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {PRIORITY_OPTIONS.map((p) => (
-                <PillToggle
-                  key={p.value}
-                  label={p.label}
-                  selected={draft.priorities.includes(p.value)}
-                  onClick={() => togglePriority(p.value)}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Pendências */}
-          <div>
-            <div className="h-px bg-neutral-100 mb-4" />
-            <p className="text-xs md:text-sm font-semibold text-neutral-900 mb-3">
-              Pendências
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {PENDENCY_OPTIONS.map((p) => (
-                <PillToggle
-                  key={p.value}
-                  label={p.label}
-                  selected={draft.pendencies.includes(p.value)}
-                  onClick={() => togglePendency(p.value)}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Médico */}
-          {availableDoctors.length > 0 && (
-            <CollapsibleSection title="Médico">
-              <SearchableMultiSelect
-                options={availableDoctors}
-                selected={draft.doctorIds}
-                onToggle={toggleDoctor}
-                placeholder="Pesquisar médico..."
-              />
-            </CollapsibleSection>
-          )}
-
-          {/* Convênios */}
-          {availableHealthPlans.length > 0 && (
-            <CollapsibleSection title="Convênios">
-              <SearchableMultiSelect
-                options={availableHealthPlans}
-                selected={draft.healthPlanIds}
-                onToggle={toggleHealthPlan}
-                placeholder="Pesquisar convênio..."
-              />
-            </CollapsibleSection>
-          )}
-
-          {/* Procedimentos */}
-          {availableProcedures.length > 0 && (
-            <CollapsibleSection title="Procedimentos">
-              <SearchableMultiSelect
-                options={availableProcedures}
-                selected={draft.procedureNames}
-                onToggle={toggleProcedure}
-                placeholder="Pesquisar procedimento..."
-              />
-            </CollapsibleSection>
-          )}
-
-          {/* Fornecedores */}
-          {availableSuppliers.length > 0 && (
-            <CollapsibleSection title="Fornecedores">
-              <SearchableMultiSelect
-                options={availableSuppliers}
-                selected={draft.supplierIds}
-                onToggle={toggleSupplier}
-                placeholder="Pesquisar fornecedor..."
-              />
-            </CollapsibleSection>
-          )}
-
-          {/* Clínicas */}
-          {availableClinics.length > 0 && (
-            <CollapsibleSection title="Clínicas">
-              <SearchableMultiSelect
-                options={availableClinics}
-                selected={draft.clinicIds}
-                onToggle={toggleClinic}
-                placeholder="Pesquisar clínica..."
-              />
-            </CollapsibleSection>
-          )}
-
-          {/* Data de Criação */}
-          <CollapsibleSection title="Data de criação">
-            <Calendar
-              from={draft.createdAtFrom}
-              to={draft.createdAtTo}
-              onChange={(from, to) =>
-                setDraft((d) => ({
-                  ...d,
-                  createdAtFrom: from,
-                  createdAtTo: to,
-                }))
-              }
+        {availableDoctors.length > 0 && (
+          <CollapsibleSection title="Médico">
+            <SearchableMultiSelect
+              options={availableDoctors}
+              selected={draft.doctorIds}
+              onToggle={toggleDoctor}
+              placeholder="Pesquisar médico..."
             />
           </CollapsibleSection>
+        )}
 
-          {/* Bottom spacer */}
-          <div className="h-4" />
-        </div>
+        {availableHealthPlans.length > 0 && (
+          <CollapsibleSection title="Convênios">
+            <SearchableMultiSelect
+              options={availableHealthPlans}
+              selected={draft.healthPlanIds}
+              onToggle={toggleHealthPlan}
+              placeholder="Pesquisar convênio..."
+            />
+          </CollapsibleSection>
+        )}
 
-        {/* Footer */}
-        <div className="flex-none px-4 py-3 md:px-6 md:py-4 border-t border-neutral-100 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={handleClear}
-            className="text-xs md:text-sm font-medium text-neutral-600 hover:text-neutral-900 transition-colors"
-          >
-            Limpar filtros
-          </button>
-          <button
-            type="button"
-            onClick={handleApply}
-            className="ds-btn-primary"
-          >
-            Mostrar resultados
-          </button>
-        </div>
+        {availableProcedures.length > 0 && (
+          <CollapsibleSection title="Procedimentos">
+            <SearchableMultiSelect
+              options={availableProcedures}
+              selected={draft.procedureNames}
+              onToggle={toggleProcedure}
+              placeholder="Pesquisar procedimento..."
+            />
+          </CollapsibleSection>
+        )}
+
+        {availableSuppliers.length > 0 && (
+          <CollapsibleSection title="Fornecedores">
+            <SearchableMultiSelect
+              options={availableSuppliers}
+              selected={draft.supplierIds}
+              onToggle={toggleSupplier}
+              placeholder="Pesquisar fornecedor..."
+            />
+          </CollapsibleSection>
+        )}
+
+        {availableClinics.length > 0 && (
+          <CollapsibleSection title="Clínicas">
+            <SearchableMultiSelect
+              options={availableClinics}
+              selected={draft.clinicIds}
+              onToggle={toggleClinic}
+              placeholder="Pesquisar clínica..."
+            />
+          </CollapsibleSection>
+        )}
+
+        <CollapsibleSection title="Data de criação">
+          <Calendar
+            from={draft.createdAtFrom}
+            to={draft.createdAtTo}
+            onChange={(from, to) =>
+              setDraft((d) => ({
+                ...d,
+                createdAtFrom: from,
+                createdAtTo: to,
+              }))
+            }
+          />
+        </CollapsibleSection>
+
+        <div className="h-4" />
       </div>
-    </div>
+    </Modal>
   );
 }

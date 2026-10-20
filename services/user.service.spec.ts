@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Mock do módulo api
 vi.mock("@/lib/api", () => ({
   default: {
     get: vi.fn(),
@@ -10,19 +9,9 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-vi.mock("@/services/upload.service", () => ({
-  uploadService: {
-    uploadSingle: vi.fn(),
-  },
-}));
-
 import api from "@/lib/api";
 import { userService } from "./user.service";
 
-/**
- * PRD: Reformulação Usuários/Permissões — US-005 / US-007
- * Testa chamadas HTTP do userService (perfil de médico, etc.).
- */
 describe("userService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -93,13 +82,7 @@ describe("userService", () => {
     });
   });
 
-  // `getAll`/`getById` (GET /users e /users/one) foram removidos junto com os
-  // seus testes: nenhuma tela os chamava e o primeiro trazia o diretório do
-  // staff com dado pessoal de cada colega.
-
   describe("updateProfile — cache do perfil", () => {
-    // O cache é desligado em NODE_ENV=test (avaliado no load do módulo):
-    // recarrega o módulo com outro NODE_ENV para exercitá-lo.
     async function carregarComCache() {
       vi.stubEnv("NODE_ENV", "development");
       vi.resetModules();
@@ -139,39 +122,6 @@ describe("userService", () => {
 
       expect(apiMod.get).toHaveBeenCalledWith("/users/profile");
       expect(perfil.isDoctor).toBe(true);
-    });
-  });
-
-  describe("uploadAvatar", () => {
-    it("deve fazer upload e atualizar perfil com avatar_url", async () => {
-      const { uploadService } = await import("@/services/upload.service");
-      (
-        uploadService.uploadSingle as ReturnType<typeof vi.fn>
-      ).mockResolvedValue({
-        message: "ok",
-        data: {
-          url: "https://storage.example.com/avatars/photo.jpg",
-          path: "avatars/photo.jpg",
-        },
-      });
-      (api.put as ReturnType<typeof vi.fn>).mockResolvedValue({
-        data: {
-          id: "u-1",
-          name: "Test",
-          avatarUrl: "https://storage.example.com/avatars/photo.jpg",
-        },
-      });
-
-      const file = new File(["test"], "photo.jpg", { type: "image/jpeg" });
-      const result = await userService.uploadAvatar(file);
-
-      expect(uploadService.uploadSingle).toHaveBeenCalledWith(file, "avatars");
-      expect(api.put).toHaveBeenCalledWith("/users/profile", {
-        avatarUrl: "https://storage.example.com/avatars/photo.jpg",
-      });
-      expect(result.avatarUrl).toBe(
-        "https://storage.example.com/avatars/photo.jpg",
-      );
     });
   });
 });

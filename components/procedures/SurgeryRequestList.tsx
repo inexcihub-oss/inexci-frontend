@@ -20,34 +20,11 @@ import {
 import { Tooltip } from "@/components/ui/Tooltip";
 
 import { cn } from "@/lib/utils";
+import {
+  ALL_STATUS_LABELS,
+  getStatusMetaByLabel,
+} from "@/lib/surgery-request-status";
 
-// Mapeamento de status para ícones
-const STATUS_ICON_MAP: Record<SurgeryRequestStatus, string> = {
-  Pendente: "/icons/kanban/clock-watch.svg",
-  Enviada: "/icons/kanban/email-send-fast-circle.svg",
-  "Em Análise": "/icons/kanban/loading-waiting.svg",
-  "Em Agendamento": "/icons/kanban/calendar-chedule-clock.svg",
-  Agendada: "/icons/kanban/calendar-schedule-checkmark.svg",
-  Realizada: "/icons/kanban/hospital-board-square.svg",
-  Faturada: "/icons/kanban/coins.svg",
-  Finalizada: "/icons/kanban/checkmark-circle-1.svg",
-  Encerrada: "/icons/kanban/Delete, Disabled.svg",
-};
-
-// Ordem dos status
-const STATUS_ORDER: SurgeryRequestStatus[] = [
-  "Pendente",
-  "Enviada",
-  "Em Análise",
-  "Em Agendamento",
-  "Agendada",
-  "Realizada",
-  "Faturada",
-  "Finalizada",
-  "Encerrada",
-];
-
-// Estilos de prioridade conforme Figma
 const PRIORITY_STYLES: Record<PriorityLevel, { bg: string; text: string }> = {
   1: { bg: "bg-priority-baixa-bg", text: "text-priority-baixa-text" },
   2: { bg: "bg-priority-media-bg", text: "text-priority-media-text" },
@@ -60,10 +37,6 @@ interface SurgeryRequestRowProps {
   onClick?: (request: SurgeryRequest) => void;
 }
 
-/**
- * Componente de linha individual - Layout conforme Figma
- * Estrutura: Prioridade | Ícone Status | Paciente | Procedimento | Convênio | Pendências | Comentários | Anexos | Data | Menu
- */
 const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
   ({ request, onClick }) => {
     const router = useRouter();
@@ -79,10 +52,8 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
 
     const handleMenuClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      // TODO: Abrir menu de ações
     };
 
-    // Formatar protocolo para SC-XXXXXX
     const formattedId = request.protocol
       ? `SC-${request.protocol}`
       : "SC-000000";
@@ -92,7 +63,6 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
         className="flex items-center h-11 py-1 bg-neutral-50 hover:bg-white cursor-pointer transition-colors"
         onClick={handleClick}
       >
-        {/* Col 1: Tag Prioridade - alinhada com ícone do accordion (pl-4) */}
         <div className="flex items-center justify-start pl-4 pr-2 shrink-0">
           <span
             className={cn(
@@ -105,17 +75,15 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
           </span>
         </div>
 
-        {/* Col 2: ID da Solicitação - padding 0 8px */}
         <div className="hidden lg:flex items-center px-2 shrink-0">
           <span className="text-xs text-neutral-200 whitespace-nowrap">
             {formattedId}
           </span>
         </div>
 
-        {/* Col 3: Ícone Status + Nome Paciente - padding 0 8px, gap 4px, flex-1 */}
         <div className="flex items-center gap-1 px-2 min-w-0 flex-1">
           <Image
-            src={STATUS_ICON_MAP[request.status]}
+            src={getStatusMetaByLabel(request.status)?.icon ?? ""}
             alt={request.status}
             width={20}
             height={20}
@@ -130,21 +98,18 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
           </span>
         </div>
 
-        {/* Col 4: Procedimento - padding 0 8px, flex-1 */}
         <div className="hidden md:flex items-center px-2 min-w-0 flex-1">
           <span className="text-sm md:text-base text-neutral-900 truncate">
             {request.procedureName}
           </span>
         </div>
 
-        {/* Col 5: Convênio - width 140px, padding 0 8px */}
         <div className="hidden lg:flex items-center px-2 w-36 shrink-0">
           <span className="text-sm md:text-base text-neutral-900 truncate">
             {request.healthPlan || "-"}
           </span>
         </div>
 
-        {/* Col 6: Alertas (pendências + faturamento parcial) */}
         <div className="hidden lg:flex items-center justify-center gap-1 px-1 shrink-0">
           {request.hasIncompletePayment && (
             <div
@@ -167,19 +132,17 @@ const SurgeryRequestRow = memo<SurgeryRequestRowProps>(
             </div>
           ) : (
             !request.hasIncompletePayment && (
-              <div className="w-16" /> // Placeholder para manter alinhamento
+              <div className="w-16" />
             )
           )}
         </div>
 
-        {/* Col 7: Data da última movimentação/atualização - formato DD/MM/YYYY */}
         <div className="flex items-center px-2 shrink-0">
           <span className="text-xs md:text-sm text-neutral-200 whitespace-nowrap">
             {request.lastActivityAt}
           </span>
         </div>
 
-        {/* Col 10: Botão Menu - padding 10px, height 44px */}
         <div className="flex items-center justify-center shrink-0">
           <button
             className="p-2.5 hover:bg-neutral-100 rounded transition-colors h-11"
@@ -202,15 +165,13 @@ interface StatusGroupProps {
   onRequestClick?: (request: SurgeryRequest) => void;
 }
 
-// Componente de grupo por status (Accordion)
 const StatusGroup = memo<StatusGroupProps>(
   ({ status, requests, defaultExpanded = true, onRequestClick }) => {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-    const statusIcon = STATUS_ICON_MAP[status];
+    const statusIcon = getStatusMetaByLabel(status)?.icon ?? "";
 
     return (
       <div className="flex flex-col">
-        {/* Header do Grupo */}
         <div
           className={cn(
             "flex items-center gap-2 py-3 pl-4 bg-white cursor-pointer",
@@ -220,7 +181,6 @@ const StatusGroup = memo<StatusGroupProps>(
           )}
           onClick={() => setIsExpanded(!isExpanded)}
         >
-          {/* Botão Expand/Collapse */}
           <button className="p-2 hover:bg-neutral-50 rounded transition-colors">
             {isExpanded ? (
               <ChevronDown className="w-4 h-4 text-neutral-900" />
@@ -229,7 +189,6 @@ const StatusGroup = memo<StatusGroupProps>(
             )}
           </button>
 
-          {/* Ícone do Status */}
           <Image
             src={statusIcon}
             alt={status}
@@ -238,12 +197,10 @@ const StatusGroup = memo<StatusGroupProps>(
             className="shrink-0"
           />
 
-          {/* Nome do Status */}
           <span className="text-sm md:text-base font-semibold text-black">
             {status}
           </span>
 
-          {/* Legenda do Status */}
           <Tooltip
             content={STATUS_DESCRIPTIONS[status]}
             position="bottom"
@@ -256,7 +213,6 @@ const StatusGroup = memo<StatusGroupProps>(
             />
           </Tooltip>
 
-          {/* Contador */}
           <div className="flex items-center justify-center w-6 h-6 bg-white border border-neutral-100 rounded-full">
             <span className="text-xs font-semibold text-neutral-900">
               {requests.length}
@@ -264,7 +220,6 @@ const StatusGroup = memo<StatusGroupProps>(
           </div>
         </div>
 
-        {/* Lista de Cards */}
         {isExpanded && requests.length > 0 && (
           <div className="flex flex-col">
             {requests.map((request) => (
@@ -296,19 +251,10 @@ export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
   hasActiveFilters = false,
   onClearFilters,
 }) => {
-  // Agrupar solicitações por status
   const groupedRequests = useMemo(() => {
-    const groups: Record<SurgeryRequestStatus, SurgeryRequest[]> = {
-      Pendente: [],
-      Enviada: [],
-      "Em Análise": [],
-      "Em Agendamento": [],
-      Agendada: [],
-      Realizada: [],
-      Faturada: [],
-      Finalizada: [],
-      Encerrada: [],
-    };
+    const groups = Object.fromEntries(
+      ALL_STATUS_LABELS.map((label) => [label, [] as SurgeryRequest[]]),
+    ) as Record<SurgeryRequestStatus, SurgeryRequest[]>;
 
     requests.forEach((request) => {
       if (groups[request.status]) {
@@ -327,7 +273,7 @@ export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
         msOverflowStyle: "none",
       }}
     >
-      {STATUS_ORDER.filter((status) => groupedRequests[status].length > 0).map(
+      {ALL_STATUS_LABELS.filter((status) => groupedRequests[status].length > 0).map(
         (status) => (
           <StatusGroup
             key={status}
@@ -339,7 +285,6 @@ export const SurgeryRequestList: React.FC<SurgeryRequestListProps> = ({
         ),
       )}
 
-      {/* Estado vazio */}
       {requests.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center">

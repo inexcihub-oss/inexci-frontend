@@ -9,8 +9,6 @@ import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { LayoutTemplate, Loader2, Upload, X } from "lucide-react";
 
-// P14: Tiptap (RichTextEditor) carregado sob demanda — mantém o Tiptap fora do
-// chunk estático da tela; só baixa quando o editor é renderizado.
 const RichTextEditor = dynamic(
   () =>
     import("@/components/shared/RichTextEditor").then((m) => m.RichTextEditor),
@@ -237,7 +235,7 @@ export function DoctorHeaderEditor({
               {contentHtml && (
                 <div
                   className="text-xs text-gray-700 leading-relaxed text-center"
-                  // eslint-disable-next-line react/no-danger -- html sanitizado via sanitizeHtml (DOMPurify) antes de renderizar
+                  // eslint-disable-next-line react/no-danger
                   dangerouslySetInnerHTML={{
                     __html: sanitizeHtml(contentHtml),
                   }}

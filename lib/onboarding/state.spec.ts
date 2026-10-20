@@ -49,7 +49,6 @@ describe("markStepComplete", () => {
     expect(original.completedSteps).toEqual({});
   });
 
-  /** Dispensar é escolha do usuário; concluir um passo não a desfaz. */
   it("não ressuscita um checklist dispensado", () => {
     const dispensado = dismissChecklist(emptyOnboardingState(), AGORA);
     const estado = markStepComplete(dispensado, "criar-solicitacao", AGORA);
@@ -172,14 +171,6 @@ describe("promoteIfComplete", () => {
     expect(promoteIfComplete(estado, []).status).toBe("in_progress");
   });
 
-  /**
-   * `dismissChecklist` só grava `checklistDismissedAt` — não mexe em
-   * `status`. Dispensar e concluir são eixos independentes: quem esconde o
-   * card é `checklistDismissedAt` (`isChecklistVisible`), não `status`. Por
-   * isso completar a última trilha depois de dispensado AINDA promove — não
-   * há nada de errado nisso, e "resgredir" aqui seria inventar uma regra que
-   * a spec não pede.
-   */
   it("promove mesmo com o checklist dispensado — dispensar e concluir são eixos independentes", () => {
     const dispensado = dismissChecklist(emptyOnboardingState(), AGORA);
     const comPasso = markStepComplete(dispensado, "criar-solicitacao", AGORA);

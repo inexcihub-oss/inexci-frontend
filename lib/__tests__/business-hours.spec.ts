@@ -7,9 +7,7 @@ import {
   toMinutes,
 } from "@/lib/business-hours";
 
-/** Segunda-feira, 17/08/2026, no horário local. */
 const segunda = (hh: number, mm = 0) => new Date(2026, 7, 17, hh, mm, 0, 0);
-/** Domingo, 16/08/2026. */
 const domingo = (hh: number, mm = 0) => new Date(2026, 7, 16, hh, mm, 0, 0);
 
 const gradePadrao = normalizeBusinessHours({

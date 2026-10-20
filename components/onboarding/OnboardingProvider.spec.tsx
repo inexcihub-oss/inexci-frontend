@@ -16,7 +16,6 @@ vi.mock("@/services/onboarding.service", () => ({
   },
 }));
 
-// Espelha a forma real de `lib/logger.ts` — não tem `info`.
 vi.mock("@/lib/logger", () => ({
   logger: { error: vi.fn(), warn: vi.fn(), log: vi.fn(), debug: vi.fn() },
 }));
@@ -151,14 +150,7 @@ describe("OnboardingProvider", () => {
     await user.click(screen.getByText("marcar dashboard"));
     await user.click(screen.getByText("marcar cadastros"));
 
-    // "completed": o `authMock` padrão só libera `Permission.SOLICITACOES`,
-    // então "solicitacoes", "dashboard" (mesma permissão) e "cadastros"
-    // (trilha `anyArea`, sempre visível para quem tem qualquer área) são as
-    // TRÊS trilhas visíveis — marcar os três passos completa todas elas e
-    // promove o status (achado 4 da revisão final).
     expect(screen.getByTestId("status")).toHaveTextContent("completed");
-    // Sem isto, uma implementação que aguardasse o PATCH antes do setState
-    // também passaria — o teste não provaria otimismo nenhum.
     expect(patchMock).not.toHaveBeenCalled();
   });
 
@@ -207,14 +199,6 @@ describe("OnboardingProvider", () => {
     });
 
     expect(patchMock).toHaveBeenCalledTimes(1);
-    // `toEqual`, não `toMatchObject`: confirma que o único PATCH carrega
-    // EXATAMENTE os campos tocados pelas duas escritas — nem a mais (um
-    // `toMatchObject` deixaria passar um `restartedAt` ou o `version`
-    // vazando de volta a um snapshot do estado inteiro) nem a menos.
-    // `status` aparece como "in_progress" (not_started -> in_progress do
-    // próprio `completeStep`): o `authMock` padrão tem TRÊS trilhas visíveis
-    // ("solicitacoes", "dashboard" e "cadastros", esta última `anyArea`),
-    // então marcar só "criar-solicitacao" não promove a `completed` (achado 4).
     expect(patchMock.mock.calls[0][0]).toEqual({
       completedSteps: { "criar-solicitacao": expect.any(String) },
       status: "in_progress",
@@ -222,11 +206,6 @@ describe("OnboardingProvider", () => {
     });
   });
 
-  /**
-   * Burst com intervalo: é aqui que "reinicia a janela" se separa de "deduplica
-   * envio". Sem o `clearTimeout`, o timer da primeira escrita dispara em t=500 e
-   * manda um PATCH antes do segundo — e a asserção do meio falha.
-   */
   it("reinicia a janela do debounce a cada escrita, não só deduplica", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
@@ -254,7 +233,6 @@ describe("OnboardingProvider", () => {
     expect(patchMock).toHaveBeenCalledTimes(1);
   });
 
-  /** Um 500 ao marcar um checkbox não pode derrubar a tela. */
   it("engole a falha do PATCH sem quebrar a interface", async () => {
     patchMock.mockRejectedValueOnce(new Error("500"));
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -269,13 +247,7 @@ describe("OnboardingProvider", () => {
       vi.advanceTimersByTime(600);
     });
 
-    // "in_progress": o `authMock` padrão tem três trilhas visíveis
-    // ("solicitacoes", "dashboard" e "cadastros"), então um clique só não
-    // promove a "completed" — o ponto deste teste é não quebrar com o PATCH
-    // falhando, não a transição de status em si.
     expect(screen.getByTestId("status")).toHaveTextContent("in_progress");
-    // Distingue "falha capturada e logada" de "rejeição solta no processo":
-    // o setState otimista é síncrono e passaria de qualquer forma.
     expect(logger.error).toHaveBeenCalled();
   });
 
@@ -330,16 +302,6 @@ describe("OnboardingProvider", () => {
     expect(resetMock).toHaveBeenCalledTimes(1);
   });
 
-  /**
-   * Achado 5 da revisão final: nenhum teste chamava `startTour`/`closeTour`
-   * antes deste — a `Sonda` nem os expunha. `closeTour` é o ÚNICO caminho que
-   * conclui uma trilha de verdade, e resolve a trilha por `activeTour`
-   * (setado por `startTour`), carimbando `completedSteps[track.stepKey]` E
-   * `toursSeen[track.id]`. Trocar `stepKey` por `id` (ou o inverso) em
-   * qualquer um dos dois carimbos passaria pelo resto da suíte sem ser
-   * detectado — por isso os dois `data-testid` abaixo leem chaves DIFERENTES
-   * ("criar-solicitacao" vs. "solicitacoes").
-   */
   describe("startTour / closeTour", () => {
     it("fechar com { concluido: true } carimba completedSteps[stepKey] e toursSeen[id] da trilha ativa", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -389,13 +351,6 @@ describe("OnboardingProvider", () => {
       expect(screen.getByTestId("trilha-vista")).toHaveTextContent("false");
     });
 
-    /**
-     * O `authMock` padrão expõe TRÊS trilhas ("solicitacoes", "dashboard" e
-     * "cadastros", esta última `anyArea`) — concluir a primeira não deveria
-     * devolver o usuário ao banner para um novo clique em "Continuar": o
-     * motor mesmo já sabe que "dashboard" continua incompleta e deveria
-     * abrir ela.
-     */
     it("concluir uma trilha avança sozinho para a próxima incompleta, sem fechar o tour", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
@@ -425,8 +380,6 @@ describe("OnboardingProvider", () => {
         </OnboardingProvider>,
       );
 
-      // Completa "dashboard" e "cadastros" primeiro, direto pelo checklist —
-      // só sobra "solicitacoes" para o tour concluir.
       await user.click(screen.getByText("marcar dashboard"));
       await user.click(screen.getByText("marcar cadastros"));
       await user.click(screen.getByText("iniciar tour"));
@@ -436,7 +389,6 @@ describe("OnboardingProvider", () => {
       expect(screen.getByTestId("em-tour")).toHaveTextContent("false");
     });
 
-    /** Sair no meio (sem `concluido`) nunca deveria acionar o auto-avanço. */
     it("fechar SEM concluir não avança para a próxima trilha", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
@@ -453,14 +405,6 @@ describe("OnboardingProvider", () => {
     });
   });
 
-  /**
-   * Achado 4 da revisão final: `status: "completed"` nunca era atribuído.
-   * `authMock` só libera `Permission.SOLICITACOES` por padrão, o que já
-   * expõe TRÊS trilhas: "solicitacoes", "dashboard" (mesma permissão) e
-   * "cadastros" (esta última `anyArea`, visível para quem tem qualquer
-   * área). Mutar `isDoctor` aqui adiciona uma quarta, `documentos-do-medico`,
-   * para provar "falta uma trilha" sem depender de outro arquivo de fixture.
-   */
   describe("promoção para completed", () => {
     afterEach(() => {
       authMock.isDoctor = false;
@@ -490,8 +434,6 @@ describe("OnboardingProvider", () => {
         </OnboardingProvider>,
       );
 
-      // Só marca "criar-solicitacao" — "assinatura-do-medico", "ver-dashboard"
-      // e "cadastros-basicos" continuam faltando.
       await user.click(screen.getByText("marcar"));
 
       expect(screen.getByTestId("status")).toHaveTextContent("in_progress");
@@ -515,12 +457,6 @@ describe("OnboardingProvider", () => {
     });
   });
 
-  /**
-   * "Não flush no unmount": limpar o timer sem enviar o PATCH pendente perde
-   * a escrita se o usuário fizer logout (que desmonta o provider) dentro da
-   * janela de debounce — "Dispensar" some no clique, mas volta a aparecer no
-   * próximo login porque o servidor nunca soube.
-   */
   it("envia o PATCH pendente ao desmontar, em vez de só cancelar o timer", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const { unmount } = render(
@@ -535,31 +471,17 @@ describe("OnboardingProvider", () => {
     unmount();
 
     expect(patchMock).toHaveBeenCalledTimes(1);
-    // `toEqual`: só `checklistDismissedAt` foi tocado — nem `status` (o
-    // `dismiss` não mexe nele), nem qualquer campo do restante do estado.
     expect(patchMock.mock.calls[0][0]).toEqual({
       checklistDismissedAt: expect.any(String),
     });
   });
 
-  /**
-   * Adendo 1 da revisão final (achado do BACKEND): `agendarPersistencia`
-   * mandava o SNAPSHOT inteiro do estado (via `const { version, ...patch } =
-   * estado`), o que incluía `restartedAt` — campo que o DTO do backend não
-   * whitelista (`forbidNonWhitelisted`), devolvendo 400 em toda escrita,
-   * nunca visível porque o `.catch` só loga. Precisa ser exatamente os campos
-   * tocados: nem de mais (fecha o bug), nem de menos (perderia o merge).
-   */
   describe("PATCH incremental — só os campos tocados, nunca o snapshot inteiro", () => {
     afterEach(() => {
       authMock.isDoctor = false;
     });
 
     it("acumula só os campos tocados entre dois debounces, sem restartedAt nem o resto do estado", async () => {
-      // Duas trilhas visíveis (isDoctor libera "documentos-do-medico"): assim
-      // "marcar" sozinho NÃO completa o checklist, e o `status` no patch
-      // final reflete só o avanço `not_started -> in_progress` embutido no
-      // próprio `completeStep` — não uma promoção a `completed`.
       authMock.isDoctor = true;
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
@@ -576,11 +498,6 @@ describe("OnboardingProvider", () => {
       });
 
       expect(patchMock).toHaveBeenCalledTimes(1);
-      // `toEqual` sobre o objeto inteiro: qualquer chave extra (`restartedAt`,
-      // `version`, `welcomeSeenAt`, `toursSeen` — nenhum dos dois cliques
-      // tocou nisso) quebra este teste. Foi assim que o bug do backend
-      // passou despercebido: o teste antigo usava `toMatchObject`, que
-      // ignora excedente.
       expect(patchMock.mock.calls[0][0]).toEqual({
         completedSteps: { "criar-solicitacao": expect.any(String) },
         status: "in_progress",
@@ -602,9 +519,6 @@ describe("OnboardingProvider", () => {
         "true",
       );
 
-      // Três trilhas visíveis no `authMock` padrão ("solicitacoes",
-      // "dashboard" e "cadastros"): marcar as três promove para completed
-      // NESTA sessão.
       await user.click(screen.getByText("marcar"));
       await user.click(screen.getByText("marcar dashboard"));
       await user.click(screen.getByText("marcar cadastros"));

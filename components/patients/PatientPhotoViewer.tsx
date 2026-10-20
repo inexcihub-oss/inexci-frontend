@@ -4,11 +4,6 @@ import { ReactNode, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-/**
- * Foto do paciente ampliada, sobre a página. Fecha no X, no Esc ou clicando
- * fora da foto. `acoes` (trocar/remover) aparecem abaixo da imagem quando
- * quem abriu pode editar.
- */
 export function PatientPhotoViewer({
   src,
   nome,
@@ -63,7 +58,7 @@ export function PatientPhotoViewer({
         className="flex max-h-full max-w-full flex-col items-center gap-3"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- URL assinada do R2: o otimizador do Next só encheria o cache com versões da mesma foto */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={`Foto de ${nome}`}

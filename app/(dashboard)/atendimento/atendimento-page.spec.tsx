@@ -50,7 +50,9 @@ vi.mock("@/services/available-doctors.service", () => ({
   },
 }));
 
-let authState = { can: (p: Permission) => p === Permission.AGENDA };
+let authState: { can: (p: Permission) => boolean } = {
+  can: (p) => p === Permission.AGENDA,
+};
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
@@ -68,11 +70,6 @@ function renderPage() {
   );
 }
 
-/**
- * Grupo 2 do mapa: colaborador com Atendimento e sem Agenda alcança o hub de
- * atendimento (leitura aceita Atendimento) mas não pode escrever consulta —
- * "Nova consulta" e "Ver agenda" devem sumir.
- */
 describe("AtendimentoHubPage — gating por Agenda", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -106,11 +103,6 @@ describe("AtendimentoHubPage — gating por Agenda", () => {
   });
 });
 
-/**
- * Lista paginada de 20 em 20: o rodapé diz quanto falta, "Carregar mais"
- * pede a página seguinte e "Ver na agenda" leva para o calendário. O filtro
- * de profissionais vai para o servidor, junto com o pedido de contagens.
- */
 describe("AtendimentoHubPage — paginação", () => {
   const consulta = (i: number) => ({
     ...CONSULTA,
@@ -181,8 +173,6 @@ describe("AtendimentoHubPage — paginação", () => {
     expect(screen.queryByRole("button", { name: /Carregar mais/ })).toBeNull();
   });
 
-  // Antes, a falha da página seguinte trocava a lista inteira pela tela de
-  // erro — o médico perdia as 20 consultas que já estava vendo.
   it("falha ao carregar mais mantém a lista e oferece tentar de novo no rodapé", async () => {
     const primeira = Array.from({ length: 20 }, (_, i) => consulta(i));
     const segunda = Array.from({ length: 5 }, (_, i) => consulta(20 + i));
@@ -227,11 +217,6 @@ describe("AtendimentoHubPage — paginação", () => {
   });
 });
 
-/**
- * A aba "Hoje" memoizava o recorte só pela aba: com a tela aberta na virada da
- * meia-noite (recepção), continuava mostrando o dia anterior. O dia corrente
- * entra no memo e muda a query key, então a lista é buscada de novo.
- */
 describe("AtendimentoHubPage — virada do dia", () => {
   beforeEach(() => {
     vi.clearAllMocks();

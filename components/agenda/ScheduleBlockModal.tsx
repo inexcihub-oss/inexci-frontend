@@ -16,37 +16,19 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSaved: (mensagem: string) => void;
-  /** Bloqueio em edição; ausente = novo. */
   block?: ScheduleBlock | null;
   doctors: { id: string; name: string; isPhysician?: boolean }[];
-  /**
-   * Clínicas da conta. Opcional no bloqueio: vazio vale para todas; com
-   * clínica, o bloqueio só alcança consultas daquela clínica (regra de
-   * `bloqueioAtinge`). A API recusa clínica de outra conta.
-   */
   clinics?: { id: string; name: string }[];
   defaultDate?: string | null;
-  /**
-   * Bloqueio de toda a clínica trava a agenda de todos os profissionais da
-   * conta: criar, editar, remover ou converter um bloqueio nele exige
-   * `Permission.ADMINISTRACAO` (o backend recusa com 403). Sem ela, a opção
-   * "Toda a clínica" some e um bloqueio da clínica abre só para leitura.
-   */
   podeClinicaToda?: boolean;
 }
 
-/** `YYYY-MM-DD` + `HH:mm` no fuso do navegador → ISO. */
 function iso(data: string, hora: string): string {
   const [y, m, d] = data.split("-").map(Number);
   const [h, min] = hora.split(":").map(Number);
   return new Date(y, m - 1, d, h, min, 0, 0).toISOString();
 }
 
-/**
- * Bloquear horário na agenda (MIG-05): um profissional ou a clínica toda
- * (só com Administração), num período do dia ou no dia inteiro. Bloqueio
- * impede marcar consulta, inclusive encaixe.
- */
 export function ScheduleBlockModal({
   isOpen,
   onClose,
@@ -68,10 +50,6 @@ export function ScheduleBlockModal({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Preenche só ao abrir ou trocar o bloqueio em edição. `doctors` fica de
-  // fora de propósito: vindo de `data: doctors = []`, é um array novo a cada
-  // render enquanto a query não resolve (ou se falha), e rebobinava o
-  // formulário apagando o que o usuário já tinha digitado.
   useEffect(() => {
     if (!isOpen) return;
     setError(null);
@@ -82,9 +60,6 @@ export function ScheduleBlockModal({
       setClinicId(block.clinicId ?? "");
       setDate(dateKey(ini));
       setAllDay(block.allDay);
-      // Dia inteiro vai de 00:00 a 00:00 do dia seguinte: copiar isso para
-      // os campos deixava "00:00–00:00" (inválido) ao desmarcar "Dia
-      // inteiro". Nesse caso os campos voltam ao período padrão.
       setFrom(block.allDay ? "08:00" : hhmm(ini));
       setTo(block.allDay ? "12:00" : hhmm(fim));
       setReason(block.reason ?? "");
@@ -99,8 +74,6 @@ export function ScheduleBlockModal({
     }
   }, [isOpen, block, defaultDate]);
 
-  // Um profissional só: já vem escolhido (quando a lista chegar), sem
-  // sobrescrever uma escolha feita.
   const unicoProfissional = doctors.length === 1 ? doctors[0].id : null;
   useEffect(() => {
     if (!isOpen || block || !unicoProfissional) return;
@@ -217,9 +190,6 @@ export function ScheduleBlockModal({
             onChange={(e) => setClinicId(e.target.value)}
           >
             <option value="">Todas as clínicas</option>
-            {/* Clínica do bloqueio que não está na lista (excluída, ou a
-                lista ainda carregando): mantém a opção para não trocá-la
-                sem querer ao salvar. */}
             {clinicId && !clinics.some((c) => c.id === clinicId) && (
               <option value={clinicId}>Clínica atual</option>
             )}

@@ -29,8 +29,6 @@ describe("SelectSearch", () => {
       />,
     );
 
-  // Dentro de um modal, o corpo rola com a lista aberta: ela precisa
-  // acompanhar o campo, não ficar onde o campo estava ao abrir.
   it("a lista acompanha o campo quando o corpo do modal rola", async () => {
     const user = userEvent.setup();
     const rect = vi

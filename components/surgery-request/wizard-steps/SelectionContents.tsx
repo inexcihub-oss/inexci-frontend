@@ -13,7 +13,6 @@ import { HealthPlan } from "@/services/health-plan.service";
 import { AvailableDoctor } from "@/types";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { useProcedures, PROCEDURES_QUERY_KEY } from "@/hooks/useProcedures";
 import { useHospitals, HOSPITALS_QUERY_KEY } from "@/hooks/useHospitals";
@@ -26,7 +25,6 @@ import {
   SurgeryRequestTemplateSummary,
 } from "@/services/surgery-request.service";
 
-/** Texto padrão do tooltip quando a criação inline exige administração. */
 export const CADASTRO_RESTRITO_HINT =
   "Peça a um administrador da conta para cadastrar.";
 
@@ -47,24 +45,14 @@ export const ProcedureSelectionContent = memo(
     onNewItemCreated: (registerFn: (item: Procedure) => void) => void;
     selectedItemId?: string | number | null;
     isActive?: boolean;
-    /**
-     * Governa o botão "Novo". Procedimento é cadastro transversal:
-     * `POST /procedures` herda o `@RequireAnyArea()` da classe.
-     */
     canCreate?: boolean;
-    /**
-     * Governa a lixeira por linha. Separado de `canCreate` de propósito:
-     * `DELETE /procedures/:id` continua exigindo `administracao`, e enquanto
-     * uma prop só governava os dois, liberar a criação teria liberado a
-     * exclusão junto — cada clique na lixeira terminando em 403.
-     */
     canDelete?: boolean;
   }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [procedureToDelete, setProcedureToDelete] =
       useState<Procedure | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const { toast, showToast, hideToast } = useToast();
+    const { showToast } = useToast();
     const queryClient = useQueryClient();
     const { data: procedures = [], isLoading: loading } = useProcedures({
       enabled: isActive,
@@ -220,13 +208,6 @@ export const ProcedureSelectionContent = memo(
           loading={isDeleting}
         />
 
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={hideToast}
-          />
-        )}
       </>
     );
   },
@@ -361,7 +342,6 @@ export const HospitalSelectionContent = memo(function HospitalSelectionContent({
   onNewItemCreated: (registerFn: (item: Hospital) => void) => void;
   selectedItemId?: string | number | null;
   isActive?: boolean;
-  /** Falso quando o usuário não pode cadastrar hospitais (sem `administracao`). */
   canCreate?: boolean;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -478,7 +458,6 @@ export const HealthPlanSelectionContent = memo(
     onNewItemCreated: (registerFn: (item: HealthPlan) => void) => void;
     selectedItemId?: string | number | null;
     isActive?: boolean;
-    /** Falso quando o usuário não pode cadastrar convênios (sem `administracao`). */
     canCreate?: boolean;
   }) {
     const [searchTerm, setSearchTerm] = useState("");

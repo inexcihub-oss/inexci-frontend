@@ -28,8 +28,6 @@ export function CidPicker({ value, onChange, disabled }: CidPickerProps) {
     if (!open) return;
 
     let active = true;
-    // Sem termo, busca o começo do catálogo: a lista abre já com opções em vez
-    // de um vazio pedindo para digitar.
     const term = debounced.trim().length >= 2 ? debounced.trim() : "";
     setLoading(true);
     cidService
@@ -106,7 +104,6 @@ export function CidPicker({ value, onChange, disabled }: CidPickerProps) {
             )}
           </div>
 
-          {/* Portal: dentro do modal a lista seria cortada pelo corpo rolável. */}
           {open &&
             typeof window !== "undefined" &&
             createPortal(

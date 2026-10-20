@@ -10,13 +10,12 @@ import { appointmentService } from "@/services/appointment.service";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { AGENDA_EXPORT_FIELDS, AgendaExportField, AgendaExportSource, exportAgendaToCsv, exportAgendaToPdf, getAgendaExportRows } from "@/lib/export-agenda";
 import { cn } from "@/lib/utils";
+import { agendaExportKeys, appointmentKeys } from "@/lib/query-keys";
 import { useToast } from "@/hooks/useToast";
 import { AvailableDoctor } from "@/types";
 import { AgendaDoctorFilter } from "@/components/agenda/AgendaDoctorFilter";
 
 interface AgendaExportModalProps { isOpen: boolean; onClose: () => void; defaultFrom: string; defaultTo: string; availableDoctors?: AvailableDoctor[]; defaultDoctorIds?: string[]; canExportSurgeries: boolean; }
-// Padrões estáveis: um `[]` novo a cada render entraria nas dependências do
-// efeito de abertura e rebobinaria o formulário em laço.
 const NO_DOCTORS: AvailableDoctor[] = [];
 const NO_DOCTOR_IDS: string[] = [];
 const ALL_SOURCES: AgendaExportSource[] = ["appointments", "surgeries"];
@@ -34,13 +33,12 @@ export function AgendaExportModal({ isOpen, onClose, defaultFrom, defaultTo, ava
   useEffect(() => { if (!isOpen) return; setFrom(defaultFrom); setTo(defaultTo); setSelectedDoctorIds(defaultDoctorIds); setSources(canExportSurgeries ? ALL_SOURCES : ["appointments"]); setFields(ALL_FIELDS); setExportingFormat(null); }, [isOpen, defaultFrom, defaultTo, defaultDoctorIds, canExportSurgeries]);
   const rangeIsValid = isValidIsoDate(from) && isValidIsoDate(to) && from <= to;
   const range = useMemo(() => rangeIsValid ? toApiRange(from, to) : null, [from, to, rangeIsValid]);
-  const appointments = useQuery({ queryKey: ["appointments", "agenda-export", from, to], queryFn: () => appointmentService.getAgendaCompleta({ from: range!.from, to: range!.to }), enabled: isOpen && rangeIsValid && sources.includes("appointments") });
-  const surgeries = useQuery({ queryKey: ["surgery-requests", "agenda-export", from, to], queryFn: () => surgeryRequestService.getAgenda(range!.from, range!.to), enabled: isOpen && rangeIsValid && canExportSurgeries && sources.includes("surgeries") });
+  const appointments = useQuery({ queryKey: appointmentKeys.agendaExport(from, to), queryFn: () => appointmentService.getAgendaCompleta({ from: range!.from, to: range!.to }), enabled: isOpen && rangeIsValid && sources.includes("appointments") });
+  const surgeries = useQuery({ queryKey: agendaExportKeys.surgeries(from, to), queryFn: () => surgeryRequestService.getAgenda(range!.from, range!.to), enabled: isOpen && rangeIsValid && canExportSurgeries && sources.includes("surgeries") });
   const doctorNameById = useMemo(() => Object.fromEntries(availableDoctors.map((doctor) => [doctor.id, doctor.name])), [availableDoctors]);
   const doctorFilterLabel = useMemo(() => selectedDoctorIds.length ? availableDoctors.filter((doctor) => selectedDoctorIds.includes(doctor.id)).map((doctor) => doctor.name).join(", ") : "Todos", [availableDoctors, selectedDoctorIds]);
   const options = useMemo(() => ({ from, to, sources, fields, doctorIds: selectedDoctorIds, doctorFilterLabel, doctorNameById }), [from, to, sources, fields, selectedDoctorIds, doctorFilterLabel, doctorNameById]);
   const previewRows = useMemo(() => getAgendaExportRows(appointments.data?.records ?? [], surgeries.data?.records ?? [], options), [appointments.data, surgeries.data, options]);
-  // Passou do teto de páginas de `getAgendaCompleta`: a lista veio cortada.
   const truncated = appointments.data && appointments.data.total > appointments.data.records.length ? appointments.data : null;
   const isFetching = appointments.isFetching || surgeries.isFetching;
   const isError = appointments.isError || surgeries.isError;

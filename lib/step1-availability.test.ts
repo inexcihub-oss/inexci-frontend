@@ -47,8 +47,6 @@ describe("resolveStep1Availability", () => {
     expect(r.fieldErrors.email).toBeUndefined();
   });
 
-  // O usuário precisa ver os dois problemas de uma vez; mostrar um, deixar ele
-  // corrigir e só então revelar o outro é o que a etapa 1 veio evitar.
   it("aponta os dois campos quando ambos estão ocupados", () => {
     const r = resolveStep1Availability({
       email: "registered",
@@ -60,8 +58,6 @@ describe("resolveStep1Availability", () => {
     expect(r.fieldErrors.phone).toBeDefined();
   });
 
-  // A checagem é uma comodidade, não um portão: se a rede cair ou o endpoint
-  // devolver erro, o cadastro tem de seguir — o submit revalida de qualquer forma.
   it("não bloqueia quando alguma checagem falhou", () => {
     expect(resolveStep1Availability({ email: null, phone: null })).toEqual({
       blocked: false,

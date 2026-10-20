@@ -1,8 +1,3 @@
-/**
- * Utilitário de exportação de solicitações cirúrgicas (CSV e PDF)
- * Gera arquivos client-side a partir dos dados já carregados no kanban.
- */
-
 import { SurgeryRequest, PRIORITY_LABELS } from "@/types/surgery-request.types";
 import {
   CSV_SEPARATOR,
@@ -11,24 +6,16 @@ import {
   truncatePdfText,
 } from "./export-format";
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-/** createdAt já vem formatado como "dd/mm/yyyy" do mapeamento da página */
 function formatDate(value: string): string {
   if (!value) return "—";
-  // Já está em dd/mm/yyyy
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
-  // Tenta ISO
   try {
     const d = new Date(value);
     if (!isNaN(d.getTime())) return d.toLocaleDateString("pt-BR");
   } catch {
-    /* ignore */
   }
   return value || "—";
 }
-
-// ── Colunas essenciais ─────────────────────────────────────────────────────────
 
 interface ExportRow {
   protocolo: string;
@@ -68,8 +55,6 @@ const HEADERS: { key: keyof ExportRow; label: string }[] = [
   { key: "criadoEm", label: "Criado em" },
 ];
 
-// ── CSV ────────────────────────────────────────────────────────────────────────
-
 export function exportToCsv(requests: SurgeryRequest[]): void {
   const rows = mapToRows(requests);
   const header = HEADERS.map((h) => h.label).join(CSV_SEPARATOR);
@@ -84,14 +69,6 @@ export function exportToCsv(requests: SurgeryRequest[]): void {
   downloadBlob(blob, `solicitacoes-cirurgicas-${dateStamp()}.csv`);
 }
 
-// ── PDF ───────────────────────────────────────────────────────────────────────
-
-/**
- * Gera o relatório das solicitações do kanban e baixa no dispositivo.
- *
- * Segue o mesmo desenho de `exportAgendaToPdf`: A4 deitado, cabeçalho teal,
- * tabela zebrada e rodapé paginado.
- */
 export async function exportToPdf(requests: SurgeryRequest[]): Promise<void> {
   const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
 
@@ -238,7 +215,6 @@ export async function exportToPdf(requests: SurgeryRequest[]): Promise<void> {
   });
 
   const bytes = await pdf.save();
-  // A cópia garante um ArrayBuffer próprio, compatível com Blob nos tipos DOM.
   const pdfBytes = new Uint8Array(bytes);
   downloadBlob(
     new Blob([pdfBytes.buffer], { type: "application/pdf" }),
@@ -246,8 +222,6 @@ export async function exportToPdf(requests: SurgeryRequest[]): Promise<void> {
   );
 }
 
-
-// ── Utilidades ─────────────────────────────────────────────────────────────────
 
 function dateStamp(): string {
   return new Date().toISOString().slice(0, 10);

@@ -8,10 +8,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRef, useCallback, useState, useEffect } from "react";
 import { useToggle, useClickOutside } from "@/hooks";
 import { getInitials, getDisplayName, getAvatarColor } from "@/lib/utils";
-import { uploadService } from "@/services/upload.service";
-import { getAvatarCache, setAvatarCache } from "@/lib/avatar-cache";
+import { useUserAvatarUrl } from "@/hooks/useUserAvatarUrl";
 import NotificationsDropdown from "@/components/notifications/NotificationsDropdown";
-import { Permission } from "@/lib/permissions";
+import {
+  CADASTROS_HREFS,
+  NAV_ITEMS,
+  navItemPermission,
+  Permission,
+} from "@/lib/permissions";
 
 interface MenuItem {
   type: "item";
@@ -31,11 +35,6 @@ interface MenuGroup {
 
 type NavigationEntry = MenuItem | MenuGroup;
 
-/**
- * Filtra o menu por permissão. Item sem `permission` é comum a todos da
- * conta. Um grupo some inteiro se ficar sem nenhum filho visível — evita um
- * acordeão vazio quando, no futuro, algum filho ganhar `permission`.
- */
 export function filterMenuItems(
   items: NavigationEntry[],
   can: (permission: Permission) => boolean,
@@ -58,94 +57,41 @@ export function filterMenuItems(
   }, []);
 }
 
-const allMenuItems: NavigationEntry[] = [
-  {
-    type: "item",
-    iconSrc: "/icons/stethoscope.svg",
-    label: "Atendimento",
-    href: "/atendimento",
-    permission: Permission.ATENDIMENTO,
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/calendar-schedule.svg",
-    label: "Agenda",
-    href: "/agenda",
-    permission: Permission.AGENDA,
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/grid-layout.svg",
-    label: "Solicitações Cirúrgicas",
-    href: "/solicitacoes-cirurgicas",
-    permission: Permission.SOLICITACOES,
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/dashboard.svg",
-    label: "Dashboard",
-    href: "/dashboard",
-    permission: Permission.SOLICITACOES,
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/user-add.svg",
-    label: "Pacientes",
-    href: "/pacientes",
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/user-profile.svg",
-    label: "Colaboradores",
-    href: "/colaboradores",
-    permission: Permission.ADMINISTRACAO,
-  },
-  {
-    type: "group",
-    iconSrc: "/icons/list.svg",
-    label: "Cadastros",
-    children: [
-      {
-        type: "item",
-        iconSrc: "/icons/clinic-building.svg",
-        label: "Clínicas",
-        href: "/clinicas",
-        permission: Permission.ADMINISTRACAO,
-      },
-      {
-        type: "item",
-        iconSrc: "/icons/users.svg",
-        label: "Hospitais",
-        href: "/hospitais",
-      },
-      {
-        type: "item",
-        iconSrc: "/icons/document.svg",
-        label: "Convênios",
-        href: "/convenios",
-      },
-      {
-        type: "item",
-        iconSrc: "/icons/dollar-cash-circle.svg",
-        label: "Fornecedores",
-        href: "/fornecedores",
-      },
-      {
-        type: "item",
-        iconSrc: "/icons/user.svg",
-        label: "Fabricantes",
-        href: "/fabricantes",
-      },
-    ],
-  },
-  {
-    type: "item",
-    iconSrc: "/icons/status-surgeries.svg",
-    label: "Procedimentos",
-    href: "/procedimentos",
-    permission: Permission.SOLICITACOES,
-  },
-];
+function buildMenuEntries(): NavigationEntry[] {
+  const entries: NavigationEntry[] = [];
+  let cadastros: MenuGroup | null = null;
+  for (const item of NAV_ITEMS) {
+    const entry: MenuItem = {
+      type: "item",
+      iconSrc: item.iconSrc,
+      label: item.label,
+      href: item.href,
+      permission: navItemPermission(item) ?? undefined,
+    };
+    if (item.group !== "cadastros") {
+      entries.push(entry);
+      continue;
+    }
+    if (!cadastros) {
+      cadastros = {
+        type: "group",
+        iconSrc: "/icons/list.svg",
+        label: "Cadastros",
+        children: [],
+      };
+      entries.push(cadastros);
+    }
+    cadastros.children.push(entry);
+  }
+  return entries;
+}
+
+const allMenuItems = buildMenuEntries();
+
+const isCadastrosPath = (pathname: string) =>
+  CADASTROS_HREFS.some(
+    (basePath) => pathname === basePath || pathname.startsWith(`${basePath}/`),
+  );
 
 interface SidebarProps {
   isMobileOpen?: boolean;
@@ -159,75 +105,19 @@ export default function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, can } = useAuth();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const avatarUrl = useUserAvatarUrl();
   const [isCadastrosOpen, setIsCadastrosOpen] = useState(() =>
-    [
-      "/clinicas",
-      "/hospitais",
-      "/convenios",
-      "/fornecedores",
-      "/fabricantes",
-    ].some(
-      (basePath) =>
-        pathname === basePath || pathname.startsWith(`${basePath}/`),
-    ),
+    isCadastrosPath(pathname),
   );
 
-  // Resolve signed URL when user.avatarUrl changes
-  useEffect(() => {
-    const raw = user?.avatarUrl;
-    const userId = user?.id;
-
-    if (!raw || !userId) {
-      setAvatarUrl(null);
-      return;
-    }
-
-    // Se já é URL absoluta, usa direto e armazena no cache
-    if (raw.startsWith("http://") || raw.startsWith("https://")) {
-      setAvatarUrl(raw);
-      setAvatarCache(userId, raw, raw);
-      return;
-    }
-
-    // Verifica cache antes de chamar o backend
-    const cached = getAvatarCache(userId, raw);
-    if (cached) {
-      setAvatarUrl(cached);
-      return;
-    }
-
-    // Sem cache: busca signed URL e armazena resultado
-    uploadService
-      .getSignedUrl(raw)
-      .then((url) => {
-        setAvatarUrl(url);
-        setAvatarCache(userId, raw, url);
-      })
-      .catch(() => setAvatarUrl(null));
-  }, [user?.avatarUrl, user?.id]);
-
-  // Filtrar itens do menu com base nas permissões do usuário
   const menuItems = filterMenuItems(allMenuItems, can);
 
   useEffect(() => {
-    const isCadastrosPath = [
-      "/clinicas",
-      "/hospitais",
-      "/convenios",
-      "/fornecedores",
-      "/fabricantes",
-    ].some(
-      (basePath) =>
-        pathname === basePath || pathname.startsWith(`${basePath}/`),
-    );
-
-    if (isCadastrosPath) {
+    if (isCadastrosPath(pathname)) {
       setIsCadastrosOpen(true);
     }
   }, [pathname]);
 
-  // Carregar estado do localStorage ou usar valor padrão
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("sidebar-collapsed");
@@ -245,7 +135,6 @@ export default function Sidebar({
 
   useClickOutside(menuRef, closeMenu, isMenuOpen);
 
-  // Salvar estado no localStorage quando mudar
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("sidebar-collapsed", JSON.stringify(isCollapsed));
@@ -266,7 +155,6 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile Backdrop */}
       {isMobileOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -279,7 +167,6 @@ export default function Sidebar({
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0 ${isCollapsed ? "lg:w-16" : "lg:w-60"}`}
       >
-        {/* Logo */}
         <div
           className={`flex items-center gap-2.5 py-2 ${
             isCollapsed
@@ -295,7 +182,6 @@ export default function Sidebar({
             className={`object-contain ${isCollapsed ? "lg:hidden" : ""}`}
           />
 
-          {/* Desktop: Collapse toggle */}
           <button
             onClick={toggleCollapse}
             className="hidden lg:flex w-11 h-11 items-center justify-center hover:opacity-70 transition-opacity"
@@ -313,7 +199,6 @@ export default function Sidebar({
             />
           </button>
 
-          {/* Mobile: Close button */}
           <button
             onClick={onMobileClose}
             className="flex lg:hidden w-11 h-11 items-center justify-center hover:opacity-70 transition-opacity"
@@ -337,9 +222,7 @@ export default function Sidebar({
           </button>
         </div>
 
-        {/* Main Navigation */}
         <div className="flex-1 flex flex-col gap-4 pt-8 px-1">
-          {/* Menu Items */}
           <div className="flex flex-col gap-1">
             {menuItems.map((item) => {
               if (item.type === "group") {
@@ -458,12 +341,9 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* Bottom Section */}
         <div className="flex flex-col gap-1 px-1 pb-1">
-          {/* Notifications */}
           <NotificationsDropdown isCollapsed={isCollapsed} />
 
-          {/* Settings — visível apenas no mobile */}
           <Link
             href="/configuracoes"
             className={`lg:hidden relative flex items-center gap-3 px-3 py-3 rounded-xl opacity-70 hover:bg-neutral-50 hover:opacity-100 transition-all min-h-[44px]`}
@@ -482,7 +362,6 @@ export default function Sidebar({
           </Link>
         </div>
 
-        {/* User Profile */}
         <div
           className={`relative py-6 border-t border-neutral-100 ${isCollapsed ? "px-1" : "px-2"}`}
           ref={menuRef}
@@ -490,7 +369,6 @@ export default function Sidebar({
           <div
             className={`flex items-center gap-1 ${isCollapsed ? "lg:justify-center" : ""}`}
           >
-            {/* Avatar or Initials */}
             <div
               className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs md:text-sm font-semibold overflow-hidden shrink-0 ${!avatarUrl ? getAvatarColor(user?.name || "User") : ""}`}
               title={isCollapsed ? user?.name || "Usuário" : undefined}
@@ -498,6 +376,7 @@ export default function Sidebar({
               {avatarUrl ? (
                 <Image
                   src={avatarUrl}
+                  unoptimized
                   alt={user?.name || "Avatar"}
                   width={40}
                   height={40}
@@ -544,7 +423,6 @@ export default function Sidebar({
             </button>
           </div>
 
-          {/* Dropdown Menu */}
           {isMenuOpen && (
             <div className="absolute bottom-full left-2 right-2 mb-2 bg-white border border-neutral-100 rounded-xl shadow-lg overflow-hidden">
               <Link

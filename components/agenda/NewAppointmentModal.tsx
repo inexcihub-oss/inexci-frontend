@@ -41,18 +41,12 @@ import { CalendarDays, UserPlus, AlertTriangle } from "lucide-react";
 interface NewAppointmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Recebe a consulta salva (com `warnings`, quando houver). */
   onSaved: (salva?: Appointment) => void;
-  /** Data pré-selecionada (YYYY-MM-DD) ao abrir a partir de um dia da agenda. */
   defaultDate?: string | null;
-  /** Horário pré-selecionado (HH:mm) ao criar clicando num slot da grade. */
   defaultTime?: string | null;
-  /** Consulta em edição; quando ausente, é criação. */
   appointment?: Appointment | null;
-  /** Paciente pré-selecionado ao criar (ex.: a partir da ficha do paciente). */
   defaultPatientId?: string;
   defaultPatientLabel?: string;
-  /** Convênio do paciente pré-selecionado, sugerido como convênio da consulta. */
   defaultHealthPlanId?: string | null;
 }
 
@@ -62,7 +56,6 @@ function pad(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
-/** ISO → { date: YYYY-MM-DD, time: HH:mm } em horário local. */
 function isoToLocalParts(iso: string): { date: string; time: string } {
   const d = new Date(iso);
   return {
@@ -71,14 +64,12 @@ function isoToLocalParts(iso: string): { date: string; time: string } {
   };
 }
 
-/** { date, time } locais → ISO (UTC). */
 function partsToIso(date: string, time: string): string {
   const [y, m, d] = date.split("-").map(Number);
   const [hh, mm] = time.split(":").map(Number);
   return new Date(y, m - 1, d, hh, mm, 0, 0).toISOString();
 }
 
-/** "YYYY-MM-DD" → Date local, ou null se incompleto. */
 function parseDate(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const [y, m, d] = value.split("-").map(Number);
@@ -101,8 +92,6 @@ export function NewAppointmentModal({
   const { data: clinics = [] } = useClinics();
   const { data: healthPlans = [] } = useHealthPlans();
   const { emTour } = useOnboarding();
-  // Guarda por PROVENIÊNCIA, não só pelo estado do tour: editar a consulta
-  // fabricada continua bloqueado mesmo depois que o tour termina.
   const dadosFabricados = appointment?.id === TOUR_DEMO_APPOINTMENT_ID;
 
   const [patientId, setPatientId] = useState("");
@@ -110,16 +99,10 @@ export function NewAppointmentModal({
   const [doctorId, setDoctorId] = useState("");
   const [clinicId, setClinicId] = useState("");
   const [roomId, setRoomId] = useState("");
-  // De onde veio a clínica atual: "grade" (preenchida ao escolher um horário
-  // da grade) ou "manual" (o usuário escolheu no select). Só a clínica vinda
-  // da grade — ou nenhuma — é substituída pelo próximo horário escolhido.
   const origemClinica = useRef<"grade" | "manual" | null>(null);
   const [healthPlanId, setHealthPlanId] = useState("");
   const [isWalkIn, setIsWalkIn] = useState(false);
-  // Depois que o usuário mexe no convênio, a troca de paciente não o
-  // sobrescreve mais.
   const [convenioEscolhido, setConvenioEscolhido] = useState(false);
-  // Convênio de cada paciente vindo da busca, para sugerir ao escolher.
   const convenioDoPaciente = useRef(new Map<string, string | null>());
   const [type, setType] = useState<AppointmentType>("first_visit");
   const [date, setDate] = useState("");
@@ -129,19 +112,11 @@ export function NewAppointmentModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dayAppointments, setDayAppointments] = useState<Appointment[]>([]);
-  // Grade do profissional no dia (MIG-05): horários livres e ocupados.
   const [diaDaGrade, setDiaDaGrade] = useState<AvailabilityDay | null>(null);
-  // Bloqueios do dia, à parte da grade: um bloqueio fora do horário de
-  // atendimento não aparece em nenhum horário da grade, e o aviso só viria
-  // na recusa do backend, depois de clicar em Agendar.
   const [bloqueiosDoDia, setBloqueiosDoDia] = useState<ScheduleBlock[]>([]);
-  // A lista de bloqueios não carregou: só aí o "block" dos horários da grade
-  // serve de fallback para travar o salvar.
   const [bloqueiosFalharam, setBloqueiosFalharam] = useState(false);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
 
-  // Busca as consultas já marcadas no dia/médico selecionado (para o usuário
-  // ver os horários ocupados antes de escolher). Ignora a própria em edição.
   useEffect(() => {
     if (!isOpen) return;
     const parsed = parseDate(date);
@@ -164,8 +139,6 @@ export function NewAppointmentModal({
         if (!active) return;
         setDayAppointments(
           list
-            // Só o que ocupa o horário: cancelada e falta não disputam a
-            // agenda (mesmo critério do backend).
             .filter((a) => a.id !== appointment?.id && ocupaAgenda(a.status))
             .sort(
               (a, b) =>
@@ -189,7 +162,6 @@ export function NewAppointmentModal({
     availabilityService
       .getSlots({ doctorId, from: date, to: date })
       .then((dias) => active && setDiaDaGrade(dias[0] ?? null))
-      // A grade só orienta: sem ela, o agendamento segue como antes.
       .catch(() => active && setDiaDaGrade(null));
     return () => {
       active = false;
@@ -213,7 +185,6 @@ export function NewAppointmentModal({
         to: fimDoDia.toISOString(),
       })
       .then((bloqueios) => active && setBloqueiosDoDia(bloqueios))
-      // Só orienta: o backend continua recusando o horário bloqueado.
       .catch(() => {
         if (!active) return;
         setBloqueiosDoDia([]);
@@ -224,7 +195,6 @@ export function NewAppointmentModal({
     };
   }, [isOpen, date, doctorId]);
 
-  // Preenche o formulário ao abrir (edição ou defaults de criação).
   useEffect(() => {
     if (!isOpen) return;
     setError(null);
@@ -268,13 +238,6 @@ export function NewAppointmentModal({
     defaultHealthPlanId,
   ]);
 
-  /**
-   * Autosseleção do médico quando só existe um acessível. Fica em efeito
-   * próprio porque `doctors` chega assíncrono: mantê-lo nas dependências do
-   * efeito de preenchimento fazia o formulário inteiro ser rebobinado a cada
-   * render enquanto a lista não tinha carregado — apagando, entre outras
-   * coisas, a clínica que o usuário acabara de escolher.
-   */
   useEffect(() => {
     if (!isOpen || appointment) return;
     if (doctors.length === 1) setDoctorId(doctors[0].id);
@@ -288,8 +251,6 @@ export function NewAppointmentModal({
     return records.map((p) => ({ value: p.id, label: p.name }));
   }, []);
 
-  // Salas da clínica escolhida: só as ativas, mais a atual em edição (mesmo
-  // desativada), para não sumir da tela de quem só está mudando o horário.
   const { data: roomsDaClinica = [] } = useClinicRooms(clinicId || null);
   const salas = useMemo(
     () =>
@@ -299,12 +260,6 @@ export function NewAppointmentModal({
     [roomsDaClinica, isEdit, appointment?.roomId],
   );
 
-  /**
-   * Escolher um horário da grade também traz o local do período (clínica e
-   * sala), mas só quando o usuário ainda não escolheu outro à mão — clínica
-   * vazia ou preenchida por um horário anterior da grade. Em edição, a
-   * clínica já gravada conta como escolha e não é trocada.
-   */
   const escolherHorarioDaGrade = (slot: AvailabilitySlot, rotulo: string) => {
     setTime(rotulo);
     if (!slot.clinicId) return;
@@ -322,11 +277,6 @@ export function NewAppointmentModal({
     [patientId, doctorId, date, time],
   );
 
-  /**
-   * Aviso de horário: só existe quando há clínica escolhida e data/hora
-   * válidas. A clínica é opcional de propósito — sem unidade, não há grade
-   * contra a qual comparar, e inventar um aviso seria pior que não avisar.
-   */
   const avisoHorario = useMemo(() => {
     const clinica = clinics.find((c) => c.id === clinicId);
     if (!clinica) return null;
@@ -345,12 +295,6 @@ export function NewAppointmentModal({
     );
   }, [clinics, clinicId, date, time, duration]);
 
-  /**
-   * Em edição, horário/duração só vão no PATCH quando mudaram: o backend
-   * revalida bloqueio/feriado e devolve o aviso "fora da grade" sempre que
-   * eles chegam — reenviá-los sem mudança barrava (ou avisava) a edição de
-   * uma simples observação numa consulta antiga.
-   */
   const mudouHorario = useMemo(() => {
     if (!isEdit || !appointment) return true;
     if (duration !== appointment.durationMinutes) return true;
@@ -366,22 +310,10 @@ export function NewAppointmentModal({
       ? (clinicId || null) !== (appointment.clinicId ?? null)
       : true;
 
-  /**
-   * Na edição, o backend só reconfere bloqueio/feriado quando o horário ou a
-   * clínica mudam — e só para consulta que ocupa a agenda
-   * (`OCCUPYING_APPOINTMENT_STATUSES`): cancelada/falta pode ser remarcada
-   * para feriado ou bloqueio, porque não disputa o horário (reativá-la é que
-   * revalida). Fora disso o aviso da tela não deve travar o "Salvar".
-   */
   const ocupaHorario =
     !isEdit || !appointment ? true : ocupaAgenda(appointment.status);
   const conferirGrade = ocupaHorario && (mudouHorario || mudouClinica);
 
-  /**
-   * Feriado que bloqueia e bloqueio de agenda são recusados pelo backend
-   * (409) até para encaixe — não há "mesmo assim". Só "fora da grade" é
-   * aviso que deixa agendar.
-   */
   const bloqueioGrade = useMemo(() => {
     if (!conferirGrade) return null;
     if (diaDaGrade?.holiday?.blocksAgenda) {
@@ -404,10 +336,6 @@ export function NewAppointmentModal({
         ? `Horário bloqueado na agenda do profissional (${bloqueio.reason}): não será possível agendar.`
         : "Horário bloqueado na agenda do profissional: não será possível agendar.";
     }
-    // O `reason: "block"` dos horários da grade é calculado pelo backend com
-    // a clínica do período da grade, não com a clínica desta consulta — um
-    // bloqueio de outra clínica marcaria o horário sem atingir a consulta.
-    // Só serve de fallback quando a lista de bloqueios não carregou.
     if (!diaDaGrade || !bloqueiosFalharam) return null;
     const fim = inicio.getTime() + duration * 60_000;
     const bloqueado = diaDaGrade.slots.some(
@@ -431,10 +359,6 @@ export function NewAppointmentModal({
     duration,
   ]);
 
-  /**
-   * Fora da grade do profissional: avisa, mas deixa agendar. O backend
-   * devolve `fora_da_grade` quando o horário OU a clínica mudam.
-   */
   const avisoGrade = useMemo(() => {
     if (!diaDaGrade || bloqueioGrade || !(mudouHorario || mudouClinica))
       return null;
@@ -456,7 +380,6 @@ export function NewAppointmentModal({
     duration,
   ]);
 
-  /** Só sugere o convênio do paciente se ele estiver entre os da conta. */
   const convenioSugerido = (id: string | null | undefined): string =>
     id && healthPlans.some((hp) => hp.id === id) ? id : "";
 
@@ -471,11 +394,6 @@ export function NewAppointmentModal({
     try {
       const scheduledAt = partsToIso(date, time);
       if (isEdit && appointment) {
-        // Só manda `clinicId` quando ele de fato mudou: uma clínica
-        // soft-deletada não aparece em `useClinics`, mas o efeito de
-        // preenchimento carrega o uuid dela mesmo assim — reenviá-lo sem
-        // mudança faria o backend (que filtra soft delete) recusar o PATCH
-        // inteiro com 404, e mandar `null` apagaria o vínculo histórico.
         const mudouSala = (roomId || null) !== (appointment.roomId ?? null);
         const mudouConvenio =
           (healthPlanId || null) !== (appointment.healthPlanId ?? null);
@@ -520,7 +438,6 @@ export function NewAppointmentModal({
       size="sm"
     >
       <div className="px-5 py-4 flex flex-col gap-4">
-        {/* Paciente */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <label className="ds-label mb-0">
@@ -543,8 +460,6 @@ export function NewAppointmentModal({
             onChange={(v, label) => {
               setPatientId(v);
               setPatientLabel(label ?? "");
-              // Sugere o convênio do paciente, sem desfazer uma escolha
-              // explícita de quem está agendando.
               if (!convenioEscolhido) {
                 setHealthPlanId(
                   convenioSugerido(convenioDoPaciente.current.get(v)),
@@ -558,7 +473,6 @@ export function NewAppointmentModal({
           />
         </div>
 
-        {/* Médico (só quando há mais de um acessível) */}
         {doctors.length > 1 && (
           <div className="flex flex-col gap-1">
             <label htmlFor="consulta-profissional" className="ds-label mb-0">
@@ -582,7 +496,6 @@ export function NewAppointmentModal({
           </div>
         )}
 
-        {/* Clínica (local de atendimento) */}
         <div className="flex flex-col gap-1">
           <label htmlFor="clinica" className="ds-label mb-0">
             Clínica
@@ -593,7 +506,6 @@ export function NewAppointmentModal({
             value={clinicId}
             onChange={(e) => {
               setClinicId(e.target.value);
-              // A sala é da clínica: trocar de clínica tira a sala.
               setRoomId("");
               origemClinica.current = "manual";
             }}
@@ -613,7 +525,6 @@ export function NewAppointmentModal({
           </select>
         </div>
 
-        {/* Sala (só quando a clínica tem salas cadastradas) */}
         {clinicId && salas.length > 0 && (
           <div className="flex flex-col gap-1">
             <label htmlFor="sala" className="ds-label mb-0">
@@ -639,7 +550,6 @@ export function NewAppointmentModal({
           </div>
         )}
 
-        {/* Convênio */}
         <div className="flex flex-col gap-1">
           <label htmlFor="convenio-consulta" className="ds-label mb-0">
             Convênio
@@ -662,7 +572,6 @@ export function NewAppointmentModal({
           </select>
         </div>
 
-        {/* Tipo */}
         <div className="flex flex-col gap-1">
           <label htmlFor="consulta-tipo" className="ds-label mb-0">
             Tipo
@@ -683,7 +592,6 @@ export function NewAppointmentModal({
           </select>
         </div>
 
-        {/* Data + horário */}
         <div className="grid grid-cols-2 gap-3" data-tour="agenda-modal-horario">
           <div className="flex flex-col gap-1">
             <label htmlFor="consulta-data" className="ds-label mb-0">
@@ -729,7 +637,6 @@ export function NewAppointmentModal({
           </div>
         </div>
 
-        {/* Horários da grade do profissional no dia */}
         {diaDaGrade && diaDaGrade.slots.length > 0 && (
           <div className="flex flex-col gap-1.5">
             <p className="text-xs font-semibold text-neutral-500">
@@ -739,11 +646,6 @@ export function NewAppointmentModal({
               {diaDaGrade.slots.map((slot) => {
                 const rotulo = hhmm(new Date(slot.start));
                 const escolhido = rotulo === time;
-                // Encaixe passa por cima de consulta, nunca de feriado (o
-                // backend recusa até para encaixe). "block" é só aviso
-                // visual: o backend o calcula pela clínica do período da
-                // grade, que pode não ser a da consulta — quem trava o
-                // salvar é a checagem por `bloqueiosDoDia`.
                 const indisponivel =
                   !slot.free &&
                   slot.reason !== "block" &&
@@ -780,7 +682,6 @@ export function NewAppointmentModal({
           </div>
         )}
 
-        {/* Encaixe */}
         <label className="flex items-start gap-2.5 cursor-pointer">
           <input
             type="checkbox"
@@ -796,7 +697,6 @@ export function NewAppointmentModal({
           </span>
         </label>
 
-        {/* Consultas já marcadas no dia */}
         {dayAppointments.length > 0 && (
           <div className="rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2.5">
             <p className="text-xs font-semibold text-neutral-500 mb-1.5">
@@ -826,7 +726,6 @@ export function NewAppointmentModal({
           </div>
         )}
 
-        {/* Duração */}
         <div className="flex flex-col gap-1">
           <label htmlFor="consulta-duracao" className="ds-label mb-0">
             Duração
@@ -845,7 +744,6 @@ export function NewAppointmentModal({
           </select>
         </div>
 
-        {/* Observações */}
         <div className="flex flex-col gap-1">
           <label htmlFor="consulta-observacoes" className="ds-label mb-0">
             Observações

@@ -28,7 +28,6 @@ function formatPostDocType(key: string): string {
   return POST_DOC_TYPE_LABELS[key] ?? key;
 }
 
-/** Formata data como "21 Set 2025" usando horário local */
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   const day = date.getDate().toString().padStart(2, "0");
@@ -51,7 +50,6 @@ function formatDate(dateStr: string): string {
   return `${day} ${month} ${year}`;
 }
 
-/** Formata hora como "10:00" usando horário local */
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr);
   const hours = date.getHours().toString().padStart(2, "0");
@@ -60,15 +58,6 @@ function formatTime(dateStr: string): string {
   return `${hours}:${minutes}`;
 }
 
-/**
- * Aba "Pós Cirúrgico" — disponível a partir do status 6 (Realizada).
- * Exibe a data da cirurgia e os documentos pós-cirúrgicos associados.
- * Permite adicionar e remover documentos do tipo pós-cirúrgico.
- *
- * Referências:
- *   - telas-inexci/status/realizada/tela-detalhes-status-realizada-aba-pos-cirurgico.png
- *   - telas-inexci/status/realizada/modal-add-documento-aba-pos-cirurgico.png
- */
 export function PosCirurgicoTab() {
   const { solicitacao, onUpdate } = useSolicitacao();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -193,21 +182,17 @@ export function PosCirurgicoTab() {
 
   return (
     <div className="space-y-2.5">
-      {/* ── Seção: Data da realização ──────────────────────────────────────── */}
       <SectionCard title="Data da realização">
         {performedAt ? (
           <div className="p-4">
             <div className="flex border border-neutral-100 rounded-xl overflow-hidden">
-              {/* Data */}
               <div className="flex-1 flex flex-col items-center gap-1.5 px-4 py-4 md:px-6 md:py-5 bg-neutral-50">
                 <span className="text-xs md:text-sm text-black/50">Data</span>
                 <span className="text-lg md:text-2xl font-bold text-black">
                   {formatDate(performedAt)}
                 </span>
               </div>
-              {/* Divisor vertical */}
               <div className="w-px bg-neutral-100 self-stretch" />
-              {/* Horário */}
               <div className="flex-1 flex flex-col items-center gap-1.5 px-4 py-4 md:px-6 md:py-5 bg-neutral-50">
                 <span className="text-xs md:text-sm text-black/50">
                   Horário
@@ -225,12 +210,10 @@ export function PosCirurgicoTab() {
         )}
       </SectionCard>
 
-      {/* ── Seção: Documentos pós cirúrgicos ───────────────────────────────── */}
       <SectionCard
         title="Documentos pós cirúrgicos"
         headerAction={headerAction}
       >
-        {/* Cabeçalho da tabela */}
         <div className="flex items-center gap-4 px-4 py-1.5 border-b border-neutral-100">
           <div className="flex-1 min-w-0 text-xs text-gray-900 opacity-70">
             Tipo
@@ -244,14 +227,12 @@ export function PosCirurgicoTab() {
           <div className="w-8" />
         </div>
 
-        {/* Linhas de documentos */}
         {postSurgeryDocs.length > 0 ? (
           postSurgeryDocs.map((doc) => (
             <div
               key={doc.id}
               className="flex items-center gap-4 px-4 py-2.5 border-b border-neutral-100 hover:bg-gray-50 last:border-b-0"
             >
-              {/* Tipo (nome do arquivo) */}
               <div className="flex-1 min-w-0 flex items-center gap-2">
                 <svg
                   className="w-5 h-5 text-gray-500 flex-shrink-0"
@@ -293,12 +274,10 @@ export function PosCirurgicoTab() {
                 </a>
               </div>
 
-              {/* Tipo do arquivo — oculto em mobile */}
               <div className="hidden sm:block w-40 flex-shrink-0 text-xs text-gray-900">
                 {formatPostDocType(doc.key)}
               </div>
 
-              {/* Anexado em — oculto em mobile */}
               <div className="hidden sm:block w-36 flex-shrink-0 text-xs text-gray-900">
                 {new Date(doc.createdAt).toLocaleDateString("pt-BR", {
                   weekday: "short",
@@ -307,7 +286,6 @@ export function PosCirurgicoTab() {
                 })}
               </div>
 
-              {/* Ações */}
               <div className="w-8 flex justify-center flex-shrink-0">
                 <button
                   onClick={() => {

@@ -54,7 +54,6 @@ describe("Sidebar — filtro por permissão", () => {
     expect(screen.getByText("Atendimento")).toBeInTheDocument();
   });
 
-  /** Pacientes e cadastros seguem visíveis para qualquer área de trabalho. */
   it("mantém pacientes visível para quem atende", () => {
     authState.permissions = [Permission.ATENDIMENTO];
     render(<Sidebar />);
@@ -62,12 +61,6 @@ describe("Sidebar — filtro por permissão", () => {
     expect(screen.getByText("Pacientes")).toBeInTheDocument();
   });
 
-  /**
-   * "Clínicas" mora dentro do acordeão "Cadastros", que começa fechado (o
-   * pathname mockado é "/agenda", fora da lista que o abre por padrão) — é
-   * preciso abrir o acordeão antes de verificar o filho, senão ele nunca
-   * entra no DOM independente da permissão.
-   */
   it("mostra Clínicas só para quem tem administração", () => {
     authState.permissions = [Permission.ADMINISTRACAO];
     const { unmount } = render(<Sidebar />);

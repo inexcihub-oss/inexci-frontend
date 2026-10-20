@@ -3,7 +3,6 @@
 import React from "react";
 
 interface PrimaryActionButtonProps {
-  /** Número do status (1-9) */
   status: number;
   onSendRequest: () => void;
   onStartAnalysis: () => void;

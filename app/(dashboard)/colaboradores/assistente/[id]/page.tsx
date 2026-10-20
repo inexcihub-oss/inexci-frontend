@@ -19,22 +19,22 @@ import { logger } from "@/lib/logger";
 import { userService } from "@/services/user.service";
 import { uploadService } from "@/services/upload.service";
 import { patientService, PatientListItem } from "@/services/patient.service";
-import { surgeryRequestService } from "@/services/surgery-request.service";
 import {
+  surgeryRequestService,
   SurgeryRequestListItem,
-  STATUS_NUMBER_TO_STRING,
-  STATUS_COLORS,
 } from "@/services/surgery-request.service";
 import { formatTimeAgo } from "@/lib/formatters";
 import { removeBackground, cn } from "@/lib/utils";
 import { GENDER_OPTIONS, STATE_OPTIONS, STATE_UF_OPTIONS } from "@/lib/options";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
 import { ChevronRight, Upload, X, Loader2, Settings2 } from "lucide-react";
 import { useInvalidateAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { DoctorAccessSection } from "@/components/colaboradores/DoctorAccessSection";
 import { CollaboratorActionsSection } from "@/components/colaboradores/CollaboratorActionsSection";
+import {
+  LinkedSurgeryRequestsList,
+  linkedProcedureName,
+} from "@/components/colaboradores/LinkedSurgeryRequestsList";
 import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
 import { DoctorHeaderEditor } from "@/components/shared/DoctorHeaderEditor";
 import { useDoctorHeaderEditor } from "@/hooks/useDoctorHeaderEditor";
@@ -83,21 +83,11 @@ export default function AssistenteDetalhePage() {
   const [isProcessingSignature, setIsProcessingSignature] = useState(false);
   const [isScConfigModalOpen, setIsScConfigModalOpen] = useState(false);
   const signatureInputRef = useRef<HTMLInputElement>(null);
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
-  /**
-   * "É médico" **já salvo**. Governa o que depende de um `doctor_profile` real
-   * no servidor (cabeçalho de documentos, assinatura, barra lateral) — esses
-   * recursos não funcionam antes de a promoção ser gravada. A marcação em
-   * edição vive em `formData.isDoctor`.
-   */
   const isDoctor = collaborator?.isDoctor === true;
   const isFabricado = collaborator?.id === TOUR_DEMO_COLLABORATOR_ID;
-  // Admin delegado editando a si mesmo: o backend recusa (403) que ele troque
-  // o próprio conselho ou o próprio vínculo profissional — senão um
-  // nutricionista com Administração se promoveria a médico sozinho. Quem
-  // troca é o dono ou outro admin. Número, UF e especialidade seguem livres.
   const { user: usuarioLogado, isAccountOwner } = useAuth();
   const vinculoProprioTravado =
     !!collaborator &&
@@ -130,7 +120,6 @@ export default function AssistenteDetalhePage() {
     showToast,
   });
 
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -144,7 +133,6 @@ export default function AssistenteDetalhePage() {
     addressComplement: "",
     city: "",
     state: "",
-    // Doctor-specific fields
     isDoctor: false,
     council: "CRM" as ProfessionalCouncil,
     specialty: "",
@@ -220,10 +208,6 @@ export default function AssistenteDetalhePage() {
       return;
     }
 
-    // Disparadas em paralelo com o getById do colaborador — nenhuma das duas
-    // depende dele: as solicitações já vêm filtradas pelo médico (id da rota)
-    // no backend. `.catch(noop)` evita unhandled rejection quando a função
-    // retorna cedo (colaborador não encontrado) antes de serem consumidas.
     const patientsPromise = patientService.getAll();
     const surgeryPromise = surgeryRequestService.getAll({
       doctorId: params.id,
@@ -244,7 +228,6 @@ export default function AssistenteDetalhePage() {
 
       const dp = collab.doctorProfile;
 
-      // Preenche o formulário
       const fd = {
         name: collab.name || "",
         email: collab.email || "",
@@ -258,16 +241,11 @@ export default function AssistenteDetalhePage() {
         addressComplement: collab.addressComplement || "",
         city: collab.city || "",
         state: collab.state || "",
-        // Doctor-specific
         isDoctor: collab.isDoctor === true,
         council: councilOf(dp),
         specialty: dp?.specialty || "",
         crm: dp?.crm || "",
         crmState: dp?.crmState || "",
-        // `grantedPermissions` (crua), não `permissions` (efetiva): semear
-        // com a efetiva regravaria o bônus de médico (Agenda/Atendimento/
-        // Solicitações) como concessão real — desmarcar "é médico" depois
-        // não voltaria a tirá-las (I2 do PLANO-PERMISSOES-COLABORADORES).
         permissions: collab.grantedPermissions ?? [],
       };
       setFormData(fd);
@@ -280,11 +258,9 @@ export default function AssistenteDetalhePage() {
       setLoading(false);
     }
 
-    // Carregar últimos pacientes
     setLoadingPatients(true);
     try {
       const patients = await patientsPromise;
-      // Ordenar por mais recente e pegar os 5 primeiros
       const sorted = [...patients]
         .sort(
           (a, b) =>
@@ -298,12 +274,10 @@ export default function AssistenteDetalhePage() {
       setLoadingPatients(false);
     }
 
-    // Carregar últimas solicitações (para médicos)
     setLoadingRequests(true);
     try {
       const response = await surgeryPromise;
       if (response?.records && Array.isArray(response.records)) {
-        // Já filtradas pelo médico no backend; aqui só limitamos a exibição.
         setRecentRequests(response.records.slice(0, 10));
       }
     } catch (error) {
@@ -322,9 +296,6 @@ export default function AssistenteDetalhePage() {
   };
 
   const handleSave = async () => {
-    // Defesa em profundidade: o botão já fica desabilitado (`isFabricado`),
-    // mas o handler não pode depender só disso — checa a proveniência do
-    // dado (colaborador fabricado do tour), não uma flag genérica de tour.
     if (isFabricado) return;
     if (!collaborator) return;
 
@@ -342,8 +313,6 @@ export default function AssistenteDetalhePage() {
       return;
     }
 
-    // O backend exige número e UF para médico (CRM); os demais conselhos
-    // podem ficar sem registro cadastrado.
     if (
       formData.isDoctor &&
       formData.council === "CRM" &&
@@ -356,9 +325,6 @@ export default function AssistenteDetalhePage() {
       return;
     }
 
-    // Os campos já ficam desabilitados; isto cobre um estado antigo no
-    // formulário. Sem esta checagem, o 403 só viria depois de o perfil básico
-    // já ter sido gravado — salvamento pela metade.
     if (
       vinculoProprioTravado &&
       originalData &&
@@ -389,13 +355,7 @@ export default function AssistenteDetalhePage() {
 
     setSaving(true);
     try {
-      // Dados profissionais de quem JÁ era médico. Na promoção, CRM/UF/
-      // especialidade vão no payload do colaborador (que é quem cria o
-      // perfil); chamar aqui usaria um `doctorProfile` que ainda não existe.
-      // Vai PRIMEIRO: é a gravação com mais regra de permissão (conselho) —
-      // se o backend recusar, nada do resto foi gravado pela metade.
       const jaEraMedico = originalData?.isDoctor === true;
-      // Só o que mudou; campo apagado vai como "" (o backend grava null).
       const doctorProfilePayload =
         formData.isDoctor && jaEraMedico && originalData
           ? buildDoctorProfileUpdatePayload(originalData, formData)
@@ -429,9 +389,6 @@ export default function AssistenteDetalhePage() {
       }
 
       setOriginalData(formData);
-      // Promoção/despromoção e troca de conselho/registro mudam o que a tela
-      // mostra (dados profissionais, subtítulo, cabeçalho, permissões fixas)
-      // e o que outras telas sabem do colaborador — recarrega do servidor.
       const mudouRegistro =
         !!doctorProfilePayload &&
         ("council" in doctorProfilePayload ||
@@ -440,8 +397,6 @@ export default function AssistenteDetalhePage() {
       if (formData.isDoctor !== jaEraMedico || mudouRegistro) {
         await loadData();
       }
-      // Lista de médicos do wizard de SC / agenda (nome, conselho, registro,
-      // especialidade) pode ter mudado com qualquer gravação desta tela.
       void invalidateAvailableDoctors();
       showToast("Colaborador atualizado com sucesso!", "success");
     } catch (error) {
@@ -585,72 +540,18 @@ export default function AssistenteDetalhePage() {
   };
 
   const sidebarContent = isDoctor ? (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Últimas solicitações
-        </h3>
-        {!loadingRequests && (
-          <span className="text-xs text-gray-400">{recentRequests.length}</span>
-        )}
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        {loadingRequests ? (
-          <div className="flex items-center justify-center py-8">
-            <Spinner size="sm" />
-          </div>
-        ) : recentRequests.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <span className="text-xs text-gray-400">
-              Nenhuma solicitação encontrada
-            </span>
-          </div>
-        ) : (
-          recentRequests.map((req) => {
-            const statusLabel =
-              STATUS_NUMBER_TO_STRING[req.status] ?? "Pendente";
-            const colors = STATUS_COLORS[statusLabel] ?? {
-              bg: "bg-gray-50",
-              text: "text-gray-600",
-            };
-            const patientName = req.patient?.name || "Paciente";
-            const procedureName =
-              (req as any).procedureName ||
-              (req as any).indicationName ||
-              req.procedure?.name ||
-              req.tussProcedure?.description ||
-              "Procedimento";
-            return (
-              <div
-                key={req.id}
-                onClick={() => router.push(`/solicitacao/${req.id}`)}
-                className="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 hover:bg-gray-50 cursor-pointer active:bg-gray-100 transition-colors min-h-[44px]"
-              >
-                <div className="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
-                  <span className="text-xs font-semibold text-gray-900 truncate">
-                    {patientName}
-                  </span>
-                  <span className="text-xs text-gray-500 truncate">
-                    {procedureName}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`text-xs px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}
-                  >
-                    {statusLabel}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
+    <LinkedSurgeryRequestsList
+      title="Últimas solicitações"
+      loading={loadingRequests}
+      requests={recentRequests}
+      emptyMessage="Nenhuma solicitação encontrada"
+      getLines={(req) => ({
+        primary: req.patient?.name || "Paciente",
+        secondary: linkedProcedureName(req, "Procedimento"),
+      })}
+    />
   ) : (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 h-13 border-b border-neutral-100 shrink-0">
         <h3 className="text-sm font-semibold text-gray-900">
           Últimos pacientes
@@ -660,7 +561,6 @@ export default function AssistenteDetalhePage() {
         )}
       </div>
 
-      {/* Lista de pacientes */}
       <div className="flex-1 overflow-y-auto">
         {loadingPatients ? (
           <div className="flex items-center justify-center py-8">
@@ -721,7 +621,6 @@ export default function AssistenteDetalhePage() {
         }
         sidebarContent={sidebarContent}
       >
-        {/* Seção: Informações pessoais */}
         <FormSection title="Informações pessoais">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
             <Input
@@ -808,7 +707,6 @@ export default function AssistenteDetalhePage() {
               options={STATE_OPTIONS}
             />
           </div>
-          {/* Botões dentro da seção */}
           {!formData.isDoctor && (
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={handleCancel}>
@@ -825,10 +723,6 @@ export default function AssistenteDetalhePage() {
           )}
         </FormSection>
 
-        {/* Seção: Dados profissionais. Fica sempre visível para que o "é
-            médico" possa ser ligado/desligado depois da criação — antes o
-            bloco inteiro só aparecia para quem já era médico, e não havia
-            como promover nem despromover ninguém pela interface. */}
         <FormSection title="Dados profissionais">
           <label
             className={cn(
@@ -916,9 +810,6 @@ export default function AssistenteDetalhePage() {
                 />
               </div>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-2">
-                {/* Assinatura, cabeçalho e configuração de SC dependem de um
-                    `doctor_profile` que já exista no servidor — numa promoção
-                    ainda não salva não há o que configurar. */}
                 {isDoctor ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <span
@@ -987,20 +878,13 @@ export default function AssistenteDetalhePage() {
           )}
         </FormSection>
 
-        {/* Seção: Grade de atendimento (MIG-05) — só para profissional já
-            salvo como médico; a grade é de um doctor_profile real. */}
         {isDoctor && collaborator && !isFabricado && (
           <FormSection title="Grade de atendimento">
             <ScheduleWeekEditor doctorId={collaborator.id} />
           </FormSection>
         )}
 
-        {/* Seção: Permissões de acesso */}
         <FormSection title="Permissões de acesso">
-          {/* Usa a marcação em edição, não a salva: ao ligar "é médico" as
-              três áreas já aparecem travadas, mostrando o efeito antes de
-              salvar. O que é gravado continua sendo só `formData.permissions`
-              (as fixas nunca viram concessão). */}
           <PermissionsSection
             value={formData.permissions}
             isDoctor={formData.isDoctor}
@@ -1026,14 +910,12 @@ export default function AssistenteDetalhePage() {
           </div>
         </FormSection>
 
-        {/* Seção: Acesso a Médicos */}
         <DoctorAccessSection
           collaboratorId={params.id}
           collaboratorIsDoctor={isDoctor}
           collaboratorName={formData.name}
         />
 
-        {/* Seção: Acesso e Segurança */}
         <CollaboratorActionsSection
           collaboratorId={params.id}
           currentStatus={collaboratorStatus}
@@ -1111,6 +993,7 @@ export default function AssistenteDetalhePage() {
                   <div className="relative">
                     <Image
                       src={signaturePreview}
+                      unoptimized
                       alt="Assinatura"
                       width={300}
                       height={100}
@@ -1189,13 +1072,6 @@ export default function AssistenteDetalhePage() {
         </Modal>
       )}
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </PageContainer>
   );
 }

@@ -3,13 +3,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-/**
- * O e-mail de menção é o único canal de e-mail que o usuário pode desligar
- * além do resumo semanal — e desligá-lo não pode derrubar a notificação
- * dentro da plataforma, por isso o toggle vive em "Tipos de Notificação" e
- * grava `mentionEmails`.
- */
-
 const settings = {
   pushNotifications: true,
   whatsappNotifications: true,
@@ -29,8 +22,6 @@ let authState: {
   refreshSubscription: () => Promise<void>;
 };
 
-// Mesmos padrões dos outros specs da página: a tela também consulta `can`,
-// `isDoctor` e `canIssueClinicalDocuments` para montar as abas.
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     can: () => false,

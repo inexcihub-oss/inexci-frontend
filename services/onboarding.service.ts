@@ -5,11 +5,6 @@ import type {
 } from "@/lib/onboarding/state";
 
 export const onboardingService = {
-  async getState(): Promise<OnboardingState> {
-    const response = await api.get<OnboardingState>("/onboarding/state");
-    return response.data;
-  },
-
   async patch(patch: OnboardingWritablePatch): Promise<OnboardingState> {
     const response = await api.patch<OnboardingState>(
       "/onboarding/state",
@@ -18,7 +13,6 @@ export const onboardingService = {
     return response.data;
   },
 
-  /** Botão "Refazer o onboarding" da aba de Configurações. */
   async reset(): Promise<OnboardingState> {
     const response = await api.post<OnboardingState>("/onboarding/reset");
     return response.data;

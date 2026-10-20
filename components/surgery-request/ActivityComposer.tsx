@@ -15,7 +15,6 @@ interface ActivityComposerProps {
   onSent: (activity: Activity) => void;
 }
 
-/** Token de menção aberto imediatamente antes do cursor. */
 const PADRAO_MENCAO = /(?:^|\s)@([^@\s]{0,40})$/;
 
 function normalizar(texto: string): string {
@@ -25,17 +24,6 @@ function normalizar(texto: string): string {
     .toLowerCase();
 }
 
-/**
- * Campo de comentário da aba Atividades, com menção por @.
- *
- * O texto enviado é legível ("@Dr. Bruno confere?"); os ids viajam à parte,
- * reconciliados no envio pelo nome ainda presente no texto — quem apagou a
- * menção antes de enviar não notifica ninguém.
- *
- * No mobile o campo fica no rodapé de um bottom-sheet, por isso a lista usa
- * `placement: "auto"` (abre para cima quando não cabe abaixo) e vai em portal:
- * `absolute` seria cortado pelo corpo rolável da folha.
- */
 export function ActivityComposer({
   surgeryRequestId,
   onSent,
@@ -122,7 +110,6 @@ export function ActivityComposer({
       setTexto("");
       escolhidosRef.current.clear();
     } catch {
-      // Silencioso, como o fluxo anterior desta tela.
     } finally {
       setEnviando(false);
     }
@@ -178,9 +165,6 @@ export function ActivityComposer({
           aria-expanded={aberto}
           aria-controls="lista-mencoes"
           aria-autocomplete="list"
-          // `ds-input-xs` neutraliza a regra global que força 16px em input
-          // no mobile (anti-zoom do iOS): sem ela o texto digitado fica maior
-          // que as mensagens já publicadas e que o mesmo campo no desktop.
           className="ds-input-xs flex-1 bg-transparent border-none outline-none text-xs text-gray-900 leading-snug disabled:opacity-50"
         />
         <button

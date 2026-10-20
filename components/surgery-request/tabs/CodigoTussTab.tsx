@@ -6,6 +6,12 @@ import { TussProcedureModal } from "@/components/tuss/TussProcedureModal";
 import { useToast } from "@/hooks/useToast";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
+import {
+  SurgeryRequestStatusCode,
+  TUSS_OPME_EDITABLE_STATUSES,
+  isStatusIn,
+  reachedStatus,
+} from "@/lib/surgery-request-status";
 
 interface EditingState {
   id: string;
@@ -14,8 +20,15 @@ interface EditingState {
 
 export function CodigoTussTab() {
   const { solicitacao, statusNum, onUpdate } = useSolicitacao();
-  const showAuthorizationColumn = statusNum >= 3;
-  const showColorCoding = statusNum >= 4;
+  const showAuthorizationColumn = reachedStatus(
+    solicitacao,
+    SurgeryRequestStatusCode.IN_ANALYSIS,
+  );
+  const showColorCoding = reachedStatus(
+    solicitacao,
+    SurgeryRequestStatusCode.IN_SCHEDULING,
+  );
+  const isReadOnly = !isStatusIn(statusNum, TUSS_OPME_EDITABLE_STATUSES);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -69,7 +82,6 @@ export function CodigoTussTab() {
 
   return (
     <div className="flex-1 border border-neutral-100 rounded-2xl overflow-hidden flex flex-col">
-      {/* Header com Busca e Botão */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-4 py-3 border-b border-neutral-100">
         <div className="flex items-center gap-2 px-3 py-2.5 border border-neutral-100 rounded-xl bg-white w-full sm:w-80">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -90,19 +102,17 @@ export function CodigoTussTab() {
           />
         </div>
 
-        {/* Botão Novo Procedimento — desabilitado a partir de Em Análise (3) */}
         <button
           onClick={() => setIsModalOpen(true)}
-          disabled={statusNum >= 3}
+          disabled={isReadOnly}
           className={`ds-btn-inline ${
-            statusNum >= 3 ? "text-gray-400 cursor-not-allowed opacity-60" : ""
+            isReadOnly ? "text-gray-400 cursor-not-allowed opacity-60" : ""
           }`}
         >
           Novo Procedimento
         </button>
       </div>
 
-      {/* Header da Tabela */}
       <div
         className={`flex items-center gap-6 ${showColorCoding ? "pl-4 pr-4" : "pl-4 pr-20"} py-2 border-b border-neutral-100`}
       >
@@ -124,7 +134,6 @@ export function CodigoTussTab() {
         )}
       </div>
 
-      {/* Linhas de Procedimentos */}
       <div className="flex-1 overflow-auto">
         {filteredProcedures.length > 0 ? (
           filteredProcedures.map((proc) => {
@@ -179,7 +188,6 @@ export function CodigoTussTab() {
                 )}
 
                 {!showAuthorizationColumn && (
-                  /* Botões Edit e Delete — posicionados absolutamente à direita */
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     <button
                       onClick={() =>
@@ -266,7 +274,6 @@ export function CodigoTussTab() {
         existingProcedures={solicitacao.tussItems ?? []}
       />
 
-      {/* Modal de edição de quantidade */}
       {editingItem && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center">
           <div

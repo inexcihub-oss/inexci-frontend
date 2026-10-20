@@ -15,8 +15,6 @@ describe("resolverReturnUrl", () => {
   });
 
   it("recusa backslash (bypass do filtro por prefixo)", () => {
-    // "/\evil.com" comeca com "/" e nao com "//", mas o navegador resolve
-    // para https://evil.com/ e o App Router faz navegacao externa.
     expect(resolverReturnUrl("/\\evil.com", origem)).toBeNull();
   });
 

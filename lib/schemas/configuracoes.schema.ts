@@ -8,8 +8,6 @@ import {
   passwordsMatchRefine,
 } from "./shared";
 
-// ─── Perfil de usuário ────────────────────────────────────────────────────────
-
 export const profileSchema = z.object({
   name: fullNameSchema,
   email: emailSchema,
@@ -17,15 +15,12 @@ export const profileSchema = z.object({
   document: cpfOptionalSchema,
   birthDate: z.string().optional(),
   gender: z.string().optional(),
-  // Médico
   specialty: z.string().optional(),
   crm: z.string().optional(),
   crmState: z.string().optional(),
 });
 
 export type ProfileInput = z.infer<typeof profileSchema>;
-
-// ─── Alteração de senha ───────────────────────────────────────────────────────
 
 export const changePasswordSchema = z
   .object({
@@ -41,8 +36,6 @@ export const changePasswordSchema = z
   );
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
-
-// ─── Cabeçalho de documentos ──────────────────────────────────────────────────
 
 export const doctorHeaderSchema = z.object({
   logoUrl: z.string().nullable().optional(),

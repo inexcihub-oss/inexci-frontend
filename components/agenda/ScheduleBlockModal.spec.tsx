@@ -173,7 +173,6 @@ describe("ScheduleBlockModal (MIG-05)", () => {
     await user.type(screen.getByLabelText("Motivo"), "Férias");
     await user.click(screen.getByLabelText("Dia inteiro"));
 
-    // Como `data: doctors = []`: array novo a cada render.
     rerender(<ScheduleBlockModal {...props} doctors={[]} />);
     rerender(<ScheduleBlockModal {...props} doctors={[]} />);
 

@@ -37,27 +37,9 @@ const PROGRESS_VARIANTS: Record<BannerTone, "info" | "warning" | "danger"> = {
 };
 
 interface QuotaBannerProps {
-  /**
-   * Renderizado no lugar do aviso de cota quando não há nada a mostrar (sem
-   * dado carregado, abaixo do primeiro degrau, ou plano ilimitado). É o que
-   * dá lugar a um banner de precedência menor — hoje, o de onboarding — sem
-   * que `GlobalBanners` precise duplicar a lógica de degrau/dispensa daqui
-   * só para decidir se cede a vez.
-   */
   fallback?: React.ReactNode;
 }
 
-/**
- * Aviso de consumo da cota de solicitações cirúrgicas, no topo de todas as
- * páginas do dashboard.
- *
- * Aparece em três degraus (75%, 90%, 100%) para **qualquer** usuário com
- * permissão de solicitações — é ele quem esbarra no limite ao enviar. Só o
- * dono da conta ganha o CTA de upgrade; os demais leem para quem falar.
- *
- * O número absoluto ("faltam 3 de 20") é o título porque é sobre ele que se
- * age; o percentual fica na barra, que comunica proporção sem ocupar texto.
- */
 export function QuotaBanner({ fallback = null }: QuotaBannerProps = {}) {
   const { isAccountOwner, accountId } = useAuth();
   const { data: quota } = useQuota();
@@ -72,10 +54,6 @@ export function QuotaBanner({ fallback = null }: QuotaBannerProps = {}) {
     dismissedThresholds: dismissed,
   });
 
-  // `pronto` evita o piscar do aviso para quem já o fechou: o localStorage só
-  // é legível depois da hidratação. Enquanto isso, nem o fallback aparece —
-  // trocar de onboarding para cota um instante depois seria o mesmo piscar
-  // que este flag existe para evitar.
   if (!pronto) return null;
   if (!variant) return <>{fallback}</>;
 

@@ -41,8 +41,8 @@ const extractionResult: ExtractFromDocumentResponse = {
   tempStoragePath: "tmp/doc.pdf",
 };
 
-function selectFile(container: HTMLElement) {
-  const input = container.querySelector(
+function selectFile() {
+  const input = document.querySelector(
     'input[type="file"]',
   ) as HTMLInputElement;
   const file = new File(["pdf-content"], "laudo.pdf", {
@@ -66,10 +66,10 @@ describe("ApplyDocumentExtractionModal", () => {
 
   it("permite fechar o modal durante a análise sem suprimir a notificação de conclusão", async () => {
     vi.mocked(surgeryRequestService.getExtractFromDocumentStatus).mockImplementation(
-      () => new Promise(() => {}), // nunca resolve — mantém "analyzing" true
+      () => new Promise(() => {}),
     );
 
-    const { container } = render(
+    render(
       <ApplyDocumentExtractionModal
         isOpen
         onClose={onClose}
@@ -78,7 +78,7 @@ describe("ApplyDocumentExtractionModal", () => {
       />,
     );
 
-    selectFile(container);
+    selectFile();
     fireEvent.click(screen.getByRole("button", { name: "Analisar documento" }));
 
     await waitFor(() => {

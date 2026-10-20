@@ -42,8 +42,6 @@ describe("CidPicker", () => {
   const setup = (initial: ClinicalCidCode[] = []) =>
     render(<Harness initial={initial} />);
 
-  // Sem isto o campo parece vazio até o médico adivinhar um termo que retorne
-  // algo.
   it("já mostra sugestões ao focar o campo, sem digitar nada", async () => {
     const user = userEvent.setup();
     setup();

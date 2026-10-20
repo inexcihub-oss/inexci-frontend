@@ -51,12 +51,6 @@ describe("PermissionRouteGuard", () => {
     expect(screen.queryByText("conteúdo")).not.toBeInTheDocument();
   });
 
-  /**
-   * `/procedimentos` edita `SurgeryRequestTemplate` — o backend exige
-   * Solicitações em `GET/POST/PATCH/DELETE /surgery-requests/templates/*`,
-   * então a rota não pode ficar de fora de `ROUTE_PERMISSIONS` (senão a tela
-   * carrega e só a lista falha com 403).
-   */
   it("redireciona de /procedimentos quem não tem solicitações", () => {
     pathname = "/procedimentos";
     authState.permissions = [Permission.AGENDA];
@@ -113,12 +107,6 @@ describe("PermissionRouteGuard", () => {
     expect(screen.queryByText("conteúdo")).not.toBeInTheDocument();
   });
 
-  /**
-   * Ponto 2 da Tarefa 17: enquanto o AuthContext ainda resolve o perfil,
-   * `permissions` chega vazio por estar em trânsito — não porque o usuário
-   * não tem acesso. Sem essa checagem, todo mundo seria chutado para a home
-   * no primeiro render, mesmo tendo a permissão da rota.
-   */
   it("não redireciona nem esconde/mostra nada enquanto as permissões ainda carregam", () => {
     pathname = "/solicitacoes-cirurgicas";
     authState = { permissions: [], loading: true };

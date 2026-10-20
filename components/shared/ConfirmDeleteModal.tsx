@@ -11,7 +11,6 @@ interface ConfirmDeleteModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
-  /** Quando true, informa que o registro será ocultado (soft delete) em vez de removido permanentemente. */
   softDelete?: boolean;
 }
 
@@ -30,10 +29,6 @@ export function ConfirmDeleteModal({
   const cancelarRef = useRef<HTMLButtonElement>(null);
   const caixaRef = useRef<HTMLDivElement>(null);
 
-  // Esc fecha só a confirmação e Tab circula dentro dela. Captura em
-  // `window`, antes dos listeners de `document`: aberta sobre um <Modal>
-  // (ex.: excluir consulta), o Esc fecharia os dois e o Tab cairia no modal
-  // de baixo.
   useEffect(() => {
     if (!isOpen) return;
     cancelarRef.current?.focus();
@@ -72,20 +67,15 @@ export function ConfirmDeleteModal({
   const aviso = softDelete
     ? "O registro será removido das listas, mas o histórico vinculado será preservado."
     : "Esta ação não pode ser desfeita.";
-  // Várias telas já escrevem o aviso na própria descrição: não repetir.
   const avisoNaDescricao = texto.includes(aviso);
 
-  // Portal: dentro de um <Modal> (que tem transform e overflow-hidden), um
-  // `fixed` ficaria preso à caixa do modal e cortado.
   return createPortal(
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center"
       onClick={onCancel}
     >
-      {/* Overlay */}
       <div className="absolute inset-0 bg-black/40" />
 
-      {/* Modal */}
       <div
         ref={caixaRef}
         role="alertdialog"
@@ -95,7 +85,6 @@ export function ConfirmDeleteModal({
         className="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-4 md:p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Ícone */}
         <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mx-auto mb-4">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -113,7 +102,6 @@ export function ConfirmDeleteModal({
           </svg>
         </div>
 
-        {/* Título */}
         <h2
           id={tituloId}
           className="text-lg font-semibold text-gray-900 text-center mb-2"
@@ -121,7 +109,6 @@ export function ConfirmDeleteModal({
           {title}
         </h2>
 
-        {/* Descrição */}
         <p
           id={descricaoId}
           className="text-xs md:text-sm text-gray-500 text-center mb-6"
@@ -135,7 +122,6 @@ export function ConfirmDeleteModal({
           )}
         </p>
 
-        {/* Botões */}
         <div className="flex gap-3">
           <button
             ref={cancelarRef}

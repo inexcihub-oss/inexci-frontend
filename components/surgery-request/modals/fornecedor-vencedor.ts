@@ -4,14 +4,6 @@ import {
   SurgeryRequestDetail,
 } from "@/services/surgery-request.service";
 
-/**
- * Escolha do fornecedor vencedor — o que o convênio aprovou.
- *
- * Duas respostas são válidas: um dos fornecedores cotados no item, ou "Outro",
- * o fornecedor genérico da conta, que significa "aprovaram alguém fora da
- * lista". "Outro" não tem id conhecido pelo cliente (ele fica escondido do
- * catálogo), então viaja como marca no payload e o backend resolve pela conta.
- */
 export const GENERIC_SUPPLIER_VALUE = "__generico__";
 
 export interface SupplierSelectOption {
@@ -33,11 +25,6 @@ function ehGenerico(supplier: SupplierRef): boolean {
   return supplier.isGeneric === true;
 }
 
-/**
- * Cotados com id, mais "Outro" ao final — sempre, mesmo que o item não o tenha
- * entre os cotados: é justamente o caso de o convênio aprovar quem não foi
- * cotado. Cotado sem id fica de fora porque escolhê-lo não teria o que gravar.
- */
 export function buildSupplierOptions(
   opme?: OpmeItemRef | null,
 ): SupplierSelectOption[] {
@@ -54,14 +41,6 @@ export function buildSupplierOptions(
   ];
 }
 
-/**
- * O que já está gravado; na falta, o primeiro cotado **real**.
- *
- * O genérico fica fora dessa preferência de propósito: ele é quem preenche os
- * slots de um rascunho incompleto, e pré-selecioná-lo faria todo rascunho
- * entrar no relatório como "Outro" sem ninguém ter escolhido — inflando
- * exatamente o número que o relatório existe para medir.
- */
 export function buildInitialSelectedOpmeSuppliers(
   solicitacao: SurgeryRequestDetail,
 ): Record<string, string> {
@@ -103,7 +82,6 @@ export function buildSupplierAuthorizationPayload(value?: string): {
   return { selectedSupplierId: value };
 }
 
-/** Rótulo do resumo, na última etapa antes de confirmar. */
 export function describeSelectedSupplier(
   opme: OpmeItemRef | null | undefined,
   value?: string,

@@ -46,12 +46,6 @@ const novoRascunho = (weekday = 1): Rascunho => ({
 const hhmm = (t: string) => t.slice(0, 5);
 const dataBR = (d: string) => d.split("-").reverse().join("/");
 
-/**
- * Grade semanal de atendimento de um profissional (MIG-05): períodos por dia
- * da semana, com intervalo entre horários, clínica/sala e vigência. A grade
- * só orienta a agenda (horários livres e aviso de "fora da grade"); quem
- * impede agendar são os bloqueios e feriados.
- */
 export function ScheduleWeekEditor({
   doctorId,
   canEdit = true,
@@ -69,8 +63,6 @@ export function ScheduleWeekEditor({
   const { data: clinics = [] } = useClinics();
   const { data: rooms = [] } = useClinicRooms(rascunho?.clinicId || null);
 
-  // Só a resposta da última busca vale: ao trocar de profissional, a grade
-  // do anterior (se chegar depois) não pode aparecer como a do novo.
   const ultimaBusca = useRef(0);
 
   const carregar = useCallback(async () => {
@@ -89,14 +81,12 @@ export function ScheduleWeekEditor({
   }, [doctorId]);
 
   useEffect(() => {
-    // Outro profissional: nada do anterior (lista, rascunho, erro) fica na tela.
     setGrades([]);
     setRascunho(null);
     setExcluindo(null);
     setError(null);
     setLoading(true);
     carregar();
-    // Contador (não nó do DOM): a cleanup quer mesmo o valor atual.
     const buscas = ultimaBusca;
     return () => {
       buscas.current++;

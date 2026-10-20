@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   Check,
@@ -23,8 +24,10 @@ import { logger } from "@/lib/logger";
 import {
   notificationService,
   Notification,
+  NotificationsResponse,
 } from "@/services/notification.service";
 import { cn } from "@/lib/utils";
+import { registryKeys } from "@/lib/query-keys";
 import { parseApiDateForRelative } from "@/lib/formatters";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -147,39 +150,38 @@ const getActorMetadata = (notification: Notification) => {
 };
 
 export default function NotificacoesPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [_total, setTotal] = useState(0);
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [filterType, setFilterType] = useState("");
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
 
-  const loadNotifications = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await notificationService.getNotifications({
+  const queryKey = [
+    ...registryKeys.notifications(),
+    "page",
+    page,
+    filterUnreadOnly,
+  ] as const;
+  const { data, isPending: loading } = useQuery({
+    queryKey,
+    queryFn: () =>
+      notificationService.getNotifications({
         skip: page * PAGE_SIZE,
         take: PAGE_SIZE,
         unreadOnly: filterUnreadOnly || undefined,
-      });
-      let filtered = response.notifications;
-      if (filterType) {
-        filtered = filtered.filter((n) => n.type === filterType);
-      }
-      setNotifications(filtered);
-      setUnreadCount(response.unreadCount);
-      setTotal(response.total);
-    } catch (error) {
-      logger.error("Erro ao carregar notificações:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, filterType, filterUnreadOnly]);
+      }),
+  });
+  const unreadCount = data?.unreadCount ?? 0;
+  const notifications = useMemo(() => {
+    const all = data?.notifications ?? [];
+    return filterType ? all.filter((n) => n.type === filterType) : all;
+  }, [data, filterType]);
 
-  useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+  const updatePage = (
+    change: (prev: NotificationsResponse) => NotificationsResponse,
+  ) =>
+    queryClient.setQueryData<NotificationsResponse>(queryKey, (prev) =>
+      prev ? change(prev) : prev,
+    );
 
   const clearDocumentExtractionCacheIfNeeded = (notification: Notification) => {
     if (isDocumentExtractionNotification(notification)) {
@@ -191,10 +193,13 @@ export default function NotificacoesPage() {
     try {
       await notificationService.markAsRead(notification.id);
       clearDocumentExtractionCacheIfNeeded(notification);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      updatePage((prev) => ({
+        ...prev,
+        notifications: prev.notifications.map((n) =>
+          n.id === notification.id ? { ...n, read: true } : n,
+        ),
+        unreadCount: Math.max(0, prev.unreadCount - 1),
+      }));
     } catch (error) {
       logger.error("Erro ao marcar como lida:", error);
     }
@@ -206,8 +211,11 @@ export default function NotificacoesPage() {
       if (notifications.some(isDocumentExtractionNotification)) {
         clearScFromDocumentStorage();
       }
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
+      updatePage((prev) => ({
+        ...prev,
+        notifications: prev.notifications.map((n) => ({ ...n, read: true })),
+        unreadCount: 0,
+      }));
     } catch (error) {
       logger.error("Erro ao marcar todas como lidas:", error);
     }
@@ -220,8 +228,15 @@ export default function NotificacoesPage() {
       const wasUnread = notifications.find(
         (n) => n.id === notification.id && !n.read,
       );
-      setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-      if (wasUnread) setUnreadCount((prev) => Math.max(0, prev - 1));
+      updatePage((prev) => ({
+        ...prev,
+        notifications: prev.notifications.filter(
+          (n) => n.id !== notification.id,
+        ),
+        unreadCount: wasUnread
+          ? Math.max(0, prev.unreadCount - 1)
+          : prev.unreadCount,
+      }));
     } catch (error) {
       logger.error("Erro ao remover notificação:", error);
     }
@@ -231,7 +246,6 @@ export default function NotificacoesPage() {
 
   return (
     <PageContainer className="border-gray-200">
-      {/* Header */}
       <div className="flex-none flex items-center justify-between gap-3 px-4 lg:px-8 py-3 border-b border-gray-200">
         <div className="flex items-center gap-2.5">
           <h1 className="ds-page-title">Notificações</h1>
@@ -256,7 +270,6 @@ export default function NotificacoesPage() {
         )}
       </div>
 
-      {/* Filters */}
       <div className="flex-none flex flex-wrap items-center gap-2 px-4 lg:px-8 py-2.5 border-b border-gray-200 bg-gray-50/60">
         <select
           value={filterType}
@@ -292,7 +305,6 @@ export default function NotificacoesPage() {
         </button>
       </div>
 
-      {/* List */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center h-48">
@@ -332,12 +344,10 @@ export default function NotificacoesPage() {
                     !notification.read && "bg-primary-50/40",
                   )}
                 >
-                  {/* Unread dot */}
                   {!notification.read && (
                     <span className="absolute left-2 lg:left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
                   )}
 
-                  {/* Type icon */}
                   {notification.type === "action_by_user" && actor ? (
                     <NotificationActorAvatar
                       actorId={actor.actorId}
@@ -356,7 +366,6 @@ export default function NotificacoesPage() {
                     </div>
                   )}
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     {notification.link ? (
                       <Link
@@ -435,7 +444,6 @@ export default function NotificacoesPage() {
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     {!notification.read && (
                       <button
@@ -461,7 +469,6 @@ export default function NotificacoesPage() {
         )}
       </div>
 
-      {/* Pagination */}
       {!loading && (notifications.length > 0 || page > 0) && (
         <div className="flex-none flex items-center justify-between px-4 lg:px-8 py-3 border-t border-gray-200 bg-gray-50/60">
           <Button

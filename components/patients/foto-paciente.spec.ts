@@ -10,7 +10,6 @@ import { arquivoDeImagem } from "./foto-paciente.fixtures";
 const arquivo = (nome: string, tipo: string, bytes = 10) =>
   arquivoDeImagem(nome, tipo, bytes);
 
-/** Navegador com decode e canvas falsos; `jpegBytes` é o tamanho do JPEG gerado. */
 function navegadorFalso(jpegBytes: number) {
   const close = vi.fn();
   vi.stubGlobal(
@@ -117,7 +116,6 @@ describe("assinaturaDeImagemConfere", () => {
     await expect(
       assinaturaDeImagemConfere(arquivoDeImagem("a", "image/webp")),
     ).resolves.toBe(true);
-    // GIF e RIFF que não é WEBP (ex.: WAV)
     await expect(
       assinaturaDeImagemConfere(new Blob([new TextEncoder().encode("GIF89a")])),
     ).resolves.toBe(false);

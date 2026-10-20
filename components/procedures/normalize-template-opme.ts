@@ -10,7 +10,6 @@ export interface TemplateOpmeCreatePayload {
   supplierNames: string[];
 }
 
-/** Extrai nome legível de string ou entidade { id, name, ... }. */
 export function toOpmeDisplayName(value: unknown): string {
   if (typeof value === "string") return value.trim();
   if (value && typeof value === "object" && "name" in value) {
@@ -64,7 +63,6 @@ export function getTemplateOpmeItemsRaw(
   return Array.isArray(items) ? items : [];
 }
 
-/** Normaliza itens OPME do template para criação via API. */
 export function extractTemplateOpmeItemsForCreate(
   templateData: Record<string, unknown>,
 ): TemplateOpmeCreatePayload[] {
@@ -108,7 +106,6 @@ export function toOpmeDisplayNames(values: unknown[] | undefined): string[] {
   return values.map(toOpmeDisplayName).filter(Boolean);
 }
 
-/** Normaliza item OPME vindo do template (strings ou entidades completas). */
 export function normalizeTemplateOpmeItem(
   raw: Record<string, unknown>,
   index: number,

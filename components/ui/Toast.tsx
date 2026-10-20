@@ -11,8 +11,6 @@ interface ToastProps {
 }
 
 export function Toast({ message, type, onClose, duration = 5000 }: ToastProps) {
-  // Usar ref para manter referência estável do onClose
-  // Isso evita que o timer seja resetado se onClose mudar de referência
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -22,7 +20,7 @@ export function Toast({ message, type, onClose, duration = 5000 }: ToastProps) {
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [duration]); // Removido onClose das dependências, usando ref
+  }, [duration]);
 
   const bgColor = {
     success: "bg-green-500",

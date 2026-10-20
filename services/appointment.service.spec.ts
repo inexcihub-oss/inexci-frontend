@@ -89,8 +89,6 @@ describe("appointmentService", () => {
     });
   });
 
-  // D-15: o backend corta a lista num teto e `total` é a contagem real. A
-  // desigualdade `total > records.length` é o único sinal de corte.
   describe("getAgendaPage", () => {
     it("expõe o total do servidor junto dos registros", async () => {
       (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -119,8 +117,6 @@ describe("appointmentService", () => {
     });
   });
 
-  // A Agenda chamava `getAgenda` sem `take` e o backend corta em 1000: o
-  // excedente sumia da tela sem aviso. `getAgendaCompleta` pagina até `total`.
   describe("getAgendaCompleta", () => {
     const pagina = (n: number, prefixo: string) =>
       Array.from({ length: n }, (_, i) => ({
@@ -260,7 +256,6 @@ describe("rotuloDoAtendimento", () => {
     ["confirmed", "draft", "Continuar atendimento"],
     ["in_progress", null, "Iniciar atendimento"],
     ["scheduled", null, "Iniciar atendimento"],
-    // Sem a informação da ficha (resposta de criar/editar): status decide.
     ["in_progress", undefined, "Continuar atendimento"],
     ["waiting", undefined, "Iniciar atendimento"],
   ] as const)("%s + ficha %s → %s", (status, ficha, esperado) => {

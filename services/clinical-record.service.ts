@@ -16,9 +16,7 @@ export interface ClinicalRecord {
   cidCodes: ClinicalCidCode[] | null;
   conduct: string | null;
   surgicalIndication: boolean;
-  /** SC gerada ao finalizar; null enquanto a criação estiver pendente. */
   surgeryRequestId: string | null;
-  /** Procedimento escolhido (ou criado) ao marcar "paciente cirúrgico". */
   procedureId: string | null;
   procedure: { id: string; name: string } | null;
   finalizedAt: string | null;
@@ -44,19 +42,16 @@ export type UpdateClinicalRecordPayload = Omit<
   "patientId" | "doctorId" | "appointmentId"
 >;
 
-/** Tipos de documento emitidos no atendimento (também usados nas rotas). */
 export type ClinicalDocumentKind =
   | "prescription"
   | "medical-certificate"
   | "exam-referral";
 
-/** Documento emitido a partir da ficha (PDF já gravado como documento). */
 export interface GeneratedClinicalDocument {
   id: string;
   name: string;
   key: string;
   type: string;
-  /** URL assinada, pronta para abrir. */
   uri: string;
   createdAt: string;
 }
@@ -67,19 +62,11 @@ export interface PrescriptionItem {
   instructions?: string;
 }
 
-/**
- * De onde o documento tira paciente e médico.
- *
- * Emitir sempre parte da ficha gravada. A **prévia** aceita a segunda forma:
- * paciente + ficha em memória. Sem isso, "Visualizar" precisava salvar a ficha
- * antes de montar o HTML e criava prontuário vazio só para conferir.
- */
 export type ClinicalDocumentTarget =
   | { clinicalRecordId: string }
   | {
       patientId: string;
       doctorId?: string;
-      /** CIDs da ficha ainda não salva. */
       cidCodes?: ClinicalCidCode[];
     };
 
@@ -91,17 +78,9 @@ export interface PrescriptionFields {
 export interface MedicalCertificateFields {
   restDays?: number;
   startDate?: string;
-  /** Reaproveita o CID da ficha quando `cid` não é informado. */
   includeCid?: boolean;
-  /** CID escolhido para este atestado; tem precedência sobre `includeCid`. */
   cid?: ClinicalCidCode;
-  /** Texto do atestado (modelo ou digitado); substitui a declaração padrão. */
   text?: string;
-  /**
-   * Modelo de texto, preenchido no servidor na hora (com os `restDays` deste
-   * atestado). Só vale quando `text` não vem — é como sai o modelo que o
-   * médico não editou, sem depender do texto montado antes na tela.
-   */
   templateId?: string;
   observations?: string;
 }
@@ -130,7 +109,6 @@ export type ClinicalDocumentPreviewPayload = ClinicalDocumentTarget &
   (PrescriptionFields | MedicalCertificateFields | ExamReferralFields);
 
 export const clinicalRecordService = {
-  /** Linha do tempo de atendimentos do paciente (mais recentes primeiro). */
   async getByPatient(patientId: string): Promise<ClinicalRecord[]> {
     const response = await api.get<ClinicalRecord[]>("/clinical-records", {
       params: { patientId },
@@ -138,7 +116,6 @@ export const clinicalRecordService = {
     return Array.isArray(response.data) ? response.data : [];
   },
 
-  /** Ficha vinculada a uma consulta (null se ainda não existir). */
   async getByAppointment(
     appointmentId: string,
   ): Promise<ClinicalRecord | null> {
@@ -186,7 +163,6 @@ export const clinicalRecordService = {
     await api.delete(`/clinical-records/${id}`);
   },
 
-  /** Emite a receita e devolve o documento já gravado no prontuário. */
   async generatePrescription(
     payload: PrescriptionPayload,
   ): Promise<GeneratedClinicalDocument> {
@@ -197,7 +173,6 @@ export const clinicalRecordService = {
     return response.data;
   },
 
-  /** Emite o atestado médico. */
   async generateMedicalCertificate(
     payload: MedicalCertificatePayload,
   ): Promise<GeneratedClinicalDocument> {
@@ -208,7 +183,6 @@ export const clinicalRecordService = {
     return response.data;
   },
 
-  /** Emite o encaminhamento (solicitação) de exames. */
   async generateExamReferral(
     payload: ExamReferralPayload,
   ): Promise<GeneratedClinicalDocument> {
@@ -219,14 +193,6 @@ export const clinicalRecordService = {
     return response.data;
   },
 
-  /**
-   * HTML do documento exatamente como será emitido, sem gravar nada — o médico
-   * confere antes de assumir o documento. É HTML (e não PDF) porque a prévia
-   * serve para olhar na tela: gerar o PDF a cada clique custaria segundos.
-   *
-   * "Sem gravar nada" inclui a própria ficha: o payload pode apontar o paciente
-   * e levar os campos que estão na tela, em vez de exigir uma ficha salva.
-   */
   async previewDocument(
     kind: ClinicalDocumentKind,
     payload: ClinicalDocumentPreviewPayload,

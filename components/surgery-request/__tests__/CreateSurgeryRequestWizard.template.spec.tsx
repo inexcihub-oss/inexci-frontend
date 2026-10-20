@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import { renderWithProviders } from "@/test-utils/render-with-providers";
 import userEvent from "@testing-library/user-event";
 import { Permission } from "@/lib/permissions";
 import type { SurgeryRequestTemplateSummary } from "@/services/surgery-request.service";
@@ -26,8 +27,6 @@ vi.mock("@/services/opme.service", () => ({
   opmeService: { create: (...args: unknown[]) => opmeCreate(...args) },
 }));
 
-// A referência precisa ser estável: o wizard auto-seleciona o médico único num
-// efeito que depende do array, e um literal novo a cada render vira loop.
 const MEDICOS = [{ id: "doc-1", name: "Dr. João", status: "active" }];
 const RESULTADO_MEDICOS = { data: MEDICOS, isLoading: false };
 vi.mock("@/hooks/useAvailableDoctors", () => ({
@@ -41,9 +40,6 @@ vi.mock("@/contexts/AuthContext", () => ({
   }),
 }));
 
-// Este arquivo testa o fluxo de criação a partir de modelo, não o tour de
-// onboarding (ver CreateSurgeryRequestWizard.spec.tsx) — mocks neutros só
-// para o componente conseguir montar.
 vi.mock("@/components/onboarding/OnboardingProvider", () => ({
   useOnboarding: () => ({ emTour: false }),
 }));
@@ -51,12 +47,8 @@ vi.mock("@/components/onboarding/useOnboardingAction", () => ({
   useOnboardingAction: () => {},
 }));
 
-// As telas de seleção não são o objeto deste teste; o que importa é o que o
-// submit dispara depois que o modelo foi aplicado.
 vi.mock("../wizard-steps/SelectionContents", () => ({
   ProcedureSelectionContent: () => null,
-  // O paciente é o único campo que o modelo não preenche; o botão abaixo faz o
-  // papel da lista real para destravar o submit.
   PatientSelectionContent: ({
     onSelect,
   }: {
@@ -91,7 +83,7 @@ const modelo: SurgeryRequestTemplateSummary = {
 };
 
 function renderizar() {
-  return render(
+  return renderWithProviders(
     <CreateSurgeryRequestWizard
       isOpen
       onClose={vi.fn()}
@@ -101,7 +93,6 @@ function renderizar() {
   );
 }
 
-/** Preenche o paciente e dispara a criação. */
 async function criarSolicitacao() {
   await userEvent.click(
     screen.getByRole("button", { name: "escolher-paciente" }),
@@ -146,9 +137,7 @@ describe("CreateSurgeryRequestWizard — criação a partir de modelo", () => {
     expect(screen.getByText("Artrodese lombar")).toBeInTheDocument();
     expect(screen.getByText("Hospital Central")).toBeInTheDocument();
     expect(screen.getByText("SULAMERICA")).toBeInTheDocument();
-    // priority 3 = Alta; vem do modelo, não do padrão (Baixa).
     expect(screen.getByText("Alta")).toBeInTheDocument();
-    // Aplicar o modelo não busca o conteúdo — isso fica para o submit.
     expect(getTemplate).not.toHaveBeenCalled();
   });
 

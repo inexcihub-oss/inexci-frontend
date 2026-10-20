@@ -77,6 +77,7 @@ export default function NotificationActorAvatar({
     return (
       <Image
         src={resolvedUrl}
+        unoptimized
         alt={name}
         width={32}
         height={32}

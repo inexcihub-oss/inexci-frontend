@@ -2,15 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-/**
- * Quando a SC foi criada via documento e o usuário escolhe "Confirmar com
- * documento de origem" (o envio já aconteceu fora da plataforma), o wizard
- * pede a data real de envio antes de confirmar — pré-preenchida com hoje,
- * editável. Isso alimenta `lastStatusChangedAt` no backend, então o kanban
- * (badge "Há X dias neste status") e as métricas refletem a data real, não a
- * data do clique.
- */
-
 const showToast = vi.fn();
 const sendMock = vi.fn();
 

@@ -3,13 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import DashboardPage from "./page";
 
-/**
- * Prova que a tela real do dashboard carrega as três âncoras `data-tour` que
- * a trilha `dashboard` (`lib/onboarding/tour-registry.ts`) espera encontrar —
- * "dashboard-kpis", "dashboard-filtros" e "dashboard-ver-kanban". Sem este
- * teste, remover o atributo (ou trocar o elemento) quebra o tour em silêncio.
- */
-
 vi.mock("@/services/reports.service", () => ({
   reportsService: {
     getDashboardFull: vi.fn().mockResolvedValue({

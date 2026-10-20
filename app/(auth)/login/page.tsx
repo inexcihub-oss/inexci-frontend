@@ -7,13 +7,15 @@ import Image from "next/image";
 import { Button, Input } from "@/components/ui";
 import { useZodForm } from "@/hooks/useZodForm";
 import { loginSchema } from "@/lib/schemas/auth.schema";
+import { MfaLoginStep } from "@/components/auth/MfaLoginStep";
 
 function LoginForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const { login } = useAuth();
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const { login, completeMfaLogin } = useAuth();
 
   const form = useZodForm({
     schema: loginSchema,
@@ -31,8 +33,6 @@ function LoginForm() {
       );
     }
 
-    // Remove credenciais da barra de endereço caso o formulário tenha sido
-    // enviado nativamente (GET) antes da hidratação do React.
     if (params.has("password") || params.has("email")) {
       window.history.replaceState({}, "", "/login");
     }
@@ -43,7 +43,11 @@ function LoginForm() {
     setSuccess("");
     setIsLoading(true);
     try {
-      await login(data.email, data.password);
+      const outcome = await login(data.email, data.password);
+      if (outcome?.mfaRequired) {
+        form.setField("password", "");
+        setMfaToken(outcome.mfaToken);
+      }
     } catch (err: unknown) {
       const errorMessage =
         typeof err === "object" &&
@@ -75,10 +79,8 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Left Side - Form */}
       <div className="flex-1 flex items-center justify-center px-5 sm:px-6 lg:px-8">
         <div className="w-full max-w-md space-y-6 sm:space-y-8">
-          {/* Logo */}
           <div className="flex justify-center">
             <Image
               src="/brand/logo.png"
@@ -89,7 +91,6 @@ function LoginForm() {
             />
           </div>
 
-          {/* Title */}
           <div className="text-center">
             <h2 className="text-2xl sm:text-3xl font-semibold text-black font-urbanist">
               Bem-vindo de volta
@@ -99,90 +100,91 @@ function LoginForm() {
             </p>
           </div>
 
-          {/* Form */}
-          <form
-            onSubmit={handleFormSubmit}
-            noValidate
-            method="post"
-            className="mt-8 space-y-6"
-          >
-            <div className="space-y-4">
-              <Input
-                id="email"
-                label="E-mail"
-                type="email"
-                autoComplete="email"
-                required
-                {...emailInputProps}
-                disabled={isLoading || !isReady}
-                placeholder="seu@email.com"
-                className="min-h-[48px]"
-              />
-
-              <Input
-                id="password"
-                label="Senha"
-                type="password"
-                autoComplete="current-password"
-                required
-                {...passwordInputProps}
-                disabled={isLoading || !isReady}
-                placeholder="••••••••"
-                className="min-h-[48px]"
-              />
-            </div>
-
-            {/* Success Message */}
-            {success && (
-              <div className="rounded-xl bg-green-50 border border-green-200 p-3.5 text-sm text-green-700">
-                {success}
-              </div>
-            )}
-
-            {/* Error Message */}
-            {error && (
-              <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              isLoading={isLoading}
-              disabled={!isReady}
-              className="w-full text-sm font-semibold min-h-[48px]"
+          {mfaToken ? (
+            <MfaLoginStep
+              mfaToken={mfaToken}
+              onSubmitCode={completeMfaLogin}
+              onBack={() => setMfaToken(null)}
+            />
+          ) : (
+            <form
+              onSubmit={handleFormSubmit}
+              noValidate
+              method="post"
+              className="mt-8 space-y-6"
             >
-              Entrar
-            </Button>
+              <div className="space-y-4">
+                <Input
+                  id="email"
+                  label="E-mail"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  {...emailInputProps}
+                  disabled={isLoading || !isReady}
+                  placeholder="seu@email.com"
+                  className="min-h-[48px]"
+                />
 
-            {/* Links */}
-            <div className="flex flex-col gap-3 text-center text-sm">
-              <div className="text-gray-600">
-                Não tem uma conta?{" "}
-                <Link
-                  href="/cadastro"
-                  className="font-semibold text-teal-500 hover:text-teal-600"
-                >
-                  Criar conta
-                </Link>
+                <Input
+                  id="password"
+                  label="Senha"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  {...passwordInputProps}
+                  disabled={isLoading || !isReady}
+                  placeholder="••••••••"
+                  className="min-h-[48px]"
+                />
               </div>
-              <div className="text-gray-600">
-                <Link
-                  href="/forgot-password"
-                  className="font-semibold text-teal-500 hover:text-teal-600"
-                >
-                  Esqueceu sua senha?
-                </Link>
+
+              {success && (
+                <div className="rounded-xl bg-green-50 border border-green-200 p-3.5 text-sm text-green-700">
+                  {success}
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                isLoading={isLoading}
+                disabled={!isReady}
+                className="w-full text-sm font-semibold min-h-[48px]"
+              >
+                Entrar
+              </Button>
+
+              <div className="flex flex-col gap-3 text-center text-sm">
+                <div className="text-gray-600">
+                  Não tem uma conta?{" "}
+                  <Link
+                    href="/cadastro"
+                    className="font-semibold text-teal-500 hover:text-teal-600"
+                  >
+                    Criar conta
+                  </Link>
+                </div>
+                <div className="text-gray-600">
+                  <Link
+                    href="/forgot-password"
+                    className="font-semibold text-teal-500 hover:text-teal-600"
+                  >
+                    Esqueceu sua senha?
+                  </Link>
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
       </div>
 
-      {/* Right Side - Modern Design */}
       <div className="hidden lg:block lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div
             className="absolute inset-0"
@@ -193,17 +195,14 @@ function LoginForm() {
           ></div>
         </div>
 
-        {/* Gradient Orbs */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
         <div
           className="absolute bottom-0 left-0 w-96 h-96 bg-secondary-500 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-pulse"
           style={{ animationDelay: "1s" }}
         ></div>
 
-        {/* Content Container */}
         <div className="absolute inset-0 flex flex-col items-center justify-center p-16">
           <div className="max-w-xl space-y-12 relative z-10">
-            {/* Inexci Icon */}
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-teal-500 to-secondary-500 rounded-3xl blur-2xl opacity-30"></div>
               <div className="relative bg-white/5 backdrop-blur-sm rounded-3xl p-12 border border-white/10">
@@ -222,7 +221,6 @@ function LoginForm() {
               </div>
             </div>
 
-            {/* Quote Section */}
             <div className="space-y-6 text-center">
               <div className="space-y-4">
                 <svg
@@ -245,7 +243,6 @@ function LoginForm() {
               </div>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-3 gap-8 pt-8">
               <div className="text-center space-y-2">
                 <div className="text-3xl font-bold text-white">99.9%</div>
@@ -269,7 +266,6 @@ function LoginForm() {
           </div>
         </div>
 
-        {/* Bottom Gradient Line */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-secondary-500 to-teal-500"></div>
       </div>
     </div>

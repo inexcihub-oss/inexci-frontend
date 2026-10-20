@@ -16,7 +16,7 @@ import {
 } from "@/services/notification.service";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAccessToken } from "@/lib/auth-token";
-import { ExtractFromDocumentResponse } from "@/types/surgery-request.types";
+import { refreshSession } from "@/lib/api";
 import {
   BackgroundDocumentExtractionActive,
   BackgroundDocumentExtractionForeground,
@@ -58,18 +58,8 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(
   null,
 );
 
-/**
- * Mantém UMA conexão Socket.IO ao namespace `/notifications` e expõe a
- * contagem de não lidas via context. Componentes que precisam apenas do
- * número (sino na sidebar, header mobile) leem daqui em vez de criarem
- * suas próprias conexões/fetches.
- *
- * Estado inicial: o backend envia `notification:unread-count` logo após
- * autenticar o socket (ver `NotificationsGateway.handleConnection`). Em caso
- * de queda da conexão, o `socket.io-client` reconecta automaticamente e o
- * servidor reenvia o estado, então não há fallback HTTP — o WebSocket é a
- * única fonte de verdade enquanto o usuário estiver no dashboard.
- */
+const MAX_RECONEXOES_PELO_SERVIDOR = 3;
+
 export function NotificationsProvider({
   children,
 }: {
@@ -148,7 +138,6 @@ export function NotificationsProvider({
       second.start(ctx.currentTime + 0.13);
       second.stop(ctx.currentTime + 0.24);
     } catch {
-      // Alguns navegadores podem bloquear em aba inativa.
     }
   }, []);
 
@@ -241,11 +230,26 @@ export function NotificationsProvider({
     if (!apiUrl) return;
 
     const socket: Socket = io(`${apiUrl}/notifications`, {
-      auth: { token },
+      auth: (cb) => cb({ token: getAccessToken() ?? token }),
       transports: ["websocket"],
     });
 
+    let reconexoesPeloServidor = 0;
+    let encerrado = false;
+
+    socket.on("disconnect", (reason: string) => {
+      if (encerrado || reason !== "io server disconnect") return;
+      if (reconexoesPeloServidor >= MAX_RECONEXOES_PELO_SERVIDOR) return;
+      reconexoesPeloServidor += 1;
+      refreshSession()
+        .then(() => {
+          if (!encerrado) socket.connect();
+        })
+        .catch(() => {});
+    });
+
     socket.on("notification:unread-count", (payload: { count: number }) => {
+      reconexoesPeloServidor = 0;
       const nextCount = Math.max(0, payload?.count ?? 0);
       const foreground =
         getScFromDocumentStorage<BackgroundDocumentExtractionForeground>(
@@ -254,8 +258,6 @@ export function NotificationsProvider({
 
       setUnreadCount((prev) => {
         if (foreground && nextCount > prev) {
-          // Enquanto o modal de extração estiver aberto, evita subir contador
-          // por causa da notificação de conclusão da própria extração.
           return prev;
         }
         return nextCount;
@@ -293,7 +295,6 @@ export function NotificationsProvider({
         if (foreground) {
           if (!notificationJobId || foreground.jobId === notificationJobId) {
             void notificationService.markAsRead(notification.id).catch(() => {
-              // Silencia erro de rede — aqui é apenas best effort.
             });
             return;
           }
@@ -326,15 +327,10 @@ export function NotificationsProvider({
           if (active) {
             try {
               if (active.jobId === payload.jobId) {
-                if (payload.status === "done" && payload.result) {
-                  const result = payload.result as ExtractFromDocumentResponse;
+                if (payload.status === "done") {
                   setScFromDocumentStorage(
                     SC_FROM_DOCUMENT_EXTRACTION_PENDING_KEY,
-                    {
-                      ...result,
-                      originalFileName:
-                        result.originalFileName || active.fileName,
-                    },
+                    { jobId: active.jobId },
                   );
                   removeScFromDocumentStorage(
                     SC_FROM_DOCUMENT_EXTRACTION_PENDING_ERROR_KEY,
@@ -370,6 +366,7 @@ export function NotificationsProvider({
     );
 
     return () => {
+      encerrado = true;
       socket.disconnect();
     };
   }, [playNotificationSound, userId]);
@@ -393,12 +390,6 @@ export function NotificationsProvider({
   );
 }
 
-/**
- * Lê o estado compartilhado de notificações. Deve estar dentro de um
- * `NotificationsProvider`. Se usado fora, retorna um shape inerte para
- * evitar quebrar componentes em rotas que não montam o provider (ex.: rotas
- * públicas), assim como acontecia com o hook anterior.
- */
 export function useNotificationsContext(): NotificationsContextValue {
   const ctx = useContext(NotificationsContext);
   if (ctx) return ctx;
@@ -415,10 +406,6 @@ const inertContext: NotificationsContextValue = {
   onDocumentExtractionStatus: () => noop,
 };
 
-/**
- * Hook utilitário compatível com a API antiga de `useNotifications`. Usado
- * pelos componentes que apenas precisam do contador e da lista.
- */
 export function useNotifications() {
   const { unreadCount, setUnreadCount, latest, setLatest } =
     useNotificationsContext();

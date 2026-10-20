@@ -1,17 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-/**
- * Testes da camada de preferências de notificação.
- *
- * Validam:
- *  - Que o estado local da tela usa exatamente o mesmo formato camelCase
- *    devolvido/aceito pelo backend (sem mapeamento snake_case ⇄ camelCase).
- *  - Que canais removidos (SMS, e-mail genérico) não são expostos.
- *  - Que para usuários do sistema os canais ativos são apenas push (in-app)
- *    e WhatsApp; o único e-mail enviado é o resumo semanal, controlado por
- *    `weeklyReport`.
- */
-
 vi.mock("@/lib/api", () => ({
   default: {
     get: vi.fn(),

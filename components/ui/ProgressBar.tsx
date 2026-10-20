@@ -1,33 +1,19 @@
 import { cn } from "@/lib/utils";
+import {
+  AUTHORIZED_STATUSES,
+  FLOW_STATUSES,
+  STATUS_META,
+  SurgeryRequestStatusCode,
+  isStatusIn,
+} from "@/lib/surgery-request-status";
 
 interface ProgressBarProps {
-  /**
-   * Progress value from 0 to 100
-   */
   value: number;
-  /**
-   * Height size of the progress bar
-   */
   size?: "sm" | "md" | "lg";
-  /**
-   * Color variant of the progress bar
-   */
   variant?: "default" | "success" | "warning" | "danger" | "info" | "primary";
-  /**
-   * Show percentage text inside or next to the bar
-   */
   showLabel?: boolean;
-  /**
-   * Label position
-   */
   labelPosition?: "inside" | "right";
-  /**
-   * Additional className for the container
-   */
   className?: string;
-  /**
-   * Animate the progress bar
-   */
   animated?: boolean;
 }
 
@@ -55,7 +41,6 @@ export function ProgressBar({
   className,
   animated = true,
 }: ProgressBarProps) {
-  // Clamp value between 0 and 100
   const clampedValue = Math.min(100, Math.max(0, value));
 
   return (
@@ -91,64 +76,22 @@ export function ProgressBar({
 }
 
 interface StatusProgressBarProps {
-  /**
-   * Current status number (1-10)
-   */
   currentStatus: number;
-  /**
-   * Total number of statuses in the flow
-   */
-  totalStatuses?: number;
-  /**
-   * Show step labels
-   */
   showSteps?: boolean;
-  /**
-   * Status labels to display
-   */
-  statusLabels?: string[];
   className?: string;
 }
 
-const defaultStatusLabels = [
-  "Pendente",
-  "Enviada",
-  "Em Análise",
-  "Em Reanálise",
-  "Autorizada",
-  "Agendada",
-  "A Faturar",
-  "Faturada",
-  "Finalizada",
-  "Cancelada",
-];
-
 export function StatusProgressBar({
   currentStatus,
-  totalStatuses: _totalStatuses = 9, // Excluding Cancelada as it's not a step in the normal flow
   showSteps = false,
-  statusLabels = defaultStatusLabels,
   className,
 }: StatusProgressBarProps) {
-  // Cancelada (10) is not part of the normal progress
-  const isCancelled = currentStatus === 10;
-
-  // Calculate progress based on status (excluding Em Reanálise and Cancelada from normal flow)
-  // Normal flow: 1 -> 2 -> 3 -> 5 -> 6 -> 7 -> 8 -> 9
-  const statusToProgress: Record<number, number> = {
-    1: 12.5, // Pendente
-    2: 25, // Enviada
-    3: 37.5, // Em Análise
-    4: 37.5, // Em Reanálise (same as Em Análise)
-    5: 50, // Autorizada
-    6: 62.5, // Agendada
-    7: 75, // A Faturar
-    8: 87.5, // Faturada
-    9: 100, // Finalizada
-    10: 0, // Cancelada
-  };
-
-  const progress = statusToProgress[currentStatus] || 0;
+  const isClosed = currentStatus === SurgeryRequestStatusCode.CLOSED;
+  const position = FLOW_STATUSES.indexOf(
+    currentStatus as SurgeryRequestStatusCode,
+  );
+  const progress =
+    position < 0 ? 0 : ((position + 1) / FLOW_STATUSES.length) * 100;
 
   return (
     <div className={cn("space-y-2", className)}>
@@ -156,18 +99,23 @@ export function StatusProgressBar({
         value={progress}
         size="md"
         variant={
-          isCancelled ? "danger" : currentStatus >= 5 ? "success" : "primary"
+          isClosed
+            ? "danger"
+            : isStatusIn(currentStatus, AUTHORIZED_STATUSES)
+              ? "success"
+              : "primary"
         }
         showLabel
         labelPosition="right"
       />
       {showSteps && (
         <div className="flex justify-between text-xs text-gray-500">
-          {statusLabels.slice(0, -1).map((label, index) => (
+          {FLOW_STATUSES.map((code, index) => (
             <span
-              key={label}
+              key={code}
+              title={STATUS_META[code].label}
               className={cn(
-                index + 1 <= currentStatus && "text-primary-600 font-medium",
+                index <= position && "text-primary-600 font-medium",
               )}
             >
               {index + 1}

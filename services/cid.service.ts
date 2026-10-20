@@ -17,7 +17,9 @@ export const cidService = {
     if (search && search.length >= 2) {
       params.search = search;
     }
-    const response = await api.get("/surgery-requests/cid", { params });
+    const response = await api.get<CidSearchResponse>("/surgery-requests/cid", {
+      params,
+    });
     return response.data;
   },
 };

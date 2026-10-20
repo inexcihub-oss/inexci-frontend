@@ -1,7 +1,6 @@
 import api from "@/lib/api";
 import { ClinicalCidCode } from "./clinical-record.service";
 
-/** Modelo de anamnese reaproveitado entre atendimentos. */
 export interface ClinicalRecordTemplate {
   id: string;
   doctorId: string;
@@ -29,7 +28,6 @@ export interface CreateClinicalRecordTemplatePayload {
 }
 
 export const clinicalRecordTemplateService = {
-  /** Modelos da clínica; com `doctorId`, só os daquele médico. */
   async getAll(doctorId?: string): Promise<ClinicalRecordTemplate[]> {
     const response = await api.get<ClinicalRecordTemplate[]>(
       "/clinical-records/templates",
@@ -48,7 +46,6 @@ export const clinicalRecordTemplateService = {
     return response.data;
   },
 
-  /** Devolve o modelo para preencher a ficha e conta o uso no servidor. */
   async apply(id: string): Promise<ClinicalRecordTemplate> {
     const response = await api.post<ClinicalRecordTemplate>(
       `/clinical-records/templates/${id}/apply`,

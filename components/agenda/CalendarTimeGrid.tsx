@@ -16,10 +16,6 @@ const HOUR_PX = 52;
 const HOUR_START = 0;
 const HOUR_END = 23;
 
-/**
- * Faixa em que não se agenda: bloqueio de agenda ou feriado (MIG-05).
- * Desenhada hachurada atrás das consultas; clicável só quando tem `onClick`.
- */
 export interface AgendaBlockOverlay {
   id: string;
   start: Date;
@@ -54,7 +50,6 @@ export function CalendarTimeGrid({
   );
   const bodyHeight = (HOUR_END - HOUR_START) * HOUR_PX;
 
-  // Detecta telas estreitas para caber as colunas sem scroll horizontal.
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
     const update = () => setNarrow(mq.matches);
@@ -63,7 +58,6 @@ export function CalendarTimeGrid({
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  // Rola para ~7h ao montar para começar num horário útil.
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = Math.max(0, (7 - HOUR_START) * HOUR_PX - 8);
@@ -102,7 +96,6 @@ export function CalendarTimeGrid({
 
   return (
     <div ref={scrollRef} className="flex-1 overflow-auto">
-      {/* Cabeçalho (dias + all-day) — sticky */}
       <div
         className="grid sticky top-0 z-20 bg-white border-b border-neutral-100"
         style={gridCols}
@@ -166,9 +159,7 @@ export function CalendarTimeGrid({
         )}
       </div>
 
-      {/* Corpo com grade horária */}
       <div className="grid" style={gridCols}>
-        {/* Coluna de horários */}
         <div className="relative" style={{ height: bodyHeight }}>
           {hours.map((h, i) => (
             <div
@@ -181,7 +172,6 @@ export function CalendarTimeGrid({
           ))}
         </div>
 
-        {/* Colunas de dias */}
         {days.map((day) => {
           const dayEvents = events.filter(
             (e) => !e.allDay && isSameDay(e.start, day),
@@ -194,7 +184,6 @@ export function CalendarTimeGrid({
               className="relative border-r border-neutral-100"
               style={{ height: bodyHeight }}
             >
-              {/* Linhas de hora (clicáveis para criar) */}
               <div
                 className="absolute inset-0 cursor-pointer"
                 onClick={(e) => handleSlotClick(e, day)}
@@ -208,7 +197,6 @@ export function CalendarTimeGrid({
                 ))}
               </div>
 
-              {/* Bloqueios e feriados (hachurado) */}
               {blocks.map((b) => {
                 const inicioDia = new Date(day);
                 inicioDia.setHours(0, 0, 0, 0);
@@ -227,9 +215,6 @@ export function CalendarTimeGrid({
                   16,
                   ((fimMin - iniMin) / 60) * HOUR_PX,
                 );
-                // A faixa cobre a coluna inteira no período: o corpo dela é
-                // `pointer-events-none` para o clique chegar à linha de hora
-                // (nova consulta). Só o rótulo é clicável (abre o bloqueio).
                 return (
                   <div
                     key={`blk-${b.id}`}
@@ -259,7 +244,6 @@ export function CalendarTimeGrid({
                 );
               })}
 
-              {/* Linha do horário atual */}
               {isToday(day) && showNow && (
                 <div
                   className="absolute left-0 right-0 z-10 pointer-events-none"
@@ -272,7 +256,6 @@ export function CalendarTimeGrid({
                 </div>
               )}
 
-              {/* Eventos */}
               {positioned.map(({ event: ev, col, cols }) => {
                 const startMin =
                   ev.start.getHours() * 60 + ev.start.getMinutes();

@@ -9,16 +9,9 @@ import { useAnchoredDropdown } from "@/hooks/useAnchoredDropdown";
 
 export interface TussSelection {
   tussCode: string;
-  /** Nome do procedimento no catálogo; ausente em código digitado à mão. */
   name?: string;
 }
 
-/**
- * Campo de código TUSS com busca no catálogo — evita decorar/digitar o código
- * inteiro. Ao focar já mostra sugestões, sem exigir que o médico adivinhe o
- * termo. Continua aceitando texto livre: o convênio às vezes pede um código
- * que o catálogo não tem, e travar o campo impediria o pedido.
- */
 export function TussCodePicker({
   id,
   label,
@@ -46,8 +39,6 @@ export function TussCodePicker({
   useEffect(() => {
     if (!open) return;
 
-    // Sem termo (ou com termo curto) busca o começo do catálogo: a lista abre
-    // já com opções em vez de um vazio pedindo para digitar.
     const term =
       touched && debounced.trim().length >= 2 ? debounced.trim() : undefined;
 
@@ -93,7 +84,6 @@ export function TussCodePicker({
         {loading && <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />}
       </div>
 
-      {/* Portal: dentro do modal o dropdown seria cortado pelo corpo rolável. */}
       {open &&
         typeof window !== "undefined" &&
         createPortal(

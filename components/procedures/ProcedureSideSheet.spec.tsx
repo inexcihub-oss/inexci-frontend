@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render as rtlRender, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
+
+function render(ui: ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return rtlRender(
+    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+  );
+}
 import { Permission } from "@/lib/permissions";
 import { ProcedureModel } from "./types";
 
@@ -21,7 +32,6 @@ vi.mock("@/services/manufacturer.service", () => ({
 vi.mock("@/services/surgery-request.service", () => ({
   surgeryRequestService: {
     updateTemplate: vi.fn(),
-    // O conteúdo do modelo não vem mais na listagem: o side sheet o busca ao abrir.
     getTemplate: vi.fn().mockResolvedValue({
       id: "tpl-1",
       name: "Artroscopia padrão",
@@ -33,7 +43,9 @@ vi.mock("@/services/surgery-request.service", () => ({
   },
 }));
 
-let authState = { can: (p: Permission) => p === Permission.SOLICITACOES };
+let authState: { can: (p: Permission) => boolean } = {
+  can: (p) => p === Permission.SOLICITACOES,
+};
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => authState,
 }));
@@ -64,12 +76,6 @@ const procedure: ProcedureModel = {
   },
 };
 
-/**
- * Grupo 3 do mapa (achado da auditoria corrigido): os "modelos" desta tela
- * são `SurgeryRequestTemplate` — `PATCH /surgery-requests/templates/:id`
- * herda `Permission.SOLICITACOES` do controller de solicitações cirúrgicas,
- * não Administração como hospitais/convênios/fornecedores/fabricantes.
- */
 describe("ProcedureSideSheet — gating por Solicitações", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -88,14 +94,12 @@ describe("ProcedureSideSheet — gating por Solicitações", () => {
       />,
     );
 
-    // "Adicionar" (documentos) e "Editar" (OPME/TUSS) não aparecem.
     expect(
       screen.queryByRole("button", { name: /Adicionar/i }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryAllByRole("button", { name: /Editar/i }),
     ).toHaveLength(0);
-    // "Usar modelo" continua disponível — usar o modelo não é editá-lo.
     expect(
       screen.getByRole("button", { name: /Usar modelo/i }),
     ).toBeInTheDocument();

@@ -29,11 +29,6 @@ export default function DashboardLayoutInner({
 
   const subscriptionStatus = subscription?.subscription.status;
   const isPlanPage = pathname.startsWith("/configuracoes");
-  // Só o dono da conta: o overlay oferece "Escolher plano"/"Regularizar", e a
-  // aba de plano só existe para ele — para um admin delegado o CTA levava a
-  // uma tela que o redireciona de volta, prendendo-o num beco sem saída. Quem
-  // não é dono descobre o bloqueio no ponto da ação (`BillingLimitModal`),
-  // que manda procurar o administrador da conta.
   const shouldBlockDashboard =
     isAccountOwner &&
     !isPlanPage &&
@@ -76,21 +71,13 @@ export default function DashboardLayoutInner({
 
   return (
     <NotificationsProvider>
-      {/*
-        Altura dinâmica (`dvh`): no celular, `100vh` ignora a barra de endereço
-        do navegador e a raiz passava do fundo visível — a barra inferior do
-        app cobria o fim do conteúdo sem deixar rolá-lo. `h-screen` fica só de
-        fallback para navegador sem suporte a `dvh`.
-      */}
       <div className="relative flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden bg-white">
-        {/* Sidebar - apenas visível no desktop ou como drawer */}
         <Sidebar
           isMobileOpen={isMobileMenuOpen}
           onMobileClose={() => setIsMobileMenuOpen(false)}
         />
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Header Mobile - Compacto com logo e ações */}
           <header className="flex items-center justify-between px-4 h-14 border-b border-neutral-100 lg:hidden">
             <div className="flex items-center gap-3">
               <Image
@@ -107,28 +94,6 @@ export default function DashboardLayoutInner({
             <MobileHeaderActions />
           </header>
 
-          {/*
-            Conteúdo principal — e, no mobile, o eixo de rolagem da aplicação.
-
-            O banner mora aqui dentro de propósito: como irmão do `main` ele
-            ficava cravado no topo consumindo ~220px permanentes de uma tela de
-            667px, e o que sobrava era subtraído direto da altura útil da
-            página. Rolando junto com o conteúdo, ele sai da tela.
-
-            Coluna flex, e não bloco: é o que faz a página receber
-            **exatamente** a altura que sobra do banner. Com layout de bloco, o
-            `h-full` do `PageContainer` pedia 100% do `main` e o banner
-            empurrava esse tanto para fora — no desktop, onde não há rolagem,
-            o excedente era cortado e o rodapé do kanban ficava inalcançável.
-
-            `GlobalBanners` mora DENTRO do `OnboardingProvider` (e depois do
-            `ConsentGate`/`PermissionRouteGuard`) porque é onde o
-            `OnboardingBanner` (a menor precedência dos três) tem o contexto
-            de onboarding disponível — o próprio `OnboardingGate` já exigia
-            ficar depois do `ConsentGate` pelo mesmo motivo legal (aceite vem
-            antes de qualquer outra coisa), e mover o provider para fora
-            dele quebraria essa regra.
-          */}
           <main className="flex flex-1 flex-col overflow-y-auto overscroll-y-contain lg:overflow-hidden">
             <PermissionRouteGuard>
               <ConsentGate>
@@ -137,14 +102,12 @@ export default function DashboardLayoutInner({
                     <GlobalBanners />
                   </div>
                   <OnboardingGate>{children}</OnboardingGate>
-                  {/* O menu móvel também registra ações acionadas pelo tour. */}
                   <BottomNavBar />
                 </OnboardingProvider>
               </ConsentGate>
             </PermissionRouteGuard>
           </main>
 
-          {/* Espaçador reservado para a barra inferior no mobile */}
           <div
             className="lg:hidden flex-shrink-0"
             style={{ height: "calc(64px + env(safe-area-inset-bottom, 0px))" }}

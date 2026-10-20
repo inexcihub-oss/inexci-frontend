@@ -1,4 +1,5 @@
 import api, { FETCH_ALL_TAKE } from "@/lib/api";
+import { getApiRecords } from "@/lib/api-response";
 import { isUnauthorizedError } from "@/lib/http-error";
 
 export interface Procedure {
@@ -17,15 +18,12 @@ export interface UpdateProcedurePayload {
 }
 
 export const procedureService = {
-  /**
-   * Busca todos os procedimentos
-   */
   async getAll(): Promise<Procedure[]> {
     try {
-      const response = await api.get("/procedures", {
+      const response = await api.get<unknown>("/procedures", {
         params: { take: FETCH_ALL_TAKE },
       });
-      return response.data.records || response.data;
+      return getApiRecords<Procedure>(response.data);
     } catch (error: unknown) {
       if (isUnauthorizedError(error)) {
         throw new Error("Usuário não autenticado");
@@ -34,36 +32,24 @@ export const procedureService = {
     }
   },
 
-  /**
-   * Busca um procedimento por ID
-   */
   async getById(id: string): Promise<Procedure> {
-    const response = await api.get(`/procedures/${id}`);
+    const response = await api.get<Procedure>(`/procedures/${id}`);
     return response.data;
   },
 
-  /**
-   * Cria um novo procedimento
-   */
   async create(payload: CreateProcedurePayload): Promise<Procedure> {
-    const response = await api.post("/procedures", payload);
+    const response = await api.post<Procedure>("/procedures", payload);
     return response.data;
   },
 
-  /**
-   * Atualiza um procedimento
-   */
   async update(
     id: string,
     payload: UpdateProcedurePayload,
   ): Promise<Procedure> {
-    const response = await api.patch(`/procedures/${id}`, payload);
+    const response = await api.patch<Procedure>(`/procedures/${id}`, payload);
     return response.data;
   },
 
-  /**
-   * Exclui um procedimento
-   */
   async delete(id: string): Promise<void> {
     await api.delete(`/procedures/${id}`);
   },

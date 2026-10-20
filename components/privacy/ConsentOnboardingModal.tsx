@@ -12,8 +12,6 @@ import {
 import Button from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
-import type { ToastType } from "@/types/toast.types";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
 import { consentService } from "@/services/consent.service";
@@ -24,21 +22,11 @@ interface ConsentOnboardingModalProps {
   onCompleted: () => Promise<void> | void;
 }
 
-/**
- * Modal de tela cheia, não-fechável, exibido apenas quando o usuário tem
- * consentimentos obrigatórios pendentes (Política e/ou Termos).
- *
- * Estrutura simples:
- *  - Checkbox para Política de Privacidade (obrigatório).
- *  - Checkbox para Termos de Uso (obrigatório).
- *  - Toggle opcional para ativar o assistente de IA.
- *  - Botão único "Continuar" que persiste tudo.
- */
 export function ConsentOnboardingModal({
   consents,
   onCompleted,
 }: ConsentOnboardingModalProps) {
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const [acceptedPolicy, setAcceptedPolicy] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedAi, setAcceptedAi] = useState(false);
@@ -249,13 +237,6 @@ export function ConsentOnboardingModal({
         </footer>
       </div>
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </div>
   );
 }

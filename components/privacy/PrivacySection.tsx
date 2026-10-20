@@ -14,9 +14,7 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
-import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
-import { ToastType } from "@/types/toast.types";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
 import { MarkdownContent } from "@/components/privacy/MarkdownContent";
@@ -92,13 +90,8 @@ function ConsentBadge({ row }: { row: ConsentRow }) {
   );
 }
 
-/**
- * Bloco completo de gerenciamento de privacidade (status dos termos + IA).
- * Reutilizado tanto na rota dedicada quanto na aba "Privacidade" da página
- * principal de configurações.
- */
 export function PrivacySection() {
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const {
     consents,
     consentsLoading,
@@ -110,8 +103,6 @@ export function PrivacySection() {
   const [docLoading, setDocLoading] = useState(false);
   const [revokeAiOpen, setRevokeAiOpen] = useState(false);
 
-  // Reaproveita o estado já carregado pelo AuthContext: evita uma segunda
-  // chamada a /privacy/consent/status sempre que o usuário entra nesta tela.
   const status: ConsentStatus | null = consents;
   const loading = consentsLoading && !status;
 
@@ -339,13 +330,6 @@ export function PrivacySection() {
         loading={aiToggleLoading}
       />
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </div>
   );
 }

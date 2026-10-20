@@ -7,10 +7,8 @@ import {
   phoneOptionalSchema,
   cpfSchema,
   cpfOptionalSchema,
-  cnpjSchema,
   cnpjOptionalSchema,
   cepSchema,
-  cepOptionalSchema,
   strongPasswordSchema,
 } from "@/lib/schemas/shared";
 
@@ -95,31 +93,19 @@ describe("cpfOptionalSchema", () => {
   });
 });
 
-describe("cnpjSchema / cnpjOptionalSchema", () => {
-  it("aceita CNPJ válido", () => {
-    expect(cnpjSchema.safeParse("11.222.333/0001-81").success).toBe(true);
-  });
-
-  it("rejeita CNPJ inválido", () => {
-    expect(cnpjSchema.safeParse("11.222.333/0001-00").success).toBe(false);
-  });
-
+describe("cnpjOptionalSchema", () => {
   it("opcional aceita vazio", () => {
     expect(cnpjOptionalSchema.safeParse("").success).toBe(true);
   });
 });
 
-describe("cepSchema / cepOptionalSchema", () => {
+describe("cepSchema", () => {
   it("aceita CEP de 8 dígitos", () => {
     expect(cepSchema.safeParse("01310-100").success).toBe(true);
   });
 
   it("rejeita CEP curto", () => {
     expect(cepSchema.safeParse("12345").success).toBe(false);
-  });
-
-  it("opcional aceita vazio", () => {
-    expect(cepOptionalSchema.safeParse("").success).toBe(true);
   });
 });
 

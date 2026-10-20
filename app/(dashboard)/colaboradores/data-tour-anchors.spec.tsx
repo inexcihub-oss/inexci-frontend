@@ -9,8 +9,6 @@ import type { ReactElement, ReactNode } from "react";
 
 import ColaboradoresPage from "./page";
 
-// O componente invalida a lista de médicos em cache ao salvar
-// (`useInvalidateAvailableDoctors`), então precisa de um QueryClient.
 function render(ui: ReactElement, options?: RenderOptions) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -20,15 +18,6 @@ function render(ui: ReactElement, options?: RenderOptions) {
   );
   return rtlRender(ui, { wrapper: Wrapper, ...options });
 }
-
-/**
- * Prova que a tela real de colaboradores carrega a âncora `data-tour` que o
- * tour de onboarding (`lib/onboarding/tour-registry.ts`, trilha
- * `administracao`) espera encontrar — "admin-novo-colaborador". Sem este
- * teste, remover o atributo (ou trocar o elemento) quebra o tour em
- * silêncio: `useTargetRect` só reporta "ausente" e o passo é pulado, sem
- * nenhum erro visível em dev.
- */
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),

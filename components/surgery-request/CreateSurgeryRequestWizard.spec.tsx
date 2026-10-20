@@ -16,11 +16,6 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ can: () => true, permissions: [] }),
 }));
 
-// A referência precisa ser estável: o wizard auto-seleciona o médico único
-// num efeito que depende do array, e um literal novo a cada render vira loop
-// infinito (ver mesmo gotcha em __tests__/CreateSurgeryRequestWizard.template.spec.tsx
-// e components/agenda/NewAppointmentModal.spec.tsx). Por isso o array vive
-// dentro do factory, que só roda uma vez.
 vi.mock("@/hooks/useAvailableDoctors", () => {
   const stableData = [{ id: "doctor-1", name: "Dra. Ana" }];
   return {
@@ -165,5 +160,105 @@ describe("CreateSurgeryRequestWizard — tour de onboarding", () => {
     expect(
       screen.getByRole("button", { name: /nova solicitação/i }),
     ).toBeDisabled();
+  });
+});
+
+describe("CreateSurgeryRequestWizard — casca em ui/Modal", () => {
+  beforeEach(() => {
+    onboardingMockState.emTour = false;
+  });
+
+  it("renderiza o diálogo em portal no body, rotulado pelo título", () => {
+    const { container } = render(
+      <CreateSurgeryRequestWizard
+        isOpen
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Nova solicitação" });
+    expect(document.body).toContainElement(dialog);
+    expect(container).not.toContainElement(dialog);
+  });
+
+  it("não renderiza nada fechado", () => {
+    render(
+      <CreateSurgeryRequestWizard
+        isOpen={false}
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("fecha com Esc e pelo botão Fechar", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <CreateSurgeryRequestWizard isOpen onClose={onClose} onSuccess={vi.fn()} />,
+    );
+
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it("não fecha com Esc durante o tour", async () => {
+    const user = userEvent.setup();
+    onboardingMockState.emTour = true;
+    const onClose = vi.fn();
+    render(
+      <CreateSurgeryRequestWizard isOpen onClose={onClose} onSuccess={vi.fn()} />,
+    );
+
+    await user.keyboard("{Escape}");
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Fechar" })).toBeDisabled();
+  });
+
+  it("libera Paciente só depois do procedimento e mostra o título do painel", async () => {
+    const user = userEvent.setup();
+    render(
+      <CreateSurgeryRequestWizard
+        isOpen
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /^Paciente/ })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: /^Procedimento/ }));
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Procedimento" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByText("escolher procedimento"));
+    expect(screen.getByRole("button", { name: /^Paciente/ })).toBeEnabled();
+    expect(screen.getByText("Artroscopia")).toBeInTheDocument();
+  });
+
+  it("marca a prioridade escolhida", async () => {
+    const user = userEvent.setup();
+    render(
+      <CreateSurgeryRequestWizard
+        isOpen
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("radio", { name: "Urgente" }));
+
+    expect(screen.getByRole("radio", { name: "Urgente" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   });
 });

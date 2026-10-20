@@ -4,14 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ProcedimentosPage from "./page";
 
-/**
- * Prova que a tela real de procedimentos carrega a âncora `data-tour` que o
- * tour de onboarding (`lib/onboarding/tour-registry.ts`) espera encontrar —
- * "cadastros-procedimentos". Sem este teste, remover o atributo (ou trocar o
- * elemento) quebra o tour em silêncio: `useTargetRect` só reporta "ausente" e
- * o passo é pulado, sem nenhum erro visível em dev.
- */
-
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
@@ -80,7 +72,6 @@ describe("Tela de Procedimentos — âncoras do tour", () => {
     const botaoNovoModelo = await screen.findByText("Novo modelo");
     await userEvent.setup().click(botaoNovoModelo);
 
-    // Aguarda o modal e o input aparecerem
     await screen.findByPlaceholderText("Ex: Artroplastia padrão Bradesco");
 
     expect(

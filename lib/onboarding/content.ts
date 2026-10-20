@@ -1,12 +1,5 @@
 import { Permission } from "@/lib/permissions";
 
-/**
- * Toda a copy do onboarding vive aqui, separada do motor.
- *
- * Regra de estilo: no máximo duas linhas por passo, verbo no imperativo, sem
- * jargão. Passo que precisa de três linhas é sinal de que são dois passos.
- */
-
 export const BOAS_VINDAS = {
   titulo: "Bem-vindo à INEXCI",
   slides: [
@@ -26,14 +19,6 @@ export const BOAS_VINDAS = {
   comecar: "Começar",
 };
 
-/**
- * Slide 3, montado a partir das áreas do usuário — uma linha por área, e o
- * slide as lista. Emendar as frases num parágrafo só dava um paredão de texto
- * justamente para a persona principal: o médico dono da conta tem as quatro.
- *
- * Tipado por `Permission`, não por `string`: assim uma área nova sem frase aqui
- * quebra a compilação em vez de renderizar um parágrafo vazio.
- */
 export const SEU_PAPEL: Record<Permission, string> = {
   [Permission.AGENDA]: "Marcar, confirmar e remarcar consultas.",
   [Permission.ATENDIMENTO]:
@@ -44,7 +29,6 @@ export const SEU_PAPEL: Record<Permission, string> = {
     "Convidar a equipe e definir o que cada um acessa.",
 };
 
-/** Fechamento comum do terceiro slide, independentemente das áreas liberadas. */
 export const SEU_PAPEL_FECHAMENTO =
   "Mantenha sempre atualizada e assuma o controle da jornada do seu paciente.";
 
@@ -67,11 +51,6 @@ export const TOUR_UI = {
     "Não conseguimos abrir esta parte agora. Você pode tentar de novo em Configurações.",
 };
 
-/**
- * A assinatura já vinha na Fase 1 sozinha, por ser pré-requisito do laudo. A
- * Fase 2 completa a trilha com o cabeçalho e a regra que mais gera frustração
- * quando não é dita antes: documento emitido não se edita.
- */
 export const TRILHA_DOCUMENTOS_MEDICO = {
   label: "Preparar seus documentos",
   descricao:
@@ -152,7 +131,6 @@ export const TRILHA_SOLICITACOES = {
       titulo: "Complete antes de enviar",
       corpo:
         "A solicitação só sai de Pendente quando estes itens estiverem completos. O painel de pendências mostra o que falta a qualquer momento.",
-      /** Preenchido em runtime com os rótulos vindos do backend. */
       comRequisitos: (rotulos: string[]) =>
         rotulos.length
           ? `A solicitação só sai de Pendente com: ${rotulos.join(", ")}. O painel de pendências mostra o que falta a qualquer momento.`
@@ -165,12 +143,7 @@ export const TRILHA_SOLICITACOES = {
     },
     kanbanStatus: {
       titulo: "Nove status, um caminho só",
-      corpo: "", // montado em runtime — ver `comStatus` abaixo
-      /**
-       * Lê os rótulos de `STATUS_NUMBER_TO_STRING`
-       * (`services/surgery-request.service.ts`) em vez de repetir a lista
-       * aqui — mesmo raciocínio de `TRILHA_ADMINISTRACAO.passos.areas.comAreas`.
-       */
+      corpo: "",
       comStatus: (rotulos: string[]) =>
         `A solicitação percorre, nesta ordem: ${rotulos.join(" → ")}. Contestação pode acontecer em vários pontos do caminho.`,
     },
@@ -225,12 +198,6 @@ export const TRILHA_CADASTROS = {
   },
 };
 
-/**
- * A descrição de cada área não é redigitada aqui: `comAreas` recebe a lista
- * pronta (vinda de `PERMISSION_DESCRIPTIONS`, em `lib/permissions.ts`) para
- * este módulo não precisar importar `permissions` e criar uma dependência
- * cruzada entre copy e regra de acesso.
- */
 export const TRILHA_ADMINISTRACAO = {
   label: "Montar sua equipe",
   descricao: "Convidar colaboradores, definir áreas e vincular aos médicos.",
@@ -242,12 +209,7 @@ export const TRILHA_ADMINISTRACAO = {
     },
     areas: {
       titulo: "Escolha o que cada um acessa",
-      corpo: "", // montado em runtime — ver `comAreas` abaixo
-      /**
-       * Lê as descrições de `lib/permissions.ts` em vez de repetir o texto
-       * aqui. Recebe a lista pronta para não importar `permissions` dentro da
-       * copy e criar dependência cruzada.
-       */
+      corpo: "",
       comAreas: (descricoes: string[]) =>
         `São quatro áreas independentes: ${descricoes.join(" ")}`,
     },

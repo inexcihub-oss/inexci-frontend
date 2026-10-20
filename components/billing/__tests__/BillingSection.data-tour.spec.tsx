@@ -3,14 +3,6 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { SubscriptionDetail, SubscriptionPlan } from "@/types";
 
-/**
- * Prova que a aba de plano carrega as âncoras `data-tour` que a trilha
- * `plano-e-cota` (`lib/onboarding/tour-registry.ts`) espera encontrar:
- * "plano-assinatura", "plano-cota", "plano-acoes" e (dentro do modal de
- * seleção) "plano-planos-disponiveis". Sem este teste, remover o atributo
- * (ou trocar o elemento) quebra o tour em silêncio.
- */
-
 function planoFake(): SubscriptionPlan {
   return {
     id: "plan-1",
@@ -20,8 +12,6 @@ function planoFake(): SubscriptionPlan {
     priceCents: 19900,
     currency: "BRL",
     billingPeriod: "MONTHLY",
-    // Sem preço no gateway o card vira "Enterprise" e não renderiza o CTA
-    // que estes testes exercitam.
     gatewayPriceId: "price_profissional_mensal",
     surgeryRequestQuota: 50,
     sortOrder: 1,
@@ -116,9 +106,6 @@ describe("BillingSection — âncoras do tour", () => {
     const botaoTrocarPlano = await screen.findByText("Trocar plano");
     await userEvent.setup().click(botaoTrocarPlano);
 
-    // PlanSelector monta o carrossel mobile e a grade desktop ao mesmo tempo
-    // (alternância é só por CSS), então o nome do plano aparece duas vezes no
-    // DOM — mesmo padrão já usado em PlanSelector.spec.tsx.
     expect((await screen.findAllByText("Profissional")).length).toBeGreaterThan(
       0,
     );
@@ -128,9 +115,6 @@ describe("BillingSection — âncoras do tour", () => {
   });
 
   it("handleManage não chama billingService.openPortal quando emTour é true", async () => {
-    // O botão "Trocar plano" não é desabilitado por `emTour` (só os botões
-    // topo-de-tela são) — é o guard dentro de `handleManage` que precisa
-    // impedir a chamada real à Stripe.
     onboardingMockState.emTour = true;
     vi.mocked(billingService.listPlans).mockResolvedValue([
       planoFake(),
@@ -152,8 +136,6 @@ describe("BillingSection — âncoras do tour", () => {
   });
 
   it("handleCheckout não chama billingService.startCheckout quando emTour é true", async () => {
-    // Assinatura "canceled" faz o CTA do plano virar "Assinar este plano"
-    // (fluxo de checkout) — também não é desabilitado por `emTour`.
     authMockState.status = "canceled";
     onboardingMockState.emTour = true;
 

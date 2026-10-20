@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import PageContainer from "@/components/PageContainer";
 import { DetailPageLayout, FormSection } from "@/components/details";
 import Input from "@/components/ui/Input";
@@ -13,44 +13,26 @@ import {
 } from "@/services/manufacturer.service";
 import { maskCnpj, maskPhone, unmask } from "@/lib/masks";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
-import { ToastType } from "@/types/toast.types";
-import { logger } from "@/lib/logger";
+import { useEntityDetailForm } from "@/hooks/useEntityDetailForm";
+import { registryKeys } from "@/lib/query-keys";
 
-export default function FabricanteDetalhePage() {
-  const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [manufacturer, setManufacturer] = useState<Manufacturer | null>(null);
-  const { toast, showToast, hideToast } = useToast();
+const EMPTY_FORM = {
+  name: "",
+  cnpj: "",
+  anvisaRegistration: "",
+  email: "",
+  phone: "",
+  website: "",
+  country: "",
+  contactName: "",
+  contactPhone: "",
+  contactEmail: "",
+  notes: "",
+};
+type ManufacturerForm = typeof EMPTY_FORM;
 
-  const [formData, setFormData] = useState({
-    name: "",
-    cnpj: "",
-    anvisaRegistration: "",
-    email: "",
-    phone: "",
-    website: "",
-    country: "",
-    contactName: "",
-    contactPhone: "",
-    contactEmail: "",
-    notes: "",
-  });
-  const [originalData, setOriginalData] = useState<typeof formData | null>(
-    null,
-  );
-  const isDirty =
-    originalData !== null &&
-    JSON.stringify(formData) !== JSON.stringify(originalData);
-
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
-
-  const buildFormData = (m: Manufacturer) => ({
+function toForm(m: Manufacturer): ManufacturerForm {
+  return {
     name: m.name || "",
     cnpj: maskCnpj(m.cnpj || ""),
     anvisaRegistration: m.anvisaRegistration || "",
@@ -62,81 +44,56 @@ export default function FabricanteDetalhePage() {
     contactPhone: maskPhone(m.contactPhone || ""),
     contactEmail: m.contactEmail || "",
     notes: m.notes || "",
+  };
+}
+
+export default function FabricanteDetalhePage() {
+  const params = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const { data: manufacturer = null, isLoading: loading } = useQuery({
+    queryKey: registryKeys.manufacturer(params.id),
+    queryFn: () => manufacturerService.getById(params.id),
   });
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const manufacturerData = await manufacturerService.getById(params.id);
-      if (!manufacturerData) {
-        setLoading(false);
-        return;
-      }
-      setManufacturer(manufacturerData);
-      const fd = buildFormData(manufacturerData);
-      setFormData(fd);
-      setOriginalData(fd);
-    } catch (error) {
-      logger.error("Erro ao carregar fabricante:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = async () => {
-    if (!manufacturer) return;
-
-    const name = formData.name.trim();
-    if (!name) {
-      showToast("Nome do fabricante é obrigatório.", "error");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const normalizedFormData = {
-        ...formData,
-        name,
-        cnpj: maskCnpj(formData.cnpj),
-        phone: maskPhone(formData.phone),
-        contactPhone: maskPhone(formData.contactPhone),
-      };
-
-      await manufacturerService.update(manufacturer.id, {
-        name,
-        cnpj: unmask(formData.cnpj) || undefined,
-        anvisaRegistration: formData.anvisaRegistration || undefined,
-        email: formData.email || undefined,
-        phone: unmask(formData.phone) || undefined,
-        website: formData.website || undefined,
-        country: formData.country || undefined,
-        contactName: formData.contactName || undefined,
-        contactPhone: unmask(formData.contactPhone) || undefined,
-        contactEmail: formData.contactEmail || undefined,
-        notes: formData.notes || undefined,
-      });
-      setFormData(normalizedFormData);
-      setOriginalData(normalizedFormData);
-      showToast("Fabricante atualizado com sucesso!", "success");
-    } catch (error) {
-      logger.error("Erro ao salvar fabricante:", error);
-      showToast("Erro ao salvar as alterações.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (isDirty && originalData) {
-      setFormData(originalData);
-    } else {
-      router.push("/fabricantes");
-    }
-  };
+  const { formData, setField, isDirty, saving, handleSave, handleCancel } =
+    useEntityDetailForm({
+      entity: manufacturer,
+      emptyForm: EMPTY_FORM,
+      toForm,
+      validate: (form) =>
+        form.name.trim() ? null : "Nome do fabricante é obrigatório.",
+      normalize: (form) => ({
+        ...form,
+        name: form.name.trim(),
+        cnpj: maskCnpj(form.cnpj),
+        phone: maskPhone(form.phone),
+        contactPhone: maskPhone(form.contactPhone),
+      }),
+      save: async (entity, form) => {
+        await manufacturerService.update(entity.id, {
+          name: form.name,
+          cnpj: unmask(form.cnpj) || undefined,
+          anvisaRegistration: form.anvisaRegistration || undefined,
+          email: form.email || undefined,
+          phone: unmask(form.phone) || undefined,
+          website: form.website || undefined,
+          country: form.country || undefined,
+          contactName: form.contactName || undefined,
+          contactPhone: unmask(form.contactPhone) || undefined,
+          contactEmail: form.contactEmail || undefined,
+          notes: form.notes || undefined,
+        });
+        await queryClient.invalidateQueries({
+          queryKey: registryKeys.manufacturers(),
+        });
+      },
+      showToast,
+      successMessage: "Fabricante atualizado com sucesso!",
+      backHref: "/fabricantes",
+    });
+  const handleInputChange = (field: keyof ManufacturerForm, value: string) =>
+    setField(field, value);
 
   if (loading) {
     return (
@@ -263,13 +220,6 @@ export default function FabricanteDetalhePage() {
         </div>
       </DetailPageLayout>
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type as ToastType}
-          onClose={hideToast}
-        />
-      )}
     </PageContainer>
   );
 }

@@ -45,10 +45,6 @@ describe("patientService", () => {
     });
   });
 
-  // O backend já recorta a listagem, mas o mapper é a segunda barreira: se a
-  // rota voltar a devolver o cadastro inteiro (relação nova, `select` perdido
-  // num refactor), o dado clínico e o endereço morrem aqui em vez de irem
-  // parar no estado de um seletor de paciente.
   describe("recorte da listagem", () => {
     const CADASTRO_COMPLETO = {
       id: "1",
@@ -93,9 +89,7 @@ describe("patientService", () => {
         cpf: "12345678900",
         email: "ana@example.com",
         phone: "11988880000",
-        // Sem foto no cadastro: a listagem devolve `null`, não omite.
         photoUrl: null,
-        // Sem convênio no cadastro.
         healthPlanId: undefined,
         birthDate: "1990-05-02",
         createdAt: "2024-01-01",

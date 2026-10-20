@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { opmeService } from "@/services/opme.service";
 import { OpmeItem } from "@/services/opme.service";
+import type { OpmeItemRef } from "@/types/surgery-request.types";
 import { OpmeModal } from "@/components/opme/OpmeModal";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -15,9 +16,14 @@ import {
   Package,
 } from "lucide-react";
 import { useSolicitacao } from "@/contexts/SolicitacaoContext";
+import {
+  SurgeryRequestStatusCode,
+  TUSS_OPME_EDITABLE_STATUSES,
+  isStatusIn,
+  reachedStatus,
+} from "@/lib/surgery-request-status";
 import { padWithGenericOption } from "@/lib/generic-option";
 
-/** Lista de nomes de fabricantes a partir do item OPME */
 function getManufacturerNames(item: {
   manufacturers?: Array<{ name?: string } | string>;
 }): string[] {
@@ -33,10 +39,42 @@ function padOpmeDisplayNames(names: string[]): string[] {
   return padWithGenericOption(names.map((name) => name.trim()).filter(Boolean));
 }
 
+function toOpmeItem(
+  ref: OpmeItemRef,
+  surgeryRequestId: string | number,
+): OpmeItem {
+  return {
+    id: String(ref.id),
+    surgeryRequestId,
+    name: ref.name ?? "",
+    suppliers: (ref.suppliers ?? []).map((s) => ({
+      id: String(s.id ?? ""),
+      name: s.name ?? "",
+    })),
+    manufacturers: (
+      (ref.manufacturers ?? []) as Array<{ id?: string | number; name?: string } | string>
+    ).map((m) =>
+      typeof m === "string"
+        ? { id: "", name: m }
+        : { id: String(m.id ?? ""), name: m.name ?? "" },
+    ),
+    quantity: ref.quantity ?? 1,
+    authorizedQuantity: ref.authorizedQuantity ?? undefined,
+    createdAt: typeof ref.createdAt === "string" ? ref.createdAt : "",
+  };
+}
+
 export function OpmeTab() {
   const { solicitacao, statusNum, onUpdate } = useSolicitacao();
-  const showAuthorizationColumn = statusNum >= 3;
-  const showColorCoding = statusNum >= 4;
+  const showAuthorizationColumn = reachedStatus(
+    solicitacao,
+    SurgeryRequestStatusCode.IN_ANALYSIS,
+  );
+  const showColorCoding = reachedStatus(
+    solicitacao,
+    SurgeryRequestStatusCode.IN_SCHEDULING,
+  );
+  const isReadOnly = !isStatusIn(statusNum, TUSS_OPME_EDITABLE_STATUSES);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
     {},
   );
@@ -47,9 +85,7 @@ export function OpmeTab() {
   const [isSettingHasOpme, setIsSettingHasOpme] = useState(false);
   const { showToast } = useToast();
 
-  // has_opme: null = não informado | true = tem OPME | false = sem OPME
   const hasOpme: boolean | null = solicitacao.hasOpme ?? null;
-  const isReadOnly = statusNum >= 3;
 
   const handleEdit = (opme: OpmeItem) => {
     setEditingOpme(opme);
@@ -81,7 +117,7 @@ export function OpmeTab() {
     if (!searchTerm.trim()) return solicitacao.opmeItems;
     const term = searchTerm.toLowerCase();
     return solicitacao.opmeItems.filter(
-      (item: any) =>
+      (item) =>
         item.name?.toLowerCase().includes(term) ||
         getManufacturerNames(item).some((name) =>
           name.toLowerCase().includes(term),
@@ -112,7 +148,6 @@ export function OpmeTab() {
 
   return (
     <div className="flex-1 border border-neutral-100 rounded-2xl overflow-hidden flex flex-col">
-      {/* ── Banner: decisão se há OPME ──────────────────────────────────── */}
       {hasOpme === null && !isReadOnly && (
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-100">
           <div className="flex-1 min-w-0">
@@ -144,7 +179,6 @@ export function OpmeTab() {
         </div>
       )}
 
-      {/* ── Banner: sem OPME confirmado ──────────────────────────────────── */}
       {hasOpme === false && (
         <div className="flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 border-b border-neutral-100">
           <div className="flex items-center gap-2">
@@ -166,10 +200,8 @@ export function OpmeTab() {
         </div>
       )}
 
-      {/* ── Header: busca + botão (visível apenas quando há OPME ou null+readOnly) ─ */}
       {(hasOpme === true || (hasOpme === null && isReadOnly)) && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-4 py-3 border-b border-neutral-100">
-          {/* Campo de busca */}
           <div className="flex items-center gap-2 px-3 py-2.5 border border-neutral-100 rounded-xl bg-white flex-1 sm:flex-initial sm:min-w-[288px]">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <circle
@@ -195,7 +227,6 @@ export function OpmeTab() {
             />
           </div>
 
-          {/* Botão Adicionar OPME — desabilitado a partir do status Enviada (2) */}
           <button
             onClick={() => {
               setEditingOpme(null);
@@ -211,7 +242,6 @@ export function OpmeTab() {
         </div>
       )}
 
-      {/* ── Cabeçalho da coluna ─────────────────────────────────────────── */}
       {(hasOpme === true || hasOpme === null) && (
         <div className="flex items-center gap-3 px-4 py-1 border-b border-neutral-100">
           <div className="w-6 h-6 opacity-0" aria-hidden />
@@ -222,11 +252,10 @@ export function OpmeTab() {
         </div>
       )}
 
-      {/* ── Lista de materiais ──────────────────────────────────────────── */}
       {(hasOpme === true || hasOpme === null) && (
         <div className="flex-1 overflow-auto">
           {filteredOpmeItems.length > 0 ? (
-            filteredOpmeItems.map((material: any) => {
+            filteredOpmeItems.map((material) => {
               const manufacturers = padOpmeDisplayNames(
                 getManufacturerNames(material),
               );
@@ -235,7 +264,7 @@ export function OpmeTab() {
                   (s: { name?: string }) => s.name ?? "",
                 ),
               );
-              const expanded = isExpanded(material.id);
+              const expanded = isExpanded(String(material.id));
               const isFullyAuthorized =
                 showColorCoding &&
                 material.authorizedQuantity != null &&
@@ -248,12 +277,11 @@ export function OpmeTab() {
 
               return (
                 <div key={material.id} className="flex flex-col w-full">
-                  {/* Título do item */}
                   <div
                     className={`flex items-center w-full gap-3 px-4 py-3 border-b border-neutral-100 ${headerBg}`}
                   >
                     <button
-                      onClick={() => toggleItem(material.id)}
+                      onClick={() => toggleItem(String(material.id))}
                       className={`w-6 h-6 flex items-center justify-center transition-transform flex-shrink-0 ${
                         expanded ? "rotate-90" : "rotate-0"
                       }`}
@@ -286,13 +314,12 @@ export function OpmeTab() {
                         <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
                       ))}
 
-                    {/* Ações — ocultar no modo somente-leitura */}
                     {!showAuthorizationColumn && !isReadOnly && (
                       <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEdit(material);
+                            handleEdit(toOpmeItem(material, solicitacao.id));
                           }}
                           className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 transition-colors"
                           aria-label="Editar material"
@@ -305,9 +332,9 @@ export function OpmeTab() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(material.id);
+                            handleDelete(String(material.id));
                           }}
-                          disabled={isDeleting === material.id}
+                          disabled={isDeleting === String(material.id)}
                           className="w-8 h-8 flex items-center justify-center rounded hover:bg-red-50 transition-colors disabled:opacity-50"
                           aria-label="Remover material"
                         >
@@ -342,18 +369,14 @@ export function OpmeTab() {
                     )}
                   </div>
 
-                  {/* Tabela Fabricantes / Fornecedores */}
                   {expanded && (
                     <div className="flex flex-col sm:flex-row w-full border-b border-neutral-100">
-                      {/* Fabricantes */}
                       <div className="flex-1 flex flex-col sm:border-r border-b sm:border-b-0 border-neutral-100">
-                        {/* Header */}
                         <div className="flex w-full px-4 py-3 bg-white border-b border-neutral-100">
                           <span className="text-xs font-semibold text-gray-500 w-full">
                             FABRICANTES
                           </span>
                         </div>
-                        {/* Itens */}
                         {manufacturers.length > 0 ? (
                           manufacturers.map((m, i) => (
                             <div
@@ -378,15 +401,12 @@ export function OpmeTab() {
                         )}
                       </div>
 
-                      {/* Fornecedores */}
                       <div className="flex-1 flex flex-col">
-                        {/* Header */}
                         <div className="flex w-full px-4 py-3 bg-white border-b border-neutral-100">
                           <span className="text-xs font-semibold text-gray-500 w-full">
                             FORNECEDORES
                           </span>
                         </div>
-                        {/* Itens */}
                         {suppliers.length > 0 ? (
                           suppliers.map((name, i) => (
                             <div

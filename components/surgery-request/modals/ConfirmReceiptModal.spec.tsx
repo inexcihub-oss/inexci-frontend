@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithProviders as render } from "@/test-utils/render-with-providers";
 import { ConfirmReceiptModal } from "./ConfirmReceiptModal";
 import { surgeryRequestService } from "@/services/surgery-request.service";
 import { documentService } from "@/services/document.service";
@@ -46,13 +47,13 @@ describe("ConfirmReceiptModal — anexo", () => {
   });
 
   it("faz upload do comprovante selecionado ao confirmar", async () => {
-    const { container } = render(<ConfirmReceiptModal {...defaultProps} />);
+    render(<ConfirmReceiptModal {...defaultProps} />);
     selectValue();
 
     const file = new File(["x"], "comprovante.pdf", {
       type: "application/pdf",
     });
-    const input = container.querySelector(
+    const input = document.querySelector(
       'input[type="file"]',
     ) as HTMLInputElement;
     fireEvent.change(input, { target: { files: [file] } });
@@ -80,5 +81,52 @@ describe("ConfirmReceiptModal — anexo", () => {
       expect(surgeryRequestService.confirmReceipt).toHaveBeenCalled(),
     );
     expect(documentService.upload).not.toHaveBeenCalled();
+  });
+});
+
+describe("ConfirmReceiptModal — formulário (Zod)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(surgeryRequestService.confirmReceipt).mockResolvedValue(
+      {} as never,
+    );
+    vi.mocked(surgeryRequestService.contestPayment).mockResolvedValue(
+      {} as never,
+    );
+  });
+
+  it("sem valor recebido não chama a API e avisa pelo toast global", async () => {
+    render(<ConfirmReceiptModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    expect(
+      await screen.findByText("Preencha: Valor recebido"),
+    ).toBeInTheDocument();
+    expect(surgeryRequestService.confirmReceipt).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Valor recebido")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+  });
+
+  it("valor divergente leva ao recurso, que exige destinatário", async () => {
+    render(<ConfirmReceiptModal {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText("R$ 0,00"), {
+      target: { value: "5000" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirmar e recorrer" }),
+    );
+
+    expect(await screen.findByText("Contestar recebimento")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Enviar recurso" }));
+
+    expect(
+      await screen.findByText("Preencha: Destinatários"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Informe pelo menos um destinatário"),
+    ).toBeInTheDocument();
+    expect(surgeryRequestService.confirmReceipt).not.toHaveBeenCalled();
   });
 });

@@ -5,19 +5,10 @@ import { CHECKLIST } from "@/lib/onboarding/content";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { useOnboarding } from "./OnboardingProvider";
 
-/**
- * Banner global de "Primeiros passos" — mesma anatomia do `QuotaBanner`
- * (`GlobalBanners`), só que em teal para não se confundir com aviso de
- * cobrança. Ao contrário do card antigo, não lista as trilhas: mostra só o
- * progresso agregado e a PRÓXIMA trilha incompleta, com um único CTA. A lista
- * completa continua em `OnboardingSettingsTab`.
- */
 export function OnboardingBanner() {
   const { state, tracks, startTour, dismiss, isChecklistVisible } =
     useOnboarding();
 
-  // A conclusão é celebrada pelo overlay próprio. Manter este banner nessa
-  // transição deixava uma camada visual presa no topo da tela.
   if (
     !isChecklistVisible ||
     tracks.length === 0 ||

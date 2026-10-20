@@ -18,7 +18,6 @@ describe("CSP", () => {
     const csp = montarCsp("abc123", "https://api.inexci.com.br");
     const connectSrc = csp.split(";").find((d) => d.trim().startsWith("connect-src"));
     expect(connectSrc).toContain("https://api.inexci.com.br");
-    // 'https:' generico permitia exfiltrar para qualquer host.
     expect(connectSrc).not.toMatch(/\shttps:(\s|$)/);
   });
 
@@ -53,5 +52,14 @@ describe("CSP", () => {
     const csp = montarCsp("abc123", "https://api.inexci.com.br", false, true);
     const scriptSrc = csp.split(";").find((d) => d.trim().startsWith("script-src"));
     expect(scriptSrc).toContain("'unsafe-eval'");
+  });
+
+  it("libera o Turnstile da Cloudflare em script-src e frame-src", () => {
+    const csp = montarCsp("abc123", "https://api.inexci.com.br");
+    const diretiva = (nome: string) =>
+      csp.split(";").find((d) => d.trim().startsWith(nome)) ?? "";
+    expect(diretiva("script-src")).toContain("https://challenges.cloudflare.com");
+    expect(diretiva("frame-src")).toContain("https://challenges.cloudflare.com");
+    expect(diretiva("frame-src")).not.toContain("*");
   });
 });

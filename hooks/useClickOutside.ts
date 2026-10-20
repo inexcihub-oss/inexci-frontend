@@ -1,15 +1,10 @@
 import { useEffect, RefObject, useCallback } from "react";
 
-/**
- * Hook para detectar cliques fora de um elemento
- * IMPORTANTE: O handler deve ser estável (useCallback) para evitar re-execuções do useEffect
- */
 export function useClickOutside<T extends HTMLElement = HTMLElement>(
   ref: RefObject<T>,
   handler: (event: MouseEvent | TouchEvent) => void,
   enabled: boolean = true,
 ) {
-  // Memoiza o handler para evitar que mudanças de referência disparem o useEffect
   const stableHandler = useCallback(
     (event: MouseEvent | TouchEvent) => {
       const el = ref?.current;

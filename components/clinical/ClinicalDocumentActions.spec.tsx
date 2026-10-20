@@ -102,7 +102,6 @@ describe("ClinicalDocumentActions", () => {
     ).toHaveTextContent("Esta consulta é de Luana Técnica.");
     expect(screen.getByRole("button", { name: /receita/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /atestado/i })).toBeDisabled();
-    // Pedido de exame também: o backend exige médico nos três documentos.
     expect(screen.getByRole("button", { name: /exames/i })).toBeDisabled();
   });
 
@@ -157,11 +156,6 @@ describe("ClinicalDocumentActions", () => {
     expect(screen.queryByText(/só podem ser emitidos por médico/)).toBeNull();
   });
 
-  /**
-   * Âncora do tour de onboarding (trilha "atendimento", passo "documentos")
-   * em `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo
-   * (ou trocar o elemento) quebra o tour em silêncio.
-   */
   it('expõe data-tour="ficha-documentos" no card de documentos do atendimento', () => {
     setup();
 
@@ -257,8 +251,6 @@ describe("ClinicalDocumentActions", () => {
     );
   });
 
-  // O CID do atestado nem sempre é o da ficha (e a ficha pode não ter CID
-  // nenhum), então a opção existe sempre — quem escolhe é o médico.
   it("oferece incluir o CID mesmo quando a ficha não tem diagnóstico", async () => {
     const user = userEvent.setup();
     setup(false);
@@ -308,18 +300,11 @@ describe("ClinicalDocumentActions", () => {
         "Assinatura do médico não configurada",
       ),
     );
-    // O modal continua aberto com o que já foi digitado.
     expect(screen.getByLabelText(/medicamento/i)).toBeDefined();
     expect(onEmitted).not.toHaveBeenCalled();
   });
 
   describe("pré-visualização", () => {
-    /**
-     * D-11: a prévia chamava `ensureRecordId()` e, num atendimento ainda não
-     * salvo, criava uma ficha vazia no prontuário — enquanto o banner dizia
-     * que nada tinha sido salvo. Visualizar manda o paciente e a ficha em
-     * memória; a ficha só é gravada em "Emitir".
-     */
     it("abre a prévia sem gravar a ficha nem emitir", async () => {
       const user = userEvent.setup();
       setup();
@@ -339,15 +324,12 @@ describe("ClinicalDocumentActions", () => {
           },
         ),
       );
-      // Conferir não pode registrar nada no prontuário — nem a ficha.
       expect(ensureRecordId).not.toHaveBeenCalled();
       expect(clinicalRecordService.generatePrescription).not.toHaveBeenCalled();
       expect(onEmitted).not.toHaveBeenCalled();
       expect(await screen.findByTestId("document-preview")).toBeDefined();
     });
 
-    // O pedido de exame imprime a hipótese diagnóstica da ficha; sem os CIDs em
-    // memória, a prévia sairia diferente do documento emitido logo depois.
     it("leva os CIDs da ficha em memória na prévia do encaminhamento", async () => {
       const user = userEvent.setup();
       setup();
@@ -369,8 +351,6 @@ describe("ClinicalDocumentActions", () => {
       expect(ensureRecordId).not.toHaveBeenCalled();
     });
 
-    // Emitir continua persistindo a ficha antes — o documento é registro do
-    // atendimento e sai da ficha gravada.
     it("ainda persiste a ficha ao emitir a partir da prévia", async () => {
       const user = userEvent.setup();
       setup();
@@ -430,7 +410,6 @@ describe("ClinicalDocumentActions", () => {
       await user.click(screen.getByRole("button", { name: /atestado/i }));
       await user.click(screen.getByLabelText(/incluir cid/i));
 
-      // O CID da ficha entra como sugestão inicial e é o que vai no documento.
       await user.click(screen.getByRole("button", { name: /emitir/i }));
 
       await waitFor(() =>
@@ -478,7 +457,6 @@ describe("ClinicalDocumentActions", () => {
       await user.type(screen.getByLabelText(/código tuss/i), "hemo");
       await user.click(await screen.findByText("Hemograma completo"));
 
-      // Escolher no catálogo já nomeia o exame, sem redigitar.
       expect(
         (screen.getByLabelText(/exame 1/i) as HTMLInputElement).value,
       ).toBe("Hemograma completo");
@@ -495,10 +473,6 @@ describe("ClinicalDocumentActions", () => {
     });
   });
 
-  // Regressão: o efeito de foco do Modal dependia da identidade de `onClose`,
-  // que muda a cada render. Digitar um espaço devolvia o foco ao botão de
-  // fechar e o próprio espaço o acionava, fechando o modal no meio do
-  // preenchimento.
   it("não fecha o modal ao digitar espaço no meio do texto", async () => {
     const user = userEvent.setup();
     setup();
@@ -541,11 +515,6 @@ describe("ClinicalDocumentActions", () => {
     expect(screen.getByRole("button", { name: /visualizar/i })).toBeDisabled();
   });
 
-  /**
-   * Guard por PROVENIÊNCIA: o pai passa `dadosFabricados` quando o
-   * atendimento em tela é o fabricado do tour. Sair do tour (`emTour: false`)
-   * não pode reabilitar a emissão real.
-   */
   it("desabilita o Emitir mesmo fora do tour, quando dadosFabricados é true", async () => {
     const user = userEvent.setup();
     render(
@@ -619,7 +588,6 @@ describe("ClinicalDocumentActions", () => {
       const select = await screen.findByLabelText("Usar modelo");
       await user.selectOptions(select, "tpl-1");
 
-      // Dias e início não vão: `{{dias}}`/`{{inicio}}` ficam para a emissão.
       expect(templates.apply).toHaveBeenCalledWith("tpl-1", {
         patientId: "p-1",
         doctorId: "d-1",
@@ -628,8 +596,6 @@ describe("ClinicalDocumentActions", () => {
       await waitFor(() =>
         expect(texto).toHaveValue("Atesto Maria Silva por 1 dia."),
       );
-      // Antes o seletor voltava a "Escolha um modelo" e parecia não ter
-      // escolhido nada.
       expect(select).toHaveValue("tpl-1");
       expect(screen.getByLabelText("Observações")).toHaveValue("");
 
@@ -680,9 +646,6 @@ describe("ClinicalDocumentActions", () => {
       );
     });
 
-    // Regressão: o apply gravava "1 dia" no texto; editado, ele congelava os
-    // dias antigos e o PDF saía com "1 dia" no texto e "3 dias" embaixo.
-    // Agora `{{dias}}`/`{{inicio}}` ficam literais e a emissão os preenche.
     it("texto do modelo editado mantém {{dias}}/{{inicio}} e sai com os dias escolhidos depois", async () => {
       templates.getAll.mockResolvedValue([modelo]);
       templates.apply.mockResolvedValue({
@@ -703,7 +666,6 @@ describe("ClinicalDocumentActions", () => {
           "Afastamento de {{dias}} dias a partir de {{inicio}}.",
         ),
       );
-      // A tela explica quando os placeholders viram valor.
       expect(
         screen.getByText(/são preenchidos ao visualizar e ao emitir/),
       ).toBeInTheDocument();
@@ -713,7 +675,6 @@ describe("ClinicalDocumentActions", () => {
       await user.clear(dias);
       await user.type(dias, "3");
       await new Promise((r) => setTimeout(r, 450));
-      // Mudar os dias não reaplica o modelo nem mexe no texto.
       expect(templates.apply).toHaveBeenCalledTimes(1);
 
       await user.click(screen.getByRole("button", { name: /^emitir/i }));
@@ -731,8 +692,6 @@ describe("ClinicalDocumentActions", () => {
       });
     });
 
-    // O formulário começa com 1 dia: o comparecimento saía com "Afastamento
-    // de 1 dia" embaixo.
     it("modelo de comparecimento zera os dias de afastamento", async () => {
       templates.getAll.mockResolvedValue([modelo]);
       templates.apply.mockResolvedValue({
@@ -793,9 +752,6 @@ describe("ClinicalDocumentActions", () => {
       expect(select).toHaveValue("");
     });
 
-    // O texto da tela é só a visualização do modelo: enquanto o médico não
-    // editar, o atestado sai pelo `templateId` e o servidor preenche {{dias}}
-    // com os dias do próprio atestado — nunca com os de um texto antigo.
     it("texto do modelo intacto sai pelo templateId, com os dias escolhidos", async () => {
       templates.getAll.mockResolvedValue([modelo]);
       templates.apply.mockResolvedValue({
@@ -894,7 +850,6 @@ describe("ClinicalDocumentActions", () => {
       await user.clear(dias);
       await user.type(dias, "2");
       await new Promise((r) => setTimeout(r, 450));
-      // Texto editado não é refeito pelos dias.
       expect(templates.apply).toHaveBeenCalledTimes(1);
       expect(texto).toHaveValue("Atesto Maria Silva por 1 dia. Repouso.");
 
@@ -1024,14 +979,12 @@ describe("ClinicalDocumentActions", () => {
       );
       await user.type(texto, " Repouso.");
 
-      // Recusou: o texto editado fica.
       await user.click(
         screen.getByRole("button", { name: "Usar texto padrão" }),
       );
       expect(confirmSpy).toHaveBeenCalledTimes(1);
       expect(texto).toHaveValue("Atesto Maria Silva por 1 dia. Repouso.");
 
-      // Confirmou: volta ao padrão.
       confirmSpy.mockReturnValueOnce(true);
       await user.click(
         screen.getByRole("button", { name: "Usar texto padrão" }),
@@ -1073,9 +1026,7 @@ describe("ClinicalDocumentActions", () => {
           "Investigar lesão.",
         ),
       );
-      // O seletor continua mostrando o modelo escolhido.
       expect(screen.getByLabelText("Usar modelo")).toHaveValue("tpl-2");
-      // Pedido de exame não tem "texto do atestado".
       expect(screen.queryByLabelText("Texto do atestado")).toBeNull();
     });
 
@@ -1111,8 +1062,6 @@ describe("ClinicalDocumentActions", () => {
       id: string,
     ) => user.selectOptions(await screen.findByLabelText("Usar modelo"), id);
 
-    // Decisão (c): {{dias}} sem dias o servidor recusa com 400 — o formulário
-    // avisa antes de enviar.
     it("texto com {{dias}} e dias vazios não envia e explica no formulário", async () => {
       templates.getAll.mockResolvedValue([modelo]);
       templates.apply.mockResolvedValue({
@@ -1174,8 +1123,6 @@ describe("ClinicalDocumentActions", () => {
       ).not.toHaveBeenCalled();
     });
 
-    // Pendência antiga: um modelo de comparecimento zerava os dias e o
-    // modelo de afastamento escolhido depois herdava o campo vazio.
     it("dias zerados pelo comparecimento voltam para 1 ao trocar para um modelo de afastamento", async () => {
       const afastamento = { ...modelo, id: "tpl-2", name: "Afastamento" };
       templates.getAll.mockResolvedValue([modelo, afastamento]);
@@ -1231,7 +1178,6 @@ describe("ClinicalDocumentActions", () => {
     });
   });
 
-  // Decisão (c): comparecimento = restDays ausente; 0 vale como vazio.
   it("atestado com 0 dias sai como comparecimento, sem restDays", async () => {
     const user = userEvent.setup();
     setup(false);
@@ -1253,7 +1199,6 @@ describe("ClinicalDocumentActions", () => {
     ).not.toHaveProperty("restDays", expect.anything());
   });
 
-  // Decisão (b): só o profissional da consulta emite ou pré-visualiza.
   describe("quem não é o profissional da consulta", () => {
     const setupOutro = () =>
       render(

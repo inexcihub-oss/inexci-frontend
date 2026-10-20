@@ -4,7 +4,6 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 
 export interface DropdownPosition {
   top: number;
-  /** Distância do fundo da janela até o topo do campo — usada quando a lista abre para cima. */
   bottom: number;
   left: number;
   width: number;
@@ -12,24 +11,10 @@ export interface DropdownPosition {
 }
 
 export interface AnchoredDropdownOptions {
-  /**
-   * `"auto"` vira a lista para cima quando não cabe abaixo. É o que o
-   * bottom-sheet do mobile exige: o campo fica no rodapé da folha e uma
-   * lista aberta para baixo nasceria fora da tela.
-   */
   placement?: "bottom" | "auto";
-  /** Altura máxima esperada da lista (default 240px = `max-h-60`). */
   maxHeight?: number;
 }
 
-/**
- * Posiciona um dropdown renderizado em portal logo abaixo do campo que o
- * ancora.
- *
- * Dentro de um modal, um dropdown `absolute` fica preso ao corpo rolável e é
- * cortado nas bordas — por isso a lista vai para um portal com `position:
- * fixed`, e a posição precisa acompanhar rolagem e redimensionamento.
- */
 export function useAnchoredDropdown(
   open: boolean,
   onClose?: () => void,
@@ -82,12 +67,8 @@ export function useAnchoredDropdown(
   useEffect(() => {
     if (!open) return;
 
-    // `true` na captura: o scroll costuma acontecer no corpo do modal, não na
-    // janela, e eventos de rolagem não borbulham.
     window.addEventListener("scroll", recalculate, true);
     window.addEventListener("resize", recalculate);
-    // Teclado virtual no mobile: só o visualViewport avisa que a área
-    // visível encolheu, e sem isso a lista descola do campo.
     const viewport = window.visualViewport;
     viewport?.addEventListener("resize", recalculate);
     viewport?.addEventListener("scroll", recalculate);
@@ -100,12 +81,6 @@ export function useAnchoredDropdown(
     };
   }, [open, recalculate]);
 
-  /**
-   * O dropdown vive em portal, fora da árvore do campo — por isso o "clique
-   * fora" precisa considerar os dois elementos. Checando só o campo, o clique
-   * na opção fecharia a lista antes de o `onClick` do item disparar, e
-   * escolher um item ficaria impossível.
-   */
   useEffect(() => {
     if (!open || !onCloseRef.current) return;
 

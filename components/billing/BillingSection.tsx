@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/ui/Toast";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { billingService } from "@/services/billing.service";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,13 +20,12 @@ import { ACAO_PLANO_ABRIR_SELECAO } from "@/lib/onboarding/tour-registry";
 export function BillingSection() {
   const { subscription, subscriptionLoading, refreshSubscription } = useAuth();
   const { emTour } = useOnboarding();
-  const { toast, showToast, hideToast } = useToast();
+  const { showToast } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [isPlansModalOpen, setIsPlansModalOpen] = useState(false);
 
-  // Passo "planos-disponiveis" da trilha Plano e cota: abre o modal sozinho.
   useOnboardingAction(ACAO_PLANO_ABRIR_SELECAO, () =>
     setIsPlansModalOpen(true),
   );
@@ -53,7 +51,6 @@ export function BillingSection() {
   }, [refreshSubscription]);
 
   const handleCheckout = async (plan: SubscriptionPlan) => {
-    // Redireciona para a Stripe de verdade — nunca durante o tour.
     if (emTour) return;
     try {
       setRedirecting(true);
@@ -65,13 +62,7 @@ export function BillingSection() {
     }
   };
 
-  /**
-   * Abre o Portal da Stripe. Com um plano em mãos (troca de plano a partir do
-   * seletor), o portal já cai na confirmação daquele plano — sem ele, o usuário
-   * aterrissava na home do portal e a seleção se perdia.
-   */
   const handleManage = async (plan?: SubscriptionPlan) => {
-    // Redireciona para a Stripe de verdade — nunca durante o tour.
     if (emTour) return;
     try {
       setRedirecting(true);
@@ -202,9 +193,6 @@ export function BillingSection() {
         </div>
       </Modal>
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
     </>
   );
 }

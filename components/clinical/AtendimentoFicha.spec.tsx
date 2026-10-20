@@ -3,9 +3,6 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AtendimentoFicha, FichaFields } from "./AtendimentoFicha";
 
-// O Tiptap não roda bem no jsdom; o editor é substituído por um textarea
-// controlado com o mesmo contrato (value/onChange), como em
-// `AtendimentoTabs.spec.tsx`.
 vi.mock("@/components/shared/RichTextEditor", () => ({
   RichTextEditor: ({
     value,
@@ -85,11 +82,6 @@ describe("AtendimentoFicha", () => {
     expect(screen.getByText("Conduta / Plano")).toBeInTheDocument();
   });
 
-  /**
-   * Âncora do tour de onboarding (trilha "atendimento", passo "indicacao")
-   * em `lib/onboarding/tour-registry.ts`. Sem este teste, remover o atributo
-   * (ou trocar o elemento) quebra o tour em silêncio.
-   */
   it('expõe data-tour="ficha-indicacao" no card de indicação cirúrgica', () => {
     renderFicha();
 

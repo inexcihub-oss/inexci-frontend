@@ -13,7 +13,6 @@ import {
 } from "./tour-registry";
 import type { TrackId } from "./state";
 
-/** As 16 combinações de área, no molde de `lib/permissions.spec.ts`. */
 function todasAsCombinacoes(): Permission[][] {
   const combos: Permission[][] = [];
   for (let mascara = 0; mascara < 1 << ALL_PERMISSIONS.length; mascara++) {
@@ -43,7 +42,7 @@ describe("canSee", () => {
     const delegado = {
       permissions: [Permission.ADMINISTRACAO],
       isDoctor: false,
-      isAccountOwner: false, // é o que o distingue do dono
+      isAccountOwner: false,
     };
     expect(visibleTracks(delegado).map((t) => t.id)).not.toContain(
       "plano-e-cota",
@@ -65,10 +64,6 @@ describe("canSee", () => {
     );
   });
 
-  /**
-   * O admin delegado tem role 'admin' mas não é dono: um gate baseado em
-   * `isAdmin` o mandaria para a aba de plano, que o devolve.
-   */
   it("requiresOwner olha isAccountOwner", () => {
     expect(
       canSee({ requiresOwner: true }, { ...base, permissions: ALL_PERMISSIONS }),
@@ -127,11 +122,6 @@ describe("visibleTracks", () => {
     expect(trilhas.map((t) => t.id)).toContain("solicitacoes");
   });
 
-  /**
-   * A regra que evita o loop de redirect já visto neste projeto: nenhuma
-   * trilha visível pode navegar para uma rota que o PermissionRouteGuard
-   * bloqueia para aquele mesmo usuário.
-   */
   it("nunca expõe passo que navega para rota proibida", () => {
     let verificados = 0;
 
@@ -142,11 +132,6 @@ describe("visibleTracks", () => {
           for (const track of visibleTracks(viewer)) {
             for (const step of visibleSteps(track, viewer)) {
               if (!step.route) continue;
-              // A rota pode carregar query (`/configuracoes?tab=profile`), mas
-              // `permissionForRoute` casa por prefixo de PATHNAME. Sem tirar a
-              // query, o passo é pulado em silêncio — e continuaria pulado no
-              // dia em que a rota ganhasse permissão, que é justamente quando
-              // este guard importaria.
               const exigida = permissionForRoute(step.route.split("?")[0]);
               if (!exigida) continue;
               verificados++;
@@ -160,8 +145,6 @@ describe("visibleTracks", () => {
       }
     }
 
-    // As duas cláusulas de guarda acima podem esvaziar a varredura inteira sem
-    // que ninguém perceba: um teste que não chega a assertar passa igual.
     expect(verificados).toBeGreaterThan(0);
   });
 });
@@ -175,8 +158,6 @@ describe("TRACKS", () => {
       "cabecalho-texto",
       "previa",
     ]);
-    // Só o primeiro passo é required: sem assinatura a trilha não tem assunto.
-    // Os do cabeçalho degradam, porque a prévia só existe com conteúdo salvo.
     expect(trilha.steps.filter((p) => p.required).map((p) => p.key)).toEqual([
       "assinatura",
     ]);
@@ -196,11 +177,6 @@ describe("TRACKS", () => {
   });
 
   it("não passa de oito passos por trilha", () => {
-    // A trilha `solicitacoes` chegou a 8 com a expansão "via documento"
-    // (B2 do PLANO-ONBOARDING-TRILHAS-EXPANDIDAS): abrir-wizard,
-    // kanban-status, filtro, cadastro-no-modal, requisitos, por-documento,
-    // documento-enviar, documento-revisar. Subir o teto além disso merece
-    // reabrir a decisão, não só editar este número.
     for (const track of TRACKS) {
       expect(track.steps.length).toBeLessThanOrEqual(8);
     }
@@ -261,15 +237,12 @@ describe("TRACKS", () => {
 
   it("quem não é administração não vê o passo de clínicas", () => {
     const trilha = trackById("cadastros")!;
-    // Com Solicitações (e sem Administração) o passo de procedimentos segue
-    // visível — o gate que este teste cobre é especificamente o de clínicas.
     const passos = visibleSteps(trilha, {
       permissions: [Permission.AGENDA, Permission.SOLICITACOES],
       isDoctor: false,
       isAccountOwner: false,
     });
     expect(passos.map((p) => p.key)).not.toContain("clinicas");
-    // mas continua vendo os outros quatro (pacientes, menu, procedimentos, novo-modelo)
     expect(passos).toHaveLength(4);
   });
 
@@ -285,14 +258,9 @@ describe("TRACKS", () => {
     expect(trilha.steps.filter((p) => p.required).map((p) => p.key)).toEqual([
       "convidar",
     ]);
-    // "areas" mora dentro do modal de edição do colaborador — o alvo só
-    // existe depois de o usuário abrir a ficha, daí `aguardaAcao`.
     expect(trilha.steps.find((p) => p.key === "areas")?.aguardaAcao).toBe(
       true,
     );
-    // "vinculo" e "ciclo" navegam para a ficha de um colaborador FABRICADO
-    // (`TOUR_DEMO_COLLABORATOR_ID`) — nunca existe de verdade, então o alvo
-    // real existe mesmo no primeiro tour.
     expect(trilha.steps.find((p) => p.key === "vinculo")?.target).toBe(
       "colaborador-vinculo-medico",
     );
@@ -359,11 +327,6 @@ describe("passos dirigidos pelo tour (Driver)", () => {
     );
   });
 
-  /**
-   * Bug real achado pelo usuário: o passo "hub" falava da lista de
-   * consultas mas destacava o botão de criação. A âncora certa é o grupo de
-   * abas Hoje/Próximas/Realizadas.
-   */
   it("atendimento: hub aponta para o grupo de abas, não para o botão de nova consulta", () => {
     expect(passo("atendimento", "hub")?.target).toBe("atendimento-abas");
   });
@@ -385,11 +348,6 @@ describe("passos dirigidos pelo tour (Driver)", () => {
     expect(p?.target).toBe("sc-wizard-novo-cadastro");
   });
 
-  /**
-   * Bug real achado pelo usuário: navegar para a MESMA rota do passo
-   * anterior é no-op no Next.js — sem fechar o wizard explicitamente, ele
-   * continuava por cima do alvo `sc-por-documento`.
-   */
   it("solicitacoes: por-documento fecha o wizard explicitamente ao entrar no passo", () => {
     expect(passo("solicitacoes", "por-documento")?.acao).toBe(
       "sc-fechar-wizard",

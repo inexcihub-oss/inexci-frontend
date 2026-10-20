@@ -6,33 +6,12 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { AlertCircle, CheckCircle, Clock } from "lucide-react";
 
 interface PendencyBadgeProps {
-  /**
-   * Total number of pendencies
-   */
   total: number;
-  /**
-   * Number of completed pendencies
-   */
   completed?: number;
-  /**
-   * Number of pending (not completed) pendencies
-   */
   pending?: number;
-  /**
-   * Number of waiting pendencies
-   */
   waiting?: number;
-  /**
-   * Whether to show tooltip with details
-   */
   showTooltip?: boolean;
-  /**
-   * Size variant
-   */
   size?: "sm" | "md" | "lg";
-  /**
-   * Additional className
-   */
   className?: string;
 }
 
@@ -45,11 +24,9 @@ export function PendencyBadge({
   size = "md",
   className,
 }: PendencyBadgeProps) {
-  // Calculate pending if not provided
   const actualPending = pending ?? total - completed;
   const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-  // Determine badge style based on status
   const isComplete = actualPending === 0 && total > 0;
   const hasWaiting = waiting > 0;
 

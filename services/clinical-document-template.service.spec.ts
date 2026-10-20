@@ -6,12 +6,6 @@ vi.mock("@/lib/api", () => ({
 
 import { DOCUMENT_TEMPLATE_PLACEHOLDERS } from "./clinical-document-template.service";
 
-/**
- * Cópia das chaves de `DOCUMENT_PLACEHOLDERS` na API
- * (`inexci-api/src/shared/pdf/placeholders.util.ts`), que é a fonte da
- * verdade. Mudou lá, muda aqui — este teste existe porque `{{inicio}}` foi
- * aceito pela API e ficou fora da barra de inserção da tela.
- */
 const CHAVES_DA_API = [
   "paciente.nome",
   "paciente.cpf",

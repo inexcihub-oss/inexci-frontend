@@ -3,17 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import SolicitacaoDetalhePage from "./page";
 
-/**
- * Deep-link da notificação de menção: `/solicitacao/:id?sidebar=atividades`.
- *
- * O caso que importa é o mobile. A página tem DOIS efeitos de montagem que
- * mexem no painel lateral: o que lê o `?sidebar=` (abre) e o padrão de
- * mobile (fecha, quando `innerWidth < 1024`). Eles rodam na ordem de
- * declaração, e o de fechar vem depois — sem uma guarda explícita o
- * segundo desfaz o primeiro e a notificação abre a SC com a aba de
- * atividades fechada, que é justamente o que o link deveria evitar.
- */
-
 const { replaceMock, searchParamsState } = vi.hoisted(() => ({
   replaceMock: vi.fn(),
   searchParamsState: { value: new URLSearchParams() },
@@ -200,10 +189,6 @@ describe("Detalhe da Solicitação — deep-link ?sidebar=atividades da menção
 
     const painel = await screen.findByTestId("painel-lateral-sc");
 
-    // Asserção de classe por falta de alternativa: jsdom não calcula layout.
-    // Com `max-h` a folha encolhia junto com o conteúdo e cada comentário
-    // enviado mudava a altura do painel; a altura fixa é o que mantém a
-    // moldura estável entre as abas Pendências/Atividades/Timeline.
     expect(painel).toHaveClass("h-[calc(92dvh-64px)]");
     expect(painel.className).not.toMatch(/(?<!lg:)max-h-\[/);
   });

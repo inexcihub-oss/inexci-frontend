@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { DocumentPreview } from "./DocumentPreview";
+import { DocumentPreview, sanitizeDocumentPreviewHtml } from "./DocumentPreview";
 
 describe("DocumentPreview", () => {
   const host = () => screen.getByTestId("document-preview");
@@ -13,9 +13,6 @@ describe("DocumentPreview", () => {
     expect(host().shadowRoot?.textContent).toContain("RECEITUÁRIO");
   });
 
-  // O template traz `<style>` com regras para `body`, `*` e classes genéricas.
-  // Injetado na página, isso reestilizaria o app inteiro; no shadow root o
-  // efeito para na borda da prévia.
   it("mantém o CSS do documento isolado da página", () => {
     render(
       <DocumentPreview html="<html><head><style>body{background:#000}</style></head><body><p>ok</p></body></html>" />,
@@ -42,5 +39,42 @@ describe("DocumentPreview", () => {
 
     expect(host().shadowRoot?.textContent).toContain("depois");
     expect(host().shadowRoot?.textContent).not.toContain("antes");
+  });
+
+  it("remove formulário, campos, iframe e tags de cabeçalho ativas", () => {
+    render(
+      <DocumentPreview
+        html={'<html><head><meta http-equiv="refresh" content="0;url=https://x"><base href="https://x/"><link rel="stylesheet" href="https://x/a.css"><style>p{color:red}</style></head><body><p>ok</p><form action="https://x"><input name="senha"><textarea></textarea><select><option>a</option></select><button>Enviar</button></form><iframe src="https://x"></iframe><object data="x"></object><embed src="x"></body></html>'}
+      />,
+    );
+
+    const root = host().shadowRoot!;
+    for (const tag of [
+      "form",
+      "input",
+      "textarea",
+      "select",
+      "button",
+      "iframe",
+      "object",
+      "embed",
+      "link",
+      "meta",
+      "base",
+    ]) {
+      expect(root.querySelector(tag)).toBeNull();
+    }
+    expect(root.querySelector("style")).not.toBeNull();
+    expect(root.textContent).toContain("ok");
+  });
+
+  it("remove atributos de evento e mantém o style inline", () => {
+    const html = sanitizeDocumentPreviewHtml(
+      '<body><img src="x" onerror="alert(1)"><p style="color:red" onclick="alert(2)">ok</p></body>',
+    );
+
+    expect(html).not.toContain("onerror");
+    expect(html).not.toContain("onclick");
+    expect(html).toContain('style="color:red"');
   });
 });

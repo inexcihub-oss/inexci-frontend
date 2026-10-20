@@ -3,12 +3,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-/**
- * Avisos automáticos ao paciente são configuração da **conta**: valem para
- * todos os pacientes da clínica, então só quem tem a área de administração vê
- * o card — e só ele dispara a rota `patient-settings`.
- */
-
 const settings = {
   pushNotifications: true,
   whatsappNotifications: true,
@@ -29,8 +23,6 @@ let authState: {
   refreshSubscription: () => Promise<void>;
 };
 
-// Mesmos padrões dos outros specs da página: a tela também consulta `can`,
-// `isDoctor` e `canIssueClinicalDocuments` para montar as abas.
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     isDoctor: false,

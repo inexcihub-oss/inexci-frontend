@@ -1,11 +1,6 @@
-/**
- * Formata um CNPJ no padrão XX.XXX.XXX/XXXX-XX
- */
 export function formatCNPJ(cnpj: string | undefined): string {
   if (!cnpj) return "-";
-  // Remove tudo que não é número
   const numbers = cnpj.replace(/\D/g, "");
-  // Aplica a máscara XX.XXX.XXX/XXXX-XX
   if (numbers.length === 14) {
     return numbers.replace(
       /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
@@ -15,28 +10,18 @@ export function formatCNPJ(cnpj: string | undefined): string {
   return cnpj;
 }
 
-/**
- * Formata um CPF no padrão XXX.XXX.XXX-XX
- */
 export function formatCPF(cpf: string | undefined): string {
   if (!cpf) return "-";
-  // Remove tudo que não é número
   const numbers = cpf.replace(/\D/g, "");
-  // Aplica a máscara XXX.XXX.XXX-XX
   if (numbers.length === 11) {
     return numbers.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
   }
   return cpf;
 }
 
-/**
- * Formata um telefone no padrão (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
- */
 export function formatPhone(phone: string | undefined): string {
   if (!phone) return "-";
-  // Remove tudo que não é número
   const numbers = phone.replace(/\D/g, "");
-  // Aplica a máscara (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
   if (numbers.length === 11) {
     return numbers.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
   } else if (numbers.length === 10) {
@@ -45,11 +30,6 @@ export function formatPhone(phone: string | undefined): string {
   return phone;
 }
 
-/**
- * Formata uma data ISO ou Date no padrão DD/MM/YYYY.
- * Strings YYYY-MM-DD (ou ISO com essa data) usam a parte calendário diretamente,
- * evitando deslocamento por fuso horário.
- */
 export function formatDateBR(dateInput: string | Date): string {
   if (typeof dateInput === "string") {
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) return dateInput;
@@ -66,9 +46,6 @@ export function formatDateBR(dateInput: string | Date): string {
   return `${dd}/${mm}/${date.getFullYear()}`;
 }
 
-/**
- * Retorna o timestamp (ms) mais recente entre candidatos ISO ou DD/MM/YYYY.
- */
 export function getLatestActivityMs(
   ...values: Array<string | null | undefined>
 ): number {
@@ -94,10 +71,6 @@ export function getLatestActivityMs(
   return max;
 }
 
-/**
- * Formata uma data como tempo relativo (e.g. "2 dias atrás", "1 mês atrás").
- * Recebe uma string ISO ou Date.
- */
 export function formatTimeAgo(dateInput: string | Date): string {
   const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
   const now = new Date();
@@ -125,11 +98,6 @@ export function formatTimeAgo(dateInput: string | Date): string {
   return "agora";
 }
 
-/**
- * Converte datas vindas da API para Date de forma segura para fuso horário.
- * Quando a string vem sem timezone (ex.: "2026-07-13T15:40:00"),
- * assume UTC para evitar deslocamentos indevidos no cliente (ex.: +3h no Brasil).
- */
 export function parseApiDate(dateInput: string | Date): Date {
   if (dateInput instanceof Date) return dateInput;
 
@@ -142,11 +110,6 @@ export function parseApiDate(dateInput: string | Date): Date {
   return new Date(`${value}Z`);
 }
 
-/**
- * Variante para labels relativas de tempo (ex.: "há 2 min").
- * Corrige casos em que o backend salva timestamp UTC mas o cliente
- * recebe horário "adiantado" exatamente no offset local (ex.: +3h).
- */
 export function parseApiDateForRelative(dateInput: string | Date): Date {
   const parsed = parseApiDate(dateInput);
   if (Number.isNaN(parsed.getTime())) return parsed;
@@ -166,26 +129,10 @@ export function parseApiDateForRelative(dateInput: string | Date): Date {
   return parsed;
 }
 
-/**
- * Reconhece um nome que já vem com tratamento médico ("Dr. Carlos",
- * "Dra. Ana", "Dr(a). Paulo"). O ponto é opcional e o espaço é obrigatório —
- * sem ele, "Drauzio" seria confundido com "Dra".
- */
 const DOCTOR_TITLE_PREFIX = /^(dr|dra|dr\(a\))\.?\s/i;
 
-/**
- * Nome do médico com o tratamento na frente, sem duplicar o que já existe.
- *
- * Muito cadastro guarda o nome já como "Dr. Carlos Mendonça"; prefixar às
- * cegas mostrava "Dr(a). Dr. Carlos Mendonça" na tela.
- */
 export function formatDoctorName(
   name: string | null | undefined,
-  /**
-   * "Dr(a)." é só de médico (CRM). Nutricionista, psicóloga e técnica de
-   * enfermagem aparecem pelo nome. Ausente = médico, como em `AvailableDoctor`
-   * (respostas anteriores ao conselho profissional).
-   */
   isPhysician?: boolean,
 ): string {
   const trimmed = (name ?? "").trim();
@@ -194,13 +141,6 @@ export function formatDoctorName(
   return DOCTOR_TITLE_PREFIX.test(trimmed) ? trimmed : `Dr(a). ${trimmed}`;
 }
 
-/**
- * Deixa só a primeira letra maiúscula.
- *
- * Datas em pt-BR vinham de um `capitalize` de CSS, que capitaliza cada palavra
- * e produzia "Quarta-Feira, 05 De Agosto Às 14:00"; o correto é
- * "Quarta-feira, 05 de agosto às 14:00".
- */
 export function capitalizeFirst(text: string): string {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
