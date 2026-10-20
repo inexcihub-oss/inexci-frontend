@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
@@ -71,6 +71,7 @@ const STEP_BENEFITS: Record<number, { icon: string; text: string }[]> = {
 };
 
 const DEFAULT_PLAN_SLUG = "starter";
+const CAPTCHA_VALIDADE_MS = 4.5 * 60 * 1000;
 
 export default function CadastroPage() {
   const { register } = useAuth();
@@ -110,7 +111,20 @@ export default function CadastroPage() {
 
   const turnstileSiteKey = getTurnstileSiteKey();
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaObtidoEm, setCaptchaObtidoEm] = useState<number | null>(null);
+  const [captchaNoPlano, setCaptchaNoPlano] = useState(false);
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+
+  const handleCaptchaToken = useCallback((token: string | null) => {
+    setCaptchaToken(token);
+    setCaptchaObtidoEm(token ? Date.now() : null);
+  }, []);
+
+  const pedirNovoCaptcha = () => {
+    handleCaptchaToken(null);
+    setCaptchaNoPlano(true);
+    setCaptchaResetSignal((n) => n + 1);
+  };
 
   const handleBillingPeriodChange = (period: "MONTHLY" | "YEARLY") => {
     setBillingPeriod(period);
@@ -207,6 +221,11 @@ export default function CadastroPage() {
         return;
       }
 
+      if (turnstileSiteKey && !captchaToken) {
+        setError(CAPTCHA_PENDENTE_MENSAGEM);
+        return;
+      }
+
       setIsLoading(true);
       try {
         const [email, phone] = await Promise.all([
@@ -252,7 +271,12 @@ export default function CadastroPage() {
 
   const handleSubmit = async () => {
     setError("");
-    if (turnstileSiteKey && !captchaToken) {
+    const captchaExpirou =
+      captchaObtidoEm !== null &&
+      Date.now() - captchaObtidoEm > CAPTCHA_VALIDADE_MS;
+    if (turnstileSiteKey && (!captchaToken || captchaExpirou)) {
+      if (captchaExpirou) pedirNovoCaptcha();
+      else setCaptchaNoPlano(true);
       setError(CAPTCHA_PENDENTE_MENSAGEM);
       return;
     }
@@ -275,7 +299,7 @@ export default function CadastroPage() {
         ...(captchaToken && { captchaToken }),
       });
     } catch (err: unknown) {
-      if (turnstileSiteKey) setCaptchaResetSignal((n) => n + 1);
+      if (turnstileSiteKey) pedirNovoCaptcha();
       const axiosErr = err as { response?: { data?: { message?: string } } };
       const message =
         axiosErr.response?.data?.message ||
@@ -314,10 +338,10 @@ export default function CadastroPage() {
         isLoading={isLoading}
         error={error}
         captcha={
-          turnstileSiteKey ? (
+          turnstileSiteKey && captchaNoPlano ? (
             <TurnstileWidget
               siteKey={turnstileSiteKey}
-              onTokenChange={setCaptchaToken}
+              onTokenChange={handleCaptchaToken}
               resetSignal={captchaResetSignal}
             />
           ) : null
@@ -364,6 +388,16 @@ export default function CadastroPage() {
               onChange={handleStep1Change}
               fieldErrors={step1FieldErrors}
             />
+          )}
+
+          {currentStep === 1 && turnstileSiteKey && (
+            <div className="mt-5">
+              <TurnstileWidget
+                siteKey={turnstileSiteKey}
+                onTokenChange={handleCaptchaToken}
+                resetSignal={captchaResetSignal}
+              />
+            </div>
           )}
 
           {currentStep === 2 && (
