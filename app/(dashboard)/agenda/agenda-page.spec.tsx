@@ -60,6 +60,13 @@ vi.mock("@/services/available-doctors.service", () => ({
   },
 }));
 
+const { getAppointmentsStatus } = vi.hoisted(() => ({
+  getAppointmentsStatus: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("@/services/finance.service", () => ({
+  financeService: { getAppointmentsStatus },
+}));
+
 let authState: { can: (p: Permission) => boolean } = {
   can: (p: Permission) => p === Permission.AGENDA,
 };
@@ -432,5 +439,51 @@ describe("AgendaPage — invalidação das consultas", () => {
     await waitFor(() =>
       expect(queryClient.getQueryState(hubKey)?.isInvalidated).toBe(true),
     );
+  });
+});
+
+describe("AgendaPage — selo financeiro", () => {
+  const consulta = {
+    id: "a-1",
+    doctorId: "d-1",
+    patientId: "p-1",
+    patient: { id: "p-1", name: "Ana Beatriz" },
+    type: "return",
+    status: "confirmed",
+    scheduledAt: new Date().toISOString(),
+    durationMinutes: 30,
+    notes: null,
+    cancellationReason: null,
+    clinicId: null,
+    clinic: null,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getAgendaCompleta.mockResolvedValue({ total: 1, records: [consulta] });
+    getAppointmentsStatus.mockResolvedValue([
+      { appointmentId: "a-1", receivableId: "r-1", status: "paid" },
+    ]);
+  });
+
+  it("sem a área Financeiro não busca o status nem mostra selo", async () => {
+    authState = { can: (p) => p === Permission.AGENDA };
+    renderPage();
+
+    expect(await screen.findAllByText(/Ana Beatriz/)).not.toHaveLength(0);
+    expect(getAppointmentsStatus).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("finance-status-badge")).not.toBeInTheDocument();
+  });
+
+  it("com a área Financeiro mostra o selo no card da consulta", async () => {
+    authState = {
+      can: (p) => p === Permission.AGENDA || p === Permission.FINANCEIRO,
+    };
+    renderPage();
+
+    expect(await screen.findByTestId("finance-status-badge")).toHaveTextContent(
+      "Pago",
+    );
+    expect(getAppointmentsStatus).toHaveBeenCalledWith(["a-1"]);
   });
 });

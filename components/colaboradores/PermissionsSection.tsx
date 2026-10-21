@@ -8,9 +8,11 @@ import {
   LucideIcon,
   ShieldCheck,
   Stethoscope,
+  Wallet,
 } from "lucide-react";
 import {
   ALL_PERMISSIONS,
+  AREAS_FORA_DOS_PRESETS,
   Permission,
   PERMISSION_DESCRIPTIONS,
   PERMISSION_LABELS,
@@ -30,13 +32,32 @@ const PERMISSION_ICONS: Record<Permission, LucideIcon> = {
   [Permission.AGENDA]: CalendarDays,
   [Permission.ATENDIMENTO]: Stethoscope,
   [Permission.SOLICITACOES]: LayoutGrid,
+  [Permission.FINANCEIRO]: Wallet,
   [Permission.ADMINISTRACAO]: ShieldCheck,
 };
+
+export const DICA_FINANCEIRO_SO_DONO =
+  "Só o dono da conta concede ou retira a área Financeiro";
+export const AVISO_PROPRIAS_PERMISSOES =
+  "Você não pode alterar as suas próprias permissões. Peça a outro administrador.";
+
+export function permissoesTravadasPara({
+  podeAlterarFinanceiro,
+  somenteLeitura = false,
+}: {
+  podeAlterarFinanceiro: boolean;
+  somenteLeitura?: boolean;
+}): Permission[] {
+  if (somenteLeitura) return [...ALL_PERMISSIONS];
+  return podeAlterarFinanceiro ? [] : [Permission.FINANCEIRO];
+}
 
 interface Props {
   value: Permission[];
   isDoctor: boolean;
   isPhysician?: boolean;
+  podeAlterarFinanceiro?: boolean;
+  somenteLeitura?: boolean;
   onChange: (permissions: Permission[]) => void;
 }
 
@@ -44,6 +65,8 @@ export function PermissionsSection({
   value,
   isDoctor,
   isPhysician = true,
+  podeAlterarFinanceiro = false,
+  somenteLeitura = false,
   onChange,
 }: Props) {
   const fixas = !isDoctor
@@ -56,9 +79,14 @@ export function PermissionsSection({
   );
 
   const travada = (p: Permission) => fixas.includes(p);
+  const bloqueadas = permissoesTravadasPara({
+    podeAlterarFinanceiro,
+    somenteLeitura,
+  });
+  const bloqueada = (p: Permission) => bloqueadas.includes(p);
 
   const alternar = (p: Permission) => {
-    if (travada(p)) return;
+    if (travada(p) || bloqueada(p)) return;
     const proximo = value.includes(p)
       ? value.filter((atual) => atual !== p)
       : [...value, p];
@@ -66,13 +94,11 @@ export function PermissionsSection({
   };
 
   const aplicarPreset = (chave: string) => {
-    if (chave === "personalizado") return;
+    if (somenteLeitura || chave === "personalizado") return;
     const preset = PROFILE_PRESETS[chave] ?? [];
-    const mantemAdmin = value.includes(Permission.ADMINISTRACAO)
-      ? [Permission.ADMINISTRACAO]
-      : [];
+    const mantidas = AREAS_FORA_DOS_PRESETS.filter((p) => value.includes(p));
     onChange(
-      ALL_PERMISSIONS.filter((p) => [...preset, ...mantemAdmin].includes(p)),
+      ALL_PERMISSIONS.filter((p) => [...preset, ...mantidas].includes(p)),
     );
   };
 
@@ -87,6 +113,7 @@ export function PermissionsSection({
             id="perfil-colaborador"
             value={presetFor(efetivas)}
             onChange={(e) => aplicarPreset(e.target.value)}
+            disabled={somenteLeitura}
             className="ds-input"
           >
             {Object.entries(PROFILE_LABELS).map(([chave, rotulo]) => (
@@ -107,6 +134,8 @@ export function PermissionsSection({
           {ALL_PERMISSIONS.map((p) => {
             const marcada = efetivas.includes(p);
             const fixa = travada(p);
+            const semAcesso = !fixa && bloqueada(p);
+            const desabilitada = fixa || semAcesso;
             const Icone = PERMISSION_ICONS[p];
 
             return (
@@ -114,13 +143,13 @@ export function PermissionsSection({
                 key={p}
                 className={cn(
                   "flex items-start gap-3 rounded-xl border p-3 transition-colors duration-200 md:p-3.5",
-                  fixa
+                  desabilitada
                     ? "cursor-default border-neutral-100 bg-gray-50"
                     : "cursor-pointer",
-                  !fixa && marcada
+                  !desabilitada && marcada
                     ? "border-primary-500 bg-primary-50/50 hover:bg-primary-50"
                     : "",
-                  !fixa && !marcada
+                  !desabilitada && !marcada
                     ? "border-neutral-100 bg-white hover:border-primary-200 hover:bg-gray-50"
                     : "",
                 )}
@@ -128,7 +157,7 @@ export function PermissionsSection({
                 <input
                   type="checkbox"
                   checked={marcada}
-                  disabled={fixa}
+                  disabled={desabilitada}
                   onChange={() => alternar(p)}
                   className="peer sr-only"
                 />
@@ -139,7 +168,7 @@ export function PermissionsSection({
                     marcada
                       ? "border-primary-500 bg-primary-500 text-white"
                       : "border-gray-400 bg-white",
-                    fixa && "opacity-60",
+                    desabilitada && "opacity-60",
                   )}
                 >
                   {marcada && <Check className="h-3 w-3 stroke-[3]" />}
@@ -165,12 +194,27 @@ export function PermissionsSection({
                   <span className="mt-1 block text-xs leading-snug text-gray-500">
                     {PERMISSION_DESCRIPTIONS[p]}
                   </span>
+                  {semAcesso && !somenteLeitura && (
+                    <span className="mt-1 block text-xs leading-snug text-amber-700">
+                      {DICA_FINANCEIRO_SO_DONO}
+                    </span>
+                  )}
                 </span>
               </label>
             );
           })}
         </div>
       </fieldset>
+
+      {somenteLeitura && (
+        <p
+          role="note"
+          className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-snug text-amber-800"
+        >
+          <Info className="mt-px h-4 w-4 shrink-0" />
+          <span>{AVISO_PROPRIAS_PERMISSOES}</span>
+        </p>
+      )}
 
       {isDoctor && (
         <p className="flex items-start gap-2 rounded-xl bg-primary-50/60 px-3 py-2.5 text-xs leading-snug text-primary-800">

@@ -52,6 +52,8 @@ import {
 } from "@/components/agenda/CalendarMonthView";
 import { useAvailableDoctors } from "@/hooks/useAvailableDoctors";
 import { useClinics } from "@/hooks/useClinics";
+import { useAppointmentsFinanceStatus } from "@/hooks/useAppointmentFinanceStatus";
+import type { ReceivableStatus } from "@/types/finance.types";
 import { useToast } from "@/hooks/useToast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
@@ -87,6 +89,7 @@ export default function AgendaPage() {
   const podeVerCirurgias = can(Permission.SOLICITACOES);
   const podeAgenda = can(Permission.AGENDA);
   const podeBloquearClinica = can(Permission.ADMINISTRACAO);
+  const podeFinanceiro = can(Permission.FINANCEIRO);
 
   const [view, setView] = useState<CalView>("week");
   const [anchor, setAnchor] = useState<Date>(() => new Date());
@@ -186,6 +189,20 @@ export default function AgendaPage() {
   const agendaIncompleta =
     !!appointmentsQuery.data &&
     appointmentsQuery.data.total > appointmentsQuery.data.records.length;
+
+  const idsDasConsultas = useMemo(
+    () => (appointmentsQuery.data?.records ?? []).map((a) => a.id),
+    [appointmentsQuery.data],
+  );
+  const { porConsulta: financeiroPorConsulta } = useAppointmentsFinanceStatus(
+    idsDasConsultas,
+    podeFinanceiro,
+  );
+  const statusFinanceiro = useMemo(() => {
+    const mapa = new Map<string, ReceivableStatus>();
+    financeiroPorConsulta.forEach((v, k) => mapa.set(k, v.status));
+    return mapa;
+  }, [financeiroPorConsulta]);
 
   const blocksQuery = useQuery({
     queryKey: [...AVAILABILITY_QUERY_KEYS.blocks, fromISO, toISO],
@@ -605,6 +622,7 @@ export default function AgendaPage() {
             anchor={anchor}
             events={events}
             dayMarks={monthDayMarks}
+            financeStatusByAppointment={statusFinanceiro}
             onEventClick={handleEventClick}
             onSelectDay={(day) => {
               setAnchor(day);
@@ -618,6 +636,7 @@ export default function AgendaPage() {
             onEventClick={handleEventClick}
             onSlotClick={handleSlotClick}
             blocks={blockOverlays}
+            financeStatusByAppointment={statusFinanceiro}
           />
         )}
       </div>

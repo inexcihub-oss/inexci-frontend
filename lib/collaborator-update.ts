@@ -21,13 +21,38 @@ export interface CollaboratorUpdatePayload {
   specialty?: string;
 }
 
+function mesmasPermissoes(a: Permission[], b: Permission[]): boolean {
+  if (a.length !== b.length) return false;
+  const ordenadas = (lista: Permission[]) => [...lista].sort().join(",");
+  return ordenadas(a) === ordenadas(b);
+}
+
+export function semAlterarTravadas(
+  original: Permission[],
+  current: Permission[],
+  travadas: Permission[],
+): Permission[] {
+  return [
+    ...current.filter((p) => !travadas.includes(p)),
+    ...original.filter((p) => travadas.includes(p)),
+  ];
+}
+
 export function buildCollaboratorUpdatePayload(
   original: CollaboratorUpdateState,
   current: CollaboratorUpdateState,
+  options: { permissoesTravadas?: Permission[] } = {},
 ): CollaboratorUpdatePayload | null {
   const emailChanged = current.email !== original.email;
-  const permissionsChanged =
-    JSON.stringify(current.permissions) !== JSON.stringify(original.permissions);
+  const permissoes = semAlterarTravadas(
+    original.permissions,
+    current.permissions,
+    options.permissoesTravadas ?? [],
+  );
+  const permissionsChanged = !mesmasPermissoes(
+    permissoes,
+    original.permissions,
+  );
   const isDoctorChanged =
     current.isDoctor !== undefined && current.isDoctor !== original.isDoctor;
 
@@ -35,7 +60,7 @@ export function buildCollaboratorUpdatePayload(
 
   return {
     ...(emailChanged ? { email: current.email } : {}),
-    ...(permissionsChanged ? { permissions: current.permissions } : {}),
+    ...(permissionsChanged ? { permissions: permissoes } : {}),
     ...(isDoctorChanged
       ? {
           isDoctor: current.isDoctor,

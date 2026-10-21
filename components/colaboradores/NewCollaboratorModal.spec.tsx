@@ -28,6 +28,11 @@ vi.mock("@/services/collaborator.service", () => ({
   },
 }));
 
+const authMockState = vi.hoisted(() => ({ isAccountOwner: true }));
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ isAccountOwner: authMockState.isAccountOwner }),
+}));
+
 const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
 vi.mock("@/components/onboarding/OnboardingProvider", () => ({
   useOnboarding: () => ({ emTour: onboardingMockState.emTour }),
@@ -45,6 +50,7 @@ describe("NewCollaboratorModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     onboardingMockState.emTour = false;
+    authMockState.isAccountOwner = true;
   });
 
   it("não deve renderizar quando isOpen=false", () => {
@@ -500,6 +506,42 @@ describe("NewCollaboratorModal — permissões", () => {
       );
     });
   });
+
+  it("envia a área Financeiro quando marcada", async () => {
+    (collaboratorService.create as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "new-4",
+    });
+
+    render(<NewCollaboratorModal {...defaultProps} />);
+
+    await userEvent.type(
+      screen.getByPlaceholderText("Nome completo"),
+      "Maria Silva",
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("(21) 98765-4321"),
+      "21987654321",
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("colaborador@mail.com"),
+      "maria@email.com",
+    );
+
+    const financeiro = screen.getByRole("checkbox", { name: /Financeiro/i });
+    expect(financeiro).not.toBeChecked();
+    await userEvent.click(financeiro);
+
+    await userEvent.click(screen.getByText("Adicionar colaborador"));
+
+    await waitFor(() => {
+      expect(collaboratorService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          permissions: ["agenda", "atendimento", "solicitacoes", "financeiro"],
+        }),
+      );
+    });
+  });
+
   describe("conselho profissional (MIG-02)", () => {
     async function preencherBase() {
       await userEvent.type(
@@ -558,5 +600,24 @@ describe("NewCollaboratorModal — permissões", () => {
         screen.getByText(/indicação cirúrgica são do médico/i),
       ).toBeInTheDocument();
     });
+  });
+
+  it("quem não é o dono vê o Financeiro travado com a dica", () => {
+    authMockState.isAccountOwner = false;
+    render(<NewCollaboratorModal {...defaultProps} />);
+
+    expect(
+      screen.getByRole("checkbox", { name: /Financeiro/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText("Só o dono da conta concede ou retira a área Financeiro"),
+    ).toBeInTheDocument();
+  });
+
+  it("o dono da conta pode marcar o Financeiro", () => {
+    authMockState.isAccountOwner = true;
+    render(<NewCollaboratorModal {...defaultProps} />);
+
+    expect(screen.getByRole("checkbox", { name: /Financeiro/i })).toBeEnabled();
   });
 });

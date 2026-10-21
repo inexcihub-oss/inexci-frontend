@@ -54,6 +54,18 @@ describe("Sidebar — filtro por permissão", () => {
     expect(screen.getByText("Atendimento")).toBeInTheDocument();
   });
 
+  it("mostra o Financeiro só para quem tem a área", () => {
+    authState.permissions = [Permission.FINANCEIRO];
+    render(<Sidebar />);
+    expect(screen.getByText("Financeiro")).toBeInTheDocument();
+  });
+
+  it("esconde o Financeiro de quem não tem a área, mesmo com administração", () => {
+    authState.permissions = [Permission.AGENDA, Permission.ADMINISTRACAO];
+    render(<Sidebar />);
+    expect(screen.queryByText("Financeiro")).not.toBeInTheDocument();
+  });
+
   it("mantém pacientes visível para quem atende", () => {
     authState.permissions = [Permission.ATENDIMENTO];
     render(<Sidebar />);

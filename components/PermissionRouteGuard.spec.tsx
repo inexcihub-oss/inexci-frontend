@@ -51,6 +51,34 @@ describe("PermissionRouteGuard", () => {
     expect(screen.queryByText("conteúdo")).not.toBeInTheDocument();
   });
 
+  it("libera /financeiro/configuracoes para quem tem financeiro", () => {
+    pathname = "/financeiro/configuracoes";
+    authState.permissions = [Permission.FINANCEIRO];
+
+    render(
+      <PermissionRouteGuard>
+        <p>conteúdo</p>
+      </PermissionRouteGuard>,
+    );
+
+    expect(screen.getByText("conteúdo")).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("tira do financeiro quem não tem a área", () => {
+    pathname = "/financeiro";
+    authState.permissions = [Permission.ATENDIMENTO, Permission.ADMINISTRACAO];
+
+    render(
+      <PermissionRouteGuard>
+        <p>conteúdo</p>
+      </PermissionRouteGuard>,
+    );
+
+    expect(replace).toHaveBeenCalledWith("/atendimento");
+    expect(screen.queryByText("conteúdo")).not.toBeInTheDocument();
+  });
+
   it("redireciona de /procedimentos quem não tem solicitações", () => {
     pathname = "/procedimentos";
     authState.permissions = [Permission.AGENDA];

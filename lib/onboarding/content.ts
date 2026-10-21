@@ -25,6 +25,8 @@ export const SEU_PAPEL: Record<Permission, string> = {
     "Abrir a ficha do paciente e registrar o atendimento.",
   [Permission.SOLICITACOES]:
     "Montar a solicitação cirúrgica e acompanhar até o pagamento.",
+  [Permission.FINANCEIRO]:
+    "Cobrar consultas, receber pagamentos e fechar o caixa.",
   [Permission.ADMINISTRACAO]:
     "Convidar a equipe e definir o que cada um acessa.",
 };

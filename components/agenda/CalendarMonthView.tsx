@@ -1,6 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { FinanceStatusBadge } from "@/components/finance/FinanceStatusBadge";
+import type { ReceivableStatus } from "@/types/finance.types";
 import {
   CalEvent,
   WEEKDAYS_SHORT,
@@ -29,6 +31,7 @@ interface Props {
   onEventClick: (ev: CalEvent) => void;
   onSelectDay: (day: Date) => void;
   dayMarks?: Record<string, AgendaDayMark[]>;
+  financeStatusByAppointment?: Map<string, ReceivableStatus>;
 }
 
 export function CalendarMonthView({
@@ -37,6 +40,7 @@ export function CalendarMonthView({
   onEventClick,
   onSelectDay,
   dayMarks = {},
+  financeStatusByAppointment,
 }: Props) {
   const monthStart = startOfMonth(anchor);
   const gridStart = startOfWeek(monthStart);
@@ -151,6 +155,18 @@ export function CalendarMonthView({
                         )}
                         {ev.title}
                       </span>
+                      {ev.appointment &&
+                        financeStatusByAppointment?.get(ev.appointment.id) && (
+                          <FinanceStatusBadge
+                            size="xs"
+                            className="ml-auto shrink-0"
+                            status={
+                              financeStatusByAppointment.get(
+                                ev.appointment.id,
+                              ) as ReceivableStatus
+                            }
+                          />
+                        )}
                     </span>
                   );
                 })}

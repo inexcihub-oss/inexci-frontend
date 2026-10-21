@@ -23,6 +23,14 @@ describe("permissionForRoute", () => {
     expect(permissionForRoute("/colaboradores")).toBe(Permission.ADMINISTRACAO);
   });
 
+  it("exige financeiro para o módulo financeiro e as configurações dele", () => {
+    expect(permissionForRoute("/financeiro")).toBe(Permission.FINANCEIRO);
+    expect(permissionForRoute("/financeiro/configuracoes")).toBe(
+      Permission.FINANCEIRO,
+    );
+    expect(permissionForRoute("/financeiro-x")).toBeNull();
+  });
+
   it("deixa rota comum sem exigência", () => {
     expect(permissionForRoute("/configuracoes")).toBeNull();
     expect(permissionForRoute("/notificacoes")).toBeNull();
@@ -112,6 +120,22 @@ describe("resolveHome", () => {
     ).toBe("/atendimento");
   });
 
+  it("manda quem só tem financeiro para o financeiro", () => {
+    expect(resolveHome([Permission.FINANCEIRO])).toBe("/financeiro");
+  });
+
+  it("prioriza financeiro sobre administração e as áreas de trabalho sobre financeiro", () => {
+    expect(
+      resolveHome([Permission.FINANCEIRO, Permission.ADMINISTRACAO]),
+    ).toBe("/financeiro");
+    expect(resolveHome([Permission.SOLICITACOES, Permission.FINANCEIRO])).toBe(
+      "/dashboard",
+    );
+    expect(resolveHome([Permission.AGENDA, Permission.FINANCEIRO])).toBe(
+      "/agenda",
+    );
+  });
+
   it("cai em configurações quando não há área nenhuma", () => {
     expect(resolveHome([])).toBe("/configuracoes");
   });
@@ -131,8 +155,8 @@ describe("resolveHome nunca aponta para uma rota que o guarda bloqueia", () => {
 
   const combinations = allCombinations();
 
-  it("cobre as 16 combinações possíveis", () => {
-    expect(combinations).toHaveLength(16);
+  it("cobre as 32 combinações possíveis", () => {
+    expect(combinations).toHaveLength(32);
   });
 
   it.each(combinations.map((permissions) => [permissions]))(
@@ -163,9 +187,10 @@ describe("PROFILE_PRESETS", () => {
     ]);
   });
 
-  it("nenhum preset concede administração", () => {
+  it("nenhum preset concede administração nem financeiro", () => {
     Object.values(PROFILE_PRESETS).forEach((preset) => {
       expect(preset).not.toContain(Permission.ADMINISTRACAO);
+      expect(preset).not.toContain(Permission.FINANCEIRO);
     });
   });
 
@@ -179,6 +204,28 @@ describe("PROFILE_PRESETS", () => {
 describe("HOME_ORDER", () => {
   it("prioriza atendimento sobre agenda", () => {
     expect(HOME_ORDER[0].permission).toBe(Permission.ATENDIMENTO);
+  });
+
+  it("segue a ordem atendimento, agenda, solicitações, financeiro, administração", () => {
+    expect(HOME_ORDER.map((h) => h.permission)).toEqual([
+      Permission.ATENDIMENTO,
+      Permission.AGENDA,
+      Permission.SOLICITACOES,
+      Permission.FINANCEIRO,
+      Permission.ADMINISTRACAO,
+    ]);
+  });
+});
+
+describe("ALL_PERMISSIONS", () => {
+  it("lista financeiro antes de administração", () => {
+    expect(ALL_PERMISSIONS).toEqual([
+      Permission.AGENDA,
+      Permission.ATENDIMENTO,
+      Permission.SOLICITACOES,
+      Permission.FINANCEIRO,
+      Permission.ADMINISTRACAO,
+    ]);
   });
 });
 
@@ -216,6 +263,16 @@ describe("presetFor", () => {
     ).toBe("atendimento");
   });
 
+  it("ignora financeiro ao comparar com os presets", () => {
+    expect(
+      presetFor([
+        Permission.FINANCEIRO,
+        Permission.AGENDA,
+        Permission.ATENDIMENTO,
+      ]),
+    ).toBe("atendimento");
+  });
+
   it("cai em personalizado quando a seleção não bate com nenhum preset", () => {
     expect(presetFor([Permission.AGENDA])).toBe("personalizado");
     expect(presetFor([])).toBe("personalizado");
@@ -243,6 +300,18 @@ describe("NAV_ITEMS — fonte única do menu", () => {
     expect(
       mobileNavItems("primary").length + mobileNavItems("overflow").length,
     ).toBe(NAV_ITEMS.length);
+  });
+
+  it("o Financeiro fica no menu, no 'Mais' do mobile, e exige a área", async () => {
+    const { NAV_ITEMS, mobileNavItems, navItemPermission } = await import(
+      "./permissions"
+    );
+    const item = NAV_ITEMS.find((i) => i.href === "/financeiro");
+    expect(item?.label).toBe("Financeiro");
+    expect(item && navItemPermission(item)).toBe(Permission.FINANCEIRO);
+    expect(mobileNavItems("overflow").map((i) => i.href)).toContain(
+      "/financeiro",
+    );
   });
 
   it("o grupo Cadastros reúne as cinco telas de cadastro", async () => {

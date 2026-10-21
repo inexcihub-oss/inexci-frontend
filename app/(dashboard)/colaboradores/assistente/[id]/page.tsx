@@ -35,7 +35,10 @@ import {
   LinkedSurgeryRequestsList,
   linkedProcedureName,
 } from "@/components/colaboradores/LinkedSurgeryRequestsList";
-import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
+import {
+  PermissionsSection,
+  permissoesTravadasPara,
+} from "@/components/colaboradores/PermissionsSection";
 import { DoctorHeaderEditor } from "@/components/shared/DoctorHeaderEditor";
 import { useDoctorHeaderEditor } from "@/hooks/useDoctorHeaderEditor";
 import { Modal } from "@/components/ui/Modal";
@@ -89,11 +92,15 @@ export default function AssistenteDetalhePage() {
   const isDoctor = collaborator?.isDoctor === true;
   const isFabricado = collaborator?.id === TOUR_DEMO_COLLABORATOR_ID;
   const { user: usuarioLogado, isAccountOwner } = useAuth();
-  const vinculoProprioTravado =
+  const ehOProprioUsuario =
     !!collaborator &&
     !!usuarioLogado?.id &&
-    collaborator.id === usuarioLogado.id &&
-    !isAccountOwner;
+    collaborator.id === usuarioLogado.id;
+  const vinculoProprioTravado = ehOProprioUsuario && !isAccountOwner;
+  const permissoesTravadas = permissoesTravadasPara({
+    podeAlterarFinanceiro: isAccountOwner,
+    somenteLeitura: ehOProprioUsuario,
+  });
   const handleCloseScConfigModal = useCallback(() => {
     setIsScConfigModalOpen(false);
   }, []);
@@ -351,6 +358,7 @@ export default function AssistenteDetalhePage() {
         crmState: formData.crmState,
         specialty: formData.specialty.trim(),
       },
+      { permissoesTravadas },
     );
 
     setSaving(true);
@@ -889,6 +897,8 @@ export default function AssistenteDetalhePage() {
             value={formData.permissions}
             isDoctor={formData.isDoctor}
             isPhysician={formData.council === "CRM"}
+            podeAlterarFinanceiro={isAccountOwner}
+            somenteLeitura={ehOProprioUsuario}
             onChange={handlePermissionsChange}
           />
           <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end sm:gap-3">

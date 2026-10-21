@@ -15,6 +15,7 @@ import {
 } from "@/components/patients/PatientTimeline";
 import { usePatientHistory } from "@/components/patients/usePatientHistory";
 import { PatientDocuments } from "@/components/clinical/PatientDocuments";
+import { PatientFinanceSection } from "@/components/finance/receivables/PatientFinanceSection";
 import { NewAppointmentModal } from "@/components/agenda/NewAppointmentModal";
 import { AppointmentDetailModal } from "@/components/agenda/AppointmentDetailModal";
 import {
@@ -36,7 +37,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
 import { Plus } from "lucide-react";
 
-type Aba = "historico" | "documentos" | "cadastro";
+type Aba = "historico" | "documentos" | "financeiro" | "cadastro";
 
 function dataCurta(value: string | number): string {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -84,6 +85,7 @@ export default function PacienteDetalhePage() {
   const { can } = useAuth();
   const podeAgenda = can(Permission.AGENDA);
   const podeAtendimento = can(Permission.ATENDIMENTO);
+  const podeFinanceiro = can(Permission.FINANCEIRO);
 
   const abas = useMemo(
     () =>
@@ -93,8 +95,11 @@ export default function PacienteDetalhePage() {
         ...(podeAtendimento
           ? [{ id: "documentos" as const, label: "Documentos" }]
           : []),
+        ...(podeFinanceiro
+          ? [{ id: "financeiro" as const, label: "Financeiro" }]
+          : []),
       ] satisfies { id: Aba; label: string }[],
-    [podeAtendimento],
+    [podeAtendimento, podeFinanceiro],
   );
 
   const [abaPedida, setAbaPedida] = useState<Aba | null>(
@@ -348,6 +353,14 @@ export default function PacienteDetalhePage() {
         {aba === "documentos" && podeAtendimento && (
           <div role="tabpanel" id="painel-documentos" aria-labelledby="aba-documentos">
             <PatientDocuments patientId={patient.id} />
+          </div>
+        )}
+
+        {aba === "financeiro" && podeFinanceiro && (
+          <div role="tabpanel" id="painel-financeiro" aria-labelledby="aba-financeiro">
+            <PatientFinanceSection
+              patient={{ id: patient.id, name: patient.name }}
+            />
           </div>
         )}
 

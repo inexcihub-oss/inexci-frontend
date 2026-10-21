@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { FinanceStatusBadge } from "@/components/finance/FinanceStatusBadge";
+import type { ReceivableStatus } from "@/types/finance.types";
 import {
   CalEvent,
   WEEKDAYS_SHORT,
@@ -30,6 +32,7 @@ interface Props {
   onEventClick: (ev: CalEvent) => void;
   onSlotClick: (date: Date) => void;
   blocks?: AgendaBlockOverlay[];
+  financeStatusByAppointment?: Map<string, ReceivableStatus>;
 }
 
 const HACHURA =
@@ -41,6 +44,7 @@ export function CalendarTimeGrid({
   onEventClick,
   onSlotClick,
   blocks = [],
+  financeStatusByAppointment,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [narrow, setNarrow] = useState(false);
@@ -304,6 +308,18 @@ export function CalendarTimeGrid({
                     <p className={cn("text-[11px] font-semibold truncate", c.text)}>
                       {hhmm(ev.start)} {ev.title}
                     </p>
+                    {ev.appointment &&
+                      financeStatusByAppointment?.get(ev.appointment.id) && (
+                        <FinanceStatusBadge
+                          size="xs"
+                          className="absolute right-1 bottom-0.5"
+                          status={
+                            financeStatusByAppointment.get(
+                              ev.appointment.id,
+                            ) as ReceivableStatus
+                          }
+                        />
+                      )}
                     {height > 32 && (
                       <p className="text-[10px] text-neutral-500 truncate">
                         {ev.subtitle}

@@ -105,6 +105,63 @@ describe("PermissionsSection", () => {
     ]);
   });
 
+  it("oferece a área Financeiro, livre também para o médico", () => {
+    render(
+      <PermissionsSection
+        value={[]}
+        isDoctor
+        podeAlterarFinanceiro
+        onChange={vi.fn()}
+      />,
+    );
+
+    const financeiro = screen.getByRole("checkbox", { name: /Financeiro/i });
+    expect(financeiro).toBeEnabled();
+    expect(financeiro).not.toBeChecked();
+  });
+
+  it("libera a área Financeiro na ordem das áreas", () => {
+    const onChange = vi.fn();
+    render(
+      <PermissionsSection
+        value={[Permission.AGENDA, Permission.ADMINISTRACAO]}
+        isDoctor={false}
+        podeAlterarFinanceiro
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Financeiro/i }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      Permission.AGENDA,
+      Permission.FINANCEIRO,
+      Permission.ADMINISTRACAO,
+    ]);
+  });
+
+  it("mantém financeiro e administração ao aplicar um perfil", () => {
+    const onChange = vi.fn();
+    render(
+      <PermissionsSection
+        value={[Permission.FINANCEIRO, Permission.ADMINISTRACAO]}
+        isDoctor={false}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/Perfil/i), {
+      target: { value: "atendimento" },
+    });
+
+    expect(onChange).toHaveBeenCalledWith([
+      Permission.AGENDA,
+      Permission.ATENDIMENTO,
+      Permission.FINANCEIRO,
+      Permission.ADMINISTRACAO,
+    ]);
+  });
+
   it('expõe data-tour="admin-areas" no elemento raiz', () => {
     const { container } = render(
       <PermissionsSection value={[]} isDoctor={false} onChange={vi.fn()} />,
@@ -159,5 +216,71 @@ describe("PermissionsSection", () => {
         screen.getByText(/Solicitações cirúrgicas são do médico/i),
       ).toBeInTheDocument();
     });
+  });
+
+  describe("área Financeiro só pelo dono da conta", () => {
+    it("trava o Financeiro com a dica para quem não é o dono", () => {
+      const onChange = vi.fn();
+      render(
+        <PermissionsSection
+          value={[Permission.FINANCEIRO]}
+          isDoctor={false}
+          onChange={onChange}
+        />,
+      );
+
+      const financeiro = screen.getByRole("checkbox", { name: /Financeiro/i });
+      expect(financeiro).toBeDisabled();
+      expect(financeiro).toBeChecked();
+      expect(
+        screen.getByText("Só o dono da conta concede ou retira a área Financeiro"),
+      ).toBeInTheDocument();
+      fireEvent.click(financeiro);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole("checkbox", { name: /Administração/i }),
+      ).toBeEnabled();
+    });
+
+    it("o dono altera o Financeiro sem a dica", () => {
+      render(
+        <PermissionsSection
+          value={[]}
+          isDoctor={false}
+          podeAlterarFinanceiro
+          onChange={vi.fn()}
+        />,
+      );
+
+      expect(
+        screen.getByRole("checkbox", { name: /Financeiro/i }),
+      ).toBeEnabled();
+      expect(
+        screen.queryByText(
+          "Só o dono da conta concede ou retira a área Financeiro",
+        ),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("somente leitura trava todas as áreas e o perfil", () => {
+    const onChange = vi.fn();
+    render(
+      <PermissionsSection
+        value={[Permission.AGENDA]}
+        isDoctor={false}
+        podeAlterarFinanceiro
+        somenteLeitura
+        onChange={onChange}
+      />,
+    );
+
+    for (const checkbox of screen.getAllByRole("checkbox")) {
+      expect(checkbox).toBeDisabled();
+    }
+    expect(screen.getByLabelText(/Perfil/i)).toBeDisabled();
+    expect(
+      screen.getByText(/não pode alterar as suas próprias permissões/i),
+    ).toBeInTheDocument();
   });
 });

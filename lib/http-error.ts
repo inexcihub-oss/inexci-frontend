@@ -24,6 +24,16 @@ export function getApiErrorMessage(
   return fallback;
 }
 
+export function getApiErrorCode(error: unknown): string | null {
+  if (!(error instanceof AxiosError)) return null;
+  const data = error.response?.data;
+  if (data && typeof data === "object" && "code" in data) {
+    const code = (data as { code: unknown }).code;
+    if (typeof code === "string" && code) return code;
+  }
+  return null;
+}
+
 export const BILLING_BLOCK_REASONS = [
   "quota_exceeded",
   "subscription_suspended",

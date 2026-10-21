@@ -2,6 +2,7 @@ export enum Permission {
   AGENDA = "agenda",
   ATENDIMENTO = "atendimento",
   SOLICITACOES = "solicitacoes",
+  FINANCEIRO = "financeiro",
   ADMINISTRACAO = "administracao",
 }
 
@@ -9,6 +10,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   Permission.AGENDA,
   Permission.ATENDIMENTO,
   Permission.SOLICITACOES,
+  Permission.FINANCEIRO,
   Permission.ADMINISTRACAO,
 ];
 
@@ -16,6 +18,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   [Permission.AGENDA]: "Agenda",
   [Permission.ATENDIMENTO]: "Atendimento",
   [Permission.SOLICITACOES]: "Solicitações cirúrgicas",
+  [Permission.FINANCEIRO]: "Financeiro",
   [Permission.ADMINISTRACAO]: "Administração",
 };
 
@@ -24,6 +27,8 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.ATENDIMENTO]: "Abrir o prontuário e o histórico do paciente.",
   [Permission.SOLICITACOES]:
     "Criar e acompanhar solicitações cirúrgicas e o dashboard.",
+  [Permission.FINANCEIRO]:
+    "Cobrar consultas, receber pagamentos, operar o caixa e ver os relatórios financeiros.",
   [Permission.ADMINISTRACAO]:
     "Gerenciar colaboradores, excluir cadastros e a assinatura da conta.",
 };
@@ -53,6 +58,7 @@ export const ROUTE_PERMISSIONS: {
   { prefix: "/colaboradores", permission: Permission.ADMINISTRACAO },
   { prefix: "/procedimentos", permission: Permission.SOLICITACOES },
   { prefix: "/clinicas", permission: Permission.ADMINISTRACAO },
+  { prefix: "/financeiro", permission: Permission.FINANCEIRO },
 ];
 
 export function permissionForRoute(pathname: string): Permission | null {
@@ -76,6 +82,7 @@ export const HOME_ORDER: { permission: Permission; href: string }[] = [
   { permission: Permission.ATENDIMENTO, href: "/atendimento" },
   { permission: Permission.AGENDA, href: "/agenda" },
   { permission: Permission.SOLICITACOES, href: "/dashboard" },
+  { permission: Permission.FINANCEIRO, href: "/financeiro" },
   { permission: Permission.ADMINISTRACAO, href: "/colaboradores" },
 ];
 
@@ -103,9 +110,14 @@ export const PROFILE_LABELS: Record<string, string> = {
   personalizado: "Personalizado",
 };
 
+export const AREAS_FORA_DOS_PRESETS: Permission[] = [
+  Permission.FINANCEIRO,
+  Permission.ADMINISTRACAO,
+];
+
 export function presetFor(permissions: Permission[]): string {
   const trabalho = permissions
-    .filter((p) => p !== Permission.ADMINISTRACAO)
+    .filter((p) => !AREAS_FORA_DOS_PRESETS.includes(p))
     .sort();
   const achado = Object.entries(PROFILE_PRESETS).find(
     ([, preset]) => [...preset].sort().join(",") === trabalho.join(","),
@@ -157,51 +169,57 @@ export const NAV_ITEMS: NavItem[] = [
     mobile: { slot: "primary", order: 3 },
   },
   {
+    label: "Financeiro",
+    href: "/financeiro",
+    iconSrc: "/icons/wallet.svg",
+    mobile: { slot: "overflow", order: 1 },
+  },
+  {
     label: "Colaboradores",
     href: "/colaboradores",
     iconSrc: "/icons/user-profile.svg",
-    mobile: { slot: "overflow", order: 7 },
+    mobile: { slot: "overflow", order: 8 },
   },
   {
     label: "Clínicas",
     href: "/clinicas",
     iconSrc: "/icons/clinic-building.svg",
     group: "cadastros",
-    mobile: { slot: "overflow", order: 2 },
+    mobile: { slot: "overflow", order: 3 },
   },
   {
     label: "Hospitais",
     href: "/hospitais",
     iconSrc: "/icons/users.svg",
     group: "cadastros",
-    mobile: { slot: "overflow", order: 3 },
+    mobile: { slot: "overflow", order: 4 },
   },
   {
     label: "Convênios",
     href: "/convenios",
     iconSrc: "/icons/document.svg",
     group: "cadastros",
-    mobile: { slot: "overflow", order: 4 },
+    mobile: { slot: "overflow", order: 5 },
   },
   {
     label: "Fornecedores",
     href: "/fornecedores",
     iconSrc: "/icons/dollar-cash-circle.svg",
     group: "cadastros",
-    mobile: { slot: "overflow", order: 5 },
+    mobile: { slot: "overflow", order: 6 },
   },
   {
     label: "Fabricantes",
     href: "/fabricantes",
     iconSrc: "/icons/user.svg",
     group: "cadastros",
-    mobile: { slot: "overflow", order: 6 },
+    mobile: { slot: "overflow", order: 7 },
   },
   {
     label: "Procedimentos",
     href: "/procedimentos",
     iconSrc: "/icons/status-surgeries.svg",
-    mobile: { slot: "overflow", order: 1 },
+    mobile: { slot: "overflow", order: 2 },
   },
 ];
 
