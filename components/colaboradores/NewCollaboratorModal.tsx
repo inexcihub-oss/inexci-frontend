@@ -15,7 +15,8 @@ import { isValidEmail } from "@/lib/validators";
 import { summarizeErrors } from "@/lib/form-errors";
 import { useToast } from "@/hooks/useToast";
 import { PermissionsSection } from "@/components/colaboradores/PermissionsSection";
-import { PROFILE_PRESETS } from "@/lib/permissions";
+import { Permission, PROFILE_PRESETS } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   COUNCIL_OPTIONS,
   ProfessionalCouncil,
@@ -83,6 +84,7 @@ export function NewCollaboratorModal({
   const [error, setError] = useState("");
   const { showToast } = useToast();
   const { emTour } = useOnboarding();
+  const { isAccountOwner } = useAuth();
   const invalidateAvailableDoctors = useInvalidateAvailableDoctors();
 
   const form = useZodForm({
@@ -147,7 +149,9 @@ export function NewCollaboratorModal({
           name: data.name.trim(),
           email: data.email.trim(),
           phone: unmask(data.phone),
-          permissions: data.permissions,
+          permissions: isAccountOwner
+            ? data.permissions
+            : data.permissions.filter((p) => p !== Permission.FINANCEIRO),
           ...(data.isDoctor && {
             isDoctor: true,
             council: data.council,
@@ -386,6 +390,7 @@ export function NewCollaboratorModal({
                 value={form.values.permissions ?? []}
                 isDoctor={!!form.values.isDoctor}
                 isPhysician={isCrm}
+                podeAlterarFinanceiro={isAccountOwner}
                 onChange={(p) => form.setField("permissions", p)}
               />
             </div>

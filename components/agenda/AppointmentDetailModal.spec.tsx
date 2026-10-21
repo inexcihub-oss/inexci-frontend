@@ -30,6 +30,21 @@ vi.mock("@/services/appointment.service", async () => {
   return { ...actual, appointmentService: { listActivities: vi.fn() } };
 });
 
+vi.mock("@/services/finance.service", () => ({
+  financeService: {
+    getAppointmentsStatus: vi.fn(),
+    createReceivableFromAppointment: vi.fn(),
+    getReceivable: vi.fn(),
+    listPaymentMethods: vi.fn().mockResolvedValue([]),
+    listAccounts: vi.fn().mockResolvedValue([]),
+    getCurrentCashSession: vi.fn().mockResolvedValue({ session: null }),
+  },
+}));
+
+import { AxiosError, AxiosHeaders } from "axios";
+import { financeService } from "@/services/finance.service";
+import { renderWithProviders } from "@/test-utils/render-with-providers";
+import { ReceivableStatus } from "@/types/finance.types";
 import {
   AppointmentDetailModal,
   formatWhen,
@@ -543,6 +558,244 @@ describe("AppointmentDetailModal — histórico (MIG-04)", () => {
     expect(
       screen.queryByRole("button", { name: /Histórico/ }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("AppointmentDetailModal — financeiro", () => {
+  const finance = vi.mocked(financeService);
+
+  function renderComProviders(appointment: Appointment = consultaBase) {
+    return renderWithProviders(
+      <AppointmentDetailModal
+        appointment={appointment}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onStartAttendance={vi.fn()}
+        onChangeStatus={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+  }
+
+  function erro400(message: string, code?: string) {
+    return new AxiosError("bad", "400", undefined, undefined, {
+      status: 400,
+      statusText: "Bad Request",
+      data: { statusCode: 400, message, ...(code ? { code } : {}) },
+      headers: {},
+      config: { headers: new AxiosHeaders() },
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    onboardingMockState.emTour = false;
+    finance.getAppointmentsStatus.mockResolvedValue([]);
+    finance.getReceivable.mockReturnValue(new Promise(() => {}));
+  });
+
+  it("sem a área Financeiro nada muda e a rota de status não é chamada", () => {
+    authState = { isDoctor: true, can: (p) => p === Permission.AGENDA };
+    renderComProviders();
+
+    expect(screen.queryByTestId("consulta-financeiro")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cobrar" }),
+    ).not.toBeInTheDocument();
+    expect(finance.getAppointmentsStatus).not.toHaveBeenCalled();
+  });
+
+  it("Cobrar pede o valor já preenchido com o preço da consulta e envia unitAmount", async () => {
+    authState = {
+      isDoctor: false,
+      can: (p) => p === Permission.AGENDA || p === Permission.FINANCEIRO,
+    };
+    finance.createReceivableFromAppointment.mockResolvedValue({
+      id: "r-1",
+    } as never);
+    renderComProviders({ ...consultaBase, price: "300.00" });
+
+    const cobrar = await screen.findByRole("button", { name: "Cobrar" });
+    expect(finance.getAppointmentsStatus).toHaveBeenCalledWith(["a-1"]);
+    expect(screen.getByText("Sem cobrança")).toBeInTheDocument();
+    await userEvent.click(cobrar);
+
+    const campo = await screen.findByLabelText(/Valor da consulta/);
+    expect(campo).toHaveValue("R$ 300,00");
+    expect(finance.createReceivableFromAppointment).not.toHaveBeenCalled();
+    await userEvent.clear(campo);
+    await userEvent.type(campo, "35000");
+    await userEvent.click(screen.getByRole("button", { name: "Criar cobrança" }));
+
+    await waitFor(() =>
+      expect(finance.createReceivableFromAppointment).toHaveBeenCalledWith(
+        "a-1",
+        { unitAmount: "350.00" },
+      ),
+    );
+    expect(await screen.findByText("Cobrança criada.")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(finance.getReceivable).toHaveBeenCalledWith("r-1"),
+    );
+  });
+
+  it("consulta sem preço começa com o valor vazio e não cobra sem ele", async () => {
+    authState = { isDoctor: false, can: (p) => p === Permission.FINANCEIRO };
+    renderComProviders({ ...consultaBase, price: null });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cobrar" }));
+    expect(await screen.findByLabelText(/Valor da consulta/)).toHaveValue("");
+    await userEvent.click(screen.getByRole("button", { name: "Criar cobrança" }));
+
+    expect(
+      await screen.findByText("Informe o valor da consulta."),
+    ).toBeInTheDocument();
+    expect(finance.createReceivableFromAppointment).not.toHaveBeenCalled();
+  });
+
+  it("CONSULTA_SEM_VALOR do backend volta a pedir o valor", async () => {
+    authState = { isDoctor: false, can: (p) => p === Permission.FINANCEIRO };
+    finance.createReceivableFromAppointment.mockRejectedValueOnce(
+      erro400(
+        "Informe o valor da consulta para gerar a cobrança",
+        "CONSULTA_SEM_VALOR",
+      ),
+    );
+    renderComProviders({ ...consultaBase, price: "100.00" });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cobrar" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Criar cobrança" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Informe o valor da consulta para gerar a cobrança",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Valor da consulta/)).toBeInTheDocument();
+    expect(screen.queryByText("Consulta de convênio")).not.toBeInTheDocument();
+  });
+
+  it("consulta de convênio pede confirmação e reenvia com allowHealthPlan e o mesmo valor", async () => {
+    authState = { isDoctor: false, can: (p) => p === Permission.FINANCEIRO };
+    finance.createReceivableFromAppointment
+      .mockRejectedValueOnce(
+        erro400(
+          "A consulta é de convênio. Confirme para cobrar mesmo assim",
+          "CONSULTA_DE_CONVENIO",
+        ),
+      )
+      .mockResolvedValueOnce({ id: "r-2" } as never);
+    renderComProviders({
+      ...consultaBase,
+      price: "200.00",
+      healthPlanId: "hp-1",
+      healthPlan: { id: "hp-1", name: "UNIMED" },
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cobrar" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Criar cobrança" }),
+    );
+    expect(
+      await screen.findByText(
+        "A consulta é de convênio. Confirme para cobrar mesmo assim",
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cobrar mesmo assim" }),
+    );
+
+    await waitFor(() =>
+      expect(finance.createReceivableFromAppointment).toHaveBeenLastCalledWith(
+        "a-1",
+        { unitAmount: "200.00", allowHealthPlan: true },
+      ),
+    );
+  });
+
+  it("400 sem o código de convênio não abre a confirmação de convênio", async () => {
+    authState = { isDoctor: false, can: (p) => p === Permission.FINANCEIRO };
+    finance.createReceivableFromAppointment.mockRejectedValueOnce(
+      erro400("Paciente sem convênio cadastrado", "OUTRA_REGRA"),
+    );
+    renderComProviders({
+      ...consultaBase,
+      price: "200.00",
+      healthPlanId: "hp-1",
+      healthPlan: { id: "hp-1", name: "UNIMED" },
+    });
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cobrar" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Criar cobrança" }),
+    );
+
+    expect(
+      await screen.findByText("Paciente sem convênio cadastrado"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cobrar mesmo assim" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each(["cancelled", "no_show"] as const)(
+    "consulta %s não oferece Cobrar",
+    async (status) => {
+      authState = { isDoctor: false, can: (p) => p === Permission.FINANCEIRO };
+      renderComProviders({ ...consultaBase, status });
+
+      expect(await screen.findByText("Sem cobrança")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Cobrar" }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it("erro no status não oferece Cobrar e permite tentar novamente", async () => {
+    authState = { isDoctor: false, can: (p) => p === Permission.FINANCEIRO };
+    finance.getAppointmentsStatus
+      .mockRejectedValueOnce(new Error("falhou"))
+      .mockResolvedValueOnce([]);
+    renderComProviders();
+
+    expect(
+      await screen.findByText(
+        "Não foi possível carregar o financeiro desta consulta.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cobrar" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Tentar novamente" }),
+    );
+
+    expect(await screen.findByRole("button", { name: "Cobrar" })).toBeInTheDocument();
+    expect(finance.getAppointmentsStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    [ReceivableStatus.OPEN, "Em aberto", "Receber"],
+    [ReceivableStatus.PARTIAL, "Parcial", "Receber"],
+    [ReceivableStatus.PAID, "Pago", "Ver cobrança"],
+  ])("cobrança %s mostra o selo e a ação certa", async (status, selo, acao) => {
+    authState = { isDoctor: false, can: (p) => p === Permission.FINANCEIRO };
+    finance.getAppointmentsStatus.mockResolvedValue([
+      { appointmentId: "a-1", receivableId: "r-1", status },
+    ]);
+    renderComProviders();
+
+    expect(await screen.findByTestId("finance-status-badge")).toHaveTextContent(
+      selo,
+    );
+    await userEvent.click(screen.getByRole("button", { name: acao }));
+    await waitFor(() =>
+      expect(finance.getReceivable).toHaveBeenCalledWith("r-1"),
+    );
+    expect(finance.createReceivableFromAppointment).not.toHaveBeenCalled();
   });
 });
 

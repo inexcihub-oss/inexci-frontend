@@ -281,9 +281,9 @@ describe("TRACKS", () => {
     expect(trilhas.map((t) => t.id)).not.toContain("administracao");
   });
 
-  it("a trilha do dashboard exige Solicitações e tem três passos, só o primeiro obrigatório e com aguardaAcao", () => {
+  it("a trilha do dashboard exige Administração e tem três passos, só o primeiro obrigatório e com aguardaAcao", () => {
     const trilha = trackById("dashboard")!;
-    expect(trilha.permission).toBe(Permission.SOLICITACOES);
+    expect(trilha.permission).toBe(Permission.ADMINISTRACAO);
     expect(trilha.steps.map((p) => p.key)).toEqual([
       "kpis",
       "filtros",

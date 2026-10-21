@@ -60,6 +60,7 @@ export interface Appointment {
   healthPlan?: { id: string; name: string } | null;
   createdBy?: { id: string; name: string } | null;
   clinicalRecordStatus?: ClinicalRecordStatus | null;
+  price?: string | null;
 }
 
 interface BackendAppointment {
@@ -83,6 +84,7 @@ interface BackendAppointment {
   healthPlan?: { id: string; name: string } | null;
   createdBy?: { id: string; name: string } | null;
   clinicalRecordStatus?: ClinicalRecordStatus | null;
+  price?: string | null;
 }
 
 export type ClinicalRecordStatus = "draft" | "finalized";
@@ -125,6 +127,7 @@ function mapAppointment(a: BackendAppointment): Appointment {
     ...(a.clinicalRecordStatus !== undefined
       ? { clinicalRecordStatus: a.clinicalRecordStatus }
       : {}),
+    ...(a.price !== undefined ? { price: a.price } : {}),
     ...(a.warnings?.length ? { warnings: a.warnings } : {}),
   };
 }
@@ -158,6 +161,7 @@ export interface CreateAppointmentPayload {
   roomId?: string | null;
   isWalkIn?: boolean;
   healthPlanId?: string | null;
+  price?: string | null;
 }
 
 export type UpdateAppointmentPayload = Partial<
@@ -171,6 +175,7 @@ export type UpdateAppointmentPayload = Partial<
     | "roomId"
     | "isWalkIn"
     | "healthPlanId"
+    | "price"
   >
 >;
 

@@ -64,6 +64,11 @@ vi.mock("@/components/patients/PatientPhotoField", () => ({
 vi.mock("@/components/clinical/PatientDocuments", () => ({
   PatientDocuments: () => <div>lista-de-documentos</div>,
 }));
+vi.mock("@/components/finance/receivables/PatientFinanceSection", () => ({
+  PatientFinanceSection: ({ patient }: { patient: { id: string } }) => (
+    <div>financeiro-do-paciente {patient.id}</div>
+  ),
+}));
 vi.mock("@/components/agenda/NewAppointmentModal", () => ({
   NewAppointmentModal: () => null,
 }));
@@ -144,7 +149,7 @@ describe("página do paciente", () => {
     ]);
   });
 
-  it("abre no Cadastro, com as abas Cadastro, Histórico e Documentos", async () => {
+  it("abre no Cadastro, com as abas Cadastro, Histórico, Documentos e Financeiro", async () => {
     render(<PacienteDetalhePage />);
 
     const abas = await screen.findAllByRole("tab");
@@ -152,6 +157,7 @@ describe("página do paciente", () => {
       "Cadastro",
       "Histórico",
       "Documentos",
+      "Financeiro",
     ]);
     expect(screen.getByRole("tab", { name: "Cadastro" })).toHaveAttribute(
       "aria-selected",
@@ -211,6 +217,29 @@ describe("página do paciente", () => {
 
     expect(screen.getByText("lista-de-documentos")).toBeVisible();
     expect(replace).toHaveBeenCalledWith("?tab=documentos", { scroll: false });
+  });
+
+  it("aba Financeiro mostra a seção do paciente", async () => {
+    const user = userEvent.setup();
+    render(<PacienteDetalhePage />);
+
+    await user.click(await screen.findByRole("tab", { name: "Financeiro" }));
+
+    expect(screen.getByText("financeiro-do-paciente p-1")).toBeVisible();
+    expect(replace).toHaveBeenCalledWith("?tab=financeiro", { scroll: false });
+  });
+
+  it("sem a área Financeiro não há aba nem seção financeira", async () => {
+    authState = { can: (p) => p !== Permission.FINANCEIRO };
+    search = new URLSearchParams({ tab: "financeiro" });
+    render(<PacienteDetalhePage />);
+
+    expect(await screen.findByRole("tab", { name: "Cadastro" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.queryByRole("tab", { name: "Financeiro" })).toBeNull();
+    expect(screen.queryByText(/financeiro-do-paciente/)).toBeNull();
   });
 
   it("quem chega de outro fluxo com returnUrl cai direto no Cadastro", async () => {

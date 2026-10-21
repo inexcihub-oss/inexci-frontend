@@ -247,6 +247,28 @@ describe("appointmentService", () => {
     expect(semFicha.clinicalRecordStatus).toBeNull();
     expect(semInfo).not.toHaveProperty("clinicalRecordStatus");
   });
+
+  it("getAgenda repassa o valor da consulta só quando a API o devolve", async () => {
+    (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        total: 3,
+        records: [
+          { ...mockAppt, id: "a1", price: "300.00" },
+          { ...mockAppt, id: "a2", price: null },
+          { ...mockAppt, id: "a3" },
+        ],
+      },
+    });
+
+    const [comValor, semValor, semArea] = await appointmentService.getAgenda({
+      from: "2026-08-01",
+      to: "2026-08-31",
+    });
+
+    expect(comValor.price).toBe("300.00");
+    expect(semValor.price).toBeNull();
+    expect(semArea).not.toHaveProperty("price");
+  });
 });
 
 describe("rotuloDoAtendimento", () => {

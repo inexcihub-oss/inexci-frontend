@@ -14,6 +14,62 @@ const original = {
 };
 
 describe("buildCollaboratorUpdatePayload", () => {
+  describe("permissões travadas", () => {
+    it("não envia financeiro marcado por quem não pode concedê-lo", () => {
+      expect(
+        buildCollaboratorUpdatePayload(
+          original,
+          {
+            ...original,
+            permissions: [Permission.AGENDA, Permission.FINANCEIRO],
+          },
+          { permissoesTravadas: [Permission.FINANCEIRO] },
+        ),
+      ).toBeNull();
+    });
+
+    it("mantém o financeiro que já existia ao mudar outra área", () => {
+      expect(
+        buildCollaboratorUpdatePayload(
+          { ...original, permissions: [Permission.AGENDA, Permission.FINANCEIRO] },
+          {
+            ...original,
+            permissions: [Permission.AGENDA, Permission.ATENDIMENTO],
+          },
+          { permissoesTravadas: [Permission.FINANCEIRO] },
+        ),
+      ).toEqual({
+        permissions: [
+          Permission.AGENDA,
+          Permission.ATENDIMENTO,
+          Permission.FINANCEIRO,
+        ],
+      });
+    });
+
+    it("com todas travadas não envia mudança de permissão", () => {
+      expect(
+        buildCollaboratorUpdatePayload(
+          original,
+          {
+            ...original,
+            email: "novo@clinica.com",
+            permissions: [Permission.ADMINISTRACAO],
+          },
+          {
+            permissoesTravadas: [
+              Permission.AGENDA,
+              Permission.ATENDIMENTO,
+              Permission.SOLICITACOES,
+              Permission.FINANCEIRO,
+              Permission.ADMINISTRACAO,
+            ],
+          },
+        ),
+      ).toEqual({ email: "novo@clinica.com" });
+    });
+  });
+
   it("devolve null quando nada mudou", () => {
     expect(buildCollaboratorUpdatePayload(original, { ...original })).toBeNull();
   });
@@ -36,6 +92,41 @@ describe("buildCollaboratorUpdatePayload", () => {
     ).toEqual({
       permissions: [Permission.AGENDA, Permission.ATENDIMENTO],
     });
+  });
+
+  it("envia a área Financeiro quando ela é liberada", () => {
+    expect(
+      buildCollaboratorUpdatePayload(original, {
+        ...original,
+        permissions: [Permission.AGENDA, Permission.FINANCEIRO],
+      }),
+    ).toEqual({
+      permissions: [Permission.AGENDA, Permission.FINANCEIRO],
+    });
+  });
+
+  it("envia a retirada da área Financeiro", () => {
+    expect(
+      buildCollaboratorUpdatePayload(
+        { ...original, permissions: [Permission.AGENDA, Permission.FINANCEIRO] },
+        original,
+      ),
+    ).toEqual({ permissions: [Permission.AGENDA] });
+  });
+
+  it("ignora a ordem das áreas ao comparar", () => {
+    expect(
+      buildCollaboratorUpdatePayload(
+        {
+          ...original,
+          permissions: [Permission.FINANCEIRO, Permission.AGENDA],
+        },
+        {
+          ...original,
+          permissions: [Permission.AGENDA, Permission.FINANCEIRO],
+        },
+      ),
+    ).toBeNull();
   });
 
   describe('promoção e despromoção de "é médico"', () => {

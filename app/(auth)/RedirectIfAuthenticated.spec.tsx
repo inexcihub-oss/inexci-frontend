@@ -70,7 +70,7 @@ describe("RedirectIfAuthenticated", () => {
         <div>formulário de login</div>
       </RedirectIfAuthenticated>,
     );
-    expect(locationReplaceMock).toHaveBeenCalledWith("/dashboard");
+    expect(locationReplaceMock).toHaveBeenCalledWith("/solicitacoes-cirurgicas");
     expect(screen.queryByText("formulário de login")).not.toBeInTheDocument();
   });
 
@@ -148,7 +148,7 @@ describe("RedirectIfAuthenticated", () => {
         <div>criar sua senha</div>
       </RedirectIfAuthenticated>,
     );
-    expect(locationReplaceMock).toHaveBeenCalledWith("/dashboard");
+    expect(locationReplaceMock).toHaveBeenCalledWith("/solicitacoes-cirurgicas");
     expect(screen.queryByText("criar sua senha")).not.toBeInTheDocument();
   });
 
@@ -164,7 +164,7 @@ describe("RedirectIfAuthenticated", () => {
         <div>recuperar senha</div>
       </RedirectIfAuthenticated>,
     );
-    expect(locationReplaceMock).toHaveBeenCalledWith("/dashboard");
+    expect(locationReplaceMock).toHaveBeenCalledWith("/solicitacoes-cirurgicas");
     expect(screen.queryByText("recuperar senha")).not.toBeInTheDocument();
   });
 

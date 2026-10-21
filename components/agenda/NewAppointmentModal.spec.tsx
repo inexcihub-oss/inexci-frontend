@@ -124,8 +124,15 @@ vi.mock("@/components/ui/SelectSearch", () => ({
     </div>
   ),
 }));
+const authMockState = vi.hoisted(() => ({ permissions: [] as string[] }));
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ permissions: [] }),
+  useAuth: () => ({ permissions: authMockState.permissions }),
+}));
+const resolveServicePrice = vi.hoisted(() => vi.fn());
+vi.mock("@/services/finance.service", () => ({
+  financeService: {
+    resolveServicePrice: (...a: unknown[]) => resolveServicePrice(...a),
+  },
 }));
 
 const onboardingMockState = vi.hoisted(() => ({ emTour: false }));
@@ -1221,5 +1228,166 @@ describe("NewAppointmentModal — nomes acessíveis dos campos", () => {
     abrirModal();
     expect(screen.getByRole("group", { name: "Paciente" })).toBeInTheDocument();
     expect(screen.getByLabelText("Observações").tagName).toBe("TEXTAREA");
+  });
+});
+
+describe("NewAppointmentModal — valor da consulta (financeiro)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    doctorsMockState.unstable = false;
+    doctorsMockState.two = false;
+    authMockState.permissions = [];
+    resolveServicePrice.mockResolvedValue({
+      amount: "300.00",
+      servicePriceId: "sp-1",
+    });
+  });
+
+  it("sem a área financeiro não mostra o campo, não sugere e não envia o valor", async () => {
+    abrirModal();
+
+    expect(screen.queryByLabelText("Valor")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /agendar consulta/i }));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).not.toHaveProperty("price");
+    expect(resolveServicePrice).not.toHaveBeenCalled();
+  });
+
+  it("com a área, pré-preenche o valor pelo médico e tipo e envia como decimal", async () => {
+    authMockState.permissions = ["financeiro"];
+    abrirModal();
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Valor")).toHaveValue("R$ 300,00"),
+    );
+    expect(resolveServicePrice).toHaveBeenCalledWith({
+      doctorId: "doctor-1",
+      type: "first_visit",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /agendar consulta/i }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ price: "300.00" }),
+    );
+  });
+
+  it("trocar o tipo busca a nova sugestão", async () => {
+    authMockState.permissions = ["financeiro"];
+    abrirModal();
+    await waitFor(() =>
+      expect(screen.getByLabelText("Valor")).toHaveValue("R$ 300,00"),
+    );
+
+    resolveServicePrice.mockResolvedValue({
+      amount: "150.00",
+      servicePriceId: "sp-2",
+    });
+    fireEvent.change(screen.getByLabelText("Tipo"), {
+      target: { value: "return" },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Valor")).toHaveValue("R$ 150,00"),
+    );
+    expect(resolveServicePrice).toHaveBeenLastCalledWith({
+      doctorId: "doctor-1",
+      type: "return",
+    });
+  });
+
+  it("não sobrescreve o valor digitado pelo usuário", async () => {
+    authMockState.permissions = ["financeiro"];
+    abrirModal();
+    await waitFor(() =>
+      expect(screen.getByLabelText("Valor")).toHaveValue("R$ 300,00"),
+    );
+
+    fireEvent.change(screen.getByLabelText("Valor"), {
+      target: { value: "25000" },
+    });
+    fireEvent.change(screen.getByLabelText("Tipo"), {
+      target: { value: "return" },
+    });
+
+    expect(screen.getByLabelText("Valor")).toHaveValue("R$ 250,00");
+    fireEvent.click(screen.getByRole("button", { name: /agendar consulta/i }));
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ price: "250.00" }),
+    );
+    expect(resolveServicePrice).toHaveBeenCalledTimes(1);
+  });
+
+  it("consulta por convênio não recebe sugestão de valor", async () => {
+    authMockState.permissions = ["financeiro"];
+    render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        defaultDate={SEGUNDA}
+        defaultTime="09:00"
+        defaultPatientId="patient-1"
+        defaultPatientLabel="João"
+        defaultHealthPlanId="hp-1"
+      />,
+    );
+
+    expect(screen.getByLabelText("Valor")).toHaveValue("");
+    await waitFor(() =>
+      expect(screen.getByLabelText(/convênio/i)).toHaveValue("hp-1"),
+    );
+    expect(resolveServicePrice).not.toHaveBeenCalled();
+  });
+
+  it("na edição mostra o valor gravado e só envia quando muda", async () => {
+    authMockState.permissions = ["financeiro"];
+    const consulta = {
+      id: "appt-9",
+      doctorId: "doctor-1",
+      patientId: "patient-1",
+      type: "first_visit" as const,
+      status: "scheduled" as const,
+      scheduledAt: new Date(2026, 7, 17, 9, 0).toISOString(),
+      durationMinutes: 30,
+      notes: null,
+      cancellationReason: null,
+      clinicId: null,
+      patient: { id: "patient-1", name: "João" },
+      price: "300.00",
+    };
+    const { rerender } = render(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={consulta}
+      />,
+    );
+
+    expect(screen.getByLabelText("Valor")).toHaveValue("R$ 300,00");
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    expect(update.mock.calls[0][1]).not.toHaveProperty("price");
+    expect(resolveServicePrice).not.toHaveBeenCalled();
+
+    rerender(
+      <NewAppointmentModal
+        isOpen
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+        appointment={consulta}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Valor"), {
+      target: { value: "35000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(2));
+    expect(update.mock.calls[1][1]).toEqual(
+      expect.objectContaining({ price: "350.00" }),
+    );
   });
 });

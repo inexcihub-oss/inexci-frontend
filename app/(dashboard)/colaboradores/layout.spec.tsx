@@ -130,6 +130,6 @@ describe("ColaboradoresLayout", () => {
     renderizar();
 
     expect(screen.queryByText("lista de colaboradores")).not.toBeInTheDocument();
-    expect(replaceMock).toHaveBeenCalledWith("/dashboard");
+    expect(replaceMock).toHaveBeenCalledWith("/solicitacoes-cirurgicas");
   });
 });

@@ -268,3 +268,70 @@ describe("Colaborador — dados profissionais", () => {
     expect(update).not.toHaveBeenCalled();
   });
 });
+
+describe("Colaborador — permissões de área", () => {
+  it("admin delegado não altera o Financeiro de outro colaborador", async () => {
+    authState.user = { id: "admin-2" };
+    authState.isAccountOwner = false;
+    getById.mockResolvedValue({
+      ...colaborador({ council: "CRN", crm: "4567", crmState: "RJ" }),
+      grantedPermissions: ["financeiro"],
+    });
+    renderPage();
+
+    const financeiro = await screen.findByRole("checkbox", {
+      name: /Financeiro/i,
+    });
+    expect(financeiro).toBeDisabled();
+    expect(financeiro).toBeChecked();
+    expect(
+      screen.getByText("Só o dono da conta concede ou retira a área Financeiro"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Administração/i }));
+    fireEvent.click(screen.getAllByText("Salvar alterações")[0]);
+
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith("colab-1", {
+        permissions: ["administracao", "financeiro"],
+      }),
+    );
+  });
+
+  it("o dono altera o Financeiro de outro colaborador", async () => {
+    getById.mockResolvedValue(
+      colaborador({ council: "CRN", crm: "4567", crmState: "RJ" }),
+    );
+    renderPage();
+
+    const financeiro = await screen.findByRole("checkbox", {
+      name: /Financeiro/i,
+    });
+    expect(financeiro).toBeEnabled();
+    fireEvent.click(financeiro);
+    fireEvent.click(screen.getAllByText("Salvar alterações")[0]);
+
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith("colab-1", {
+        permissions: ["financeiro"],
+      }),
+    );
+  });
+
+  it("ninguém altera as próprias permissões pela tela", async () => {
+    authState.user = { id: "colab-1" };
+    authState.isAccountOwner = false;
+    getById.mockResolvedValue(
+      colaborador({ council: "CRN", crm: "4567", crmState: "RJ" }),
+    );
+    renderPage();
+
+    await screen.findByLabelText("Conselho");
+    for (const nome of [/Administração/i, /Financeiro/i]) {
+      expect(screen.getByRole("checkbox", { name: nome })).toBeDisabled();
+    }
+    expect(
+      screen.getByText(/não pode alterar as suas próprias permissões/i),
+    ).toBeInTheDocument();
+  });
+});

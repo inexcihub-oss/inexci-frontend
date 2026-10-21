@@ -23,6 +23,16 @@ import { useOnboarding } from "@/components/onboarding/OnboardingProvider";
 import { TOUR_DEMO_APPOINTMENT_ID } from "@/lib/onboarding/demo-data";
 import { mensagemForaDoHorario } from "@/lib/business-hours";
 import { getApiErrorMessage } from "@/lib/http-error";
+import Input from "@/components/ui/Input";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
+import { financeService } from "@/services/finance.service";
+import {
+  applyBRLMask,
+  brlMaskToDecimal,
+  decimalToBRLMask,
+  decimalToCents,
+} from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import {
   bloqueioNoHorario,
@@ -92,6 +102,8 @@ export function NewAppointmentModal({
   const { data: clinics = [] } = useClinics();
   const { data: healthPlans = [] } = useHealthPlans();
   const { emTour } = useOnboarding();
+  const { permissions } = useAuth();
+  const podeFinanceiro = permissions.includes(Permission.FINANCEIRO);
   const dadosFabricados = appointment?.id === TOUR_DEMO_APPOINTMENT_ID;
 
   const [patientId, setPatientId] = useState("");
@@ -116,6 +128,8 @@ export function NewAppointmentModal({
   const [bloqueiosDoDia, setBloqueiosDoDia] = useState<ScheduleBlock[]>([]);
   const [bloqueiosFalharam, setBloqueiosFalharam] = useState(false);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
+  const [price, setPrice] = useState("");
+  const valorDigitado = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -214,6 +228,8 @@ export function NewAppointmentModal({
       setTime(t);
       setDuration(appointment.durationMinutes);
       setNotes(appointment.notes ?? "");
+      setPrice(decimalToBRLMask(appointment.price));
+      valorDigitado.current = true;
     } else {
       setPatientId(defaultPatientId ?? "");
       setPatientLabel(defaultPatientLabel ?? "");
@@ -227,6 +243,8 @@ export function NewAppointmentModal({
       setTime(defaultTime ?? "09:00");
       setDuration(30);
       setNotes("");
+      setPrice("");
+      valorDigitado.current = false;
     }
   }, [
     isOpen,
@@ -242,6 +260,25 @@ export function NewAppointmentModal({
     if (!isOpen || appointment) return;
     if (doctors.length === 1) setDoctorId(doctors[0].id);
   }, [isOpen, appointment, doctors]);
+
+  useEffect(() => {
+    if (!isOpen || isEdit || !podeFinanceiro || valorDigitado.current) return;
+    if (!doctorId || healthPlanId) {
+      setPrice("");
+      return;
+    }
+    let active = true;
+    financeService
+      .resolveServicePrice({ doctorId, type })
+      .then(({ amount }) => {
+        if (!active || valorDigitado.current) return;
+        setPrice(decimalToBRLMask(amount));
+      })
+      .catch(() => active && !valorDigitado.current && setPrice(""));
+    return () => {
+      active = false;
+    };
+  }, [isOpen, isEdit, podeFinanceiro, doctorId, type, healthPlanId]);
 
   const searchPatients = useCallback(async (term: string) => {
     const { records } = await patientService.list({ search: term, take: 20 });
@@ -391,12 +428,20 @@ export function NewAppointmentModal({
     setSaving(true);
     setError(null);
     let salva: Appointment | undefined;
+    const valorDecimal = brlMaskToDecimal(price);
     try {
       const scheduledAt = partsToIso(date, time);
       if (isEdit && appointment) {
         const mudouSala = (roomId || null) !== (appointment.roomId ?? null);
         const mudouConvenio =
           (healthPlanId || null) !== (appointment.healthPlanId ?? null);
+        const mudouValor =
+          podeFinanceiro &&
+          (valorDecimal === ""
+            ? appointment.price != null
+            : appointment.price == null ||
+              decimalToCents(valorDecimal) !==
+                decimalToCents(appointment.price));
         salva = await appointmentService.update(appointment.id, {
           type,
           notes,
@@ -405,6 +450,7 @@ export function NewAppointmentModal({
           ...(mudouSala ? { roomId: roomId || null } : {}),
           ...(mudouConvenio ? { healthPlanId: healthPlanId || null } : {}),
           ...(isWalkIn !== (appointment.isWalkIn ?? false) ? { isWalkIn } : {}),
+          ...(mudouValor ? { price: valorDecimal || null } : {}),
         });
       } else {
         salva = await appointmentService.create({
@@ -418,6 +464,11 @@ export function NewAppointmentModal({
           roomId: roomId || null,
           healthPlanId: healthPlanId || null,
           isWalkIn,
+          ...(podeFinanceiro && valorDecimal
+            ? { price: valorDecimal }
+            : podeFinanceiro && valorDigitado.current
+              ? { price: null }
+              : {}),
         });
       }
       onSaved(salva);
@@ -591,6 +642,20 @@ export function NewAppointmentModal({
             ))}
           </select>
         </div>
+
+        {podeFinanceiro && (
+          <Input
+            id="consulta-valor"
+            label="Valor"
+            placeholder="R$ 0,00"
+            inputMode="numeric"
+            value={price}
+            onChange={(e) => {
+              valorDigitado.current = true;
+              setPrice(applyBRLMask(e.target.value));
+            }}
+          />
+        )}
 
         <div className="grid grid-cols-2 gap-3" data-tour="agenda-modal-horario">
           <div className="flex flex-col gap-1">

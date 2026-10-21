@@ -1,7 +1,18 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Permission } from "@/lib/permissions";
 import DashboardPage from "./page";
+
+const authState: { permissions: Permission[] } = {
+  permissions: [Permission.SOLICITACOES, Permission.ADMINISTRACAO],
+};
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({
+    can: (p: Permission) => authState.permissions.includes(p),
+  }),
+}));
 
 vi.mock("@/services/reports.service", () => ({
   reportsService: {
@@ -19,7 +30,11 @@ vi.mock("@/services/reports.service", () => ({
       temporalEvolution: [],
       monthlyEvolution: [],
       averageCompletionTime: { averageDays: 0 },
-      pendingNotifications: { total: 0, pendingAnalysis: 0, pendingScheduling: 0 },
+      pendingNotifications: {
+        total: 0,
+        pendingAnalysis: 0,
+        pendingScheduling: 0,
+      },
     }),
   },
 }));
@@ -40,12 +55,24 @@ describe("Tela de Dashboard — âncoras do tour", () => {
     renderPagina();
 
     await screen.findByText("Total de Solicitações");
-    expect(document.querySelector('[data-tour="dashboard-kpis"]')).not.toBeNull();
+    expect(
+      document.querySelector('[data-tour="dashboard-kpis"]'),
+    ).not.toBeNull();
     expect(
       document.querySelector('[data-tour="dashboard-filtros"]'),
     ).not.toBeNull();
     expect(
       document.querySelector('[data-tour="dashboard-ver-kanban"]'),
     ).not.toBeNull();
+  });
+
+  it("esconde o atalho do kanban de quem não tem Solicitações", async () => {
+    authState.permissions = [Permission.ADMINISTRACAO];
+    renderPagina();
+
+    await screen.findByText("Total de Solicitações");
+    expect(
+      document.querySelector('[data-tour="dashboard-ver-kanban"]'),
+    ).toBeNull();
   });
 });

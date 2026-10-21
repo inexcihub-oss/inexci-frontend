@@ -21,6 +21,8 @@ import {
 import { cn } from "@/lib/utils";
 import { capitalizeFirst, formatDoctorName } from "@/lib/formatters";
 import { AppointmentHistory } from "@/components/agenda/AppointmentHistory";
+import { AppointmentFinanceActions } from "@/components/finance/receivables/AppointmentFinanceActions";
+import type { ReceivableDrawerProps } from "@/components/finance/receivables/ReceivableDrawer";
 import {
   ChevronDown,
   Clock,
@@ -107,6 +109,7 @@ interface Props {
   onStartAttendance: () => void;
   onChangeStatus: (status: AppointmentStatus) => void;
   onDelete: () => void;
+  renderPaymentActions?: ReceivableDrawerProps["renderPaymentActions"];
 }
 
 export function AppointmentDetailModal({
@@ -119,6 +122,7 @@ export function AppointmentDetailModal({
   onStartAttendance,
   onChangeStatus,
   onDelete,
+  renderPaymentActions,
 }: Props) {
   const { isDoctor, can } = useAuth();
   const { emTour } = useOnboarding();
@@ -133,6 +137,7 @@ export function AppointmentDetailModal({
         appointment.status === "waiting" ||
         appointment.status === "in_progress"));
   const podeAgenda = can(Permission.AGENDA);
+  const podeFinanceiro = can(Permission.FINANCEIRO);
   const [historicoAberto, setHistoricoAberto] = useState(false);
   const [desfazendo, setDesfazendo] = useState(false);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
@@ -228,6 +233,17 @@ export function AppointmentDetailModal({
             </p>
           )}
         </div>
+
+        {podeFinanceiro && !dadosFabricados && (
+          <AppointmentFinanceActions
+            appointmentId={appointment.id}
+            appointmentStatus={appointment.status}
+            price={appointment.price}
+            hasHealthPlan={!!(appointment.healthPlanId || appointment.healthPlan)}
+            disabled={busy || emTour}
+            renderPaymentActions={renderPaymentActions}
+          />
+        )}
 
         {!dadosFabricados && (
           <div className="border-t border-neutral-100 pt-3">

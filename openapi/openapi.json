@@ -104,6 +104,157 @@
         ]
       }
     },
+    "/auth/login/mfa": {
+      "post": {
+        "operationId": "AuthController_loginMfa",
+        "summary": "Segunda etapa do login (código TOTP ou de recuperação)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginMfaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login realizado com sucesso"
+          },
+          "400": {
+            "description": "Código inválido"
+          },
+          "401": {
+            "description": "Etapa de verificação expirada"
+          },
+          "429": {
+            "description": "Conta bloqueada por tentativas"
+          }
+        },
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    },
+    "/auth/mfa/setup": {
+      "post": {
+        "operationId": "AuthController_mfaSetup",
+        "summary": "Gera o segredo TOTP pendente de confirmação",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Autenticação"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/auth/mfa/enable": {
+      "post": {
+        "operationId": "AuthController_mfaEnable",
+        "summary": "Ativa o MFA e devolve os códigos de recuperação (uma única vez)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaTotpCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Autenticação"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/auth/mfa/disable": {
+      "post": {
+        "operationId": "AuthController_mfaDisable",
+        "summary": "Desativa o MFA (senha + código) e encerra as outras sessões",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisableMfaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Autenticação"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/auth/mfa/recovery-codes": {
+      "post": {
+        "operationId": "AuthController_mfaRecoveryCodes",
+        "summary": "Gera novos códigos de recuperação",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaTotpCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Autenticação"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/auth/me": {
       "get": {
         "operationId": "AuthController_me",
@@ -6783,6 +6934,1830 @@
         ]
       }
     },
+    "/finance/accounts": {
+      "get": {
+        "operationId": "AccountsController_findAll",
+        "summary": "Listar contas financeiras",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "required": false,
+            "in": "query",
+            "description": "Inclui as contas inativas",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FinancialAccountDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "AccountsController_create",
+        "summary": "Criar conta financeira",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFinancialAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialAccountDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/accounts/{id}": {
+      "patch": {
+        "operationId": "AccountsController_update",
+        "summary": "Atualizar conta financeira",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFinancialAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialAccountDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/accounts/{id}/status": {
+      "patch": {
+        "operationId": "AccountsController_updateStatus",
+        "summary": "Ativar ou desativar conta financeira",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFinancialAccountStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialAccountDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/payment-methods": {
+      "get": {
+        "operationId": "PaymentMethodsController_findAll",
+        "summary": "Listar a configuração das formas de pagamento",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentMethodConfigDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/payment-methods/{method}": {
+      "put": {
+        "operationId": "PaymentMethodsController_update",
+        "summary": "Configurar uma forma de pagamento",
+        "parameters": [
+          {
+            "name": "method",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/PaymentMethod"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePaymentMethodConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentMethodConfigDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/service-prices": {
+      "get": {
+        "operationId": "ServicePricesController_findAll",
+        "summary": "Listar a tabela de preços",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServicePriceDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "ServicePricesController_create",
+        "summary": "Cadastrar preço",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServicePriceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServicePriceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/service-prices/resolve": {
+      "get": {
+        "operationId": "ServicePricesController_resolve",
+        "summary": "Sugerir o preço de uma consulta particular",
+        "parameters": [
+          {
+            "name": "doctorId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/AppointmentType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedServicePriceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/service-prices/{id}": {
+      "patch": {
+        "operationId": "ServicePricesController_update",
+        "summary": "Atualizar preço",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServicePriceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServicePriceDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "ServicePricesController_remove",
+        "summary": "Excluir preço",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/reports/receipts": {
+      "get": {
+        "operationId": "FinanceReportsController_receipts",
+        "summary": "Relatório de recebimentos agrupado",
+        "parameters": [
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "json",
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Data inicial (AAAA-MM-DD)",
+            "schema": {
+              "pattern": "DATA_YYYY_MM_DD",
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Data final, inclusiva (AAAA-MM-DD)",
+            "schema": {
+              "pattern": "DATA_YYYY_MM_DD",
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupBy",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "day",
+                "month",
+                "method",
+                "account",
+                "user"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptsReportDto"
+                }
+              },
+              "text/csv; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptsReportDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/reports/production": {
+      "get": {
+        "operationId": "FinanceReportsController_production",
+        "summary": "Relatório de produção por profissional",
+        "parameters": [
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "json",
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Data inicial (AAAA-MM-DD)",
+            "schema": {
+              "pattern": "DATA_YYYY_MM_DD",
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Data final, inclusiva (AAAA-MM-DD)",
+            "schema": {
+              "pattern": "DATA_YYYY_MM_DD",
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionReportDto"
+                }
+              },
+              "text/csv; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionReportDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/reports/open": {
+      "get": {
+        "operationId": "FinanceReportsController_open",
+        "summary": "Cobranças em aberto com idade em dias",
+        "parameters": [
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "json",
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "until",
+            "required": false,
+            "in": "query",
+            "description": "Inclui cobranças com vencimento até esta data (padrão: hoje)",
+            "schema": {
+              "pattern": "DATA_YYYY_MM_DD",
+              "example": "2026-10-20",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenReportDto"
+                }
+              },
+              "text/csv; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenReportDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/accounts/{id}/statement": {
+      "get": {
+        "operationId": "AccountStatementController_statement",
+        "summary": "Extrato da conta financeira",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "json",
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "description": "Data inicial (AAAA-MM-DD)",
+            "schema": {
+              "pattern": "DATA_YYYY_MM_DD",
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "description": "Data final, inclusiva (AAAA-MM-DD)",
+            "schema": {
+              "pattern": "DATA_YYYY_MM_DD",
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountStatementDto"
+                }
+              },
+              "text/csv; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountStatementDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/payments/{id}/receipt": {
+      "get": {
+        "operationId": "PaymentReceiptController_receipt",
+        "summary": "Recibo do pagamento em PDF",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/payments/{id}/receipt/preview": {
+      "get": {
+        "operationId": "PaymentReceiptController_preview",
+        "summary": "Prévia HTML do recibo do pagamento",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentReceiptPreviewDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/receivables": {
+      "get": {
+        "operationId": "ReceivablesController_findAll",
+        "summary": "Listar cobranças",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ReceivableStatus"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "patientId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "executedById",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivableListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "ReceivablesController_create",
+        "summary": "Criar cobrança avulsa",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReceivableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivableDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/receivables/from-appointment/{appointmentId}": {
+      "post": {
+        "operationId": "ReceivablesController_createFromAppointment",
+        "summary": "Criar cobrança a partir da consulta",
+        "parameters": [
+          {
+            "name": "appointmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReceivableFromAppointmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivableDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/receivables/{id}": {
+      "get": {
+        "operationId": "ReceivablesController_findOne",
+        "summary": "Detalhar cobrança",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivableDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/receivables/{id}/items": {
+      "post": {
+        "operationId": "ReceivablesController_addItem",
+        "summary": "Adicionar item à cobrança",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddReceivableItemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivableDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/receivables/{id}/items/{itemId}": {
+      "delete": {
+        "operationId": "ReceivablesController_cancelItem",
+        "summary": "Cancelar item da cobrança",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivableDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/receivables/{id}/cancel": {
+      "post": {
+        "operationId": "ReceivablesController_cancel",
+        "summary": "Cancelar cobrança sem pagamento",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelReceivableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivableDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/receivables/{id}/payments": {
+      "post": {
+        "operationId": "ReceivablesController_registerPayment",
+        "summary": "Registrar pagamento (uma ou mais formas)",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivableDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/payments": {
+      "get": {
+        "operationId": "PaymentsController_findAll",
+        "summary": "Listar recebimentos",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "method",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PaymentMethod"
+            }
+          },
+          {
+            "name": "accountId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/payments/{id}/refunds": {
+      "post": {
+        "operationId": "PaymentsController_refund",
+        "summary": "Estornar pagamento (total ou parcial)",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRefundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivableDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/appointments/status": {
+      "get": {
+        "operationId": "FinanceAppointmentsController_status",
+        "summary": "Status de cobrança das consultas",
+        "parameters": [
+          {
+            "name": "ids",
+            "required": true,
+            "in": "query",
+            "description": "Ids das consultas separados por vírgula (máx. 200)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AppointmentFinanceStatusDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/patients/{patientId}/summary": {
+      "get": {
+        "operationId": "FinancePatientsController_summary",
+        "summary": "Resumo financeiro do paciente",
+        "parameters": [
+          {
+            "name": "patientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientFinanceSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/professionals": {
+      "get": {
+        "operationId": "FinanceProfessionalsController_list",
+        "summary": "Profissionais do tenant que podem executar itens",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FinanceProfessionalDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/cash-sessions/current": {
+      "get": {
+        "operationId": "CashSessionsController_current",
+        "summary": "Caixa aberto do usuário",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentCashSessionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/cash-sessions/current/withdrawals": {
+      "post": {
+        "operationId": "CashSessionsController_withdraw",
+        "summary": "Retirada do caixa aberto",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashMovementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/cash-sessions/current/supplies": {
+      "post": {
+        "operationId": "CashSessionsController_supply",
+        "summary": "Suprimento do caixa aberto",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashMovementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/cash-sessions/current/close": {
+      "post": {
+        "operationId": "CashSessionsController_closeCurrent",
+        "summary": "Fechar o caixa aberto do usuário",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseCashSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/cash-sessions": {
+      "post": {
+        "operationId": "CashSessionsController_open",
+        "summary": "Abrir caixa",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenCashSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "CashSessionsController_list",
+        "summary": "Histórico de caixas",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/cash-sessions/{id}/report": {
+      "get": {
+        "operationId": "CashSessionsController_report",
+        "summary": "Relatório do caixa (JSON ou CSV)",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionSummaryDto"
+                }
+              },
+              "text/csv; charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/cash-sessions/{id}": {
+      "get": {
+        "operationId": "CashSessionsController_findOne",
+        "summary": "Resumo do caixa",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/cash-sessions/{id}/close": {
+      "post": {
+        "operationId": "CashSessionsController_close",
+        "summary": "Fechar caixa (de outro usuário exige administração)",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseCashSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/finance/transfers": {
+      "post": {
+        "operationId": "TransfersController_transfer",
+        "summary": "Transferir entre contas",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Financeiro"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/surgery-requests/procedures": {
       "post": {
         "operationId": "SurgeryRequestProceduresController_create",
@@ -7290,7 +9265,22 @@
     "/health/notifications": {
       "get": {
         "operationId": "NotificationsHealthController_check",
-        "summary": "Healthcheck dos canais de notificação (Redis, SMTP, Twilio)",
+        "summary": "Healthcheck resumido dos canais de notificação",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/health/notifications/details": {
+      "get": {
+        "operationId": "NotificationsHealthController_details",
+        "summary": "Healthcheck detalhado dos canais de notificação (Redis, SMTP, Twilio)",
         "parameters": [],
         "responses": {
           "200": {
@@ -7453,6 +9443,11 @@
         },
         "tags": [
           "Health"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
         ]
       }
     },
@@ -7728,11 +9723,14 @@
             "type": "string"
           },
           "phone": {
-            "type": "string",
-            "pattern": "/^\\D*(?:\\d\\D*){10,11}$/"
+            "type": "string"
           },
           "planSlug": {
             "type": "string"
+          },
+          "captchaToken": {
+            "type": "string",
+            "maxLength": 2048
           }
         },
         "required": [
@@ -7757,8 +9755,7 @@
         "type": "object",
         "properties": {
           "phone": {
-            "type": "string",
-            "pattern": "/^\\D*(?:\\d\\D*){10,11}$/"
+            "type": "string"
           }
         },
         "required": [
@@ -7777,6 +9774,57 @@
         },
         "required": [
           "email",
+          "password"
+        ]
+      },
+      "LoginMfaDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "CODIGO_REGEX",
+            "example": "123456",
+            "description": "Código TOTP de 6 dígitos ou código de recuperação"
+          },
+          "mfaToken": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "code",
+          "mfaToken"
+        ]
+      },
+      "MfaTotpCodeDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "TOTP_REGEX",
+            "example": "123456"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "DisableMfaDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "CODIGO_REGEX",
+            "example": "123456",
+            "description": "Código TOTP de 6 dígitos ou código de recuperação"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "code",
           "password"
         ]
       },
@@ -8059,6 +10107,7 @@
                 "agenda",
                 "atendimento",
                 "solicitacoes",
+                "financeiro",
                 "administracao"
               ]
             }
@@ -8135,6 +10184,7 @@
                 "agenda",
                 "atendimento",
                 "solicitacoes",
+                "financeiro",
                 "administracao"
               ]
             }
@@ -9280,13 +11330,8 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": "string",
-            "enum": [
-              "comment",
-              "status_change",
-              "system",
-              "pdf_generated"
-            ]
+            "type": "number",
+            "enum": []
           },
           "content": {
             "type": "string"
@@ -9716,6 +11761,11 @@
           },
           "notes": {
             "type": "string"
+          },
+          "price": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "VALOR_NAO_NEGATIVO"
           }
         },
         "required": [
@@ -9765,6 +11815,11 @@
           "notes": {
             "type": "string",
             "nullable": true
+          },
+          "price": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "VALOR_NAO_NEGATIVO"
           }
         }
       },
@@ -10724,6 +12779,1795 @@
             "type": "boolean"
           }
         }
+      },
+      "FinancialAccountType": {
+        "type": "string",
+        "enum": [
+          "cash_drawer",
+          "bank",
+          "card_credit",
+          "card_debit",
+          "other"
+        ]
+      },
+      "FinancialAccountDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/FinancialAccountType"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "active",
+          "notes",
+          "createdAt"
+        ]
+      },
+      "CreateFinancialAccountDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "example": "Caixa Físico"
+          },
+          "type": {
+            "$ref": "#/components/schemas/FinancialAccountType"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ]
+      },
+      "UpdateFinancialAccountDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "type": {
+            "$ref": "#/components/schemas/FinancialAccountType"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000
+          }
+        }
+      },
+      "UpdateFinancialAccountStatusDto": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "active"
+        ]
+      },
+      "PaymentMethod": {
+        "type": "string",
+        "enum": [
+          "cash",
+          "pix",
+          "credit_card",
+          "debit_card",
+          "bank_transfer",
+          "boleto",
+          "check",
+          "other"
+        ]
+      },
+      "AccountReferenceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "PaymentMethodConfigDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethod"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "defaultAccountId": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultAccount": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AccountReferenceDto"
+              }
+            ]
+          },
+          "maxInstallments": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 24
+          }
+        },
+        "required": [
+          "method",
+          "active",
+          "defaultAccountId",
+          "defaultAccount",
+          "maxInstallments"
+        ]
+      },
+      "UpdatePaymentMethodConfigDto": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "defaultAccountId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "maxInstallments": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 24
+          }
+        },
+        "required": [
+          "active",
+          "defaultAccountId",
+          "maxInstallments"
+        ]
+      },
+      "ServicePriceDoctorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "AppointmentType": {
+        "type": "string",
+        "enum": [
+          "first_visit",
+          "return",
+          "follow_up"
+        ]
+      },
+      "ServicePriceDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "doctorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "doctor": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ServicePriceDoctorDto"
+              }
+            ]
+          },
+          "appointmentType": {
+            "nullable": true,
+            "$ref": "#/components/schemas/AppointmentType"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "example": "300.00"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "doctorId",
+          "doctor",
+          "appointmentType",
+          "description",
+          "amount",
+          "active"
+        ]
+      },
+      "ResolvedServicePriceDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string",
+            "nullable": true,
+            "example": "300.00"
+          },
+          "servicePriceId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "amount",
+          "servicePriceId"
+        ]
+      },
+      "CreateServicePriceDto": {
+        "type": "object",
+        "properties": {
+          "doctorId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "appointmentType": {
+            "nullable": true,
+            "$ref": "#/components/schemas/AppointmentType"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 150,
+            "example": "Consulta ortopédica"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "VALOR_NAO_NEGATIVO",
+            "example": "300.00"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "description",
+          "amount"
+        ]
+      },
+      "UpdateServicePriceDto": {
+        "type": "object",
+        "properties": {
+          "doctorId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "appointmentType": {
+            "nullable": true,
+            "$ref": "#/components/schemas/AppointmentType"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "VALOR_NAO_NEGATIVO",
+            "example": "300.00"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReceiptsReportRowDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string"
+          },
+          "received": {
+            "type": "string",
+            "example": "300.00"
+          },
+          "refunded": {
+            "type": "string",
+            "example": "50.00"
+          },
+          "net": {
+            "type": "string",
+            "example": "250.00"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "received",
+          "refunded",
+          "net",
+          "count"
+        ]
+      },
+      "ReceiptsReportTotalsDto": {
+        "type": "object",
+        "properties": {
+          "received": {
+            "type": "string"
+          },
+          "refunded": {
+            "type": "string"
+          },
+          "net": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "received",
+          "refunded",
+          "net",
+          "count"
+        ]
+      },
+      "ReceiptsReportDto": {
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "day",
+              "month",
+              "method",
+              "account",
+              "user"
+            ]
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptsReportRowDto"
+            }
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ReceiptsReportTotalsDto"
+          }
+        },
+        "required": [
+          "groupBy",
+          "rows",
+          "totals"
+        ]
+      },
+      "ProductionReportRowDto": {
+        "type": "object",
+        "properties": {
+          "executedById": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "items": {
+            "type": "number"
+          },
+          "billed": {
+            "type": "string"
+          },
+          "received": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "executedById",
+          "name",
+          "items",
+          "billed",
+          "received"
+        ]
+      },
+      "ProductionReportTotalsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "number"
+          },
+          "billed": {
+            "type": "string"
+          },
+          "received": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items",
+          "billed",
+          "received"
+        ]
+      },
+      "ProductionReportDto": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductionReportRowDto"
+            }
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ProductionReportTotalsDto"
+          }
+        },
+        "required": [
+          "rows",
+          "totals"
+        ]
+      },
+      "OpenReportPatientDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "OpenReportRowDto": {
+        "type": "object",
+        "properties": {
+          "receivableId": {
+            "type": "string"
+          },
+          "patient": {
+            "$ref": "#/components/schemas/OpenReportPatientDto"
+          },
+          "referenceDate": {
+            "type": "string",
+            "example": "2026-10-01"
+          },
+          "dueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "string"
+          },
+          "paidAmount": {
+            "type": "string"
+          },
+          "balance": {
+            "type": "string"
+          },
+          "ageDays": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "receivableId",
+          "patient",
+          "referenceDate",
+          "dueDate",
+          "totalAmount",
+          "paidAmount",
+          "balance",
+          "ageDays"
+        ]
+      },
+      "OpenReportTotalsDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number"
+          },
+          "balance": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "count",
+          "balance"
+        ]
+      },
+      "OpenReportDto": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenReportRowDto"
+            }
+          },
+          "totals": {
+            "$ref": "#/components/schemas/OpenReportTotalsDto"
+          }
+        },
+        "required": [
+          "rows",
+          "totals"
+        ]
+      },
+      "AccountStatementAccountDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/FinancialAccountType"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type"
+        ]
+      },
+      "FinancialEntryDirection": {
+        "type": "string",
+        "enum": [
+          "in",
+          "out"
+        ]
+      },
+      "FinancialEntryKind": {
+        "type": "string",
+        "enum": [
+          "payment",
+          "refund",
+          "withdrawal",
+          "supply",
+          "session_closing",
+          "transfer",
+          "adjustment"
+        ]
+      },
+      "AccountStatementEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/FinancialEntryDirection"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FinancialEntryKind"
+          },
+          "amount": {
+            "type": "string",
+            "example": "150.00"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "balance": {
+            "type": "string",
+            "example": "1250.00"
+          }
+        },
+        "required": [
+          "id",
+          "occurredAt",
+          "direction",
+          "kind",
+          "amount",
+          "description",
+          "balance"
+        ]
+      },
+      "AccountStatementDto": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "$ref": "#/components/schemas/AccountStatementAccountDto"
+          },
+          "openingBalance": {
+            "type": "string",
+            "example": "1100.00"
+          },
+          "closingBalance": {
+            "type": "string",
+            "example": "1250.00"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccountStatementEntryDto"
+            }
+          }
+        },
+        "required": [
+          "account",
+          "openingBalance",
+          "closingBalance",
+          "entries"
+        ]
+      },
+      "PaymentReceiptPreviewDto": {
+        "type": "object",
+        "properties": {
+          "html": {
+            "type": "string",
+            "description": "HTML do recibo, o mesmo usado no PDF"
+          }
+        },
+        "required": [
+          "html"
+        ]
+      },
+      "ReceivableStatus": {
+        "type": "string",
+        "enum": [
+          "open",
+          "partial",
+          "paid",
+          "cancelled"
+        ]
+      },
+      "ReferenciaDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ReceivableListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "patient": {
+            "$ref": "#/components/schemas/ReferenciaDto"
+          },
+          "appointmentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceDate": {
+            "type": "string",
+            "example": "2026-10-20"
+          },
+          "dueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "string",
+            "example": "350.00"
+          },
+          "paidAmount": {
+            "type": "string",
+            "example": "0.00"
+          },
+          "balance": {
+            "type": "string",
+            "example": "350.00"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReceivableStatus"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "patient",
+          "appointmentId",
+          "referenceDate",
+          "dueDate",
+          "totalAmount",
+          "paidAmount",
+          "balance",
+          "status",
+          "description",
+          "createdAt"
+        ]
+      },
+      "ReceivableListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceivableListItemDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "totalOpenAmount": {
+            "type": "string",
+            "example": "1200.00"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit",
+          "totalOpenAmount"
+        ]
+      },
+      "ReceivableItemInputDto": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 150,
+            "example": "Primeira consulta - Dr. Fulano"
+          },
+          "executedById": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "executedAt": {
+            "type": "string",
+            "example": "2026-10-20"
+          },
+          "appointmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 9999,
+            "default": 1
+          },
+          "unitAmount": {
+            "type": "string",
+            "example": "350.00"
+          },
+          "discount": {
+            "type": "string",
+            "example": "0.00"
+          },
+          "surcharge": {
+            "type": "string",
+            "example": "0.00"
+          }
+        },
+        "required": [
+          "description",
+          "unitAmount"
+        ]
+      },
+      "CreateReceivableDto": {
+        "type": "object",
+        "properties": {
+          "patientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "appointmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "referenceDate": {
+            "type": "string",
+            "example": "2026-10-20"
+          },
+          "dueDate": {
+            "type": "string",
+            "example": "2026-10-20"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceivableItemInputDto"
+            }
+          }
+        },
+        "required": [
+          "patientId",
+          "items"
+        ]
+      },
+      "ReceivableItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "executedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferenciaDto"
+              }
+            ]
+          },
+          "executedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "appointmentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unitAmount": {
+            "type": "string"
+          },
+          "discount": {
+            "type": "string"
+          },
+          "surcharge": {
+            "type": "string"
+          },
+          "total": {
+            "type": "string"
+          },
+          "cancelledAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "executedBy",
+          "executedAt",
+          "appointmentId",
+          "quantity",
+          "unitAmount",
+          "discount",
+          "surcharge",
+          "total",
+          "cancelledAt"
+        ]
+      },
+      "RefundReason": {
+        "type": "string",
+        "enum": [
+          "duplicate_entry",
+          "wrong_amount",
+          "wrong_payment_method",
+          "wrong_patient",
+          "service_not_performed",
+          "undue_charge",
+          "patient_request",
+          "courtesy_discount",
+          "service_change",
+          "switched_to_health_plan",
+          "patient_rescheduling",
+          "future_credit",
+          "other"
+        ]
+      },
+      "ReceivableRefundDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/RefundReason"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refundedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferenciaDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "amount",
+          "reason",
+          "notes",
+          "createdAt",
+          "refundedBy"
+        ]
+      },
+      "ReceivablePaymentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethod"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "refundedAmount": {
+            "type": "string"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "account": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferenciaDto"
+              }
+            ]
+          },
+          "cashSessionId": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferenciaDto"
+              }
+            ]
+          },
+          "cardBrand": {
+            "type": "string",
+            "nullable": true
+          },
+          "installments": {
+            "type": "number"
+          },
+          "nsu": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorizationCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceivableRefundDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "method",
+          "amount",
+          "refundedAmount",
+          "paidAt",
+          "account",
+          "cashSessionId",
+          "receivedBy",
+          "cardBrand",
+          "installments",
+          "nsu",
+          "authorizationCode",
+          "notes",
+          "refunds"
+        ]
+      },
+      "ReceivableDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "patient": {
+            "$ref": "#/components/schemas/ReferenciaDto"
+          },
+          "appointmentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceDate": {
+            "type": "string",
+            "example": "2026-10-20"
+          },
+          "dueDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "totalAmount": {
+            "type": "string",
+            "example": "350.00"
+          },
+          "paidAmount": {
+            "type": "string",
+            "example": "0.00"
+          },
+          "balance": {
+            "type": "string",
+            "example": "350.00"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReceivableStatus"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "cancelReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancelledBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferenciaDto"
+              }
+            ]
+          },
+          "createdBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferenciaDto"
+              }
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceivableItemDto"
+            }
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceivablePaymentDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "patient",
+          "appointmentId",
+          "referenceDate",
+          "dueDate",
+          "totalAmount",
+          "paidAmount",
+          "balance",
+          "status",
+          "description",
+          "createdAt",
+          "notes",
+          "cancelledAt",
+          "cancelReason",
+          "cancelledBy",
+          "createdBy",
+          "items",
+          "payments"
+        ]
+      },
+      "CreateReceivableFromAppointmentDto": {
+        "type": "object",
+        "properties": {
+          "allowHealthPlan": {
+            "type": "boolean",
+            "description": "Confirma a cobrança de uma consulta de convênio"
+          },
+          "unitAmount": {
+            "type": "string",
+            "example": "350.00",
+            "description": "Valor da consulta. Obrigatório quando a consulta não tem valor registrado"
+          }
+        }
+      },
+      "AddReceivableItemDto": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/ReceivableItemInputDto"
+          }
+        },
+        "required": [
+          "item"
+        ]
+      },
+      "CancelReceivableDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "PaymentLineDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethod"
+          },
+          "amount": {
+            "type": "string",
+            "example": "175.00"
+          },
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "installments": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 24
+          },
+          "cardBrand": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "nsu": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "authorizationCode": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "method",
+          "amount"
+        ]
+      },
+      "RegisterPaymentDto": {
+        "type": "object",
+        "properties": {
+          "paidAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentLineDto"
+            }
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Chave gerada pelo cliente a cada abertura do formulário. A repetição devolve o registro já feito"
+          }
+        },
+        "required": [
+          "lines"
+        ]
+      },
+      "PaymentListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "receivableId": {
+            "type": "string"
+          },
+          "patient": {
+            "$ref": "#/components/schemas/ReferenciaDto"
+          },
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethod"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "refundedAmount": {
+            "type": "string"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "account": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferenciaDto"
+              }
+            ]
+          },
+          "receivedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferenciaDto"
+              }
+            ]
+          },
+          "installments": {
+            "type": "number"
+          },
+          "cardBrand": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "receivableId",
+          "patient",
+          "method",
+          "amount",
+          "refundedAmount",
+          "paidAt",
+          "account",
+          "receivedBy",
+          "installments",
+          "cardBrand"
+        ]
+      },
+      "PaymentListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentListItemDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "totalAmount": {
+            "type": "string"
+          },
+          "totalRefunded": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit",
+          "totalAmount",
+          "totalRefunded"
+        ]
+      },
+      "CreateRefundDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string",
+            "example": "50.00"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/RefundReason"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "amount",
+          "reason"
+        ]
+      },
+      "AppointmentFinanceStatusDto": {
+        "type": "object",
+        "properties": {
+          "appointmentId": {
+            "type": "string"
+          },
+          "receivableId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReceivableStatus"
+          }
+        },
+        "required": [
+          "appointmentId",
+          "receivableId",
+          "status"
+        ]
+      },
+      "PatientFinanceSummaryDto": {
+        "type": "object",
+        "properties": {
+          "openAmount": {
+            "type": "string",
+            "example": "350.00"
+          },
+          "receivables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceivableListItemDto"
+            }
+          }
+        },
+        "required": [
+          "openAmount",
+          "receivables"
+        ]
+      },
+      "FinanceProfessionalDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "council": {
+            "type": "string",
+            "example": "CRM"
+          },
+          "registry": {
+            "type": "string",
+            "nullable": true,
+            "example": "CRM 12345/SP"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "council",
+          "registry"
+        ]
+      },
+      "CashTotalByMethodDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethod"
+          },
+          "received": {
+            "type": "string"
+          },
+          "refunded": {
+            "type": "string"
+          },
+          "net": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "received",
+          "refunded",
+          "net"
+        ]
+      },
+      "CashEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/FinancialEntryDirection"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FinancialEntryKind"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "refundId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "direction",
+          "kind",
+          "amount",
+          "occurredAt",
+          "description",
+          "paymentId",
+          "refundId"
+        ]
+      },
+      "CashSessionSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/ReferenciaDto"
+          },
+          "account": {
+            "$ref": "#/components/schemas/ReferenciaDto"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "openingAmount": {
+            "type": "string"
+          },
+          "expectedAmount": {
+            "type": "string",
+            "nullable": true
+          },
+          "countedAmount": {
+            "type": "string",
+            "nullable": true
+          },
+          "difference": {
+            "type": "string",
+            "nullable": true
+          },
+          "cashBalance": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "closedBy": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferenciaDto"
+              }
+            ]
+          },
+          "totalsByMethod": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashTotalByMethodDto"
+            }
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashEntryDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "account",
+          "openedAt",
+          "closedAt",
+          "openingAmount",
+          "expectedAmount",
+          "countedAmount",
+          "difference",
+          "cashBalance",
+          "notes",
+          "closedBy",
+          "totalsByMethod",
+          "entries"
+        ]
+      },
+      "CurrentCashSessionDto": {
+        "type": "object",
+        "properties": {
+          "session": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CashSessionSummaryDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "session"
+        ]
+      },
+      "CashMovementDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string",
+            "example": "50.00"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "amount",
+          "description"
+        ]
+      },
+      "CloseCashSessionDto": {
+        "type": "object",
+        "properties": {
+          "countedAmount": {
+            "type": "string",
+            "example": "250.00"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "countedAmount"
+        ]
+      },
+      "OpenCashSessionDto": {
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "openingAmount": {
+            "type": "string",
+            "example": "100.00"
+          }
+        },
+        "required": [
+          "accountId",
+          "openingAmount"
+        ]
+      },
+      "CashSessionListItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/ReferenciaDto"
+          },
+          "account": {
+            "$ref": "#/components/schemas/ReferenciaDto"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "openingAmount": {
+            "type": "string"
+          },
+          "expectedAmount": {
+            "type": "string",
+            "nullable": true
+          },
+          "countedAmount": {
+            "type": "string",
+            "nullable": true
+          },
+          "difference": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "user",
+          "account",
+          "openedAt",
+          "closedAt",
+          "openingAmount",
+          "expectedAmount",
+          "countedAmount",
+          "difference"
+        ]
+      },
+      "CashSessionListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashSessionListItemDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "page",
+          "limit"
+        ]
+      },
+      "TransferDto": {
+        "type": "object",
+        "properties": {
+          "fromAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string",
+            "example": "500.00"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "fromAccountId",
+          "toAccountId",
+          "amount"
+        ]
+      },
+      "TransferResultDto": {
+        "type": "object",
+        "properties": {
+          "outEntryId": {
+            "type": "string"
+          },
+          "inEntryId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "outEntryId",
+          "inEntryId"
+        ]
       },
       "ProcedureItemDto": {
         "type": "object",

@@ -72,6 +72,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/login/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Segunda etapa do login (código TOTP ou de recuperação) */
+        post: operations["AuthController_loginMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gera o segredo TOTP pendente de confirmação */
+        post: operations["AuthController_mfaSetup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ativa o MFA e devolve os códigos de recuperação (uma única vez) */
+        post: operations["AuthController_mfaEnable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Desativa o MFA (senha + código) e encerra as outras sessões */
+        post: operations["AuthController_mfaDisable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/mfa/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gera novos códigos de recuperação */
+        post: operations["AuthController_mfaRecoveryCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/me": {
         parameters: {
             query?: never;
@@ -2409,6 +2494,606 @@ export interface paths {
         patch: operations["ClinicsController_updateRoom"];
         trace?: never;
     };
+    "/finance/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar contas financeiras */
+        get: operations["AccountsController_findAll"];
+        put?: never;
+        /** Criar conta financeira */
+        post: operations["AccountsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Atualizar conta financeira */
+        patch: operations["AccountsController_update"];
+        trace?: never;
+    };
+    "/finance/accounts/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Ativar ou desativar conta financeira */
+        patch: operations["AccountsController_updateStatus"];
+        trace?: never;
+    };
+    "/finance/payment-methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar a configuração das formas de pagamento */
+        get: operations["PaymentMethodsController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/payment-methods/{method}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Configurar uma forma de pagamento */
+        put: operations["PaymentMethodsController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/service-prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar a tabela de preços */
+        get: operations["ServicePricesController_findAll"];
+        put?: never;
+        /** Cadastrar preço */
+        post: operations["ServicePricesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/service-prices/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sugerir o preço de uma consulta particular */
+        get: operations["ServicePricesController_resolve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/service-prices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Excluir preço */
+        delete: operations["ServicePricesController_remove"];
+        options?: never;
+        head?: never;
+        /** Atualizar preço */
+        patch: operations["ServicePricesController_update"];
+        trace?: never;
+    };
+    "/finance/reports/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Relatório de recebimentos agrupado */
+        get: operations["FinanceReportsController_receipts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/reports/production": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Relatório de produção por profissional */
+        get: operations["FinanceReportsController_production"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/reports/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cobranças em aberto com idade em dias */
+        get: operations["FinanceReportsController_open"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/accounts/{id}/statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Extrato da conta financeira */
+        get: operations["AccountStatementController_statement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/payments/{id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recibo do pagamento em PDF */
+        get: operations["PaymentReceiptController_receipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/payments/{id}/receipt/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Prévia HTML do recibo do pagamento */
+        get: operations["PaymentReceiptController_preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/receivables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar cobranças */
+        get: operations["ReceivablesController_findAll"];
+        put?: never;
+        /** Criar cobrança avulsa */
+        post: operations["ReceivablesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/receivables/from-appointment/{appointmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Criar cobrança a partir da consulta */
+        post: operations["ReceivablesController_createFromAppointment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/receivables/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalhar cobrança */
+        get: operations["ReceivablesController_findOne"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/receivables/{id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adicionar item à cobrança */
+        post: operations["ReceivablesController_addItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/receivables/{id}/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancelar item da cobrança */
+        delete: operations["ReceivablesController_cancelItem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/receivables/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancelar cobrança sem pagamento */
+        post: operations["ReceivablesController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/receivables/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registrar pagamento (uma ou mais formas) */
+        post: operations["ReceivablesController_registerPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar recebimentos */
+        get: operations["PaymentsController_findAll"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/payments/{id}/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Estornar pagamento (total ou parcial) */
+        post: operations["PaymentsController_refund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/appointments/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status de cobrança das consultas */
+        get: operations["FinanceAppointmentsController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/patients/{patientId}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resumo financeiro do paciente */
+        get: operations["FinancePatientsController_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/professionals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Profissionais do tenant que podem executar itens */
+        get: operations["FinanceProfessionalsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/cash-sessions/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Caixa aberto do usuário */
+        get: operations["CashSessionsController_current"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/cash-sessions/current/withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retirada do caixa aberto */
+        post: operations["CashSessionsController_withdraw"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/cash-sessions/current/supplies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suprimento do caixa aberto */
+        post: operations["CashSessionsController_supply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/cash-sessions/current/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fechar o caixa aberto do usuário */
+        post: operations["CashSessionsController_closeCurrent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/cash-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Histórico de caixas */
+        get: operations["CashSessionsController_list"];
+        put?: never;
+        /** Abrir caixa */
+        post: operations["CashSessionsController_open"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/cash-sessions/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Relatório do caixa (JSON ou CSV) */
+        get: operations["CashSessionsController_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/cash-sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resumo do caixa */
+        get: operations["CashSessionsController_findOne"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/cash-sessions/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fechar caixa (de outro usuário exige administração) */
+        post: operations["CashSessionsController_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/finance/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transferir entre contas */
+        post: operations["TransfersController_transfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/surgery-requests/procedures": {
         parameters: {
             query?: never;
@@ -2623,8 +3308,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Healthcheck dos canais de notificação (Redis, SMTP, Twilio) */
+        /** Healthcheck resumido dos canais de notificação */
         get: operations["NotificationsHealthController_check"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/notifications/details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Healthcheck detalhado dos canais de notificação (Redis, SMTP, Twilio) */
+        get: operations["NotificationsHealthController_details"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2783,6 +3485,7 @@ export interface components {
             specialty?: string;
             phone: string;
             planSlug?: string;
+            captchaToken?: string;
         };
         CheckEmailDto: {
             email: string;
@@ -2792,6 +3495,26 @@ export interface components {
         };
         AuthDto: {
             email: string;
+            password: string;
+        };
+        LoginMfaDto: {
+            /**
+             * @description Código TOTP de 6 dígitos ou código de recuperação
+             * @example 123456
+             */
+            code: string;
+            mfaToken: string;
+        };
+        MfaTotpCodeDto: {
+            /** @example 123456 */
+            code: string;
+        };
+        DisableMfaDto: {
+            /**
+             * @description Código TOTP de 6 dígitos ou código de recuperação
+             * @example 123456
+             */
+            code: string;
             password: string;
         };
         SendRecoveryDto: {
@@ -2870,7 +3593,7 @@ export interface components {
             crm?: string;
             crmState?: string;
             specialty?: string;
-            permissions?: ("agenda" | "atendimento" | "solicitacoes" | "administracao")[];
+            permissions?: ("agenda" | "atendimento" | "solicitacoes" | "financeiro" | "administracao")[];
         };
         UpdateCollaboratorDto: {
             name?: string;
@@ -2888,7 +3611,7 @@ export interface components {
             addressComplement?: string;
             city?: string;
             state?: string;
-            permissions?: ("agenda" | "atendimento" | "solicitacoes" | "administracao")[];
+            permissions?: ("agenda" | "atendimento" | "solicitacoes" | "financeiro" | "administracao")[];
         };
         ResetCollaboratorPasswordDto: {
             password: string;
@@ -3209,8 +3932,8 @@ export interface components {
             ids: string[];
         };
         CreateActivityDto: {
-            /** @enum {string} */
-            type?: "comment" | "status_change" | "system" | "pdf_generated";
+            /** @enum {number} */
+            type?: never;
             content: string;
             mentionedUserIds?: string[];
         };
@@ -3343,6 +4066,7 @@ export interface components {
             scheduledAt: string;
             durationMinutes?: number;
             notes?: string;
+            price?: string | null;
         };
         Appointment: Record<string, never>;
         UpdateAppointmentDto: {
@@ -3355,6 +4079,7 @@ export interface components {
             scheduledAt?: string;
             durationMinutes?: number;
             notes?: string | null;
+            price?: string | null;
         };
         UpdateAppointmentStatusDto: {
             /** @enum {string} */
@@ -3620,6 +4345,486 @@ export interface components {
             name?: string;
             active?: boolean;
         };
+        /** @enum {string} */
+        FinancialAccountType: "cash_drawer" | "bank" | "card_credit" | "card_debit" | "other";
+        FinancialAccountDto: {
+            id: string;
+            name: string;
+            type: components["schemas"]["FinancialAccountType"];
+            active: boolean;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreateFinancialAccountDto: {
+            /** @example Caixa Físico */
+            name: string;
+            type: components["schemas"]["FinancialAccountType"];
+            notes?: string | null;
+        };
+        UpdateFinancialAccountDto: {
+            name?: string;
+            type?: components["schemas"]["FinancialAccountType"];
+            notes?: string | null;
+        };
+        UpdateFinancialAccountStatusDto: {
+            active: boolean;
+        };
+        /** @enum {string} */
+        PaymentMethod: "cash" | "pix" | "credit_card" | "debit_card" | "bank_transfer" | "boleto" | "check" | "other";
+        AccountReferenceDto: {
+            id: string;
+            name: string;
+        };
+        PaymentMethodConfigDto: {
+            method: components["schemas"]["PaymentMethod"];
+            active: boolean;
+            defaultAccountId: string | null;
+            defaultAccount: components["schemas"]["AccountReferenceDto"] | null;
+            maxInstallments: number;
+        };
+        UpdatePaymentMethodConfigDto: {
+            active: boolean;
+            /** Format: uuid */
+            defaultAccountId: string | null;
+            maxInstallments: number;
+        };
+        ServicePriceDoctorDto: {
+            id: string;
+            name: string;
+        };
+        /** @enum {string} */
+        AppointmentType: "first_visit" | "return" | "follow_up";
+        ServicePriceDto: {
+            id: string;
+            doctorId: string | null;
+            doctor: components["schemas"]["ServicePriceDoctorDto"] | null;
+            appointmentType: components["schemas"]["AppointmentType"];
+            description: string;
+            /** @example 300.00 */
+            amount: string;
+            active: boolean;
+        };
+        ResolvedServicePriceDto: {
+            /** @example 300.00 */
+            amount: string | null;
+            servicePriceId: string | null;
+        };
+        CreateServicePriceDto: {
+            /** Format: uuid */
+            doctorId?: string | null;
+            appointmentType?: components["schemas"]["AppointmentType"];
+            /** @example Consulta ortopédica */
+            description: string;
+            /** @example 300.00 */
+            amount: string;
+            active?: boolean;
+        };
+        UpdateServicePriceDto: {
+            /** Format: uuid */
+            doctorId?: string | null;
+            appointmentType?: components["schemas"]["AppointmentType"];
+            description?: string;
+            /** @example 300.00 */
+            amount?: string;
+            active?: boolean;
+        };
+        ReceiptsReportRowDto: {
+            key: string | null;
+            label: string;
+            /** @example 300.00 */
+            received: string;
+            /** @example 50.00 */
+            refunded: string;
+            /** @example 250.00 */
+            net: string;
+            count: number;
+        };
+        ReceiptsReportTotalsDto: {
+            received: string;
+            refunded: string;
+            net: string;
+            count: number;
+        };
+        ReceiptsReportDto: {
+            /** @enum {string} */
+            groupBy: "day" | "month" | "method" | "account" | "user";
+            rows: components["schemas"]["ReceiptsReportRowDto"][];
+            totals: components["schemas"]["ReceiptsReportTotalsDto"];
+        };
+        ProductionReportRowDto: {
+            executedById: string | null;
+            name: string;
+            items: number;
+            billed: string;
+            received: string;
+        };
+        ProductionReportTotalsDto: {
+            items: number;
+            billed: string;
+            received: string;
+        };
+        ProductionReportDto: {
+            rows: components["schemas"]["ProductionReportRowDto"][];
+            totals: components["schemas"]["ProductionReportTotalsDto"];
+        };
+        OpenReportPatientDto: {
+            id: string;
+            name: string;
+        };
+        OpenReportRowDto: {
+            receivableId: string;
+            patient: components["schemas"]["OpenReportPatientDto"];
+            /** @example 2026-10-01 */
+            referenceDate: string;
+            dueDate: string | null;
+            totalAmount: string;
+            paidAmount: string;
+            balance: string;
+            ageDays: number;
+        };
+        OpenReportTotalsDto: {
+            count: number;
+            balance: string;
+        };
+        OpenReportDto: {
+            rows: components["schemas"]["OpenReportRowDto"][];
+            totals: components["schemas"]["OpenReportTotalsDto"];
+        };
+        AccountStatementAccountDto: {
+            id: string;
+            name: string;
+            type: components["schemas"]["FinancialAccountType"];
+        };
+        /** @enum {string} */
+        FinancialEntryDirection: "in" | "out";
+        /** @enum {string} */
+        FinancialEntryKind: "payment" | "refund" | "withdrawal" | "supply" | "session_closing" | "transfer" | "adjustment";
+        AccountStatementEntryDto: {
+            id: string;
+            /** Format: date-time */
+            occurredAt: string;
+            direction: components["schemas"]["FinancialEntryDirection"];
+            kind: components["schemas"]["FinancialEntryKind"];
+            /** @example 150.00 */
+            amount: string;
+            description: string | null;
+            /** @example 1250.00 */
+            balance: string;
+        };
+        AccountStatementDto: {
+            account: components["schemas"]["AccountStatementAccountDto"];
+            /** @example 1100.00 */
+            openingBalance: string;
+            /** @example 1250.00 */
+            closingBalance: string;
+            entries: components["schemas"]["AccountStatementEntryDto"][];
+        };
+        PaymentReceiptPreviewDto: {
+            /** @description HTML do recibo, o mesmo usado no PDF */
+            html: string;
+        };
+        /** @enum {string} */
+        ReceivableStatus: "open" | "partial" | "paid" | "cancelled";
+        ReferenciaDto: {
+            id: string;
+            name: string;
+        };
+        ReceivableListItemDto: {
+            id: string;
+            patient: components["schemas"]["ReferenciaDto"];
+            appointmentId: string | null;
+            /** @example 2026-10-20 */
+            referenceDate: string;
+            dueDate: string | null;
+            /** @example 350.00 */
+            totalAmount: string;
+            /** @example 0.00 */
+            paidAmount: string;
+            /** @example 350.00 */
+            balance: string;
+            status: components["schemas"]["ReceivableStatus"];
+            description: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ReceivableListResponseDto: {
+            data: components["schemas"]["ReceivableListItemDto"][];
+            total: number;
+            page: number;
+            limit: number;
+            /** @example 1200.00 */
+            totalOpenAmount: string;
+        };
+        ReceivableItemInputDto: {
+            /** @example Primeira consulta - Dr. Fulano */
+            description: string;
+            /** Format: uuid */
+            executedById?: string;
+            /** @example 2026-10-20 */
+            executedAt?: string;
+            /** Format: uuid */
+            appointmentId?: string;
+            /** @default 1 */
+            quantity: number;
+            /** @example 350.00 */
+            unitAmount: string;
+            /** @example 0.00 */
+            discount?: string;
+            /** @example 0.00 */
+            surcharge?: string;
+        };
+        CreateReceivableDto: {
+            /** Format: uuid */
+            patientId: string;
+            /** Format: uuid */
+            appointmentId?: string;
+            /** @example 2026-10-20 */
+            referenceDate?: string;
+            /** @example 2026-10-20 */
+            dueDate?: string;
+            notes?: string;
+            items: components["schemas"]["ReceivableItemInputDto"][];
+        };
+        ReceivableItemDto: {
+            id: string;
+            description: string;
+            executedBy: components["schemas"]["ReferenciaDto"] | null;
+            executedAt: string | null;
+            appointmentId: string | null;
+            quantity: number;
+            unitAmount: string;
+            discount: string;
+            surcharge: string;
+            total: string;
+            /** Format: date-time */
+            cancelledAt: string | null;
+        };
+        /** @enum {string} */
+        RefundReason: "duplicate_entry" | "wrong_amount" | "wrong_payment_method" | "wrong_patient" | "service_not_performed" | "undue_charge" | "patient_request" | "courtesy_discount" | "service_change" | "switched_to_health_plan" | "patient_rescheduling" | "future_credit" | "other";
+        ReceivableRefundDto: {
+            id: string;
+            amount: string;
+            reason: components["schemas"]["RefundReason"];
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            refundedBy: components["schemas"]["ReferenciaDto"] | null;
+        };
+        ReceivablePaymentDto: {
+            id: string;
+            method: components["schemas"]["PaymentMethod"];
+            amount: string;
+            refundedAmount: string;
+            /** Format: date-time */
+            paidAt: string;
+            account: components["schemas"]["ReferenciaDto"] | null;
+            cashSessionId: string | null;
+            receivedBy: components["schemas"]["ReferenciaDto"] | null;
+            cardBrand: string | null;
+            installments: number;
+            nsu: string | null;
+            authorizationCode: string | null;
+            notes: string | null;
+            refunds: components["schemas"]["ReceivableRefundDto"][];
+        };
+        ReceivableDetailDto: {
+            id: string;
+            patient: components["schemas"]["ReferenciaDto"];
+            appointmentId: string | null;
+            /** @example 2026-10-20 */
+            referenceDate: string;
+            dueDate: string | null;
+            /** @example 350.00 */
+            totalAmount: string;
+            /** @example 0.00 */
+            paidAmount: string;
+            /** @example 350.00 */
+            balance: string;
+            status: components["schemas"]["ReceivableStatus"];
+            description: string;
+            /** Format: date-time */
+            createdAt: string;
+            notes: string | null;
+            /** Format: date-time */
+            cancelledAt: string | null;
+            cancelReason: string | null;
+            cancelledBy: components["schemas"]["ReferenciaDto"] | null;
+            createdBy: components["schemas"]["ReferenciaDto"] | null;
+            items: components["schemas"]["ReceivableItemDto"][];
+            payments: components["schemas"]["ReceivablePaymentDto"][];
+        };
+        CreateReceivableFromAppointmentDto: {
+            /** @description Confirma a cobrança de uma consulta de convênio */
+            allowHealthPlan?: boolean;
+            /**
+             * @description Valor da consulta. Obrigatório quando a consulta não tem valor registrado
+             * @example 350.00
+             */
+            unitAmount?: string;
+        };
+        AddReceivableItemDto: {
+            item: components["schemas"]["ReceivableItemInputDto"];
+        };
+        CancelReceivableDto: {
+            reason: string;
+        };
+        PaymentLineDto: {
+            method: components["schemas"]["PaymentMethod"];
+            /** @example 175.00 */
+            amount: string;
+            /** Format: uuid */
+            accountId?: string;
+            installments?: number;
+            cardBrand?: string;
+            nsu?: string;
+            authorizationCode?: string;
+            notes?: string;
+        };
+        RegisterPaymentDto: {
+            /** Format: date-time */
+            paidAt?: string;
+            lines: components["schemas"]["PaymentLineDto"][];
+            /**
+             * Format: uuid
+             * @description Chave gerada pelo cliente a cada abertura do formulário. A repetição devolve o registro já feito
+             */
+            idempotencyKey?: string;
+        };
+        PaymentListItemDto: {
+            id: string;
+            receivableId: string;
+            patient: components["schemas"]["ReferenciaDto"];
+            method: components["schemas"]["PaymentMethod"];
+            amount: string;
+            refundedAmount: string;
+            /** Format: date-time */
+            paidAt: string;
+            account: components["schemas"]["ReferenciaDto"] | null;
+            receivedBy: components["schemas"]["ReferenciaDto"] | null;
+            installments: number;
+            cardBrand: string | null;
+        };
+        PaymentListResponseDto: {
+            data: components["schemas"]["PaymentListItemDto"][];
+            total: number;
+            page: number;
+            limit: number;
+            totalAmount: string;
+            totalRefunded: string;
+        };
+        CreateRefundDto: {
+            /** @example 50.00 */
+            amount: string;
+            reason: components["schemas"]["RefundReason"];
+            notes?: string;
+        };
+        AppointmentFinanceStatusDto: {
+            appointmentId: string;
+            receivableId: string;
+            status: components["schemas"]["ReceivableStatus"];
+        };
+        PatientFinanceSummaryDto: {
+            /** @example 350.00 */
+            openAmount: string;
+            receivables: components["schemas"]["ReceivableListItemDto"][];
+        };
+        FinanceProfessionalDto: {
+            id: string;
+            name: string;
+            /** @example CRM */
+            council: string;
+            /** @example CRM 12345/SP */
+            registry: string | null;
+        };
+        CashTotalByMethodDto: {
+            method: components["schemas"]["PaymentMethod"];
+            received: string;
+            refunded: string;
+            net: string;
+        };
+        CashEntryDto: {
+            id: string;
+            direction: components["schemas"]["FinancialEntryDirection"];
+            kind: components["schemas"]["FinancialEntryKind"];
+            amount: string;
+            /** Format: date-time */
+            occurredAt: string;
+            description: string | null;
+            paymentId: string | null;
+            refundId: string | null;
+        };
+        CashSessionSummaryDto: {
+            id: string;
+            user: components["schemas"]["ReferenciaDto"];
+            account: components["schemas"]["ReferenciaDto"];
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            closedAt: string | null;
+            openingAmount: string;
+            expectedAmount: string | null;
+            countedAmount: string | null;
+            difference: string | null;
+            cashBalance: string;
+            notes: string | null;
+            closedBy: components["schemas"]["ReferenciaDto"] | null;
+            totalsByMethod: components["schemas"]["CashTotalByMethodDto"][];
+            entries: components["schemas"]["CashEntryDto"][];
+        };
+        CurrentCashSessionDto: {
+            session: components["schemas"]["CashSessionSummaryDto"] | null;
+        };
+        CashMovementDto: {
+            /** @example 50.00 */
+            amount: string;
+            description: string;
+        };
+        CloseCashSessionDto: {
+            /** @example 250.00 */
+            countedAmount: string;
+            notes?: string;
+        };
+        OpenCashSessionDto: {
+            /** Format: uuid */
+            accountId: string;
+            /** @example 100.00 */
+            openingAmount: string;
+        };
+        CashSessionListItemDto: {
+            id: string;
+            user: components["schemas"]["ReferenciaDto"];
+            account: components["schemas"]["ReferenciaDto"];
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            closedAt: string | null;
+            openingAmount: string;
+            expectedAmount: string | null;
+            countedAmount: string | null;
+            difference: string | null;
+        };
+        CashSessionListResponseDto: {
+            data: components["schemas"]["CashSessionListItemDto"][];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        TransferDto: {
+            /** Format: uuid */
+            fromAccountId: string;
+            /** Format: uuid */
+            toAccountId: string;
+            /** @example 500.00 */
+            amount: string;
+            description?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        TransferResultDto: {
+            outEntryId: string;
+            inEntryId: string;
+        };
         ProcedureItemDto: {
             id?: string;
             procedureId?: string;
@@ -3809,6 +5014,131 @@ export interface operations {
             };
             /** @description Credenciais inválidas */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_loginMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginMfaDto"];
+            };
+        };
+        responses: {
+            /** @description Login realizado com sucesso */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Código inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Etapa de verificação expirada */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conta bloqueada por tentativas */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_mfaSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    AuthController_mfaEnable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaTotpCodeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_mfaDisable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisableMfaDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_mfaRecoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaTotpCodeDto"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7933,6 +9263,933 @@ export interface operations {
             };
         };
     };
+    AccountsController_findAll: {
+        parameters: {
+            query?: {
+                /** @description Inclui as contas inativas */
+                includeInactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialAccountDto"][];
+                };
+            };
+        };
+    };
+    AccountsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFinancialAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialAccountDto"];
+                };
+            };
+        };
+    };
+    AccountsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFinancialAccountDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialAccountDto"];
+                };
+            };
+        };
+    };
+    AccountsController_updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFinancialAccountStatusDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialAccountDto"];
+                };
+            };
+        };
+    };
+    PaymentMethodsController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodConfigDto"][];
+                };
+            };
+        };
+    };
+    PaymentMethodsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                method: components["schemas"]["PaymentMethod"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePaymentMethodConfigDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodConfigDto"];
+                };
+            };
+        };
+    };
+    ServicePricesController_findAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServicePriceDto"][];
+                };
+            };
+        };
+    };
+    ServicePricesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateServicePriceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServicePriceDto"];
+                };
+            };
+        };
+    };
+    ServicePricesController_resolve: {
+        parameters: {
+            query?: {
+                doctorId?: string;
+                type?: components["schemas"]["AppointmentType"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolvedServicePriceDto"];
+                };
+            };
+        };
+    };
+    ServicePricesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ServicePricesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateServicePriceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServicePriceDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_receipts: {
+        parameters: {
+            query: {
+                format?: "json" | "csv";
+                /** @description Data inicial (AAAA-MM-DD) */
+                from: string;
+                /** @description Data final, inclusiva (AAAA-MM-DD) */
+                to: string;
+                groupBy: "day" | "month" | "method" | "account" | "user";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceiptsReportDto"];
+                    "text/csv; charset=utf-8": components["schemas"]["ReceiptsReportDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_production: {
+        parameters: {
+            query: {
+                format?: "json" | "csv";
+                /** @description Data inicial (AAAA-MM-DD) */
+                from: string;
+                /** @description Data final, inclusiva (AAAA-MM-DD) */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductionReportDto"];
+                    "text/csv; charset=utf-8": components["schemas"]["ProductionReportDto"];
+                };
+            };
+        };
+    };
+    FinanceReportsController_open: {
+        parameters: {
+            query?: {
+                format?: "json" | "csv";
+                /** @description Inclui cobranças com vencimento até esta data (padrão: hoje) */
+                until?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenReportDto"];
+                    "text/csv; charset=utf-8": components["schemas"]["OpenReportDto"];
+                };
+            };
+        };
+    };
+    AccountStatementController_statement: {
+        parameters: {
+            query: {
+                format?: "json" | "csv";
+                /** @description Data inicial (AAAA-MM-DD) */
+                from: string;
+                /** @description Data final, inclusiva (AAAA-MM-DD) */
+                to: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountStatementDto"];
+                    "text/csv; charset=utf-8": components["schemas"]["AccountStatementDto"];
+                };
+            };
+        };
+    };
+    PaymentReceiptController_receipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PaymentReceiptController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentReceiptPreviewDto"];
+                };
+            };
+        };
+    };
+    ReceivablesController_findAll: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                status?: components["schemas"]["ReceivableStatus"];
+                from?: string;
+                to?: string;
+                patientId?: string;
+                executedById?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivableListResponseDto"];
+                };
+            };
+        };
+    };
+    ReceivablesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReceivableDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivableDetailDto"];
+                };
+            };
+        };
+    };
+    ReceivablesController_createFromAppointment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                appointmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReceivableFromAppointmentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivableDetailDto"];
+                };
+            };
+        };
+    };
+    ReceivablesController_findOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivableDetailDto"];
+                };
+            };
+        };
+    };
+    ReceivablesController_addItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddReceivableItemDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivableDetailDto"];
+                };
+            };
+        };
+    };
+    ReceivablesController_cancelItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivableDetailDto"];
+                };
+            };
+        };
+    };
+    ReceivablesController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelReceivableDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivableDetailDto"];
+                };
+            };
+        };
+    };
+    ReceivablesController_registerPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterPaymentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivableDetailDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_findAll: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                from?: string;
+                to?: string;
+                method?: components["schemas"]["PaymentMethod"];
+                accountId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentListResponseDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_refund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRefundDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivableDetailDto"];
+                };
+            };
+        };
+    };
+    FinanceAppointmentsController_status: {
+        parameters: {
+            query: {
+                /** @description Ids das consultas separados por vírgula (máx. 200) */
+                ids: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentFinanceStatusDto"][];
+                };
+            };
+        };
+    };
+    FinancePatientsController_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatientFinanceSummaryDto"];
+                };
+            };
+        };
+    };
+    FinanceProfessionalsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinanceProfessionalDto"][];
+                };
+            };
+        };
+    };
+    CashSessionsController_current: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentCashSessionDto"];
+                };
+            };
+        };
+    };
+    CashSessionsController_withdraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CashMovementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionSummaryDto"];
+                };
+            };
+        };
+    };
+    CashSessionsController_supply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CashMovementDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionSummaryDto"];
+                };
+            };
+        };
+    };
+    CashSessionsController_closeCurrent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseCashSessionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionSummaryDto"];
+                };
+            };
+        };
+    };
+    CashSessionsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                userId?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionListResponseDto"];
+                };
+            };
+        };
+    };
+    CashSessionsController_open: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenCashSessionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionSummaryDto"];
+                };
+            };
+        };
+    };
+    CashSessionsController_report: {
+        parameters: {
+            query?: {
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionSummaryDto"];
+                    "text/csv; charset=utf-8": components["schemas"]["CashSessionSummaryDto"];
+                };
+            };
+        };
+    };
+    CashSessionsController_findOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionSummaryDto"];
+                };
+            };
+        };
+    };
+    CashSessionsController_close: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseCashSessionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionSummaryDto"];
+                };
+            };
+        };
+    };
+    TransfersController_transfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferResultDto"];
+                };
+            };
+        };
+    };
     SurgeryRequestProceduresController_create: {
         parameters: {
             query?: never;
@@ -8246,6 +10503,23 @@ export interface operations {
         };
     };
     NotificationsHealthController_check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    NotificationsHealthController_details: {
         parameters: {
             query?: never;
             header?: never;
