@@ -51,13 +51,21 @@ describe("BottomNavBar — filtro por permissão", () => {
     expect(screen.queryByText("Procedimentos")).not.toBeInTheDocument();
   });
 
-  it("mostra Dashboard e Procedimentos no overflow para quem tem solicitações", () => {
+  it("mostra Procedimentos, mas não o Dashboard, para quem só tem solicitações", () => {
     authState.permissions = [Permission.SOLICITACOES];
     render(<BottomNavBar />);
     openOverflow();
 
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
     expect(screen.getByText("Procedimentos")).toBeInTheDocument();
+  });
+
+  it("mostra o Dashboard no overflow para quem tem administração", () => {
+    authState.permissions = [Permission.ADMINISTRACAO];
+    render(<BottomNavBar />);
+    openOverflow();
+
+    expect(screen.getByText("Dashboard")).toBeInTheDocument();
   });
 
   it("mostra Colaboradores no overflow para quem tem administração", () => {

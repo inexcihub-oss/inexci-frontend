@@ -25,12 +25,11 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
 export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   [Permission.AGENDA]: "Marcar, confirmar e cancelar consultas.",
   [Permission.ATENDIMENTO]: "Abrir o prontuário e o histórico do paciente.",
-  [Permission.SOLICITACOES]:
-    "Criar e acompanhar solicitações cirúrgicas e o dashboard.",
+  [Permission.SOLICITACOES]: "Criar e acompanhar solicitações cirúrgicas.",
   [Permission.FINANCEIRO]:
     "Cobrar consultas, receber pagamentos, operar o caixa e ver os relatórios financeiros.",
   [Permission.ADMINISTRACAO]:
-    "Gerenciar colaboradores, excluir cadastros e a assinatura da conta.",
+    "Ver o dashboard, gerenciar colaboradores, excluir cadastros e a assinatura da conta.",
 };
 
 export function hasAnyArea(permissions: Permission[]): boolean {
@@ -50,7 +49,7 @@ export const ROUTE_PERMISSIONS: {
     permission: Permission.SOLICITACOES,
   },
   { prefix: "/solicitacao", permission: Permission.SOLICITACOES },
-  { prefix: "/dashboard", permission: Permission.SOLICITACOES },
+  { prefix: "/dashboard", permission: Permission.ADMINISTRACAO },
   { prefix: "/colaboradores/hospital", permission: "any-area" },
   { prefix: "/colaboradores/convenio", permission: "any-area" },
   { prefix: "/colaboradores/fornecedor", permission: "any-area" },
@@ -81,7 +80,7 @@ export function routeRequiresAnyArea(pathname: string): boolean {
 export const HOME_ORDER: { permission: Permission; href: string }[] = [
   { permission: Permission.ATENDIMENTO, href: "/atendimento" },
   { permission: Permission.AGENDA, href: "/agenda" },
-  { permission: Permission.SOLICITACOES, href: "/dashboard" },
+  { permission: Permission.SOLICITACOES, href: "/solicitacoes-cirurgicas" },
   { permission: Permission.FINANCEIRO, href: "/financeiro" },
   { permission: Permission.ADMINISTRACAO, href: "/colaboradores" },
 ];

@@ -247,7 +247,7 @@ export const TRACKS: Track[] = [
     label: TRILHA_DASHBOARD.label,
     descricao: TRILHA_DASHBOARD.descricao,
     stepKey: "ver-dashboard",
-    permission: Permission.SOLICITACOES,
+    permission: Permission.ADMINISTRACAO,
     steps: [
       {
         key: "kpis",

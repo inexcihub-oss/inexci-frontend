@@ -38,6 +38,8 @@ const PERMISSION_ICONS: Record<Permission, LucideIcon> = {
 
 export const DICA_FINANCEIRO_SO_DONO =
   "Só o dono da conta concede ou retira a área Financeiro";
+export const AVISO_AGENDA_PELO_ATENDIMENTO =
+  "Quem tem Atendimento também tem Agenda: sem ela, não daria para marcar a consulta que vai atender.";
 export const AVISO_PROPRIAS_PERMISSOES =
   "Você não pode alterar as suas próprias permissões. Peça a outro administrador.";
 
@@ -69,11 +71,17 @@ export function PermissionsSection({
   somenteLeitura = false,
   onChange,
 }: Props) {
-  const fixas = !isDoctor
+  const fixasDoPerfil = !isDoctor
     ? []
     : isPhysician
       ? TRAVADAS_PARA_MEDICO
       : TRAVADAS_PARA_PROFISSIONAL;
+  const agendaPeloAtendimento =
+    !fixasDoPerfil.includes(Permission.AGENDA) &&
+    value.includes(Permission.ATENDIMENTO);
+  const fixas = agendaPeloAtendimento
+    ? [...fixasDoPerfil, Permission.AGENDA]
+    : fixasDoPerfil;
   const efetivas = ALL_PERMISSIONS.filter(
     (p) => value.includes(p) || fixas.includes(p),
   );
@@ -89,7 +97,9 @@ export function PermissionsSection({
     if (travada(p) || bloqueada(p)) return;
     const proximo = value.includes(p)
       ? value.filter((atual) => atual !== p)
-      : [...value, p];
+      : p === Permission.ATENDIMENTO
+        ? [...value, p, Permission.AGENDA]
+        : [...value, p];
     onChange(ALL_PERMISSIONS.filter((atual) => proximo.includes(atual)));
   };
 
@@ -213,6 +223,13 @@ export function PermissionsSection({
         >
           <Info className="mt-px h-4 w-4 shrink-0" />
           <span>{AVISO_PROPRIAS_PERMISSOES}</span>
+        </p>
+      )}
+
+      {agendaPeloAtendimento && (
+        <p className="flex items-start gap-2 rounded-xl bg-primary-50/60 px-3 py-2.5 text-xs leading-snug text-primary-800">
+          <Info className="mt-px h-4 w-4 shrink-0" />
+          <span>{AVISO_AGENDA_PELO_ATENDIMENTO}</span>
         </p>
       )}
 

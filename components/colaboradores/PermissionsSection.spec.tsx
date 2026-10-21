@@ -87,6 +87,51 @@ describe("PermissionsSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("marca e trava a agenda junto com o atendimento", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <PermissionsSection value={[]} isDoctor={false} onChange={onChange} />,
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Atendimento/i }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      Permission.AGENDA,
+      Permission.ATENDIMENTO,
+    ]);
+
+    rerender(
+      <PermissionsSection
+        value={[Permission.ATENDIMENTO]}
+        isDoctor={false}
+        onChange={onChange}
+      />,
+    );
+
+    const agenda = screen.getByRole("checkbox", { name: /Agenda/i });
+    expect(agenda).toBeChecked();
+    expect(agenda).toBeDisabled();
+    expect(screen.getAllByText("Fixa")).toHaveLength(1);
+    expect(
+      screen.getByText(/Quem tem Atendimento também tem Agenda/),
+    ).toBeInTheDocument();
+  });
+
+  it("libera a agenda ao desmarcar o atendimento", () => {
+    const onChange = vi.fn();
+    render(
+      <PermissionsSection
+        value={[Permission.AGENDA, Permission.ATENDIMENTO]}
+        isDoctor={false}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Atendimento/i }));
+
+    expect(onChange).toHaveBeenCalledWith([Permission.AGENDA]);
+  });
+
   it("alterna uma caixa sem mexer nas outras", () => {
     const onChange = vi.fn();
     render(

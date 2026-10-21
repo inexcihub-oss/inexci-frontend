@@ -5,6 +5,8 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import PageContainer from "@/components/PageContainer";
+import { useAuth } from "@/contexts/AuthContext";
+import { Permission } from "@/lib/permissions";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import {
   SurgeryRequestStatusCode,
@@ -33,6 +35,8 @@ import {
 } from "@/components/dashboard/DashboardFilterModal";
 
 export default function DashboardPage() {
+  const { can } = useAuth();
+  const podeSolicitacoes = can(Permission.SOLICITACOES);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>(
     DEFAULT_DASHBOARD_FILTERS,
@@ -65,14 +69,16 @@ export default function DashboardPage() {
   }, [dashboard]);
 
   const pendingCount = useMemo(
-    () => dashboard?.byStatus.find(
+    () =>
+      dashboard?.byStatus.find(
         (s) => s.status === SurgeryRequestStatusCode.PENDING,
       )?.total || 0,
     [dashboard],
   );
 
   const invoicedCount = useMemo(
-    () => dashboard?.byStatus.find(
+    () =>
+      dashboard?.byStatus.find(
         (s) => s.status === SurgeryRequestStatusCode.INVOICED,
       )?.total || 0,
     [dashboard],
@@ -181,20 +187,22 @@ export default function DashboardPage() {
               </span>
             )}
           </button>
-          <Link
-            href="/solicitacoes-cirurgicas"
-            data-tour="dashboard-ver-kanban"
-            className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors min-h-[44px] active:scale-[0.98]"
-          >
-            <Image
-              src="/icons/grid-layout.svg"
-              alt="Ver Kanban"
-              width={16}
-              height={16}
-              className="brightness-0 invert"
-            />
-            <span className="hidden sm:inline">Ver Kanban</span>
-          </Link>
+          {podeSolicitacoes && (
+            <Link
+              href="/solicitacoes-cirurgicas"
+              data-tour="dashboard-ver-kanban"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors min-h-[44px] active:scale-[0.98]"
+            >
+              <Image
+                src="/icons/grid-layout.svg"
+                alt="Ver Kanban"
+                width={16}
+                height={16}
+                className="brightness-0 invert"
+              />
+              <span className="hidden sm:inline">Ver Kanban</span>
+            </Link>
+          )}
         </div>
       </div>
 

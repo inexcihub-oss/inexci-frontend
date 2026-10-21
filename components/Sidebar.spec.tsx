@@ -46,12 +46,19 @@ describe("Sidebar — filtro por permissão", () => {
     expect(screen.getByText("Colaboradores")).toBeInTheDocument();
   });
 
-  it("esconde o dashboard de quem não tem solicitações", () => {
-    authState.permissions = [Permission.ATENDIMENTO];
+  it("esconde o dashboard de quem não tem administração, mesmo com solicitações", () => {
+    authState.permissions = [Permission.ATENDIMENTO, Permission.SOLICITACOES];
     render(<Sidebar />);
 
     expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
     expect(screen.getByText("Atendimento")).toBeInTheDocument();
+  });
+
+  it("mostra o dashboard para quem tem administração", () => {
+    authState.permissions = [Permission.ADMINISTRACAO];
+    render(<Sidebar />);
+
+    expect(screen.getByText("Dashboard")).toBeInTheDocument();
   });
 
   it("mostra o Financeiro só para quem tem a área", () => {

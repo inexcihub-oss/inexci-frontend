@@ -452,7 +452,7 @@ describe("NewCollaboratorModal — permissões", () => {
       name: /Solicitações/i,
     });
 
-    expect(agenda).toBeEnabled();
+    expect(agenda).toBeDisabled();
     expect(atendimento).toBeEnabled();
     expect(solicitacoes).toBeEnabled();
 
@@ -467,7 +467,7 @@ describe("NewCollaboratorModal — permissões", () => {
 
     await userEvent.click(screen.getByRole("switch"));
 
-    expect(agenda).toBeEnabled();
+    expect(agenda).toBeDisabled();
     expect(atendimento).toBeEnabled();
     expect(solicitacoes).toBeEnabled();
   });

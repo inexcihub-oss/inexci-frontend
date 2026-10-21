@@ -82,8 +82,10 @@ describe("hasAnyArea", () => {
 });
 
 describe("resolveHome", () => {
-  it("manda quem só tem solicitações para o dashboard", () => {
-    expect(resolveHome([Permission.SOLICITACOES])).toBe("/dashboard");
+  it("manda quem só tem solicitações para o kanban, não para o dashboard", () => {
+    expect(resolveHome([Permission.SOLICITACOES])).toBe(
+      "/solicitacoes-cirurgicas",
+    );
   });
 
   it("prioriza atendimento sobre solicitações", () => {
@@ -129,7 +131,7 @@ describe("resolveHome", () => {
       resolveHome([Permission.FINANCEIRO, Permission.ADMINISTRACAO]),
     ).toBe("/financeiro");
     expect(resolveHome([Permission.SOLICITACOES, Permission.FINANCEIRO])).toBe(
-      "/dashboard",
+      "/solicitacoes-cirurgicas",
     );
     expect(resolveHome([Permission.AGENDA, Permission.FINANCEIRO])).toBe(
       "/agenda",

@@ -173,7 +173,6 @@ describe("OnboardingProvider", () => {
     expect(patchMock.mock.calls[0][0]).toEqual({
       completedSteps: {
         "criar-solicitacao": expect.any(String),
-        "ver-dashboard": expect.any(String),
         "cadastros-basicos": expect.any(String),
       },
       welcomeSeenAt: expect.any(String),
@@ -367,7 +366,7 @@ describe("OnboardingProvider", () => {
       await user.click(screen.getByText("fechar concluido"));
 
       expect(screen.getByTestId("trilha-ativa")).toHaveTextContent(
-        "dashboard",
+        "cadastros",
       );
       expect(screen.getByTestId("em-tour")).toHaveTextContent("true");
     });

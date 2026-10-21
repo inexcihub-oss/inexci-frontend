@@ -22,67 +22,6 @@ interface MedicalReportPreviewModalProps {
   solicitacao: SurgeryRequestDetail;
 }
 
-function removeBackground(imageUrl: string): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          resolve(imageUrl);
-          return;
-        }
-        ctx.drawImage(img, 0, 0);
-        const { width, height } = canvas;
-        const imageData = ctx.getImageData(0, 0, width, height);
-        const data = imageData.data;
-
-        function cornerColor(x: number, y: number): [number, number, number] {
-          const idx = (y * width + x) * 4;
-          return [data[idx], data[idx + 1], data[idx + 2]];
-        }
-        const corners = [
-          cornerColor(0, 0),
-          cornerColor(width - 1, 0),
-          cornerColor(0, height - 1),
-          cornerColor(width - 1, height - 1),
-        ];
-        const bgR = corners.reduce((s, c) => s + c[0], 0) / 4;
-        const bgG = corners.reduce((s, c) => s + c[1], 0) / 4;
-        const bgB = corners.reduce((s, c) => s + c[2], 0) / 4;
-
-        const tolerance = 40;
-        const softRange = 20;
-
-        for (let i = 0; i < data.length; i += 4) {
-          const dr = data[i] - bgR;
-          const dg = data[i + 1] - bgG;
-          const db = data[i + 2] - bgB;
-          const dist = Math.sqrt(dr * dr + dg * dg + db * db);
-
-          if (dist <= tolerance) {
-            data[i + 3] = 0;
-          } else if (dist <= tolerance + softRange) {
-            const t = (dist - tolerance) / softRange;
-            data[i + 3] = Math.round(t * data[i + 3]);
-          }
-        }
-
-        ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
-      } catch {
-        resolve(imageUrl);
-      }
-    };
-    img.onerror = () => resolve(imageUrl);
-    img.src = imageUrl;
-  });
-}
-
 function Spinner() {
   return (
     <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -161,10 +100,6 @@ export function MedicalReportPreviewModal({
     contentHtml?: string | null;
   } | null>(null);
 
-  const [processedSignatureUrl, setProcessedSignatureUrl] = useState<
-    string | null
-  >(null);
-
   useEffect(() => {
     if (!isOpen) return;
     const doctor = request?.doctor;
@@ -190,17 +125,6 @@ export function MedicalReportPreviewModal({
         : null,
     );
   }, [isOpen, request, currentUser]);
-
-  useEffect(() => {
-    if (!doctorSignatureUrl) {
-      setProcessedSignatureUrl(null);
-      return;
-    }
-    setProcessedSignatureUrl(doctorSignatureUrl);
-    removeBackground(doctorSignatureUrl)
-      .then(setProcessedSignatureUrl)
-      .catch(() => setProcessedSignatureUrl(doctorSignatureUrl));
-  }, [doctorSignatureUrl]);
 
   if (!isOpen) return null;
 
@@ -272,9 +196,7 @@ export function MedicalReportPreviewModal({
                 ? `CRM ${doctorCrm}${doctorCrmState ? `/${doctorCrmState}` : ""}`
                 : ""
             }
-            doctorSignatureUrl={
-              processedSignatureUrl ?? doctorSignatureUrl ?? undefined
-            }
+            doctorSignatureUrl={doctorSignatureUrl ?? undefined}
             customHeader={customHeader}
           />
         </div>
