@@ -101,7 +101,7 @@ describe("LoginPage", () => {
       screen.getByLabelText(/código de recuperação/i),
       "ABCDE-FGH23",
     );
-    await user.click(screen.getByRole("button", { name: /verificar/i }));
+    await user.click(screen.getByRole("button", { name: /verificar e entrar/i }));
 
     await waitFor(() =>
       expect(completeMfaLoginMock).toHaveBeenCalledWith(
@@ -109,6 +109,41 @@ describe("LoginPage", () => {
         "ABCDE-FGH23",
       ),
     );
+  });
+
+  it("a etapa de MFA troca o cabeçalho do login pelo da verificação", async () => {
+    await entrarComMfa();
+
+    expect(screen.queryByText(/bem-vindo de volta/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Verificação em duas etapas" }),
+    ).toBeInTheDocument();
+  });
+
+  it("o modo de recuperação tem tela própria, formata o código e permite voltar", async () => {
+    const user = await entrarComMfa();
+
+    await user.click(
+      screen.getByRole("button", { name: /usar código de recuperação/i }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Entrar com código de recuperação" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Dígito 1 de 6")).not.toBeInTheDocument();
+    expect(screen.getByText(/cada código vale uma única vez/i)).toBeInTheDocument();
+
+    const campo = screen.getByLabelText(/código de recuperação/i);
+    await user.type(campo, "abcdefgh23");
+    expect(campo).toHaveValue("ABCDE-FGH23");
+
+    await user.click(
+      screen.getByRole("button", { name: /usar código do aplicativo/i }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Verificação em duas etapas" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Dígito 1 de 6")).toBeInTheDocument();
   });
 
   it("código inválido mostra o erro e mantém a etapa", async () => {
