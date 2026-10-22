@@ -107,6 +107,28 @@ describe("EditDateOptionsModal", () => {
     );
   });
 
+  it("preenche no horário local e salvar sem mexer mantém o mesmo instante", async () => {
+    const user = userEvent.setup();
+    const salva = "2026-11-05T12:30:00.000Z";
+    const local = new Date(salva);
+    const esperado = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, "0")}-${String(local.getDate()).padStart(2, "0")}T${String(local.getHours()).padStart(2, "0")}:${String(local.getMinutes()).padStart(2, "0")}`;
+    renderModal({
+      ...baseSolicitacao,
+      dateOptions: [salva],
+    } as unknown as SurgeryRequestDetail);
+
+    expect(screen.getByLabelText(/Data 1/)).toHaveValue(esperado);
+
+    await user.click(screen.getByRole("button", { name: "Salvar Datas" }));
+
+    await waitFor(() =>
+      expect(surgeryRequestService.updateDateOptions).toHaveBeenCalledWith(
+        "sc-1",
+        { dateOptions: [salva] },
+      ),
+    );
+  });
+
   it("fecha pelo botão Cancelar", async () => {
     const user = userEvent.setup();
     const { onClose } = renderModal();

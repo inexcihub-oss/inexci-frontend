@@ -15,6 +15,7 @@ import {
   NotificationConfirmModal,
   type NotificationChannels,
 } from "./NotificationConfirmModal";
+import { dateKey, hhmm } from "@/lib/calendar";
 
 interface EditDateOptionsModalProps {
   isOpen: boolean;
@@ -34,11 +35,10 @@ export function EditDateOptionsModal({
       solicitacao?.dateOptions ??
       []) as string[];
     const toLocal = (iso: string) => {
-      try {
-        return new Date(iso).toISOString().slice(0, 16);
-      } catch {
-        return "";
-      }
+      const date = new Date(iso);
+      return Number.isNaN(date.getTime())
+        ? ""
+        : `${dateKey(date)}T${hhmm(date)}`;
     };
     const padded = [...opts.map(toLocal), "", "", ""].slice(0, 3);
     return padded;
