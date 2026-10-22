@@ -173,6 +173,13 @@ describe("Configurações — aba Avisos aos pacientes", () => {
 
     await screen.findByRole("switch", { name: /Menções por e-mail/i });
     expect(
+      screen.getByRole("heading", { name: "Onde receber" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "O que avisar" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("switch")).toHaveLength(8);
+    expect(
       screen.queryByRole("heading", { name: /Avisos aos pacientes/i }),
     ).not.toBeInTheDocument();
     expect(notificationService.getPatientSettings).not.toHaveBeenCalled();

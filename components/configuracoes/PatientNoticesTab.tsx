@@ -1,10 +1,14 @@
 "use client";
 
 import { BellRing, CalendarCheck, CalendarX } from "lucide-react";
-import { Card, CardHeader, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import type { ToastType } from "@/types/toast.types";
-import { NotificationItem, TabLoading } from "./SettingsControls";
+import {
+  NotificationItem,
+  SettingsGroup,
+  TabLoading,
+} from "./SettingsControls";
 import { usePatientNoticeSettings } from "./usePatientNoticeSettings";
 
 export function PatientNoticesTab({
@@ -12,8 +16,15 @@ export function PatientNoticesTab({
 }: {
   showToast: (message: string, type?: ToastType) => void;
 }) {
-  const { loading, loadError, saving, notices, setNotices, reload, handleSave } =
-    usePatientNoticeSettings({ showToast });
+  const {
+    loading,
+    loadError,
+    saving,
+    notices,
+    setNotices,
+    reload,
+    handleSave,
+  } = usePatientNoticeSettings({ showToast });
 
   if (loading) return <TabLoading />;
 
@@ -38,46 +49,38 @@ export function PatientNoticesTab({
 
   return (
     <div className="space-y-6">
-      <Card className="border border-gray-200 rounded-2xl">
-        <CardHeader className="p-6 pb-4">
-          <h3 className="text-base font-semibold text-gray-900">
-            Avisos aos pacientes
-          </h3>
-          <p className="text-sm text-gray-500">
-            Mensagens automáticas enviadas aos pacientes. Vale para toda a
-            clínica.
-          </p>
-        </CardHeader>
-        <CardContent className="p-6 pt-0">
-          <NotificationItem
-            icon={CalendarCheck}
-            title="Consulta agendada"
-            description="WhatsApp ao paciente quando a consulta é marcada, remarcada ou reativada"
-            checked={notices.appointmentScheduled}
-            onChange={(checked) =>
-              setNotices({ ...notices, appointmentScheduled: checked })
-            }
-          />
-          <NotificationItem
-            icon={BellRing}
-            title="Lembrete e confirmação de consulta"
-            description="E-mail e WhatsApp 24 horas antes, com as opções de confirmar ou cancelar"
-            checked={notices.appointmentReminder}
-            onChange={(checked) =>
-              setNotices({ ...notices, appointmentReminder: checked })
-            }
-          />
-          <NotificationItem
-            icon={CalendarX}
-            title="Consulta cancelada"
-            description="WhatsApp ao paciente quando a consulta é cancelada"
-            checked={notices.appointmentCancelled}
-            onChange={(checked) =>
-              setNotices({ ...notices, appointmentCancelled: checked })
-            }
-          />
-        </CardContent>
-      </Card>
+      <SettingsGroup
+        title="Avisos aos pacientes"
+        description="Mensagens automáticas enviadas aos pacientes. Vale para toda a clínica."
+      >
+        <NotificationItem
+          icon={CalendarCheck}
+          title="Consulta agendada"
+          description="WhatsApp ao paciente quando a consulta é marcada, remarcada ou reativada."
+          checked={notices.appointmentScheduled}
+          onChange={(checked) =>
+            setNotices({ ...notices, appointmentScheduled: checked })
+          }
+        />
+        <NotificationItem
+          icon={BellRing}
+          title="Lembrete e confirmação de consulta"
+          description="E-mail e WhatsApp 24 horas antes, com as opções de confirmar ou cancelar."
+          checked={notices.appointmentReminder}
+          onChange={(checked) =>
+            setNotices({ ...notices, appointmentReminder: checked })
+          }
+        />
+        <NotificationItem
+          icon={CalendarX}
+          title="Consulta cancelada"
+          description="WhatsApp ao paciente quando a consulta é cancelada."
+          checked={notices.appointmentCancelled}
+          onChange={(checked) =>
+            setNotices({ ...notices, appointmentCancelled: checked })
+          }
+        />
+      </SettingsGroup>
 
       <div className="flex justify-end">
         <Button

@@ -87,18 +87,46 @@ export function NotificationItem({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0 min-h-[56px]">
-      <div className="flex items-start gap-3">
-        <div className="p-2.5 bg-gray-100 rounded-xl">
-          <Icon className="w-5 h-5 text-gray-600" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-900">{title}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+    <div className="flex items-center justify-between gap-4 p-5 md:p-6">
+      <div className="flex min-w-0 gap-4">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-50 text-gray-600">
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm md:text-base font-semibold text-gray-900">
+            {title}
+          </p>
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
         </div>
       </div>
       <Toggle checked={checked} onChange={onChange} ariaLabel={title} />
     </div>
+  );
+}
+
+export function SettingsGroup({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="px-1">
+        <h3 className="text-sm md:text-base font-semibold text-gray-900">
+          {title}
+        </h3>
+        {description && (
+          <p className="mt-0.5 text-sm text-gray-500">{description}</p>
+        )}
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100">
+        {children}
+      </div>
+    </section>
   );
 }
 
