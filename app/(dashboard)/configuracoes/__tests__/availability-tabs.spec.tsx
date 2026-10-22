@@ -116,7 +116,7 @@ describe("Configurações — Minha Agenda e Feriados (MIG-05)", () => {
     searchParamsValue = new URLSearchParams("tab=my-schedule");
     renderPage();
     expect(
-      await screen.findByRole("button", { name: /Minha Agenda/ }),
+      await screen.findByRole("button", { name: /Minha agenda/ }),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByText("Grade de doc-1")).toBeInTheDocument(),
@@ -140,7 +140,7 @@ describe("Configurações — Minha Agenda e Feriados (MIG-05)", () => {
     searchParamsValue = new URLSearchParams("tab=holidays");
     renderPage();
     await screen.findByRole("button", { name: /Segurança/ });
-    expect(screen.queryByRole("button", { name: /Minha Agenda/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Minha agenda/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Feriados/ })).toBeNull();
     expect(screen.queryByText("Gestão de feriados")).toBeNull();
   });

@@ -41,7 +41,7 @@ test.afterAll(async () => {
 
 test.describe("Onboarding", () => {
   test("usuário novo vê o modal, dispensa e ele não volta", async () => {
-    const modal = page.getByText("Bem-vindo à INEXCI");
+    const modal = page.getByText("Bem-vindo à Inexci");
     await expect(modal).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole("button", { name: "Pular por agora" }).click();
@@ -50,7 +50,7 @@ test.describe("Onboarding", () => {
     await aguardarWelcomeSeenPersistido();
 
     await page.reload();
-    await expect(page.getByText("Bem-vindo à INEXCI")).toHaveCount(0);
+    await expect(page.getByText("Bem-vindo à Inexci")).toHaveCount(0);
   });
 
   test("refazer pela aba de Configurações reinicia direto no primeiro tour", async () => {
@@ -61,7 +61,7 @@ test.describe("Onboarding", () => {
 
     await page.getByRole("button", { name: "Refazer o onboarding" }).click();
 
-    await expect(page.getByText("Bem-vindo à INEXCI")).toHaveCount(0);
+    await expect(page.getByText("Bem-vindo à Inexci")).toHaveCount(0);
     await expect(
       page.getByRole("dialog", { name: "Envie sua assinatura" }),
     ).toBeVisible({ timeout: 15_000 });
@@ -179,9 +179,7 @@ test.describe("Onboarding", () => {
     await expect(
       page.locator('[data-tour="agenda-consulta-acoes"]'),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Confirmar" }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Confirmar" })).toBeVisible();
     const passo3 = page.getByRole("dialog", {
       name: "Confirmar, remarcar ou cancelar",
     });
@@ -248,7 +246,9 @@ test.describe("Onboarding", () => {
     await page.getByRole("button", { name: "Próximo" }).click();
 
     await expect(
-      page.getByRole("heading", { name: "Criar solicitação a partir de documento" }),
+      page.getByRole("heading", {
+        name: "Criar solicitação a partir de documento",
+      }),
     ).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("Análise em andamento")).toBeVisible({
       timeout: 15_000,
@@ -294,7 +294,7 @@ test.describe("Onboarding", () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/configuracoes?tab=onboarding");
 
-    const welcome = page.getByText("Bem-vindo à INEXCI");
+    const welcome = page.getByText("Bem-vindo à Inexci");
     if (await welcome.isVisible()) {
       await page.getByRole("button", { name: "Pular por agora" }).click();
     }
@@ -320,8 +320,6 @@ test.describe("Onboarding", () => {
     ).toBeVisible();
     await expect(page.getByText("Hospitais", { exact: true })).toBeVisible();
     await expect(page.getByText("Convênios", { exact: true })).toBeVisible();
-    await expect(
-      page.getByText("Fornecedores", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("Fornecedores", { exact: true })).toBeVisible();
   });
 });

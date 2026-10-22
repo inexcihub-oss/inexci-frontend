@@ -1,43 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardHeader, CardContent } from "@/components/ui/Card";
+import { KeyRound } from "lucide-react";
+import { Card } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import PasswordInput from "@/components/ui/PasswordInput";
 import type { ToastType } from "@/types/toast.types";
-import { authService } from "@/services/auth.service";
 import { useAuth } from "@/contexts/AuthContext";
-import { changePasswordSchema } from "@/lib/schemas/configuracoes.schema";
-import { summarizeErrors } from "@/lib/form-errors";
-import { getApiErrorMessage } from "@/lib/http-error";
-import { issuesToFieldErrors } from "./SettingsControls";
-import { isMfaChallenge } from "@/types";
+import { ChangePasswordModal } from "./ChangePasswordModal";
 import { MfaSection } from "./MfaSection";
-
-const PASSWORD_FIELD_LABELS: Record<string, string> = {
-  currentPassword: "Senha atual",
-  newPassword: "Nova senha",
-  confirmPassword: "Confirmar nova senha",
-};
-
-const EMPTY_PASSWORD = {
-  currentPassword: "",
-  newPassword: "",
-  confirmPassword: "",
-};
-
-async function renovarSessao(
-  email: string | undefined,
-  password: string,
-): Promise<boolean> {
-  if (!email) return false;
-  try {
-    const response = await authService.login({ email, password });
-    return !isMfaChallenge(response);
-  } catch {
-    return false;
-  }
-}
+import { SecurityRow } from "./SecurityRow";
 
 export function SecurityTab({
   showToast,
@@ -45,111 +16,33 @@ export function SecurityTab({
   showToast: (message: string, type?: ToastType) => void;
 }) {
   const { user } = useAuth();
-  const [saving, setSaving] = useState(false);
-  const [passwordData, setPasswordData] = useState(EMPTY_PASSWORD);
-  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>(
-    {},
-  );
-
-  const updatePasswordField = (
-    field: keyof typeof passwordData,
-    value: string,
-  ) => {
-    setPasswordData((prev) => ({ ...prev, [field]: value }));
-    if (passwordErrors[field]) {
-      setPasswordErrors((prev) => {
-        const { [field]: _omit, ...rest } = prev;
-        return rest;
-      });
-    }
-  };
-
-  const handleChangePassword = async () => {
-    const result = changePasswordSchema.safeParse(passwordData);
-    if (!result.success) {
-      const errs = issuesToFieldErrors(result.error.issues);
-      setPasswordErrors(errs);
-      showToast(summarizeErrors(errs, PASSWORD_FIELD_LABELS), "error");
-      return;
-    }
-    setPasswordErrors({});
-    setSaving(true);
-    try {
-      await authService.updatePassword(
-        passwordData.currentPassword,
-        passwordData.newPassword,
-      );
-      const sessaoRenovada = await renovarSessao(
-        user?.email,
-        passwordData.newPassword,
-      );
-      showToast(
-        sessaoRenovada
-          ? "Senha alterada com sucesso! As outras sessões foram encerradas."
-          : "Senha alterada com sucesso! Faça login novamente.",
-        "success",
-      );
-      setPasswordData(EMPTY_PASSWORD);
-    } catch (error: unknown) {
-      showToast(getApiErrorMessage(error, "Erro ao alterar senha"), "error");
-    } finally {
-      setSaving(false);
-    }
-  };
+  const [trocandoSenha, setTrocandoSenha] = useState(false);
 
   return (
-    <div className="space-y-6">
-      <Card className="border border-gray-200 rounded-2xl">
-        <CardHeader className="p-6 pb-4">
-          <h3 className="text-base font-semibold text-gray-900">
-            Alterar Senha
-          </h3>
-          <p className="text-sm text-gray-500">
-            Mantenha sua conta segura com uma senha forte
-          </p>
-        </CardHeader>
-        <CardContent className="p-6 pt-0">
-          <div className="space-y-4 max-w-md">
-            <PasswordInput
-              label="Senha atual"
-              value={passwordData.currentPassword}
-              onChange={(e) =>
-                updatePasswordField("currentPassword", e.target.value)
-              }
-              required
-              error={passwordErrors.currentPassword}
-            />
-            <PasswordInput
-              label="Nova senha"
-              showRequirements
-              value={passwordData.newPassword}
-              onChange={(e) =>
-                updatePasswordField("newPassword", e.target.value)
-              }
-              required
-              error={passwordErrors.newPassword}
-            />
-            <PasswordInput
-              label="Confirmar nova senha"
-              value={passwordData.confirmPassword}
-              onChange={(e) =>
-                updatePasswordField("confirmPassword", e.target.value)
-              }
-              required
-              error={passwordErrors.confirmPassword}
-            />
-            <Button
-              onClick={handleChangePassword}
-              isLoading={saving}
-              className="min-h-[44px] rounded-xl"
-            >
-              Alterar Senha
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <Card className="overflow-hidden rounded-2xl border border-gray-200 divide-y divide-gray-100">
+      <SecurityRow
+        icon={KeyRound}
+        title="Senha"
+        description="Use uma senha forte, que você não usa em outros sites."
+        action={
+          <Button
+            variant="outline"
+            onClick={() => setTrocandoSenha(true)}
+            className="min-h-[44px] rounded-xl"
+          >
+            Alterar senha
+          </Button>
+        }
+      />
 
       <MfaSection showToast={showToast} />
-    </div>
+
+      <ChangePasswordModal
+        isOpen={trocandoSenha}
+        email={user?.email}
+        onClose={() => setTrocandoSenha(false)}
+        showToast={showToast}
+      />
+    </Card>
   );
 }

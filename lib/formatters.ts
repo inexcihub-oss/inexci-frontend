@@ -110,25 +110,6 @@ export function parseApiDate(dateInput: string | Date): Date {
   return new Date(`${value}Z`);
 }
 
-export function parseApiDateForRelative(dateInput: string | Date): Date {
-  const parsed = parseApiDate(dateInput);
-  if (Number.isNaN(parsed.getTime())) return parsed;
-
-  const now = Date.now();
-  const diff = parsed.getTime() - now;
-  if (diff <= 0) return parsed;
-
-  const offsetMs = new Date().getTimezoneOffset() * 60 * 1000;
-  const skewMs = Math.abs(offsetMs);
-  const toleranceMs = 30 * 1000;
-
-  if (Math.abs(diff - skewMs) <= toleranceMs) {
-    return new Date(parsed.getTime() + offsetMs);
-  }
-
-  return parsed;
-}
-
 const DOCTOR_TITLE_PREFIX = /^(dr|dra|dr\(a\))\.?\s/i;
 
 export function formatDoctorName(

@@ -89,9 +89,9 @@ describe("resolveHome", () => {
   });
 
   it("prioriza atendimento sobre solicitações", () => {
-    expect(
-      resolveHome([Permission.ATENDIMENTO, Permission.SOLICITACOES]),
-    ).toBe("/atendimento");
+    expect(resolveHome([Permission.ATENDIMENTO, Permission.SOLICITACOES])).toBe(
+      "/atendimento",
+    );
     expect(resolveHome(ALL_PERMISSIONS)).toBe("/atendimento");
   });
 
@@ -127,9 +127,9 @@ describe("resolveHome", () => {
   });
 
   it("prioriza financeiro sobre administração e as áreas de trabalho sobre financeiro", () => {
-    expect(
-      resolveHome([Permission.FINANCEIRO, Permission.ADMINISTRACAO]),
-    ).toBe("/financeiro");
+    expect(resolveHome([Permission.FINANCEIRO, Permission.ADMINISTRACAO])).toBe(
+      "/financeiro",
+    );
     expect(resolveHome([Permission.SOLICITACOES, Permission.FINANCEIRO])).toBe(
       "/solicitacoes-cirurgicas",
     );
@@ -233,12 +233,12 @@ describe("ALL_PERMISSIONS", () => {
 
 describe("presetFor", () => {
   it("reconhece o preset independentemente da ordem do array", () => {
-    expect(
-      presetFor([Permission.SOLICITACOES, Permission.AGENDA]),
-    ).toBe("cirurgia");
-    expect(
-      presetFor([Permission.AGENDA, Permission.SOLICITACOES]),
-    ).toBe("cirurgia");
+    expect(presetFor([Permission.SOLICITACOES, Permission.AGENDA])).toBe(
+      "cirurgia",
+    );
+    expect(presetFor([Permission.AGENDA, Permission.SOLICITACOES])).toBe(
+      "cirurgia",
+    );
     expect(
       presetFor([
         Permission.SOLICITACOES,
@@ -283,9 +283,8 @@ describe("presetFor", () => {
 
 describe("NAV_ITEMS — fonte única do menu", () => {
   it("a permissão de cada item é a mesma que o guard aplica à rota", async () => {
-    const { NAV_ITEMS, navItemPermission, permissionForRoute } = await import(
-      "./permissions"
-    );
+    const { NAV_ITEMS, navItemPermission, permissionForRoute } =
+      await import("./permissions");
     for (const item of NAV_ITEMS) {
       expect(navItemPermission(item)).toBe(permissionForRoute(item.href));
     }
@@ -305,9 +304,8 @@ describe("NAV_ITEMS — fonte única do menu", () => {
   });
 
   it("o Financeiro fica no menu, no 'Mais' do mobile, e exige a área", async () => {
-    const { NAV_ITEMS, mobileNavItems, navItemPermission } = await import(
-      "./permissions"
-    );
+    const { NAV_ITEMS, mobileNavItems, navItemPermission } =
+      await import("./permissions");
     const item = NAV_ITEMS.find((i) => i.href === "/financeiro");
     expect(item?.label).toBe("Financeiro");
     expect(item && navItemPermission(item)).toBe(Permission.FINANCEIRO);
@@ -316,7 +314,7 @@ describe("NAV_ITEMS — fonte única do menu", () => {
     );
   });
 
-  it("o grupo Cadastros reúne as cinco telas de cadastro", async () => {
+  it("o grupo Cadastros reúne as seis telas de cadastro, com Procedimentos", async () => {
     const { CADASTROS_HREFS } = await import("./permissions");
     expect(CADASTROS_HREFS).toEqual([
       "/clinicas",
@@ -324,6 +322,18 @@ describe("NAV_ITEMS — fonte única do menu", () => {
       "/convenios",
       "/fornecedores",
       "/fabricantes",
+      "/procedimentos",
     ]);
+  });
+
+  it("o trabalho do dia a dia vem antes da gestão, e todo cadastro é gestão", async () => {
+    const { NAV_ITEMS } = await import("./permissions");
+    const secoes = NAV_ITEMS.map((i) => i.section);
+    expect(secoes.indexOf("gestao")).toBe(secoes.lastIndexOf("trabalho") + 1);
+    expect(
+      NAV_ITEMS.filter((i) => i.group === "cadastros").every(
+        (i) => i.section === "gestao",
+      ),
+    ).toBe(true);
   });
 });

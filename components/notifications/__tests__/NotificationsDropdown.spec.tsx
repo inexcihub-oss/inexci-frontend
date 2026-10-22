@@ -139,16 +139,72 @@ describe("NotificationsDropdown", () => {
     expect(screen.getByText("Ação de usuário")).toBeInTheDocument();
   });
 
-  it("mostra ícone correto por tipo de notificação", async () => {
-    render(<NotificationsDropdown />);
+  it("mostra ícone do design system por tipo, sem emoji", async () => {
+    const { container } = render(<NotificationsDropdown />);
     fireEvent.click(screen.getByText("Notificações"));
 
     await waitFor(() => {
-      expect(screen.getByText("📋")).toBeInTheDocument();
-      expect(screen.getByText("⏰")).toBeInTheDocument();
-      expect(screen.getByText("👤")).toBeInTheDocument();
-      expect(screen.getByText("💬")).toBeInTheDocument();
+      expect(screen.getByText("Status alterado")).toBeInTheDocument();
     });
+
+    const kinds = Array.from(
+      container.querySelectorAll("[data-notification-kind]"),
+    ).map((el) => el.getAttribute("data-notification-kind"));
+    expect(kinds).toEqual([
+      "status_update",
+      "stale",
+      "action_by_user",
+      "mention",
+    ]);
+    expect(container.querySelectorAll("svg").length).toBeGreaterThan(4);
+    expect(screen.queryByText("📋")).not.toBeInTheDocument();
+  });
+
+  it("tira o emoji do título de solicitação parada crítica", async () => {
+    mockGetNotifications.mockResolvedValue({
+      notifications: [
+        {
+          id: 9,
+          type: "system",
+          title: "⚠️ Solicitação Parada — Ação Imediata",
+          message: "Parada há 49 dias",
+          read: false,
+          metadata: { staleDays: 49, severity: "critical" },
+          createdAt: "2026-04-16T10:00:00Z",
+        },
+      ],
+      unreadCount: 1,
+      total: 1,
+    });
+    const { container } = render(<NotificationsDropdown />);
+    fireEvent.click(screen.getByText("Notificações"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Solicitação Parada — Ação Imediata"),
+      ).toBeInTheDocument();
+    });
+    expect(
+      container.querySelector('[data-notification-kind="stale_critical"]'),
+    ).not.toBeNull();
+  });
+
+  it("fecha com Esc e devolve o foco ao botão", async () => {
+    render(<NotificationsDropdown />);
+    const trigger = screen.getByRole("button", { name: /Notificações/ });
+    fireEvent.click(trigger);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("dialog", { name: "Notificações" }),
+      ).toBeInTheDocument();
+    });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
   it("marca notificação como lida ao clicar", async () => {
@@ -209,14 +265,14 @@ describe("NotificationsDropdown", () => {
     });
   });
 
-  it("mostra link para configurações no footer", async () => {
-    render(<NotificationsDropdown />);
+  it("leva às preferências de notificação nas configurações", async () => {
+    const { container } = render(<NotificationsDropdown />);
     fireEvent.click(screen.getByText("Notificações"));
 
     await waitFor(() => {
-      const link = screen.getByText("Configurações");
-      expect(link).toBeInTheDocument();
-      expect(link.closest("a")).toHaveAttribute("href", "/configuracoes");
+      expect(
+        container.querySelector('a[href="/configuracoes?tab=notifications"]'),
+      ).not.toBeNull();
     });
   });
 

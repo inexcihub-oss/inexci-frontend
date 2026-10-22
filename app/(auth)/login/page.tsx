@@ -91,14 +91,16 @@ function LoginForm() {
             />
           </div>
 
-          <div className="text-center">
-            <h2 className="text-2xl sm:text-3xl font-semibold text-black font-urbanist">
-              Bem-vindo de volta
-            </h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Entre com suas credenciais para acessar o sistema
-            </p>
-          </div>
+          {!mfaToken && (
+            <div className="text-center">
+              <h2 className="text-2xl sm:text-3xl font-semibold text-black font-urbanist">
+                Bem-vindo de volta
+              </h2>
+              <p className="mt-2 text-sm text-gray-600">
+                Entre com suas credenciais para acessar o sistema
+              </p>
+            </div>
+          )}
 
           {mfaToken ? (
             <MfaLoginStep

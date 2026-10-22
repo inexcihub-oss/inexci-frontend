@@ -25,13 +25,15 @@ import { SecurityTab } from "./SecurityTab";
 
 async function trocarSenha() {
   const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: /alterar senha/i }));
+  await screen.findByRole("dialog");
   const [atual, nova, confirmacao] = Array.from(
     document.querySelectorAll<HTMLInputElement>("input[type=password]"),
   );
   await user.type(atual, "Atual123@");
   await user.type(nova, "NovaSenha123@");
   await user.type(confirmacao, "NovaSenha123@");
-  await user.click(screen.getByRole("button", { name: /alterar senha/i }));
+  await user.click(screen.getByRole("button", { name: /salvar nova senha/i }));
 }
 
 describe("SecurityTab", () => {
@@ -94,5 +96,20 @@ describe("SecurityTab", () => {
     expect(
       screen.getByRole("heading", { name: /verificação em duas etapas/i }),
     ).toBeInTheDocument();
+  });
+
+  it("a troca de senha fica fechada até ser pedida e o modal fecha ao salvar", async () => {
+    loginMock.mockResolvedValue({});
+    render(<SecurityTab showToast={vi.fn()} />);
+
+    expect(document.querySelectorAll("input[type=password]")).toHaveLength(0);
+
+    await trocarSenha();
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(updatePasswordMock).toHaveBeenCalledWith(
+      "Atual123@",
+      "NovaSenha123@",
+    );
   });
 });

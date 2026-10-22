@@ -1,24 +1,14 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import {
-  User,
-  Bell,
-  CreditCard,
-  Shield,
-  ShieldCheck,
-  LayoutTemplate,
-  Compass,
-  FileText,
-  CalendarClock,
-  CalendarOff,
-} from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import PageContainer from "@/components/PageContainer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/useToast";
 import { Permission } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
 import { OnboardingSettingsTab } from "@/components/onboarding/OnboardingSettingsTab";
 import { PrivacySection } from "@/components/privacy/PrivacySection";
 import { DocumentTemplatesSettings } from "@/components/clinical/DocumentTemplatesSettings";
@@ -27,6 +17,7 @@ import { TabButton } from "@/components/configuracoes/SettingsControls";
 import {
   BILLING_TAB_ENABLED,
   resolveSettingsTab,
+  settingsNavGroups,
   type SettingsTab,
   type SettingsTabAccess,
 } from "@/components/configuracoes/settings-tabs";
@@ -38,6 +29,7 @@ import { NotificationsTab } from "@/components/configuracoes/NotificationsTab";
 import { SecurityTab } from "@/components/configuracoes/SecurityTab";
 import { HeaderTab } from "@/components/configuracoes/HeaderTab";
 import { MyScheduleTab } from "@/components/configuracoes/MyScheduleTab";
+import { PatientNoticesTab } from "@/components/configuracoes/PatientNoticesTab";
 
 const BillingSection = dynamic(
   () =>
@@ -72,10 +64,17 @@ function ConfiguracoesPageInner() {
   const [activeTab, setActiveTab] = useState<SettingsTab>(
     () => resolveSettingsTab(searchParams.get("tab"), acessoAbas) ?? "profile",
   );
+  const [detalheNoCelular, setDetalheNoCelular] = useState(
+    () => !!searchParams.get("tab"),
+  );
+  const veioDaLista = useRef(false);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (!tab) return;
+    if (!tab) {
+      setDetalheNoCelular(false);
+      return;
+    }
     const resolvido = resolveSettingsTab(tab, {
       isAccountOwner,
       emiteDocumentos: canIssueClinicalDocuments,
@@ -83,7 +82,10 @@ function ConfiguracoesPageInner() {
       podeAdministrar,
       hasUser,
     });
-    if (resolvido) setActiveTab(resolvido);
+    if (resolvido) {
+      setActiveTab(resolvido);
+      setDetalheNoCelular(true);
+    }
   }, [
     searchParams,
     isAccountOwner,
@@ -98,7 +100,10 @@ function ConfiguracoesPageInner() {
     subscription,
     refreshSubscription,
     showToast,
-    openPlanTab: () => setActiveTab("plan"),
+    openPlanTab: () => {
+      setActiveTab("plan");
+      setDetalheNoCelular(true);
+    },
   });
 
   const profileSettings = useProfileSettings({
@@ -107,100 +112,109 @@ function ConfiguracoesPageInner() {
     updateUser,
     showToast,
   });
-  const notificationSettings = useNotificationSettings({
-    podeAdministrar,
-    showToast,
-  });
+  const notificationSettings = useNotificationSettings({ showToast });
   const profileIsDoctor = !!profileSettings.profile.isDoctor;
   const mostraPlano = isAccountOwner && BILLING_TAB_ENABLED;
+  const gruposDaNavegacao = settingsNavGroups({
+    ...acessoAbas,
+    mostraCabecalho: profileIsDoctor,
+  });
+  const rotuloDaSecao =
+    gruposDaNavegacao
+      .flatMap((grupo) => grupo.items)
+      .find((item) => item.id === activeTab)?.label ?? "Configurações";
+
+  const abrirSecao = (tab: SettingsTab) => {
+    setActiveTab(tab);
+    setDetalheNoCelular(true);
+    const noCelular = !window.matchMedia?.("(min-width: 1024px)")?.matches;
+    veioDaLista.current = noCelular;
+    const url = `/configuracoes?tab=${tab}`;
+    if (noCelular) window.history.pushState(null, "", url);
+    else window.history.replaceState(null, "", url);
+  };
+
+  const voltarParaLista = () => {
+    setDetalheNoCelular(false);
+    if (veioDaLista.current) {
+      veioDaLista.current = false;
+      window.history.back();
+    } else {
+      window.history.replaceState(null, "", "/configuracoes");
+    }
+  };
 
   return (
     <PageContainer>
       <div className="flex-1 overflow-auto p-4 lg:p-6">
-        <div className="mb-6">
+        <div className={cn("mb-6", detalheNoCelular && "hidden lg:block")}>
           <h1 className="ds-page-title">Configurações</h1>
           <p className="text-sm md:text-base text-gray-500 mt-1">
             Gerencie suas preferências e configurações da conta
           </p>
         </div>
 
+        {detalheNoCelular && (
+          <div className="mb-4 lg:hidden">
+            <button
+              type="button"
+              onClick={voltarParaLista}
+              aria-label="Voltar para Configurações"
+              className="-ml-2 inline-flex min-h-[44px] items-center gap-1 rounded-xl px-2 text-sm font-medium text-primary-700 active:bg-primary-50"
+            >
+              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              Configurações
+            </button>
+            <h2 className="ds-page-title mt-1">{rotuloDaSecao}</h2>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-          <div className="w-full lg:w-64 shrink-0">
-            <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible scrollbar-hide pb-2 lg:pb-0">
-              <TabButton
-                active={activeTab === "profile"}
-                onClick={() => setActiveTab("profile")}
-                icon={User}
-                label="Perfil"
-              />
-              <TabButton
-                active={activeTab === "notifications"}
-                onClick={() => setActiveTab("notifications")}
-                icon={Bell}
-                label="Notificações"
-              />
-              {mostraPlano && (
-                <TabButton
-                  active={activeTab === "plan"}
-                  onClick={() => setActiveTab("plan")}
-                  icon={CreditCard}
-                  label="Plano e Faturamento"
-                />
-              )}
-              {profileIsDoctor && (
-                <TabButton
-                  active={activeTab === "header"}
-                  onClick={() => setActiveTab("header")}
-                  icon={LayoutTemplate}
-                  label="Cabeçalho de Documentos"
-                />
-              )}
-              {isDoctor && user?.id && (
-                <TabButton
-                  active={activeTab === "my-schedule"}
-                  onClick={() => setActiveTab("my-schedule")}
-                  icon={CalendarClock}
-                  label="Minha Agenda"
-                />
-              )}
-              {podeAdministrar && (
-                <TabButton
-                  active={activeTab === "holidays"}
-                  onClick={() => setActiveTab("holidays")}
-                  icon={CalendarOff}
-                  label="Feriados"
-                />
-              )}
-              {canIssueClinicalDocuments && user?.id && (
-                <TabButton
-                  active={activeTab === "document-templates"}
-                  onClick={() => setActiveTab("document-templates")}
-                  icon={FileText}
-                  label="Modelos de Documentos"
-                />
-              )}
-              <TabButton
-                active={activeTab === "security"}
-                onClick={() => setActiveTab("security")}
-                icon={Shield}
-                label="Segurança"
-              />
-              <TabButton
-                active={activeTab === "privacy"}
-                onClick={() => setActiveTab("privacy")}
-                icon={ShieldCheck}
-                label="Privacidade e Termos"
-              />
-              <TabButton
-                active={activeTab === "onboarding"}
-                onClick={() => setActiveTab("onboarding")}
-                icon={Compass}
-                label="Primeiros passos"
-              />
+          <div
+            className={cn(
+              "w-full lg:w-64 shrink-0",
+              detalheNoCelular && "hidden lg:block",
+            )}
+          >
+            <nav
+              aria-label="Seções das configurações"
+              className="flex flex-col gap-6 lg:gap-5"
+            >
+              {gruposDaNavegacao.map((grupo) => (
+                <div
+                  key={grupo.id}
+                  role="group"
+                  aria-labelledby={`grupo-config-${grupo.id}`}
+                  className="flex flex-col gap-1.5 lg:gap-1"
+                >
+                  <p
+                    id={`grupo-config-${grupo.id}`}
+                    className="px-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400"
+                  >
+                    {grupo.label}
+                  </p>
+                  <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100 lg:flex lg:flex-col lg:gap-1 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:divide-y-0">
+                    {grupo.items.map((item) => (
+                      <TabButton
+                        key={item.id}
+                        active={activeTab === item.id}
+                        onClick={() => abrirSecao(item.id)}
+                        icon={item.icon}
+                        label={item.label}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </nav>
           </div>
 
-          <div className="flex-1 min-w-0">
+          <div
+            className={cn(
+              "flex-1 min-w-0",
+              !detalheNoCelular && "hidden lg:block",
+            )}
+          >
             {activeTab === "profile" && (
               <ProfileTab
                 settings={profileSettings}
@@ -221,6 +235,9 @@ function ConfiguracoesPageInner() {
             )}
             {activeTab === "holidays" && podeAdministrar && (
               <HolidaysSettings />
+            )}
+            {activeTab === "patient-notices" && podeAdministrar && (
+              <PatientNoticesTab showToast={showToast} />
             )}
             {activeTab === "document-templates" &&
               canIssueClinicalDocuments &&

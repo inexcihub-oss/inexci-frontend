@@ -6,7 +6,7 @@ export function buildRecoveryCodesFile(
   geradoEm: Date = new Date(),
 ): string {
   const linhas = [
-    "INEXCI - Códigos de recuperação da verificação em duas etapas",
+    "Inexci - Códigos de recuperação da verificação em duas etapas",
     email ? `Conta: ${email}` : null,
     `Gerados em: ${geradoEm.toLocaleString("pt-BR")}`,
     "",

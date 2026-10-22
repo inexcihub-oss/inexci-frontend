@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 import { Permission } from "@/lib/permissions";
 import { ACAO_CADASTROS_ABRIR_MENU_MOBILE } from "@/lib/onboarding/tour-registry";
 
@@ -111,6 +111,33 @@ describe("BottomNavBar — filtro por permissão", () => {
     expect(
       document.querySelector('[data-tour="cadastros-menu-mobile"]'),
     ).not.toBeNull();
+  });
+});
+
+describe("BottomNavBar — folha Mais agrupada", () => {
+  beforeEach(() => {
+    authState = { ...authState, permissions: [] };
+  });
+
+  it("separa Gestão de Cadastros na folha do Mais", () => {
+    authState.permissions = [
+      Permission.SOLICITACOES,
+      Permission.FINANCEIRO,
+      Permission.ADMINISTRACAO,
+    ];
+    render(<BottomNavBar />);
+    openOverflow();
+
+    const gestao = screen.getByRole("region", { name: "Gestão" });
+    expect(
+      within(gestao)
+        .getAllByRole("link")
+        .map((l) => l.textContent),
+    ).toEqual(["Dashboard", "Financeiro", "Colaboradores"]);
+    const cadastros = screen.getByRole("region", { name: "Cadastros" });
+    expect(
+      within(cadastros).getByRole("link", { name: "Procedimentos" }),
+    ).toBeInTheDocument();
   });
 });
 

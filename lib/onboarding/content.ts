@@ -1,10 +1,10 @@
 import { Permission } from "@/lib/permissions";
 
 export const BOAS_VINDAS = {
-  titulo: "Bem-vindo à INEXCI",
+  titulo: "Bem-vindo à Inexci",
   slides: [
     {
-      titulo: "O que é a INEXCI",
+      titulo: "O que é a Inexci",
       corpo:
         "Somos um software que transforma a jornada do seu paciente cirúrgico em uma experiência que encanta e fideliza, do atendimento à cirurgia tudo conectado e monitorado em um só lugar.",
     },

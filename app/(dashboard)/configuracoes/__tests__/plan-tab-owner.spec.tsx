@@ -88,10 +88,10 @@ describe("Configurações — aba de plano visível só para o dono da conta", (
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Perfil")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Perfil" })).toBeInTheDocument();
     });
 
-    expect(screen.queryByText("Plano e Faturamento")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Plano e faturamento" })).not.toBeInTheDocument();
   });
 
   it("mostra a aba de plano para o dono da conta (id === accountId)", async () => {
@@ -101,7 +101,7 @@ describe("Configurações — aba de plano visível só para o dono da conta", (
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Plano e Faturamento")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Plano e faturamento" })).toBeInTheDocument();
     });
   });
 });

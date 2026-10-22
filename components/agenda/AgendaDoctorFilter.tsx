@@ -19,10 +19,7 @@ const BUSCA_A_PARTIR_DE = 7;
 const LARGURA_LISTA = 300;
 
 const semAcento = (texto: string) =>
-  texto
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+  texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 export function AgendaDoctorFilter({
   doctors,
@@ -34,9 +31,8 @@ export function AgendaDoctorFilter({
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
   const buscaRef = useRef<HTMLInputElement>(null);
-  const { anchorRef, dropdownRef, position } = useAnchoredDropdown(
-    aberto,
-    () => setAberto(false),
+  const { anchorRef, dropdownRef, position } = useAnchoredDropdown(aberto, () =>
+    setAberto(false),
   );
 
   useEffect(() => {
@@ -108,17 +104,15 @@ export function AgendaDoctorFilter({
         aria-expanded={aberto}
         aria-label={`Profissionais: ${rotulo}`}
         className={cn(
-          "flex min-h-[44px] md:min-h-0 md:h-8 max-w-full shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors",
-          todos
-            ? "border-neutral-200 text-neutral-700 hover:bg-neutral-50"
-            : "border-teal-600 bg-teal-50 text-teal-800 hover:bg-teal-100",
+          "ds-toolbar-btn max-w-full",
+          !todos && "ds-toolbar-btn-active",
         )}
       >
-        <Users className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="truncate">{todos ? "Profissionais" : rotulo}</span>
         <ChevronDown
           className={cn(
-            "h-3.5 w-3.5 shrink-0 transition-transform",
+            "h-4 w-4 shrink-0 transition-transform",
             aberto && "rotate-180",
           )}
           aria-hidden="true"

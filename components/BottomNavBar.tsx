@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSwipeToClose } from "@/hooks/useSwipeToClose";
+import { MoreHorizontal, type LucideIcon } from "lucide-react";
 import {
   mobileNavItems,
+  NAV_GROUP_META,
+  NAV_SECTION_LABELS,
   navItemPermission,
   NavItem,
   Permission,
@@ -16,17 +18,21 @@ import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction
 import { ACAO_CADASTROS_ABRIR_MENU_MOBILE } from "@/lib/onboarding/tour-registry";
 
 interface BottomNavItem {
-  iconSrc: string;
+  icon: LucideIcon;
   label: string;
   href: string;
   permission: Permission | null;
+  sheetGroup: string;
 }
 
 const toBottomItem = (item: NavItem): BottomNavItem => ({
-  iconSrc: item.iconSrc,
+  icon: item.icon,
   label: item.shortLabel ?? item.label,
   href: item.href,
   permission: navItemPermission(item),
+  sheetGroup: item.group
+    ? NAV_GROUP_META[item.group].label
+    : (NAV_SECTION_LABELS[item.section] ?? "Menu"),
 });
 
 const PRIMARY_ITEMS = mobileNavItems("primary").map(toBottomItem);
@@ -46,14 +52,27 @@ export default function BottomNavBar() {
     useSwipeToClose(closeOverflow);
 
   const primaryItems = useMemo(
-    () => PRIMARY_ITEMS.filter((item) => !item.permission || can(item.permission)),
+    () =>
+      PRIMARY_ITEMS.filter((item) => !item.permission || can(item.permission)),
     [can],
   );
 
   const overflowItems = useMemo(
-    () => OVERFLOW_ITEMS.filter((item) => !item.permission || can(item.permission)),
+    () =>
+      OVERFLOW_ITEMS.filter((item) => !item.permission || can(item.permission)),
     [can],
   );
+
+  const overflowGroups = useMemo(() => {
+    const grupos = new Map<string, BottomNavItem[]>();
+    for (const item of overflowItems) {
+      grupos.set(item.sheetGroup, [
+        ...(grupos.get(item.sheetGroup) ?? []),
+        item,
+      ]);
+    }
+    return Array.from(grupos.entries());
+  }, [overflowItems]);
 
   const totalSlots = primaryItems.length + (overflowItems.length > 0 ? 1 : 0);
   const isSparse = totalSlots > 0 && totalSlots <= 3;
@@ -97,21 +116,10 @@ export default function BottomNavBar() {
                 {active && (
                   <div className="absolute -top-0.5 w-5 h-0.5 bg-primary-600 rounded-full" />
                 )}
-                <div
-                  className={`w-6 h-6 relative transition-transform duration-200 ${active ? "scale-110" : ""}`}
-                >
-                  <Image
-                    src={item.iconSrc}
-                    alt={item.label}
-                    width={24}
-                    height={24}
-                    className={`transition-all duration-200 ${
-                      active
-                        ? "brightness-0 saturate-100 [filter:invert(55%)_sepia(65%)_saturate(480%)_hue-rotate(130deg)_brightness(92%)_contrast(92%)]"
-                        : ""
-                    }`}
-                  />
-                </div>
+                <item.icon
+                  className={`h-6 w-6 transition-transform duration-200 ${active ? "scale-110" : ""}`}
+                  aria-hidden="true"
+                />
                 <span
                   className={`text-[10px] font-medium leading-tight transition-colors duration-200 ${
                     active
@@ -139,17 +147,7 @@ export default function BottomNavBar() {
               {(overflowActive || overflowOpen) && (
                 <div className="absolute -top-0.5 w-5 h-0.5 bg-primary-600 rounded-full" />
               )}
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="w-6 h-6"
-              >
-                <circle cx="5" cy="12" r="2" />
-                <circle cx="12" cy="12" r="2" />
-                <circle cx="19" cy="12" r="2" />
-              </svg>
+              <MoreHorizontal className="h-6 w-6" aria-hidden="true" />
               <span
                 className={`text-[10px] font-medium leading-tight ${
                   overflowActive || overflowOpen
@@ -191,48 +189,46 @@ export default function BottomNavBar() {
             </div>
 
             <div
-              className="grid grid-cols-4 gap-1 px-4"
+              className="space-y-4 px-4"
               style={{
                 paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
               }}
             >
-              {overflowItems.map((item) => {
-                const active = isActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-colors ${
-                      active
-                        ? "bg-primary-50 text-primary-600"
-                        : "hover:bg-neutral-50 text-neutral-200 hover:text-neutral-900"
-                    }`}
-                  >
-                    <div className="w-8 h-8 flex items-center justify-center">
-                      <Image
-                        src={item.iconSrc}
-                        alt={item.label}
-                        width={28}
-                        height={28}
-                        className={`transition-all duration-200 ${
-                          active
-                            ? "brightness-0 saturate-100 [filter:invert(55%)_sepia(65%)_saturate(480%)_hue-rotate(130deg)_brightness(92%)_contrast(92%)]"
-                            : ""
-                        }`}
-                      />
-                    </div>
-                    <span
-                      className={`text-xs font-medium text-center leading-tight ${
-                        active
-                          ? "text-primary-600 font-semibold"
-                          : "text-neutral-900"
-                      }`}
-                    >
-                      {item.label}
-                    </span>
-                  </Link>
-                );
-              })}
+              {overflowGroups.map(([grupo, itens]) => (
+                <section key={grupo} aria-label={grupo}>
+                  <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                    {grupo}
+                  </p>
+                  <div className="grid grid-cols-4 gap-1">
+                    {itens.map((item) => {
+                      const active = isActive(item.href);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          aria-current={active ? "page" : undefined}
+                          className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-colors ${
+                            active
+                              ? "bg-primary-50 text-primary-600"
+                              : "hover:bg-neutral-50 text-gray-600 hover:text-neutral-900"
+                          }`}
+                        >
+                          <item.icon className="h-6 w-6" aria-hidden="true" />
+                          <span
+                            className={`text-xs font-medium text-center leading-tight ${
+                              active
+                                ? "text-primary-600 font-semibold"
+                                : "text-neutral-900"
+                            }`}
+                          >
+                            {item.label}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
           </div>
         </>

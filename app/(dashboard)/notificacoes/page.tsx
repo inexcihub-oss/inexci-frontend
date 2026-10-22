@@ -4,22 +4,15 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
+  BellOff,
   Check,
-  X,
-  Loader2,
   CheckCheck,
   ChevronLeft,
   ChevronRight,
-  FileText,
-  AlertTriangle,
-  FileWarning,
-  FileSearch,
-  User,
-  Clock,
-  Info,
-  RefreshCw,
-  AtSign,
+  Loader2,
+  X,
 } from "lucide-react";
+import Link from "next/link";
 import { logger } from "@/lib/logger";
 import {
   notificationService,
@@ -28,126 +21,45 @@ import {
 } from "@/services/notification.service";
 import { cn } from "@/lib/utils";
 import { registryKeys } from "@/lib/query-keys";
-import { parseApiDateForRelative } from "@/lib/formatters";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import Link from "next/link";
+import { parseApiDate } from "@/lib/formatters";
+import {
+  cleanNotificationTitle,
+  daysBetween,
+  getNotificationDocumentName,
+  getNotificationFilter,
+  getNotificationMeta,
+  isDocumentExtractionNotification,
+  normalizeNotificationLink,
+  NOTIFICATION_FILTERS,
+} from "@/lib/notifications";
 import PageContainer from "@/components/PageContainer";
 import Button from "@/components/ui/Button";
-import NotificationActorAvatar from "@/components/notifications/NotificationActorAvatar";
+import NotificationIcon from "@/components/notifications/NotificationIcon";
+import NotificationTime from "@/components/notifications/NotificationTime";
 import { clearScFromDocumentStorage } from "@/lib/sc-from-document-background";
 
-const NOTIFICATION_TYPES = [
-  { value: "", label: "Todos os tipos" },
-  { value: "new_surgery_request", label: "Nova Solicitação" },
-  { value: "status_update", label: "Mudança de Status" },
-  { value: "pendency", label: "Pendência" },
-  { value: "expiring_document", label: "Documento Expirando" },
-  { value: "action_by_user", label: "Ação de Usuário" },
-  { value: "stale", label: "Solicitação Parada" },
-  { value: "mention", label: "Menção" },
-  { value: "info", label: "Informativo" },
-];
-
 const PAGE_SIZE = 20;
+function getDayGroup(createdAt: string, now = new Date()): string {
+  const date = parseApiDate(createdAt);
+  if (Number.isNaN(date.getTime())) return "Mais antigas";
+  const diffDays = daysBetween(date, now);
+  if (diffDays <= 0) return "Hoje";
+  if (diffDays === 1) return "Ontem";
+  if (diffDays < 7) return "Últimos 7 dias";
+  if (diffDays < 30) return "Últimos 30 dias";
+  return "Mais antigas";
+}
 
-type NotificationConfig = {
-  icon: React.ComponentType<{ className?: string }>;
-  bg: string;
-  text: string;
-};
-
-const NOTIFICATION_CONFIG: Record<string, NotificationConfig> = {
-  new_surgery_request: {
-    icon: FileText,
-    bg: "bg-primary-50",
-    text: "text-primary-600",
-  },
-  status_update: {
-    icon: RefreshCw,
-    bg: "bg-blue-50",
-    text: "text-blue-600",
-  },
-  pendency: {
-    icon: AlertTriangle,
-    bg: "bg-amber-50",
-    text: "text-amber-600",
-  },
-  expiring_document: {
-    icon: FileWarning,
-    bg: "bg-orange-50",
-    text: "text-orange-600",
-  },
-  action_by_user: {
-    icon: User,
-    bg: "bg-purple-50",
-    text: "text-purple-600",
-  },
-  stale: {
-    icon: Clock,
-    bg: "bg-red-50",
-    text: "text-red-500",
-  },
-  mention: {
-    icon: AtSign,
-    bg: "bg-teal-50",
-    text: "text-teal-600",
-  },
-  info: {
-    icon: Info,
-    bg: "bg-gray-100",
-    text: "text-gray-500",
-  },
-};
-
-const getConfig = (type: string): NotificationConfig =>
-  NOTIFICATION_CONFIG[type] ?? NOTIFICATION_CONFIG.info;
-
-const getTypeLabel = (type: string) =>
-  NOTIFICATION_TYPES.find((t) => t.value === type)?.label ?? type;
-
-const isDocumentExtractionNotification = (notification: Notification) => {
-  const metadata = notification.metadata;
-  if (metadata && typeof metadata === "object") {
-    const category =
-      typeof metadata.category === "string" ? metadata.category : undefined;
-    if (category === "document_extraction") return true;
+function groupByDay(notifications: Notification[]) {
+  const groups: { label: string; items: Notification[] }[] = [];
+  for (const notification of notifications) {
+    const label = getDayGroup(notification.createdAt);
+    const last = groups[groups.length - 1];
+    if (last?.label === label) last.items.push(notification);
+    else groups.push({ label, items: [notification] });
   }
-
-  return /análise de documento/i.test(notification.title || "");
-};
-
-const getDocumentName = (notification: Notification): string | null => {
-  const metadata = notification.metadata;
-  if (!metadata || typeof metadata !== "object") return null;
-
-  const documentName =
-    typeof metadata.documentName === "string"
-      ? metadata.documentName
-      : typeof metadata.fileName === "string"
-        ? metadata.fileName
-        : null;
-
-  return documentName?.trim() || null;
-};
-
-const getActorMetadata = (notification: Notification) => {
-  const metadata = notification.metadata;
-  if (!metadata || typeof metadata !== "object") return null;
-
-  const actorId =
-    typeof metadata.actorId === "string" ? metadata.actorId : undefined;
-  const actorName =
-    typeof metadata.actorName === "string" ? metadata.actorName : undefined;
-  const actorAvatarUrl =
-    typeof metadata.actorAvatarUrl === "string"
-      ? metadata.actorAvatarUrl
-      : null;
-
-  if (!actorId && !actorName && !actorAvatarUrl) return null;
-
-  return { actorId, actorName, actorAvatarUrl };
-};
+  return groups;
+}
 
 export default function NotificacoesPage() {
   const queryClient = useQueryClient();
@@ -171,10 +83,20 @@ export default function NotificacoesPage() {
       }),
   });
   const unreadCount = data?.unreadCount ?? 0;
+  const pageItems = data?.notifications;
   const notifications = useMemo(() => {
-    const all = data?.notifications ?? [];
-    return filterType ? all.filter((n) => n.type === filterType) : all;
-  }, [data, filterType]);
+    const all = pageItems ?? [];
+    return filterType
+      ? all.filter((n) => getNotificationFilter(n) === filterType)
+      : all;
+  }, [pageItems, filterType]);
+  const groups = useMemo(() => groupByDay(notifications), [notifications]);
+
+  const clearDocumentExtractionCacheIfNeeded = (notification: Notification) => {
+    if (isDocumentExtractionNotification(notification)) {
+      clearScFromDocumentStorage();
+    }
+  };
 
   const updatePage = (
     change: (prev: NotificationsResponse) => NotificationsResponse,
@@ -182,12 +104,6 @@ export default function NotificacoesPage() {
     queryClient.setQueryData<NotificationsResponse>(queryKey, (prev) =>
       prev ? change(prev) : prev,
     );
-
-  const clearDocumentExtractionCacheIfNeeded = (notification: Notification) => {
-    if (isDocumentExtractionNotification(notification)) {
-      clearScFromDocumentStorage();
-    }
-  };
 
   const handleMarkAsRead = async (notification: Notification) => {
     try {
@@ -242,18 +158,62 @@ export default function NotificacoesPage() {
     }
   };
 
-  const hasMore = notifications.length === PAGE_SIZE;
+  const hasMore = (pageItems?.length ?? 0) === PAGE_SIZE;
+  const hasFilters = !!filterType || filterUnreadOnly;
+
+  const renderContent = (notification: Notification) => {
+    const meta = getNotificationMeta(notification);
+    const documentName = getNotificationDocumentName(notification);
+    return (
+      <>
+        <div className="flex items-start gap-2">
+          <p
+            className={cn(
+              "flex-1 min-w-0 text-sm leading-snug",
+              notification.read
+                ? "font-normal text-gray-600"
+                : "font-semibold text-gray-900",
+            )}
+          >
+            {cleanNotificationTitle(notification.title)}
+          </p>
+          <NotificationTime
+            createdAt={notification.createdAt}
+            className="shrink-0 text-xs text-gray-400 tabular-nums lg:hidden"
+          />
+        </div>
+        <p className="mt-0.5 text-sm leading-relaxed text-gray-500 line-clamp-2 lg:line-clamp-1">
+          {notification.message}
+        </p>
+        {documentName && (
+          <p className="mt-0.5 text-xs text-gray-500 truncate">
+            Documento: {documentName}
+          </p>
+        )}
+        <span
+          className={cn(
+            "mt-2 inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium lg:hidden",
+            meta.chip,
+          )}
+        >
+          {meta.label}
+        </span>
+      </>
+    );
+  };
 
   return (
     <PageContainer className="border-gray-200">
-      <div className="flex-none flex items-center justify-between gap-3 px-4 lg:px-8 py-3 border-b border-gray-200">
-        <div className="flex items-center gap-2.5">
+      <div className="flex-none flex items-center justify-between gap-3 px-4 lg:px-8 py-3 lg:py-4 border-b border-gray-200">
+        <div className="min-w-0">
           <h1 className="ds-page-title">Notificações</h1>
-          {unreadCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-600 text-white text-[11px] font-semibold tabular-nums">
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          )}
+          <p className="ds-caption mt-0.5">
+            {unreadCount > 0
+              ? `${unreadCount > 99 ? "99+" : unreadCount} ${
+                  unreadCount === 1 ? "não lida" : "não lidas"
+                }`
+              : "Tudo em dia"}
+          </p>
         </div>
 
         {unreadCount > 0 && (
@@ -270,39 +230,51 @@ export default function NotificacoesPage() {
         )}
       </div>
 
-      <div className="flex-none flex flex-wrap items-center gap-2 px-4 lg:px-8 py-2.5 border-b border-gray-200 bg-gray-50/60">
+      <div className="flex-none flex flex-wrap items-center gap-2 px-4 lg:px-8 py-3 border-b border-gray-100">
+        <div
+          role="group"
+          aria-label="Status de leitura"
+          className="inline-flex rounded-xl bg-gray-100 p-1"
+        >
+          {[
+            { value: false, label: "Todas" },
+            { value: true, label: "Não lidas" },
+          ].map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              aria-pressed={filterUnreadOnly === option.value}
+              onClick={() => {
+                setFilterUnreadOnly(option.value);
+                setPage(0);
+              }}
+              className={cn(
+                "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                filterUnreadOnly === option.value
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-900",
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
         <select
+          aria-label="Filtrar por tipo"
           value={filterType}
           onChange={(e) => {
             setFilterType(e.target.value);
             setPage(0);
           }}
-          className="flex-1 sm:flex-none h-9 md:h-10 rounded-xl border border-neutral-100 bg-white px-3 text-xs sm:text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-shadow"
+          className="ds-input flex-1 sm:flex-none sm:w-60"
         >
-          {NOTIFICATION_TYPES.map((t) => (
+          {NOTIFICATION_FILTERS.map((t) => (
             <option key={t.value} value={t.value}>
               {t.label}
             </option>
           ))}
         </select>
-
-        <button
-          onClick={() => {
-            setFilterUnreadOnly(!filterUnreadOnly);
-            setPage(0);
-          }}
-          className={cn(
-            "inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs sm:text-sm font-medium transition-all min-h-[36px] md:min-h-[40px]",
-            filterUnreadOnly
-              ? "bg-primary-50 border-primary-300 text-primary-700"
-              : "border-neutral-100 bg-white text-gray-600 hover:bg-gray-50",
-          )}
-        >
-          {filterUnreadOnly && (
-            <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
-          )}
-          Não lidas
-        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -311,166 +283,111 @@ export default function NotificacoesPage() {
             <Loader2 className="w-7 h-7 animate-spin text-primary-600" />
           </div>
         ) : notifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 px-6 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-1">
-              <Bell className="w-6 h-6 text-gray-400" />
-            </div>
+          <div className="flex flex-col items-center justify-center gap-1 py-20 px-6 text-center">
+            <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+              {hasFilters ? (
+                <BellOff className="w-6 h-6 text-gray-400" />
+              ) : (
+                <Bell className="w-6 h-6 text-gray-400" />
+              )}
+            </span>
             <p className="text-sm font-medium text-gray-700">
               Nenhuma notificação
             </p>
             <p className="ds-caption max-w-xs">
-              {filterType || filterUnreadOnly
+              {hasFilters
                 ? "Tente remover os filtros para ver todas as notificações"
                 : "Você será notificado sobre atualizações importantes da plataforma"}
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
-            {notifications.map((notification) => {
-              const config = isDocumentExtractionNotification(notification)
-                ? {
-                    icon: FileSearch,
-                    bg: "bg-cyan-50",
-                    text: "text-cyan-700",
-                  }
-                : getConfig(notification.type);
-              const Icon = config.icon;
-              const actor = getActorMetadata(notification);
-              return (
-                <div
-                  key={notification.id}
-                  className={cn(
-                    "relative flex items-start gap-3 px-4 lg:px-8 py-3.5 hover:bg-gray-50 transition-colors group",
-                    !notification.read && "bg-primary-50/40",
-                  )}
-                >
-                  {!notification.read && (
-                    <span className="absolute left-2 lg:left-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
-                  )}
-
-                  {notification.type === "action_by_user" && actor ? (
-                    <NotificationActorAvatar
-                      actorId={actor.actorId}
-                      actorName={actor.actorName}
-                      actorAvatarUrl={actor.actorAvatarUrl}
-                      className="mt-0.5"
-                    />
-                  ) : (
-                    <div
+          groups.map((group) => (
+            <section key={group.label} aria-label={group.label}>
+              <h2 className="sticky top-0 z-10 border-b border-gray-100 bg-gray-50 px-4 lg:px-8 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {group.label}
+              </h2>
+              <ul className="divide-y divide-gray-100">
+                {group.items.map((notification) => {
+                  const meta = getNotificationMeta(notification);
+                  return (
+                    <li
+                      key={notification.id}
                       className={cn(
-                        "shrink-0 mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center",
-                        config.bg,
+                        "group relative flex items-start lg:items-center gap-3 lg:gap-4 px-4 lg:px-8 py-3.5 transition-colors hover:bg-gray-50",
+                        !notification.read && "bg-primary-50/30",
                       )}
                     >
-                      <Icon className={cn("w-4 h-4", config.text)} />
-                    </div>
-                  )}
-
-                  <div className="flex-1 min-w-0">
-                    {notification.link ? (
-                      <Link
-                        href={notification.link}
-                        onClick={() => {
-                          clearDocumentExtractionCacheIfNeeded(notification);
-                          if (!notification.read)
-                            handleMarkAsRead(notification);
-                        }}
-                        className="block"
-                      >
-                        <p
+                      {!notification.read && (
+                        <span
+                          aria-label="Não lida"
+                          className="absolute left-1.5 lg:left-3.5 top-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full bg-primary-500"
+                        />
+                      )}
+                      <NotificationIcon notification={notification} size="md" />
+                      <div className="flex-1 min-w-0">
+                        {notification.link ? (
+                          <Link
+                            href={normalizeNotificationLink(notification.link)}
+                            onClick={() => {
+                              clearDocumentExtractionCacheIfNeeded(
+                                notification,
+                              );
+                              if (!notification.read)
+                                handleMarkAsRead(notification);
+                            }}
+                            className="block rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                          >
+                            {renderContent(notification)}
+                          </Link>
+                        ) : (
+                          renderContent(notification)
+                        )}
+                      </div>
+                      <div className="hidden lg:flex w-44 shrink-0">
+                        <span
                           className={cn(
-                            "text-xs sm:text-sm font-medium leading-snug",
-                            notification.read
-                              ? "text-gray-600"
-                              : "text-gray-900",
+                            "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+                            meta.chip,
                           )}
                         >
-                          {notification.title}
-                        </p>
-                        <p className="ds-caption mt-0.5 line-clamp-2">
-                          {notification.message}
-                        </p>
-                        {getDocumentName(notification) && (
-                          <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                            Documento: {getDocumentName(notification)}
-                          </p>
+                          {meta.label}
+                        </span>
+                      </div>
+                      <NotificationTime
+                        createdAt={notification.createdAt}
+                        className="hidden lg:block w-28 shrink-0 text-right text-xs text-gray-400 tabular-nums"
+                      />
+                      <div className="flex w-[68px] shrink-0 items-center justify-end gap-1 lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100 transition-opacity">
+                        {!notification.read && (
+                          <button
+                            onClick={() => handleMarkAsRead(notification)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-primary-50 hover:text-primary-700 transition-colors"
+                            title="Marcar como lida"
+                            aria-label="Marcar como lida"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
                         )}
-                      </Link>
-                    ) : (
-                      <>
-                        <p
-                          className={cn(
-                            "text-xs sm:text-sm font-medium leading-snug",
-                            notification.read
-                              ? "text-gray-600"
-                              : "text-gray-900",
-                          )}
+                        <button
+                          onClick={() => handleDelete(notification)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          title="Remover"
+                          aria-label="Remover"
                         >
-                          {notification.title}
-                        </p>
-                        <p className="ds-caption mt-0.5 line-clamp-2">
-                          {notification.message}
-                        </p>
-                        {getDocumentName(notification) && (
-                          <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                            Documento: {getDocumentName(notification)}
-                          </p>
-                        )}
-                      </>
-                    )}
-
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium",
-                          config.bg,
-                          config.text,
-                        )}
-                      >
-                        {isDocumentExtractionNotification(notification)
-                          ? "Análise de documento"
-                          : getTypeLabel(notification.type)}
-                      </span>
-                      <span className="text-gray-300 text-[10px]">·</span>
-                      <span className="text-[11px] text-gray-400 tabular-nums">
-                        {formatDistanceToNow(
-                          parseApiDateForRelative(notification.createdAt),
-                          {
-                            addSuffix: true,
-                            locale: ptBR,
-                          },
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {!notification.read && (
-                      <button
-                        onClick={() => handleMarkAsRead(notification)}
-                        className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
-                        title="Marcar como lida"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete(notification)}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                      title="Remover"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))
         )}
       </div>
 
-      {!loading && (notifications.length > 0 || page > 0) && (
-        <div className="flex-none flex items-center justify-between px-4 lg:px-8 py-3 border-t border-gray-200 bg-gray-50/60">
+      {!loading && (hasMore || page > 0) && (
+        <div className="flex-none flex items-center justify-between px-4 lg:px-8 py-3 border-t border-gray-200">
           <Button
             variant="outline"
             size="sm"

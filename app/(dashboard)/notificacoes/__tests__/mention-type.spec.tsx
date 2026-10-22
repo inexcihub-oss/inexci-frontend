@@ -13,9 +13,13 @@ function render(ui: ReactElement) {
 }
 
 vi.mock("next/link", () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => <a href={href}>{children}</a>,
 }));
 
 vi.mock("date-fns", () => ({ formatDistanceToNow: () => "há 2 minutos" }));
@@ -63,8 +67,8 @@ describe("Central de notificações — tipo menção", () => {
     });
 
     expect(
-      screen.getByText("Menção", { selector: "span" }),
-    ).toBeInTheDocument();
+      screen.getAllByText("Menção", { selector: "span" }).length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByText("mention")).not.toBeInTheDocument();
   });
 
@@ -75,8 +79,6 @@ describe("Central de notificações — tipo menção", () => {
       expect(screen.getByText("Dr. Ana mencionou você")).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByRole("option", { name: "Menção" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Menção" })).toBeInTheDocument();
   });
 });

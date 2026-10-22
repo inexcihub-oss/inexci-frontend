@@ -1,6 +1,6 @@
-# INEXCI Frontend
+# Inexci Frontend
 
-Frontend da aplicação INEXCI desenvolvido em Next.js 14 com TypeScript e Tailwind CSS.
+Frontend da aplicação Inexci desenvolvido em Next.js 14 com TypeScript e Tailwind CSS.
 
 ## 🚀 Como Rodar
 

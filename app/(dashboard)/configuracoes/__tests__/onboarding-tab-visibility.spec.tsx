@@ -94,10 +94,10 @@ describe("Configurações — aba Primeiros passos é incondicional", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Perfil")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Perfil" })).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Primeiros passos")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Primeiros passos" })).toBeInTheDocument();
   });
 
   it("aparece também para o dono da conta", async () => {
@@ -107,10 +107,10 @@ describe("Configurações — aba Primeiros passos é incondicional", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Perfil")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Perfil" })).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Primeiros passos")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Primeiros passos" })).toBeInTheDocument();
   });
 
   it("?tab=onboarding abre a aba já selecionada", async () => {
