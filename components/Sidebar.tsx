@@ -5,12 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   ChevronDown,
+  ChevronsUpDown,
   LogOut,
-  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  Users,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -144,6 +143,9 @@ const itemClasses = (active: boolean) =>
       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
   );
 
+const menuItemClasses =
+  "flex w-full min-h-[40px] items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors duration-200";
+
 interface SidebarProps {
   isMobileOpen?: boolean;
   onMobileClose?: () => void;
@@ -183,8 +185,26 @@ export default function Sidebar({
     toggle: toggleMenu,
   } = useToggle();
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
   useClickOutside(menuRef, closeMenu, isMenuOpen);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      closeMenu();
+      menuTriggerRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isMenuOpen, closeMenu]);
+
+  const displayName = getDisplayName(user?.name || "Usuário");
+  const accountSubtitle =
+    user?.role === "collaborator" && user?.account?.ownerName
+      ? `Equipe de ${user.account.ownerName}`
+      : user?.email;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -401,108 +421,127 @@ export default function Sidebar({
 
         <div className="flex flex-col gap-1 px-1 pb-1">
           <NotificationsDropdown isCollapsed={isCollapsed} />
-
-          <Link
-            href="/configuracoes"
-            className={cn(
-              itemClasses(isRouteActive("/configuracoes")),
-              "lg:hidden",
-            )}
-            onClick={onMobileClose}
-          >
-            <Settings className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span>Configurações</span>
-          </Link>
         </div>
 
         <div
-          className={`relative py-6 border-t border-neutral-100 ${isCollapsed ? "px-1" : "px-2"}`}
+          className="relative border-t border-gray-100 px-1 py-2"
           ref={menuRef}
         >
-          <div
-            className={`flex items-center gap-1 ${isCollapsed ? "lg:justify-center" : ""}`}
+          <button
+            ref={menuTriggerRef}
+            type="button"
+            onClick={toggleMenu}
+            aria-haspopup="menu"
+            aria-expanded={isMenuOpen}
+            aria-label={`Menu da conta de ${displayName}`}
+            title={isCollapsed ? displayName : undefined}
+            className={cn(
+              "flex w-full min-h-[44px] items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors duration-200 hover:bg-gray-50",
+              isMenuOpen && "bg-gray-50",
+              isCollapsed && "lg:justify-center lg:px-0",
+            )}
           >
-            <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs md:text-sm font-semibold overflow-hidden shrink-0 ${!avatarUrl ? getAvatarColor(user?.name || "User") : ""}`}
-              title={isCollapsed ? user?.name || "Usuário" : undefined}
+            <span
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold text-gray-700",
+                !avatarUrl && getAvatarColor(user?.name || "User"),
+              )}
+              aria-hidden="true"
             >
               {avatarUrl ? (
                 <Image
                   src={avatarUrl}
                   unoptimized
-                  alt={user?.name || "Avatar"}
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-cover"
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 getInitials(user?.name || "User")
               )}
-            </div>
-            <div
-              className={`flex-1 flex flex-col min-w-0 ${
-                isCollapsed ? "lg:hidden" : ""
-              }`}
-            >
-              <span className="text-xs md:text-sm font-semibold text-neutral-900 truncate">
-                {getDisplayName(user?.name || "Usuário")}
-              </span>
-              {user?.role === "collaborator" && user?.account?.ownerName && (
-                <span
-                  className="mt-0.5 flex items-center gap-1 text-[11px] leading-tight text-teal-600 truncate"
-                  title={`Você faz parte da equipe de ${user.account.ownerName}`}
-                >
-                  <Users className="w-3 h-3 shrink-0" aria-hidden="true" />
-                  <span className="truncate">
-                    Equipe de {user.account.ownerName}
-                  </span>
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={toggleMenu}
+            </span>
+            <span
               className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors",
+                "flex min-w-0 flex-1 flex-col",
                 isCollapsed && "lg:hidden",
               )}
-              title="Menu"
-              aria-label="Menu"
             >
-              <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
+              <span className="truncate text-sm font-medium text-gray-900">
+                {displayName}
+              </span>
+              {accountSubtitle && (
+                <span
+                  className="truncate text-xs text-gray-500"
+                  title={accountSubtitle}
+                >
+                  {accountSubtitle}
+                </span>
+              )}
+            </span>
+            <ChevronsUpDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-gray-400",
+                isCollapsed && "lg:hidden",
+              )}
+              aria-hidden="true"
+            />
+          </button>
 
           {isMenuOpen && (
-            <div className="absolute bottom-full left-2 right-2 mb-2 bg-white border border-neutral-100 rounded-xl shadow-lg overflow-hidden">
+            <div
+              role="menu"
+              aria-label="Conta"
+              className={cn(
+                "absolute bottom-full left-1 right-1 z-50 mb-1 rounded-xl border border-gray-100 bg-white p-1 shadow-lg",
+                isCollapsed &&
+                  "lg:bottom-2 lg:left-full lg:right-auto lg:mb-0 lg:ml-2 lg:w-56",
+              )}
+            >
+              {isCollapsed && (
+                <div className="hidden border-b border-gray-100 px-3 pb-2 pt-1.5 mb-1 lg:block">
+                  <p className="truncate text-sm font-medium text-gray-900">
+                    {displayName}
+                  </p>
+                  {accountSubtitle && (
+                    <p className="truncate text-xs text-gray-500">
+                      {accountSubtitle}
+                    </p>
+                  )}
+                </div>
+              )}
               <Link
                 href="/configuracoes"
-                onClick={closeMenu}
-                className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
-              >
-                <Settings
-                  className="h-5 w-5 shrink-0 text-gray-600"
-                  aria-hidden="true"
-                />
-                <span className="text-xs md:text-sm text-neutral-900">
-                  Configurações
-                </span>
-              </Link>
-              <div className="h-px bg-neutral-100 mx-3" />
-              <button
+                role="menuitem"
                 onClick={() => {
-                  handleLogout();
                   closeMenu();
+                  onMobileClose?.();
                 }}
-                className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                className={cn(
+                  menuItemClasses,
+                  isRouteActive("/configuracoes")
+                    ? "bg-primary-50 font-medium text-primary-700"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
+                )}
               >
-                <LogOut
-                  className="h-5 w-5 shrink-0 text-gray-600"
-                  aria-hidden="true"
-                />
-                <span className="text-xs md:text-sm text-neutral-900">
-                  Sair
-                </span>
+                <Settings className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Configurações</span>
+              </Link>
+              <div aria-hidden="true" className="my-1 h-px bg-gray-100" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  closeMenu();
+                  handleLogout();
+                }}
+                className={cn(
+                  menuItemClasses,
+                  "text-red-600 hover:bg-red-50 hover:text-red-700",
+                )}
+              >
+                <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Sair</span>
               </button>
             </div>
           )}

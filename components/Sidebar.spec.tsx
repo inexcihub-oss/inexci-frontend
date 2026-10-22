@@ -4,7 +4,18 @@ import { Users } from "lucide-react";
 import { Permission } from "@/lib/permissions";
 
 let authState = {
-  user: { id: "u-1", name: "Ana", role: "collaborator" },
+  user: {
+    id: "u-1",
+    name: "Ana",
+    email: "ana@clinica.com",
+    role: "collaborator",
+  } as {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    account?: { ownerName: string } | null;
+  },
   permissions: [] as Permission[],
   can: (p: Permission) => authState.permissions.includes(p),
   isAdmin: false,
@@ -236,5 +247,83 @@ describe("Sidebar — blocos do menu", () => {
       "aria-current",
       "page",
     );
+  });
+});
+
+describe("Sidebar — menu da conta", () => {
+  beforeEach(() => {
+    authState = {
+      ...authState,
+      permissions: [Permission.AGENDA],
+      user: {
+        id: "u-1",
+        name: "Ana",
+        email: "ana@clinica.com",
+        role: "collaborator",
+      },
+    };
+  });
+
+  const gatilho = () =>
+    screen.getByRole("button", { name: "Menu da conta de Ana" });
+
+  it("mostra nome e e-mail no gatilho, com o menu fechado", () => {
+    render(<Sidebar />);
+
+    expect(gatilho()).toHaveTextContent("Ana");
+    expect(gatilho()).toHaveTextContent("ana@clinica.com");
+    expect(gatilho()).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("mostra a equipe no lugar do e-mail para colaborador vinculado", () => {
+    authState.user = {
+      ...authState.user,
+      account: { ownerName: "Dr. Carlos" },
+    };
+    render(<Sidebar />);
+
+    expect(gatilho()).toHaveTextContent("Equipe de Dr. Carlos");
+    expect(gatilho()).not.toHaveTextContent("ana@clinica.com");
+  });
+
+  it("abre com Configurações e Sair e fecha com Esc devolvendo o foco", () => {
+    render(<Sidebar />);
+
+    fireEvent.click(gatilho());
+    const menu = screen.getByRole("menu", { name: "Conta" });
+    expect(gatilho()).toHaveAttribute("aria-expanded", "true");
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((i) => i.textContent),
+    ).toEqual(["Configurações", "Sair"]);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(gatilho()).toHaveFocus();
+  });
+
+  it("Sair chama o logout e fecha o menu", () => {
+    const logout = vi.fn();
+    authState.logout = logout;
+    render(<Sidebar />);
+
+    fireEvent.click(gatilho());
+    fireEvent.click(screen.getByRole("menuitem", { name: "Sair" }));
+
+    expect(logout).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("continua acessível com a sidebar recolhida", () => {
+    localStorage.setItem("sidebar-collapsed", "true");
+    render(<Sidebar />);
+
+    fireEvent.click(gatilho());
+    expect(
+      screen.getByRole("menuitem", { name: "Configurações" }),
+    ).toBeVisible();
+    localStorage.removeItem("sidebar-collapsed");
   });
 });
