@@ -25,7 +25,7 @@ describe("mfaService", () => {
     const data = {
       secret: "ABCD",
       formattedSecret: "ABCD",
-      otpauthUri: "otpauth://totp/INEXCI:a?secret=ABCD",
+      otpauthUri: "otpauth://totp/Inexci:a?secret=ABCD",
     };
     post.mockResolvedValue({ data });
 

@@ -36,7 +36,7 @@ const STEP_TITLES: Record<number, { title: string; subtitle: string }> = {
     title: "Criar sua conta",
     subtitle: "Preencha seus dados para começar",
   },
-  2: { title: "Seu perfil", subtitle: "Como você usa o INEXCI?" },
+  2: { title: "Seu perfil", subtitle: "Como você usa o Inexci?" },
 };
 
 const STEP_HERO: Record<
@@ -53,7 +53,7 @@ const STEP_HERO: Record<
     badge: "Etapa 2 de 3 — Seu perfil",
     heading: "Personalizamos para você",
     description:
-      "Médico ou gestor — a INEXCI adapta o fluxo de trabalho ao seu perfil.",
+      "Médico ou gestor — a Inexci adapta o fluxo de trabalho ao seu perfil.",
   },
 };
 
@@ -104,7 +104,9 @@ export default function CadastroPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState<string>(DEFAULT_PLAN_SLUG);
-  const [billingPeriod, setBillingPeriod] = useState<"MONTHLY" | "YEARLY">("MONTHLY");
+  const [billingPeriod, setBillingPeriod] = useState<"MONTHLY" | "YEARLY">(
+    "MONTHLY",
+  );
 
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -155,14 +157,9 @@ export default function CadastroPage() {
           setSelectedSlug(data[0].slug);
         }
       })
-      .catch(() => {
-      })
+      .catch(() => {})
       .finally(() => setPlansLoading(false));
   }, [currentStep, plans.length]);
-
-
-
-
 
   const handleStep1Change = (field: keyof Step1Data, value: string) => {
     setStep1((prev) => ({ ...prev, [field]: value }));
@@ -332,7 +329,6 @@ export default function CadastroPage() {
         onSelectPlan={setSelectedSlug}
         billingPeriod={billingPeriod}
         onBillingPeriodChange={handleBillingPeriodChange}
-
         onBack={handleBack}
         onSubmit={handleSubmit}
         isLoading={isLoading}
@@ -576,7 +572,6 @@ function PlanStepLayout({
           onSelectPlan={onSelectPlan}
           billingPeriod={billingPeriod}
           onBillingPeriodChange={onBillingPeriodChange}
-
         />
 
         {captcha && <div className="mt-5 max-w-2xl mx-auto">{captcha}</div>}

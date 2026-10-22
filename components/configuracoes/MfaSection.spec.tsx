@@ -35,9 +35,8 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 import { MfaSection } from "./MfaSection";
 
-const CODIGOS = Array.from(
-  { length: 10 },
-  (_, i) => `AAAA${i}-BBBB${i}`.replace(/[01]/g, "2"),
+const CODIGOS = Array.from({ length: 10 }, (_, i) =>
+  `AAAA${i}-BBBB${i}`.replace(/[01]/g, "2"),
 );
 
 function erroHttp(status: number, message: string) {
@@ -71,7 +70,7 @@ describe("MfaSection", () => {
       secret: "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
       formattedSecret: "JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP",
       otpauthUri:
-        "otpauth://totp/INEXCI:medico%40inexci.com?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=INEXCI",
+        "otpauth://totp/Inexci:medico%40inexci.com?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=Inexci",
     });
     enableMock.mockResolvedValue({ recoveryCodes: CODIGOS });
     disableMock.mockResolvedValue(undefined);
@@ -96,7 +95,9 @@ describe("MfaSection", () => {
     render(<MfaSection showToast={showToast} />);
 
     await user.click(
-      screen.getByRole("button", { name: /ativar verificação em duas etapas/i }),
+      screen.getByRole("button", {
+        name: /ativar verificação em duas etapas/i,
+      }),
     );
 
     const segredo = await screen.findByTestId("mfa-secret");
@@ -139,7 +140,9 @@ describe("MfaSection", () => {
     render(<MfaSection showToast={vi.fn()} />);
 
     await user.click(
-      screen.getByRole("button", { name: /ativar verificação em duas etapas/i }),
+      screen.getByRole("button", {
+        name: /ativar verificação em duas etapas/i,
+      }),
     );
 
     const qr = await screen.findByTestId("mfa-qrcode");
@@ -161,7 +164,9 @@ describe("MfaSection", () => {
     render(<MfaSection showToast={vi.fn()} />);
 
     await user.click(
-      screen.getByRole("button", { name: /ativar verificação em duas etapas/i }),
+      screen.getByRole("button", {
+        name: /ativar verificação em duas etapas/i,
+      }),
     );
     await screen.findByTestId("mfa-secret");
     await digitarCodigo(user, "000000");
@@ -185,7 +190,9 @@ describe("MfaSection", () => {
     render(<MfaSection showToast={vi.fn()} />);
 
     await user.click(
-      screen.getByRole("button", { name: /ativar verificação em duas etapas/i }),
+      screen.getByRole("button", {
+        name: /ativar verificação em duas etapas/i,
+      }),
     );
     await screen.findByTestId("mfa-secret");
     await digitarCodigo(user, "123456");
@@ -210,7 +217,9 @@ describe("MfaSection", () => {
     await user.click(screen.getByRole("button", { name: /^desativar$/i }));
     const dialog = await screen.findByRole("dialog");
 
-    await user.click(within(dialog).getByRole("button", { name: /^desativar$/i }));
+    await user.click(
+      within(dialog).getByRole("button", { name: /^desativar$/i }),
+    );
     expect(disableMock).not.toHaveBeenCalled();
 
     await user.type(within(dialog).getByLabelText(/senha atual/i), "Senha123@");
@@ -218,7 +227,9 @@ describe("MfaSection", () => {
       within(dialog).getByLabelText(/código do aplicativo ou de recuperação/i),
       "ABCDE-FGH23",
     );
-    await user.click(within(dialog).getByRole("button", { name: /^desativar$/i }));
+    await user.click(
+      within(dialog).getByRole("button", { name: /^desativar$/i }),
+    );
 
     await waitFor(() =>
       expect(disableMock).toHaveBeenCalledWith("Senha123@", "ABCDE-FGH23"),
@@ -243,7 +254,9 @@ describe("MfaSection", () => {
       within(dialog).getByLabelText(/código do aplicativo ou de recuperação/i),
       "123456",
     );
-    await user.click(within(dialog).getByRole("button", { name: /^desativar$/i }));
+    await user.click(
+      within(dialog).getByRole("button", { name: /^desativar$/i }),
+    );
 
     expect(
       await within(dialog).findByText("Senha atual incorreta"),
@@ -256,7 +269,9 @@ describe("MfaSection", () => {
     render(<MfaSection showToast={vi.fn()} />);
 
     await user.click(
-      screen.getByRole("button", { name: /gerar novos códigos de recuperação/i }),
+      screen.getByRole("button", {
+        name: /gerar novos códigos de recuperação/i,
+      }),
     );
     await screen.findByRole("dialog");
     await digitarCodigo(user, "654321");
@@ -277,10 +292,14 @@ describe("MfaSection", () => {
       screen.getByRole("heading", { name: "Códigos de recuperação" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Gerar novos códigos de recuperação" }),
+      screen.getByRole("button", {
+        name: "Gerar novos códigos de recuperação",
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /ativar verificação em duas etapas/i }),
+      screen.queryByRole("button", {
+        name: /ativar verificação em duas etapas/i,
+      }),
     ).toBeNull();
   });
 

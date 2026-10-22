@@ -45,7 +45,7 @@ export function NotificationsTab({
         <NotificationItem
           icon={Bell}
           title="Na plataforma"
-          description="Alertas em tempo real no sino da INEXCI."
+          description="Alertas em tempo real no sino da Inexci."
           checked={notifications.pushNotifications}
           onChange={alternar("pushNotifications")}
         />

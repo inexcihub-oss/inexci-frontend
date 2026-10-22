@@ -28,7 +28,7 @@ describe("WelcomeModal", () => {
   it("abre no primeiro slide", () => {
     render(<WelcomeModal onFinish={vi.fn()} onSkip={vi.fn()} />);
 
-    expect(screen.getByText("O que é a INEXCI")).toBeInTheDocument();
+    expect(screen.getByText("O que é a Inexci")).toBeInTheDocument();
   });
 
   it("pular encerra e carimba welcomeSeenAt", async () => {
@@ -51,7 +51,9 @@ describe("WelcomeModal", () => {
     await user.click(screen.getByRole("button", { name: /avançar/i }));
     await user.click(screen.getByRole("button", { name: /avançar/i }));
 
-    expect(screen.getByText(/montar a solicitação cirúrgica/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/montar a solicitação cirúrgica/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         /mantenha sempre atualizada e assuma o controle da jornada do seu paciente/i,
@@ -84,7 +86,9 @@ describe("WelcomeModal", () => {
     await user.click(screen.getByRole("button", { name: /avançar/i }));
 
     expect(
-      screen.getByText(/assim que o administrador da conta liberar suas áreas/i),
+      screen.getByText(
+        /assim que o administrador da conta liberar suas áreas/i,
+      ),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /começar/i }));
@@ -97,7 +101,7 @@ describe("WelcomeModal", () => {
 
     const dialogo = screen.getByRole("dialog");
     expect(dialogo).toHaveAttribute("aria-modal", "true");
-    expect(dialogo).toHaveAccessibleName("O que é a INEXCI");
+    expect(dialogo).toHaveAccessibleName("O que é a Inexci");
     expect(document.activeElement).toBe(dialogo);
   });
 
