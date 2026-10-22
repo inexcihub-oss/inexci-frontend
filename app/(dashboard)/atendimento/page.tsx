@@ -8,7 +8,7 @@ import {
   keepPreviousData,
 } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Stethoscope } from "lucide-react";
+import { CalendarDays, Plus, Stethoscope } from "lucide-react";
 import PageContainer from "@/components/PageContainer";
 import Loading from "@/components/ui/Loading";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -125,12 +125,11 @@ export default function AtendimentoHubPage() {
     queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
 
   const groups = useMemo(() => {
-    const list = [...(records ?? [])]
-      .sort((a, b) => {
-        const diff =
-          new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
-        return order === "DESC" ? -diff : diff;
-      });
+    const list = [...(records ?? [])].sort((a, b) => {
+      const diff =
+        new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+      return order === "DESC" ? -diff : diff;
+    });
 
     const byDay = new Map<string, Appointment[]>();
     for (const a of list) {
@@ -200,35 +199,28 @@ export default function AtendimentoHubPage() {
 
             {podeAgenda && (
               <button
+                type="button"
                 onClick={() => setNewModal({})}
                 data-tour="atendimento-nova-consulta"
-                className="ml-auto flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] md:min-h-[36px] md:min-w-0 px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+                aria-label="Nova consulta"
+                className="ds-toolbar-btn-primary ds-toolbar-icon sm:w-auto sm:px-3 ml-auto"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                <span className="text-xs font-semibold hidden sm:inline">
-                  Nova consulta
-                </span>
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Nova consulta</span>
               </button>
             )}
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <div
-              data-tour="atendimento-abas"
-              className="flex items-center bg-neutral-100 rounded-lg p-0.5"
-            >
+            <div data-tour="atendimento-abas" className="ds-segmented">
               {HUB_TABS.map((t) => (
                 <button
                   key={t.key}
+                  type="button"
                   onClick={() => setTab(t.key)}
                   className={cn(
-                    "px-3 py-1 rounded-md text-xs font-semibold transition-colors",
-                    tab === t.key
-                      ? "bg-white text-neutral-900 shadow-sm"
-                      : "text-neutral-500 hover:text-neutral-800",
+                    "ds-segmented-item",
+                    tab === t.key && "ds-segmented-item-active",
                   )}
                 >
                   {t.label}
@@ -238,10 +230,11 @@ export default function AtendimentoHubPage() {
 
             {podeAgenda && (
               <button
+                type="button"
                 onClick={() => router.push("/agenda")}
-                className="h-8 px-3 rounded-lg border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors shrink-0 flex items-center gap-1.5"
+                className="ds-toolbar-btn"
               >
-                <CalendarDays className="w-3.5 h-3.5" />
+                <CalendarDays className="h-4 w-4" aria-hidden="true" />
                 Ver agenda
               </button>
             )}
@@ -324,8 +317,8 @@ export default function AtendimentoHubPage() {
               {totalNoServidor > HUB_PAGE_SIZE && (
                 <div className="flex flex-col items-center gap-2 pt-2 pb-4">
                   <p className="text-xs text-neutral-500" role="status">
-                    Mostrando {(records?.length ?? 0).toLocaleString("pt-BR")} de{" "}
-                    {totalNoServidor.toLocaleString("pt-BR")} consultas
+                    Mostrando {(records?.length ?? 0).toLocaleString("pt-BR")}{" "}
+                    de {totalNoServidor.toLocaleString("pt-BR")} consultas
                   </p>
                   {query.isFetchNextPageError && !query.isFetchingNextPage && (
                     <p role="alert" className="text-xs text-red-600">
@@ -371,7 +364,9 @@ export default function AtendimentoHubPage() {
           onClose={() => setNewModal(null)}
           onSaved={() => {
             showSuccess(
-              newModal.appointment ? "Consulta atualizada." : "Consulta agendada.",
+              newModal.appointment
+                ? "Consulta atualizada."
+                : "Consulta agendada.",
             );
             invalidate();
           }}
@@ -399,7 +394,6 @@ export default function AtendimentoHubPage() {
           onDelete={() => deleteMutation.mutate(detail.id)}
         />
       )}
-
     </PageContainer>
   );
 }
@@ -442,7 +436,9 @@ function AppointmentRow({
         </p>
         <p className="text-xs text-neutral-500 truncate">
           {APPOINTMENT_TYPE_LABELS[a.type]}
-          {showDoctor && doctorName ? ` · ${formatDoctorName(doctorName, doctorIsPhysician)}` : ""}
+          {showDoctor && doctorName
+            ? ` · ${formatDoctorName(doctorName, doctorIsPhysician)}`
+            : ""}
         </p>
       </div>
 

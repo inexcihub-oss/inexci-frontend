@@ -137,7 +137,9 @@ describe("AgendaPage — gating por Solicitações (cirurgias)", () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: /filtro/i }));
-    expect(screen.getByRole("button", { name: "Cirurgias" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cirurgias" }),
+    ).toBeInTheDocument();
     expect(screen.getByTitle("Exportar")).toBeInTheDocument();
   });
 
@@ -190,9 +192,34 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
     authState = { can: (p) => p === Permission.AGENDA };
     renderPage();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Bloquear horário" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Bloquear horário" }),
+    );
     expect(await screen.findByLabelText("Profissional")).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Toda a clínica" })).toBeNull();
+  });
+
+  it("a barra de ferramentas usa os botões do design system, com o mesmo tamanho", async () => {
+    authState = { can: (p) => p === Permission.AGENDA };
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: "Nova consulta" }),
+    ).toHaveClass("ds-toolbar-btn-primary");
+    for (const nome of [
+      "Bloquear horário",
+      "Exportar agenda",
+      "Atualizar",
+      "Filtro",
+      "Hoje",
+    ]) {
+      expect(screen.getByRole("button", { name: nome })).toHaveClass(
+        "ds-toolbar-btn",
+      );
+    }
+    expect(screen.getByRole("button", { name: "Semana" })).toHaveClass(
+      "ds-segmented-item",
+    );
   });
 
   it("com Administração, o modal oferece 'Toda a clínica'", async () => {
@@ -202,8 +229,12 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
     };
     renderPage();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Bloquear horário" }));
-    expect(await screen.findByRole("option", { name: "Toda a clínica" })).toBeInTheDocument();
+    await user.click(
+      await screen.findByRole("button", { name: "Bloquear horário" }),
+    );
+    expect(
+      await screen.findByRole("option", { name: "Toda a clínica" }),
+    ).toBeInTheDocument();
   });
 
   describe("bloqueio de toda a clínica na grade", () => {
@@ -254,7 +285,9 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
       expect(bloco).toContainElement(rotulo);
       expect(rotulo.className).toContain("pointer-events-auto");
       await user.click(rotulo);
-      expect(await screen.findByRole("button", { name: "Remover" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("button", { name: "Remover" }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -264,7 +297,9 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
     } as unknown as typeof authState;
     renderPage();
     await waitFor(() => expect(availability.getBlocks).toHaveBeenCalled());
-    expect(screen.queryByRole("button", { name: "Bloquear horário" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Bloquear horário" }),
+    ).toBeNull();
   });
 
   it("desenha bloqueios e feriados da semana na grade", async () => {
@@ -290,18 +325,25 @@ describe("AgendaPage — bloqueios e feriados (MIG-05)", () => {
     const ymd = (d: Date) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     availability.getHolidays.mockResolvedValue([
-      { id: "h1", name: "Feriado teste", date: ymd(amanha), recurring: false, blocksAgenda: true },
+      {
+        id: "h1",
+        name: "Feriado teste",
+        date: ymd(amanha),
+        recurring: false,
+        blocksAgenda: true,
+      },
     ]);
     renderPage();
 
-    expect(await screen.findByTitle("Clínica: Reunião geral")).toBeInTheDocument();
+    expect(
+      await screen.findByTitle("Clínica: Reunião geral"),
+    ).toBeInTheDocument();
     const mesmaSemana = amanha.getDay() !== 0;
     if (mesmaSemana) {
       expect(screen.getByTitle("Feriado: Feriado teste")).toBeInTheDocument();
     }
   });
 });
-
 
 describe("AgendaPage — consultas além do teto da API", () => {
   beforeEach(() => {
@@ -365,22 +407,38 @@ describe("AgendaPage — visão mensal desenha feriados e bloqueios", () => {
       },
     ]);
     availability.getHolidays.mockResolvedValue([
-      { id: "h", name: "Feriado do mês", date: ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 16)), recurring: false, blocksAgenda: true },
+      {
+        id: "h",
+        name: "Feriado do mês",
+        date: ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 16)),
+        recurring: false,
+        blocksAgenda: true,
+      },
     ]);
 
     renderPage();
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Mês" }));
 
-    expect(await screen.findByTitle("Clínica: Dedetização")).toBeInTheDocument();
-    expect(await screen.findByTitle("Feriado: Feriado do mês")).toBeInTheDocument();
+    expect(
+      await screen.findByTitle("Clínica: Dedetização"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTitle("Feriado: Feriado do mês"),
+    ).toBeInTheDocument();
   });
 
   it("feriado que não trava a agenda não aparece", async () => {
     const hoje = new Date();
     availability.getBlocks.mockResolvedValue([]);
     availability.getHolidays.mockResolvedValue([
-      { id: "h2", name: "Ponto facultativo", date: ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 16)), recurring: false, blocksAgenda: false },
+      {
+        id: "h2",
+        name: "Ponto facultativo",
+        date: ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 16)),
+        recurring: false,
+        blocksAgenda: false,
+      },
     ]);
 
     renderPage();
@@ -421,9 +479,7 @@ describe("AgendaPage — invalidação das consultas", () => {
         },
       ],
     });
-    vi.mocked(appointmentService.updateStatus).mockResolvedValue(
-      {} as never,
-    );
+    vi.mocked(appointmentService.updateStatus).mockResolvedValue({} as never);
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -472,7 +528,9 @@ describe("AgendaPage — selo financeiro", () => {
 
     expect(await screen.findAllByText(/Ana Beatriz/)).not.toHaveLength(0);
     expect(getAppointmentsStatus).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("finance-status-badge")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("finance-status-badge"),
+    ).not.toBeInTheDocument();
   });
 
   it("com a área Financeiro mostra o selo no card da consulta", async () => {

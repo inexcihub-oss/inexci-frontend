@@ -101,6 +101,21 @@ describe("AtendimentoHubPage — gating por Agenda", () => {
       screen.getByRole("button", { name: /Ver agenda/i }),
     ).toBeInTheDocument();
   });
+
+  it("o cabeçalho usa os botões do design system", async () => {
+    renderPage();
+
+    expect(
+      await screen.findByRole("button", { name: "Nova consulta" }),
+    ).toHaveClass("ds-toolbar-btn-primary");
+    expect(screen.getByRole("button", { name: /Ver agenda/i })).toHaveClass(
+      "ds-toolbar-btn",
+    );
+    expect(screen.getByRole("button", { name: "Hoje" })).toHaveClass(
+      "ds-segmented-item",
+      "ds-segmented-item-active",
+    );
+  });
 });
 
 describe("AtendimentoHubPage — paginação", () => {
@@ -160,8 +175,12 @@ describe("AtendimentoHubPage — paginação", () => {
     renderPage();
 
     expect(await screen.findByText("Paciente 00")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Mostrando 20 de 25 consultas");
-    expect(screen.getByRole("button", { name: /Ver na agenda/ })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Mostrando 20 de 25 consultas",
+    );
+    expect(
+      screen.getByRole("button", { name: /Ver na agenda/ }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Carregar mais 5" }));
 
@@ -169,7 +188,9 @@ describe("AtendimentoHubPage — paginação", () => {
     expect(getAgendaPage).toHaveBeenLastCalledWith(
       expect.objectContaining({ skip: 20, take: 20, withDoctorCounts: false }),
     );
-    expect(screen.getByRole("status")).toHaveTextContent("Mostrando 25 de 25 consultas");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Mostrando 25 de 25 consultas",
+    );
     expect(screen.queryByRole("button", { name: /Carregar mais/ })).toBeNull();
   });
 

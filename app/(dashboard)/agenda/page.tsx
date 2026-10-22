@@ -59,6 +59,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
 import { getApiErrorMessage } from "@/lib/http-error";
 import { cn } from "@/lib/utils";
+import {
+  Ban,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  ListFilter,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import { appointmentKeys, surgeryRequestKeys } from "@/lib/query-keys";
 import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction";
 import { criarConsultaDemo } from "@/lib/onboarding/demo-data";
@@ -254,19 +264,22 @@ export default function AgendaPage() {
       list = list.filter(
         (event) =>
           event.kind !== "appointment" ||
-          (event.status != null && filters.appointmentStatuses.includes(event.status)),
+          (event.status != null &&
+            filters.appointmentStatuses.includes(event.status)),
       );
     if (filters.appointmentTypes.length > 0)
       list = list.filter(
         (event) =>
           event.kind !== "appointment" ||
-          (event.appointment != null && filters.appointmentTypes.includes(event.appointment.type)),
+          (event.appointment != null &&
+            filters.appointmentTypes.includes(event.appointment.type)),
       );
     if (filters.clinicIds.length > 0)
       list = list.filter(
         (event) =>
           event.kind !== "appointment" ||
-          (event.appointment?.clinicId != null && filters.clinicIds.includes(event.appointment.clinicId)),
+          (event.appointment?.clinicId != null &&
+            filters.clinicIds.includes(event.appointment.clinicId)),
       );
     return list;
   }, [allEvents, filters]);
@@ -427,6 +440,19 @@ export default function AgendaPage() {
     return `${s.getDate()} ${MONTHS_SHORT[s.getMonth()]} – ${e.getDate()} ${MONTHS_SHORT[e.getMonth()]} ${e.getFullYear()}`;
   }, [view, anchor, days]);
 
+  const shortTitle = useMemo(() => {
+    if (view === "day") {
+      return `${anchor.getDate()} ${MONTHS_SHORT[anchor.getMonth()]} ${anchor.getFullYear()}`;
+    }
+    if (view === "month") return title;
+    const s = days[0];
+    const e = days[6];
+    if (s.getMonth() === e.getMonth()) {
+      return `${s.getDate()} – ${e.getDate()} ${MONTHS_SHORT[s.getMonth()]} ${s.getFullYear()}`;
+    }
+    return `${s.getDate()} ${MONTHS_SHORT[s.getMonth()]} – ${e.getDate()} ${MONTHS_SHORT[e.getMonth()]}`;
+  }, [view, anchor, days, title]);
+
   const exportDefaults = useMemo(() => {
     const key = (d: Date) => dateKey(d);
     return { from: key(rangeFrom), to: key(addDays(rangeTo, -1)) };
@@ -443,42 +469,27 @@ export default function AgendaPage() {
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex flex-col gap-2 px-3 lg:px-6 py-2.5 border-b border-neutral-100 shrink-0">
           <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-0.5 shrink-0">
-              <button
-                onClick={() => navigate(-1)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 transition-colors"
-                aria-label="Anterior"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-              </button>
-              <button
-                onClick={() => navigate(1)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 transition-colors"
-                aria-label="Próximo"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
-            </div>
-
             <DatePickerPopover
               className="flex-1 min-w-0"
               value={anchor}
               onChange={setAnchor}
               trigger={
                 <button
-                  className="flex items-center gap-1 h-8 pl-1.5 pr-1 rounded-lg hover:bg-neutral-50 transition-colors min-w-0 max-w-full"
+                  type="button"
+                  className="flex h-10 md:h-9 min-w-0 max-w-full items-center gap-1 rounded-xl pl-1.5 pr-1 hover:bg-gray-50 transition-colors"
                   title="Escolher data"
                 >
-                  <h1 className="text-sm lg:text-base font-bold text-neutral-900 capitalize truncate">
-                    {title}
+                  <h1 className="text-sm md:text-base font-bold text-neutral-900 first-letter:uppercase truncate">
+                    <span className="sm:hidden" aria-hidden="true">
+                      {shortTitle}
+                    </span>
+                    <span className="hidden sm:inline">{title}</span>
+                    <span className="sr-only sm:hidden">{title}</span>
                   </h1>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-neutral-400 shrink-0">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
+                  <ChevronDown
+                    className="h-4 w-4 shrink-0 text-gray-400"
+                    aria-hidden="true"
+                  />
                 </button>
               }
             />
@@ -490,86 +501,98 @@ export default function AgendaPage() {
             )}
 
             <button
+              type="button"
               onClick={() => setNewModal({})}
               data-tour="agenda-nova-consulta"
-              className="flex items-center gap-1.5 h-8 px-2 sm:px-3 rounded-lg bg-teal-700 text-white hover:bg-teal-800 transition-colors shrink-0"
+              aria-label="Nova consulta"
+              className="ds-toolbar-btn-primary ds-toolbar-icon sm:w-auto sm:px-3"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span className="text-xs font-semibold hidden sm:inline">Nova consulta</span>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Nova consulta</span>
             </button>
 
             {podeAgenda && (
               <button
+                type="button"
                 onClick={() => setBlockModal({})}
-                className="flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 md:h-8 px-2 sm:px-3 border border-neutral-200 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors shrink-0"
+                className="ds-toolbar-btn ds-toolbar-icon md:w-auto md:px-3"
                 title="Bloquear horário"
                 aria-label="Bloquear horário"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" />
-                  <line x1="5.6" y1="5.6" x2="18.4" y2="18.4" />
-                </svg>
-                <span className="text-xs font-semibold hidden md:inline">Bloquear</span>
+                <Ban className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden md:inline">Bloquear</span>
               </button>
             )}
 
             <button
+              type="button"
               onClick={() => setIsExportOpen(true)}
               data-tour="agenda-exportar"
-              className="flex items-center justify-center w-8 h-8 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors shrink-0"
+              className="ds-toolbar-btn ds-toolbar-icon"
               title="Exportar"
               aria-label="Exportar agenda"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
+              <Download className="h-4 w-4" aria-hidden="true" />
             </button>
 
             <button
+              type="button"
               onClick={refetchAll}
               disabled={loading}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-50 transition-colors disabled:opacity-40 shrink-0"
+              className="ds-toolbar-btn ds-toolbar-icon hidden md:inline-flex"
               title="Atualizar"
+              aria-label="Atualizar"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={loading ? "animate-spin" : ""}>
-                <polyline points="23 4 23 10 17 10" />
-                <polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
+              <RefreshCw
+                className={cn("h-4 w-4", loading && "animate-spin")}
+                aria-hidden="true"
+              />
             </button>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
             <button
+              type="button"
               onClick={() => setAnchor(new Date())}
-              className="h-8 px-3 rounded-lg border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors shrink-0"
+              className="ds-toolbar-btn"
             >
               Hoje
             </button>
 
-            <div className="flex items-center bg-neutral-100 rounded-lg p-0.5 shrink-0">
+            <div className="flex items-center shrink-0">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="flex h-10 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl text-gray-600 hover:bg-gray-50 transition-colors"
+                aria-label="Anterior"
+              >
+                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(1)}
+                className="flex h-10 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl text-gray-600 hover:bg-gray-50 transition-colors"
+                aria-label="Próximo"
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="ds-segmented">
               {VIEW_TABS.map((v) => (
                 <button
                   key={v.key}
+                  type="button"
                   onClick={() => setView(v.key)}
                   className={cn(
-                    "px-2.5 py-1 rounded-md text-xs font-semibold transition-colors",
-                    view === v.key
-                      ? "bg-white text-neutral-900 shadow-sm"
-                      : "text-neutral-500 hover:text-neutral-800",
+                    "ds-segmented-item px-2 md:px-3",
+                    view === v.key && "ds-segmented-item-active",
                   )}
                 >
                   {v.label}
                 </button>
               ))}
             </div>
-
-            <div className="w-px h-5 bg-neutral-200 hidden sm:block" />
 
             {(() => {
               const activeCount = countActiveAgendaFilters(filters);
@@ -578,16 +601,19 @@ export default function AgendaPage() {
                   type="button"
                   onClick={() => setIsFilterOpen(true)}
                   data-tour="agenda-filtros"
+                  aria-label="Filtro"
                   className={cn(
-                    "flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold transition-colors shrink-0",
-                    activeCount > 0
-                      ? "border-teal-600 bg-teal-50 text-teal-700 hover:bg-teal-100"
-                      : "border-neutral-200 text-neutral-700 hover:bg-neutral-50",
+                    "ds-toolbar-btn ds-toolbar-icon sm:w-auto sm:px-3 relative md:ml-auto",
+                    activeCount > 0 && "ds-toolbar-btn-active",
                   )}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-                  Filtro
-                  {activeCount > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-teal-700 text-white text-[10px] inline-flex items-center justify-center">{activeCount}</span>}
+                  <ListFilter className="h-4 w-4" aria-hidden="true" />
+                  <span className="hidden sm:inline">Filtro</span>
+                  {activeCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 sm:static inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-700 px-1 text-[10px] text-white">
+                      {activeCount}
+                    </span>
+                  )}
                 </button>
               );
             })()}
@@ -728,7 +754,6 @@ export default function AgendaPage() {
         defaultDoctorIds={filters.doctorIds}
         canExportSurgeries={podeVerCirurgias}
       />
-
     </PageContainer>
   );
 }
