@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -32,8 +32,10 @@ vi.mock("@/contexts/AuthContext", () => ({
   }),
 }));
 
+let searchParamsValue = new URLSearchParams("tab=patient-notices");
+
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams("tab=notifications"),
+  useSearchParams: () => searchParamsValue,
 }));
 
 vi.mock("@/components/billing/BillingSection", () => ({
@@ -87,9 +89,10 @@ const patientSettings = {
   appointmentCancelled: true,
 };
 
-describe("Configurações — avisos aos pacientes", () => {
+describe("Configurações — aba Avisos aos pacientes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    searchParamsValue = new URLSearchParams("tab=patient-notices");
     vi.mocked(notificationService.getSettings).mockResolvedValue(
       settings as never,
     );
@@ -112,7 +115,7 @@ describe("Configurações — avisos aos pacientes", () => {
     };
   });
 
-  it("administração vê os três avisos com o estado da conta", async () => {
+  it("administração abre a aba no grupo Clínica, com o estado da conta", async () => {
     vi.mocked(notificationService.getPatientSettings).mockResolvedValue({
       ...patientSettings,
       appointmentReminder: false,
@@ -122,6 +125,13 @@ describe("Configurações — avisos aos pacientes", () => {
     expect(
       await screen.findByRole("heading", { name: /Avisos aos pacientes/i }),
     ).toBeInTheDocument();
+    const menu = screen.getByRole("navigation", {
+      name: "Seções das configurações",
+    });
+    const grupo = within(menu).getByRole("group", { name: "Clínica" });
+    expect(
+      within(grupo).getByRole("button", { name: "Avisos aos pacientes" }),
+    ).toHaveAttribute("aria-current", "true");
     expect(
       screen.getByRole("switch", { name: /Consulta agendada/i }),
     ).toBeChecked();
@@ -135,7 +145,7 @@ describe("Configurações — avisos aos pacientes", () => {
     ).toBeChecked();
   });
 
-  it("desliga a confirmação de consulta e salva na conta", async () => {
+  it("salva só os avisos da conta, sem mexer nas notificações pessoais", async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -144,7 +154,7 @@ describe("Configurações — avisos aos pacientes", () => {
         name: /Lembrete e confirmação de consulta/i,
       }),
     );
-    await user.click(screen.getByRole("button", { name: /Salvar/i }));
+    await user.click(screen.getByRole("button", { name: /Salvar avisos/i }));
 
     await waitFor(() => {
       expect(notificationService.updatePatientSettings).toHaveBeenCalledWith({
@@ -153,16 +163,11 @@ describe("Configurações — avisos aos pacientes", () => {
         appointmentCancelled: true,
       });
     });
-    expect(notificationService.updateSettings).toHaveBeenCalled();
+    expect(notificationService.updateSettings).not.toHaveBeenCalled();
   });
 
-  it("sem administração: não vê o card nem chama a rota da conta", async () => {
-    authState = {
-      ...authState,
-      user: { id: "user-2", accountId: "user-1", role: "collaborator" },
-      can: () => false,
-      isAccountOwner: false,
-    };
+  it("a aba Notificações salva só as preferências pessoais", async () => {
+    searchParamsValue = new URLSearchParams("tab=notifications");
     const user = userEvent.setup();
     renderPage();
 
@@ -179,15 +184,43 @@ describe("Configurações — avisos aos pacientes", () => {
     expect(notificationService.updatePatientSettings).not.toHaveBeenCalled();
   });
 
-  it("falha ao carregar os avisos esconde o card sem quebrar a aba", async () => {
-    vi.mocked(notificationService.getPatientSettings).mockRejectedValue(
-      new Error("rede"),
-    );
+  it("sem administração: não vê a aba e o deep-link abre o Perfil", async () => {
+    authState = {
+      ...authState,
+      user: { id: "user-2", accountId: "user-1", role: "collaborator" },
+      can: () => false,
+      isAccountOwner: false,
+    };
     renderPage();
 
-    await screen.findByRole("switch", { name: /Menções por e-mail/i });
     expect(
-      screen.queryByRole("heading", { name: /Avisos aos pacientes/i }),
+      await screen.findByRole("button", { name: "Perfil" }),
+    ).toHaveAttribute("aria-current", "true");
+    expect(
+      screen.queryByRole("button", { name: "Avisos aos pacientes" }),
     ).not.toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole("navigation", { name: "Seções das configurações" }),
+      ).queryByRole("group", { name: "Clínica" }),
+    ).toBeNull();
+    expect(notificationService.getPatientSettings).not.toHaveBeenCalled();
+  });
+
+  it("falha ao carregar mostra o erro e permite tentar de novo", async () => {
+    vi.mocked(notificationService.getPatientSettings).mockRejectedValueOnce(
+      new Error("rede"),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(
+      await screen.findByText(/Não foi possível carregar os avisos/i),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Tentar novamente/i }));
+
+    expect(
+      await screen.findByRole("switch", { name: /Consulta agendada/i }),
+    ).toBeChecked();
   });
 });

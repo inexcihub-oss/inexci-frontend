@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function TabButton({
@@ -16,17 +16,23 @@ export function TabButton({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       aria-current={active ? "true" : undefined}
       className={cn(
-        "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all w-full text-left whitespace-nowrap min-h-[44px] active:scale-[0.98]",
+        "flex items-center gap-3 w-full min-h-[52px] px-4 py-3 text-left text-sm font-medium text-gray-900 transition-all active:bg-gray-50",
+        "lg:min-h-[44px] lg:rounded-xl lg:whitespace-nowrap lg:active:scale-[0.98]",
         active
-          ? "bg-primary-50 text-primary-700 border border-primary-200"
-          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+          ? "lg:bg-primary-50 lg:text-primary-700 lg:border lg:border-primary-200"
+          : "lg:text-gray-600 lg:hover:bg-gray-50 lg:hover:text-gray-900",
       )}
     >
-      <Icon className="w-5 h-5" />
-      {label}
+      <Icon className="w-5 h-5 shrink-0 text-gray-500 lg:text-current" />
+      <span className="flex-1">{label}</span>
+      <ChevronRight
+        className="w-4 h-4 shrink-0 text-gray-400 lg:hidden"
+        aria-hidden="true"
+      />
     </button>
   );
 }

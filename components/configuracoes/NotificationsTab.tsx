@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Bell,
-  BellRing,
-  CalendarCheck,
-  CalendarX,
-  Mail,
-  MessageSquare,
-} from "lucide-react";
+import { Bell, Mail, MessageSquare } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { NotificationItem, TabLoading } from "./SettingsControls";
@@ -23,9 +16,6 @@ export function NotificationsTab({
     saving,
     notifications,
     setNotifications,
-    patientNotifications,
-    setPatientNotifications,
-    podeAdministrar,
     handleSaveNotifications,
   } = settings;
 
@@ -142,58 +132,6 @@ export function NotificationsTab({
           />
         </CardContent>
       </Card>
-
-      {podeAdministrar && patientNotifications && (
-        <Card className="border border-gray-200 rounded-2xl">
-          <CardHeader className="p-6 pb-4">
-            <h3 className="text-base font-semibold text-gray-900">
-              Avisos aos pacientes
-            </h3>
-            <p className="text-sm text-gray-500">
-              Mensagens automáticas enviadas aos pacientes. Vale para toda a
-              clínica.
-            </p>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            <NotificationItem
-              icon={CalendarCheck}
-              title="Consulta agendada"
-              description="WhatsApp ao paciente quando a consulta é marcada, remarcada ou reativada"
-              checked={patientNotifications.appointmentScheduled}
-              onChange={(checked) =>
-                setPatientNotifications({
-                  ...patientNotifications,
-                  appointmentScheduled: checked,
-                })
-              }
-            />
-            <NotificationItem
-              icon={BellRing}
-              title="Lembrete e confirmação de consulta"
-              description="E-mail e WhatsApp 24 horas antes, com as opções de confirmar ou cancelar"
-              checked={patientNotifications.appointmentReminder}
-              onChange={(checked) =>
-                setPatientNotifications({
-                  ...patientNotifications,
-                  appointmentReminder: checked,
-                })
-              }
-            />
-            <NotificationItem
-              icon={CalendarX}
-              title="Consulta cancelada"
-              description="WhatsApp ao paciente quando a consulta é cancelada"
-              checked={patientNotifications.appointmentCancelled}
-              onChange={(checked) =>
-                setPatientNotifications({
-                  ...patientNotifications,
-                  appointmentCancelled: checked,
-                })
-              }
-            />
-          </CardContent>
-        </Card>
-      )}
 
       <div className="flex justify-end">
         <Button

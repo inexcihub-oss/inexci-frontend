@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
+import { Users } from "lucide-react";
 import { Permission } from "@/lib/permissions";
 
 let authState = {
@@ -34,7 +35,7 @@ describe("Sidebar — filtro por permissão", () => {
     expect(screen.getByText("Agenda")).toBeInTheDocument();
     expect(screen.queryByText("Atendimento")).not.toBeInTheDocument();
     expect(
-      screen.queryByText("Solicitações Cirúrgicas"),
+      screen.queryByText("Solicitações cirúrgicas"),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Colaboradores")).not.toBeInTheDocument();
   });
@@ -99,12 +100,12 @@ describe("filterMenuItems — grupo some quando fica vazio", () => {
     const items = [
       {
         type: "group" as const,
-        iconSrc: "/icons/list.svg",
+        icon: Users,
         label: "Grupo Teste",
         children: [
           {
             type: "item" as const,
-            iconSrc: "/icons/x.svg",
+            icon: Users,
             label: "Filho Restrito",
             href: "/x",
             permission: Permission.ADMINISTRACAO,
@@ -122,18 +123,18 @@ describe("filterMenuItems — grupo some quando fica vazio", () => {
     const items = [
       {
         type: "group" as const,
-        iconSrc: "/icons/list.svg",
+        icon: Users,
         label: "Grupo Teste",
         children: [
           {
             type: "item" as const,
-            iconSrc: "/icons/x.svg",
+            icon: Users,
             label: "Filho Livre",
             href: "/x",
           },
           {
             type: "item" as const,
-            iconSrc: "/icons/y.svg",
+            icon: Users,
             label: "Filho Restrito",
             href: "/y",
             permission: Permission.ADMINISTRACAO,
@@ -155,13 +156,13 @@ describe("filterMenuItems — grupo some quando fica vazio", () => {
     const items = [
       {
         type: "group" as const,
-        iconSrc: "/icons/list.svg",
+        icon: Users,
         label: "Grupo Restrito",
         permission: Permission.ADMINISTRACAO,
         children: [
           {
             type: "item" as const,
-            iconSrc: "/icons/x.svg",
+            icon: Users,
             label: "Filho Livre",
             href: "/x",
           },
@@ -172,5 +173,68 @@ describe("filterMenuItems — grupo some quando fica vazio", () => {
     const result = filterMenuItems(items, () => false);
 
     expect(result).toHaveLength(0);
+  });
+});
+
+describe("Sidebar — blocos do menu", () => {
+  beforeEach(() => {
+    authState = { ...authState, permissions: [], isAdmin: false };
+  });
+
+  const bloco = (nome: string) =>
+    within(
+      screen.getByRole("navigation", { name: "Menu principal" }),
+    ).getByRole("group", { name: nome });
+
+  it("trabalho do dia a dia em cima, sem título, e gestão embaixo", () => {
+    authState.permissions = [
+      Permission.ATENDIMENTO,
+      Permission.AGENDA,
+      Permission.SOLICITACOES,
+      Permission.FINANCEIRO,
+      Permission.ADMINISTRACAO,
+    ];
+    render(<Sidebar />);
+
+    expect(
+      within(bloco("Principal"))
+        .getAllByRole("link")
+        .map((l) => l.textContent),
+    ).toEqual([
+      "Atendimento",
+      "Agenda",
+      "Pacientes",
+      "Solicitações cirúrgicas",
+    ]);
+    const gestao = bloco("Gestão");
+    expect(within(gestao).getByText("Gestão")).toBeInTheDocument();
+    expect(
+      within(gestao)
+        .getAllByRole("link")
+        .map((l) => l.textContent),
+    ).toEqual(["Dashboard", "Financeiro", "Colaboradores"]);
+  });
+
+  it("Procedimentos fica dentro de Cadastros", () => {
+    authState.permissions = [Permission.SOLICITACOES];
+    render(<Sidebar />);
+
+    expect(
+      within(bloco("Principal")).queryByRole("link", { name: "Procedimentos" }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Cadastros/ }));
+    expect(
+      within(bloco("Gestão")).getByRole("link", { name: "Procedimentos" }),
+    ).toBeInTheDocument();
+  });
+
+  it("marca o item da rota atual", () => {
+    authState.permissions = [Permission.AGENDA];
+    render(<Sidebar />);
+
+    expect(screen.getByRole("link", { name: "Agenda" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });

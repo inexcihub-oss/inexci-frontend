@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 let authState: {
@@ -152,5 +153,101 @@ describe("Configurações — deep-link para aba não liberada", () => {
         screen.getByText("Gestão de modelos de col-1"),
       ).toBeInTheDocument(),
     );
+  });
+});
+
+describe("Configurações — navegação em lista no celular", () => {
+  beforeEach(() => {
+    searchParamsValue = new URLSearchParams();
+    authState = {
+      user: { id: "doc-1", accountId: "doc-1", role: "admin" },
+      isAccountOwner: true,
+      isPhysician: true,
+      canIssueClinicalDocuments: true,
+      isDoctor: true,
+      can: () => true,
+      subscription: null,
+      updateUser: vi.fn().mockResolvedValue(undefined),
+      refreshSubscription: vi.fn().mockResolvedValue(undefined),
+    };
+  });
+
+  const menu = () =>
+    screen.getByRole("navigation", { name: "Seções das configurações" });
+
+  it("sem seção na URL mostra a lista; tocar abre a seção com voltar", async () => {
+    const pushState = vi.spyOn(window.history, "pushState");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("button", { name: "Feriados" });
+    expect(
+      screen.queryByRole("button", { name: "Voltar para Configurações" }),
+    ).toBeNull();
+    expect(menu().parentElement).not.toHaveClass("hidden");
+
+    await user.click(within(menu()).getByRole("button", { name: "Feriados" }));
+
+    expect(await screen.findByText("Gestão de feriados")).toBeInTheDocument();
+    expect(pushState).toHaveBeenCalledWith(
+      null,
+      "",
+      "/configuracoes?tab=holidays",
+    );
+    expect(menu().parentElement).toHaveClass("hidden", "lg:block");
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Feriados" }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Voltar para Configurações" }),
+    );
+
+    expect(back).toHaveBeenCalled();
+    expect(menu().parentElement).not.toHaveClass("hidden");
+    expect(
+      screen.queryByRole("button", { name: "Voltar para Configurações" }),
+    ).toBeNull();
+    pushState.mockRestore();
+    back.mockRestore();
+  });
+
+  it("deep-link abre direto a seção, e voltar leva à lista sem sair da página", async () => {
+    searchParamsValue = new URLSearchParams("tab=holidays");
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Voltar para Configurações" }),
+    );
+
+    expect(back).not.toHaveBeenCalled();
+    expect(replaceState).toHaveBeenCalledWith(null, "", "/configuracoes");
+    expect(menu().parentElement).not.toHaveClass("hidden");
+    replaceState.mockRestore();
+    back.mockRestore();
+  });
+
+  it("colaborador sem áreas só vê Minha conta e Ajuda", async () => {
+    authState = {
+      ...authState,
+      user: { id: "col-1", accountId: "doc-1", role: "collaborator" },
+      isAccountOwner: false,
+      isPhysician: false,
+      canIssueClinicalDocuments: false,
+      isDoctor: false,
+      can: () => false,
+    };
+    renderPage();
+
+    await screen.findByRole("button", { name: "Perfil" });
+    expect(
+      within(menu())
+        .getAllByRole("group")
+        .map((g) => g.getAttribute("aria-labelledby")),
+    ).toEqual(["grupo-config-conta", "grupo-config-ajuda"]);
   });
 });

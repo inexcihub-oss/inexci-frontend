@@ -1,3 +1,21 @@
+import {
+  Building2,
+  CalendarDays,
+  ClipboardList,
+  ClipboardPlus,
+  Factory,
+  FolderOpen,
+  HeartHandshake,
+  Hospital,
+  LayoutDashboard,
+  Stethoscope,
+  Truck,
+  UserCog,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
+
 export enum Permission {
   AGENDA = "agenda",
   ATENDIMENTO = "atendimento",
@@ -126,99 +144,128 @@ export function presetFor(permissions: Permission[]): string {
 
 export type NavGroup = "cadastros";
 
+export type NavSection = "trabalho" | "gestao";
+
+export const NAV_SECTION_LABELS: Record<NavSection, string | null> = {
+  trabalho: null,
+  gestao: "Gestão",
+};
+
 export interface NavItem {
   label: string;
   shortLabel?: string;
   href: string;
-  iconSrc: string;
+  icon: LucideIcon;
+  section: NavSection;
   group?: NavGroup;
   mobile: { slot: "primary" | "overflow"; order: number };
 }
+
+export const NAV_GROUP_META: Record<
+  NavGroup,
+  { label: string; icon: LucideIcon }
+> = {
+  cadastros: { label: "Cadastros", icon: FolderOpen },
+};
 
 export const NAV_ITEMS: NavItem[] = [
   {
     label: "Atendimento",
     href: "/atendimento",
-    iconSrc: "/icons/stethoscope.svg",
+    icon: Stethoscope,
+    section: "trabalho",
     mobile: { slot: "primary", order: 0 },
   },
   {
     label: "Agenda",
     href: "/agenda",
-    iconSrc: "/icons/calendar-schedule.svg",
+    icon: CalendarDays,
+    section: "trabalho",
     mobile: { slot: "primary", order: 1 },
   },
   {
-    label: "Solicitações Cirúrgicas",
+    label: "Pacientes",
+    href: "/pacientes",
+    icon: Users,
+    section: "trabalho",
+    mobile: { slot: "primary", order: 3 },
+  },
+  {
+    label: "Solicitações cirúrgicas",
     shortLabel: "Solicitações",
     href: "/solicitacoes-cirurgicas",
-    iconSrc: "/icons/grid-layout.svg",
+    icon: ClipboardList,
+    section: "trabalho",
     mobile: { slot: "primary", order: 2 },
   },
   {
     label: "Dashboard",
     href: "/dashboard",
-    iconSrc: "/icons/dashboard.svg",
+    icon: LayoutDashboard,
+    section: "gestao",
     mobile: { slot: "overflow", order: 0 },
-  },
-  {
-    label: "Pacientes",
-    href: "/pacientes",
-    iconSrc: "/icons/user-add.svg",
-    mobile: { slot: "primary", order: 3 },
   },
   {
     label: "Financeiro",
     href: "/financeiro",
-    iconSrc: "/icons/wallet.svg",
+    icon: Wallet,
+    section: "gestao",
     mobile: { slot: "overflow", order: 1 },
   },
   {
     label: "Colaboradores",
     href: "/colaboradores",
-    iconSrc: "/icons/user-profile.svg",
-    mobile: { slot: "overflow", order: 8 },
+    icon: UserCog,
+    section: "gestao",
+    mobile: { slot: "overflow", order: 2 },
   },
   {
     label: "Clínicas",
     href: "/clinicas",
-    iconSrc: "/icons/clinic-building.svg",
+    icon: Building2,
+    section: "gestao",
     group: "cadastros",
     mobile: { slot: "overflow", order: 3 },
   },
   {
     label: "Hospitais",
     href: "/hospitais",
-    iconSrc: "/icons/users.svg",
+    icon: Hospital,
+    section: "gestao",
     group: "cadastros",
     mobile: { slot: "overflow", order: 4 },
   },
   {
     label: "Convênios",
     href: "/convenios",
-    iconSrc: "/icons/document.svg",
+    icon: HeartHandshake,
+    section: "gestao",
     group: "cadastros",
     mobile: { slot: "overflow", order: 5 },
   },
   {
     label: "Fornecedores",
     href: "/fornecedores",
-    iconSrc: "/icons/dollar-cash-circle.svg",
+    icon: Truck,
+    section: "gestao",
     group: "cadastros",
     mobile: { slot: "overflow", order: 6 },
   },
   {
     label: "Fabricantes",
     href: "/fabricantes",
-    iconSrc: "/icons/user.svg",
+    icon: Factory,
+    section: "gestao",
     group: "cadastros",
     mobile: { slot: "overflow", order: 7 },
   },
   {
     label: "Procedimentos",
     href: "/procedimentos",
-    iconSrc: "/icons/status-surgeries.svg",
-    mobile: { slot: "overflow", order: 2 },
+    icon: ClipboardPlus,
+    section: "gestao",
+    group: "cadastros",
+    mobile: { slot: "overflow", order: 8 },
   },
 ];
 

@@ -105,7 +105,7 @@ describe("Configurações — aba Modelos de Documentos (MIG-06)", () => {
     renderPage();
 
     expect(
-      await screen.findByRole("button", { name: /Modelos de Documentos/ }),
+      await screen.findByRole("button", { name: /Modelos de documentos/ }),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(
@@ -135,7 +135,7 @@ describe("Configurações — aba Modelos de Documentos (MIG-06)", () => {
 
     await screen.findByRole("button", { name: /Segurança/ });
     expect(
-      screen.queryByRole("button", { name: /Modelos de Documentos/ }),
+      screen.queryByRole("button", { name: /Modelos de documentos/ }),
     ).toBeNull();
     expect(screen.queryByText(/Gestão de modelos/)).toBeNull();
   });

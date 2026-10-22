@@ -269,4 +269,25 @@ describe("MfaSection", () => {
       await screen.findByText(/os códigos anteriores deixaram de valer/i),
     ).toBeInTheDocument();
   });
+
+  it("ativa: mostra a linha de códigos de recuperação e o desativar sem destaque de perigo", () => {
+    authState.user = { ...authState.user, mfaEnabled: true };
+    render(<MfaSection showToast={vi.fn()} />);
+    expect(
+      screen.getByRole("heading", { name: "Códigos de recuperação" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Gerar novos códigos de recuperação" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /ativar verificação em duas etapas/i }),
+    ).toBeNull();
+  });
+
+  it("desativada: não mostra a linha de códigos de recuperação", () => {
+    render(<MfaSection showToast={vi.fn()} />);
+    expect(
+      screen.queryByRole("heading", { name: "Códigos de recuperação" }),
+    ).toBeNull();
+  });
 });
