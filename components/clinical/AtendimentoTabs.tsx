@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
@@ -11,6 +11,7 @@ import { Permission } from "@/lib/permissions";
 import {
   AtendimentoFicha,
   FichaFields,
+  FichaIndice,
   fichaFieldsFrom,
 } from "@/components/clinical/AtendimentoFicha";
 import { PatientHistoryTab } from "@/components/clinical/PatientHistoryTab";
@@ -42,8 +43,10 @@ import { appointmentKeys } from "@/lib/query-keys";
 import { capitalizeFirst, formatCPF, formatPhone } from "@/lib/formatters";
 import {
   ArrowLeft,
+  Check,
   CheckCircle2,
   Circle,
+  Loader2,
   Tag,
   Phone,
   IdCard,
@@ -69,6 +72,18 @@ function isTabId(value: string | null): value is AtendimentoTabId {
 }
 
 const INDICACAO_SO_MEDICO = "Indicação cirúrgica é ato de médico (CRM).";
+
+export const AUTOSAVE_DELAY_MS = 2500;
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+function formatHoraSalvo(date: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  }).format(date);
+}
 
 function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -151,6 +166,16 @@ export function AtendimentoTabs({
     fichaFieldsFrom(initialRecord),
   );
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [savedAt, setSavedAt] = useState<Date | null>(() =>
+    initialRecord?.updatedAt ? new Date(initialRecord.updatedAt) : null,
+  );
+  const recordRef = useRef<ClinicalRecord | null>(initialRecord);
+  const baselineRef = useRef<FichaFields>(baseline);
+  const lastPersistedRef = useRef<string | null>(
+    initialRecord ? JSON.stringify(fichaFieldsFrom(initialRecord)) : null,
+  );
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   const [finalizing, setFinalizing] = useState(false);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
@@ -162,6 +187,12 @@ export function AtendimentoTabs({
   const readOnly = finalized || !isDoctor;
   const isDirty =
     !readOnly && JSON.stringify(fields) !== JSON.stringify(baseline);
+  const autosaveEnabled =
+    !readOnly && !bloqueado && !finalizing && !excluindo;
+
+  useEffect(() => {
+    baselineRef.current = baseline;
+  }, [baseline]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -174,6 +205,7 @@ export function AtendimentoTabs({
   }, [isDirty]);
 
   const goToTab = (tab: AtendimentoTabId) => {
+    if (tab !== activeTab) flushAutosave();
     setActiveTab(tab);
     setVisited((prev) => new Set(prev).add(tab));
     router.replace(`?tab=${tab}`, { scroll: false });
@@ -184,43 +216,96 @@ export function AtendimentoTabs({
     value: FichaFields[K],
   ) => setFields((prev) => ({ ...prev, [key]: value }));
 
-  const persist = async (): Promise<ClinicalRecord> => {
-    const payload = {
-      anamnesis: fields.anamnesis,
-      physicalExam: fields.physicalExam,
-      diagnosis: fields.diagnosis,
-      conduct: fields.conduct,
-      cidCodes: fields.cidCodes,
-      ...(fields.surgicalIndication !== baseline.surgicalIndication
-        ? { surgicalIndication: fields.surgicalIndication }
-        : {}),
-      procedureId: fields.procedureId,
+  const persist = (
+    snapshot: FichaFields,
+    { skipIfUnchanged = false }: { skipIfUnchanged?: boolean } = {},
+  ): Promise<ClinicalRecord> => {
+    const run = async () => {
+      const current = recordRef.current;
+      const serialized = JSON.stringify(snapshot);
+      if (skipIfUnchanged && current && lastPersistedRef.current === serialized)
+        return current;
+      const payload = {
+        anamnesis: snapshot.anamnesis,
+        physicalExam: snapshot.physicalExam,
+        diagnosis: snapshot.diagnosis,
+        conduct: snapshot.conduct,
+        cidCodes: snapshot.cidCodes,
+        ...(snapshot.surgicalIndication !==
+        baselineRef.current.surgicalIndication
+          ? { surgicalIndication: snapshot.surgicalIndication }
+          : {}),
+        procedureId: snapshot.procedureId,
+      };
+      const saved = current
+        ? await clinicalRecordService.update(current.id, payload)
+        : await clinicalRecordService.create({
+            patientId: patient.id,
+            doctorId: appointment.doctorId,
+            appointmentId: appointment.id,
+            ...payload,
+          });
+      recordRef.current = saved;
+      lastPersistedRef.current = serialized;
+      return saved;
     };
-    if (record) {
-      return clinicalRecordService.update(record.id, payload);
-    }
-    return clinicalRecordService.create({
-      patientId: patient.id,
-      doctorId: appointment.doctorId,
-      appointmentId: appointment.id,
-      ...payload,
-    });
+    const next = saveQueue.current.then(run, run);
+    saveQueue.current = next.catch(() => undefined);
+    return next;
   };
+
+  const marcarSalvo = (saved: ClinicalRecord, snapshot: FichaFields) => {
+    setRecord(saved);
+    setBaseline(snapshot);
+    setSavedAt(new Date());
+    setSaveStatus("saved");
+  };
+
+  const autoSave = async (snapshot: FichaFields) => {
+    setSaveStatus("saving");
+    try {
+      const saved = await persist(snapshot, { skipIfUnchanged: true });
+      marcarSalvo(saved, snapshot);
+    } catch {
+      setSaveStatus("error");
+    }
+  };
+
+  const flushAutosave = () => {
+    if (autosaveEnabled && isDirty) void autoSave(fields);
+  };
+
+  useEffect(() => {
+    if (!autosaveEnabled || !isDirty) return;
+    const timer = setTimeout(() => void autoSave(fields), AUTOSAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, autosaveEnabled, isDirty]);
+
+  const flushRef = useRef(flushAutosave);
+  useEffect(() => {
+    flushRef.current = flushAutosave;
+  });
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === "hidden") flushRef.current();
+    };
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, []);
 
   const ensureRecordId = async (): Promise<string> => {
     if (record && (finalized || !isDirty)) return record.id;
-    const saved = await persist();
-    setRecord(saved);
-    setBaseline(fields);
+    const saved = await persist(fields);
+    marcarSalvo(saved, fields);
     return saved.id;
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const saved = await persist();
-      setRecord(saved);
-      setBaseline(fields);
+      const saved = await persist(fields);
+      marcarSalvo(saved, fields);
       showSuccess("Atendimento salvo.");
     } catch (err) {
       showError(getApiErrorMessage(err, "Não foi possível salvar."));
@@ -248,7 +333,7 @@ export function AtendimentoTabs({
     }
     setFinalizing(true);
     try {
-      const saved = await persist();
+      const saved = await persist(fields);
       setRecord(saved);
       const done = await clinicalRecordService.finalize(saved.id);
       setRecord(done);
@@ -280,6 +365,11 @@ export function AtendimentoTabs({
     }
   };
   const podeExcluirRascunho = !!record && !finalized && isDoctor && !bloqueado;
+  const allowSurgicalIndication = isPhysician && consultaDeMedico;
+  const mostrarIndicacao =
+    allowSurgicalIndication ||
+    fields.surgicalIndication ||
+    baseline.surgicalIndication;
 
   const patientAge = useMemo(() => {
     if (!patient.birthDate) return null;
@@ -340,11 +430,13 @@ export function AtendimentoTabs({
                   Finalizado
                 </span>
               )}
-              {isDirty && (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-                  <Circle className="w-2.5 h-2.5 fill-current" />
-                  Alterações não salvas
-                </span>
+              {!readOnly && (
+                <SaveStatusIndicator
+                  status={saveStatus}
+                  dirty={isDirty}
+                  savedAt={savedAt}
+                  onRetry={() => void autoSave(fields)}
+                />
               )}
             </div>
             <p className="text-xs text-neutral-500 truncate">
@@ -405,9 +497,31 @@ export function AtendimentoTabs({
       </header>
 
       <div className="flex-1 overflow-y-auto bg-white">
-        <div className="max-w-4xl mx-auto px-4 lg:px-6 py-5">
-          <div className={activeTab === "atendimento" ? "" : "hidden"}>
-            <div className="flex flex-col gap-4">
+        <div
+          className={`${activeTab === "atendimento" ? "max-w-6xl" : "max-w-4xl"} mx-auto px-4 lg:px-6 py-5`}
+        >
+          <div
+            className={
+              activeTab === "atendimento"
+                ? "lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8"
+                : "hidden"
+            }
+          >
+            <aside className="hidden lg:block">
+              <div className="sticky top-0 flex flex-col gap-5">
+                <FichaIndice
+                  fields={fields}
+                  mostrarIndicacao={mostrarIndicacao}
+                  orientation="vertical"
+                />
+                {!readOnly && (
+                  <p className="px-2.5 text-xs text-neutral-500">
+                    Tudo é salvo automaticamente enquanto você escreve.
+                  </p>
+                )}
+              </div>
+            </aside>
+            <div className="flex flex-col gap-4 min-w-0">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <ContextItem
                   icon={<Phone className="w-4 h-4" />}
@@ -472,12 +586,20 @@ export function AtendimentoTabs({
                 />
               )}
 
+              <div className="lg:hidden">
+                <FichaIndice
+                  fields={fields}
+                  mostrarIndicacao={mostrarIndicacao}
+                  orientation="horizontal"
+                />
+              </div>
+
               <AtendimentoFicha
                 fields={fields}
                 onFieldChange={handleFieldChange}
                 readOnly={readOnly}
                 surgeryRequestId={record?.surgeryRequestId ?? null}
-                allowSurgicalIndication={isPhysician && consultaDeMedico}
+                allowSurgicalIndication={allowSurgicalIndication}
                 keepSurgicalIndicationVisible={baseline.surgicalIndication}
                 surgicalIndicationBlockedReason={
                   !consultaDeMedico
@@ -619,5 +741,67 @@ function ContextItem({
         </p>
       </div>
     </div>
+  );
+}
+
+function SaveStatusIndicator({
+  status,
+  dirty,
+  savedAt,
+  onRetry,
+}: {
+  status: SaveStatus;
+  dirty: boolean;
+  savedAt: Date | null;
+  onRetry: () => void;
+}) {
+  if (status === "saving") {
+    return (
+      <span
+        role="status"
+        className="inline-flex items-center gap-1 text-xs text-neutral-500"
+      >
+        <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+        Salvando…
+      </span>
+    );
+  }
+  if (status === "error" && dirty) {
+    return (
+      <span
+        role="status"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-red-700"
+      >
+        Não foi possível salvar
+        <button
+          type="button"
+          onClick={onRetry}
+          className="underline underline-offset-2 hover:text-red-800"
+        >
+          Tentar de novo
+        </button>
+      </span>
+    );
+  }
+  if (dirty) {
+    return (
+      <span
+        role="status"
+        className="inline-flex items-center gap-1 text-xs text-neutral-500"
+      >
+        <Circle className="w-2 h-2 fill-current" aria-hidden="true" />
+        Alterações não salvas
+      </span>
+    );
+  }
+  if (!savedAt) return null;
+  return (
+    <span
+      role="status"
+      className="inline-flex items-center gap-1 text-xs text-neutral-500"
+    >
+      <Check className="w-3.5 h-3.5 text-teal-600" aria-hidden="true" />
+      Salvo às {formatHoraSalvo(savedAt)}
+    </span>
   );
 }

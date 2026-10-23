@@ -2,6 +2,7 @@
 
 import React, {
   useEffect,
+  useMemo,
   useState,
   useRef,
   useCallback,
@@ -9,7 +10,7 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
-import type { CommandProps } from "@tiptap/core";
+import type { CommandProps, Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
@@ -34,6 +35,7 @@ import {
   Minus,
   Plus,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const FontSize = TextStyle.extend({
   addAttributes() {
@@ -81,6 +83,9 @@ interface RichTextEditorProps {
   className?: string;
   disabled?: boolean;
   minHeight?: string;
+  variant?: "full" | "clinical";
+  toolbarSlot?: HTMLElement | null;
+  ariaLabel?: string;
 }
 
 const FONT_FAMILIES = [
@@ -155,11 +160,14 @@ function ToolbarButton({
         onClick();
       }}
       title={title}
-      className={`w-7 h-7 flex items-center justify-center rounded text-sm transition-colors ${
+      aria-pressed={isActive}
+      className={cn(
+        "w-7 h-7 flex items-center justify-center rounded text-sm transition-colors",
         isActive
           ? "bg-teal-100 text-teal-700"
-          : "text-gray-600 hover:bg-gray-100"
-      } ${extraClass}`}
+          : "text-gray-600 hover:bg-gray-100",
+        extraClass,
+      )}
     >
       {children}
     </button>
@@ -373,6 +381,76 @@ function ColorPicker({
   );
 }
 
+function ClinicalToolbar({ editor }: { editor: Editor }) {
+  return (
+    <div
+      role="toolbar"
+      aria-label="Formatação"
+      className="flex items-center gap-0.5 rounded-xl border border-neutral-200 bg-white p-0.5 shadow-sm"
+    >
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        isActive={editor.isActive("bold")}
+        title="Negrito"
+        className="w-8 h-8 rounded-lg"
+      >
+        <Bold className="w-4 h-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        isActive={editor.isActive("italic")}
+        title="Itálico"
+        className="w-8 h-8 rounded-lg"
+      >
+        <Italic className="w-4 h-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        isActive={editor.isActive("underline")}
+        title="Sublinhado"
+        className="w-8 h-8 rounded-lg"
+      >
+        <UnderlineIcon className="w-4 h-4" />
+      </ToolbarButton>
+      <div className="w-px h-4 bg-neutral-200 mx-0.5" />
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        isActive={editor.isActive("bulletList")}
+        title="Lista"
+        className="w-8 h-8 rounded-lg"
+      >
+        <List className="w-4 h-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        isActive={editor.isActive("orderedList")}
+        title="Lista numerada"
+        className="w-8 h-8 rounded-lg"
+      >
+        <ListOrdered className="w-4 h-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleHighlight().run()}
+        isActive={editor.isActive("highlight")}
+        title="Realçar"
+        className="w-8 h-8 rounded-lg"
+      >
+        <Highlighter className="w-4 h-4" />
+      </ToolbarButton>
+      <div className="w-px h-4 bg-neutral-200 mx-0.5" />
+      <ToolbarButton
+        onClick={() =>
+          editor.chain().focus().unsetAllMarks().clearNodes().run()
+        }
+        title="Remover formatação"
+        className="w-8 h-8 rounded-lg"
+      >
+        <RemoveFormatting className="w-4 h-4" />
+      </ToolbarButton>
+    </div>
+  );
+}
+
 export function RichTextEditor({
   value,
   onChange,
@@ -380,22 +458,35 @@ export function RichTextEditor({
   className = "",
   disabled = false,
   minHeight = "80px",
+  variant = "full",
+  toolbarSlot,
+  ariaLabel,
 }: RichTextEditorProps) {
+  const clinical = variant === "clinical";
+
+  const extensions = useMemo(() => {
+    const starter = StarterKit.configure({
+      heading: false,
+      blockquote: false,
+      codeBlock: false,
+      horizontalRule: false,
+    });
+    if (!clinical) {
+      return [
+        starter,
+        FontSize,
+        Color,
+        FontFamily,
+        Highlight.configure({ multicolor: true }),
+        TextAlign.configure({ types: ["heading", "paragraph"] }),
+      ];
+    }
+    return [starter, Highlight];
+  }, [clinical]);
+
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        heading: false,
-        blockquote: false,
-        codeBlock: false,
-        horizontalRule: false,
-      }),
-      FontSize,
-      Color,
-      FontFamily,
-      Highlight.configure({ multicolor: true }),
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-    ],
+    extensions,
     content: value,
     editable: !disabled,
     onUpdate({ editor }) {
@@ -404,9 +495,14 @@ export function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: `outline-none py-2 px-3 text-sm text-gray-800`,
+        class: clinical
+          ? "rte-content rte-clinical outline-none py-1 text-[15px] leading-relaxed text-neutral-800"
+          : "rte-content outline-none py-2 px-3 text-sm text-gray-800",
         style: `min-height: ${minHeight}`,
         "data-placeholder": placeholder ?? "Digite aqui...",
+        ...(ariaLabel ? { "aria-label": ariaLabel } : {}),
+        role: "textbox",
+        "aria-multiline": "true",
       },
     },
   });
@@ -456,6 +552,16 @@ export function RichTextEditor({
   }, [editor]);
 
   if (!editor) return null;
+
+  if (clinical) {
+    const toolbar = disabled ? null : <ClinicalToolbar editor={editor} />;
+    return (
+      <div className={className}>
+        {toolbar && (toolbarSlot ? createPortal(toolbar, toolbarSlot) : toolbar)}
+        <EditorContent editor={editor} />
+      </div>
+    );
+  }
 
   const currentFontLabel =
     FONT_FAMILIES.find((f) => f.value === getCurrentFontFamily())?.label ||

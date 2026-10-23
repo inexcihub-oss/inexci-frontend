@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -119,7 +119,7 @@ import { clinicalRecordService } from "@/services/clinical-record.service";
 import { clinicalRecordTemplateService } from "@/services/clinical-record-template.service";
 import { healthPlanService } from "@/services/health-plan.service";
 import type { Patient } from "@/services/patient.service";
-import { AtendimentoTabs } from "./AtendimentoTabs";
+import { AtendimentoTabs, AUTOSAVE_DELAY_MS } from "./AtendimentoTabs";
 
 const patient = {
   id: "p-1",
@@ -221,8 +221,12 @@ describe("AtendimentoTabs", () => {
       "aria-selected",
       "true",
     );
-    expect(screen.getByText("Anamnese")).toBeInTheDocument();
-    expect(screen.getByText("Conduta / Plano")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Anamnese" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Conduta / Plano" }),
+    ).toBeInTheDocument();
   });
 
   it('expõe data-tour="ficha-abas" na barra de abas', () => {
@@ -1489,5 +1493,154 @@ describe("AtendimentoTabs", () => {
       screen.getAllByRole("button", { name: /finalizar/i })[0],
     ).toBeDisabled();
     expect(screen.getByRole("tab", { name: "Histórico" })).toBeDisabled();
+  });
+  describe("salvamento automático", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    function setupUser() {
+      return userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    }
+
+    it("cria o rascunho sozinho depois de parar de digitar e mostra a hora", async () => {
+      const user = setupUser();
+      (
+        clinicalRecordService.create as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(recordFixture({ anamnesis: "Dor lombar" }));
+      renderTabs();
+
+      await user.type(screen.getByLabelText(/Queixa principal/i), "Dor lombar");
+      expect(clinicalRecordService.create).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+
+      await waitFor(() =>
+        expect(clinicalRecordService.create).toHaveBeenCalledTimes(1),
+      );
+      expect(clinicalRecordService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ anamnesis: "Dor lombar" }),
+      );
+      expect(await screen.findByText(/Salvo às/i)).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Alterações não salvas/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it("não cria a ficha duas vezes quando o usuário continua digitando durante o salvamento", async () => {
+      const user = setupUser();
+      let resolveCreate: (record: Record_) => void = () => {};
+      (
+        clinicalRecordService.create as ReturnType<typeof vi.fn>
+      ).mockImplementation(
+        () =>
+          new Promise<Record_>((resolve) => {
+            resolveCreate = resolve;
+          }),
+      );
+      (
+        clinicalRecordService.update as ReturnType<typeof vi.fn>
+      ).mockImplementation(async (_id: string, payload: Partial<Record_>) =>
+        recordFixture({ anamnesis: payload.anamnesis ?? null }),
+      );
+      renderTabs();
+
+      const campo = screen.getByLabelText(/Queixa principal/i);
+      await user.type(campo, "Dor");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      expect(clinicalRecordService.create).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(/Salvando/i)).toBeInTheDocument();
+
+      await user.type(campo, " lombar");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      expect(clinicalRecordService.update).not.toHaveBeenCalled();
+
+      resolveCreate(recordFixture({ anamnesis: "Dor" }));
+
+      await waitFor(() =>
+        expect(clinicalRecordService.update).toHaveBeenCalledWith(
+          "r-1",
+          expect.objectContaining({ anamnesis: "Dor lombar" }),
+        ),
+      );
+      expect(clinicalRecordService.create).toHaveBeenCalledTimes(1);
+    });
+
+    it("avisa a falha e tenta de novo pelo botão", async () => {
+      const user = setupUser();
+      (clinicalRecordService.create as ReturnType<typeof vi.fn>)
+        .mockRejectedValueOnce(new Error("Falha de rede"))
+        .mockResolvedValueOnce(recordFixture({ anamnesis: "Dor" }));
+      renderTabs();
+
+      await user.type(screen.getByLabelText(/Queixa principal/i), "Dor");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+
+      expect(
+        await screen.findByText(/Não foi possível salvar/i),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /Tentar de novo/i }));
+
+      await waitFor(() =>
+        expect(clinicalRecordService.create).toHaveBeenCalledTimes(2),
+      );
+      expect(await screen.findByText(/Salvo às/i)).toBeInTheDocument();
+    });
+
+    it("salva na hora ao trocar de aba", async () => {
+      const user = setupUser();
+      (
+        clinicalRecordService.create as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(recordFixture({ anamnesis: "Dor" }));
+      renderTabs();
+
+      await user.type(screen.getByLabelText(/Queixa principal/i), "Dor");
+      await user.click(screen.getByRole("tab", { name: "Documentos" }));
+
+      await waitFor(() =>
+        expect(clinicalRecordService.create).toHaveBeenCalledTimes(1),
+      );
+    });
+
+    it("não salva sozinho durante o tour", async () => {
+      onboardingMockState.emTour = true;
+      const user = setupUser();
+      renderTabs();
+
+      await user.type(screen.getByLabelText(/Queixa principal/i), "Dor");
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS * 2);
+
+      expect(clinicalRecordService.create).not.toHaveBeenCalled();
+      expect(clinicalRecordService.update).not.toHaveBeenCalled();
+    });
+  });
+
+  it("mostra a hora do último salvamento de um rascunho existente", () => {
+    renderTabs(recordFixture({ updatedAt: "2026-07-29T18:04:00.000Z" }));
+
+    expect(screen.getByText("Salvo às 15:04")).toBeInTheDocument();
+  });
+
+  it("mostra o índice da ficha marcando as seções preenchidas", () => {
+    renderTabs(
+      recordFixture({ anamnesis: "<p>Dor lombar</p>", cidCodes: [] }),
+    );
+
+    const indices = screen.getAllByRole("navigation", {
+      name: "Seções da ficha",
+    });
+    expect(indices.length).toBeGreaterThan(0);
+    const indice = indices[0];
+    expect(
+      within(indice).getByRole("button", { name: /Anamnese \(preenchida\)/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(indice).getByRole("button", { name: "Exame físico" }),
+    ).toBeInTheDocument();
   });
 });

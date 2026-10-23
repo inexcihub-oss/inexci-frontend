@@ -549,3 +549,33 @@
     @apply text-teal-700 underline;
   }
 }
+
+@layer components {
+  .rte-content {
+    @apply relative;
+  }
+  .rte-content :where(ul) {
+    @apply my-1 list-disc pl-6;
+  }
+  .rte-content :where(ol) {
+    @apply my-1 list-decimal pl-6;
+  }
+  .rte-content :where(li > p) {
+    @apply my-0;
+  }
+  .rte-content :where(mark) {
+    @apply rounded-sm bg-yellow-200 px-0.5;
+  }
+  .rte-clinical :where(p) {
+    @apply my-0 mb-1;
+  }
+  .rte-clinical :where(p:last-child) {
+    @apply mb-0;
+  }
+  .ProseMirror.rte-content:has(
+      > p:only-child > br.ProseMirror-trailingBreak:only-child
+    )::before {
+    @apply pointer-events-none absolute text-neutral-400;
+    content: attr(data-placeholder);
+  }
+}
