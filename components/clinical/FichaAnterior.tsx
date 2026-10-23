@@ -19,19 +19,21 @@ export function escolherFichaAnterior(
   records: ClinicalRecord[],
   appointmentId: string,
   currentRecordId: string | null,
+  dataDaConsulta: string,
 ): ClinicalRecord | null {
+  const limite = new Date(dataDaConsulta).getTime();
   return (
     records
       .filter(
         (record) =>
           !!record.finalizedAt &&
           record.id !== currentRecordId &&
-          record.appointmentId !== appointmentId,
+          record.appointmentId !== appointmentId &&
+          new Date(record.createdAt).getTime() < limite,
       )
       .sort(
         (a, b) =>
-          new Date(b.finalizedAt!).getTime() -
-          new Date(a.finalizedAt!).getTime(),
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       )[0] ?? null
   );
 }
@@ -53,12 +55,14 @@ export function FichaAnterior({
   patientId,
   appointmentId,
   currentRecordId,
+  dataDaConsulta,
   onCopiar,
   onCopiarCids,
 }: {
   patientId: string;
   appointmentId: string;
   currentRecordId: string | null;
+  dataDaConsulta: string;
   onCopiar: (key: FichaTextKey, html: string) => void;
   onCopiarCids: (cids: ClinicalCidCode[]) => void;
 }) {
@@ -90,6 +94,7 @@ export function FichaAnterior({
     data ?? [],
     appointmentId,
     currentRecordId,
+    dataDaConsulta,
   );
 
   if (!anterior) {
@@ -111,9 +116,9 @@ export function FichaAnterior({
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-neutral-600">
-        Atendimento finalizado em{" "}
+        Atendimento de{" "}
         <span className="font-medium text-neutral-800">
-          {formatarData(anterior.finalizedAt!)}
+          {formatarData(anterior.createdAt)}
         </span>
       </p>
 

@@ -44,6 +44,64 @@ describe("useDitado", () => {
     expect(transcrever).not.toHaveBeenCalled();
   });
 
+  it("clique repetido enquanto o navegador pede permissão abre um só gravador", async () => {
+    let liberar: (stream: MediaStream) => void = () => undefined;
+    const parada = vi.fn();
+    instalarMicrofoneFalso(
+      () =>
+        new Promise<MediaStream>((resolve) => {
+          liberar = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useDitado(vi.fn(), vi.fn()));
+
+    let primeiro: Promise<void> = Promise.resolve();
+    let segundo: Promise<void> = Promise.resolve();
+    act(() => {
+      primeiro = result.current.iniciar();
+      segundo = result.current.iniciar();
+    });
+    await act(async () => {
+      liberar({
+        getTracks: () => [{ stop: parada }],
+      } as unknown as MediaStream);
+      await Promise.all([primeiro, segundo]);
+    });
+
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+    expect(FakeMediaRecorder.instancias).toHaveLength(1);
+    expect(result.current.estado).toBe("gravando");
+  });
+
+  it("desmontar antes da permissão não deixa o microfone ligado", async () => {
+    let liberar: (stream: MediaStream) => void = () => undefined;
+    const parada = vi.fn();
+    instalarMicrofoneFalso(
+      () =>
+        new Promise<MediaStream>((resolve) => {
+          liberar = resolve;
+        }),
+    );
+    const { result, unmount } = renderHook(() =>
+      useDitado(vi.fn(), vi.fn()),
+    );
+
+    let pedido: Promise<void> = Promise.resolve();
+    act(() => {
+      pedido = result.current.iniciar();
+    });
+    unmount();
+    await act(async () => {
+      liberar({
+        getTracks: () => [{ stop: parada }],
+      } as unknown as MediaStream);
+      await pedido;
+    });
+
+    expect(FakeMediaRecorder.instancias).toHaveLength(0);
+    expect(parada).toHaveBeenCalled();
+  });
+
   it("explica quando o navegador bloqueia o microfone", async () => {
     instalarMicrofoneFalso(() =>
       Promise.reject(new DOMException("negado", "NotAllowedError")),

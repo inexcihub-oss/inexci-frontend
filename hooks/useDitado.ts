@@ -41,6 +41,8 @@ export function useDitado(
   const trechos = useRef<Blob[]>([]);
   const cancelado = useRef(false);
   const relogio = useRef<ReturnType<typeof setInterval> | null>(null);
+  const iniciando = useRef(false);
+  const montado = useRef(false);
   const aoTranscreverRef = useRef(aoTranscrever);
   const transcreverRef = useRef(transcrever);
 
@@ -60,26 +62,35 @@ export function useDitado(
     if (atual && atual.state !== "inactive") atual.stop();
   }, []);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    montado.current = true;
+    return () => {
+      montado.current = false;
       pararRelogio();
       cancelado.current = true;
       const atual = gravador.current;
       if (atual && atual.state !== "inactive") atual.stop();
       atual?.stream.getTracks().forEach((track) => track.stop());
-    },
-    [],
-  );
+    };
+  }, []);
 
   const iniciar = useCallback(async () => {
-    if (!transcreverRef.current || gravador.current?.state === "recording")
+    if (!transcreverRef.current || iniciando.current || gravador.current)
       return;
+    iniciando.current = true;
     setErro(null);
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (falha) {
-      setErro(mensagemDoMicrofone(falha));
+      if (montado.current) setErro(mensagemDoMicrofone(falha));
+      return;
+    } finally {
+      iniciando.current = false;
+    }
+
+    if (!montado.current) {
+      stream.getTracks().forEach((track) => track.stop());
       return;
     }
 

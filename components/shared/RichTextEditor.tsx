@@ -782,6 +782,7 @@ export function RichTextEditor({
   const [microfoneDisponivel] = useState(() => ditadoSuportado());
   const [slash, setSlash] = useState<SlashState | null>(null);
   const [ativo, setAtivo] = useState(0);
+  const [navegou, setNavegou] = useState(false);
   const dispensadoEm = useRef<number | null>(null);
   const sincronizando = useRef(false);
   const teclaRef = useRef<(event: KeyboardEvent) => boolean>(() => false);
@@ -850,6 +851,10 @@ export function RichTextEditor({
     () => (slash ? filtrarSnippets(snippets ?? [], slash.query) : []),
     [slash, snippets],
   );
+  const indiceAtivo = Math.min(ativo, Math.max(0, itens.length - 1));
+  const armado =
+    navegou ||
+    (!!slash?.query && !!itens[indiceAtivo]?.shortcut.startsWith(slash.query));
 
   useEffect(() => {
     if (!editor || !usaSnippets) return;
@@ -861,7 +866,10 @@ export function RichTextEditor({
         return;
       }
       setSlash((atual) => {
-        if (atual?.query !== novo?.query) setAtivo(0);
+        if (atual?.query !== novo?.query) {
+          setAtivo(0);
+          setNavegou(false);
+        }
         return novo;
       });
     };
@@ -899,14 +907,17 @@ export function RichTextEditor({
     if (itens.length === 0) return false;
     if (event.key === "ArrowDown") {
       setAtivo((i) => (i + 1) % itens.length);
+      setNavegou(true);
       return true;
     }
     if (event.key === "ArrowUp") {
       setAtivo((i) => (i - 1 + itens.length) % itens.length);
+      setNavegou(true);
       return true;
     }
     if (event.key === "Enter" || event.key === "Tab") {
-      escolher(itens[Math.min(ativo, itens.length - 1)]);
+      if (!armado) return false;
+      escolher(itens[indiceAtivo]);
       return true;
     }
     return false;
@@ -994,10 +1005,13 @@ export function RichTextEditor({
           <SlashMenu
             slash={slash}
             itens={itens}
-            ativo={Math.min(ativo, Math.max(0, itens.length - 1))}
+            ativo={armado ? indiceAtivo : -1}
             semNenhum={(snippets ?? []).length === 0}
             onEscolher={escolher}
-            onAtivar={setAtivo}
+            onAtivar={(indice) => {
+              setAtivo(indice);
+              setNavegou(true);
+            }}
           />
         )}
       </div>

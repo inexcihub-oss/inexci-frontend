@@ -173,6 +173,10 @@ export function AtendimentoTabs({
     !!user?.id && user.id === appointment.doctorId;
   const crmSemNumeroDe =
     assinante?.medico && assinante.semNumero ? assinante.nome : null;
+  const indicacaoBloqueada =
+    !isPhysician || !consultaDeMedico || !!crmSemNumeroDe;
+  const indicacaoBloqueadaRef = useRef(indicacaoBloqueada);
+  indicacaoBloqueadaRef.current = indicacaoBloqueada;
   const [record, setRecord] = useState<ClinicalRecord | null>(initialRecord);
   const [fields, setFields] = useState<FichaFields>(() =>
     fichaFieldsFrom(initialRecord),
@@ -200,8 +204,12 @@ export function AtendimentoTabs({
 
   const finalized = !!record?.finalizedAt;
   const readOnly = finalized || !isDoctor;
+  const fieldsGravaveis =
+    fields.surgicalIndication && !baseline.surgicalIndication && indicacaoBloqueada
+      ? { ...fields, surgicalIndication: false }
+      : fields;
   const isDirty =
-    !readOnly && JSON.stringify(fields) !== JSON.stringify(baseline);
+    !readOnly && JSON.stringify(fieldsGravaveis) !== JSON.stringify(baseline);
   const autosaveEnabled =
     !readOnly && !bloqueado && !finalizing && !excluindo;
 
@@ -240,14 +248,17 @@ export function AtendimentoTabs({
       const serialized = JSON.stringify(snapshot);
       if (skipIfUnchanged && current && lastPersistedRef.current === serialized)
         return current;
+      const enviarIndicacao =
+        snapshot.surgicalIndication !==
+          baselineRef.current.surgicalIndication &&
+        !(snapshot.surgicalIndication && indicacaoBloqueadaRef.current);
       const payload = {
         anamnesis: snapshot.anamnesis,
         physicalExam: snapshot.physicalExam,
         diagnosis: snapshot.diagnosis,
         conduct: snapshot.conduct,
         cidCodes: snapshot.cidCodes,
-        ...(snapshot.surgicalIndication !==
-        baselineRef.current.surgicalIndication
+        ...(enviarIndicacao
           ? { surgicalIndication: snapshot.surgicalIndication }
           : {}),
         procedureId: snapshot.procedureId,
@@ -271,12 +282,18 @@ export function AtendimentoTabs({
 
   const marcarSalvo = (saved: ClinicalRecord, snapshot: FichaFields) => {
     setRecord(saved);
-    setBaseline(snapshot);
+    setBaseline({
+      ...snapshot,
+      surgicalIndication:
+        saved.surgicalIndication ?? snapshot.surgicalIndication,
+    });
     setSavedAt(new Date());
     setSaveStatus("saved");
   };
 
+  const rascunhoExcluidoRef = useRef(false);
   const autoSave = async (snapshot: FichaFields) => {
+    if (rascunhoExcluidoRef.current) return;
     setSaveStatus("saving");
     try {
       const saved = await persist(snapshot, { skipIfUnchanged: true });
@@ -306,7 +323,10 @@ export function AtendimentoTabs({
       if (document.visibilityState === "hidden") flushRef.current();
     };
     document.addEventListener("visibilitychange", handler);
-    return () => document.removeEventListener("visibilitychange", handler);
+    return () => {
+      document.removeEventListener("visibilitychange", handler);
+      flushRef.current();
+    };
   }, []);
 
   const ensureRecordId = async (): Promise<string> => {
@@ -366,6 +386,7 @@ export function AtendimentoTabs({
     setExcluindo(true);
     try {
       await clinicalRecordService.delete(record.id);
+      rascunhoExcluidoRef.current = true;
       void queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
       setConfirmarExclusao(false);
       setBaseline(fields);
@@ -444,6 +465,7 @@ export function AtendimentoTabs({
       patientId={patient.id}
       appointmentId={appointment.id}
       currentRecordId={record?.id ?? null}
+      dataDaConsulta={appointment.scheduledAt}
       onCopiar={copiarDaFichaAnterior}
       onCopiarCids={copiarCidsDaFichaAnterior}
     />

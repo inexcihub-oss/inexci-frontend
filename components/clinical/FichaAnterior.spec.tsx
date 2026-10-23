@@ -38,12 +38,22 @@ function ficha(over: Partial<ClinicalRecord>): ClinicalRecord {
 }
 
 describe("escolherFichaAnterior", () => {
-  it("pega a última finalizada que não é a consulta atual", () => {
+  const CONSULTA = "2026-10-23T13:00:00.000Z";
+
+  it("pega a última finalizada antes desta consulta que não é a atual", () => {
     const fichas = [
       ficha({ id: "atual", appointmentId: "a-1" }),
       ficha({ id: "rascunho-velho", appointmentId: "a-0" }),
-      ficha({ id: "antiga", finalizedAt: "2026-08-01T12:00:00.000Z" }),
-      ficha({ id: "recente", finalizedAt: "2026-09-20T12:00:00.000Z" }),
+      ficha({
+        id: "antiga",
+        createdAt: "2026-08-01T12:00:00.000Z",
+        finalizedAt: "2026-08-01T13:00:00.000Z",
+      }),
+      ficha({
+        id: "recente",
+        createdAt: "2026-09-20T12:00:00.000Z",
+        finalizedAt: "2026-09-20T13:00:00.000Z",
+      }),
       ficha({
         id: "mesma-consulta",
         appointmentId: "a-1",
@@ -51,8 +61,49 @@ describe("escolherFichaAnterior", () => {
       }),
     ];
 
-    expect(escolherFichaAnterior(fichas, "a-1", "atual")?.id).toBe("recente");
-    expect(escolherFichaAnterior([], "a-1", null)).toBeNull();
+    expect(escolherFichaAnterior(fichas, "a-1", "atual", CONSULTA)?.id).toBe(
+      "recente",
+    );
+    expect(escolherFichaAnterior([], "a-1", null, CONSULTA)).toBeNull();
+  });
+
+  it("ao abrir uma consulta antiga, ignora fichas de consultas posteriores", () => {
+    const fichas = [
+      ficha({
+        id: "agosto",
+        createdAt: "2026-08-10T12:00:00.000Z",
+        finalizedAt: "2026-08-10T13:00:00.000Z",
+      }),
+      ficha({
+        id: "outubro",
+        createdAt: "2026-10-15T12:00:00.000Z",
+        finalizedAt: "2026-10-15T13:00:00.000Z",
+      }),
+    ];
+
+    expect(
+      escolherFichaAnterior(fichas, "a-set", null, "2026-09-01T13:00:00.000Z")
+        ?.id,
+    ).toBe("agosto");
+  });
+
+  it("usa a data do atendimento, não a da finalização", () => {
+    const fichas = [
+      ficha({
+        id: "finalizada-tarde",
+        createdAt: "2026-08-10T12:00:00.000Z",
+        finalizedAt: "2026-10-20T12:00:00.000Z",
+      }),
+      ficha({
+        id: "finalizada-no-dia",
+        createdAt: "2026-09-10T12:00:00.000Z",
+        finalizedAt: "2026-09-10T13:00:00.000Z",
+      }),
+    ];
+
+    expect(escolherFichaAnterior(fichas, "a-1", null, CONSULTA)?.id).toBe(
+      "finalizada-no-dia",
+    );
   });
 });
 
@@ -72,6 +123,7 @@ describe("FichaAnterior", () => {
     vi.mocked(clinicalRecordService.getByPatient).mockResolvedValue([
       ficha({
         id: "recente",
+        createdAt: "2026-09-20T12:00:00.000Z",
         finalizedAt: "2026-09-20T12:00:00.000Z",
         anamnesis: "<p>Dor no joelho</p>",
         conduct: "<p>Fisioterapia</p>",
@@ -85,6 +137,7 @@ describe("FichaAnterior", () => {
         patientId="p-1"
         appointmentId="a-1"
         currentRecordId={null}
+        dataDaConsulta="2026-10-23T13:00:00.000Z"
         onCopiar={onCopiar}
         onCopiarCids={onCopiarCids}
       />,
@@ -92,6 +145,7 @@ describe("FichaAnterior", () => {
 
     expect(await screen.findByText("Dor no joelho")).toBeInTheDocument();
     expect(screen.getByText("20/09/2026")).toBeInTheDocument();
+    expect(screen.getByText(/Atendimento de/)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Copiar Exame físico/ }),
     ).not.toBeInTheDocument();
@@ -118,6 +172,7 @@ describe("FichaAnterior", () => {
         patientId="p-1"
         appointmentId="a-1"
         currentRecordId={null}
+        dataDaConsulta="2026-10-23T13:00:00.000Z"
         onCopiar={vi.fn()}
         onCopiarCids={vi.fn()}
       />,

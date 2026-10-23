@@ -179,6 +179,7 @@ const SNIPPETS = [
 type EditorNoDom = Element & {
   editor: {
     commands: { insertContent: (c: string) => boolean; focus: () => boolean };
+    getText: () => string;
   };
 };
 
@@ -270,6 +271,55 @@ describe("RichTextEditor — textos rápidos", () => {
     expect(onSnippetUsed).toHaveBeenCalledWith("s2");
     const html = onChange.mock.calls.at(-1)?.[0] as string;
     expect(html).toBe("<p>Ao exame: Sem derrame.</p>");
+  });
+
+  it("Enter depois de só / quebra a linha em vez de inserir texto rápido", async () => {
+    const onSnippetUsed = vi.fn();
+    const { pm } = await editorReal({ snippets: SNIPPETS, onSnippetUsed });
+
+    pm.editor.commands.focus();
+    pm.editor.commands.insertContent("HAS /");
+    const lista = await screen.findByRole("listbox", {
+      name: "Textos rápidos",
+    });
+    expect(lista.querySelector('[aria-selected="true"]')).toBeNull();
+
+    const evento = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    pm.dispatchEvent(evento);
+
+    expect(onSnippetUsed).not.toHaveBeenCalled();
+    expect(pm.editor.getText()).toContain("HAS /");
+  });
+
+  it("Enter não escolhe item achado só pelo título", async () => {
+    const onSnippetUsed = vi.fn();
+    const { pm } = await editorReal({ snippets: SNIPPETS, onSnippetUsed });
+
+    pm.editor.commands.focus();
+    pm.editor.commands.insertContent("dor /exame");
+    await screen.findByRole("listbox", { name: "Textos rápidos" });
+
+    fireEvent.keyDown(pm, { key: "Enter" });
+
+    expect(onSnippetUsed).not.toHaveBeenCalled();
+  });
+
+  it("com as setas, Enter escolhe o item navegado mesmo sem atalho digitado", async () => {
+    const onSnippetUsed = vi.fn();
+    const { pm } = await editorReal({ snippets: SNIPPETS, onSnippetUsed });
+
+    pm.editor.commands.focus();
+    pm.editor.commands.insertContent("/");
+    await screen.findByRole("listbox", { name: "Textos rápidos" });
+
+    fireEvent.keyDown(pm, { key: "ArrowDown" });
+    fireEvent.keyDown(pm, { key: "Enter" });
+
+    await waitFor(() => expect(onSnippetUsed).toHaveBeenCalledTimes(1));
   });
 
   it("Esc fecha o menu sem inserir nada", async () => {

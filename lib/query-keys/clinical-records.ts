@@ -5,8 +5,9 @@ export const clinicalRecordKeys = {
   byPatient: (patientId: string) => [...ALL, "patient", patientId] as const,
 };
 
+const SNIPPETS = ["clinical-snippets"] as const;
+
 export const clinicalSnippetKeys = {
-  all: [...ALL, "snippets"] as const,
-  mine: (userId: string | null) =>
-    [...ALL, "snippets", userId ?? "anonimo"] as const,
+  all: SNIPPETS,
+  mine: (userId: string | null) => [...SNIPPETS, userId ?? "anonimo"] as const,
 };

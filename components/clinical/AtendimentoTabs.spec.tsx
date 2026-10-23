@@ -1584,6 +1584,76 @@ describe("AtendimentoTabs", () => {
       expect(clinicalRecordService.create).toHaveBeenCalledTimes(1);
     });
 
+    it("salva ao sair da tela antes de terminar a espera do salvamento automático", async () => {
+      const user = setupUser();
+      (
+        clinicalRecordService.create as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(recordFixture({ anamnesis: "Dor lombar" }));
+      const { unmount } = renderTabs();
+
+      await user.type(screen.getByLabelText(/Queixa principal/i), "Dor lombar");
+      expect(clinicalRecordService.create).not.toHaveBeenCalled();
+
+      unmount();
+
+      await waitFor(() =>
+        expect(clinicalRecordService.create).toHaveBeenCalledWith(
+          expect.objectContaining({ anamnesis: "Dor lombar" }),
+        ),
+      );
+    });
+
+    it("sair da tela sem alterações não grava nada", async () => {
+      const { unmount } = renderTabs(recordFixture({ anamnesis: "Dor" }));
+      unmount();
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      expect(clinicalRecordService.create).not.toHaveBeenCalled();
+      expect(clinicalRecordService.update).not.toHaveBeenCalled();
+    });
+
+    it("indicação marcada sem CRM completo não impede salvar o texto da ficha", async () => {
+      const user = setupUser();
+      let liberarMedicos: (medicos: unknown[]) => void = () => undefined;
+      vi.mocked(availableDoctorsService.getAvailableDoctors).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            liberarMedicos = resolve as (medicos: unknown[]) => void;
+          }),
+      );
+      (
+        clinicalRecordService.update as ReturnType<typeof vi.fn>
+      ).mockImplementation(async (_id: string, payload: Partial<Record_>) =>
+        recordFixture({
+          anamnesis: payload.anamnesis ?? null,
+          surgicalIndication: false,
+        }),
+      );
+      renderTabs(recordFixture());
+
+      await user.click(
+        screen.getByRole("checkbox", { name: "Paciente cirúrgico" }),
+      );
+      await user.type(screen.getByLabelText(/Queixa principal/i), "Dor");
+      liberarMedicos([
+        { id: "d-1", name: "Dr. Sem CRM", crm: null, crmState: null },
+      ]);
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+
+      await waitFor(() =>
+        expect(clinicalRecordService.update).toHaveBeenCalledWith(
+          "r-1",
+          expect.objectContaining({ anamnesis: "Dor" }),
+        ),
+      );
+      const payload = vi.mocked(clinicalRecordService.update).mock
+        .calls[0][1] as Record<string, unknown>;
+      expect(payload).not.toHaveProperty("surgicalIndication");
+      expect(await screen.findByText(/Salvo às/i)).toBeInTheDocument();
+      vi.mocked(availableDoctorsService.getAvailableDoctors).mockResolvedValue(
+        [],
+      );
+    });
+
     it("avisa a falha e tenta de novo pelo botão", async () => {
       const user = setupUser();
       (clinicalRecordService.create as ReturnType<typeof vi.fn>)
@@ -1711,6 +1781,7 @@ describe("AtendimentoTabs", () => {
       recordFixture({
         id: "r-0",
         appointmentId: "a-0",
+        createdAt: "2026-07-01T11:00:00.000Z",
         finalizedAt: "2026-07-01T12:00:00.000Z",
         conduct: "<p>Fisioterapia</p>",
       }),
