@@ -31,7 +31,6 @@ describe("SalvarTextoRapidoModal", () => {
     renderWithProviders(
       <SalvarTextoRapidoModal
         conteudo="<p>Bom estado geral</p>"
-        doctorId="d-1"
         onClose={onClose}
       />,
     );
@@ -49,7 +48,6 @@ describe("SalvarTextoRapidoModal", () => {
         shortcut: "exame-normal",
         title: "Exame normal",
         content: "<p>Bom estado geral</p>",
-        doctorId: "d-1",
       }),
     );
     expect(onClose).toHaveBeenCalled();
@@ -69,7 +67,6 @@ describe("SalvarTextoRapidoModal", () => {
     renderWithProviders(
       <SalvarTextoRapidoModal
         conteudo="<p>x</p>"
-        doctorId="d-1"
         onClose={vi.fn()}
       />,
     );

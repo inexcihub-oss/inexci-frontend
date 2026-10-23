@@ -21,11 +21,9 @@ import {
 
 export function SalvarTextoRapidoModal({
   conteudo,
-  doctorId,
   onClose,
 }: {
   conteudo: string | null;
-  doctorId: string;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -57,7 +55,6 @@ export function SalvarTextoRapidoModal({
         shortcut: normalizarAtalho(campos.shortcut),
         title: campos.title.trim(),
         content: conteudo,
-        doctorId,
       });
       await queryClient.invalidateQueries({
         queryKey: clinicalSnippetKeys.all,

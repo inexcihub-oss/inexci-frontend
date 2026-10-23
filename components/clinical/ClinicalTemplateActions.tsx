@@ -33,11 +33,9 @@ const hasContent = (fields: TemplateFields): boolean =>
   );
 
 export function ClinicalTemplateActions({
-  doctorId,
   fields,
   onApply,
 }: {
-  doctorId: string;
   fields: TemplateFields;
   onApply: (template: ClinicalRecordTemplate) => void;
 }) {
@@ -52,13 +50,13 @@ export function ClinicalTemplateActions({
 
   const load = useCallback(() => {
     clinicalRecordTemplateService
-      .getAll(doctorId)
+      .getAll()
       .then(setTemplates)
       .catch((err) => {
         logger.error("Erro ao carregar modelos de anamnese:", err);
         setTemplates([]);
       });
-  }, [doctorId]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -97,7 +95,6 @@ export function ClinicalTemplateActions({
     try {
       await clinicalRecordTemplateService.create({
         name: name.trim(),
-        doctorId,
         specialty: specialty.trim() || undefined,
         anamnesis: fields.anamnesis || undefined,
         physicalExam: fields.physicalExam || undefined,

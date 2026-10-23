@@ -51,18 +51,18 @@ describe("ClinicalSnippetsSettings", () => {
     vi.mocked(clinicalSnippetService.getAll).mockResolvedValue([existente]);
   });
 
-  it("lista os textos do médico", async () => {
-    renderWithProviders(<ClinicalSnippetsSettings doctorId="d-1" />);
+  it("lista os textos do próprio médico", async () => {
+    renderWithProviders(<ClinicalSnippetsSettings userId="d-1" />);
 
     expect(await screen.findByText("/normal")).toBeInTheDocument();
     expect(screen.getByText("Exame físico normal")).toBeInTheDocument();
-    expect(clinicalSnippetService.getAll).toHaveBeenCalledWith("d-1");
+    expect(clinicalSnippetService.getAll).toHaveBeenCalledWith();
   });
 
   it("cria um texto novo exigindo o texto", async () => {
     const user = userEvent.setup();
     vi.mocked(clinicalSnippetService.create).mockResolvedValue(existente);
-    renderWithProviders(<ClinicalSnippetsSettings doctorId="d-1" />);
+    renderWithProviders(<ClinicalSnippetsSettings userId="d-1" />);
     await screen.findByText("/normal");
 
     await user.click(screen.getByRole("button", { name: /Novo texto rápido/ }));
@@ -86,7 +86,6 @@ describe("ClinicalSnippetsSettings", () => {
         shortcut: "joelho",
         title: "Joelho normal",
         content: "Sem derrame",
-        doctorId: "d-1",
       }),
     );
   });
@@ -95,7 +94,7 @@ describe("ClinicalSnippetsSettings", () => {
     const user = userEvent.setup();
     vi.mocked(clinicalSnippetService.update).mockResolvedValue(existente);
     vi.mocked(clinicalSnippetService.delete).mockResolvedValue();
-    renderWithProviders(<ClinicalSnippetsSettings doctorId="d-1" />);
+    renderWithProviders(<ClinicalSnippetsSettings userId="d-1" />);
 
     await user.click(await screen.findByRole("button", { name: "Editar /normal" }));
     const titulo = screen.getByLabelText("Título");

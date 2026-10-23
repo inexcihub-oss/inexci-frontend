@@ -235,7 +235,7 @@ function ConfiguracoesPageInner() {
               <MyScheduleTab doctorId={user.id} />
             )}
             {activeTab === "clinical-snippets" && isDoctor && user?.id && (
-              <ClinicalSnippetsSettings doctorId={user.id} />
+              <ClinicalSnippetsSettings userId={user.id} />
             )}
             {activeTab === "holidays" && podeAdministrar && (
               <HolidaysSettings />

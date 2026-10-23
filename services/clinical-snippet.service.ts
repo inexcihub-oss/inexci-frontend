@@ -30,17 +30,14 @@ export function normalizarAtalho(valor: string): string {
 }
 
 export const clinicalSnippetService = {
-  async getAll(doctorId?: string): Promise<ClinicalSnippet[]> {
+  async getAll(): Promise<ClinicalSnippet[]> {
     const response = await api.get<ClinicalSnippet[]>(
       "/clinical-records/snippets",
-      { params: doctorId ? { doctorId } : {} },
     );
     return Array.isArray(response.data) ? response.data : [];
   },
 
-  async create(
-    payload: ClinicalSnippetPayload & { doctorId?: string },
-  ): Promise<ClinicalSnippet> {
+  async create(payload: ClinicalSnippetPayload): Promise<ClinicalSnippet> {
     const response = await api.post<ClinicalSnippet>(
       "/clinical-records/snippets",
       payload,

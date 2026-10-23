@@ -61,17 +61,16 @@ describe("ClinicalTemplateActions", () => {
   const setup = (fields = currentFields) =>
     render(
       <ClinicalTemplateActions
-        doctorId="d-1"
         fields={fields as never}
         onApply={onApply}
       />,
     );
 
-  it("carrega os modelos do médico da consulta", async () => {
+  it("carrega os modelos do próprio médico", async () => {
     setup();
 
     await waitFor(() =>
-      expect(clinicalRecordTemplateService.getAll).toHaveBeenCalledWith("d-1"),
+      expect(clinicalRecordTemplateService.getAll).toHaveBeenCalledWith(),
     );
     expect(await screen.findByText("Primeira consulta")).toBeDefined();
   });
@@ -121,7 +120,6 @@ describe("ClinicalTemplateActions", () => {
       expect(clinicalRecordTemplateService.create).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "Lombalgia",
-          doctorId: "d-1",
           anamnesis: "<p>Dor lombar</p>",
         }),
       ),
@@ -177,7 +175,6 @@ describe("ClinicalTemplateActions", () => {
 
     rerender(
       <ClinicalTemplateActions
-        doctorId="d-1"
         fields={{ ...currentFields, anamnesis: "<p>Dor</p>" } as never}
         onApply={onApply}
       />,

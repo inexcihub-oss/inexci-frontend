@@ -33,9 +33,9 @@ interface Rascunho {
   content: string;
 }
 
-export function ClinicalSnippetsSettings({ doctorId }: { doctorId: string }) {
+export function ClinicalSnippetsSettings({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
-  const { data: snippets = [], isLoading } = useClinicalSnippets(doctorId);
+  const { data: snippets = [], isLoading } = useClinicalSnippets(userId);
   const [rascunho, setRascunho] = useState<Rascunho | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -65,7 +65,7 @@ export function ClinicalSnippetsSettings({ doctorId }: { doctorId: string }) {
       if (rascunho.id) {
         await clinicalSnippetService.update(rascunho.id, payload);
       } else {
-        await clinicalSnippetService.create({ ...payload, doctorId });
+        await clinicalSnippetService.create(payload);
       }
       setRascunho(null);
       await recarregar();

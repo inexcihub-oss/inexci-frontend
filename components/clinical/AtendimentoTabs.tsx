@@ -388,7 +388,7 @@ export function AtendimentoTabs({
     null,
   );
   const { data: snippets } = useClinicalSnippets(
-    appointment.doctorId,
+    user?.id ?? null,
     !readOnly && !bloqueado,
   );
   const ferramentas: FerramentasDeTexto | undefined =
@@ -656,7 +656,6 @@ export function AtendimentoTabs({
 
               {!readOnly && (
                 <ClinicalTemplateActions
-                  doctorId={appointment.doctorId}
                   fields={fields}
                   onApply={(template) =>
                     setFields((prev) => ({
@@ -847,7 +846,6 @@ export function AtendimentoTabs({
 
       <SalvarTextoRapidoModal
         conteudo={trechoParaSalvar}
-        doctorId={appointment.doctorId}
         onClose={() => setTrechoParaSalvar(null)}
       />
 
