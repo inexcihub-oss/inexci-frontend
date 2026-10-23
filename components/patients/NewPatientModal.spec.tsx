@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Permission } from "@/lib/permissions";
 import { arquivoDeImagem } from "./foto-paciente.fixtures";
@@ -35,6 +35,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 import { patientService } from "@/services/patient.service";
 import { healthPlanService } from "@/services/health-plan.service";
 import { NewPatientModal } from "./NewPatientModal";
+import { Modal } from "@/components/ui/Modal";
 
 function renderModal() {
   return render(
@@ -421,5 +422,48 @@ describe("NewPatientModal — nomes acessíveis", () => {
     expect(
       screen.getByRole("combobox", { name: /Gênero/ }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("NewPatientModal — aberto por cima de outro modal", () => {
+  function renderSobreModal() {
+    return render(
+      <>
+        <Modal isOpen onClose={vi.fn()} title="Nova consulta">
+          <button type="button">Novo paciente</button>
+        </Modal>
+        <NewPatientModal isOpen onClose={vi.fn()} onSuccess={vi.fn()} />
+      </>,
+    );
+  }
+
+  it("vai para o body depois do modal de baixo e numa camada acima dele", () => {
+    renderSobreModal();
+    const consulta = screen.getByRole("dialog", { name: "Nova consulta" });
+    const paciente = screen.getByRole("dialog", { name: "Novo paciente" });
+    const camadaConsulta = consulta.parentElement as HTMLElement;
+    const camadaPaciente = paciente.parentElement as HTMLElement;
+
+    expect(camadaPaciente.parentElement).toBe(document.body);
+    expect(
+      camadaConsulta.compareDocumentPosition(camadaPaciente) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(camadaConsulta).toHaveClass("z-60");
+    expect(camadaPaciente).toHaveClass("z-[70]");
+  });
+
+  it("Shift+Tab no primeiro campo volta para o último do próprio modal", async () => {
+    const user = userEvent.setup();
+    renderSobreModal();
+    const paciente = screen.getByRole("dialog", { name: "Novo paciente" });
+    const fechar = within(paciente).getByRole("button", { name: "Fechar" });
+    fechar.focus();
+
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+
+    expect(
+      within(paciente).getByRole("button", { name: /adicionar paciente/i }),
+    ).toHaveFocus();
   });
 });
