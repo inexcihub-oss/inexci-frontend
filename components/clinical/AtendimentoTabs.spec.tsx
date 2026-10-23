@@ -20,13 +20,16 @@ vi.mock("@/components/shared/RichTextEditor", () => ({
     value,
     onChange,
     placeholder,
+    transcrever,
   }: {
     value: string;
     onChange: (v: string) => void;
     placeholder?: string;
+    transcrever?: unknown;
   }) => (
     <textarea
       aria-label={placeholder ?? "editor"}
+      data-ditado={transcrever ? "sim" : "nao"}
       value={value}
       onChange={(e) => onChange(e.target.value)}
     />
@@ -52,6 +55,7 @@ vi.mock("@/components/clinical/PatientHistoryTab", () => ({
 vi.mock("@/services/clinical-record.service", () => ({
   clinicalRecordService: {
     getByPatient: vi.fn(),
+    transcribe: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     finalize: vi.fn(),
@@ -1729,5 +1733,28 @@ describe("AtendimentoTabs", () => {
     expect(
       await screen.findByText("Copiado para Conduta / Plano."),
     ).toBeInTheDocument();
+  });
+
+  describe("ditado por voz", () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("fica desligado por padrão", async () => {
+      renderTabs();
+      expect(
+        (await screen.findByLabelText(/Queixa principal/i)).getAttribute(
+          "data-ditado",
+        ),
+      ).toBe("nao");
+    });
+
+    it("liga com NEXT_PUBLIC_CLINICAL_DICTATION_ENABLED=true", async () => {
+      vi.stubEnv("NEXT_PUBLIC_CLINICAL_DICTATION_ENABLED", "true");
+      renderTabs();
+      expect(
+        (await screen.findByLabelText(/Queixa principal/i)).getAttribute(
+          "data-ditado",
+        ),
+      ).toBe("sim");
+    });
   });
 });

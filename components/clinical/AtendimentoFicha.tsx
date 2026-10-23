@@ -22,6 +22,7 @@ export interface FerramentasDeTexto {
   snippets?: SnippetOption[];
   onSnippetUsed?: (id: string) => void;
   onSaveSelection?: (html: string) => void;
+  transcrever?: (audio: Blob) => Promise<string>;
 }
 import {
   ClipboardList,

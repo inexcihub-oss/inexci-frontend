@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, afterEach, beforeAll } from "vitest";
+import {
+  instalarMicrofoneFalso,
+  removerMicrofoneFalso,
+} from "@/test-utils/fake-media-recorder";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import {
   conteudoDoSnippet,
@@ -362,5 +366,67 @@ describe("RichTextEditor — textos rápidos", () => {
     );
 
     expect(onSaveSelection).toHaveBeenCalledWith("<p>Bom estado geral</p>");
+  });
+});
+
+describe("RichTextEditor — ditado por voz", () => {
+  afterEach(() => removerMicrofoneFalso());
+
+  it("sem microfone no navegador não mostra o botão", async () => {
+    removerMicrofoneFalso();
+    render(
+      <RichTextEditor
+        variant="clinical"
+        value=""
+        onChange={vi.fn()}
+        transcrever={vi.fn()}
+      />,
+    );
+    await screen.findByTitle("Negrito");
+    expect(screen.queryByTitle("Ditar por voz")).not.toBeInTheDocument();
+  });
+
+  it("dita e insere o texto no cursor, separado por espaço", async () => {
+    instalarMicrofoneFalso();
+    const onChange = vi.fn();
+    const transcrever = vi.fn().mockResolvedValue("dor no joelho direito");
+    render(
+      <RichTextEditor
+        variant="clinical"
+        value="<p>Paciente refere</p>"
+        onChange={onChange}
+        transcrever={transcrever}
+      />,
+    );
+    const pm = (await waitFor(() => {
+      const el = document.querySelector(".ProseMirror");
+      expect(el).not.toBeNull();
+      return el;
+    })) as unknown as {
+      editor: { commands: { focus: (p: string) => boolean } };
+    };
+    pm.editor.commands.focus("end");
+
+    fireEvent.mouseDown(await screen.findByTitle("Ditar por voz"));
+    expect(await screen.findByText(/Gravando 0:00/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Parar e transcrever" }));
+
+    await waitFor(() =>
+      expect(onChange).toHaveBeenLastCalledWith(
+        "<p>Paciente refere dor no joelho direito</p>",
+      ),
+    );
+    expect(transcrever).toHaveBeenCalledWith(expect.any(Blob));
+    expect(screen.queryByText(/Gravando/)).not.toBeInTheDocument();
+  });
+
+  it("não oferece ditado fora da ficha (variante completa)", async () => {
+    instalarMicrofoneFalso();
+    render(
+      <RichTextEditor value="" onChange={vi.fn()} transcrever={vi.fn()} />,
+    );
+    await screen.findByTitle("Fonte");
+    expect(screen.queryByTitle("Ditar por voz")).not.toBeInTheDocument();
   });
 });

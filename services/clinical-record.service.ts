@@ -193,6 +193,25 @@ export const clinicalRecordService = {
     return response.data;
   },
 
+  async transcribe(audio: Blob): Promise<string> {
+    const extensao = audio.type.includes("mp4")
+      ? "m4a"
+      : audio.type.includes("ogg")
+        ? "ogg"
+        : "webm";
+    const formData = new FormData();
+    formData.append("audio", audio, `ditado.${extensao}`);
+    const response = await api.post<{ text: string }>(
+      "/clinical-records/transcribe",
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120_000,
+      },
+    );
+    return response.data.text;
+  },
+
   async previewDocument(
     kind: ClinicalDocumentKind,
     payload: ClinicalDocumentPreviewPayload,

@@ -25,6 +25,10 @@ import {
   Bold,
   BookmarkPlus,
   Italic,
+  Loader2,
+  Mic,
+  Square,
+  X,
   Underline as UnderlineIcon,
   List,
   ListOrdered,
@@ -41,6 +45,11 @@ import {
   Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  ditadoSuportado,
+  useDitado,
+  type EstadoDitado,
+} from "@/hooks/useDitado";
 
 const FontSize = TextStyle.extend({
   addAttributes() {
@@ -95,6 +104,18 @@ interface RichTextEditorProps {
   snippets?: SnippetOption[];
   onSnippetUsed?: (id: string) => void;
   onSaveSelection?: (html: string) => void;
+  transcrever?: (audio: Blob) => Promise<string>;
+}
+
+interface ControleDitado {
+  estado: EstadoDitado;
+  iniciar: () => void;
+  parar: () => void;
+}
+
+function formatarDuracao(segundos: number): string {
+  const minutos = Math.floor(segundos / 60);
+  return `${minutos}:${String(segundos % 60).padStart(2, "0")}`;
 }
 
 export interface SnippetOption {
@@ -454,9 +475,11 @@ function ColorPicker({
 function ClinicalToolbar({
   editor,
   onSaveSelection,
+  ditado,
 }: {
   editor: Editor;
   onSaveSelection?: (html: string) => void;
+  ditado?: ControleDitado;
 }) {
   return (
     <div
@@ -550,8 +573,121 @@ function ClinicalToolbar({
           </ToolbarButton>
         </>
       )}
+      {ditado && (
+        <>
+          <div className="w-px h-4 bg-neutral-200 mx-0.5" />
+          {ditado.estado === "transcrevendo" ? (
+            <span
+              className="w-8 h-8 flex items-center justify-center text-teal-700"
+              title="Transcrevendo"
+            >
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            </span>
+          ) : ditado.estado === "gravando" ? (
+            <ToolbarButton
+              onClick={ditado.parar}
+              title="Parar ditado"
+              className="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+            </ToolbarButton>
+          ) : (
+            <ToolbarButton
+              onClick={ditado.iniciar}
+              title="Ditar por voz"
+              className="w-8 h-8 rounded-lg"
+            >
+              <Mic className="w-4 h-4" />
+            </ToolbarButton>
+          )}
+        </>
+      )}
     </div>
   );
+}
+
+function FaixaDitado({
+  estado,
+  segundos,
+  erro,
+  onParar,
+  onCancelar,
+  onFecharErro,
+}: {
+  estado: EstadoDitado;
+  segundos: number;
+  erro: string | null;
+  onParar: () => void;
+  onCancelar: () => void;
+  onFecharErro: () => void;
+}) {
+  if (estado === "gravando") {
+    return (
+      <div
+        role="status"
+        className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+      >
+        <span
+          className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-600"
+          aria-hidden="true"
+        />
+        <span className="font-medium tabular-nums">
+          Gravando {formatarDuracao(segundos)}
+        </span>
+        <span className="flex-1 min-w-[10rem] text-xs text-red-700">
+          O texto entra onde está o cursor. O áudio não é guardado.
+        </span>
+        <span className="flex gap-2">
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onCancelar}
+            className="min-h-[36px] rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-100"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onParar}
+            className="min-h-[36px] rounded-lg bg-red-600 px-3 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            Parar e transcrever
+          </button>
+        </span>
+      </div>
+    );
+  }
+  if (estado === "transcrevendo") {
+    return (
+      <div
+        role="status"
+        className="mt-2 flex items-center gap-2 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2 text-sm text-teal-800"
+      >
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        Transcrevendo o ditado…
+      </div>
+    );
+  }
+  if (erro) {
+    return (
+      <div
+        role="alert"
+        className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+      >
+        <span className="flex-1">{erro}</span>
+        <button
+          type="button"
+          onClick={onFecharErro}
+          aria-label="Fechar aviso do ditado"
+          className="-m-1 rounded p-1 text-amber-700 hover:bg-amber-100"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
+  return null;
 }
 
 function SlashMenu({
@@ -640,8 +776,10 @@ export function RichTextEditor({
   snippets,
   onSnippetUsed,
   onSaveSelection,
+  transcrever,
 }: RichTextEditorProps) {
   const clinical = variant === "clinical";
+  const [microfoneDisponivel] = useState(() => ditadoSuportado());
   const [slash, setSlash] = useState<SlashState | null>(null);
   const [ativo, setAtivo] = useState(0);
   const dispensadoEm = useRef<number | null>(null);
@@ -694,6 +832,20 @@ export function RichTextEditor({
   });
 
   const usaSnippets = clinical && snippets !== undefined && !disabled;
+  const usaDitado =
+    clinical && !!transcrever && !disabled && microfoneDisponivel;
+  const ditado = useDitado(usaDitado ? transcrever : undefined, (texto) => {
+    if (!editor) return;
+    const { from } = editor.state.selection;
+    const anterior =
+      from > 1 ? editor.state.doc.textBetween(from - 1, from, undefined, " ") : "";
+    const prefixo = anterior && !/\s/.test(anterior) ? " " : "";
+    editor
+      .chain()
+      .focus()
+      .insertContent({ type: "text", text: `${prefixo}${texto}` })
+      .run();
+  });
   const itens = useMemo(
     () => (slash ? filtrarSnippets(snippets ?? [], slash.query) : []),
     [slash, snippets],
@@ -810,12 +962,34 @@ export function RichTextEditor({
 
   if (clinical) {
     const toolbar = disabled ? null : (
-      <ClinicalToolbar editor={editor} onSaveSelection={onSaveSelection} />
+      <ClinicalToolbar
+        editor={editor}
+        onSaveSelection={onSaveSelection}
+        ditado={
+          usaDitado
+            ? {
+                estado: ditado.estado,
+                iniciar: () => void ditado.iniciar(),
+                parar: ditado.parar,
+              }
+            : undefined
+        }
+      />
     );
     return (
       <div className={className}>
         {toolbar && (toolbarSlot ? createPortal(toolbar, toolbarSlot) : toolbar)}
         <EditorContent editor={editor} />
+        {usaDitado && (
+          <FaixaDitado
+            estado={ditado.estado}
+            segundos={ditado.segundos}
+            erro={ditado.erro}
+            onParar={ditado.parar}
+            onCancelar={ditado.cancelar}
+            onFecharErro={ditado.limparErro}
+          />
+        )}
         {usaSnippets && slash && (
           <SlashMenu
             slash={slash}

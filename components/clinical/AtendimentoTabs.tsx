@@ -25,6 +25,7 @@ import { Modal } from "@/components/ui/Modal";
 import { anexarHtml, FichaAnterior } from "@/components/clinical/FichaAnterior";
 import { SalvarTextoRapidoModal } from "@/components/clinical/SalvarTextoRapidoModal";
 import { useClinicalSnippets } from "@/hooks/useClinicalSnippets";
+import { ditadoHabilitado } from "@/lib/ditado";
 import { clinicalSnippetService } from "@/services/clinical-snippet.service";
 import { PatientHistoryTab } from "@/components/clinical/PatientHistoryTab";
 import {
@@ -399,6 +400,9 @@ export function AtendimentoTabs({
             void clinicalSnippetService.registerUse(id).catch(() => undefined);
           },
           onSaveSelection: setTrechoParaSalvar,
+          transcrever: ditadoHabilitado()
+            ? clinicalRecordService.transcribe
+            : undefined,
         };
   const telaLarga = useMediaQuery("(min-width: 1280px)");
   const painelLateral = fichaAnteriorAberta && telaLarga && !readOnly;

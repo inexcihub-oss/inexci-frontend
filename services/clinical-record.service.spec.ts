@@ -165,4 +165,22 @@ describe("clinicalRecordService", () => {
       );
     });
   });
+
+  it("transcribe envia o áudio como multipart e devolve o texto", async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: { text: "Dor lombar." } });
+    const audio = new Blob(["x"], { type: "audio/webm;codecs=opus" });
+
+    await expect(clinicalRecordService.transcribe(audio)).resolves.toBe(
+      "Dor lombar.",
+    );
+
+    const [url, corpo, config] = vi.mocked(api.post).mock.calls.at(-1)!;
+    expect(url).toBe("/clinical-records/transcribe");
+    expect(corpo).toBeInstanceOf(FormData);
+    const enviado = (corpo as FormData).get("audio") as File;
+    expect(enviado.name).toBe("ditado.webm");
+    expect(config).toMatchObject({
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  });
 });
