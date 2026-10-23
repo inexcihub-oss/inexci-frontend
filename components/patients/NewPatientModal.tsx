@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import {
   patientService,
@@ -118,14 +119,30 @@ export function NewPatientModal({
   useEffect(() => {
     if (!isOpen) return;
     const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      const caixa = caixaRef.current;
       const foco = document.activeElement;
-      if (
-        foco &&
-        foco !== document.body &&
-        !caixaRef.current?.contains(foco)
-      )
+      if (e.key === "Tab") {
+        if (!caixa || !foco || !caixa.contains(foco)) return;
+        const focaveis = Array.from(
+          caixa.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+        if (focaveis.length === 0) return;
+        e.stopPropagation();
+        const primeiro = focaveis[0];
+        const ultimo = focaveis[focaveis.length - 1];
+        if (e.shiftKey && foco === primeiro) {
+          e.preventDefault();
+          ultimo.focus();
+        } else if (!e.shiftKey && foco === ultimo) {
+          e.preventDefault();
+          primeiro.focus();
+        }
         return;
+      }
+      if (e.key !== "Escape") return;
+      if (foco && foco !== document.body && !caixa?.contains(foco)) return;
       e.stopPropagation();
       handleCloseRef.current();
     };
@@ -197,10 +214,10 @@ export function NewPatientModal({
     (errs) => showToast(summarizeErrors(errs, FIELD_LABELS), "error"),
   );
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm"
         onClick={handleClose}
@@ -328,7 +345,7 @@ export function NewPatientModal({
           </div>
         </form>
       </div>
-
-    </div>
+    </div>,
+    document.body,
   );
 }
