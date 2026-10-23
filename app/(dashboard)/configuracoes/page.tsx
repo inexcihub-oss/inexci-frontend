@@ -30,6 +30,7 @@ import { SecurityTab } from "@/components/configuracoes/SecurityTab";
 import { HeaderTab } from "@/components/configuracoes/HeaderTab";
 import { MyScheduleTab } from "@/components/configuracoes/MyScheduleTab";
 import { PatientNoticesTab } from "@/components/configuracoes/PatientNoticesTab";
+import { ClinicalSnippetsSettings } from "@/components/clinical/ClinicalSnippetsSettings";
 
 const BillingSection = dynamic(
   () =>
@@ -232,6 +233,9 @@ function ConfiguracoesPageInner() {
             {activeTab === "privacy" && <PrivacySection />}
             {activeTab === "my-schedule" && isDoctor && user?.id && (
               <MyScheduleTab doctorId={user.id} />
+            )}
+            {activeTab === "clinical-snippets" && isDoctor && user?.id && (
+              <ClinicalSnippetsSettings userId={user.id} />
             )}
             {activeTab === "holidays" && podeAdministrar && (
               <HolidaysSettings />

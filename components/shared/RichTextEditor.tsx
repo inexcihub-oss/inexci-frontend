@@ -2,6 +2,7 @@
 
 import React, {
   useEffect,
+  useMemo,
   useState,
   useRef,
   useCallback,
@@ -9,7 +10,11 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
-import type { CommandProps } from "@tiptap/core";
+import {
+  getHTMLFromFragment,
+  type CommandProps,
+  type Editor,
+} from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
@@ -18,7 +23,12 @@ import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import {
   Bold,
+  BookmarkPlus,
   Italic,
+  Loader2,
+  Mic,
+  Square,
+  X,
   Underline as UnderlineIcon,
   List,
   ListOrdered,
@@ -34,6 +44,12 @@ import {
   Minus,
   Plus,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  ditadoSuportado,
+  useDitado,
+  type EstadoDitado,
+} from "@/hooks/useDitado";
 
 const FontSize = TextStyle.extend({
   addAttributes() {
@@ -81,6 +97,86 @@ interface RichTextEditorProps {
   className?: string;
   disabled?: boolean;
   minHeight?: string;
+  variant?: "full" | "clinical";
+  toolbarSlot?: HTMLElement | null;
+  ariaLabel?: string;
+  autoFocus?: boolean;
+  snippets?: SnippetOption[];
+  onSnippetUsed?: (id: string) => void;
+  onSaveSelection?: (html: string) => void;
+  transcrever?: (audio: Blob) => Promise<string>;
+}
+
+interface ControleDitado {
+  estado: EstadoDitado;
+  iniciar: () => void;
+  parar: () => void;
+}
+
+function formatarDuracao(segundos: number): string {
+  const minutos = Math.floor(segundos / 60);
+  return `${minutos}:${String(segundos % 60).padStart(2, "0")}`;
+}
+
+export interface SnippetOption {
+  id: string;
+  shortcut: string;
+  title: string;
+  content: string;
+}
+
+interface SlashState {
+  from: number;
+  query: string;
+  left: number;
+  top: number;
+}
+
+const MAX_SNIPPETS_NO_MENU = 8;
+
+export function filtrarSnippets(
+  snippets: SnippetOption[],
+  query: string,
+): SnippetOption[] {
+  const q = query.toLowerCase();
+  if (!q) return snippets.slice(0, MAX_SNIPPETS_NO_MENU);
+  const comeca = snippets.filter((s) => s.shortcut.startsWith(q));
+  const contem = snippets.filter(
+    (s) =>
+      !s.shortcut.startsWith(q) &&
+      (s.shortcut.includes(q) || s.title.toLowerCase().includes(q)),
+  );
+  return [...comeca, ...contem].slice(0, MAX_SNIPPETS_NO_MENU);
+}
+
+export function conteudoDoSnippet(html: string): string {
+  const unico = html.trim().match(/^<p>([\s\S]*)<\/p>$/);
+  return unico && !/<\/?p[\s>]/.test(unico[1]) ? unico[1] : html;
+}
+
+function detectarSlash(editor: Editor): SlashState | null {
+  const { $from, empty } = editor.state.selection;
+  if (!empty || !$from.parent.isTextblock) return null;
+  const antes = $from.parent.textBetween(
+    Math.max(0, $from.parentOffset - 41),
+    $from.parentOffset,
+    undefined,
+    "\ufffc",
+  );
+  const encontrado = antes.match(/(?:^|\s)\/([a-z0-9-]*)$/i);
+  if (!encontrado) return null;
+  const from = $from.pos - encontrado[1].length - 1;
+  let left = 0;
+  let top = 0;
+  try {
+    const coords = editor.view.coordsAtPos(from);
+    left = coords.left;
+    top = coords.bottom;
+  } catch {
+    left = 0;
+    top = 0;
+  }
+  return { from, query: encontrado[1].toLowerCase(), left, top };
 }
 
 const FONT_FAMILIES = [
@@ -155,11 +251,14 @@ function ToolbarButton({
         onClick();
       }}
       title={title}
-      className={`w-7 h-7 flex items-center justify-center rounded text-sm transition-colors ${
+      aria-pressed={isActive}
+      className={cn(
+        "w-7 h-7 flex items-center justify-center rounded text-sm transition-colors",
         isActive
           ? "bg-teal-100 text-teal-700"
-          : "text-gray-600 hover:bg-gray-100"
-      } ${extraClass}`}
+          : "text-gray-600 hover:bg-gray-100",
+        extraClass,
+      )}
     >
       {children}
     </button>
@@ -373,6 +472,296 @@ function ColorPicker({
   );
 }
 
+function ClinicalToolbar({
+  editor,
+  onSaveSelection,
+  ditado,
+}: {
+  editor: Editor;
+  onSaveSelection?: (html: string) => void;
+  ditado?: ControleDitado;
+}) {
+  return (
+    <div
+      role="toolbar"
+      aria-label="Formatação"
+      className="flex items-center gap-0.5 rounded-xl border border-neutral-200 bg-white p-0.5 shadow-sm"
+    >
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        isActive={editor.isActive("bold")}
+        title="Negrito"
+        className="w-8 h-8 rounded-lg"
+      >
+        <Bold className="w-4 h-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        isActive={editor.isActive("italic")}
+        title="Itálico"
+        className="w-8 h-8 rounded-lg"
+      >
+        <Italic className="w-4 h-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        isActive={editor.isActive("underline")}
+        title="Sublinhado"
+        className="w-8 h-8 rounded-lg"
+      >
+        <UnderlineIcon className="w-4 h-4" />
+      </ToolbarButton>
+      <div className="w-px h-4 bg-neutral-200 mx-0.5" />
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        isActive={editor.isActive("bulletList")}
+        title="Lista"
+        className="w-8 h-8 rounded-lg"
+      >
+        <List className="w-4 h-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        isActive={editor.isActive("orderedList")}
+        title="Lista numerada"
+        className="w-8 h-8 rounded-lg"
+      >
+        <ListOrdered className="w-4 h-4" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleHighlight().run()}
+        isActive={editor.isActive("highlight")}
+        title="Realçar"
+        className="w-8 h-8 rounded-lg"
+      >
+        <Highlighter className="w-4 h-4" />
+      </ToolbarButton>
+      <div className="w-px h-4 bg-neutral-200 mx-0.5" />
+      <ToolbarButton
+        onClick={() =>
+          editor.chain().focus().unsetAllMarks().clearNodes().run()
+        }
+        title="Remover formatação"
+        className="w-8 h-8 rounded-lg"
+      >
+        <RemoveFormatting className="w-4 h-4" />
+      </ToolbarButton>
+      {onSaveSelection && (
+        <>
+          <div className="w-px h-4 bg-neutral-200 mx-0.5" />
+          <ToolbarButton
+            onClick={() => {
+              if (editor.state.selection.empty) return;
+              onSaveSelection(
+                getHTMLFromFragment(
+                  editor.state.selection.content().content,
+                  editor.schema,
+                ),
+              );
+            }}
+            title={
+              editor.state.selection.empty
+                ? "Selecione um trecho para salvar como texto rápido"
+                : "Salvar seleção como texto rápido"
+            }
+            className={cn(
+              "w-8 h-8 rounded-lg",
+              editor.state.selection.empty && "opacity-40",
+            )}
+          >
+            <BookmarkPlus className="w-4 h-4" />
+          </ToolbarButton>
+        </>
+      )}
+      {ditado && (
+        <>
+          <div className="w-px h-4 bg-neutral-200 mx-0.5" />
+          {ditado.estado === "transcrevendo" ? (
+            <span
+              className="w-8 h-8 flex items-center justify-center text-teal-700"
+              title="Transcrevendo"
+            >
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            </span>
+          ) : ditado.estado === "gravando" ? (
+            <ToolbarButton
+              onClick={ditado.parar}
+              title="Parar ditado"
+              className="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+            </ToolbarButton>
+          ) : (
+            <ToolbarButton
+              onClick={ditado.iniciar}
+              title="Ditar por voz"
+              className="w-8 h-8 rounded-lg"
+            >
+              <Mic className="w-4 h-4" />
+            </ToolbarButton>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function FaixaDitado({
+  estado,
+  segundos,
+  erro,
+  onParar,
+  onCancelar,
+  onFecharErro,
+}: {
+  estado: EstadoDitado;
+  segundos: number;
+  erro: string | null;
+  onParar: () => void;
+  onCancelar: () => void;
+  onFecharErro: () => void;
+}) {
+  if (estado === "gravando") {
+    return (
+      <div
+        role="status"
+        className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+      >
+        <span
+          className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-600"
+          aria-hidden="true"
+        />
+        <span className="font-medium tabular-nums">
+          Gravando {formatarDuracao(segundos)}
+        </span>
+        <span className="flex-1 min-w-[10rem] text-xs text-red-700">
+          O texto entra onde está o cursor. O áudio não é guardado.
+        </span>
+        <span className="flex gap-2">
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onCancelar}
+            className="min-h-[36px] rounded-lg px-3 text-sm font-medium text-red-700 hover:bg-red-100"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onParar}
+            className="min-h-[36px] rounded-lg bg-red-600 px-3 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            Parar e transcrever
+          </button>
+        </span>
+      </div>
+    );
+  }
+  if (estado === "transcrevendo") {
+    return (
+      <div
+        role="status"
+        className="mt-2 flex items-center gap-2 rounded-xl border border-teal-100 bg-teal-50 px-3 py-2 text-sm text-teal-800"
+      >
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+        Transcrevendo o ditado…
+      </div>
+    );
+  }
+  if (erro) {
+    return (
+      <div
+        role="alert"
+        className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+      >
+        <span className="flex-1">{erro}</span>
+        <button
+          type="button"
+          onClick={onFecharErro}
+          aria-label="Fechar aviso do ditado"
+          className="-m-1 rounded p-1 text-amber-700 hover:bg-amber-100"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    );
+  }
+  return null;
+}
+
+function SlashMenu({
+  slash,
+  itens,
+  ativo,
+  semNenhum,
+  onEscolher,
+  onAtivar,
+}: {
+  slash: SlashState;
+  itens: SnippetOption[];
+  ativo: number;
+  semNenhum: boolean;
+  onEscolher: (item: SnippetOption) => void;
+  onAtivar: (indice: number) => void;
+}) {
+  const largura = 320;
+  const left =
+    typeof window === "undefined"
+      ? slash.left
+      : Math.max(8, Math.min(slash.left, window.innerWidth - largura - 8));
+  return createPortal(
+    <div
+      className="fixed z-[9999] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl"
+      style={{ left, top: slash.top + 6, width: largura }}
+    >
+      <p className="px-2 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+        Textos rápidos
+      </p>
+      {itens.length > 0 ? (
+        <ul role="listbox" aria-label="Textos rápidos" className="flex flex-col">
+          {itens.map((item, indice) => (
+            <li
+              key={item.id}
+              role="option"
+              aria-selected={indice === ativo}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onEscolher(item);
+              }}
+              onMouseEnter={() => onAtivar(indice)}
+              className={cn(
+                "flex cursor-pointer flex-col gap-0.5 rounded-lg px-2.5 py-2",
+                indice === ativo ? "bg-teal-50" : "hover:bg-neutral-50",
+              )}
+            >
+              <span className="text-sm font-medium text-neutral-900">
+                /{item.shortcut}
+                <span className="font-normal text-neutral-600">
+                  {" "}
+                  · {item.title}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="px-2.5 py-2 text-sm text-neutral-600">
+          {semNenhum
+            ? "Você ainda não tem textos rápidos. Selecione um trecho e use o botão de salvar na barra, ou crie em Configurações › Textos rápidos."
+            : `Nenhum texto rápido para "/${slash.query}".`}
+        </p>
+      )}
+      {itens.length > 0 && (
+        <p className="border-t border-neutral-100 px-2.5 pt-1.5 pb-0.5 text-[11px] text-neutral-500">
+          Enter insere · Esc fecha
+        </p>
+      )}
+    </div>,
+    document.body,
+  );
+}
+
 export function RichTextEditor({
   value,
   onChange,
@@ -380,43 +769,168 @@ export function RichTextEditor({
   className = "",
   disabled = false,
   minHeight = "80px",
+  variant = "full",
+  toolbarSlot,
+  ariaLabel,
+  autoFocus = false,
+  snippets,
+  onSnippetUsed,
+  onSaveSelection,
+  transcrever,
 }: RichTextEditorProps) {
+  const clinical = variant === "clinical";
+  const [microfoneDisponivel] = useState(() => ditadoSuportado());
+  const [slash, setSlash] = useState<SlashState | null>(null);
+  const [ativo, setAtivo] = useState(0);
+  const [navegou, setNavegou] = useState(false);
+  const dispensadoEm = useRef<number | null>(null);
+  const sincronizando = useRef(false);
+  const teclaRef = useRef<(event: KeyboardEvent) => boolean>(() => false);
+
+  const extensions = useMemo(() => {
+    const starter = StarterKit.configure({
+      heading: false,
+      blockquote: false,
+      codeBlock: false,
+      horizontalRule: false,
+    });
+    if (!clinical) {
+      return [
+        starter,
+        FontSize,
+        Color,
+        FontFamily,
+        Highlight.configure({ multicolor: true }),
+        TextAlign.configure({ types: ["heading", "paragraph"] }),
+      ];
+    }
+    return [starter, Highlight];
+  }, [clinical]);
+
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        heading: false,
-        blockquote: false,
-        codeBlock: false,
-        horizontalRule: false,
-      }),
-      FontSize,
-      Color,
-      FontFamily,
-      Highlight.configure({ multicolor: true }),
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-    ],
+    extensions,
     content: value,
     editable: !disabled,
+    autofocus: autoFocus ? "end" : false,
     onUpdate({ editor }) {
       const html = editor.getHTML();
       onChange(html === "<p></p>" ? "" : html);
     },
     editorProps: {
       attributes: {
-        class: `outline-none py-2 px-3 text-sm text-gray-800`,
+        class: clinical
+          ? "rte-content rte-clinical outline-none py-1 text-[15px] leading-relaxed text-neutral-800"
+          : "rte-content outline-none py-2 px-3 text-sm text-gray-800",
         style: `min-height: ${minHeight}`,
         "data-placeholder": placeholder ?? "Digite aqui...",
+        ...(ariaLabel ? { "aria-label": ariaLabel } : {}),
+        role: "textbox",
+        "aria-multiline": "true",
       },
+      handleKeyDown: (_view, event) => teclaRef.current(event),
     },
   });
+
+  const usaSnippets = clinical && snippets !== undefined && !disabled;
+  const usaDitado =
+    clinical && !!transcrever && !disabled && microfoneDisponivel;
+  const ditado = useDitado(usaDitado ? transcrever : undefined, (texto) => {
+    if (!editor) return;
+    const { from } = editor.state.selection;
+    const anterior =
+      from > 1 ? editor.state.doc.textBetween(from - 1, from, undefined, " ") : "";
+    const prefixo = anterior && !/\s/.test(anterior) ? " " : "";
+    editor
+      .chain()
+      .focus()
+      .insertContent({ type: "text", text: `${prefixo}${texto}` })
+      .run();
+  });
+  const itens = useMemo(
+    () => (slash ? filtrarSnippets(snippets ?? [], slash.query) : []),
+    [slash, snippets],
+  );
+  const indiceAtivo = Math.min(ativo, Math.max(0, itens.length - 1));
+  const armado =
+    navegou ||
+    (!!slash?.query && !!itens[indiceAtivo]?.shortcut.startsWith(slash.query));
+
+  useEffect(() => {
+    if (!editor || !usaSnippets) return;
+    const atualizar = () => {
+      const novo = sincronizando.current ? null : detectarSlash(editor);
+      if (!novo) dispensadoEm.current = null;
+      if (novo && dispensadoEm.current === novo.from) {
+        setSlash(null);
+        return;
+      }
+      setSlash((atual) => {
+        if (atual?.query !== novo?.query) {
+          setAtivo(0);
+          setNavegou(false);
+        }
+        return novo;
+      });
+    };
+    const fechar = () => setSlash(null);
+    editor.on("update", atualizar);
+    editor.on("selectionUpdate", atualizar);
+    editor.on("blur", fechar);
+    return () => {
+      editor.off("update", atualizar);
+      editor.off("selectionUpdate", atualizar);
+      editor.off("blur", fechar);
+    };
+  }, [editor, usaSnippets]);
+
+  const escolher = (item: SnippetOption) => {
+    if (!editor || !slash) return;
+    editor
+      .chain()
+      .focus()
+      .deleteRange({ from: slash.from, to: editor.state.selection.from })
+      .insertContent(conteudoDoSnippet(item.content))
+      .run();
+    setSlash(null);
+    onSnippetUsed?.(item.id);
+  };
+
+  teclaRef.current = (event: KeyboardEvent) => {
+    if (!slash) return false;
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      dispensadoEm.current = slash.from;
+      setSlash(null);
+      return true;
+    }
+    if (itens.length === 0) return false;
+    if (event.key === "ArrowDown") {
+      setAtivo((i) => (i + 1) % itens.length);
+      setNavegou(true);
+      return true;
+    }
+    if (event.key === "ArrowUp") {
+      setAtivo((i) => (i - 1 + itens.length) % itens.length);
+      setNavegou(true);
+      return true;
+    }
+    if (event.key === "Enter" || event.key === "Tab") {
+      if (!armado) return false;
+      escolher(itens[indiceAtivo]);
+      return true;
+    }
+    return false;
+  };
 
   useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
     const normalized = current === "<p></p>" ? "" : current;
     if (value !== normalized) {
+      sincronizando.current = true;
       editor.commands.setContent(value || "");
+      sincronizando.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
@@ -456,6 +970,53 @@ export function RichTextEditor({
   }, [editor]);
 
   if (!editor) return null;
+
+  if (clinical) {
+    const toolbar = disabled ? null : (
+      <ClinicalToolbar
+        editor={editor}
+        onSaveSelection={onSaveSelection}
+        ditado={
+          usaDitado
+            ? {
+                estado: ditado.estado,
+                iniciar: () => void ditado.iniciar(),
+                parar: ditado.parar,
+              }
+            : undefined
+        }
+      />
+    );
+    return (
+      <div className={className}>
+        {toolbar && (toolbarSlot ? createPortal(toolbar, toolbarSlot) : toolbar)}
+        <EditorContent editor={editor} />
+        {usaDitado && (
+          <FaixaDitado
+            estado={ditado.estado}
+            segundos={ditado.segundos}
+            erro={ditado.erro}
+            onParar={ditado.parar}
+            onCancelar={ditado.cancelar}
+            onFecharErro={ditado.limparErro}
+          />
+        )}
+        {usaSnippets && slash && (
+          <SlashMenu
+            slash={slash}
+            itens={itens}
+            ativo={armado ? indiceAtivo : -1}
+            semNenhum={(snippets ?? []).length === 0}
+            onEscolher={escolher}
+            onAtivar={(indice) => {
+              setAtivo(indice);
+              setNavegou(true);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   const currentFontLabel =
     FONT_FAMILIES.find((f) => f.value === getCurrentFontFamily())?.label ||

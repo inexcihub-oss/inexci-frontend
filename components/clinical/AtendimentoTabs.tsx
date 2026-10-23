@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Button from "@/components/ui/Button";
@@ -10,9 +10,23 @@ import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { Permission } from "@/lib/permissions";
 import {
   AtendimentoFicha,
+  FICHA_SECOES,
   FichaFields,
+  FichaIndice,
+  type FerramentasDeTexto,
+  type FichaTextKey,
+  ModoFichaToggle,
   fichaFieldsFrom,
+  useSecoesDaFicha,
 } from "@/components/clinical/AtendimentoFicha";
+import { useModoFicha } from "@/hooks/useModoFicha";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { Modal } from "@/components/ui/Modal";
+import { anexarHtml, FichaAnterior } from "@/components/clinical/FichaAnterior";
+import { SalvarTextoRapidoModal } from "@/components/clinical/SalvarTextoRapidoModal";
+import { useClinicalSnippets } from "@/hooks/useClinicalSnippets";
+import { ditadoHabilitado } from "@/lib/ditado";
+import { clinicalSnippetService } from "@/services/clinical-snippet.service";
 import { PatientHistoryTab } from "@/components/clinical/PatientHistoryTab";
 import {
   AssinanteConsulta,
@@ -42,9 +56,13 @@ import { appointmentKeys } from "@/lib/query-keys";
 import { capitalizeFirst, formatCPF, formatPhone } from "@/lib/formatters";
 import {
   ArrowLeft,
+  Check,
   CheckCircle2,
   Circle,
+  History,
+  Loader2,
   Tag,
+  X,
   Phone,
   IdCard,
   Lock,
@@ -69,6 +87,18 @@ function isTabId(value: string | null): value is AtendimentoTabId {
 }
 
 const INDICACAO_SO_MEDICO = "Indicação cirúrgica é ato de médico (CRM).";
+
+export const AUTOSAVE_DELAY_MS = 2500;
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+function formatHoraSalvo(date: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  }).format(date);
+}
 
 function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -143,6 +173,10 @@ export function AtendimentoTabs({
     !!user?.id && user.id === appointment.doctorId;
   const crmSemNumeroDe =
     assinante?.medico && assinante.semNumero ? assinante.nome : null;
+  const indicacaoBloqueada =
+    !isPhysician || !consultaDeMedico || !!crmSemNumeroDe;
+  const indicacaoBloqueadaRef = useRef(indicacaoBloqueada);
+  indicacaoBloqueadaRef.current = indicacaoBloqueada;
   const [record, setRecord] = useState<ClinicalRecord | null>(initialRecord);
   const [fields, setFields] = useState<FichaFields>(() =>
     fichaFieldsFrom(initialRecord),
@@ -151,6 +185,16 @@ export function AtendimentoTabs({
     fichaFieldsFrom(initialRecord),
   );
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [savedAt, setSavedAt] = useState<Date | null>(() =>
+    initialRecord?.updatedAt ? new Date(initialRecord.updatedAt) : null,
+  );
+  const recordRef = useRef<ClinicalRecord | null>(initialRecord);
+  const baselineRef = useRef<FichaFields>(baseline);
+  const lastPersistedRef = useRef<string | null>(
+    initialRecord ? JSON.stringify(fichaFieldsFrom(initialRecord)) : null,
+  );
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve());
   const [finalizing, setFinalizing] = useState(false);
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
@@ -160,8 +204,18 @@ export function AtendimentoTabs({
 
   const finalized = !!record?.finalizedAt;
   const readOnly = finalized || !isDoctor;
+  const fieldsGravaveis =
+    fields.surgicalIndication && !baseline.surgicalIndication && indicacaoBloqueada
+      ? { ...fields, surgicalIndication: false }
+      : fields;
   const isDirty =
-    !readOnly && JSON.stringify(fields) !== JSON.stringify(baseline);
+    !readOnly && JSON.stringify(fieldsGravaveis) !== JSON.stringify(baseline);
+  const autosaveEnabled =
+    !readOnly && !bloqueado && !finalizing && !excluindo;
+
+  useEffect(() => {
+    baselineRef.current = baseline;
+  }, [baseline]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -174,6 +228,7 @@ export function AtendimentoTabs({
   }, [isDirty]);
 
   const goToTab = (tab: AtendimentoTabId) => {
+    if (tab !== activeTab) flushAutosave();
     setActiveTab(tab);
     setVisited((prev) => new Set(prev).add(tab));
     router.replace(`?tab=${tab}`, { scroll: false });
@@ -184,43 +239,108 @@ export function AtendimentoTabs({
     value: FichaFields[K],
   ) => setFields((prev) => ({ ...prev, [key]: value }));
 
-  const persist = async (): Promise<ClinicalRecord> => {
-    const payload = {
-      anamnesis: fields.anamnesis,
-      physicalExam: fields.physicalExam,
-      diagnosis: fields.diagnosis,
-      conduct: fields.conduct,
-      cidCodes: fields.cidCodes,
-      ...(fields.surgicalIndication !== baseline.surgicalIndication
-        ? { surgicalIndication: fields.surgicalIndication }
-        : {}),
-      procedureId: fields.procedureId,
+  const persist = (
+    snapshot: FichaFields,
+    { skipIfUnchanged = false }: { skipIfUnchanged?: boolean } = {},
+  ): Promise<ClinicalRecord> => {
+    const run = async () => {
+      const current = recordRef.current;
+      const serialized = JSON.stringify(snapshot);
+      if (skipIfUnchanged && current && lastPersistedRef.current === serialized)
+        return current;
+      const enviarIndicacao =
+        snapshot.surgicalIndication !==
+          baselineRef.current.surgicalIndication &&
+        !(snapshot.surgicalIndication && indicacaoBloqueadaRef.current);
+      const payload = {
+        anamnesis: snapshot.anamnesis,
+        physicalExam: snapshot.physicalExam,
+        diagnosis: snapshot.diagnosis,
+        conduct: snapshot.conduct,
+        cidCodes: snapshot.cidCodes,
+        ...(enviarIndicacao
+          ? { surgicalIndication: snapshot.surgicalIndication }
+          : {}),
+        procedureId: snapshot.procedureId,
+      };
+      const saved = current
+        ? await clinicalRecordService.update(current.id, payload)
+        : await clinicalRecordService.create({
+            patientId: patient.id,
+            doctorId: appointment.doctorId,
+            appointmentId: appointment.id,
+            ...payload,
+          });
+      recordRef.current = saved;
+      lastPersistedRef.current = serialized;
+      return saved;
     };
-    if (record) {
-      return clinicalRecordService.update(record.id, payload);
-    }
-    return clinicalRecordService.create({
-      patientId: patient.id,
-      doctorId: appointment.doctorId,
-      appointmentId: appointment.id,
-      ...payload,
-    });
+    const next = saveQueue.current.then(run, run);
+    saveQueue.current = next.catch(() => undefined);
+    return next;
   };
+
+  const marcarSalvo = (saved: ClinicalRecord, snapshot: FichaFields) => {
+    setRecord(saved);
+    setBaseline({
+      ...snapshot,
+      surgicalIndication:
+        saved.surgicalIndication ?? snapshot.surgicalIndication,
+    });
+    setSavedAt(new Date());
+    setSaveStatus("saved");
+  };
+
+  const rascunhoExcluidoRef = useRef(false);
+  const autoSave = async (snapshot: FichaFields) => {
+    if (rascunhoExcluidoRef.current) return;
+    setSaveStatus("saving");
+    try {
+      const saved = await persist(snapshot, { skipIfUnchanged: true });
+      marcarSalvo(saved, snapshot);
+    } catch {
+      setSaveStatus("error");
+    }
+  };
+
+  const flushAutosave = () => {
+    if (autosaveEnabled && isDirty) void autoSave(fields);
+  };
+
+  useEffect(() => {
+    if (!autosaveEnabled || !isDirty) return;
+    const timer = setTimeout(() => void autoSave(fields), AUTOSAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fields, autosaveEnabled, isDirty]);
+
+  const flushRef = useRef(flushAutosave);
+  useEffect(() => {
+    flushRef.current = flushAutosave;
+  });
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === "hidden") flushRef.current();
+    };
+    document.addEventListener("visibilitychange", handler);
+    return () => {
+      document.removeEventListener("visibilitychange", handler);
+      flushRef.current();
+    };
+  }, []);
 
   const ensureRecordId = async (): Promise<string> => {
     if (record && (finalized || !isDirty)) return record.id;
-    const saved = await persist();
-    setRecord(saved);
-    setBaseline(fields);
+    const saved = await persist(fields);
+    marcarSalvo(saved, fields);
     return saved.id;
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const saved = await persist();
-      setRecord(saved);
-      setBaseline(fields);
+      const saved = await persist(fields);
+      marcarSalvo(saved, fields);
       showSuccess("Atendimento salvo.");
     } catch (err) {
       showError(getApiErrorMessage(err, "Não foi possível salvar."));
@@ -248,7 +368,7 @@ export function AtendimentoTabs({
     }
     setFinalizing(true);
     try {
-      const saved = await persist();
+      const saved = await persist(fields);
       setRecord(saved);
       const done = await clinicalRecordService.finalize(saved.id);
       setRecord(done);
@@ -266,6 +386,7 @@ export function AtendimentoTabs({
     setExcluindo(true);
     try {
       await clinicalRecordService.delete(record.id);
+      rascunhoExcluidoRef.current = true;
       void queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
       setConfirmarExclusao(false);
       setBaseline(fields);
@@ -280,6 +401,79 @@ export function AtendimentoTabs({
     }
   };
   const podeExcluirRascunho = !!record && !finalized && isDoctor && !bloqueado;
+  const allowSurgicalIndication = isPhysician && consultaDeMedico;
+  const { modo, setModo } = useModoFicha(user?.id);
+  const secoes = useSecoesDaFicha(fields, modo, readOnly);
+  const [fichaAnteriorAberta, setFichaAnteriorAberta] = useState(false);
+  const [trechoParaSalvar, setTrechoParaSalvar] = useState<string | null>(
+    null,
+  );
+  const { data: snippets } = useClinicalSnippets(
+    user?.id ?? null,
+    !readOnly && !bloqueado,
+  );
+  const ferramentas: FerramentasDeTexto | undefined =
+    readOnly || bloqueado
+      ? undefined
+      : {
+          snippets: snippets ?? [],
+          onSnippetUsed: (id) => {
+            void clinicalSnippetService.registerUse(id).catch(() => undefined);
+          },
+          onSaveSelection: setTrechoParaSalvar,
+          transcrever: ditadoHabilitado()
+            ? clinicalRecordService.transcribe
+            : undefined,
+        };
+  const telaLarga = useMediaQuery("(min-width: 1280px)");
+  const painelLateral = fichaAnteriorAberta && telaLarga && !readOnly;
+
+  const copiarDaFichaAnterior = (key: FichaTextKey, html: string) => {
+    const destino: FichaTextKey = modo === "livre" ? "anamnesis" : key;
+    const tituloOrigem =
+      FICHA_SECOES.find((secao) => secao.key === key)?.title ?? "";
+    const conteudo =
+      modo === "livre" && key !== "anamnesis"
+        ? `<p><strong>${tituloOrigem}:</strong></p>${html}`
+        : html;
+    setFields((prev) => ({
+      ...prev,
+      [destino]: anexarHtml(prev[destino], conteudo),
+    }));
+    const tituloDestino =
+      secoes.find((secao) => secao.key === destino)?.title ?? tituloOrigem;
+    showSuccess(`Copiado para ${tituloDestino}.`);
+  };
+
+  const copiarCidsDaFichaAnterior = (
+    cids: NonNullable<ClinicalRecord["cidCodes"]>,
+  ) => {
+    setFields((prev) => ({
+      ...prev,
+      cidCodes: [
+        ...prev.cidCodes,
+        ...cids.filter(
+          (cid) => !prev.cidCodes.some((atual) => atual.code === cid.code),
+        ),
+      ],
+    }));
+    showSuccess("CID-10 copiado.");
+  };
+
+  const fichaAnterior = (
+    <FichaAnterior
+      patientId={patient.id}
+      appointmentId={appointment.id}
+      currentRecordId={record?.id ?? null}
+      dataDaConsulta={appointment.scheduledAt}
+      onCopiar={copiarDaFichaAnterior}
+      onCopiarCids={copiarCidsDaFichaAnterior}
+    />
+  );
+  const mostrarIndicacao =
+    allowSurgicalIndication ||
+    fields.surgicalIndication ||
+    baseline.surgicalIndication;
 
   const patientAge = useMemo(() => {
     if (!patient.birthDate) return null;
@@ -340,11 +534,13 @@ export function AtendimentoTabs({
                   Finalizado
                 </span>
               )}
-              {isDirty && (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-                  <Circle className="w-2.5 h-2.5 fill-current" />
-                  Alterações não salvas
-                </span>
+              {!readOnly && (
+                <SaveStatusIndicator
+                  status={saveStatus}
+                  dirty={isDirty}
+                  savedAt={savedAt}
+                  onRetry={() => void autoSave(fields)}
+                />
               )}
             </div>
             <p className="text-xs text-neutral-500 truncate">
@@ -405,9 +601,34 @@ export function AtendimentoTabs({
       </header>
 
       <div className="flex-1 overflow-y-auto bg-white">
-        <div className="max-w-4xl mx-auto px-4 lg:px-6 py-5">
-          <div className={activeTab === "atendimento" ? "" : "hidden"}>
-            <div className="flex flex-col gap-4">
+        <div
+          className={`${activeTab === "atendimento" ? "max-w-6xl" : "max-w-4xl"} mx-auto px-4 lg:px-6 py-5`}
+        >
+          <div
+            className={
+              activeTab === "atendimento"
+                ? painelLateral
+                  ? "lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8"
+                  : "lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8"
+                : "hidden"
+            }
+          >
+            <aside className={painelLateral ? "hidden" : "hidden lg:block"}>
+              <div className="sticky top-0 flex flex-col gap-5">
+                <FichaIndice
+                  fields={fields}
+                  mostrarIndicacao={mostrarIndicacao}
+                  orientation="vertical"
+                  secoes={secoes}
+                />
+                {!readOnly && (
+                  <p className="px-2.5 text-xs text-neutral-500">
+                    Tudo é salvo automaticamente enquanto você escreve.
+                  </p>
+                )}
+              </div>
+            </aside>
+            <div className="flex flex-col gap-4 min-w-0">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <ContextItem
                   icon={<Phone className="w-4 h-4" />}
@@ -457,7 +678,6 @@ export function AtendimentoTabs({
 
               {!readOnly && (
                 <ClinicalTemplateActions
-                  doctorId={appointment.doctorId}
                   fields={fields}
                   onApply={(template) =>
                     setFields((prev) => ({
@@ -472,12 +692,50 @@ export function AtendimentoTabs({
                 />
               )}
 
+              <div className="lg:hidden">
+                <FichaIndice
+                  fields={fields}
+                  mostrarIndicacao={mostrarIndicacao}
+                  orientation="horizontal"
+                  secoes={secoes}
+                />
+              </div>
+
+              {!readOnly && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <ModoFichaToggle modo={modo} onChange={setModo} />
+                    <button
+                      type="button"
+                      onClick={() => setFichaAnteriorAberta((v) => !v)}
+                      aria-expanded={fichaAnteriorAberta}
+                      className={`inline-flex min-h-[40px] items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${
+                        fichaAnteriorAberta
+                          ? "border-teal-200 bg-teal-50 text-teal-800"
+                          : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+                      }`}
+                    >
+                      <History className="w-4 h-4" aria-hidden="true" />
+                      Ficha anterior
+                    </button>
+                  </div>
+                  {modo === "livre" && (
+                    <p className="text-xs text-neutral-500">
+                      Tudo num campo só. CID e indicação cirúrgica continuam
+                      abaixo.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <AtendimentoFicha
+                secoes={secoes}
+                ferramentas={ferramentas}
                 fields={fields}
                 onFieldChange={handleFieldChange}
                 readOnly={readOnly}
                 surgeryRequestId={record?.surgeryRequestId ?? null}
-                allowSurgicalIndication={isPhysician && consultaDeMedico}
+                allowSurgicalIndication={allowSurgicalIndication}
                 keepSurgicalIndicationVisible={baseline.surgicalIndication}
                 surgicalIndicationBlockedReason={
                   !consultaDeMedico
@@ -542,6 +800,28 @@ export function AtendimentoTabs({
                 </div>
               )}
             </div>
+
+            {painelLateral && (
+              <aside
+                aria-label="Consulta anterior"
+                className="sticky top-0 self-start max-h-[calc(100vh-12rem)] overflow-y-auto rounded-2xl border border-neutral-100 bg-white shadow-sm"
+              >
+                <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-neutral-100 bg-white px-4 py-3">
+                  <h2 className="text-sm font-semibold text-neutral-900">
+                    Consulta anterior
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setFichaAnteriorAberta(false)}
+                    aria-label="Fechar consulta anterior"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                  >
+                    <X className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="px-4 py-4">{fichaAnterior}</div>
+              </aside>
+            )}
           </div>
 
           {visited.has("historico") && (
@@ -576,6 +856,20 @@ export function AtendimentoTabs({
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={fichaAnteriorAberta && !telaLarga && !readOnly}
+        onClose={() => setFichaAnteriorAberta(false)}
+        title="Consulta anterior"
+        variant="drawer"
+      >
+        <div className="px-5 py-4">{fichaAnterior}</div>
+      </Modal>
+
+      <SalvarTextoRapidoModal
+        conteudo={trechoParaSalvar}
+        onClose={() => setTrechoParaSalvar(null)}
+      />
 
       <ConfirmDeleteModal
         isOpen={confirmarExclusao}
@@ -619,5 +913,67 @@ function ContextItem({
         </p>
       </div>
     </div>
+  );
+}
+
+function SaveStatusIndicator({
+  status,
+  dirty,
+  savedAt,
+  onRetry,
+}: {
+  status: SaveStatus;
+  dirty: boolean;
+  savedAt: Date | null;
+  onRetry: () => void;
+}) {
+  if (status === "saving") {
+    return (
+      <span
+        role="status"
+        className="inline-flex items-center gap-1 text-xs text-neutral-500"
+      >
+        <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
+        Salvando…
+      </span>
+    );
+  }
+  if (status === "error" && dirty) {
+    return (
+      <span
+        role="status"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-red-700"
+      >
+        Não foi possível salvar
+        <button
+          type="button"
+          onClick={onRetry}
+          className="underline underline-offset-2 hover:text-red-800"
+        >
+          Tentar de novo
+        </button>
+      </span>
+    );
+  }
+  if (dirty) {
+    return (
+      <span
+        role="status"
+        className="inline-flex items-center gap-1 text-xs text-neutral-500"
+      >
+        <Circle className="w-2 h-2 fill-current" aria-hidden="true" />
+        Alterações não salvas
+      </span>
+    );
+  }
+  if (!savedAt) return null;
+  return (
+    <span
+      role="status"
+      className="inline-flex items-center gap-1 text-xs text-neutral-500"
+    >
+      <Check className="w-3.5 h-3.5 text-teal-600" aria-hidden="true" />
+      Salvo às {formatHoraSalvo(savedAt)}
+    </span>
   );
 }

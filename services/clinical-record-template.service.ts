@@ -18,7 +18,6 @@ export interface ClinicalRecordTemplate {
 
 export interface CreateClinicalRecordTemplatePayload {
   name: string;
-  doctorId?: string;
   specialty?: string;
   anamnesis?: string;
   physicalExam?: string;
@@ -28,10 +27,9 @@ export interface CreateClinicalRecordTemplatePayload {
 }
 
 export const clinicalRecordTemplateService = {
-  async getAll(doctorId?: string): Promise<ClinicalRecordTemplate[]> {
+  async getAll(): Promise<ClinicalRecordTemplate[]> {
     const response = await api.get<ClinicalRecordTemplate[]>(
       "/clinical-records/templates",
-      { params: { doctorId } },
     );
     return Array.isArray(response.data) ? response.data : [];
   },

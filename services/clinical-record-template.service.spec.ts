@@ -32,16 +32,14 @@ const template = {
 describe("clinicalRecordTemplateService", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("lista os modelos de um médico", async () => {
+  it("lista os modelos do próprio médico, sem escolher médico", async () => {
     (api.get as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: [template],
     });
 
-    const result = await clinicalRecordTemplateService.getAll("d-1");
+    const result = await clinicalRecordTemplateService.getAll();
 
-    expect(api.get).toHaveBeenCalledWith("/clinical-records/templates", {
-      params: { doctorId: "d-1" },
-    });
+    expect(api.get).toHaveBeenCalledWith("/clinical-records/templates");
     expect(result).toHaveLength(1);
   });
 
@@ -58,13 +56,11 @@ describe("clinicalRecordTemplateService", () => {
 
     await clinicalRecordTemplateService.create({
       name: "Primeira consulta",
-      doctorId: "d-1",
       anamnesis: "<p>Queixa:</p>",
     });
 
     expect(api.post).toHaveBeenCalledWith("/clinical-records/templates", {
       name: "Primeira consulta",
-      doctorId: "d-1",
       anamnesis: "<p>Queixa:</p>",
     });
   });
