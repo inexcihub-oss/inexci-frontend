@@ -73,6 +73,8 @@
   },
   "resolutions": {
     "sharp": "^0.35.5",
-    "next/postcss": "^8.5.29"
+    "next/postcss": "^8.5.29",
+    "prosemirror-model": "^1.25.12",
+    "prosemirror-transform": "^1.12.2"
   }
 }
