@@ -10,10 +10,22 @@ import { ConfirmDeleteModal } from "@/components/shared/ConfirmDeleteModal";
 import { Permission } from "@/lib/permissions";
 import {
   AtendimentoFicha,
+  FICHA_SECOES,
   FichaFields,
   FichaIndice,
+  type FerramentasDeTexto,
+  type FichaTextKey,
+  ModoFichaToggle,
   fichaFieldsFrom,
+  useSecoesDaFicha,
 } from "@/components/clinical/AtendimentoFicha";
+import { useModoFicha } from "@/hooks/useModoFicha";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { Modal } from "@/components/ui/Modal";
+import { anexarHtml, FichaAnterior } from "@/components/clinical/FichaAnterior";
+import { SalvarTextoRapidoModal } from "@/components/clinical/SalvarTextoRapidoModal";
+import { useClinicalSnippets } from "@/hooks/useClinicalSnippets";
+import { clinicalSnippetService } from "@/services/clinical-snippet.service";
 import { PatientHistoryTab } from "@/components/clinical/PatientHistoryTab";
 import {
   AssinanteConsulta,
@@ -46,8 +58,10 @@ import {
   Check,
   CheckCircle2,
   Circle,
+  History,
   Loader2,
   Tag,
+  X,
   Phone,
   IdCard,
   Lock,
@@ -366,6 +380,70 @@ export function AtendimentoTabs({
   };
   const podeExcluirRascunho = !!record && !finalized && isDoctor && !bloqueado;
   const allowSurgicalIndication = isPhysician && consultaDeMedico;
+  const { modo, setModo } = useModoFicha(user?.id);
+  const secoes = useSecoesDaFicha(fields, modo, readOnly);
+  const [fichaAnteriorAberta, setFichaAnteriorAberta] = useState(false);
+  const [trechoParaSalvar, setTrechoParaSalvar] = useState<string | null>(
+    null,
+  );
+  const { data: snippets } = useClinicalSnippets(
+    appointment.doctorId,
+    !readOnly && !bloqueado,
+  );
+  const ferramentas: FerramentasDeTexto | undefined =
+    readOnly || bloqueado
+      ? undefined
+      : {
+          snippets: snippets ?? [],
+          onSnippetUsed: (id) => {
+            void clinicalSnippetService.registerUse(id).catch(() => undefined);
+          },
+          onSaveSelection: setTrechoParaSalvar,
+        };
+  const telaLarga = useMediaQuery("(min-width: 1280px)");
+  const painelLateral = fichaAnteriorAberta && telaLarga && !readOnly;
+
+  const copiarDaFichaAnterior = (key: FichaTextKey, html: string) => {
+    const destino: FichaTextKey = modo === "livre" ? "anamnesis" : key;
+    const tituloOrigem =
+      FICHA_SECOES.find((secao) => secao.key === key)?.title ?? "";
+    const conteudo =
+      modo === "livre" && key !== "anamnesis"
+        ? `<p><strong>${tituloOrigem}:</strong></p>${html}`
+        : html;
+    setFields((prev) => ({
+      ...prev,
+      [destino]: anexarHtml(prev[destino], conteudo),
+    }));
+    const tituloDestino =
+      secoes.find((secao) => secao.key === destino)?.title ?? tituloOrigem;
+    showSuccess(`Copiado para ${tituloDestino}.`);
+  };
+
+  const copiarCidsDaFichaAnterior = (
+    cids: NonNullable<ClinicalRecord["cidCodes"]>,
+  ) => {
+    setFields((prev) => ({
+      ...prev,
+      cidCodes: [
+        ...prev.cidCodes,
+        ...cids.filter(
+          (cid) => !prev.cidCodes.some((atual) => atual.code === cid.code),
+        ),
+      ],
+    }));
+    showSuccess("CID-10 copiado.");
+  };
+
+  const fichaAnterior = (
+    <FichaAnterior
+      patientId={patient.id}
+      appointmentId={appointment.id}
+      currentRecordId={record?.id ?? null}
+      onCopiar={copiarDaFichaAnterior}
+      onCopiarCids={copiarCidsDaFichaAnterior}
+    />
+  );
   const mostrarIndicacao =
     allowSurgicalIndication ||
     fields.surgicalIndication ||
@@ -503,16 +581,19 @@ export function AtendimentoTabs({
           <div
             className={
               activeTab === "atendimento"
-                ? "lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8"
+                ? painelLateral
+                  ? "lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8"
+                  : "lg:grid lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8"
                 : "hidden"
             }
           >
-            <aside className="hidden lg:block">
+            <aside className={painelLateral ? "hidden" : "hidden lg:block"}>
               <div className="sticky top-0 flex flex-col gap-5">
                 <FichaIndice
                   fields={fields}
                   mostrarIndicacao={mostrarIndicacao}
                   orientation="vertical"
+                  secoes={secoes}
                 />
                 {!readOnly && (
                   <p className="px-2.5 text-xs text-neutral-500">
@@ -591,10 +672,40 @@ export function AtendimentoTabs({
                   fields={fields}
                   mostrarIndicacao={mostrarIndicacao}
                   orientation="horizontal"
+                  secoes={secoes}
                 />
               </div>
 
+              {!readOnly && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <ModoFichaToggle modo={modo} onChange={setModo} />
+                    <button
+                      type="button"
+                      onClick={() => setFichaAnteriorAberta((v) => !v)}
+                      aria-expanded={fichaAnteriorAberta}
+                      className={`inline-flex min-h-[40px] items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${
+                        fichaAnteriorAberta
+                          ? "border-teal-200 bg-teal-50 text-teal-800"
+                          : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+                      }`}
+                    >
+                      <History className="w-4 h-4" aria-hidden="true" />
+                      Ficha anterior
+                    </button>
+                  </div>
+                  {modo === "livre" && (
+                    <p className="text-xs text-neutral-500">
+                      Tudo num campo só. CID e indicação cirúrgica continuam
+                      abaixo.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <AtendimentoFicha
+                secoes={secoes}
+                ferramentas={ferramentas}
                 fields={fields}
                 onFieldChange={handleFieldChange}
                 readOnly={readOnly}
@@ -664,6 +775,28 @@ export function AtendimentoTabs({
                 </div>
               )}
             </div>
+
+            {painelLateral && (
+              <aside
+                aria-label="Consulta anterior"
+                className="sticky top-0 self-start max-h-[calc(100vh-12rem)] overflow-y-auto rounded-2xl border border-neutral-100 bg-white shadow-sm"
+              >
+                <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-neutral-100 bg-white px-4 py-3">
+                  <h2 className="text-sm font-semibold text-neutral-900">
+                    Consulta anterior
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setFichaAnteriorAberta(false)}
+                    aria-label="Fechar consulta anterior"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                  >
+                    <X className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="px-4 py-4">{fichaAnterior}</div>
+              </aside>
+            )}
           </div>
 
           {visited.has("historico") && (
@@ -698,6 +831,21 @@ export function AtendimentoTabs({
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={fichaAnteriorAberta && !telaLarga && !readOnly}
+        onClose={() => setFichaAnteriorAberta(false)}
+        title="Consulta anterior"
+        variant="drawer"
+      >
+        <div className="px-5 py-4">{fichaAnterior}</div>
+      </Modal>
+
+      <SalvarTextoRapidoModal
+        conteudo={trechoParaSalvar}
+        doctorId={appointment.doctorId}
+        onClose={() => setTrechoParaSalvar(null)}
+      />
 
       <ConfirmDeleteModal
         isOpen={confirmarExclusao}

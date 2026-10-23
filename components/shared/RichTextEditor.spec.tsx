@@ -1,6 +1,10 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeAll } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { RichTextEditor } from "./RichTextEditor";
+import {
+  conteudoDoSnippet,
+  filtrarSnippets,
+  RichTextEditor,
+} from "./RichTextEditor";
 
 describe("RichTextEditor — extensões", () => {
   afterEach(() => {
@@ -151,4 +155,212 @@ describe("RichTextEditor — Enter", () => {
       erro.mockRestore();
     },
   );
+});
+
+const SNIPPETS = [
+  {
+    id: "s1",
+    shortcut: "normal",
+    title: "Exame físico normal",
+    content: "<p>Bom estado geral.</p>",
+  },
+  {
+    id: "s2",
+    shortcut: "joelho",
+    title: "Joelho normal",
+    content: "<p>Sem derrame.</p>",
+  },
+];
+
+type EditorNoDom = Element & {
+  editor: {
+    commands: { insertContent: (c: string) => boolean; focus: () => boolean };
+  };
+};
+
+async function editorReal(props: Partial<Parameters<typeof RichTextEditor>[0]>) {
+  const onChange = vi.fn();
+  const view = render(
+    <RichTextEditor
+      variant="clinical"
+      value=""
+      onChange={onChange}
+      {...props}
+    />,
+  );
+  await waitFor(() =>
+    expect(view.container.querySelector(".ProseMirror")).not.toBeNull(),
+  );
+  const pm = view.container.querySelector(".ProseMirror") as EditorNoDom;
+  return { ...view, pm, onChange };
+}
+
+describe("filtrarSnippets", () => {
+  it("prioriza atalho que começa com o que foi digitado e busca no título", () => {
+    expect(filtrarSnippets(SNIPPETS, "").map((s) => s.id)).toEqual([
+      "s1",
+      "s2",
+    ]);
+    expect(filtrarSnippets(SNIPPETS, "jo").map((s) => s.id)).toEqual(["s2"]);
+    expect(filtrarSnippets(SNIPPETS, "fisico").map((s) => s.id)).toEqual([]);
+    expect(filtrarSnippets(SNIPPETS, "exame").map((s) => s.id)).toEqual([
+      "s1",
+    ]);
+  });
+});
+
+describe("conteudoDoSnippet", () => {
+  it("insere na mesma linha quando o texto é um parágrafo só", () => {
+    expect(conteudoDoSnippet("<p>Sem <strong>derrame</strong>.</p>")).toBe(
+      "Sem <strong>derrame</strong>.",
+    );
+    expect(conteudoDoSnippet("<p>A</p><p>B</p>")).toBe("<p>A</p><p>B</p>");
+    expect(conteudoDoSnippet("<ul><li><p>A</p></li></ul>")).toBe(
+      "<ul><li><p>A</p></li></ul>",
+    );
+  });
+});
+
+describe("RichTextEditor — textos rápidos", () => {
+  beforeAll(() => {
+    const vazio = () =>
+      Object.assign([], { item: () => null }) as unknown as DOMRectList;
+    const retangulo = () =>
+      ({
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    Range.prototype.getClientRects ??= vazio;
+    Range.prototype.getBoundingClientRect ??= retangulo;
+    Element.prototype.getClientRects ??= vazio;
+  });
+
+  it("abre o menu com / e insere o texto escolhido no lugar do atalho", async () => {
+    const onSnippetUsed = vi.fn();
+    const { pm, onChange } = await editorReal({
+      snippets: SNIPPETS,
+      onSnippetUsed,
+    });
+
+    pm.editor.commands.focus();
+    pm.editor.commands.insertContent("Ao exame: /jo");
+
+    const lista = await screen.findByRole("listbox", {
+      name: "Textos rápidos",
+    });
+    expect(lista).toHaveTextContent("/joelho");
+    expect(lista).not.toHaveTextContent("/normal");
+
+    fireEvent.keyDown(pm, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+    );
+    expect(onSnippetUsed).toHaveBeenCalledWith("s2");
+    const html = onChange.mock.calls.at(-1)?.[0] as string;
+    expect(html).toBe("<p>Ao exame: Sem derrame.</p>");
+  });
+
+  it("Esc fecha o menu sem inserir nada", async () => {
+    const onSnippetUsed = vi.fn();
+    const { pm } = await editorReal({ snippets: SNIPPETS, onSnippetUsed });
+
+    pm.editor.commands.focus();
+    pm.editor.commands.insertContent("/");
+    await screen.findByRole("listbox", { name: "Textos rápidos" });
+
+    fireEvent.keyDown(pm, { key: "Escape" });
+
+    await waitFor(() =>
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+    );
+    expect(onSnippetUsed).not.toHaveBeenCalled();
+  });
+
+  it("não abre com barra no meio de número (ex.: 12/8)", async () => {
+    const { pm } = await editorReal({ snippets: SNIPPETS });
+
+    pm.editor.commands.focus();
+    pm.editor.commands.insertContent("PA 12/8");
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("explica como criar quando o médico ainda não tem textos", async () => {
+    const { pm } = await editorReal({ snippets: [] });
+
+    pm.editor.commands.focus();
+    pm.editor.commands.insertContent("/");
+
+    expect(
+      await screen.findByText(/ainda não tem textos rápidos/),
+    ).toBeInTheDocument();
+  });
+
+  it("não abre o menu em editor sem foco que recebe o texto de fora", async () => {
+    const { rerender } = render(
+      <RichTextEditor
+        variant="clinical"
+        value=""
+        onChange={vi.fn()}
+        snippets={SNIPPETS}
+      />,
+    );
+    await waitFor(() =>
+      expect(document.querySelector(".ProseMirror")).not.toBeNull(),
+    );
+
+    rerender(
+      <RichTextEditor
+        variant="clinical"
+        value="<p>Ao exame: /</p>"
+        onChange={vi.fn()}
+        snippets={SNIPPETS}
+      />,
+    );
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("sem a lista de textos, a barra não abre menu", async () => {
+    const { pm } = await editorReal({});
+
+    pm.editor.commands.focus();
+    pm.editor.commands.insertContent("/");
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText("Textos rápidos")).not.toBeInTheDocument();
+  });
+
+  it("salvar seleção entrega o HTML do trecho selecionado", async () => {
+    const onSaveSelection = vi.fn();
+    const { pm } = await editorReal({
+      value: "<p>Bom estado geral</p>",
+      onSaveSelection,
+    });
+    const editor = (
+      pm as unknown as {
+        editor: {
+          commands: { selectAll: () => boolean; focus: () => boolean };
+        };
+      }
+    ).editor;
+
+    editor.commands.focus();
+    editor.commands.selectAll();
+    fireEvent.mouseDown(
+      await screen.findByTitle("Salvar seleção como texto rápido"),
+    );
+
+    expect(onSaveSelection).toHaveBeenCalledWith("<p>Bom estado geral</p>");
+  });
 });

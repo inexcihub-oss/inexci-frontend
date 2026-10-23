@@ -10,7 +10,11 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
-import type { CommandProps, Editor } from "@tiptap/core";
+import {
+  getHTMLFromFragment,
+  type CommandProps,
+  type Editor,
+} from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
@@ -19,6 +23,7 @@ import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import {
   Bold,
+  BookmarkPlus,
   Italic,
   Underline as UnderlineIcon,
   List,
@@ -86,6 +91,71 @@ interface RichTextEditorProps {
   variant?: "full" | "clinical";
   toolbarSlot?: HTMLElement | null;
   ariaLabel?: string;
+  autoFocus?: boolean;
+  snippets?: SnippetOption[];
+  onSnippetUsed?: (id: string) => void;
+  onSaveSelection?: (html: string) => void;
+}
+
+export interface SnippetOption {
+  id: string;
+  shortcut: string;
+  title: string;
+  content: string;
+}
+
+interface SlashState {
+  from: number;
+  query: string;
+  left: number;
+  top: number;
+}
+
+const MAX_SNIPPETS_NO_MENU = 8;
+
+export function filtrarSnippets(
+  snippets: SnippetOption[],
+  query: string,
+): SnippetOption[] {
+  const q = query.toLowerCase();
+  if (!q) return snippets.slice(0, MAX_SNIPPETS_NO_MENU);
+  const comeca = snippets.filter((s) => s.shortcut.startsWith(q));
+  const contem = snippets.filter(
+    (s) =>
+      !s.shortcut.startsWith(q) &&
+      (s.shortcut.includes(q) || s.title.toLowerCase().includes(q)),
+  );
+  return [...comeca, ...contem].slice(0, MAX_SNIPPETS_NO_MENU);
+}
+
+export function conteudoDoSnippet(html: string): string {
+  const unico = html.trim().match(/^<p>([\s\S]*)<\/p>$/);
+  return unico && !/<\/?p[\s>]/.test(unico[1]) ? unico[1] : html;
+}
+
+function detectarSlash(editor: Editor): SlashState | null {
+  const { $from, empty } = editor.state.selection;
+  if (!empty || !$from.parent.isTextblock) return null;
+  const antes = $from.parent.textBetween(
+    Math.max(0, $from.parentOffset - 41),
+    $from.parentOffset,
+    undefined,
+    "\ufffc",
+  );
+  const encontrado = antes.match(/(?:^|\s)\/([a-z0-9-]*)$/i);
+  if (!encontrado) return null;
+  const from = $from.pos - encontrado[1].length - 1;
+  let left = 0;
+  let top = 0;
+  try {
+    const coords = editor.view.coordsAtPos(from);
+    left = coords.left;
+    top = coords.bottom;
+  } catch {
+    left = 0;
+    top = 0;
+  }
+  return { from, query: encontrado[1].toLowerCase(), left, top };
 }
 
 const FONT_FAMILIES = [
@@ -381,7 +451,13 @@ function ColorPicker({
   );
 }
 
-function ClinicalToolbar({ editor }: { editor: Editor }) {
+function ClinicalToolbar({
+  editor,
+  onSaveSelection,
+}: {
+  editor: Editor;
+  onSaveSelection?: (html: string) => void;
+}) {
   return (
     <div
       role="toolbar"
@@ -447,7 +523,106 @@ function ClinicalToolbar({ editor }: { editor: Editor }) {
       >
         <RemoveFormatting className="w-4 h-4" />
       </ToolbarButton>
+      {onSaveSelection && (
+        <>
+          <div className="w-px h-4 bg-neutral-200 mx-0.5" />
+          <ToolbarButton
+            onClick={() => {
+              if (editor.state.selection.empty) return;
+              onSaveSelection(
+                getHTMLFromFragment(
+                  editor.state.selection.content().content,
+                  editor.schema,
+                ),
+              );
+            }}
+            title={
+              editor.state.selection.empty
+                ? "Selecione um trecho para salvar como texto rápido"
+                : "Salvar seleção como texto rápido"
+            }
+            className={cn(
+              "w-8 h-8 rounded-lg",
+              editor.state.selection.empty && "opacity-40",
+            )}
+          >
+            <BookmarkPlus className="w-4 h-4" />
+          </ToolbarButton>
+        </>
+      )}
     </div>
+  );
+}
+
+function SlashMenu({
+  slash,
+  itens,
+  ativo,
+  semNenhum,
+  onEscolher,
+  onAtivar,
+}: {
+  slash: SlashState;
+  itens: SnippetOption[];
+  ativo: number;
+  semNenhum: boolean;
+  onEscolher: (item: SnippetOption) => void;
+  onAtivar: (indice: number) => void;
+}) {
+  const largura = 320;
+  const left =
+    typeof window === "undefined"
+      ? slash.left
+      : Math.max(8, Math.min(slash.left, window.innerWidth - largura - 8));
+  return createPortal(
+    <div
+      className="fixed z-[9999] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl"
+      style={{ left, top: slash.top + 6, width: largura }}
+    >
+      <p className="px-2 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+        Textos rápidos
+      </p>
+      {itens.length > 0 ? (
+        <ul role="listbox" aria-label="Textos rápidos" className="flex flex-col">
+          {itens.map((item, indice) => (
+            <li
+              key={item.id}
+              role="option"
+              aria-selected={indice === ativo}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onEscolher(item);
+              }}
+              onMouseEnter={() => onAtivar(indice)}
+              className={cn(
+                "flex cursor-pointer flex-col gap-0.5 rounded-lg px-2.5 py-2",
+                indice === ativo ? "bg-teal-50" : "hover:bg-neutral-50",
+              )}
+            >
+              <span className="text-sm font-medium text-neutral-900">
+                /{item.shortcut}
+                <span className="font-normal text-neutral-600">
+                  {" "}
+                  · {item.title}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="px-2.5 py-2 text-sm text-neutral-600">
+          {semNenhum
+            ? "Você ainda não tem textos rápidos. Selecione um trecho e use o botão de salvar na barra, ou crie em Configurações › Textos rápidos."
+            : `Nenhum texto rápido para "/${slash.query}".`}
+        </p>
+      )}
+      {itens.length > 0 && (
+        <p className="border-t border-neutral-100 px-2.5 pt-1.5 pb-0.5 text-[11px] text-neutral-500">
+          Enter insere · Esc fecha
+        </p>
+      )}
+    </div>,
+    document.body,
   );
 }
 
@@ -461,8 +636,17 @@ export function RichTextEditor({
   variant = "full",
   toolbarSlot,
   ariaLabel,
+  autoFocus = false,
+  snippets,
+  onSnippetUsed,
+  onSaveSelection,
 }: RichTextEditorProps) {
   const clinical = variant === "clinical";
+  const [slash, setSlash] = useState<SlashState | null>(null);
+  const [ativo, setAtivo] = useState(0);
+  const dispensadoEm = useRef<number | null>(null);
+  const sincronizando = useRef(false);
+  const teclaRef = useRef<(event: KeyboardEvent) => boolean>(() => false);
 
   const extensions = useMemo(() => {
     const starter = StarterKit.configure({
@@ -489,6 +673,7 @@ export function RichTextEditor({
     extensions,
     content: value,
     editable: !disabled,
+    autofocus: autoFocus ? "end" : false,
     onUpdate({ editor }) {
       const html = editor.getHTML();
       onChange(html === "<p></p>" ? "" : html);
@@ -504,15 +689,85 @@ export function RichTextEditor({
         role: "textbox",
         "aria-multiline": "true",
       },
+      handleKeyDown: (_view, event) => teclaRef.current(event),
     },
   });
+
+  const usaSnippets = clinical && snippets !== undefined && !disabled;
+  const itens = useMemo(
+    () => (slash ? filtrarSnippets(snippets ?? [], slash.query) : []),
+    [slash, snippets],
+  );
+
+  useEffect(() => {
+    if (!editor || !usaSnippets) return;
+    const atualizar = () => {
+      const novo = sincronizando.current ? null : detectarSlash(editor);
+      if (!novo) dispensadoEm.current = null;
+      if (novo && dispensadoEm.current === novo.from) {
+        setSlash(null);
+        return;
+      }
+      setSlash((atual) => {
+        if (atual?.query !== novo?.query) setAtivo(0);
+        return novo;
+      });
+    };
+    const fechar = () => setSlash(null);
+    editor.on("update", atualizar);
+    editor.on("selectionUpdate", atualizar);
+    editor.on("blur", fechar);
+    return () => {
+      editor.off("update", atualizar);
+      editor.off("selectionUpdate", atualizar);
+      editor.off("blur", fechar);
+    };
+  }, [editor, usaSnippets]);
+
+  const escolher = (item: SnippetOption) => {
+    if (!editor || !slash) return;
+    editor
+      .chain()
+      .focus()
+      .deleteRange({ from: slash.from, to: editor.state.selection.from })
+      .insertContent(conteudoDoSnippet(item.content))
+      .run();
+    setSlash(null);
+    onSnippetUsed?.(item.id);
+  };
+
+  teclaRef.current = (event: KeyboardEvent) => {
+    if (!slash) return false;
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      dispensadoEm.current = slash.from;
+      setSlash(null);
+      return true;
+    }
+    if (itens.length === 0) return false;
+    if (event.key === "ArrowDown") {
+      setAtivo((i) => (i + 1) % itens.length);
+      return true;
+    }
+    if (event.key === "ArrowUp") {
+      setAtivo((i) => (i - 1 + itens.length) % itens.length);
+      return true;
+    }
+    if (event.key === "Enter" || event.key === "Tab") {
+      escolher(itens[Math.min(ativo, itens.length - 1)]);
+      return true;
+    }
+    return false;
+  };
 
   useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
     const normalized = current === "<p></p>" ? "" : current;
     if (value !== normalized) {
+      sincronizando.current = true;
       editor.commands.setContent(value || "");
+      sincronizando.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
@@ -554,11 +809,23 @@ export function RichTextEditor({
   if (!editor) return null;
 
   if (clinical) {
-    const toolbar = disabled ? null : <ClinicalToolbar editor={editor} />;
+    const toolbar = disabled ? null : (
+      <ClinicalToolbar editor={editor} onSaveSelection={onSaveSelection} />
+    );
     return (
       <div className={className}>
         {toolbar && (toolbarSlot ? createPortal(toolbar, toolbarSlot) : toolbar)}
         <EditorContent editor={editor} />
+        {usaSnippets && slash && (
+          <SlashMenu
+            slash={slash}
+            itens={itens}
+            ativo={Math.min(ativo, Math.max(0, itens.length - 1))}
+            semNenhum={(snippets ?? []).length === 0}
+            onEscolher={escolher}
+            onAtivar={setAtivo}
+          />
+        )}
       </div>
     );
   }

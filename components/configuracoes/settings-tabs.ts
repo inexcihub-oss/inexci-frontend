@@ -10,6 +10,7 @@ import {
   MessageSquareText,
   ShieldCheck,
   User,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ export type SettingsTab =
   | "privacy"
   | "onboarding"
   | "document-templates"
+  | "clinical-snippets"
   | "my-schedule"
   | "holidays"
   | "patient-notices";
@@ -45,6 +47,7 @@ const ALL_TABS: readonly SettingsTab[] = [
   "privacy",
   "onboarding",
   "document-templates",
+  "clinical-snippets",
   "my-schedule",
   "holidays",
   "patient-notices",
@@ -60,7 +63,10 @@ export function resolveSettingsTab(
     !(acesso.emiteDocumentos && acesso.hasUser)
   )
     return "profile";
-  if (tab === "my-schedule" && !(acesso.isDoctor && acesso.hasUser))
+  if (
+    (tab === "my-schedule" || tab === "clinical-snippets") &&
+    !(acesso.isDoctor && acesso.hasUser)
+  )
     return "profile";
   if (
     (tab === "holidays" || tab === "patient-notices") &&
@@ -111,6 +117,11 @@ export function settingsNavGroups(
                 id: "my-schedule" as const,
                 label: "Minha agenda",
                 icon: CalendarClock,
+              },
+              {
+                id: "clinical-snippets" as const,
+                label: "Textos rápidos",
+                icon: Zap,
               },
             ]
           : []),

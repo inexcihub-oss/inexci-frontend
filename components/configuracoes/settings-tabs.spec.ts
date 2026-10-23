@@ -31,6 +31,7 @@ describe("resolveSettingsTab", () => {
       "privacy",
       "onboarding",
       "document-templates",
+      "clinical-snippets",
       "my-schedule",
       "holidays",
       "patient-notices",
@@ -43,6 +44,7 @@ describe("resolveSettingsTab", () => {
     for (const tab of [
       "plan",
       "document-templates",
+      "clinical-snippets",
       "my-schedule",
       "holidays",
       "patient-notices",
@@ -64,7 +66,10 @@ describe("settingsNavGroups", () => {
   it("agrupa do pessoal para a clínica, na ordem combinada", () => {
     expect(resumo({ ...TUDO, mostraCabecalho: true })).toEqual([
       ["Minha conta", ["profile", "security", "notifications"]],
-      ["Atendimento", ["my-schedule", "header", "document-templates"]],
+      [
+        "Atendimento",
+        ["my-schedule", "clinical-snippets", "header", "document-templates"],
+      ],
       ["Clínica", ["holidays", "patient-notices", "plan"]],
       ["Ajuda", ["onboarding", "privacy"]],
     ]);

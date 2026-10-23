@@ -51,6 +51,7 @@ vi.mock("@/components/clinical/PatientHistoryTab", () => ({
 
 vi.mock("@/services/clinical-record.service", () => ({
   clinicalRecordService: {
+    getByPatient: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     finalize: vi.fn(),
@@ -59,6 +60,15 @@ vi.mock("@/services/clinical-record.service", () => ({
     generateMedicalCertificate: vi.fn(),
     generateExamReferral: vi.fn(),
     previewDocument: vi.fn(),
+  },
+}));
+
+vi.mock("@/services/clinical-snippet.service", async (original) => ({
+  ...(await original<typeof import("@/services/clinical-snippet.service")>()),
+  clinicalSnippetService: {
+    getAll: vi.fn().mockResolvedValue([]),
+    registerUse: vi.fn(),
+    create: vi.fn(),
   },
 }));
 
@@ -1641,6 +1651,83 @@ describe("AtendimentoTabs", () => {
     ).toBeInTheDocument();
     expect(
       within(indice).getByRole("button", { name: "Exame físico" }),
+    ).toBeInTheDocument();
+  });
+  it("troca para evolução livre, grava no campo da anamnese e lembra a escolha", async () => {
+    const user = userEvent.setup();
+    window.localStorage.clear();
+    (
+      clinicalRecordService.create as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(recordFixture({ anamnesis: "Evolução" }));
+    const { unmount } = renderTabs();
+
+    await user.click(screen.getByRole("radio", { name: "Evolução livre" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Evolução" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Exame físico" }),
+    ).not.toBeInTheDocument();
+
+    await user.type(
+      screen.getByLabelText(/Escreva o atendimento de corrido/i),
+      "Evolução",
+    );
+    await user.click(
+      screen.getAllByRole("button", { name: /Salvar rascunho/i })[0],
+    );
+    await waitFor(() =>
+      expect(clinicalRecordService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ anamnesis: "Evolução", physicalExam: "" }),
+      ),
+    );
+
+    unmount();
+    renderTabs();
+    expect(screen.getByRole("radio", { name: "Evolução livre" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    window.localStorage.clear();
+  });
+
+  it("não mostra o seletor de modo em ficha finalizada", () => {
+    renderTabs(recordFixture({ finalizedAt: "2026-07-29T19:00:00.000Z" }));
+
+    expect(
+      screen.queryByRole("radiogroup", { name: "Modo da ficha" }),
+    ).not.toBeInTheDocument();
+  });
+  it("abre a consulta anterior e copia uma seção para a ficha atual", async () => {
+    const user = userEvent.setup();
+    (
+      clinicalRecordService.getByPatient as ReturnType<typeof vi.fn>
+    ).mockResolvedValue([
+      recordFixture({
+        id: "r-0",
+        appointmentId: "a-0",
+        finalizedAt: "2026-07-01T12:00:00.000Z",
+        conduct: "<p>Fisioterapia</p>",
+      }),
+    ]);
+    renderTabs(recordFixture({ conduct: "<p>Repouso</p>" }));
+
+    await user.click(screen.getByRole("button", { name: "Ficha anterior" }));
+    const painel = await screen.findByRole("dialog", {
+      name: "Consulta anterior",
+    });
+    await user.click(
+      await within(painel).findByRole("button", {
+        name: "Copiar Conduta / Plano para esta consulta",
+      }),
+    );
+
+    expect(screen.getByLabelText(/Conduta, prescrição/i)).toHaveValue(
+      "<p>Repouso</p><p>Fisioterapia</p>",
+    );
+    expect(
+      await screen.findByText("Copiado para Conduta / Plano."),
     ).toBeInTheDocument();
   });
 });

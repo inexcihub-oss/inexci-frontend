@@ -2,9 +2,10 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CidPicker } from "@/components/clinical/CidPicker";
 import { Checkbox } from "@/components/ui/Checkbox";
+import { Modal } from "@/components/ui/Modal";
 import { ProcedureQuickPickerModal } from "@/components/procedures/ProcedureQuickPickerModal";
 import {
   ClinicalRecord,
@@ -14,6 +15,14 @@ import { sanitizeHtml } from "@/lib/sanitize-html";
 import { useAuth } from "@/contexts/AuthContext";
 import { Permission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import type { ModoFicha } from "@/hooks/useModoFicha";
+import type { SnippetOption } from "@/components/shared/RichTextEditor";
+
+export interface FerramentasDeTexto {
+  snippets?: SnippetOption[];
+  onSnippetUsed?: (id: string) => void;
+  onSaveSelection?: (html: string) => void;
+}
 import {
   ClipboardList,
   Stethoscope,
@@ -25,6 +34,8 @@ import {
   Check,
   CheckCircle2,
   Circle,
+  Maximize2,
+  NotebookPen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -60,7 +71,7 @@ export function fichaFieldsFrom(record: ClinicalRecord | null): FichaFields {
 
 export type FichaTextKey = "anamnesis" | "physicalExam" | "diagnosis" | "conduct";
 
-interface FichaSecaoMeta {
+export interface FichaSecaoMeta {
   key: FichaTextKey;
   id: string;
   title: string;
@@ -111,6 +122,91 @@ export const FICHA_SECOES: FichaSecaoMeta[] = [
   },
 ];
 
+export const FICHA_EVOLUCAO: FichaSecaoMeta = {
+  key: "anamnesis",
+  id: "ficha-anamnese",
+  title: "Evolução",
+  shortTitle: "Evolução",
+  icon: NotebookPen,
+  placeholder:
+    "Escreva o atendimento de corrido: queixa, exame, hipótese e conduta...",
+  minHeight: "320px",
+};
+
+export function useSecoesDaFicha(
+  fields: FichaFields,
+  modo: ModoFicha,
+  readOnly: boolean,
+): FichaSecaoMeta[] {
+  const preenchidas = FICHA_SECOES.filter(
+    (secao) => secao.key !== "anamnesis" && temTexto(fields[secao.key]),
+  ).map((secao) => secao.key);
+  const chavePreenchidas = preenchidas.join(",");
+  const [extras, setExtras] = useState<FichaTextKey[]>(preenchidas);
+
+  useEffect(() => {
+    if (!chavePreenchidas) return;
+    const novas = chavePreenchidas.split(",") as FichaTextKey[];
+    setExtras((atual) =>
+      novas.every((key) => atual.includes(key))
+        ? atual
+        : [...new Set([...atual, ...novas])],
+    );
+  }, [chavePreenchidas]);
+
+  useEffect(() => {
+    if (modo === "secoes") setExtras([]);
+  }, [modo]);
+
+  if (readOnly || modo === "secoes") return FICHA_SECOES;
+  return [
+    FICHA_EVOLUCAO,
+    ...FICHA_SECOES.filter(
+      (secao) =>
+        secao.key !== "anamnesis" &&
+        (extras.includes(secao.key) || preenchidas.includes(secao.key)),
+    ),
+  ];
+}
+
+export function ModoFichaToggle({
+  modo,
+  onChange,
+}: {
+  modo: ModoFicha;
+  onChange: (modo: ModoFicha) => void;
+}) {
+  const opcoes: Array<{ valor: ModoFicha; label: string }> = [
+    { valor: "secoes", label: "Seções" },
+    { valor: "livre", label: "Evolução livre" },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Modo da ficha"
+      className="inline-flex rounded-xl bg-neutral-100 p-1"
+    >
+      {opcoes.map((opcao) => (
+        <button
+          key={opcao.valor}
+          type="button"
+          role="radio"
+          aria-checked={modo === opcao.valor}
+          onClick={() => onChange(opcao.valor)}
+          className={cn(
+            "min-h-[36px] rounded-lg px-3.5 text-sm transition-colors",
+            modo === opcao.valor
+              ? "bg-white font-semibold text-neutral-900 shadow-sm"
+              : "font-medium text-neutral-600 hover:text-neutral-900",
+          )}
+        >
+          {opcao.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function temTexto(html: string): boolean {
   return (
     html
@@ -147,7 +243,8 @@ export function focarSecaoDaFicha(id: string) {
   if (!alvo) return;
   const focavel =
     alvo.querySelector<HTMLElement>('[contenteditable="true"]') ??
-    alvo.querySelector<HTMLElement>("textarea, input, button");
+    alvo.querySelector<HTMLElement>("textarea, input") ??
+    alvo.querySelector<HTMLElement>("button");
   const focar = () => focavel?.focus({ preventScroll: true });
   const container = areaRolavel(alvo);
   if (!container || typeof container.scrollTo !== "function") {
@@ -196,7 +293,11 @@ export function AtendimentoFicha({
   allowSurgicalIndication = true,
   surgicalIndicationBlockedReason,
   keepSurgicalIndicationVisible = false,
+  secoes = FICHA_SECOES,
+  ferramentas,
 }: {
+  secoes?: FichaSecaoMeta[];
+  ferramentas?: FerramentasDeTexto;
   surgicalIndicationBlockedReason?: string;
   allowSurgicalIndication?: boolean;
   keepSurgicalIndicationVisible?: boolean;
@@ -219,16 +320,21 @@ export function AtendimentoFicha({
         aria-label="Ficha clínica"
         className="rounded-2xl border border-neutral-100 bg-white shadow-sm divide-y divide-neutral-100 overflow-hidden"
       >
-        {FICHA_SECOES.map((secao) => {
+        {secoes.map((secao) => {
+          const cidAqui =
+            secao.key === "diagnosis" ||
+            (secao.key === "anamnesis" &&
+              !secoes.some((s) => s.key === "diagnosis"));
           return (
             <FichaSecao
-              key={secao.key}
+              key={`${secao.id}-${secao.title}`}
               secao={secao}
               value={fields[secao.key]}
               onChange={(v) => onFieldChange(secao.key, v)}
               readOnly={readOnly}
+              ferramentas={ferramentas}
             >
-              {secao.key === "diagnosis" && (
+              {cidAqui && (
                 <div className="mt-3">
                   <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5">
                     CID-10
@@ -273,16 +379,19 @@ function FichaSecao({
   value,
   onChange,
   readOnly,
+  ferramentas,
   children,
 }: {
   secao: FichaSecaoMeta;
   value: string;
   onChange: (v: string) => void;
   readOnly: boolean;
+  ferramentas?: FerramentasDeTexto;
   children?: React.ReactNode;
 }) {
   const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null);
   const [emFoco, setEmFoco] = useState(false);
+  const [telaCheia, setTelaCheia] = useState(false);
   const extrasRef = useRef<HTMLDivElement>(null);
   const Icon = secao.icon;
   const titleId = `${secao.id}-titulo`;
@@ -330,13 +439,24 @@ function FichaSecao({
           </h2>
         </div>
         {!readOnly && (
-          <div
-            ref={setToolbarSlot}
-            className={cn(
-              "transition-opacity",
-              emFoco ? "opacity-100" : "invisible opacity-0",
-            )}
-          />
+          <div className="flex items-center gap-1.5">
+            <div
+              ref={setToolbarSlot}
+              className={cn(
+                "transition-opacity",
+                emFoco ? "opacity-100" : "invisible opacity-0",
+              )}
+            />
+            <button
+              type="button"
+              onClick={() => setTelaCheia(true)}
+              aria-label={`Expandir ${secao.title} em tela cheia`}
+              title="Expandir em tela cheia"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition-colors"
+            >
+              <Maximize2 className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
         )}
       </div>
       {readOnly ? (
@@ -358,10 +478,60 @@ function FichaSecao({
           ariaLabel={secao.title}
           minHeight={secao.minHeight}
           toolbarSlot={toolbarSlot}
+          {...ferramentas}
         />
       )}
       {children && <div ref={extrasRef}>{children}</div>}
+      {!readOnly && (
+        <ModoFoco
+          isOpen={telaCheia}
+          onClose={() => setTelaCheia(false)}
+          secao={secao}
+          value={value}
+          onChange={onChange}
+          ferramentas={ferramentas}
+        />
+      )}
     </section>
+  );
+}
+
+function ModoFoco({
+  isOpen,
+  onClose,
+  secao,
+  value,
+  onChange,
+  ferramentas,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  secao: FichaSecaoMeta;
+  value: string;
+  onChange: (v: string) => void;
+  ferramentas?: FerramentasDeTexto;
+}) {
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLDivElement | null>(null);
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={secao.title} size="full">
+      <div
+        ref={setToolbarSlot}
+        className="sticky top-0 z-10 flex justify-center border-b border-neutral-100 bg-white px-4 py-2"
+      />
+      <div className="mx-auto w-full max-w-3xl px-5 md:px-8 py-5">
+        <RichTextEditor
+          variant="clinical"
+          value={value}
+          onChange={onChange}
+          placeholder={secao.placeholder}
+          ariaLabel={`${secao.title} em tela cheia`}
+          minHeight="50vh"
+          toolbarSlot={toolbarSlot}
+          autoFocus
+          {...ferramentas}
+        />
+      </div>
+    </Modal>
   );
 }
 
@@ -369,13 +539,15 @@ export function FichaIndice({
   fields,
   mostrarIndicacao,
   orientation,
+  secoes = FICHA_SECOES,
 }: {
   fields: FichaFields;
   mostrarIndicacao: boolean;
   orientation: "vertical" | "horizontal";
+  secoes?: FichaSecaoMeta[];
 }) {
   const itens = [
-    ...FICHA_SECOES.map((secao) => ({
+    ...secoes.map((secao) => ({
       id: secao.id,
       label: secao.shortTitle,
       preenchida: secaoPreenchida(fields, secao.key),

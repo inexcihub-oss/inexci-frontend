@@ -16,7 +16,7 @@ interface ModalProps {
   onClose: () => void;
   title: React.ReactNode;
   children: React.ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "full";
   disableClose?: boolean;
   variant?: "dialog" | "drawer";
   footer?: React.ReactNode;
@@ -111,6 +111,7 @@ export function Modal({
     md: "md:max-w-2xl",
     lg: "md:max-w-4xl",
     xl: "md:max-w-6xl",
+    full: "md:max-w-5xl h-[92dvh] md:h-[85vh]",
   };
 
   const isDrawer = variant === "drawer";
