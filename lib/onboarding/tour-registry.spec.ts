@@ -52,6 +52,26 @@ describe("canSee", () => {
     expect(visibleTracks(dono).map((t) => t.id)).toContain("plano-e-cota");
   });
 
+  it("conta interna não vê os passos de plano que dependem de cobrança", () => {
+    const dono = {
+      permissions: [Permission.ADMINISTRACAO],
+      isDoctor: false,
+      isAccountOwner: true,
+    };
+    const trilha = trackById("plano-e-cota")!;
+    expect(visibleSteps(trilha, dono).map((p) => p.key)).toEqual([
+      "assinatura",
+      "cota",
+      "acoes",
+      "planos-disponiveis",
+    ]);
+    expect(
+      visibleSteps(trilha, { ...dono, isInternalAccount: true }).map(
+        (p) => p.key,
+      ),
+    ).toEqual(["assinatura", "cota"]);
+  });
+
   it("requiresDoctor olha doctor_profile, não a área de atendimento", () => {
     expect(
       canSee(
@@ -66,7 +86,10 @@ describe("canSee", () => {
 
   it("requiresOwner olha isAccountOwner", () => {
     expect(
-      canSee({ requiresOwner: true }, { ...base, permissions: ALL_PERMISSIONS }),
+      canSee(
+        { requiresOwner: true },
+        { ...base, permissions: ALL_PERMISSIONS },
+      ),
     ).toBe(false);
     expect(
       canSee({ requiresOwner: true }, { ...base, isAccountOwner: true }),
@@ -258,9 +281,7 @@ describe("TRACKS", () => {
     expect(trilha.steps.filter((p) => p.required).map((p) => p.key)).toEqual([
       "convidar",
     ]);
-    expect(trilha.steps.find((p) => p.key === "areas")?.aguardaAcao).toBe(
-      true,
-    );
+    expect(trilha.steps.find((p) => p.key === "areas")?.aguardaAcao).toBe(true);
     expect(trilha.steps.find((p) => p.key === "vinculo")?.target).toBe(
       "colaborador-vinculo-medico",
     );
@@ -312,15 +333,11 @@ describe("passos dirigidos pelo tour (Driver)", () => {
   }
 
   it("agenda: modais de consulta, filtros e exportação acionam o driver", () => {
-    expect(passo("agenda", "horario")?.acao).toBe(
-      "agenda-abrir-novo-horario",
-    );
+    expect(passo("agenda", "horario")?.acao).toBe("agenda-abrir-novo-horario");
     expect(passo("agenda", "status")?.acao).toBe("agenda-abrir-detalhe-demo");
     expect(passo("agenda", "filtros")?.acao).toBe("agenda-abrir-filtros");
     expect(passo("agenda", "filtros")?.target).toBe("agenda-filtros");
-    expect(passo("agenda", "exportar")?.acao).toBe(
-      "agenda-abrir-exportacao",
-    );
+    expect(passo("agenda", "exportar")?.acao).toBe("agenda-abrir-exportacao");
     expect(passo("agenda", "exportar")?.target).toBe("agenda-exportar");
     expect(passo("agenda", "exportar")?.acaoAoAvancar).toBe(
       "agenda-fechar-modais",
@@ -337,9 +354,7 @@ describe("passos dirigidos pelo tour (Driver)", () => {
     );
     expect(passo("atendimento", "abas")?.route).toBe("/atendimento/tour-demo");
     expect(passo("atendimento", "indicacao")?.target).toBe("ficha-indicacao");
-    expect(passo("atendimento", "documentos")?.target).toBe(
-      "ficha-documentos",
-    );
+    expect(passo("atendimento", "documentos")?.target).toBe("ficha-documentos");
   });
 
   it("solicitacoes: cadastro-no-modal ganha alvo real e aciona o driver", () => {
@@ -355,9 +370,9 @@ describe("passos dirigidos pelo tour (Driver)", () => {
   });
 
   it("solicitacoes: só conclui a análise ao avançar para a revisão", () => {
-    expect(
-      passo("solicitacoes", "documento-enviar")?.acaoAoAvancar,
-    ).toBe("sc-concluir-analise-documento");
+    expect(passo("solicitacoes", "documento-enviar")?.acaoAoAvancar).toBe(
+      "sc-concluir-analise-documento",
+    );
   });
 
   it("administracao: areas aciona o driver", () => {

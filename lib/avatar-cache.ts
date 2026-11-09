@@ -47,14 +47,12 @@ export function setAvatarCache(
       expiresAt: Date.now() + ttlMs,
     };
     localStorage.setItem(getCacheKey(userId), JSON.stringify(entry));
-  } catch {
-  }
+  } catch {}
 }
 
 export function clearAvatarCache(userId: string): void {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(getCacheKey(userId));
-  } catch {
-  }
+  } catch {}
 }

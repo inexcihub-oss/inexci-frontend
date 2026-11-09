@@ -53,6 +53,17 @@ export function SubscriptionStatusCard({ detail }: Props) {
   return (
     <div className="border border-gray-200 rounded-2xl bg-gradient-to-r from-primary-50 to-white">
       <CardContent className="p-6">
+        {status === "internal" && (
+          <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+            <p className="text-sm font-semibold text-blue-800">
+              Acesso interno — sem cobrança
+            </p>
+            <p className="mt-1 text-xs text-blue-700">
+              Esta conta usa a plataforma sem limites e sem cobrança.
+            </p>
+          </div>
+        )}
+
         {isAccessBlocked && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
             <p className="text-sm font-semibold text-rose-800">
@@ -111,7 +122,7 @@ export function SubscriptionStatusCard({ detail }: Props) {
             </div>
           </div>
           <div className="text-right md:text-right">
-            {plan && (
+            {plan && status !== "internal" && (
               <p className="text-2xl font-bold text-gray-900">
                 {formatPriceCents(plan.priceCents, plan.currency)}
                 <span className="text-sm font-normal text-gray-500">

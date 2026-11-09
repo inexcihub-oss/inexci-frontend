@@ -225,8 +225,7 @@ export function executePendencyNavigation(
           if (isHttp) {
             window.open(parsed.toString(), "_blank", "noopener,noreferrer");
           }
-        } catch {
-        }
+        } catch {}
       }
       break;
   }

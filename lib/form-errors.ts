@@ -8,9 +8,7 @@ export function summarizeErrors(
     const f = fields[0];
     return labels[f] ? `${labels[f]}: ${errors[f]}` : errors[f];
   }
-  const list = fields
-    .map((f) => labels[f] ?? humanizeFieldName(f))
-    .join(", ");
+  const list = fields.map((f) => labels[f] ?? humanizeFieldName(f)).join(", ");
   return `Corrija os campos: ${list}`;
 }
 

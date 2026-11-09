@@ -22,6 +22,7 @@ const PLATFORM_PREFIXES = [
   "/colaboradores",
   "/notificacoes",
   "/configuracoes",
+  "/admin",
 ];
 
 function isPlatformPath(pathname: string): boolean {

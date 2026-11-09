@@ -24,6 +24,15 @@ describe("currency", () => {
     expect(Number.isNaN(parseBRLValue(""))).toBe(true);
   });
 
+  it("lê valor digitado sem máscara com ponto decimal", () => {
+    expect(parseBRLValue("19.90")).toBeCloseTo(19.9);
+    expect(parseBRLValue("19.9")).toBeCloseTo(19.9);
+    expect(parseBRLValue("1.234")).toBe(1234);
+    expect(parseBRLValue("1.234.567")).toBe(1234567);
+    expect(parseBRLValue("19,90")).toBeCloseTo(19.9);
+    expect(parseBRLValue("R$ 1.234")).toBe(1234);
+  });
+
   it("converte número em máscara", () => {
     expect(numberToBRLMask(1500.5)).toBe("R$ 1.500,50");
   });

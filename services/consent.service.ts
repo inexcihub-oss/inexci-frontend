@@ -26,9 +26,7 @@ export const consentService = {
   },
 
   async grantAi(): Promise<ConsentStatus> {
-    const response = await api.post<ConsentStatus>(
-      "/privacy/consent/grant-ai",
-    );
+    const response = await api.post<ConsentStatus>("/privacy/consent/grant-ai");
     return response.data;
   },
 

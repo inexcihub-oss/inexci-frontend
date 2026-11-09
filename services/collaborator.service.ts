@@ -156,10 +156,7 @@ export const collaboratorService = {
       state?: string;
     },
   ): Promise<Collaborator> {
-    const response = await api.patch<Collaborator>(
-      `/users/${userId}`,
-      payload,
-    );
+    const response = await api.patch<Collaborator>(`/users/${userId}`, payload);
     return response.data;
   },
 

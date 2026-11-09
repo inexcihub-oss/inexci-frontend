@@ -26,7 +26,9 @@ describe("getLatestActivityMs", () => {
 
 describe("formatDateBR", () => {
   it("formata ISO para DD/MM/YYYY", () => {
-    expect(formatDateBR("2026-06-19T15:30:00.000Z")).toMatch(/^\d{2}\/06\/2026$/);
+    expect(formatDateBR("2026-06-19T15:30:00.000Z")).toMatch(
+      /^\d{2}\/06\/2026$/,
+    );
   });
 
   it("preserva o dia calendário para date-only ISO sem shift de timezone", () => {

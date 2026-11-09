@@ -143,6 +143,19 @@ describe("resolveHome", () => {
   });
 });
 
+describe("resolveHome e o painel administrativo", () => {
+  it("nunca manda um usuário da clínica para o painel", () => {
+    expect(resolveHome(ALL_PERMISSIONS)).toBe("/atendimento");
+    expect(resolveHome([])).toBe("/configuracoes");
+  });
+
+  it("/admin não exige permissão de área, então o guarda da clínica nunca o bloqueia", () => {
+    expect(permissionForRoute("/admin")).toBeNull();
+    expect(routeRequiresAnyArea("/admin")).toBe(false);
+    expect(permissionForRoute("/admin/clientes")).toBeNull();
+  });
+});
+
 describe("resolveHome nunca aponta para uma rota que o guarda bloqueia", () => {
   function allCombinations(): Permission[][] {
     const total = 1 << ALL_PERMISSIONS.length;

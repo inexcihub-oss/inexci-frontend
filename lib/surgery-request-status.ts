@@ -36,7 +36,11 @@ export const STATUS_META: Record<SurgeryRequestStatusCode, StatusMeta> = {
   },
   [S.SENT]: {
     label: "Enviada",
-    badge: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+    badge: {
+      bg: "bg-blue-50",
+      text: "text-blue-700",
+      border: "border-blue-200",
+    },
     icon: "/icons/kanban/email-send-fast-circle.svg",
     chartColor: "#3b82f6",
     order: 2,
@@ -65,7 +69,11 @@ export const STATUS_META: Record<SurgeryRequestStatusCode, StatusMeta> = {
   },
   [S.SCHEDULED]: {
     label: "Agendada",
-    badge: { bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-200" },
+    badge: {
+      bg: "bg-teal-50",
+      text: "text-teal-700",
+      border: "border-teal-200",
+    },
     icon: "/icons/kanban/calendar-schedule-checkmark.svg",
     chartColor: "#14b8a6",
     order: 5,
@@ -119,7 +127,9 @@ export const ALL_STATUS_CODES: readonly SurgeryRequestStatusCode[] = (
 export const ALL_STATUS_LABELS: readonly SurgeryRequestStatus[] =
   ALL_STATUS_CODES.map((code) => STATUS_META[code].label);
 
-export function isStatusCode(value: unknown): value is SurgeryRequestStatusCode {
+export function isStatusCode(
+  value: unknown,
+): value is SurgeryRequestStatusCode {
   return typeof value === "number" && value in STATUS_META;
 }
 
@@ -127,7 +137,9 @@ export function getStatusMeta(status: number): StatusMeta | undefined {
   return isStatusCode(status) ? STATUS_META[status] : undefined;
 }
 
-export function getStatusLabel(status: number): SurgeryRequestStatus | undefined {
+export function getStatusLabel(
+  status: number,
+): SurgeryRequestStatus | undefined {
   return getStatusMeta(status)?.label;
 }
 
@@ -228,7 +240,10 @@ export interface StatusEvidence {
   analysis?: unknown;
   surgeryDate?: string | null;
   surgeryPerformedAt?: string | null;
-  billing?: { invoiceValue?: number | null; invoiceSentAt?: string | null } | null;
+  billing?: {
+    invoiceValue?: number | null;
+    invoiceSentAt?: string | null;
+  } | null;
   scheduling?: { dateOptions?: string[] } | null;
   dateOptions?: string[];
 }
@@ -238,7 +253,9 @@ export function reachedStatus(
   target: SurgeryRequestStatusCode,
 ): boolean {
   if (sr.status !== S.CLOSED) {
-    const current = FLOW_STATUSES.indexOf(sr.status as SurgeryRequestStatusCode);
+    const current = FLOW_STATUSES.indexOf(
+      sr.status as SurgeryRequestStatusCode,
+    );
     const wanted = FLOW_STATUSES.indexOf(target);
     if (current < 0 || wanted < 0) return false;
     return current >= wanted;

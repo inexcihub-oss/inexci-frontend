@@ -1,10 +1,7 @@
 export const ONBOARDING_STATE_VERSION = 1;
 
 export type OnboardingStatus =
-  | "not_started"
-  | "in_progress"
-  | "dismissed"
-  | "completed";
+  "not_started" | "in_progress" | "dismissed" | "completed";
 
 export type StepKey =
   | "conhecer-plataforma"
@@ -174,8 +171,6 @@ export function promoteIfComplete(
     return state;
   }
   if (stepKeys.length === 0) return state;
-  const tudoFeito = stepKeys.every((key) =>
-    Boolean(state.completedSteps[key]),
-  );
+  const tudoFeito = stepKeys.every((key) => Boolean(state.completedSteps[key]));
   return tudoFeito ? { ...state, status: "completed" } : state;
 }

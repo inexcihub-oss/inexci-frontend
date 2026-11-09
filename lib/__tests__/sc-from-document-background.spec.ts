@@ -21,7 +21,11 @@ describe("handoff da SC via documento", () => {
   });
 
   it("grava no navegador só jobId, userId e horário", () => {
-    saveScFromDocumentHandoff({ result: resultado, userId: "u-1", jobId: "job-1" });
+    saveScFromDocumentHandoff({
+      result: resultado,
+      userId: "u-1",
+      jobId: "job-1",
+    });
 
     const raw = localStorage.getItem(SC_FROM_DOCUMENT_EXTRACTION_KEY) ?? "";
     const envelope = JSON.parse(raw) as { value: Record<string, unknown> };
@@ -35,7 +39,11 @@ describe("handoff da SC via documento", () => {
   });
 
   it("devolve o resultado em memória para o mesmo usuário", () => {
-    saveScFromDocumentHandoff({ result: resultado, userId: "u-1", jobId: "job-1" });
+    saveScFromDocumentHandoff({
+      result: resultado,
+      userId: "u-1",
+      jobId: "job-1",
+    });
 
     expect(readScFromDocumentHandoff("u-1")).toEqual({
       result: resultado,
@@ -54,7 +62,11 @@ describe("handoff da SC via documento", () => {
   });
 
   it("descarta o que foi salvo por outro usuário", () => {
-    saveScFromDocumentHandoff({ result: resultado, userId: "u-1", jobId: "job-1" });
+    saveScFromDocumentHandoff({
+      result: resultado,
+      userId: "u-1",
+      jobId: "job-1",
+    });
 
     expect(readScFromDocumentHandoff("u-2")).toBeNull();
     expect(localStorage.getItem(SC_FROM_DOCUMENT_EXTRACTION_KEY)).toBeNull();
@@ -84,7 +96,11 @@ describe("handoff da SC via documento", () => {
   });
 
   it("clearScFromDocumentStorage limpa memória e navegador", () => {
-    saveScFromDocumentHandoff({ result: resultado, userId: "u-1", jobId: "job-1" });
+    saveScFromDocumentHandoff({
+      result: resultado,
+      userId: "u-1",
+      jobId: "job-1",
+    });
 
     clearScFromDocumentStorage();
 

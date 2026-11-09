@@ -146,6 +146,12 @@ describe("Configurações — Aba de Planos (Billing v2 Stripe)", () => {
       expect(detail.plan?.name).toBe("Profissional");
     });
 
+    it("assinatura com acesso interno não tem daysLeftInTrial", () => {
+      const detail = buildSubscriptionDetail("plan-pro-uuid", "internal");
+      expect(detail.subscription.status).toBe("internal");
+      expect(detail.daysLeftInTrial).toBeNull();
+    });
+
     it("assinatura em trial tem daysLeftInTrial", () => {
       const detail = buildSubscriptionDetail("plan-trial-uuid", "trialing");
       expect(detail.daysLeftInTrial).toBe(29);

@@ -43,8 +43,7 @@ export const BILLING_BLOCK_REASONS = [
 ] as const;
 
 export type BillingBlockReason =
-  | (typeof BILLING_BLOCK_REASONS)[number]
-  | "unknown";
+  (typeof BILLING_BLOCK_REASONS)[number] | "unknown";
 
 export interface BillingBlockError {
   reason: BillingBlockReason;
@@ -93,9 +92,8 @@ export function getTransitionBlockError(error: unknown): string | null {
     Array.isArray((data as { pendencies?: unknown }).pendencies) &&
     ((data as { pendencies: unknown[] }).pendencies.length ?? 0) > 0
   ) {
-    const pendencies = (
-      data as { pendencies: { key: string; name: string }[] }
-    ).pendencies;
+    const pendencies = (data as { pendencies: { key: string; name: string }[] })
+      .pendencies;
     const names = pendencies.map((p) => p.name).join(", ");
     const msg =
       typeof (data as { message?: unknown }).message === "string"

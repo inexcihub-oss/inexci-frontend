@@ -172,7 +172,9 @@ describe("getTransitionBlockError", () => {
   });
 
   it("retorna null para 400 sem pendências", () => {
-    expect(getTransitionBlockError(makeAxiosError(400, { message: "x" }))).toBeNull();
+    expect(
+      getTransitionBlockError(makeAxiosError(400, { message: "x" })),
+    ).toBeNull();
     expect(
       getTransitionBlockError(makeAxiosError(400, { pendencies: [] })),
     ).toBeNull();

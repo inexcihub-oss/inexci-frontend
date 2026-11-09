@@ -20,4 +20,6 @@ export const createProcedureModelSchema = z.object({
   procedureName: z.string().optional().or(z.literal("")),
 });
 
-export type CreateProcedureModelInput = z.infer<typeof createProcedureModelSchema>;
+export type CreateProcedureModelInput = z.infer<
+  typeof createProcedureModelSchema
+>;

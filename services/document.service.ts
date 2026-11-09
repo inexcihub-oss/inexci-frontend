@@ -112,21 +112,17 @@ export const patientDocumentService = {
     formData.append("document", data.file);
     formData.append("folder", data.folder ?? DOCUMENT_FOLDERS.PRE_SURGERY);
 
-    const response = await api.post(
-      "/clinical-records/documents",
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-        timeout: UPLOAD_TIMEOUT_MS,
-        onUploadProgress: (progressEvent) => {
-          if (data.onUploadProgress && progressEvent.total) {
-            data.onUploadProgress(
-              Math.round((progressEvent.loaded / progressEvent.total) * 100),
-            );
-          }
-        },
+    const response = await api.post("/clinical-records/documents", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: UPLOAD_TIMEOUT_MS,
+      onUploadProgress: (progressEvent) => {
+        if (data.onUploadProgress && progressEvent.total) {
+          data.onUploadProgress(
+            Math.round((progressEvent.loaded / progressEvent.total) * 100),
+          );
+        }
       },
-    );
+    });
     return response.data;
   },
 

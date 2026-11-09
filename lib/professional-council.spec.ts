@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { professionalKindLabel,
+import {
+  professionalKindLabel,
   canOwnSurgeryRequest,
   councilOf,
   formatRegistration,

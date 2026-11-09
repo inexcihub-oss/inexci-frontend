@@ -29,6 +29,7 @@ export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
   past_due: "Pagamento pendente",
   suspended: "Suspensa",
   canceled: "Cancelada",
+  internal: "Acesso interno",
 };
 
 export const SUBSCRIPTION_STATUS_TONE: Record<
@@ -40,6 +41,7 @@ export const SUBSCRIPTION_STATUS_TONE: Record<
   past_due: "warning",
   suspended: "danger",
   canceled: "neutral",
+  internal: "info",
 };
 
 export function formatDateBR(value: string | Date | null | undefined): string {

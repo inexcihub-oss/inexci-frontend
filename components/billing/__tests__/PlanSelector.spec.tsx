@@ -79,4 +79,11 @@ describe("PlanSelector", () => {
     await userEvent.click(trocar);
     expect(onManage).toHaveBeenCalledWith(ESSENCIAL);
   });
+
+  it("com acesso interno, não oferece botão de assinar nem de trocar", () => {
+    renderSelector("internal", STARTER.id);
+
+    expect(screen.getByText(/acesso interno, sem cobrança/i)).toBeTruthy();
+    expect(screen.queryAllByRole("button", { name: /assinar|upgrade/i })).toHaveLength(0);
+  });
 });

@@ -19,9 +19,7 @@ describe("step1Schema (cadastro)", () => {
     const result = step1Schema.safeParse({ ...validData, phone: "" });
     expect(result.success).toBe(false);
     if (!result.success) {
-      const phoneIssue = result.error.issues.find(
-        (i) => i.path[0] === "phone",
-      );
+      const phoneIssue = result.error.issues.find((i) => i.path[0] === "phone");
       expect(phoneIssue).toBeDefined();
     }
   });
@@ -36,9 +34,7 @@ describe("step1Schema (cadastro)", () => {
     const result = step1Schema.safeParse({ ...validData, phone: "1234" });
     expect(result.success).toBe(false);
     if (!result.success) {
-      const phoneIssue = result.error.issues.find(
-        (i) => i.path[0] === "phone",
-      );
+      const phoneIssue = result.error.issues.find((i) => i.path[0] === "phone");
       expect(phoneIssue).toBeDefined();
     }
   });

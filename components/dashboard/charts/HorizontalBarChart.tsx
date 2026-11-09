@@ -4,10 +4,12 @@ export function HorizontalBarChart({
   data,
   barColor = "#147471",
   maxItems = 6,
+  formatValue,
 }: {
   data: Array<{ name: string; count: number }>;
   barColor?: string;
   maxItems?: number;
+  formatValue?: (value: number) => string;
 }) {
   const sorted = [...data].sort((a, b) => b.count - a.count).slice(0, maxItems);
   const maxValue = Math.max(...sorted.map((d) => d.count), 1);
@@ -39,8 +41,8 @@ export function HorizontalBarChart({
                 style={{ width: `${pct}%`, backgroundColor: barColor }}
               />
             </div>
-            <span className="text-sm font-semibold text-gray-800 w-8 text-right">
-              {item.count}
+            <span className="text-sm font-semibold text-gray-800 min-w-8 whitespace-nowrap text-right">
+              {formatValue ? formatValue(item.count) : item.count}
             </span>
           </div>
         );

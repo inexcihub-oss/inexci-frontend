@@ -22,7 +22,12 @@ export default function DashboardLayoutInner({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading, isAccountOwner, subscription } = useAuth();
+  const {
+    user,
+    loading,
+    isAccountOwner,
+    subscription,
+  } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

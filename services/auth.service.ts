@@ -8,10 +8,7 @@ import {
   isMfaChallenge,
 } from "@/types";
 import { clearAvatarCache } from "@/lib/avatar-cache";
-import {
-  clearAccessToken,
-  setAccessToken,
-} from "@/lib/auth-token";
+import { clearAccessToken, setAccessToken } from "@/lib/auth-token";
 import { clearSessionFlag, markSession } from "@/lib/session-flag";
 import {
   clearStoredUser,
@@ -101,8 +98,7 @@ export const authService = {
   async logout(): Promise<void> {
     try {
       await api.post("/auth/logout");
-    } catch {
-    }
+    } catch {}
     if (typeof window !== "undefined") {
       const currentUser = this.getCurrentUser?.();
       if (currentUser?.id) {

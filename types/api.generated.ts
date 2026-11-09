@@ -2181,7 +2181,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Listar modelos de anamnese da clínica */
+        /** Listar os modelos de anamnese do próprio médico */
         get: operations["ClinicalRecordTemplatesController_find"];
         put?: never;
         /** Criar modelo de anamnese */
@@ -2291,6 +2291,76 @@ export interface paths {
         put?: never;
         /** Texto do modelo com os placeholders preenchidos (conta o uso) */
         post: operations["ClinicalDocumentTemplatesController_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clinical-records/snippets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Listar os textos rápidos do próprio médico */
+        get: operations["ClinicalSnippetsController_find"];
+        put?: never;
+        /** Criar texto rápido */
+        post: operations["ClinicalSnippetsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clinical-records/snippets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Excluir texto rápido */
+        delete: operations["ClinicalSnippetsController_delete"];
+        options?: never;
+        head?: never;
+        /** Atualizar texto rápido */
+        patch: operations["ClinicalSnippetsController_update"];
+        trace?: never;
+    };
+    "/clinical-records/snippets/{id}/use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Registrar uso do texto rápido */
+        post: operations["ClinicalSnippetsController_use"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/clinical-records/transcribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transcrever o ditado de uma seção da ficha */
+        post: operations["ClinicalTranscriptionController_transcribe"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3376,7 +3446,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Relatório de uso de IA (custo por usuário/mês/modelo) */
+        /** Relatório de uso de IA (por usuário, conta, modelo ou dia), custo em US$ */
         get: operations["AdminController_getAiUsageReport"];
         put?: never;
         post?: never;
@@ -3410,7 +3480,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lista logs de envio (e-mail + WhatsApp) — somente admin */
+        /** Lista logs de envio (e-mail + WhatsApp) sem conteúdo e com destinatário mascarado */
         get: operations["AdminController_listNotificationLogs"];
         put?: never;
         post?: never;
@@ -3431,6 +3501,875 @@ export interface paths {
         get: operations["AdminController_notificationLogsStats"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Histórico de ações do painel administrativo */
+        get: operations["PlatformAuditController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista as contas cliente com situação e uso */
+        get: operations["AdminAccountsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detalhe de uma conta cliente com o uso agregado */
+        get: operations["AdminAccountsController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Equipe da conta com acesso, consentimentos, onboarding e uso no período (telefone mascarado, sem CPF) */
+        get: operations["AdminAccountsController_team"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/activation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Marcos de ativação e andamento do onboarding da conta */
+        get: operations["AdminAccountsController_activation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Assinatura da conta: banco mais leitura ao vivo da Stripe */
+        get: operations["AdminAccountsController_subscription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Desativa a conta: ninguém da clínica entra e as sessões caem na hora */
+        post: operations["AdminAccountsController_deactivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reativa uma conta desativada pelo painel */
+        post: operations["AdminAccountsController_reactivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/subscription/extend-trial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Estende o trial (Stripe primeiro quando a assinatura lá está em trial) */
+        post: operations["AdminSubscriptionsController_extendTrial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/subscription/grant-internal-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dá acesso interno (sem limite e sem cobrança) a conta sem assinatura viva na Stripe */
+        post: operations["AdminSubscriptionsController_grantInternalAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/subscription/revoke-internal-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Encerra o acesso interno: volta para trial de N dias ou cancela */
+        post: operations["AdminSubscriptionsController_revokeInternalAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administradores da plataforma */
+        get: operations["AdminTeamController_list"];
+        put?: never;
+        /** Convida um novo administrador da plataforma */
+        post: operations["AdminTeamController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/team/{adminId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoga o acesso de um administrador e derruba a sessão dele */
+        post: operations["AdminTeamController_revoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/team/{adminId}/reset-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Zera senha e MFA, derruba as sessões e envia um novo convite ao administrador */
+        post: operations["AdminTeamController_resetAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Uso da plataforma: totais, série semanal, contas ativas e rankings (só contagens) */
+        get: operations["AdminUsageController_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/usage/inactive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contas cliente sem acesso há N dias (7, 15 ou 30) */
+        get: operations["AdminUsageController_inactive"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/revenue/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recebido no mês, em aberto, inadimplência, MRR, ARR, ticket médio e descontos */
+        get: operations["AdminRevenueController_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/revenue/forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Previsão de recebimento por mês (garantido e trials com cartão) */
+        get: operations["AdminRevenueController_forecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/revenue/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Faturas espelhadas da Stripe */
+        get: operations["AdminRevenueController_invoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/revenue/delinquency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contas inadimplentes e suspensas com valor em aberto */
+        get: operations["AdminRevenueController_delinquency"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Faturas de uma conta */
+        get: operations["AdminRevenueController_accountInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Planos do banco com o preço lido da Stripe e a divergência */
+        get: operations["AdminRevenueController_plans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lista os códigos promocionais da Stripe (até 100) com usos, validade e situação */
+        get: operations["AdminCouponsController_list"];
+        put?: never;
+        /** Cria o cupom e o código promocional na Stripe (Stripe primeiro) */
+        post: operations["AdminCouponsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/coupons/{id}/redemptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contas que usaram o código (faturas espelhadas e desconto da assinatura) */
+        get: operations["AdminCouponsController_redemptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/coupons/{id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Desativa o código promocional; quem já usou mantém o desconto vigente */
+        post: operations["AdminCouponsController_deactivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/metrics/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard do painel: contas, trials, receita, churn, engajamento, IA e séries (sem chamar a Stripe) */
+        get: operations["AdminMetricsController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/system/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tarefas automáticas e a última execução manual de cada uma */
+        get: operations["AdminSystemController_jobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Erros da plataforma: totais, série diária, erros mais frequentes e contas mais afetadas */
+        get: operations["AdminErrorsController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Erros de uma conta cliente */
+        get: operations["AdminErrorsController_forAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/errors/{fingerprint}/occurrences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ocorrências recentes de um erro, com as linhas de log do Grafana (Loki) quando configurado */
+        get: operations["AdminErrorsController_occurrences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/system/queues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Situação de cada fila de tarefas em segundo plano */
+        get: operations["AdminQueuesController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/system/queues/failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tarefas com falha, sem o conteúdo do job (só fila, conta e erro) */
+        get: operations["AdminQueuesController_failed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/system/queues/{queue}/jobs/{jobId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Coloca uma tarefa com falha para rodar de novo */
+        post: operations["AdminQueuesController_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/system/queues/{queue}/jobs/{jobId}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove uma tarefa com falha da fila */
+        post: operations["AdminQueuesController_discard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/stripe-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Eventos recebidos da Stripe, com a conta, a situação e o erro de processamento */
+        get: operations["AdminGatewayEventsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/stripe-events/{id}/reprocess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Processa de novo um evento da Stripe que falhou ou ficou pendente */
+        post: operations["AdminGatewayEventsController_reprocess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/security": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Eventos de segurança: totais, série diária, picos de falha de login e contas com reuso de token */
+        get: operations["AdminSecurityController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/security": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Eventos de segurança de uma conta, por usuário */
+        get: operations["AdminSecurityController_forAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/security/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Linhas de log de autenticação da conta no Grafana (Loki), com IP mascarado */
+        get: operations["AdminSecurityController_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/clinical-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Volume de acessos a prontuário da conta (LGPD), com o paciente só por código anônimo */
+        get: operations["AdminClinicalAccessController_forAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/clinical-access/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exporta o volume de acessos a prontuário por usuário, com motivo e auditoria */
+        post: operations["AdminClinicalAccessController_export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/accounts/{ownerId}/clinical-access/patient": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acessos ao prontuário de um paciente (código anônimo ou id), com motivo e auditoria */
+        post: operations["AdminClinicalAccessController_forPatient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Primeira etapa do login do painel (e-mail e senha) */
+        post: operations["AdminAuthController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/auth/mfa/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gera o segredo TOTP do primeiro acesso */
+        post: operations["AdminAuthController_mfaSetup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/auth/mfa/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ativa o MFA, abre a sessão e devolve os códigos de recuperação (uma única vez) */
+        post: operations["AdminAuthController_mfaEnable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/auth/login/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Segunda etapa do login (código TOTP ou de recuperação) */
+        post: operations["AdminAuthController_loginMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Renova a sessão do painel pelo cookie */
+        post: operations["AdminAuthController_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Encerra a sessão do painel */
+        post: operations["AdminAuthController_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Administrador da sessão atual */
+        get: operations["AdminAuthController_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/auth/mfa/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Gera novos códigos de recuperação */
+        post: operations["AdminAuthController_recoveryCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/auth/accept-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aceita o convite e define a senha */
+        post: operations["AdminAuthController_acceptInvite"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4251,6 +5190,18 @@ export interface components {
             startDate?: string;
             refresh?: boolean;
         };
+        ClinicalSnippet: Record<string, never>;
+        CreateClinicalSnippetDto: {
+            shortcut: string;
+            title: string;
+            content: string;
+            doctorId?: string;
+        };
+        UpdateClinicalSnippetDto: {
+            shortcut?: string;
+            title?: string;
+            content?: string;
+        };
         ClinicalRecord: Record<string, never>;
         CreateClinicalRecordDto: {
             patientId: string;
@@ -4916,6 +5867,1373 @@ export interface components {
             completedSteps?: Record<string, never>;
             /** @description Mapa trilha → timestamp ISO. Só chaves conhecidas. */
             toursSeen?: Record<string, never>;
+        };
+        AiUsageReportRowDto: {
+            /** @description Id do usuário/conta, nome do modelo ou dia (YYYY-MM-DD) */
+            groupKey: string;
+            name: string | null;
+            email: string | null;
+            totalPromptTokens: number;
+            totalCompletionTokens: number;
+            totalTokens: number;
+            totalCalls: number;
+            /** @description Linhas de uso (mensagens, extrações etc.) */
+            totalRecords: number;
+            /** @description Custo estimado em centavos de dólar (US$) */
+            costUsdCents: number | null;
+            avgLatencyMs: number | null;
+        };
+        NotificationLogItemDto: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            channel: "email" | "whatsapp";
+            /** @enum {string} */
+            status: "queued" | "sent" | "failed" | "delivered" | "read";
+            /** @description Destinatário mascarado */
+            recipient: string;
+            template: string | null;
+            templateLabel: string | null;
+            notificationType: string | null;
+            direction: string | null;
+            attempts: number;
+            error: string | null;
+            /** Format: uuid */
+            ownerId: string | null;
+            ownerName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            sentAt: string | null;
+        };
+        NotificationLogListResponseDto: {
+            items: components["schemas"]["NotificationLogItemDto"][];
+            total: number;
+        };
+        NotificationLogStatsRowDto: {
+            /** @enum {string} */
+            channel: "email" | "whatsapp";
+            /** @enum {string} */
+            status: "queued" | "sent" | "failed" | "delivered" | "read";
+            count: number;
+        };
+        PlatformAuditLogItemDto: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Administrador da plataforma que executou a ação
+             */
+            actorUserId: string;
+            actorName: string | null;
+            actorEmail: string | null;
+            /** @enum {string} */
+            action: "TRIAL_EXTENDED" | "INTERNAL_ACCESS_GRANTED" | "INTERNAL_ACCESS_REVOKED" | "COUPON_CREATED" | "COUPON_DEACTIVATED" | "PLATFORM_ADMIN_CREATED" | "PLATFORM_ADMIN_REVOKED" | "PLATFORM_ADMIN_ACCESS_RESET" | "CRON_STALE_REQUESTS_TRIGGERED" | "CRON_WEEKLY_SUMMARY_TRIGGERED" | "ACCOUNT_DEACTIVATED" | "ACCOUNT_REACTIVATED" | "QUEUE_JOB_RETRIED" | "QUEUE_JOB_DISCARDED" | "STRIPE_EVENT_REPROCESSED" | "CLINICAL_ACCESS_EXPORTED" | "CLINICAL_ACCESS_PATIENT_VIEWED";
+            /** Format: uuid */
+            targetOwnerId: string | null;
+            /**
+             * Format: uuid
+             * @description Usuário da clínica afetado ou, nas ações de equipe, o administrador afetado
+             */
+            targetUserId: string | null;
+            /** @description Nome do administrador afetado nas ações de equipe */
+            targetName: string | null;
+            reason: string | null;
+            before: {
+                [key: string]: unknown;
+            } | null;
+            after: {
+                [key: string]: unknown;
+            } | null;
+            gatewayRef: string | null;
+            /** @enum {string} */
+            status: "pending" | "succeeded" | "failed";
+            error: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            completedAt: string | null;
+        };
+        PlatformAuditLogListResponseDto: {
+            items: components["schemas"]["PlatformAuditLogItemDto"][];
+            total: number;
+        };
+        AdminAccountPlanDto: {
+            id: string;
+            name: string;
+            priceCents: number;
+            /** @enum {string} */
+            billingPeriod: "MONTHLY" | "YEARLY";
+        };
+        AdminAccountQuotaDto: {
+            used: number;
+            /** @description -1 = ilimitado */
+            limit: number;
+        };
+        AdminAccountHealthSummaryDto: {
+            score: number;
+            /** @enum {string} */
+            band: "healthy" | "attention" | "risk";
+            /** @description Fator que mais pesou na nota */
+            mainReason: string | null;
+        };
+        AdminAccountItemDto: {
+            ownerId: string;
+            name: string;
+            email: string;
+            /** Format: date-time */
+            createdAt: string;
+            plan: components["schemas"]["AdminAccountPlanDto"];
+            /** @enum {string} */
+            situation: "trial" | "trial_expired" | "active" | "cancel_scheduled" | "past_due" | "suspended" | "canceled" | "internal" | "deactivated";
+            daysLeft: number | null;
+            daysOverdue: number | null;
+            /** Format: date-time */
+            trialEndsAt: string | null;
+            /** Format: date-time */
+            currentPeriodEnd: string;
+            /** @description Centavos por mês; 0 fora de ativa/inadimplente */
+            monthlyAmountCents: number;
+            hasGatewaySubscription: boolean;
+            doctors: number;
+            collaborators: number;
+            surgeryRequestsThisMonth: number;
+            surgeryRequestsTotal: number;
+            quota: components["schemas"]["AdminAccountQuotaDto"];
+            appointmentsThisMonth: number;
+            /** @description Centavos de dólar */
+            aiCostThisMonthUsdCents: number;
+            /** Format: date-time */
+            lastSeenAt: string | null;
+            /**
+             * Format: date-time
+             * @description Preenchido quando o painel desativou a conta inteira
+             */
+            accountDeactivatedAt: string | null;
+            /** @description Nula para conta cancelada, desativada ou ainda não avaliada */
+            health: components["schemas"]["AdminAccountHealthSummaryDto"] | null;
+        };
+        AdminAccountCountsDto: {
+            all: number;
+            trial: number;
+            trial_expired: number;
+            active: number;
+            cancel_scheduled: number;
+            past_due: number;
+            suspended: number;
+            canceled: number;
+            internal: number;
+            deactivated: number;
+        };
+        AdminAccountListResponseDto: {
+            items: components["schemas"]["AdminAccountItemDto"][];
+            total: number;
+            counts: components["schemas"]["AdminAccountCountsDto"];
+        };
+        AdminSurgeryRequestStatusCountDto: {
+            /** @description Código do SurgeryRequestStatus (1 a 9) */
+            status: number;
+            total: number;
+            inPeriod: number;
+        };
+        AdminAppointmentCountsDto: {
+            scheduled: number;
+            completed: number;
+            cancelled: number;
+            noShow: number;
+        };
+        AdminPatientCountsDto: {
+            total: number;
+            newInPeriod: number;
+        };
+        AdminActivityPointDto: {
+            /** @description Segunda-feira da semana (YYYY-MM-DD, SP) */
+            weekStart: string;
+            surgeryRequests: number;
+            appointments: number;
+        };
+        AdminAccountUsageDto: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            surgeryRequestsByStatus: components["schemas"]["AdminSurgeryRequestStatusCountDto"][];
+            appointments: components["schemas"]["AdminAppointmentCountsDto"];
+            patients: components["schemas"]["AdminPatientCountsDto"];
+            finalizedRecordsInPeriod: number;
+            aiMessagesInPeriod: number;
+            activity: components["schemas"]["AdminActivityPointDto"][];
+        };
+        AdminAccountHealthFactorDto: {
+            /** @enum {string} */
+            key: "last_seen" | "usage_drop" | "trial_ending" | "quota" | "errors" | "delivery_failures" | "delinquency";
+            /** @description Pontos perdidos por este fator */
+            points: number;
+            message: string;
+        };
+        AdminAccountHealthDetailDto: {
+            score: number;
+            /** @enum {string} */
+            band: "healthy" | "attention" | "risk";
+            /** @description Fator que mais pesou na nota */
+            mainReason: string | null;
+            factors: components["schemas"]["AdminAccountHealthFactorDto"][];
+            /** Format: date-time */
+            computedAt: string;
+        };
+        AdminAccountHealthPointDto: {
+            /** @description YYYY-MM-DD (São Paulo) */
+            day: string;
+            score: number;
+            /** @enum {string} */
+            band: "healthy" | "attention" | "risk";
+        };
+        AdminAccountDetailDto: {
+            ownerId: string;
+            name: string;
+            email: string;
+            /** Format: date-time */
+            createdAt: string;
+            plan: components["schemas"]["AdminAccountPlanDto"];
+            /** @enum {string} */
+            situation: "trial" | "trial_expired" | "active" | "cancel_scheduled" | "past_due" | "suspended" | "canceled" | "internal" | "deactivated";
+            daysLeft: number | null;
+            daysOverdue: number | null;
+            /** Format: date-time */
+            trialEndsAt: string | null;
+            /** Format: date-time */
+            currentPeriodEnd: string;
+            /** @description Centavos por mês; 0 fora de ativa/inadimplente */
+            monthlyAmountCents: number;
+            hasGatewaySubscription: boolean;
+            doctors: number;
+            collaborators: number;
+            surgeryRequestsThisMonth: number;
+            surgeryRequestsTotal: number;
+            quota: components["schemas"]["AdminAccountQuotaDto"];
+            appointmentsThisMonth: number;
+            /** @description Centavos de dólar */
+            aiCostThisMonthUsdCents: number;
+            /** Format: date-time */
+            lastSeenAt: string | null;
+            /**
+             * Format: date-time
+             * @description Preenchido quando o painel desativou a conta inteira
+             */
+            accountDeactivatedAt: string | null;
+            /** @description Nula para conta cancelada, desativada ou ainda não avaliada */
+            health: components["schemas"]["AdminAccountHealthSummaryDto"] | null;
+            usage: components["schemas"]["AdminAccountUsageDto"];
+            accountDeactivatedByName: string | null;
+            healthDetail: components["schemas"]["AdminAccountHealthDetailDto"] | null;
+            healthHistory: components["schemas"]["AdminAccountHealthPointDto"][];
+        };
+        AdminMemberOnboardingDto: {
+            /** @enum {string} */
+            status: "not_started" | "in_progress" | "dismissed" | "completed";
+            completedSteps: number;
+            totalSteps: number;
+            toursSeen: number;
+            totalTours: number;
+        };
+        AdminMemberUsageDto: {
+            surgeryRequests: number;
+            appointments: number;
+            recordsFinalized: number;
+            assistantMessages: number;
+            aiCostUsdCents: number;
+        };
+        AdminTeamMemberDto: {
+            id: string;
+            name: string;
+            email: string;
+            /** @enum {string} */
+            role: "owner" | "doctor" | "collaborator";
+            isDoctor: boolean;
+            permissions: ("agenda" | "atendimento" | "solicitacoes" | "financeiro" | "administracao")[];
+            active: boolean;
+            /** @enum {string} */
+            status: "active" | "pending" | "inactive";
+            /** Format: date-time */
+            lastSeenAt: string | null;
+            mfaEnabled: boolean;
+            /** Format: date-time */
+            privacyPolicyAcceptedAt: string | null;
+            /** Format: date-time */
+            termsOfUseAcceptedAt: string | null;
+            /** Format: date-time */
+            aiConsentAcceptedAt: string | null;
+            /** @description Telefone do WhatsApp mascarado (só os 4 últimos dígitos) */
+            whatsappPhoneMasked: string | null;
+            onboarding: components["schemas"]["AdminMemberOnboardingDto"];
+            usage: components["schemas"]["AdminMemberUsageDto"];
+        };
+        AdminTeamResponseDto: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            days: number;
+            items: components["schemas"]["AdminTeamMemberDto"][];
+        };
+        AdminActivationMilestoneDto: {
+            /** @enum {string} */
+            key: "first_patient" | "first_appointment" | "first_surgery_request" | "first_sent_to_insurer" | "first_whatsapp";
+            /** Format: date-time */
+            at: string | null;
+            daysFromSignup: number | null;
+        };
+        AdminOnboardingStatusCountDto: {
+            /** @enum {string} */
+            status: "not_started" | "in_progress" | "dismissed" | "completed";
+            count: number;
+        };
+        AdminOnboardingStepDto: {
+            /** @enum {string} */
+            key: "conhecer-plataforma" | "criar-solicitacao" | "enviar-solicitacao" | "criar-por-documento" | "assinatura-do-medico" | "cabecalho-do-medico" | "marcar-consulta" | "atender-consulta" | "cadastros-basicos" | "convidar-colaborador" | "plano-e-cota" | "ver-dashboard";
+            completedBy: number;
+            /** Format: date-time */
+            firstCompletedAt: string | null;
+        };
+        AdminOnboardingTrackDto: {
+            /** @enum {string} */
+            key: "boas-vindas" | "solicitacoes" | "documentos-do-medico" | "atendimento" | "agenda" | "cadastros" | "administracao" | "plano-e-cota" | "dashboard";
+            seenBy: number;
+        };
+        AdminAccountOnboardingDto: {
+            members: number;
+            byStatus: components["schemas"]["AdminOnboardingStatusCountDto"][];
+            steps: components["schemas"]["AdminOnboardingStepDto"][];
+            tracks: components["schemas"]["AdminOnboardingTrackDto"][];
+        };
+        AdminAccountActivationDto: {
+            /** Format: date-time */
+            signupAt: string;
+            /**
+             * Format: date-time
+             * @description Primeira consulta ou primeira SC, o que vier antes
+             */
+            activatedAt: string | null;
+            daysToActivate: number | null;
+            milestones: components["schemas"]["AdminActivationMilestoneDto"][];
+            onboarding: components["schemas"]["AdminAccountOnboardingDto"];
+        };
+        AdminAccountGatewayDiscountDto: {
+            name: string | null;
+            percentOff: number | null;
+            amountOffCents: number | null;
+            /** @enum {string|null} */
+            duration: "once" | "repeating" | "forever" | null;
+            /**
+             * Format: date-time
+             * @description Fim do desconto (só cupom repetindo)
+             */
+            endsAt?: string | null;
+        };
+        AdminAccountGatewayDto: {
+            status: string | null;
+            /** Format: date-time */
+            trialEndsAt: string | null;
+            /** Format: date-time */
+            currentPeriodEnd: string | null;
+            cancelAtPeriodEnd: boolean;
+            discount: components["schemas"]["AdminAccountGatewayDiscountDto"] | null;
+            hasPaymentMethod: boolean;
+            paymentBrand: string | null;
+            paymentLast4: string | null;
+        };
+        AdminAccountSubscriptionDto: {
+            /** @enum {string} */
+            situation: "trial" | "trial_expired" | "active" | "cancel_scheduled" | "past_due" | "suspended" | "canceled" | "internal" | "deactivated";
+            daysLeft: number | null;
+            daysOverdue: number | null;
+            status: string;
+            plan: components["schemas"]["AdminAccountPlanDto"];
+            monthlyAmountCents: number;
+            /** Format: date-time */
+            trialEndsAt: string | null;
+            /** Format: date-time */
+            currentPeriodStart: string;
+            /** Format: date-time */
+            currentPeriodEnd: string;
+            cancelAtPeriodEnd: boolean;
+            /** Format: date-time */
+            pastDueSince: string | null;
+            /** Format: date-time */
+            suspendedAt: string | null;
+            /** Format: date-time */
+            canceledAt: string | null;
+            gatewayCustomerId: string | null;
+            gatewaySubscriptionId: string | null;
+            stripeCustomerUrl: string | null;
+            gateway: components["schemas"]["AdminAccountGatewayDto"] | null;
+            /** @description true quando a leitura ao vivo da Stripe falhou */
+            gatewayError: boolean;
+            /** @description Mesma regra de POST grant-internal-access: sem assinatura viva na Stripe */
+            canGrantInternalAccess: boolean;
+            internalAccessBlockedReason: string | null;
+            /** @description Mesma regra de POST extend-trial: trial local ou assinatura em trial na Stripe */
+            canExtendTrial: boolean;
+            /** @description Mesma regra de POST deactivate: sem assinatura com cobrança na Stripe */
+            canDeactivate: boolean;
+            deactivationBlockedReason: string | null;
+            trialExtensionBlockedReason: string | null;
+            /** Format: date-time */
+            internalAccessGrantedAt: string | null;
+            internalAccessGrantedByName: string | null;
+        };
+        AccountStatusActionDto: {
+            reason: string;
+        };
+        AdminAccountStatusResultDto: {
+            auditLogId: string;
+            /** Format: date-time */
+            accountDeactivatedAt: string | null;
+            /** @description Usuários da conta que tiveram as sessões encerradas */
+            revokedUsers: number;
+        };
+        ExtendTrialDto: {
+            reason: string;
+            /** @description Dias somados a max(término atual, agora). Use days ou until. */
+            days?: number;
+            /**
+             * @description Novo término (ISO 8601). Só a data vale até 23:59:59 desse dia em São Paulo. Use days ou until.
+             * @example 2026-11-30
+             */
+            until?: string;
+        };
+        AdminSubscriptionActionResultDto: {
+            auditLogId: string;
+            status: string;
+            /** Format: date-time */
+            trialEndsAt: string | null;
+            /** Format: date-time */
+            currentPeriodEnd: string;
+            /** @description Id da assinatura na Stripe alterada, quando houve escrita lá */
+            gatewayRef: string | null;
+        };
+        GrantInternalAccessDto: {
+            reason: string;
+        };
+        RevokeInternalAccessDto: {
+            reason: string;
+            /** @enum {string} */
+            to: "trial" | "canceled";
+            /** @default 15 */
+            trialDays: number;
+        };
+        PlatformAdminMemberDto: {
+            id: string;
+            name: string;
+            email: string;
+            /** @description Conta ativa (convite aceito e não revogada) */
+            active: boolean;
+            /** @enum {string} */
+            status: "pending" | "active" | "inactive";
+            mfaEnabled: boolean;
+            /** Format: date-time */
+            lastSeenAt?: string | null;
+            createdBy?: string | null;
+            createdById?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CreatePlatformAdminDto: {
+            name: string;
+            email: string;
+        };
+        PlatformAdminActionResultDto: {
+            id: string;
+            auditId: string;
+        };
+        RevokePlatformAdminDto: {
+            reason: string;
+        };
+        ResetPlatformAdminAccessDto: {
+            reason: string;
+        };
+        AdminUsageTotalsDto: {
+            surgeryRequestsCreated: number;
+            /** @description SCs com sent_at no período */
+            surgeryRequestsSent: number;
+            appointments: components["schemas"]["AdminAppointmentCountsDto"];
+            patientsCreated: number;
+            recordsFinalized: number;
+        };
+        AdminUsageWeekDto: {
+            surgeryRequestsCreated: number;
+            /** @description SCs com sent_at no período */
+            surgeryRequestsSent: number;
+            appointments: components["schemas"]["AdminAppointmentCountsDto"];
+            patientsCreated: number;
+            recordsFinalized: number;
+            /** @description Segunda-feira da semana (YYYY-MM-DD, SP) */
+            weekStart: string;
+        };
+        AdminUsageActiveAccountsDto: {
+            last7Days: number;
+            last30Days: number;
+            totalClients: number;
+        };
+        AdminUsageRankingItemDto: {
+            ownerId: string;
+            name: string;
+            email: string;
+            count: number;
+        };
+        AdminUsageResponseDto: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            totals: components["schemas"]["AdminUsageTotalsDto"];
+            weekly: components["schemas"]["AdminUsageWeekDto"][];
+            activeAccounts: components["schemas"]["AdminUsageActiveAccountsDto"];
+            topBySurgeryRequests: components["schemas"]["AdminUsageRankingItemDto"][];
+            topByAppointments: components["schemas"]["AdminUsageRankingItemDto"][];
+        };
+        AdminInactiveAccountDto: {
+            ownerId: string;
+            name: string;
+            email: string;
+            plan: components["schemas"]["AdminAccountPlanDto"];
+            /** @enum {string} */
+            situation: "trial" | "trial_expired" | "active" | "cancel_scheduled" | "past_due" | "suspended" | "canceled" | "internal" | "deactivated";
+            daysLeft: number | null;
+            daysOverdue: number | null;
+            /**
+             * Format: date-time
+             * @description Nulo quando ninguém da conta acessou
+             */
+            lastSeenAt: string | null;
+            daysSinceLastSeen: number | null;
+        };
+        AdminInactiveAccountsResponseDto: {
+            days: number;
+            total: number;
+            items: components["schemas"]["AdminInactiveAccountDto"][];
+        };
+        AdminMonthlyReceivedDto: {
+            /** @example 2026-10 */
+            month: string;
+            receivedCents: number;
+        };
+        AdminRevenueSummaryDto: {
+            /** @example 2026-10 */
+            month: string;
+            /** @description Soma de amount_paid das faturas pagas no mês */
+            receivedCents: number;
+            receivedInvoices: number;
+            /** @description Descontos das faturas pagas no mês */
+            discountsCents: number;
+            /** @description Soma do que falta pagar nas faturas abertas */
+            openCents: number;
+            openInvoices: number;
+            /** @description Aberto das contas inadimplentes e suspensas */
+            delinquentCents: number;
+            delinquentAccounts: number;
+            mrrCents: number;
+            arrCents: number;
+            payingAccounts: number;
+            /** @description MRR ÷ contas pagantes, arredondado */
+            averageTicketCents: number;
+            receivedByMonth: components["schemas"]["AdminMonthlyReceivedDto"][];
+        };
+        AdminForecastItemDto: {
+            ownerId: string;
+            name: string;
+            email: string;
+            /** @enum {string} */
+            kind: "guaranteed" | "trial_conversion";
+            /** Format: date-time */
+            chargeAt: string;
+            amountCents: number;
+            /** @enum {string} */
+            source: "preview" | "projection";
+        };
+        AdminForecastMonthDto: {
+            /** @example 2026-11 */
+            month: string;
+            guaranteedCents: number;
+            trialConversionCents: number;
+            items: components["schemas"]["AdminForecastItemDto"][];
+        };
+        AdminForecastResponseDto: {
+            /** Format: date-time */
+            generatedAt: string;
+            /** @description Alguma leitura da Stripe falhou e aquela parte usou a projeção local */
+            partial: boolean;
+            totalGuaranteedCents: number;
+            totalTrialConversionCents: number;
+            /** @description O primeiro mês é o corrente (a partir de agora) */
+            months: components["schemas"]["AdminForecastMonthDto"][];
+        };
+        AdminInvoiceDto: {
+            id: string;
+            gatewayInvoiceId: string;
+            ownerId: string | null;
+            ownerName: string | null;
+            ownerEmail: string | null;
+            /** @enum {string} */
+            status: "draft" | "open" | "paid" | "void" | "uncollectible";
+            amountDueCents: number;
+            amountPaidCents: number;
+            amountRemainingCents: number;
+            amountDiscountCents: number;
+            currency: string;
+            couponCode: string | null;
+            /** Format: date-time */
+            dueDate: string | null;
+            /** Format: date-time */
+            paidAt: string | null;
+            /** Format: date-time */
+            periodStart: string | null;
+            /** Format: date-time */
+            periodEnd: string | null;
+            /** Format: date-time */
+            invoiceCreatedAt: string;
+            hostedInvoiceUrl: string | null;
+        };
+        AdminInvoiceListResponseDto: {
+            items: components["schemas"]["AdminInvoiceDto"][];
+            total: number;
+            limit: number;
+            offset: number;
+        };
+        AdminDelinquentAccountDto: {
+            ownerId: string;
+            name: string;
+            email: string;
+            planName: string;
+            /** @enum {string} */
+            status: "past_due" | "suspended";
+            openCents: number;
+            openInvoices: number;
+            /** Format: date-time */
+            pastDueSince: string | null;
+            daysOverdue: number | null;
+            /**
+             * Format: date-time
+             * @description Inadimplente: quando suspende; suspensa: quando suspendeu
+             */
+            suspensionDate: string | null;
+        };
+        AdminDelinquencyResponseDto: {
+            totalOpenCents: number;
+            items: components["schemas"]["AdminDelinquentAccountDto"][];
+        };
+        AdminPlanDto: {
+            id: string;
+            slug: string;
+            name: string;
+            /** @enum {string} */
+            billingPeriod: "MONTHLY" | "YEARLY";
+            priceCents: number;
+            currency: string;
+            /** @description -1 = ilimitado */
+            surgeryRequestQuota: number;
+            isActive: boolean;
+            isTrialDefault: boolean;
+            gatewayPriceId: string | null;
+            /** @description Contas no plano (sem canceladas e internas) */
+            accounts: number;
+            gatewayPriceCents: number | null;
+            /** @enum {string|null} */
+            gatewayCycle: "MONTHLY" | "YEARLY" | null;
+            gatewayCurrency: string | null;
+            gatewayPriceActive: boolean | null;
+            /** @description Valor, período ou moeda diferente da Stripe; null sem preço vinculado ou com a Stripe fora */
+            divergent: boolean | null;
+            gatewayError: boolean;
+        };
+        CouponPlanDto: {
+            id: string;
+            name: string;
+        };
+        AdminCouponDto: {
+            /** @description Id do código promocional na Stripe */
+            id: string;
+            couponId: string;
+            code: string;
+            percentOff: number | null;
+            amountOffCents: number | null;
+            currency: string | null;
+            /** @enum {string} */
+            duration: "once" | "repeating" | "forever";
+            durationInMonths: number | null;
+            maxRedemptions: number | null;
+            timesRedeemed: number;
+            /** Format: date-time */
+            expiresAt: string | null;
+            active: boolean;
+            valid: boolean;
+            /** @enum {string} */
+            situation: "ativo" | "esgotado" | "expirado" | "desativado";
+            /** @description true quando o cupom é restrito a produtos específicos */
+            restrictedToPlans: boolean;
+            plans: components["schemas"]["CouponPlanDto"][];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminCouponListResponseDto: {
+            items: components["schemas"]["AdminCouponDto"][];
+            /** @description true quando a Stripe tem mais códigos do que o teto de 100 listados */
+            truncated: boolean;
+        };
+        CreateCouponDto: {
+            /** @example MAIO20 */
+            code: string;
+            /** @description Desconto percentual. Exclusivo com amountOffCents. */
+            percentOff?: number;
+            /** @description Desconto em centavos de BRL. Exclusivo com percentOff. */
+            amountOffCents?: number;
+            /** @enum {string} */
+            duration: "once" | "repeating" | "forever";
+            /** @description Obrigatório (e só aceito) quando duration é "repeating". */
+            durationInMonths?: number;
+            maxRedemptions?: number;
+            /**
+             * @description Validade do código (ISO 8601), no futuro.
+             * @example 2026-12-31T23:59:59-03:00
+             */
+            redeemBy?: string;
+            /** @description Ids locais dos planos. A Stripe restringe por produto: todos os preços do mesmo produto entram. Vazio ou ausente vale para todos. */
+            planIds?: string[];
+        };
+        AdminCouponActionResultDto: {
+            auditLogId: string;
+            coupon: components["schemas"]["AdminCouponDto"];
+        };
+        AdminCouponRedemptionDto: {
+            ownerId: string;
+            ownerName: string;
+            ownerEmail: string;
+            /** Format: date-time */
+            firstInvoiceAt: string;
+            firstInvoiceId: string;
+            invoicesCount: number;
+            /** @description Soma dos descontos das faturas, em centavos */
+            totalDiscountCents: number;
+            currentDiscountPercentOff: number | null;
+            currentDiscountAmountOffCents: number | null;
+            currentDiscountDuration: string | null;
+            /** Format: date-time */
+            currentDiscountEndsAt: string | null;
+        };
+        AdminCouponRedemptionsResponseDto: {
+            code: string;
+            timesRedeemed: number;
+            items: components["schemas"]["AdminCouponRedemptionDto"][];
+        };
+        AdminActionReasonDto: {
+            reason: string;
+        };
+        AdminMetricsSituationCountDto: {
+            /** @enum {string} */
+            situation: "trial" | "trial_expired" | "active" | "cancel_scheduled" | "past_due" | "suspended" | "canceled" | "internal" | "deactivated";
+            count: number;
+        };
+        AdminMetricsAccountsDto: {
+            /** @description Contas cliente (todas as situações, inclusive canceladas), fora acesso interno */
+            total: number;
+            /** @description Assinaturas criadas no período */
+            newInPeriod: number;
+            /** @description Inclui acesso interno (única exceção do D4) */
+            bySituation: components["schemas"]["AdminMetricsSituationCountDto"][];
+        };
+        AdminMetricsTrialConversionDto: {
+            /** Format: date-time */
+            cohortFrom: string;
+            /** Format: date-time */
+            cohortTo: string;
+            started: number;
+            converted: number;
+            /** @description Percentual, uma casa */
+            ratePercent: number | null;
+        };
+        AdminMetricsTrialsDto: {
+            active: number;
+            endingIn7Days: number;
+            expired: number;
+            conversion90d: components["schemas"]["AdminMetricsTrialConversionDto"];
+        };
+        AdminMetricsRevenueDto: {
+            mrrCents: number;
+            payingAccounts: number;
+            /** @description MRR do snapshot do dia anterior ao início do período */
+            mrrPreviousCents: number | null;
+            /** @description Percentual, uma casa */
+            mrrChangePercent: number | null;
+            /** @example 2026-10 */
+            month: string;
+            receivedThisMonthCents: number;
+            /** @example 2026-11 */
+            nextMonth: string;
+            nextMonthForecastCents: number;
+            nextMonthForecastGuaranteedCents: number;
+            nextMonthForecastTrialConversionCents: number;
+            /** @description Sempre true: projeção local, sem prévia da Stripe */
+            nextMonthForecastIsEstimate: boolean;
+            delinquentCents: number;
+            delinquentAccounts: number;
+        };
+        AdminMetricsChurnDto: {
+            /** @example 2026-10 */
+            month: string;
+            canceledAccounts: number;
+            payingAccountsAtStart: number | null;
+            /** @description Percentual, uma casa */
+            accountsRatePercent: number | null;
+            lostMrrCents: number;
+            mrrAtStartCents: number | null;
+            /** @description Percentual, uma casa */
+            revenueRatePercent: number | null;
+        };
+        AdminMetricsEngagementDto: {
+            activeAccounts7d: number;
+            activeAccounts30d: number;
+            inactiveAccounts7d: number;
+            surgeryRequestsCreated: number;
+            appointments: number;
+            patientsCreated: number;
+        };
+        AdminMetricsAiAccountDto: {
+            ownerId: string;
+            name: string;
+            email: string;
+            /** @description Centavos de dólar */
+            costUsdCents: number;
+            totalTokens: number;
+        };
+        AdminMetricsAiDto: {
+            /** @description Contas cliente, mês corrente (US$ centavos) */
+            costMonthUsdCents: number;
+            /** @description Toda a plataforma no mês, inclusive sem conta e acesso interno (bate com Uso de IA) */
+            platformCostMonthUsdCents: number;
+            costLast30DaysUsdCents: number;
+            /** @description Custo dos últimos 30 dias ÷ contas ativas em 30 dias */
+            averageCostPerActiveAccountUsdCents: number | null;
+            topAccounts: components["schemas"]["AdminMetricsAiAccountDto"][];
+        };
+        AdminMetricsErrorSpikeAccountDto: {
+            ownerId: string;
+            ownerName: string | null;
+            total: number;
+        };
+        AdminMetricsErrorsDto: {
+            /** @description Erros em 24 h a partir dos quais a conta entra no alerta */
+            spikeThreshold: number;
+            accountsWithSpike24h: number;
+            topSpikeAccounts: components["schemas"]["AdminMetricsErrorSpikeAccountDto"][];
+        };
+        AdminMetricsActivationDto: {
+            /** @description Contas cliente cadastradas no período */
+            cohortAccounts: number;
+            withFirstPatient: number;
+            /** @description Com primeira consulta ou SC */
+            activated: number;
+            activationRatePercent: number | null;
+            averageDaysToActivate: number | null;
+            medianDaysToActivate: number | null;
+        };
+        AdminSecurityAccountDto: {
+            ownerId: string;
+            ownerName: string | null;
+            total: number;
+            users: number;
+            /** Format: date-time */
+            lastSeenAt: string;
+        };
+        AdminSecuritySpikeDto: {
+            /** @description Falhas de login em 24 h a partir das quais a conta entra no alerta */
+            accountThreshold: number;
+            /** @description Falhas de login em 24 h na plataforma toda que indicam ataque */
+            platformThreshold: number;
+            platformTotal24h: number;
+            platformSpike: boolean;
+            accountsWithSpike24h: number;
+            topSpikeAccounts: components["schemas"]["AdminSecurityAccountDto"][];
+        };
+        AdminMetricsAccountAtRiskDto: {
+            ownerId: string;
+            name: string;
+            score: number;
+            mainReason: string | null;
+        };
+        AdminMetricsAccountsAtRiskDto: {
+            /** @description Contas na faixa "em risco" no último cálculo */
+            total: number;
+            items: components["schemas"]["AdminMetricsAccountAtRiskDto"][];
+        };
+        AdminMetricsMrrPointDto: {
+            /** @example 2026-10 */
+            month: string;
+            mrrCents: number | null;
+        };
+        AdminMetricsNewVsCanceledPointDto: {
+            /** @example 2026-10 */
+            month: string;
+            newAccounts: number;
+            canceledAccounts: number;
+        };
+        AdminMetricsPlanPointDto: {
+            planId: string;
+            planName: string;
+            /** @enum {string} */
+            billingPeriod: "MONTHLY" | "YEARLY";
+            accounts: number;
+        };
+        AdminMetricsTrialFunnelDto: {
+            started: number;
+            withCard: number;
+            converted: number;
+        };
+        AdminMetricsSeriesDto: {
+            mrrMonthly: components["schemas"]["AdminMetricsMrrPointDto"][];
+            newVsCanceled: components["schemas"]["AdminMetricsNewVsCanceledPointDto"][];
+            accountsByPlan: components["schemas"]["AdminMetricsPlanPointDto"][];
+            trialFunnel: components["schemas"]["AdminMetricsTrialFunnelDto"];
+        };
+        AdminMetricsOverviewDto: {
+            /** @enum {string} */
+            period: "30d" | "90d" | "12m";
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            accounts: components["schemas"]["AdminMetricsAccountsDto"];
+            trials: components["schemas"]["AdminMetricsTrialsDto"];
+            revenue: components["schemas"]["AdminMetricsRevenueDto"];
+            churn: components["schemas"]["AdminMetricsChurnDto"];
+            engagement: components["schemas"]["AdminMetricsEngagementDto"];
+            ai: components["schemas"]["AdminMetricsAiDto"];
+            errors: components["schemas"]["AdminMetricsErrorsDto"];
+            activation: components["schemas"]["AdminMetricsActivationDto"];
+            security: components["schemas"]["AdminSecuritySpikeDto"];
+            accountsAtRisk: components["schemas"]["AdminMetricsAccountsAtRiskDto"];
+            series: components["schemas"]["AdminMetricsSeriesDto"];
+        };
+        SystemJobLastRunDto: {
+            /** Format: date-time */
+            at: string;
+            by: string | null;
+            result: {
+                [key: string]: unknown;
+            } | null;
+        };
+        SystemJobDto: {
+            /** @enum {string} */
+            key: "stale_requests" | "weekly_summary";
+            name: string;
+            description: string;
+            schedule: string;
+            lastManualRun: components["schemas"]["SystemJobLastRunDto"] | null;
+        };
+        AdminErrorTotalsDto: {
+            total: number;
+            accounts: number;
+            fingerprints: number;
+            /** @description Envios de e-mail/WhatsApp com falha */
+            failedDeliveries: number;
+        };
+        AdminErrorDayDto: {
+            /** @example 2026-10-28 */
+            day: string;
+            /** @enum {string} */
+            source: "http" | "queue" | "ai" | "notification" | "stripe_webhook";
+            total: number;
+        };
+        AdminErrorFingerprintDto: {
+            fingerprint: string;
+            /** @enum {string} */
+            source: "http" | "queue" | "ai" | "notification" | "stripe_webhook";
+            errorClass: string | null;
+            route: string | null;
+            lastMessage: string | null;
+            total: number;
+            accounts: number;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            lastRequestId: string | null;
+            exploreUrl: string | null;
+        };
+        AdminErrorFingerprintPageDto: {
+            items: components["schemas"]["AdminErrorFingerprintDto"][];
+            total: number;
+        };
+        AdminErrorAccountDto: {
+            ownerId: string;
+            ownerName: string | null;
+            total: number;
+            fingerprints: number;
+            /** Format: date-time */
+            lastSeenAt: string;
+        };
+        AdminErrorsOverviewDto: {
+            /** @example 2026-09-29 */
+            fromDay: string;
+            /** @example 2026-10-28 */
+            toDay: string;
+            totals: components["schemas"]["AdminErrorTotalsDto"];
+            daily: components["schemas"]["AdminErrorDayDto"][];
+            fingerprints: components["schemas"]["AdminErrorFingerprintPageDto"];
+            accounts: components["schemas"]["AdminErrorAccountDto"][];
+            lokiAvailable: boolean;
+        };
+        AdminAccountErrorsDto: {
+            ownerId: string;
+            fromDay: string;
+            toDay: string;
+            totals: components["schemas"]["AdminErrorTotalsDto"];
+            daily: components["schemas"]["AdminErrorDayDto"][];
+            fingerprints: components["schemas"]["AdminErrorFingerprintPageDto"];
+            lokiAvailable: boolean;
+        };
+        AdminErrorOccurrenceDto: {
+            day: string;
+            ownerId: string | null;
+            ownerName: string | null;
+            count: number;
+            /** Format: date-time */
+            lastSeenAt: string;
+            lastRequestId: string | null;
+            lastMessage: string | null;
+            route: string | null;
+            exploreUrl: string | null;
+        };
+        AdminErrorLogLineDto: {
+            /** Format: date-time */
+            timestamp: string;
+            level: string | null;
+            message: string;
+            context: string | null;
+            requestId: string | null;
+            traceId: string | null;
+        };
+        AdminErrorOccurrencesDto: {
+            fingerprint: string;
+            occurrences: components["schemas"]["AdminErrorOccurrenceDto"][];
+            logs: components["schemas"]["AdminErrorLogLineDto"][];
+            lokiAvailable: boolean;
+            /** @enum {string|null} */
+            lokiError: "not_configured" | "unavailable" | null;
+        };
+        AdminQueueSummaryDto: {
+            /** @enum {string} */
+            name: "mail" | "whatsapp-messages" | "pdf-generation" | "ai-messages" | "document-extraction" | "indication-documents" | "mention-emails";
+            label: string;
+            description: string;
+            waiting: number;
+            active: number;
+            delayed: number;
+            failed: number;
+            paused: boolean;
+        };
+        AdminQueuesOverviewDto: {
+            queues: components["schemas"]["AdminQueueSummaryDto"][];
+            /** Format: date-time */
+            checkedAt: string;
+        };
+        AdminFailedJobDto: {
+            id: string;
+            /** @enum {string} */
+            queue: "mail" | "whatsapp-messages" | "pdf-generation" | "ai-messages" | "document-extraction" | "indication-documents" | "mention-emails";
+            queueLabel: string;
+            name: string;
+            ownerId: string | null;
+            ownerName: string | null;
+            attemptsMade: number;
+            maxAttempts: number | null;
+            error: string | null;
+            /** Format: date-time */
+            createdAt: string | null;
+            /** Format: date-time */
+            failedAt: string | null;
+        };
+        AdminFailedJobsResponseDto: {
+            items: components["schemas"]["AdminFailedJobDto"][];
+            total: number;
+        };
+        AdminQueueJobActionDto: {
+            reason: string;
+        };
+        AdminQueueJobActionResultDto: {
+            auditLogId: string;
+            /** @enum {string} */
+            queue: "mail" | "whatsapp-messages" | "pdf-generation" | "ai-messages" | "document-extraction" | "indication-documents" | "mention-emails";
+            jobId: string;
+        };
+        AdminGatewayEventDto: {
+            id: string;
+            eventId: string;
+            eventType: string;
+            gatewayType: string | null;
+            label: string;
+            /** @enum {string} */
+            situation: "processed" | "pending" | "failed";
+            /** @description Pendente há mais de 1 hora sem ter sido processado */
+            stale: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            processedAt: string | null;
+            error: string | null;
+            ownerId: string | null;
+            ownerName: string | null;
+            customerId: string | null;
+            /** @description Id da assinatura que a plataforma extraiu do evento; nulo quando não identificou */
+            subscriptionRef: string | null;
+            warning: string | null;
+        };
+        AdminGatewayEventCountsDto: {
+            failed: number;
+            stalePending: number;
+        };
+        AdminGatewayEventsResponseDto: {
+            items: components["schemas"]["AdminGatewayEventDto"][];
+            total: number;
+            counts: components["schemas"]["AdminGatewayEventCountsDto"];
+        };
+        ReprocessGatewayEventDto: {
+            reason: string;
+        };
+        ReprocessGatewayEventResultDto: {
+            auditLogId: string;
+            id: string;
+            /** Format: date-time */
+            processedAt: string;
+        };
+        AdminSecurityTotalsDto: {
+            login_failed: number;
+            login_locked: number;
+            mfa_failed: number;
+            refresh_reuse: number;
+            password_changed: number;
+            mfa_enabled: number;
+            mfa_disabled: number;
+        };
+        AdminSecurityDayDto: {
+            /** @example 2026-10-28 */
+            day: string;
+            /** @enum {string} */
+            eventType: "login_failed" | "login_locked" | "mfa_failed" | "refresh_reuse" | "password_changed" | "mfa_enabled" | "mfa_disabled";
+            total: number;
+        };
+        AdminMfaCoverageDto: {
+            activeUsers: number;
+            withoutMfa: number;
+        };
+        AdminSecurityOverviewDto: {
+            fromDay: string;
+            toDay: string;
+            totals: components["schemas"]["AdminSecurityTotalsDto"];
+            /** @description Bloqueios de login para e-mails que não são de nenhum usuário */
+            unattributedLocks: number;
+            daily: components["schemas"]["AdminSecurityDayDto"][];
+            failureAccounts: components["schemas"]["AdminSecurityAccountDto"][];
+            reuseAccounts: components["schemas"]["AdminSecurityAccountDto"][];
+            mfa: components["schemas"]["AdminMfaCoverageDto"];
+            spike: components["schemas"]["AdminSecuritySpikeDto"];
+            lokiAvailable: boolean;
+        };
+        AdminSecurityUserDto: {
+            userId: string;
+            userName: string | null;
+            events: components["schemas"]["AdminSecurityTotalsDto"];
+            /** @description Senha errada, login bloqueado e código MFA errado */
+            failures: number;
+            /** @description Reuso de token, troca de senha e MFA desligado (derrubam as sessões) */
+            sessionsRevoked: number;
+            /** Format: date-time */
+            lastSeenAt: string;
+        };
+        AdminAccountSecurityDto: {
+            ownerId: string;
+            fromDay: string;
+            toDay: string;
+            totals: components["schemas"]["AdminSecurityTotalsDto"];
+            daily: components["schemas"]["AdminSecurityDayDto"][];
+            users: components["schemas"]["AdminSecurityUserDto"][];
+            mfa: components["schemas"]["AdminMfaCoverageDto"];
+            lokiAvailable: boolean;
+        };
+        AdminSecurityLogLineDto: {
+            /** Format: date-time */
+            timestamp: string;
+            level: string | null;
+            message: string;
+            requestId: string | null;
+        };
+        AdminAccountSecurityLogsDto: {
+            logs: components["schemas"]["AdminSecurityLogLineDto"][];
+            lokiAvailable: boolean;
+            /** @enum {string|null} */
+            lokiError: "not_configured" | "unavailable" | null;
+        };
+        AdminClinicalAccessTotalsDto: {
+            total: number;
+            users: number;
+        };
+        AdminClinicalAccessActionDto: {
+            /** @example clinical_record */
+            resource: string;
+            /** @example read */
+            action: string;
+            /** @enum {string} */
+            origin: "http" | "ai" | "system";
+            total: number;
+        };
+        AdminClinicalAccessUserDto: {
+            userId: string | null;
+            userName: string | null;
+            resource: string;
+            action: string;
+            total: number;
+            /** Format: date-time */
+            lastAccessAt: string;
+        };
+        AdminClinicalAccessDayDto: {
+            /** @example 2026-10-28 */
+            day: string;
+            total: number;
+        };
+        AdminClinicalAccessPatientRowDto: {
+            /** @example a1b2c3d4e5 */
+            patientRef: string;
+            total: number;
+            users: number;
+            /** Format: date-time */
+            lastAccessAt: string;
+        };
+        AdminClinicalAccessDto: {
+            ownerId: string;
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            totals: components["schemas"]["AdminClinicalAccessTotalsDto"];
+            byAction: components["schemas"]["AdminClinicalAccessActionDto"][];
+            byUser: components["schemas"]["AdminClinicalAccessUserDto"][];
+            daily: components["schemas"]["AdminClinicalAccessDayDto"][];
+            byPatient: components["schemas"]["AdminClinicalAccessPatientRowDto"][];
+        };
+        AdminClinicalAccessExportDto: {
+            reason: string;
+            /**
+             * @default 30
+             * @enum {number}
+             */
+            days: 7 | 30 | 90;
+        };
+        AdminClinicalAccessExportResultDto: {
+            auditLogId: string;
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            items: components["schemas"]["AdminClinicalAccessUserDto"][];
+        };
+        AdminClinicalAccessPatientDto: {
+            reason: string;
+            /** @description Código do paciente mostrado no painel (10 caracteres) ou o id completo do paciente informado pela clínica */
+            patient: string;
+            /**
+             * @default 30
+             * @enum {number}
+             */
+            days: 7 | 30 | 90;
+        };
+        AdminClinicalAccessEventDto: {
+            userId: string | null;
+            userName: string | null;
+            resource: string;
+            action: string;
+            /** @enum {string} */
+            origin: "http" | "ai" | "system";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminClinicalAccessPatientResultDto: {
+            auditLogId: string;
+            /** @example a1b2c3d4e5 */
+            patientRef: string;
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            limit: number;
+            items: components["schemas"]["AdminClinicalAccessEventDto"][];
+        };
+        AdminLoginDto: {
+            /** @example admin@inexci.com */
+            email: string;
+            password: string;
+        };
+        AdminLoginStepDto: {
+            /** @enum {string} */
+            step: "mfa" | "mfa_setup";
+            mfaToken?: string;
+            setupToken?: string;
+        };
+        AdminSetupTokenDto: {
+            setupToken: string;
+        };
+        AdminMfaSetupDto: {
+            secret: string;
+            formattedSecret: string;
+            otpauthUri: string;
+        };
+        AdminEnableMfaDto: {
+            /** @example 123456 */
+            code: string;
+            setupToken: string;
+        };
+        AdminProfileDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            email: string;
+            mfaEnabled: boolean;
+        };
+        AdminSessionWithRecoveryDto: {
+            accessToken: string;
+            admin: components["schemas"]["AdminProfileDto"];
+            recoveryCodes: string[];
+        };
+        AdminLoginMfaDto: {
+            /**
+             * @description Código TOTP de 6 dígitos ou código de recuperação
+             * @example 123456
+             */
+            code: string;
+            mfaToken: string;
+        };
+        AdminSessionDto: {
+            accessToken: string;
+            admin: components["schemas"]["AdminProfileDto"];
+        };
+        AdminRecoveryCodesDto: {
+            /** @example 123456 */
+            code: string;
+        };
+        AdminRecoveryCodesResultDto: {
+            recoveryCodes: string[];
+        };
+        AdminAcceptInviteDto: {
+            email: string;
+            token: string;
+            password: string;
+        };
+        RunSystemJobDto: {
+            reason: string;
+        };
+        StaleRequestsRunResultDto: {
+            notified: number;
+        };
+        WeeklySummaryRunResultDto: {
+            dispatched: number;
         };
     };
     responses: never;
@@ -8810,6 +11128,128 @@ export interface operations {
             };
         };
     };
+    ClinicalSnippetsController_find: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalSnippet"][];
+                };
+            };
+        };
+    };
+    ClinicalSnippetsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateClinicalSnippetDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalSnippet"];
+                };
+            };
+        };
+    };
+    ClinicalSnippetsController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ClinicalSnippetsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateClinicalSnippetDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClinicalSnippet"];
+                };
+            };
+        };
+    };
+    ClinicalSnippetsController_use: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ClinicalTranscriptionController_transcribe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ClinicalRecordsController_find: {
         parameters: {
             query?: never;
@@ -10681,7 +13121,14 @@ export interface operations {
     };
     AdminController_getAiUsageReport: {
         parameters: {
-            query?: never;
+            query?: {
+                from?: string;
+                to?: string;
+                groupBy?: "user" | "owner" | "model" | "day";
+                ownerId?: string;
+                /** @description Sem valor, considera todas as origens */
+                source?: "whatsapp" | "document_extraction" | "rag_embedding" | "rag_ingestion";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -10693,14 +13140,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": components["schemas"]["AiUsageReportRowDto"][];
                 };
             };
         };
     };
     AdminController_getAiEfficiencyReport: {
         parameters: {
-            query?: never;
+            query?: {
+                from?: string;
+                to?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -10719,26 +13169,14 @@ export interface operations {
     };
     AdminController_listNotificationLogs: {
         parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AdminController_notificationLogsStats: {
-        parameters: {
-            query: {
-                from: string;
-                to: string;
+            query?: {
+                channel?: "email" | "whatsapp";
+                ownerId?: string;
+                from?: string;
+                to?: string;
+                status?: "queued" | "sent" | "failed" | "delivered" | "read";
+                limit?: number;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -10751,8 +13189,1631 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": components["schemas"]["NotificationLogListResponseDto"];
                 };
+            };
+        };
+    };
+    AdminController_notificationLogsStats: {
+        parameters: {
+            query?: {
+                channel?: "email" | "whatsapp";
+                ownerId?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationLogStatsRowDto"][];
+                };
+            };
+        };
+    };
+    PlatformAuditController_list: {
+        parameters: {
+            query?: {
+                targetOwnerId?: string;
+                /** @description Id do administrador da plataforma que executou a ação */
+                actorUserId?: string;
+                action?: "TRIAL_EXTENDED" | "INTERNAL_ACCESS_GRANTED" | "INTERNAL_ACCESS_REVOKED" | "COUPON_CREATED" | "COUPON_DEACTIVATED" | "PLATFORM_ADMIN_CREATED" | "PLATFORM_ADMIN_REVOKED" | "PLATFORM_ADMIN_ACCESS_RESET" | "CRON_STALE_REQUESTS_TRIGGERED" | "CRON_WEEKLY_SUMMARY_TRIGGERED" | "ACCOUNT_DEACTIVATED" | "ACCOUNT_REACTIVATED" | "QUEUE_JOB_RETRIED" | "QUEUE_JOB_DISCARDED" | "STRIPE_EVENT_REPROCESSED" | "CLINICAL_ACCESS_EXPORTED" | "CLINICAL_ACCESS_PATIENT_VIEWED";
+                from?: string;
+                to?: string;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAuditLogListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminAccountsController_list: {
+        parameters: {
+            query?: {
+                /** @description Nome ou e-mail do dono da conta */
+                search?: string;
+                situation?: "trial" | "trial_expired" | "active" | "cancel_scheduled" | "past_due" | "suspended" | "canceled" | "internal" | "deactivated";
+                planId?: string;
+                /** @description Faixa de saúde do último cálculo */
+                health?: "healthy" | "attention" | "risk";
+                trialEndingInDays?: number;
+                inactiveDays?: number;
+                sortBy?: "createdAt" | "trialEndsAt" | "lastSeenAt" | "mrr" | "health";
+                sortDir?: "asc" | "desc";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminAccountsController_detail: {
+        parameters: {
+            query?: {
+                /** @description Início do período (padrão: início do mês corrente em SP) */
+                from?: string;
+                /** @description Fim exclusivo do período (padrão: início do próximo mês) */
+                to?: string;
+            };
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountDetailDto"];
+                };
+            };
+        };
+    };
+    AdminAccountsController_team: {
+        parameters: {
+            query?: {
+                /** @description Janela da contagem de uso, em dias (padrão 30) */
+                days?: 7 | 30 | 90;
+            };
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeamResponseDto"];
+                };
+            };
+        };
+    };
+    AdminAccountsController_activation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountActivationDto"];
+                };
+            };
+            /** @description Conta não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAccountsController_subscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountSubscriptionDto"];
+                };
+            };
+        };
+    };
+    AdminAccountsController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountStatusActionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountStatusResultDto"];
+                };
+            };
+            /** @description Motivo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conta não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conta já desativada ou com cobrança ativa na Stripe */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stripe não respondeu; nada foi alterado */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAccountsController_reactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountStatusActionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountStatusResultDto"];
+                };
+            };
+            /** @description Motivo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conta não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não está desativada */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSubscriptionsController_extendTrial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtendTrialDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubscriptionActionResultDto"];
+                };
+            };
+            /** @description Motivo, days/until ou limites inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conta não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Situação da conta não permite estender */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stripe não respondeu */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSubscriptionsController_grantInternalAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantInternalAccessDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubscriptionActionResultDto"];
+                };
+            };
+            /** @description Motivo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conta não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conta com assinatura na Stripe ou já com acesso interno */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stripe não respondeu; nada foi alterado */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSubscriptionsController_revokeInternalAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeInternalAccessDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSubscriptionActionResultDto"];
+                };
+            };
+            /** @description Motivo, destino ou trialDays inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conta não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A conta não tem acesso interno */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTeamController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAdminMemberDto"][];
+                };
+            };
+        };
+    };
+    AdminTeamController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlatformAdminDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAdminActionResultDto"];
+                };
+            };
+            /** @description Nome ou e-mail inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description E-mail já cadastrado */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTeamController_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adminId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokePlatformAdminDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAdminActionResultDto"];
+                };
+            };
+            /** @description Motivo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrador não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Revogação do próprio acesso, de quem já está revogado ou do último administrador ativo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTeamController_resetAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adminId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPlatformAdminAccessDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformAdminActionResultDto"];
+                };
+            };
+            /** @description Motivo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrador não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Redefinição do próprio acesso */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminUsageController_usage: {
+        parameters: {
+            query?: {
+                /** @description Início do período (padrão: 30 dias antes de "to") */
+                from?: string;
+                /** @description Fim exclusivo do período (padrão: agora) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUsageResponseDto"];
+                };
+            };
+        };
+    };
+    AdminUsageController_inactive: {
+        parameters: {
+            query?: {
+                /** @description Dias sem acesso: 7, 15 ou 30 */
+                days?: 7 | 15 | 30;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminInactiveAccountsResponseDto"];
+                };
+            };
+        };
+    };
+    AdminRevenueController_summary: {
+        parameters: {
+            query?: {
+                /** @description Mês no fuso America/Sao_Paulo; padrão: mês corrente */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRevenueSummaryDto"];
+                };
+            };
+        };
+    };
+    AdminRevenueController_forecast: {
+        parameters: {
+            query?: {
+                months?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminForecastResponseDto"];
+                };
+            };
+        };
+    };
+    AdminRevenueController_invoices: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                status?: "draft" | "open" | "paid" | "void" | "uncollectible";
+                ownerId?: string;
+                /** @description Data de criação da fatura (ISO), inclusive */
+                from?: string;
+                /** @description Data de criação da fatura (ISO), exclusive */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminInvoiceListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminRevenueController_delinquency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDelinquencyResponseDto"];
+                };
+            };
+        };
+    };
+    AdminRevenueController_accountInvoices: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminInvoiceListResponseDto"];
+                };
+            };
+        };
+    };
+    AdminRevenueController_plans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPlanDto"][];
+                };
+            };
+        };
+    };
+    AdminCouponsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCouponListResponseDto"];
+                };
+            };
+            /** @description Stripe não respondeu */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCouponsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCouponDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCouponActionResultDto"];
+                };
+            };
+            /** @description Regras do cupom ou planos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Código já existe na Stripe */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A Stripe falhou */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stripe não respondeu; nada foi alterado */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCouponsController_redemptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCouponRedemptionsResponseDto"];
+                };
+            };
+            /** @description Cupom não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCouponsController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminActionReasonDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCouponActionResultDto"];
+                };
+            };
+            /** @description Motivo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cupom não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cupom já desativado */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stripe não respondeu; nada foi alterado */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminMetricsController_overview: {
+        parameters: {
+            query?: {
+                period?: "30d" | "90d" | "12m";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMetricsOverviewDto"];
+                };
+            };
+        };
+    };
+    AdminSystemController_jobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemJobDto"][];
+                };
+            };
+        };
+    };
+    AdminErrorsController_overview: {
+        parameters: {
+            query?: {
+                days?: 1 | 7 | 30 | 90;
+                source?: "http" | "queue" | "ai" | "notification" | "stripe_webhook";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminErrorsOverviewDto"];
+                };
+            };
+        };
+    };
+    AdminErrorsController_forAccount: {
+        parameters: {
+            query?: {
+                days?: 1 | 7 | 30 | 90;
+                source?: "http" | "queue" | "ai" | "notification" | "stripe_webhook";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountErrorsDto"];
+                };
+            };
+        };
+    };
+    AdminErrorsController_occurrences: {
+        parameters: {
+            query?: {
+                days?: 1 | 7 | 30 | 90;
+                source?: "http" | "queue" | "ai" | "notification" | "stripe_webhook";
+                limit?: number;
+                offset?: number;
+                ownerId?: string;
+            };
+            header?: never;
+            path: {
+                fingerprint: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminErrorOccurrencesDto"];
+                };
+            };
+        };
+    };
+    AdminQueuesController_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminQueuesOverviewDto"];
+                };
+            };
+            /** @description Redis indisponível */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminQueuesController_failed: {
+        parameters: {
+            query?: {
+                queue?: "mail" | "whatsapp-messages" | "pdf-generation" | "ai-messages" | "document-extraction" | "indication-documents" | "mention-emails";
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminFailedJobsResponseDto"];
+                };
+            };
+            /** @description Redis indisponível */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminQueuesController_retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                queue: string;
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminQueueJobActionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminQueueJobActionResultDto"];
+                };
+            };
+            /** @description Motivo ou identificador inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fila ou tarefa não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A tarefa não está com falha */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Redis indisponível */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminQueuesController_discard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                queue: string;
+                jobId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminQueueJobActionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminQueueJobActionResultDto"];
+                };
+            };
+            /** @description Motivo ou identificador inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fila ou tarefa não encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A tarefa não está com falha */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Redis indisponível */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminGatewayEventsController_list: {
+        parameters: {
+            query?: {
+                ownerId?: string;
+                /** @description Só eventos com erro ou pendentes há mais de 1 hora (não processados) */
+                problems?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminGatewayEventsResponseDto"];
+                };
+            };
+        };
+    };
+    AdminGatewayEventsController_reprocess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReprocessGatewayEventDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReprocessGatewayEventResultDto"];
+                };
+            };
+            /** @description Motivo inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Evento não encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O evento já foi processado */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description O processamento falhou de novo */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminSecurityController_overview: {
+        parameters: {
+            query?: {
+                days?: 1 | 7 | 30 | 90;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSecurityOverviewDto"];
+                };
+            };
+        };
+    };
+    AdminSecurityController_forAccount: {
+        parameters: {
+            query?: {
+                days?: 1 | 7 | 30 | 90;
+            };
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountSecurityDto"];
+                };
+            };
+        };
+    };
+    AdminSecurityController_logs: {
+        parameters: {
+            query?: {
+                days?: 1 | 7 | 30 | 90;
+            };
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminAccountSecurityLogsDto"];
+                };
+            };
+        };
+    };
+    AdminClinicalAccessController_forAccount: {
+        parameters: {
+            query?: {
+                days?: 7 | 30 | 90;
+            };
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminClinicalAccessDto"];
+                };
+            };
+        };
+    };
+    AdminClinicalAccessController_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminClinicalAccessExportDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminClinicalAccessExportResultDto"];
+                };
+            };
+            /** @description Motivo ou período inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminClinicalAccessController_forPatient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ownerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminClinicalAccessPatientDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminClinicalAccessPatientResultDto"];
+                };
+            };
+            /** @description Motivo, paciente ou período inválido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAuthController_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminLoginDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminLoginStepDto"];
+                };
+            };
+        };
+    };
+    AdminAuthController_mfaSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminSetupTokenDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMfaSetupDto"];
+                };
+            };
+        };
+    };
+    AdminAuthController_mfaEnable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminEnableMfaDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSessionWithRecoveryDto"];
+                };
+            };
+        };
+    };
+    AdminAuthController_loginMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminLoginMfaDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSessionDto"];
+                };
+            };
+        };
+    };
+    AdminAuthController_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSessionDto"];
+                };
+            };
+        };
+    };
+    AdminAuthController_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminAuthController_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProfileDto"];
+                };
+            };
+        };
+    };
+    AdminAuthController_recoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminRecoveryCodesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRecoveryCodesResultDto"];
+                };
+            };
+        };
+    };
+    AdminAuthController_acceptInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminAcceptInviteDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -10763,9 +14824,22 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunSystemJobDto"];
+            };
+        };
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaleRequestsRunResultDto"];
+                };
+            };
+            /** @description A tarefa já está em execução */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10780,9 +14854,22 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunSystemJobDto"];
+            };
+        };
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklySummaryRunResultDto"];
+                };
+            };
+            /** @description A tarefa já está em execução */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

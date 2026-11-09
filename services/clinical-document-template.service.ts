@@ -1,8 +1,7 @@
 import api from "@/lib/api";
 
 export type ClinicalDocumentTemplateKind =
-  | "medical_certificate"
-  | "exam_referral";
+  "medical_certificate" | "exam_referral";
 
 export const DOCUMENT_TEMPLATE_KIND_LABELS: Record<
   ClinicalDocumentTemplateKind,

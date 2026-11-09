@@ -76,10 +76,7 @@ describe("Auth — tokens sensíveis não devem estar no localStorage", () => {
     });
 
     const { authService } = await import("@/services/auth.service");
-    const token = await authService.validateRecoveryCode(
-      "a@b.com",
-      "123456",
-    );
+    const token = await authService.validateRecoveryCode("a@b.com", "123456");
 
     expect(token).toBe("reset-tok-123");
     expect(api.post).toHaveBeenCalledWith(

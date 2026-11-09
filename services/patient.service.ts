@@ -199,8 +199,7 @@ export const patientService = {
   async discardPhoto(path: string): Promise<void> {
     try {
       await api.post("/patients/photos/discard", { path });
-    } catch {
-    }
+    } catch {}
   },
 
   async create(payload: CreatePatientPayload): Promise<Patient> {

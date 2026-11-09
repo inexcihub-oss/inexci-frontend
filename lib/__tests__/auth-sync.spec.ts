@@ -44,13 +44,21 @@ describe("auth-sync", () => {
 
   it("ignora a remoção do próprio evento, chaves alheias e conteúdo inválido", () => {
     expect(
-      parseAuthSyncEvent({ key: AUTH_EVENT_KEY, newValue: null, oldValue: "x" }),
+      parseAuthSyncEvent({
+        key: AUTH_EVENT_KEY,
+        newValue: null,
+        oldValue: "x",
+      }),
     ).toBeNull();
     expect(
       parseAuthSyncEvent({ key: "outra", newValue: "1", oldValue: null }),
     ).toBeNull();
     expect(
-      parseAuthSyncEvent({ key: AUTH_EVENT_KEY, newValue: "{", oldValue: null }),
+      parseAuthSyncEvent({
+        key: AUTH_EVENT_KEY,
+        newValue: "{",
+        oldValue: null,
+      }),
     ).toBeNull();
     expect(
       parseAuthSyncEvent({

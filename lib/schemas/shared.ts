@@ -31,26 +31,20 @@ export const emailOptionalSchema = z
 
 export const phoneSchema = z
   .string({ required_error: "O telefone é obrigatório." })
-  .refine(
-    (v) => {
-      const d = unmask(v);
-      return d.length === 10 || d.length === 11;
-    },
-    "Informe um telefone válido com DDD.",
-  );
+  .refine((v) => {
+    const d = unmask(v);
+    return d.length === 10 || d.length === 11;
+  }, "Informe um telefone válido com DDD.");
 
 export const phoneOptionalSchema = z
   .string()
   .optional()
   .or(z.literal(""))
-  .refine(
-    (v) => {
-      if (!v) return true;
-      const d = unmask(v);
-      return d.length === 10 || d.length === 11;
-    },
-    "Informe um telefone válido com DDD.",
-  );
+  .refine((v) => {
+    if (!v) return true;
+    const d = unmask(v);
+    return d.length === 10 || d.length === 11;
+  }, "Informe um telefone válido com DDD.");
 
 export const cpfSchema = z
   .string({ required_error: "O CPF é obrigatório." })
@@ -84,10 +78,9 @@ export const strongPasswordSchema = z
     "A senha deve ter maiúscula, minúscula, número e caractere especial.",
   );
 
-export function passwordsMatchRefine<T extends { password: string; confirmPassword: string }>(
-  data: T,
-  ctx: z.RefinementCtx,
-) {
+export function passwordsMatchRefine<
+  T extends { password: string; confirmPassword: string },
+>(data: T, ctx: z.RefinementCtx) {
   if (data.password !== data.confirmPassword) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

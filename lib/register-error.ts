@@ -1,8 +1,5 @@
 export type RegisterErrorType =
-  | "email_active"
-  | "email_pending"
-  | "phone_active"
-  | "generic";
+  "email_active" | "email_pending" | "phone_active" | "generic";
 
 export function classifyRegisterError(message: string): RegisterErrorType {
   if (message.includes("convite pendente")) return "email_pending";

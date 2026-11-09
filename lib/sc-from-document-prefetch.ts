@@ -35,9 +35,7 @@ export async function prefetchScFromDocumentCatalogs(): Promise<void> {
   }
 }
 
-export function readScFromDocumentCatalogPrefetch():
-  | ScFromDocumentCatalogPrefetch
-  | null {
+export function readScFromDocumentCatalogPrefetch(): ScFromDocumentCatalogPrefetch | null {
   const raw = sessionStorage.getItem(SC_FROM_DOCUMENT_CATALOG_PREFETCH_KEY);
   if (!raw) return null;
 

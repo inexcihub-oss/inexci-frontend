@@ -43,9 +43,7 @@ export type UpdateClinicalRecordPayload = Omit<
 >;
 
 export type ClinicalDocumentKind =
-  | "prescription"
-  | "medical-certificate"
-  | "exam-referral";
+  "prescription" | "medical-certificate" | "exam-referral";
 
 export interface GeneratedClinicalDocument {
   id: string;
@@ -97,7 +95,9 @@ export interface ExamReferralFields {
   cidCodes?: ClinicalCidCode[];
 }
 
-export type PrescriptionPayload = { clinicalRecordId: string } & PrescriptionFields;
+export type PrescriptionPayload = {
+  clinicalRecordId: string;
+} & PrescriptionFields;
 export type MedicalCertificatePayload = {
   clinicalRecordId: string;
 } & MedicalCertificateFields;
@@ -130,9 +130,7 @@ export const clinicalRecordService = {
     return response.data;
   },
 
-  async create(
-    payload: CreateClinicalRecordPayload,
-  ): Promise<ClinicalRecord> {
+  async create(payload: CreateClinicalRecordPayload): Promise<ClinicalRecord> {
     const response = await api.post<ClinicalRecord>(
       "/clinical-records",
       payload,

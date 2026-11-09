@@ -2,7 +2,8 @@ import { SESSION_FLAG_KEY } from "./session-flag";
 
 export const AUTH_EVENT_KEY = "auth_event";
 
-export type AuthSyncEvent = { type: "logout" } | { type: "login"; userId: string };
+export type AuthSyncEvent =
+  { type: "logout" } | { type: "login"; userId: string };
 
 function randomNonce(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -19,8 +20,7 @@ export function broadcastAuthEvent(event: AuthSyncEvent): void {
       JSON.stringify({ ...event, nonce: randomNonce() }),
     );
     window.localStorage.removeItem(AUTH_EVENT_KEY);
-  } catch {
-  }
+  } catch {}
 }
 
 export function parseAuthSyncEvent(
@@ -42,8 +42,7 @@ export function parseAuthSyncEvent(
     if (parsed.type === "login" && typeof parsed.userId === "string") {
       return { type: "login", userId: parsed.userId };
     }
-  } catch {
-  }
+  } catch {}
   return null;
 }
 

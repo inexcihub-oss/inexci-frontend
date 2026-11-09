@@ -22,8 +22,12 @@ function planoFake(): SubscriptionPlan {
 vi.mock("@/services/billing.service", () => ({
   billingService: {
     listPlans: vi.fn().mockResolvedValue([planoFake()]),
-    startCheckout: vi.fn().mockResolvedValue({ url: "https://stripe.test/checkout" }),
-    openPortal: vi.fn().mockResolvedValue({ url: "https://stripe.test/portal" }),
+    startCheckout: vi
+      .fn()
+      .mockResolvedValue({ url: "https://stripe.test/checkout" }),
+    openPortal: vi
+      .fn()
+      .mockResolvedValue({ url: "https://stripe.test/portal" }),
   },
 }));
 
@@ -61,17 +65,25 @@ function assinatura(): SubscriptionDetail {
   } as SubscriptionDetail;
 }
 
-const authMockState = vi.hoisted(() => ({ status: "active" as string }));
+const authMockState = vi.hoisted(() => ({
+  status: "active" as string,
+  semAssinatura: false,
+  verificada: true,
+  refresh: vi.fn(),
+}));
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => {
     const sub = assinatura();
     return {
-      subscription: {
-        ...sub,
-        subscription: { ...sub.subscription, status: authMockState.status },
-      },
+      subscription: authMockState.semAssinatura
+        ? null
+        : {
+            ...sub,
+            subscription: { ...sub.subscription, status: authMockState.status },
+          },
       subscriptionLoading: false,
-      refreshSubscription: vi.fn().mockResolvedValue(undefined),
+      subscriptionChecked: authMockState.verificada,
+      refreshSubscription: authMockState.refresh,
     };
   },
 }));
@@ -83,19 +95,21 @@ describe("BillingSection — âncoras do tour", () => {
   beforeEach(() => {
     onboardingMockState.emTour = false;
     authMockState.status = "active";
+    authMockState.semAssinatura = false;
+    authMockState.verificada = true;
     vi.clearAllMocks();
+    authMockState.refresh.mockResolvedValue(undefined);
     vi.mocked(billingService.listPlans).mockResolvedValue([planoFake()]);
   });
 
   it("expõe as três âncoras plano-assinatura, plano-cota e plano-acoes", async () => {
     render(<BillingSection />);
 
-    expect(
-      await screen.findByText("Resolver assinatura"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Resolver assinatura")).toBeInTheDocument();
 
-    expect(document.querySelector('[data-tour="plano-assinatura"]')).not
-      .toBeNull();
+    expect(
+      document.querySelector('[data-tour="plano-assinatura"]'),
+    ).not.toBeNull();
     expect(document.querySelector('[data-tour="plano-cota"]')).not.toBeNull();
     expect(document.querySelector('[data-tour="plano-acoes"]')).not.toBeNull();
   });
@@ -144,11 +158,39 @@ describe("BillingSection — âncoras do tour", () => {
     const botaoVerPlanos = await screen.findByText("Ver todos os planos");
     await userEvent.setup().click(botaoVerPlanos);
 
-    const botaoAssinar = (
-      await screen.findAllByText("Assinar este plano")
-    )[0];
+    const botaoAssinar = (await screen.findAllByText("Assinar este plano"))[0];
     await userEvent.setup().click(botaoAssinar);
 
     expect(billingService.startCheckout).not.toHaveBeenCalled();
+  });
+
+  it("conta interna não renderiza as ações de plano", () => {
+    authMockState.status = "internal";
+    render(<BillingSection />);
+
+    expect(
+      document.querySelector('[data-tour="plano-assinatura"]'),
+    ).not.toBeNull();
+    expect(document.querySelector('[data-tour="plano-acoes"]')).toBeNull();
+  });
+
+  it("diferencia conta sem assinatura de falha ao carregar", async () => {
+    authMockState.semAssinatura = true;
+    authMockState.verificada = true;
+    const { unmount } = render(<BillingSection />);
+    expect(
+      screen.getByText("Assinatura ainda não disponível para esta conta."),
+    ).toBeInTheDocument();
+    unmount();
+
+    authMockState.verificada = false;
+    render(<BillingSection />);
+    expect(
+      screen.getByText("Não foi possível carregar a assinatura agora."),
+    ).toBeInTheDocument();
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Tentar novamente" }));
+    expect(authMockState.refresh).toHaveBeenCalled();
   });
 });

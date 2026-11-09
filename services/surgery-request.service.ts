@@ -20,12 +20,28 @@ import {
 import { ALL_STATUS_CODES, STATUS_META } from "@/lib/surgery-request-status";
 
 export interface ApplyDocumentExtractionPayload {
-  procedure?: boolean; hospital?: boolean; healthPlan?: boolean; report?: boolean; tuss?: boolean; opme?: boolean;
-  procedureName?: string; hospitalName?: string; healthPlanName?: string; healthPlanNumber?: string; notes?: string;
+  procedure?: boolean;
+  hospital?: boolean;
+  healthPlan?: boolean;
+  report?: boolean;
+  tuss?: boolean;
+  opme?: boolean;
+  procedureName?: string;
+  hospitalName?: string;
+  healthPlanName?: string;
+  healthPlanNumber?: string;
+  notes?: string;
   sections?: { title: string; description?: string }[];
   tussItems?: { tussCode: string; name?: string; quantity?: number }[];
-  opmeItems?: { description: string; qty: number; supplier?: string; manufacturer?: string }[];
-  suggestedSuppliers?: string[]; tempStoragePath?: string; originalFileName?: string;
+  opmeItems?: {
+    description: string;
+    qty: number;
+    supplier?: string;
+    manufacturer?: string;
+  }[];
+  suggestedSuppliers?: string[];
+  tempStoragePath?: string;
+  originalFileName?: string;
 }
 
 export type {
@@ -87,7 +103,10 @@ export const STATUS_COLORS: Record<
   SurgeryRequestStatus,
   { bg: string; text: string; border: string }
 > = Object.fromEntries(
-  ALL_STATUS_CODES.map((code) => [STATUS_META[code].label, STATUS_META[code].badge]),
+  ALL_STATUS_CODES.map((code) => [
+    STATUS_META[code].label,
+    STATUS_META[code].badge,
+  ]),
 ) as Record<SurgeryRequestStatus, { bg: string; text: string; border: string }>;
 
 export interface CreateSurgeryRequestPayload {
@@ -789,7 +808,10 @@ export const surgeryRequestService = {
 
   async extractFromDocument(
     file: File,
-    options?: { notifyOnCompletion?: boolean; surgeryRequestId?: number | string },
+    options?: {
+      notifyOnCompletion?: boolean;
+      surgeryRequestId?: number | string;
+    },
   ): Promise<ExtractFromDocumentQueuedResponse> {
     const formData = new FormData();
     formData.append("document", file);

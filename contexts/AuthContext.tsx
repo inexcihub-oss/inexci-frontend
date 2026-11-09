@@ -9,6 +9,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import { AxiosError } from "axios";
 import { logger } from "@/lib/logger";
 import {
   AuthResponse,
@@ -46,6 +47,10 @@ const PUBLIC_AUTH_PATHS = [
   "/primeiro-acesso",
 ];
 
+function isSubscriptionNotFound(error: unknown): boolean {
+  return error instanceof AxiosError && error.response?.status === 404;
+}
+
 function isOnPublicAuthPath(): boolean {
   if (typeof window === "undefined") return false;
   const path = window.location.pathname;
@@ -69,6 +74,7 @@ interface AuthContextData {
   consentsLoading: boolean;
   subscription: SubscriptionDetail | null;
   subscriptionLoading: boolean;
+  subscriptionChecked: boolean;
   refreshSubscription: (forUser?: User | null) => Promise<void>;
   canCreateSurgeryRequest: boolean;
   isInTrial: boolean;
@@ -98,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     null,
   );
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionChecked, setSubscriptionChecked] = useState(false);
   const router = useRouter();
   const queryClient = useQueryClient();
   const consentsRequestRef = useRef<Promise<void> | null>(null);
@@ -116,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setConsents(null);
     setSubscription(null);
+    setSubscriptionChecked(false);
   }, [queryClient]);
 
   const applyConsentsFromUser = useCallback((currentUser: User) => {
@@ -175,9 +183,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const detail = await billingService.getMySubscription();
           setSubscription(detail);
+          setSubscriptionChecked(true);
         } catch (error) {
           logger.warn("N\u00e3o foi poss\u00edvel carregar assinatura:", error);
           setSubscription(null);
+          setSubscriptionChecked(isSubscriptionNotFound(error));
         } finally {
           setSubscriptionLoading(false);
           subscriptionRequestRef.current = null;
@@ -455,6 +465,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       consentsLoading,
       subscription,
       subscriptionLoading,
+      subscriptionChecked,
       refreshSubscription,
       canCreateSurgeryRequest,
       isInTrial,
@@ -485,6 +496,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       consentsLoading,
       subscription,
       subscriptionLoading,
+      subscriptionChecked,
       refreshSubscription,
       canCreateSurgeryRequest,
       isInTrial,

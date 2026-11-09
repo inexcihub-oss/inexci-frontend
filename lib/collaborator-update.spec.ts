@@ -31,7 +31,10 @@ describe("buildCollaboratorUpdatePayload", () => {
     it("mantém o financeiro que já existia ao mudar outra área", () => {
       expect(
         buildCollaboratorUpdatePayload(
-          { ...original, permissions: [Permission.AGENDA, Permission.FINANCEIRO] },
+          {
+            ...original,
+            permissions: [Permission.AGENDA, Permission.FINANCEIRO],
+          },
           {
             ...original,
             permissions: [Permission.AGENDA, Permission.ATENDIMENTO],
@@ -71,7 +74,9 @@ describe("buildCollaboratorUpdatePayload", () => {
   });
 
   it("devolve null quando nada mudou", () => {
-    expect(buildCollaboratorUpdatePayload(original, { ...original })).toBeNull();
+    expect(
+      buildCollaboratorUpdatePayload(original, { ...original }),
+    ).toBeNull();
   });
 
   it("envia só o e-mail quando só ele mudou", () => {
@@ -108,7 +113,10 @@ describe("buildCollaboratorUpdatePayload", () => {
   it("envia a retirada da área Financeiro", () => {
     expect(
       buildCollaboratorUpdatePayload(
-        { ...original, permissions: [Permission.AGENDA, Permission.FINANCEIRO] },
+        {
+          ...original,
+          permissions: [Permission.AGENDA, Permission.FINANCEIRO],
+        },
         original,
       ),
     ).toEqual({ permissions: [Permission.AGENDA] });

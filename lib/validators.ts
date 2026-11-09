@@ -74,7 +74,9 @@ export interface PasswordChecks {
   allValid: boolean;
 }
 
-export function passwordChecks(password: string | undefined | null): PasswordChecks {
+export function passwordChecks(
+  password: string | undefined | null,
+): PasswordChecks {
   const value = password ?? "";
   const minLength = value.length >= 8;
   const hasUpper = /[A-Z]/.test(value);
@@ -93,7 +95,11 @@ export function passwordChecks(password: string | undefined | null): PasswordChe
 
 export function passwordStrength(password: string | undefined | null): number {
   const c = passwordChecks(password);
-  return [c.minLength, c.hasUpper, c.hasLower, c.hasNumber, c.hasSpecial].filter(
-    Boolean,
-  ).length;
+  return [
+    c.minLength,
+    c.hasUpper,
+    c.hasLower,
+    c.hasNumber,
+    c.hasSpecial,
+  ].filter(Boolean).length;
 }

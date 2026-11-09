@@ -3,9 +3,10 @@ import { render } from "@testing-library/react";
 import DashboardLayoutInner from "./DashboardLayoutInner";
 
 const provedorMontado = vi.fn();
+const replace = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => ({ replace, push: vi.fn() }),
   usePathname: () => "/dashboard",
 }));
 
@@ -13,6 +14,8 @@ let auth: {
   user: { id: string } | null;
   loading: boolean;
   isAccountOwner: boolean;
+  isAdmin?: boolean;
+  subscriptionChecked?: boolean;
   subscription: { subscription: { status: string } } | null;
   consents: { requiredConsentsAccepted: boolean } | null;
   refreshConsents: () => Promise<void>;
@@ -109,5 +112,32 @@ describe("DashboardLayoutInner — altura da raiz no mobile", () => {
 
     const raiz = container.firstElementChild as HTMLElement;
     expect(raiz.className).toContain("supports-[height:100dvh]:h-dvh");
+  });
+});
+
+describe("DashboardLayoutInner — dono sem assinatura", () => {
+  beforeEach(() => {
+    replace.mockClear();
+    auth = {
+      user: { id: "u1" },
+      loading: false,
+      isAccountOwner: true,
+      isAdmin: true,
+      subscriptionChecked: true,
+      subscription: null,
+      consents: { requiredConsentsAccepted: true },
+      refreshConsents: vi.fn(),
+    };
+  });
+
+  it("continua na clínica e nunca é mandado para o painel administrativo", () => {
+    const { getByText } = render(
+      <DashboardLayoutInner>
+        <p>conteúdo da clínica</p>
+      </DashboardLayoutInner>,
+    );
+
+    expect(replace).not.toHaveBeenCalledWith("/admin");
+    expect(getByText("conteúdo da clínica")).toBeInTheDocument();
   });
 });

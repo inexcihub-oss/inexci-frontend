@@ -65,12 +65,15 @@ export function holidayOn(
   date: string,
 ): Holiday | undefined {
   return holidays.find(
-    (h) => h.date === date || (h.recurring && h.date.slice(5) === date.slice(5)),
+    (h) =>
+      h.date === date || (h.recurring && h.date.slice(5) === date.slice(5)),
   );
 }
 
 export function blockAppliesTo(b: ScheduleBlock, doctorIds: string[]): boolean {
-  return !b.doctorId || doctorIds.length === 0 || doctorIds.includes(b.doctorId);
+  return (
+    !b.doctorId || doctorIds.length === 0 || doctorIds.includes(b.doctorId)
+  );
 }
 
 export function bloqueioAtinge(

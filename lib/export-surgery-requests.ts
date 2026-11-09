@@ -12,8 +12,7 @@ function formatDate(value: string): string {
   try {
     const d = new Date(value);
     if (!isNaN(d.getTime())) return d.toLocaleDateString("pt-BR");
-  } catch {
-  }
+  } catch {}
   return value || "—";
 }
 
@@ -93,7 +92,9 @@ export async function exportToPdf(requests: SurgeryRequest[]): Promise<void> {
   const textSize = 7;
   const maxRowsPerPage = Math.max(
     1,
-    Math.floor((height - margin * 2 - headerHeight - rowHeight * 2) / rowHeight),
+    Math.floor(
+      (height - margin * 2 - headerHeight - rowHeight * 2) / rowHeight,
+    ),
   );
   const chunks = rows.length
     ? Array.from(
@@ -155,7 +156,12 @@ export async function exportToPdf(requests: SurgeryRequest[]): Promise<void> {
         borderWidth: 0.3,
       });
       page.drawText(
-        truncatePdfText(column.label.toUpperCase(), columnWidth - 6, bold, textSize),
+        truncatePdfText(
+          column.label.toUpperCase(),
+          columnWidth - 6,
+          bold,
+          textSize,
+        ),
         {
           x: x + 3,
           y: headerY - 9,
@@ -221,7 +227,6 @@ export async function exportToPdf(requests: SurgeryRequest[]): Promise<void> {
     `solicitacoes-cirurgicas-${dateStamp()}.pdf`,
   );
 }
-
 
 function dateStamp(): string {
   return new Date().toISOString().slice(0, 10);

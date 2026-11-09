@@ -140,4 +140,20 @@ describe("AuthContext — login com MFA", () => {
     expect(outcome).toEqual({ mfaRequired: false });
     expect(auth!.user?.id).toBe("u-1");
   });
+
+  it("o login sem área nenhuma vai para configurações, nunca para o painel", async () => {
+    renderAuth();
+    await waitFor(() => expect(auth?.loading).toBe(false));
+    authLogin.mockResolvedValue({
+      access_token: "jwt",
+      user: { ...usuario, permissions: [] },
+    });
+
+    await act(async () => {
+      await auth!.login("ana@x.com", "x");
+    });
+
+    expect(routerPush).toHaveBeenCalledWith("/configuracoes");
+    expect(routerPush).not.toHaveBeenCalledWith("/admin");
+  });
 });

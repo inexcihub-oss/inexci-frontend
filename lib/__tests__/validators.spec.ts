@@ -145,4 +145,3 @@ describe("passwordStrength", () => {
     expect(passwordStrength("Abcdef1@")).toBe(5);
   });
 });
-

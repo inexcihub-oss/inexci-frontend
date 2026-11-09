@@ -45,18 +45,16 @@ describe("schemas de MFA", () => {
   it("TOTP exige 6 dígitos", () => {
     expect(mfaTotpCodeSchema.safeParse({ code: "123456" }).success).toBe(true);
     expect(mfaTotpCodeSchema.safeParse({ code: "12345" }).success).toBe(false);
-    expect(mfaTotpCodeSchema.safeParse({ code: "12345a" }).success).toBe(
-      false,
-    );
+    expect(mfaTotpCodeSchema.safeParse({ code: "12345a" }).success).toBe(false);
   });
 
   it("código de recuperação aceita com ou sem hífen", () => {
     expect(
       mfaRecoveryCodeSchema.safeParse({ code: "abcde-fgh23" }).success,
     ).toBe(true);
-    expect(mfaRecoveryCodeSchema.safeParse({ code: "ABCDEFGH23" }).success).toBe(
-      true,
-    );
+    expect(
+      mfaRecoveryCodeSchema.safeParse({ code: "ABCDEFGH23" }).success,
+    ).toBe(true);
     expect(mfaRecoveryCodeSchema.safeParse({ code: "123456" }).success).toBe(
       false,
     );

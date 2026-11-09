@@ -148,4 +148,17 @@ describe("PermissionRouteGuard", () => {
     expect(replace).not.toHaveBeenCalled();
     expect(screen.queryByText("conteúdo")).not.toBeInTheDocument();
   });
+
+  it("sem a área exigida nunca manda para o painel administrativo", () => {
+    pathname = "/agenda";
+
+    render(
+      <PermissionRouteGuard>
+        <p>conteúdo</p>
+      </PermissionRouteGuard>,
+    );
+
+    expect(replace).toHaveBeenCalledWith("/configuracoes");
+    expect(replace).not.toHaveBeenCalledWith("/admin");
+  });
 });

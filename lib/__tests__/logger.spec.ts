@@ -5,13 +5,19 @@ import { logger, serializeError } from "../logger";
 function criarAxiosError(): AxiosError {
   const headers = new AxiosHeaders({ Authorization: "Bearer segredo" });
   const config = { url: "/patients?cpf=123", method: "get", headers };
-  return new AxiosError("Request failed", "ERR_BAD_REQUEST", config, {}, {
-    status: 401,
-    statusText: "Unauthorized",
-    headers: {},
+  return new AxiosError(
+    "Request failed",
+    "ERR_BAD_REQUEST",
     config,
-    data: { cpf: "12345678900" },
-  });
+    {},
+    {
+      status: 401,
+      statusText: "Unauthorized",
+      headers: {},
+      config,
+      data: { cpf: "12345678900" },
+    },
+  );
 }
 
 describe("serializeError", () => {

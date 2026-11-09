@@ -16,9 +16,7 @@ const AGORA = "2026-08-21T14:00:00.000Z";
 
 describe("normalizeOnboardingState", () => {
   it("trata undefined como estado vazio", () => {
-    expect(normalizeOnboardingState(undefined)).toEqual(
-      emptyOnboardingState(),
-    );
+    expect(normalizeOnboardingState(undefined)).toEqual(emptyOnboardingState());
   });
 
   it("completa campos ausentes", () => {
@@ -76,9 +74,9 @@ describe("markWelcomeSeen", () => {
 
 describe("isChecklistVisible", () => {
   it("some quando dispensado", () => {
-    expect(isChecklistVisible(dismissChecklist(emptyOnboardingState(), AGORA))).toBe(
-      false,
-    );
+    expect(
+      isChecklistVisible(dismissChecklist(emptyOnboardingState(), AGORA)),
+    ).toBe(false);
   });
 
   it("some ao concluir, inclusive na mesma sessão", () => {
@@ -166,7 +164,10 @@ describe("promoteIfComplete", () => {
   });
 
   it("não promove sem nenhuma trilha visível", () => {
-    const estado = { ...emptyOnboardingState(), status: "in_progress" as const };
+    const estado = {
+      ...emptyOnboardingState(),
+      status: "in_progress" as const,
+    };
 
     expect(promoteIfComplete(estado, []).status).toBe("in_progress");
   });
@@ -181,7 +182,10 @@ describe("promoteIfComplete", () => {
   });
 
   it("não altera um estado já completed (curto-circuita antes de olhar completedSteps)", () => {
-    const completo = { ...emptyOnboardingState(), status: "completed" as const };
+    const completo = {
+      ...emptyOnboardingState(),
+      status: "completed" as const,
+    };
 
     expect(promoteIfComplete(completo, ["criar-solicitacao"])).toBe(completo);
   });
