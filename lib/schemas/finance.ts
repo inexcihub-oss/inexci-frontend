@@ -247,7 +247,10 @@ export const MENSAGEM_DIFERENCA_SO_ADMINISTRACAO =
 
 export const closeCashSessionSchema = z.object({
   countedAmount: valorNaoNegativo("Informe o valor contado."),
-  notes: textoOpcional(1000, "A justificativa deve ter no máximo 1000 caracteres."),
+  notes: textoOpcional(
+    1000,
+    "A justificativa deve ter no máximo 1000 caracteres.",
+  ),
 });
 
 export interface CloseCashSessionContext {

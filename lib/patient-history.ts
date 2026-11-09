@@ -188,8 +188,7 @@ export function situacaoConsulta(
   temFicha: boolean,
   agora: Date = new Date(),
 ): { label: string; tom: SituacaoTom } {
-  const passou =
-    diaEmSaoPaulo(appointment.scheduledAt) < diaEmSaoPaulo(agora);
+  const passou = diaEmSaoPaulo(appointment.scheduledAt) < diaEmSaoPaulo(agora);
   if (passou && EM_ABERTO.includes(appointment.status)) {
     return temFicha
       ? { label: APPOINTMENT_STATUS_LABELS.completed, tom: "verde" }

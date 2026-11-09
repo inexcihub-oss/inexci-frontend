@@ -1,10 +1,7 @@
 import type { ApiSchema } from "@/types/api";
 import api from "@/lib/api";
 import { createCrudService, createGetById } from "@/services/crud-service";
-import {
-  BusinessHours,
-  normalizeBusinessHours,
-} from "@/lib/business-hours";
+import { BusinessHours, normalizeBusinessHours } from "@/lib/business-hours";
 
 export interface Clinic {
   id: string;

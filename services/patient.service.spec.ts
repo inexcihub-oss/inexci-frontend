@@ -117,7 +117,12 @@ describe("patientService", () => {
         data: {
           total: 42,
           records: [
-            { id: "1", name: "Ana", createdAt: "2024-01-01", updatedAt: "2024-01-01" },
+            {
+              id: "1",
+              name: "Ana",
+              createdAt: "2024-01-01",
+              updatedAt: "2024-01-01",
+            },
           ],
         },
       });

@@ -135,7 +135,9 @@ describe("export-agenda", () => {
     expect(getAgendaStatusLabel(9)).toBe("Encerrada");
     expect(toLocalDateKey("2026-07-15T23:35:00.000Z")).toMatch(/2026-07-1[45]/);
     expect(formatAgendaDateBR("2026-07-15T10:00:00.000Z")).toBe("15/07/2026");
-    expect(formatAgendaTime("2026-07-15T23:35:00.000Z")).toMatch(/^\d{2}:\d{2}$/);
+    expect(formatAgendaTime("2026-07-15T23:35:00.000Z")).toMatch(
+      /^\d{2}:\d{2}$/,
+    );
     expect(formatPeriodLabel("2026-07-01", "2026-07-31")).toBe(
       "01/07/2026 a 31/07/2026",
     );
@@ -143,8 +145,8 @@ describe("export-agenda", () => {
   });
 
   it("neutraliza fórmulas em células CSV", () => {
-    expect(sanitizeCsv("=HYPERLINK(\"https://malicioso.test\")")).toBe(
-      "\"'=HYPERLINK(\"\"https://malicioso.test\"\")\"",
+    expect(sanitizeCsv('=HYPERLINK("https://malicioso.test")')).toBe(
+      '"\'=HYPERLINK(""https://malicioso.test"")"',
     );
     expect(sanitizeCsv("+1+1")).toBe("'+1+1");
     expect(sanitizeCsv("-1+1")).toBe("'-1+1");

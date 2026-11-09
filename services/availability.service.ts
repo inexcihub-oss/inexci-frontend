@@ -89,7 +89,9 @@ export const availabilityService = {
     });
     return Array.isArray(r.data) ? r.data : [];
   },
-  async createSchedule(payload: DoctorSchedulePayload): Promise<DoctorSchedule> {
+  async createSchedule(
+    payload: DoctorSchedulePayload,
+  ): Promise<DoctorSchedule> {
     return (await api.post<DoctorSchedule>("/availability/schedules", payload))
       .data;
   },

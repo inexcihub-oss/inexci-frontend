@@ -97,7 +97,9 @@ describe("next.config.mjs — otimizador de imagem", () => {
 
   it("não libera nenhum host do R2 no /_next/image", () => {
     const hosts = remotePatterns().map((p) => p.hostname);
-    expect(hosts.some((h) => h.includes("r2.cloudflarestorage.com"))).toBe(false);
+    expect(hosts.some((h) => h.includes("r2.cloudflarestorage.com"))).toBe(
+      false,
+    );
   });
 
   it("não usa curinga de hostname", () => {

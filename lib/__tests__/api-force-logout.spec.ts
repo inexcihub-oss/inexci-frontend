@@ -11,9 +11,11 @@ vi.mock("axios", () => {
     interceptors: {
       request: { use: vi.fn() },
       response: {
-        use: vi.fn((_ok: unknown, onError: (error: unknown) => Promise<unknown>) => {
-          handlers.onError = onError;
-        }),
+        use: vi.fn(
+          (_ok: unknown, onError: (error: unknown) => Promise<unknown>) => {
+            handlers.onError = onError;
+          },
+        ),
       },
     },
   }));

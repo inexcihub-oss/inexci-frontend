@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { _clearCepCache, CepLookupError, isCompleteCep, lookupCep } from "../cep";
+import {
+  _clearCepCache,
+  CepLookupError,
+  isCompleteCep,
+  lookupCep,
+} from "../cep";
 
 describe("isCompleteCep", () => {
   it("retorna true para 8 dígitos com ou sem máscara", () => {

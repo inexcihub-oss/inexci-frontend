@@ -304,6 +304,15 @@ describe("Sidebar — menu da conta", () => {
     expect(gatilho()).toHaveFocus();
   });
 
+  it("não mostra atalho para o painel administrativo, que tem login próprio", () => {
+    render(<Sidebar />);
+
+    fireEvent.click(gatilho());
+    expect(
+      screen.queryByRole("menuitem", { name: "Painel administrativo" }),
+    ).toBeNull();
+  });
+
   it("Sair chama o logout e fecha o menu", () => {
     const logout = vi.fn();
     authState.logout = logout;

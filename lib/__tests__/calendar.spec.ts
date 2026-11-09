@@ -19,7 +19,11 @@ const base = {
 describe("appointmentToEvent", () => {
   it("acrescenta a clínica ao subtítulo quando há uma", () => {
     const evento = appointmentToEvent(
-      { ...base, clinicId: "c-1", clinic: { id: "c-1", name: "Unidade Centro" } },
+      {
+        ...base,
+        clinicId: "c-1",
+        clinic: { id: "c-1", name: "Unidade Centro" },
+      },
       "Primeira consulta",
     );
     expect(evento.subtitle).toBe("Primeira consulta · Unidade Centro");

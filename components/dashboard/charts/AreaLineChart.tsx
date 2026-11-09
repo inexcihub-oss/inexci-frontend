@@ -3,9 +3,11 @@
 export function AreaLineChart({
   data,
   height = 140,
+  formatLabel,
 }: {
   data: Array<{ date: string; value: number }>;
   height?: number;
+  formatLabel?: (date: string) => string;
 }) {
   if (data.length < 2) {
     return (
@@ -39,6 +41,7 @@ export function AreaLineChart({
   ).filter((idx) => idx >= 0 && idx < points.length);
 
   const fmtLabel = (dateStr: string) => {
+    if (formatLabel) return formatLabel(dateStr);
     const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
     const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(dateStr);
     return d.toLocaleDateString("pt-BR", {

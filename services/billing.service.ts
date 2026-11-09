@@ -1,5 +1,9 @@
 import api from "@/lib/api";
-import type { QuotaStatus, SubscriptionDetail, SubscriptionPlan } from "@/types";
+import type {
+  QuotaStatus,
+  SubscriptionDetail,
+  SubscriptionPlan,
+} from "@/types";
 
 export const billingService = {
   async listPlans(): Promise<SubscriptionPlan[]> {

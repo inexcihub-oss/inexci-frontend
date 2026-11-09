@@ -18,7 +18,12 @@ import { useOnboardingAction } from "@/components/onboarding/useOnboardingAction
 import { ACAO_PLANO_ABRIR_SELECAO } from "@/lib/onboarding/tour-registry";
 
 export function BillingSection() {
-  const { subscription, subscriptionLoading, refreshSubscription } = useAuth();
+  const {
+    subscription,
+    subscriptionLoading,
+    subscriptionChecked,
+    refreshSubscription,
+  } = useAuth();
   const { emTour } = useOnboarding();
   const { showToast } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -86,6 +91,23 @@ export function BillingSection() {
     );
   }
 
+  if (!subscription && !subscriptionChecked) {
+    return (
+      <Card className="border border-gray-200 rounded-2xl">
+        <CardContent className="flex flex-col items-start gap-3 p-6 text-sm text-gray-500">
+          Não foi possível carregar a assinatura agora.
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void refreshSubscription()}
+          >
+            Tentar novamente
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!subscription) {
     return (
       <Card className="border border-gray-200 rounded-2xl">
@@ -99,6 +121,7 @@ export function BillingSection() {
   const sub = subscription.subscription;
   const isTrialing = sub.status === "trialing";
   const isCanceled = sub.status === "canceled";
+  const isInternal = sub.status === "internal";
   const isSuspendedOrPastDue =
     sub.status === "suspended" || sub.status === "past_due";
 
@@ -112,62 +135,64 @@ export function BillingSection() {
           <QuotaUsageCard quota={subscription.quota} />
         </div>
 
-        <div
-          data-tour="plano-acoes"
-          className="rounded-2xl border border-gray-200 bg-white p-4"
-        >
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Resolver assinatura
-          </p>
+        {!isInternal && (
+          <div
+            data-tour="plano-acoes"
+            className="rounded-2xl border border-gray-200 bg-white p-4"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Resolver assinatura
+            </p>
 
-          <div className="mt-3 flex flex-wrap gap-3">
-            {isCanceled && (
+            <div className="mt-3 flex flex-wrap gap-3">
+              {isCanceled && (
+                <Button
+                  onClick={() => setIsPlansModalOpen(true)}
+                  className="gap-2"
+                  isLoading={redirecting}
+                  disabled={redirecting || emTour}
+                >
+                  <Layers className="w-4 h-4" />
+                  Contratar novo plano na Stripe
+                </Button>
+              )}
+
+              {isSuspendedOrPastDue && (
+                <Button
+                  onClick={() => handleManage()}
+                  isLoading={redirecting}
+                  disabled={redirecting || emTour}
+                  className="gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Regularizar pagamento na Stripe
+                </Button>
+              )}
+
+              {!isCanceled && !isTrialing && !isSuspendedOrPastDue && (
+                <Button
+                  variant="outline"
+                  onClick={() => handleManage()}
+                  isLoading={redirecting}
+                  disabled={redirecting || emTour}
+                  className="gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Gerenciar assinatura na Stripe
+                </Button>
+              )}
+
               <Button
+                variant={isCanceled ? "outline" : "ghost"}
                 onClick={() => setIsPlansModalOpen(true)}
                 className="gap-2"
-                isLoading={redirecting}
-                disabled={redirecting || emTour}
               >
                 <Layers className="w-4 h-4" />
-                Contratar novo plano na Stripe
+                {isCanceled ? "Ver todos os planos" : "Trocar plano"}
               </Button>
-            )}
-
-            {isSuspendedOrPastDue && (
-              <Button
-                onClick={() => handleManage()}
-                isLoading={redirecting}
-                disabled={redirecting || emTour}
-                className="gap-2"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Regularizar pagamento na Stripe
-              </Button>
-            )}
-
-            {!isCanceled && !isTrialing && !isSuspendedOrPastDue && (
-              <Button
-                variant="outline"
-                onClick={() => handleManage()}
-                isLoading={redirecting}
-                disabled={redirecting || emTour}
-                className="gap-2"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Gerenciar assinatura na Stripe
-              </Button>
-            )}
-
-            <Button
-              variant={isCanceled ? "outline" : "ghost"}
-              onClick={() => setIsPlansModalOpen(true)}
-              className="gap-2"
-            >
-              <Layers className="w-4 h-4" />
-              {isCanceled ? "Ver todos os planos" : "Trocar plano"}
-            </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <Modal
@@ -192,7 +217,6 @@ export function BillingSection() {
           />
         </div>
       </Modal>
-
     </>
   );
 }

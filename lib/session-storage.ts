@@ -1,9 +1,7 @@
 export const STORED_USER_KEY = "user";
 
 export type StoredUserResult<T> =
-  | { kind: "empty" }
-  | { kind: "invalid" }
-  | { kind: "ok"; user: T };
+  { kind: "empty" } | { kind: "invalid" } | { kind: "ok"; user: T };
 
 function storage(): Storage | null {
   if (typeof window === "undefined") return null;
@@ -28,8 +26,7 @@ export function parseStoredUser<
     ) {
       return { kind: "ok", user: parsed as T };
     }
-  } catch {
-  }
+  } catch {}
   return { kind: "invalid" };
 }
 

@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  fullNameSchema,
-  emailSchema,
-  phoneSchema,
-} from "./shared";
+import { fullNameSchema, emailSchema, phoneSchema } from "./shared";
 import { Permission } from "@/lib/permissions";
 
 export const createCollaboratorSchema = z
@@ -13,7 +9,18 @@ export const createCollaboratorSchema = z
     email: emailSchema,
     isDoctor: z.boolean().default(false),
     council: z
-      .enum(["CRM", "CRP", "CRN", "COREN", "CREFITO", "CRFA", "CRO", "CRBM", "CREF", "OUTRO"])
+      .enum([
+        "CRM",
+        "CRP",
+        "CRN",
+        "COREN",
+        "CREFITO",
+        "CRFA",
+        "CRO",
+        "CRBM",
+        "CREF",
+        "OUTRO",
+      ])
       .default("CRM"),
     crm: z.string().optional().or(z.literal("")),
     crmState: z.string().optional().or(z.literal("")),

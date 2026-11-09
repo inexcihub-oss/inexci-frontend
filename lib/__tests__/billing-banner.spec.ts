@@ -104,4 +104,12 @@ describe("resolveBillingBanner", () => {
     );
     expect(variante?.title).toBe("Pagamento da última fatura falhou");
   });
+
+  it("não mostra banner para acesso interno, mesmo com data de cancelamento", () => {
+    expect(
+      resolveBillingBanner(
+        assinatura({ status: "internal", cancelAtPeriodEnd: true }),
+      ),
+    ).toBeNull();
+  });
 });

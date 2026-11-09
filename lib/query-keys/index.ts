@@ -4,3 +4,4 @@ export * from "./registry";
 export * from "./appointments";
 export * from "./finance";
 export * from "./clinical-records";
+export * from "./admin";

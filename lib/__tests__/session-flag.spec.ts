@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  markSession,
-  clearSessionFlag,
-  hasSessionHint,
-} from "../session-flag";
+import { markSession, clearSessionFlag, hasSessionHint } from "../session-flag";
 
 describe("session-flag", () => {
   beforeEach(() => {

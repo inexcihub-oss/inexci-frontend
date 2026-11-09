@@ -235,7 +235,10 @@ export const appointmentService = {
   async getAgendaCompleta(
     query: Omit<AgendaQuery, "skip" | "take"> = {},
   ): Promise<AgendaPage> {
-    const primeira = await this.getAgendaPage({ ...query, take: FETCH_ALL_TAKE });
+    const primeira = await this.getAgendaPage({
+      ...query,
+      take: FETCH_ALL_TAKE,
+    });
     const records = [...primeira.records];
     let paginas = 1;
     while (records.length < primeira.total && paginas < AGENDA_MAX_PAGINAS) {

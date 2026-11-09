@@ -104,7 +104,10 @@ export interface CalEvent {
 
 const DEFAULT_SURGERY_MINUTES = 60;
 
-export function appointmentToEvent(a: Appointment, typeLabel: string): CalEvent {
+export function appointmentToEvent(
+  a: Appointment,
+  typeLabel: string,
+): CalEvent {
   const start = new Date(a.scheduledAt);
   return {
     id: `appt-${a.id}`,
@@ -221,7 +224,9 @@ export interface PositionedEvent {
 
 export function layoutOverlaps(events: CalEvent[]): PositionedEvent[] {
   const sorted = [...events].sort(
-    (a, b) => a.start.getTime() - b.start.getTime() || a.end.getTime() - b.end.getTime(),
+    (a, b) =>
+      a.start.getTime() - b.start.getTime() ||
+      a.end.getTime() - b.end.getTime(),
   );
   const result: PositionedEvent[] = [];
   let cluster: CalEvent[] = [];

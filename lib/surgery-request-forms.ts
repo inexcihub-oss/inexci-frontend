@@ -35,7 +35,9 @@ export function summarizeWorkflowFormErrors(
   return messages[0] ?? INVALID_AMOUNT_MESSAGE;
 }
 
-export function buildInvoicePayload(values: z.output<typeof invoiceFormSchema>) {
+export function buildInvoicePayload(
+  values: z.output<typeof invoiceFormSchema>,
+) {
   const [sy, sm, sd] = values.sentAt.split("-").map(Number);
   const sentAtDate = new Date(sy, sm - 1, sd);
 

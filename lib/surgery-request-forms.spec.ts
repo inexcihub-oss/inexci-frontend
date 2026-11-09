@@ -131,7 +131,7 @@ describe("receiptFormSchema", () => {
     ).toBe(true);
   });
 
-  it("valor vazio vira \"Preencha: Valor recebido\"", () => {
+  it('valor vazio vira "Preencha: Valor recebido"', () => {
     const r = receiptFormSchema.safeParse({
       receivedValue: "",
       receivedAt: "2026-02-01",

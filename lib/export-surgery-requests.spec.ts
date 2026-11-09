@@ -139,7 +139,7 @@ describe("exportToCsv — relatório do kanban", () => {
 
   it("neutraliza dado que a planilha leria como fórmula", async () => {
     const [, primeira] = await csvGerado([
-      { ...solicitacoes[0], procedureName: "=HYPERLINK(\"http://x\")" },
+      { ...solicitacoes[0], procedureName: '=HYPERLINK("http://x")' },
     ] as unknown as SurgeryRequest[]);
 
     expect(primeira).toContain("'=HYPERLINK");

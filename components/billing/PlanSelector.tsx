@@ -62,6 +62,14 @@ export function PlanSelector({
     );
   }
 
+  if (subscriptionStatus === "internal") {
+    return (
+      <p className="text-sm text-gray-500 text-center py-8">
+        Sua conta tem acesso interno, sem cobrança. Não há plano a contratar.
+      </p>
+    );
+  }
+
   const goesThruCheckout =
     subscriptionStatus === "trialing" || subscriptionStatus === "canceled";
 

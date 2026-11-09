@@ -6,7 +6,7 @@ import { clearStoredUser } from "./session-storage";
 import { clearScFromDocumentStorage } from "./sc-from-document-background";
 import { broadcastAuthEvent } from "./auth-sync";
 
-function resolveApiBaseUrl(): string {
+export function resolveApiBaseUrl(): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
   if (envUrl) return envUrl;
 
@@ -136,8 +136,7 @@ api.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const responseRequestId = error.response?.headers?.["x-request-id"] as
-      | string
-      | undefined;
+      string | undefined;
     if (responseRequestId) setRequestId(responseRequestId);
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;

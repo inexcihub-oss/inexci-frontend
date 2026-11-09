@@ -16,6 +16,7 @@ export interface Gate {
   anyArea?: boolean;
   requiresDoctor?: boolean;
   requiresOwner?: boolean;
+  requiresBillablePlan?: boolean;
 }
 
 export interface TourStep extends Gate {
@@ -44,17 +45,18 @@ export interface Viewer {
   permissions: Permission[];
   isDoctor: boolean;
   isAccountOwner: boolean;
+  isInternalAccount?: boolean;
 }
 
 export const ACAO_PROCEDIMENTOS_ABRIR_NOVO_MODELO =
   "procedimentos-abrir-novo-modelo";
 export const ACAO_PLANO_ABRIR_SELECAO = "plano-abrir-selecao";
-export const ACAO_CADASTROS_ABRIR_MENU_MOBILE =
-  "cadastros-abrir-menu-mobile";
+export const ACAO_CADASTROS_ABRIR_MENU_MOBILE = "cadastros-abrir-menu-mobile";
 
 export function canSee(gate: Gate, viewer: Viewer): boolean {
   if (gate.requiresOwner && !viewer.isAccountOwner) return false;
   if (gate.requiresDoctor && !viewer.isDoctor) return false;
+  if (gate.requiresBillablePlan && viewer.isInternalAccount) return false;
   if (gate.anyArea && !hasAnyArea(viewer.permissions)) return false;
   if (gate.permission && !viewer.permissions.includes(gate.permission)) {
     return false;
@@ -365,9 +367,15 @@ export const TRACKS: Track[] = [
         ...TRILHA_PLANO.passos.assinatura,
       },
       { key: "cota", target: "plano-cota", ...TRILHA_PLANO.passos.cota },
-      { key: "acoes", target: "plano-acoes", ...TRILHA_PLANO.passos.acoes },
+      {
+        key: "acoes",
+        target: "plano-acoes",
+        requiresBillablePlan: true,
+        ...TRILHA_PLANO.passos.acoes,
+      },
       {
         key: "planos-disponiveis",
+        requiresBillablePlan: true,
         acao: ACAO_PLANO_ABRIR_SELECAO,
         target: "plano-planos-disponiveis",
         aguardaAcao: true,

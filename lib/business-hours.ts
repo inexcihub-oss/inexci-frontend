@@ -27,10 +27,7 @@ export interface TimeBlock {
 
 export type BusinessHours = Record<WeekdayKey, TimeBlock[]>;
 
-export type ClosedReason =
-  | "closed_day"
-  | "outside_hours"
-  | "overflows_closing";
+export type ClosedReason = "closed_day" | "outside_hours" | "overflows_closing";
 
 export interface BusinessHoursCheck {
   open: boolean;

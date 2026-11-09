@@ -154,7 +154,10 @@ describe("createReceivePaymentSchema", () => {
   });
 
   it("dinheiro exige caixa aberto e não manda conta", () => {
-    const fechado = createReceivePaymentSchema({ ...ctx, cashSessionOpen: false });
+    const fechado = createReceivePaymentSchema({
+      ...ctx,
+      cashSessionOpen: false,
+    });
     expect(
       fechado.safeParse({ lines: [linha({ method: PaymentMethod.CASH })] })
         .error?.issues[0].message,
@@ -187,7 +190,10 @@ describe("createRefundSchema", () => {
   });
 
   it("exige o motivo", () => {
-    const r = createRefundSchema(5000).safeParse({ amount: "R$ 1,00", reason: "" });
+    const r = createRefundSchema(5000).safeParse({
+      amount: "R$ 1,00",
+      reason: "",
+    });
     expect(r.error?.issues[0].message).toBe("Selecione o motivo do estorno.");
   });
 });
@@ -195,7 +201,10 @@ describe("createRefundSchema", () => {
 describe("caixa", () => {
   it("aceita abertura com zero", () => {
     expect(
-      openCashSessionSchema.parse({ accountId: "c-1", openingAmount: "R$ 0,00" }),
+      openCashSessionSchema.parse({
+        accountId: "c-1",
+        openingAmount: "R$ 0,00",
+      }),
     ).toEqual({ accountId: "c-1", openingAmount: "0.00" });
   });
 
@@ -265,8 +274,12 @@ describe("limites alinhados aos DTOs da API", () => {
 
   it("descrição do item da cobrança e do preço até 150", () => {
     const item = { amount: "R$ 10,00", executedById: "" };
-    aceita(receivableItemSchema.safeParse({ ...item, description: texto(150) }));
-    recusa(receivableItemSchema.safeParse({ ...item, description: texto(151) }));
+    aceita(
+      receivableItemSchema.safeParse({ ...item, description: texto(150) }),
+    );
+    recusa(
+      receivableItemSchema.safeParse({ ...item, description: texto(151) }),
+    );
     const preco = {
       doctorId: "",
       appointmentType: "",
@@ -288,10 +301,16 @@ describe("limites alinhados aos DTOs da API", () => {
 
   it("descrição do movimento de caixa até 255 e justificativa do fechamento até 1000", () => {
     aceita(
-      cashMovementSchema.safeParse({ amount: "R$ 1,00", description: texto(255) }),
+      cashMovementSchema.safeParse({
+        amount: "R$ 1,00",
+        description: texto(255),
+      }),
     );
     recusa(
-      cashMovementSchema.safeParse({ amount: "R$ 1,00", description: texto(256) }),
+      cashMovementSchema.safeParse({
+        amount: "R$ 1,00",
+        description: texto(256),
+      }),
     );
     aceita(
       closeCashSessionSchema.safeParse({
@@ -329,9 +348,9 @@ describe("createCloseCashSessionSchema", () => {
       const r = schema.safeParse({ countedAmount, notes: "  " });
       expect(r.success).toBe(false);
       expect(r.error?.issues[0]).toMatchObject({ path: ["notes"] });
-      expect(
-        schema.safeParse({ countedAmount, notes: "Troco" }).success,
-      ).toBe(true);
+      expect(schema.safeParse({ countedAmount, notes: "Troco" }).success).toBe(
+        true,
+      );
     }
   });
 

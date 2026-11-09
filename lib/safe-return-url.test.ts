@@ -23,6 +23,8 @@ describe("resolverReturnUrl", () => {
   });
 
   it("preserva query string interna", () => {
-    expect(resolverReturnUrl("/agenda?tab=hoje", origem)).toBe("/agenda?tab=hoje");
+    expect(resolverReturnUrl("/agenda?tab=hoje", origem)).toBe(
+      "/agenda?tab=hoje",
+    );
   });
 });

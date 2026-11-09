@@ -63,7 +63,9 @@ export function OnboardingProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, permissions, isDoctor, isAccountOwner } = useAuth();
+  const { user, permissions, isDoctor, isAccountOwner, subscription } =
+    useAuth();
+  const isInternalAccount = subscription?.subscription.status === "internal";
 
   const [state, setState] = useState<OnboardingState>(() =>
     normalizeOnboardingState(user?.onboardingState),
@@ -87,8 +89,9 @@ export function OnboardingProvider({
       permissions: permissions ?? [],
       isDoctor: Boolean(isDoctor),
       isAccountOwner: Boolean(isAccountOwner),
+      isInternalAccount,
     }),
-    [permissions, isDoctor, isAccountOwner],
+    [permissions, isDoctor, isAccountOwner, isInternalAccount],
   );
 
   const tracks = useMemo(() => visibleTracks(viewer), [viewer]);
@@ -112,7 +115,9 @@ export function OnboardingProvider({
       }
     };
     const anterior = escritaEmVooRef.current;
-    const envio = anterior ? anterior.catch(() => undefined).then(salvar) : salvar();
+    const envio = anterior
+      ? anterior.catch(() => undefined).then(salvar)
+      : salvar();
     let rastreado: Promise<void>;
     rastreado = envio.finally(() => {
       if (escritaEmVooRef.current === rastreado) {
@@ -180,13 +185,10 @@ export function OnboardingProvider({
       .map((t) => t.stepKey)
       .filter((k) => !atual.completedSteps[k]);
     if (faltando.length === 0) return;
-    aplicar(
-      (estado) => markAllComplete(estado, faltando, agora),
-      {
-        completedSteps: Object.fromEntries(faltando.map((k) => [k, agora])),
-        ...(atual.welcomeSeenAt ? {} : { welcomeSeenAt: agora }),
-      },
-    );
+    aplicar((estado) => markAllComplete(estado, faltando, agora), {
+      completedSteps: Object.fromEntries(faltando.map((k) => [k, agora])),
+      ...(atual.welcomeSeenAt ? {} : { welcomeSeenAt: agora }),
+    });
   }, [aplicar, tracks]);
 
   const markWelcome = useCallback(() => {
@@ -280,8 +282,7 @@ export function OnboardingProvider({
       registrarAcao,
       desregistrarAcao,
       executarAcao,
-      isChecklistVisible:
-        calcChecklistVisible(state) && tracks.length > 0,
+      isChecklistVisible: calcChecklistVisible(state) && tracks.length > 0,
     }),
     [
       state,

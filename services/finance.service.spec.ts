@@ -54,7 +54,10 @@ describe("financeService", () => {
       defaultAccountId: "a1",
       maxInstallments: 6,
     };
-    await financeService.updatePaymentMethod(PaymentMethod.CREDIT_CARD, payload);
+    await financeService.updatePaymentMethod(
+      PaymentMethod.CREDIT_CARD,
+      payload,
+    );
     expect(put).toHaveBeenCalledWith(
       "/finance/payment-methods/credit_card",
       payload,
@@ -62,7 +65,11 @@ describe("financeService", () => {
   });
 
   it("filtra a lista de cobranças sem mandar parâmetros vazios", async () => {
-    await financeService.listReceivables({ status: undefined, from: "", page: 2 });
+    await financeService.listReceivables({
+      status: undefined,
+      from: "",
+      page: 2,
+    });
     expect(get).toHaveBeenCalledWith("/finance/receivables", {
       params: { page: 2 },
     });

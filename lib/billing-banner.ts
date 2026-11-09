@@ -16,6 +16,7 @@ export function resolveBillingBanner(
   subscription: SubscriptionDetail | null | undefined,
 ): BillingBannerVariant | null {
   if (!subscription) return null;
+  if (subscription.subscription.status === "internal") return null;
 
   const { status, cancelAtPeriodEnd, currentPeriodEnd, pastDueSince } =
     subscription.subscription;

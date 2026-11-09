@@ -1,8 +1,10 @@
 export function parseBRLValue(str: string): number {
-  const cleaned = str
-    .replace(/R\$\s?/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
+  const semMoeda = str.replace(/R\$\s?/g, "").trim();
+  const cleaned = semMoeda.includes(",")
+    ? semMoeda.replace(/\./g, "").replace(",", ".")
+    : /^-?\d+\.\d{1,2}$/.test(semMoeda)
+      ? semMoeda
+      : semMoeda.replace(/\./g, "");
   return parseFloat(cleaned);
 }
 

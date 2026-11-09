@@ -1,22 +1,26 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Manrope, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import Script from "next/script";
 import "@/styles/landing.css";
 import { ThemeProvider } from "@/components/landing/theme-provider";
 import { SITE_URL } from "@/lib/landing/seo";
 
-const inter = Inter({
+const inter = localFont({
   variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  src: [
+    { path: "./fonts/inter-latin-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/inter-latin-500.woff2", weight: "500", style: "normal" },
+  ],
   display: "swap",
 });
 
-const manrope = Manrope({
+const manrope = localFont({
   variable: "--font-manrope",
-  subsets: ["latin"],
-  weight: ["600", "700"],
+  src: [
+    { path: "./fonts/manrope-latin-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/manrope-latin-700.woff2", weight: "700", style: "normal" },
+  ],
   display: "swap",
 });
 

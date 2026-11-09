@@ -1,8 +1,5 @@
 export type EmailAvailability =
-  | "available"
-  | "pending_invite"
-  | "registered"
-  | null;
+  "available" | "pending_invite" | "registered" | null;
 
 export type PhoneAvailability = "available" | "registered" | null;
 

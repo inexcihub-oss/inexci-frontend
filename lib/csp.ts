@@ -14,7 +14,12 @@ export function montarCsp(
 ): string {
   const wsOrigin = apiOrigin.replace(/^http/, "ws");
   const connectSrc = ["'self'", apiOrigin, wsOrigin, "https://viacep.com.br"];
-  const imgSrc = ["'self'", "data:", "blob:", "https://*.r2.cloudflarestorage.com"];
+  const imgSrc = [
+    "'self'",
+    "data:",
+    "blob:",
+    "https://*.r2.cloudflarestorage.com",
+  ];
   if (isLanding) {
     connectSrc.push(...LANDING_CONNECT_SRC);
     imgSrc.push(...LANDING_IMG_SRC);

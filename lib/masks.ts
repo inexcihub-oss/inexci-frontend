@@ -44,7 +44,10 @@ export function maskCep(raw: string | undefined | null): string {
   return `${d.slice(0, 5)}-${d.slice(5)}`;
 }
 
-export function applyMask(kind: MaskKind, raw: string | undefined | null): string {
+export function applyMask(
+  kind: MaskKind,
+  raw: string | undefined | null,
+): string {
   switch (kind) {
     case "cpf":
       return maskCpf(raw);
